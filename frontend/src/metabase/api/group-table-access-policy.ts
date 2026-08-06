@@ -1,4 +1,7 @@
-import type { GroupTableAccessPolicy } from "metabase-types/api";
+import type {
+  GroupTableAccessPolicy,
+  ValidateGroupTableAccessPolicyRequest,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 import { listTag } from "./tags";
@@ -33,7 +36,7 @@ export const groupTableAccessPolicyApi = Api.injectEndpoints({
     }),
     validateGroupTableAccessPolicy: builder.mutation<
       void,
-      GroupTableAccessPolicy
+      ValidateGroupTableAccessPolicyRequest
     >({
       query: (body) => ({
         method: "POST",

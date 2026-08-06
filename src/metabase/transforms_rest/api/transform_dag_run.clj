@@ -29,7 +29,8 @@
 
 (api.macros/defendpoint :get "/:run-id/transform-runs" :- [:sequential transforms-rest.api.u/MemberTransformRunResponse]
   "Get the transform runs that made up a specific DAG run."
-  [{:keys [run-id]} :- [:map [:run-id ms/PositiveInt]]]
+  [{:keys [run-id]} :- [:map {:closed true}
+                        [:run-id ms/PositiveInt]]]
   (let [dag-run (api/check-404 (t2/select-one :model/TransformDagRun :id run-id))]
     (check-seed-transform api/read-check dag-run)
     (->> (t2/hydrate (transforms.core/transform-runs-for-dag-run run-id)
@@ -38,7 +39,8 @@
 
 (api.macros/defendpoint :post "/:run-id/cancel" :- :nil
   "Cancel an in-progress manual DAG run and request cancellation of its still-running transforms."
-  [{:keys [run-id]} :- [:map [:run-id ms/PositiveInt]]]
+  [{:keys [run-id]} :- [:map {:closed true}
+                        [:run-id ms/PositiveInt]]]
   (let [dag-run (api/check-404 (t2/select-one :model/TransformDagRun :id run-id))]
     (check-seed-transform api/write-check dag-run)
     (api/check-400 (transforms.core/cancel-dag-run! run-id))

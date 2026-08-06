@@ -220,7 +220,10 @@
 (api.macros/defendpoint :delete "/"
   "Logout."
   ;; `metabase-session-key` gets added automatically by the [[metabase.server.middleware.session]] middleware
-  [_route-params _query-params _body {:keys [metabase-session-key], :as _request}]
+  [_route-params
+   _query-params
+   _body         :- [:map {:closed true}]
+   {:keys [metabase-session-key], :as _request}]
   (api/check-404 (not-empty metabase-session-key))
   (let [session-key-hashed (session/hash-session-key metabase-session-key)
         rows-deleted (t2/delete! :model/Session {:where [:or [:= :key_hashed session-key-hashed] [:= :id metabase-session-key]]})]
@@ -394,7 +397,9 @@
 (api.macros/defendpoint :get "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
-  []
+  [_route-params
+   _query-params
+   _body         :- [:map {:closed true}]]
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API

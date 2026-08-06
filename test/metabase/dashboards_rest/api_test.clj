@@ -850,9 +850,7 @@
               (let [put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                                        {:name        "My Cool Dashboard"
                                                         :description "Some awesome description"
-                                                        :cache_ttl   1234
-                                                        ;; these things should fail to update
-                                                        :creator_id  (mt/user->id :trashbird)})
+                                                        :cache_ttl   1234})
                     get-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))]
                 (is (=? {:name           "My Cool Dashboard"
                          :dashcards      []
@@ -877,17 +875,15 @@
                        :collection_id true
                        :view_count    1}
                       (dashboard-response (t2/select-one :model/Dashboard :id dashboard-id)))))
-            (testing "No-op PUT: Do not return 500"
+            (testing "server-owned properties are rejected rather than silently ignored"
+              (is (=? {:errors {:creator_id "disallowed key"}}
+                      (mt/user-http-request :rasta :put 400 (str "dashboard/" dashboard-id)
+                                            {:creator_id (mt/user->id :trashbird)}))))
+            (testing "`cards` is rejected: this endpoint takes `dashcards` (`cards` belongs to PUT /api/dashboard/:id/cards)"
               (mt/with-temp [:model/Card {card-id :id} {}
                              :model/DashboardCard dashcard {:card_id card-id, :dashboard_id dashboard-id}]
-                ;; so, you can't actually set `:cards` with THIS endpoint (you have to use PUT /api/dashboard/:id/cards)
-                ;; but the e2e tests are trying to do it. With Toucan 1, it would silently do nothing and return truthy for
-                ;; whatever reason (I'm guessing it was a bug?) if you did something like (update! Dashboard 1 {}). Toucan 2
-                ;; returns falsey, since it doesn't do anything, which is what Toucan 1 SAID it was supposed to do.
-                ;;
-                ;; In the interest of un-busting the e2e tests let's just check to make sure the endpoint no-ops
-                (is (=? {:id dashboard-id}
-                        (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                (is (=? {:errors {:cards "disallowed key"}}
+                        (mt/user-http-request :rasta :put 400 (str "dashboard/" dashboard-id)
                                               {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))
         (testing "auto_apply_filters test"
           (doseq [enabled? [true false]]

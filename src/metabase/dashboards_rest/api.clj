@@ -62,6 +62,9 @@
 
 ;;; TODO -- why don't we use [[metabase.util.malli.schema/Parameter]] for this? Are the parameters passed here
 ;;; different?
+;;;
+;;; TODO: `parameters` is a runtime parameter-override list typed loosely (only `:id` is checked); give it a real
+;;; schema.
 (def ParameterWithID
   "Schema for a parameter map with an string `:id`. This is the shape of runtime parameter *overrides* the FE sends
   when running a dashcard query or exporting a dashboard -- distinct from the stored parameter declarations
@@ -145,7 +148,7 @@
   [_route-params
    _query-params
    {:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard}
-   :- [:map
+   :- [:map {:closed true}
        [:name                ms/NonBlankString]
        [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
        [:description         {:optional true} [:maybe :string]]
@@ -541,11 +544,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:from-dashboard-id/copy"
   "Copy a Dashboard."
-  [{:keys [from-dashboard-id]} :- [:map
+  [{:keys [from-dashboard-id]} :- [:map {:closed true}
                                    [:from-dashboard-id ms/PositiveInt]]
    _query-params
    {:keys [name description collection_id collection_position
-           is_deep_copy], :as _dashboard} :- [:map
+           is_deep_copy], :as _dashboard} :- [:map {:closed true}
                                               [:name                {:optional true} [:maybe ms/NonBlankString]]
                                               [:description         {:optional true} [:maybe :string]]
                                               [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
@@ -654,10 +657,10 @@
   action drive the download). Parameters left unspecified fall back to the dashboard's own defaults.
 
   `paper_size` is `\"a4\"` (default) or `\"letter\"`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [parameters paper_size]} :- [:map
+   {:keys [parameters paper_size]} :- [:map {:closed true}
                                        [:parameters {:optional true} [:maybe [:or
                                                                               [:sequential ParameterWithID]
                                                                               ;; JSON-string form for <form>-driven
@@ -894,7 +897,8 @@
                           (create-dashcards! dashboard to-create))}))
 
 (def ^:private UpdatedDashboardCard
-  [:map
+  ;; Not closed: callers round-trip whole dashcards back from `GET /api/dashboard/:id`.
+  [:map {:closed false}
    ;; id can be negative, it indicates a new card and BE should create them
    [:id                                  int?]
    [:size_x                              ms/PositiveInt]
@@ -906,7 +910,8 @@
    [:series             {:optional true} [:maybe [:sequential map?]]]])
 
 (def ^:private UpdatedDashboardTab
-  [:map
+  ;; Not closed: callers round-trip whole tabs back from `GET /api/dashboard/:id`.
+  [:map {:closed false}
    ;; id can be negative, it indicates a new card and BE should create them
    [:id   ms/Int]
    [:name ms/NonBlankString]])
@@ -1124,7 +1129,7 @@
 
 (def ^:private DashUpdates
   "Schema for Dashboard Updates."
-  [:map
+  [:map {:closed true}
    [:name                    {:optional true} [:maybe ms/NonBlankString]]
    [:description             {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
@@ -1134,6 +1139,7 @@
    [:embedding_type          {:optional true} [:maybe :string]]
    [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
    [:parameters              {:optional true} [:maybe ::parameters.schema/parameters]]
+   [:auto_apply_filters      {:optional true} [:maybe :boolean]]
    [:position                {:optional true} [:maybe ms/PositiveInt]]
    [:width                   {:optional true} [:enum "fixed" "full"]]
    [:archived                {:optional true} [:maybe :boolean]]
@@ -1149,8 +1155,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
-  structure as the response from `GET /api/dashboard/:id`."
-  [{:keys [id]} :- [:map
+  structure as the response from `GET /api/dashboard/:id`, restricted to the writable properties below."
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    dash-updates :- DashUpdates]
@@ -1175,10 +1181,10 @@
                      ...]
      :tabs [{:id       ... ; DashboardTab ID
                      :name     ...}]}"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [cards tabs]} :- [:map
+   {:keys [cards tabs]} :- [:map {:closed true}
                             [:cards (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]
                             [:tabs  {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]]]]
   (log/warn
@@ -1405,11 +1411,12 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
-  [{:keys [dashboard-id dashcard-id]} :- [:map
+  [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
    _query-params
-   {:keys [parameters]} :- [:map
+   {:keys [parameters]} :- [:map {:closed true}
+                            ;; TODO: `parameters` is an action parameter-value map typed loosely; give it a real schema.
                             [:parameters {:optional true} [:maybe [:map-of :string :any]]]]]
   (api/read-check :model/Dashboard dashboard-id)
   (actions/fetch-values
@@ -1425,11 +1432,12 @@
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  [{:keys [dashboard-id dashcard-id]} :- [:map
+  [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
    _query-params
-   {:keys [parameters]} :- [:map
+   {:keys [parameters]} :- [:map {:closed true}
+                            ;; TODO: `parameters` is an action parameter-value map typed loosely; give it a real schema.
                             [:parameters {:optional true} [:maybe [:map-of :string :any]]]]]
   (api/read-check :model/Dashboard dashboard-id)
   ;; Undo middleware string->keyword coercion
@@ -1443,14 +1451,18 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
-  [{:keys [dashboard-id dashcard-id card-id]} :- [:map
+  [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
                                                   [:card-id      ms/PositiveInt]]
    _query-params
-   {:keys [dashboard_load_id], :as body} :- [:map
-                                             [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
-                                             [:parameters        {:optional true} [:maybe [:sequential ParameterWithID]]]]]
+   {:keys [dashboard_load_id], :as body} :- [:map {:closed true}
+                                             [:dashboard_load_id  {:optional true} [:maybe ms/NonBlankString]]
+                                             [:parameters         {:optional true} [:maybe [:sequential ParameterWithID]]]
+                                             ;; echoed by the FE query runner alongside the route params
+                                             [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
+                                             [:ignore_cache       {:optional true} [:maybe ms/BooleanValue]]
+                                             [:collection_preview {:optional true} [:maybe ms/BooleanValue]]]]
   (with-dashboard-load-id dashboard_load_id
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
@@ -1469,7 +1481,7 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [{:keys [dashboard-id dashcard-id card-id export-format]} :- [:map
+  [{:keys [dashboard-id dashcard-id card-id export-format]} :- [:map {:closed true}
                                                                 [:dashboard-id  ms/PositiveInt]
                                                                 [:dashcard-id   ms/PositiveInt]
                                                                 [:card-id       ms/PositiveInt]
@@ -1478,14 +1490,16 @@
    {:keys          [parameters]
     format-rows?   :format_rows
     pivot-results? :pivot_results}
-   :- [:map
-       [:parameters    {:optional true} [:maybe [:or
-                                                 [:sequential ParameterWithID]
-                                                 ;; support <form> encoded params for backwards compatibility... see
-                                                 ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
-                                                 ms/JSONString]]]
-       [:format_rows   {:default false} ms/BooleanValue]
-       [:pivot_results {:default false} ms/BooleanValue]]]
+   :- [:map {:closed true}
+       [:parameters      {:optional true} [:maybe [:or
+                                                   [:sequential ParameterWithID]
+                                                   ;; support <form> encoded params for backwards compatibility... see
+                                                   ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
+                                                   ms/JSONString]]]
+       [:format_rows     {:default false} ms/BooleanValue]
+       [:pivot_results   {:default false} ms/BooleanValue]
+       ;; sent by the FE download code, consumed by the CSV writer
+       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
             {:dashboard     (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
              :card          (api/check-404 (t2/select-one :model/Card card-id))
@@ -1511,13 +1525,18 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
-  [{:keys [dashboard-id dashcard-id card-id]} :- [:map
+  [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
-                                                  [:card-id ms/PositiveInt]]
+                                                  [:card-id      ms/PositiveInt]]
    _query-params
-   body :- [:map
-            [:parameters {:optional true} [:maybe [:sequential ParameterWithID]]]]]
+   body :- [:map {:closed true}
+            [:parameters         {:optional true} [:maybe [:sequential ParameterWithID]]]
+            ;; echoed by the FE query runner alongside the route params
+            [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
+            [:dashboard_load_id  {:optional true} [:maybe ms/NonBlankString]]
+            [:ignore_cache       {:optional true} [:maybe ms/BooleanValue]]
+            [:collection_preview {:optional true} [:maybe ms/BooleanValue]]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body

@@ -147,7 +147,9 @@
   [{}
    {}
    {:keys [action scope params input]}
-   :- [:map
+   ;; TODO: `params` is a parameter map and `input` a table row keyed by column name; both are typed
+   ;; loosely -- give them real schemas.
+   :- [:map {:closed true}
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:params {:optional true} :map]
@@ -185,7 +187,9 @@
   [{}
    {}
    {:keys [action scope inputs params]}
-   :- [:map
+   ;; TODO: `params` is a parameter map and each `inputs` entry a table row keyed by column name; both
+   ;; are typed loosely -- give them real schemas.
+   :- [:map {:closed true}
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
        [:inputs [:sequential {:min 1} :map]]

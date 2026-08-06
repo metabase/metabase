@@ -1225,7 +1225,9 @@ describe("issue 54603", () => {
     cy.request("GET", "/api/pulse").then(({ body: pulses }) => {
       pulses.forEach((pulse) => {
         cy.request("PUT", `/api/pulse/${pulse.id}`, {
-          ...pulse,
+          name: pulse.name,
+          cards: pulse.cards,
+          channels: pulse.channels,
           parameters: [],
         });
       });

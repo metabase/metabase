@@ -121,7 +121,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/plans"
   "Get plans information from the Metabase Store API."
-  []
+  [_route-params
+   _query-params
+   _body         :- [:map {:closed true}]]
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))
@@ -140,7 +142,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/addons"
   "Get addons information from the Metabase Store API."
-  []
+  [_route-params
+   _query-params
+   _body         :- [:map {:closed true}]]
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))
@@ -159,11 +163,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
-  [{:keys [product-type]} :- [:map
+  [{:keys [product-type]} :- [:map {:closed true}
                               [:product-type cloud-add-on-product-types]]
    _query-params
    {:keys            [quantity]
-    terms-of-service :terms_of_service} :- [:map
+    terms-of-service :terms_of_service} :- [:map {:closed true}
                                             [:quantity {:optional true} [:maybe :int]]
                                             [:terms_of_service {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
@@ -216,8 +220,10 @@
                                                      [:status :int]
                                                      [:body :any]]
   "Remove an add-on."
-  [{:keys [product-type]} :- [:map
-                              [:product-type cloud-add-on-product-types]]]
+  [{:keys [product-type]} :- [:map {:closed true}
+                              [:product-type cloud-add-on-product-types]]
+   _query-params
+   _body         :- [:map {:closed true}]]
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))

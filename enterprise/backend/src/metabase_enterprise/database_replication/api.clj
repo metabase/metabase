@@ -133,10 +133,10 @@
      :schema-filters schema-filters}))
 
 (def ^:private body-schema
-  [:map
+  [:map {:closed true}
    [:replicationSchemaFilters
     {:optional true}
-    [:map
+    [:map {:closed true}
      [:schema-filters-type [:enum "inclusion" "exclusion" "all"]]
      [:schema-filters-patterns :string]]]])
 
@@ -146,7 +146,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/connection/:database-id/preview"
   "Return info about pg-replication connection that is about to be created."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
+  [{:keys [database-id]} :- [:map {:closed true}
+                             [:database-id ms/PositiveInt]]
+   _
+   {:keys [replicationSchemaFilters]} :- body-schema]
   (let [database (t2/select-one :model/Database :id database-id)
         secret (->secret database)
         replication-schema-filters (m->schema-filter replicationSchemaFilters)]
@@ -158,7 +161,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
+  [{:keys [database-id]} :- [:map {:closed true}
+                             [:database-id ms/PositiveInt]]
+   _
+   {:keys [replicationSchemaFilters]} :- body-schema]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [database   (t2/select-one :model/Database :id database-id)
         db-details (:details database)]
@@ -189,7 +195,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/connection/:database-id"
   "Delete PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]]
+  [{:keys [database-id]} :- [:map {:closed true}
+                             [:database-id ms/PositiveInt]]]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [conns (pruned-database-replication-connections)]
     (when-let [connection-id (database-id->connection-id conns database-id)]

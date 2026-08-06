@@ -173,7 +173,7 @@
   If the user is a sandboxed user, only return themselves regardless of the query parameters."
   [_route-params
    {:keys [status query group_id include_deactivated tenant_id tenancy is_data_analyst can_access_data_studio] :as params}
-   :- [:map
+   :- [:map {:closed true}
        [:status                  {:optional true} [:maybe :string]]
        [:query                   {:optional true} [:maybe :string]]
        [:group_id                {:optional true} [:maybe ms/PositiveInt]]
@@ -257,7 +257,8 @@
    - If user-visibility is :all or the user is an admin, include all users.
    - If user-visibility is :group, include only users in the same group (excluding the all users group).
    - If user-visibility is :none or the user is sandboxed, include only themselves."
-  []
+  [_route-params
+   _query-params]
   ;; defining these functions so the branching logic below can be as clear as possible
   (letfn [(all [] (let [clauses (cond-> (user/filter-clauses {})
                                   (not api/*is-superuser?*) (sql.helpers/where
@@ -374,7 +375,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/current"
   "Fetch the current `User`."
-  []
+  [_route-params
+   _query-params]
   (-> (api/check-404 @api/*current-user*)
       (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id)
       add-has-question-and-dashboard
@@ -391,8 +393,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params]
   (try
     (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -410,13 +413,18 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
-  "Create a new `User`, return a 400 if the email address is already taken"
+  "Create a new `User`, return a 400 if the email address is already taken.
+
+  `is_superuser` is not accepted here -- to create an admin, put the Administrators group in
+  `user_group_memberships`."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:first_name             {:optional true} [:maybe ms/NonBlankString]]
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
+            ;; read by `users/invite-user!` to set the new user's initial password
+            [:password               {:optional true} [:maybe ms/NonBlankString]]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
             [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
             [:source                 {:optional true, :default :admin} [:maybe keyword?]]
@@ -472,11 +480,11 @@
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [email first_name last_name user_group_memberships is_superuser is_data_analyst] :as body}
-   :- [:map
+   :- [:map {:closed true}
        [:email                  {:optional true} [:maybe ms/Email]]
        [:first_name             {:optional true} [:maybe ms/NonBlankString]]
        [:last_name              {:optional true} [:maybe ms/NonBlankString]]
@@ -561,8 +569,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/reactivate"
   "Reactivate user at `:id`"
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params]
   (api/check-superuser)
   (check-not-internal-user id)
   (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source :tenant_id]
@@ -587,11 +596,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/password"
   "Update a user's password."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [password old_password]} :- [:map
-                                       [:password ms/ValidPassword]]
+   {:keys [password old_password]} :- [:map {:closed true}
+                                       [:password ms/ValidPassword]
+                                       ;; only required for non-superusers; verified against the stored hash below
+                                       [:old_password {:optional true} [:maybe :string]]]
    request]
   (users/check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],
@@ -619,8 +630,10 @@
 (api.macros/defendpoint :post "/:id/password-reset-url" :- [:map [:password_reset_url :string]]
   "Generate a password reset URL for a user. Admins can share this URL directly with the user.
   The link expires in 48 hours."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body]
   (api/check-superuser)
   (let [user (api/check-404 (t2/select-one [:model/User :id :is_active :type] :id id))]
     (api/check-404 (:is_active user))
@@ -641,8 +654,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body]
   (api/check-superuser)
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
@@ -663,9 +678,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
-  [{:keys [id modal]} :- [:map
+  [{:keys [id modal]} :- [:map {:closed true}
                           [:id ms/PositiveInt]
-                          [:modal [:enum "qbnewb" "datasetnewb"]]]]
+                          [:modal [:enum "qbnewb" "datasetnewb"]]]
+   _query-params
+   _body]
   (users/check-self-or-superuser id)
   (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb

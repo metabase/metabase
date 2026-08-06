@@ -45,6 +45,8 @@
                      [:preferred_method {:optional true} [:maybe :string]]
                      [:redirect         {:optional true} [:maybe :string]]
                      [:return_to        {:optional true} [:maybe :string]]]
+   ;; body deliberately left unvalidated: this is a browser-redirect target driven by the IdP, and a rejected
+   ;; request here is a broken login rather than a caught bug.
    _body request]
   (try
     (sso.i/sso-get request)
@@ -78,8 +80,12 @@
    _query-params :- [:map {:closed false}
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]
+   ;; not closed either: a form-encoded IdP POST arrives here as body params (see `api.macros/request-body`), so the
+   ;; SAML fields can show up in the body as well as the query string.
    _body :- [:maybe [:map {:closed false}
-                     [:jwt {:optional true} [:maybe :string]]]]
+                     [:jwt          {:optional true} [:maybe :string]]
+                     [:SAMLResponse {:optional true} [:maybe :string]]
+                     [:RelayState   {:optional true} [:maybe :string]]]]
    request]
   (try
     (sso.i/sso-post request)
@@ -101,7 +107,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/logout"
   "Logout."
-  [_route-params _query-params _body {cookies :cookies, :as _request}]
+  [_route-params
+   ;; closed: only ever called by our own frontend, which sends no params and no body.
+   _query-params
+   _body
+   {cookies :cookies, :as _request}]
   (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
         metabase-session-key-hashed (session/hash-session-key metabase-session-key)
         {:keys [email sso_source]}
@@ -164,7 +174,13 @@
                      [:SAMLRequest  {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]
-   _body request]
+   ;; not closed for the same reason: an HTTP-POST-binding logout request arrives form-encoded, which
+   ;; `api.macros/request-body` turns into body params.
+   _body :- [:maybe [:map {:closed false}
+                     [:SAMLRequest  {:optional true} [:maybe :string]]
+                     [:SAMLResponse {:optional true} [:maybe :string]]
+                     [:RelayState   {:optional true} [:maybe :string]]]]
+   request]
   (try
     (if (sso-settings/saml-slo-enabled)
       (sso.i/sso-handle-slo request)
@@ -188,6 +204,7 @@
    ;; not closed: callers may append their own params to the login link. Read off the raw request `:params`.
    _query-params :- [:map {:closed false}
                      [:redirect {:optional true} [:maybe :string]]]
+   ;; body deliberately left unvalidated, see `GET /`
    _body request]
   (try
     (oidc-integration/sso-initiate provider-key request)
@@ -207,6 +224,7 @@
    _query-params :- [:map {:closed false}
                      [:code  {:optional true} [:maybe :string]]
                      [:state {:optional true} [:maybe :string]]]
+   ;; body deliberately left unvalidated, see `GET /`
    _body request]
   (try
     (oidc-integration/sso-callback provider-key request)

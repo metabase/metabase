@@ -33,8 +33,7 @@ export const cardUpdated = (card: Card) => ({
   payload: { object: card, question: card },
 });
 
-// The properties the card endpoints accept on write. Mirrors the former
-// Questions entity `writableProperties`.
+// The card endpoints reject unknown keys, so these lists must not drift.
 // NOTE: keep in sync with src/metabase/queries_rest/api/card.clj
 const WRITABLE_CARD_PROPERTIES = [
   "name",
@@ -46,22 +45,30 @@ const WRITABLE_CARD_PROPERTIES = [
   "visualization_settings",
   "parameters",
   "parameter_mappings",
-  "archived",
-  "enable_embedding",
-  "embedding_params",
   "collection_id",
   "dashboard_id",
   "dashboard_tab_id",
   "collection_position",
-  "collection_preview",
   "result_metadata",
-  "delete_old_dashcards",
+] as const;
+
+const CREATABLE_CARD_PROPERTIES = [
+  ...WRITABLE_CARD_PROPERTIES,
   "size",
 ] as const;
 
-const pickWritable = (card: object) =>
+const UPDATABLE_CARD_PROPERTIES = [
+  ...WRITABLE_CARD_PROPERTIES,
+  "archived",
+  "enable_embedding",
+  "embedding_params",
+  "collection_preview",
+  "delete_old_dashcards",
+] as const;
+
+const pick = (card: object, properties: readonly string[]) =>
   // Unjustified type cast. FIXME
-  _.pick(card, "id", ...WRITABLE_CARD_PROPERTIES) as Record<string, unknown>;
+  _.pick(card, "id", ...properties) as Record<string, unknown>;
 
 /**
  * Creates a card and notifies the retired-entity reducers. Replaces
@@ -72,8 +79,10 @@ const pickWritable = (card: object) =>
 export const createQuestionCard =
   (request: object) =>
   async (dispatch: Dispatch): Promise<Card> => {
-    const { collection_id, dashboard_id, dashboard_tab_id, ...rest } =
-      pickWritable(request);
+    const { collection_id, dashboard_id, dashboard_tab_id, ...rest } = pick(
+      request,
+      CREATABLE_CARD_PROPERTIES,
+    );
 
     const destination = dashboard_id
       ? { dashboard_id, dashboard_tab_id }
@@ -96,7 +105,7 @@ export const updateQuestionCard =
   (request: object) =>
   async (dispatch: Dispatch): Promise<Card> => {
     const card: Card = await runRtkEndpoint(
-      pickWritable(request),
+      pick(request, UPDATABLE_CARD_PROPERTIES),
       dispatch,
       cardApi.endpoints.updateCard,
     );

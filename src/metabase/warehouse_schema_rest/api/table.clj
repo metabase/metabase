@@ -64,29 +64,43 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; the `:dbId`/`:include_hidden`/... params below are legacy names the frontend still sends; renaming them is a
+;; frontend change, not something this schema can fix
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema
+                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
   "Get all `Tables`.
 
   Optional filters:
   - `can-query=true` - filter to only tables the user can execute queries against
   - `can-write=true` - filter to only tables the user can edit metadata for"
-  [_
+  [_ :- [:map {:closed true}]
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
            published-only can-query can-write include-transform-targets]}
-   :- [:map
+   :- [:map {:closed true}
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
        [:data-layer {:optional true} ::data-layers]
        [:data-source {:optional true} ::data-sources]
-       [:owner-user-id {:optional true} [:maybe :int]]
+       [:owner-user-id {:optional true} [:maybe ms/PositiveInt]]
        [:owner-email {:optional true} :string]
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]
        [:published-only {:optional true} [:maybe ms/BooleanValue]]
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:can-write {:optional true} [:maybe ms/BooleanValue]]
-       [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
+       [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]
+       ;; Everything below is ignored by this endpoint, but the frontend's `TableListQuery` type still declares
+       ;; these leftovers from the pre-Data-Studio contract and real callers still send them -- e.g. the Python
+       ;; transform data picker sends `dbId`/`include_hidden`/`include_editable_data_model`, and the tenant
+       ;; permissions setup sends `dbId`. They get a slot here so the map can stay closed; the cleanup is to drop
+       ;; them from `TableListQuery` and its call sites.
+       [:dbId {:optional true} [:maybe ms/PositiveInt]]
+       [:schemaName {:optional true} [:maybe :string]]
+       [:include_hidden {:optional true} [:maybe ms/BooleanValue]]
+       [:include_editable_data_model {:optional true} [:maybe ms/BooleanValue]]
+       [:remove_inactive {:optional true} [:maybe ms/BooleanValue]]
+       [:skip_fields {:optional true} [:maybe ms/BooleanValue]]]]
   (let [like       (fn [field pattern]
                      (case (app-db/db-type)
                        (:h2 :postgres) [:ilike field pattern]
@@ -142,11 +156,11 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get `Table` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model]}
-   :- [:map
-       [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
+   :- [:map {:closed true}
+       [:include_editable_data_model {:optional true} [:maybe ms/BooleanValue]]]]
   ;; partial schema only
   :- [:map {:closed false}
       [:data_authority ::data-authority-read]]
@@ -163,7 +177,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:table-id/data"
   "Get the data for the given table"
-  [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
+  [{:keys [table-id]} :- [:map {:closed true}
+                          [:table-id ms/PositiveInt]]
+   _query-params]
   (let [table (t2/select-one :model/Table :id table-id)
         db-id (:db_id table)]
     (api/query-check table)
@@ -252,10 +268,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update `Table` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:display_name            {:optional true} [:maybe ms/NonBlankString]]
             [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
             [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
@@ -282,7 +298,7 @@
   Deprecated, should use PUT /table/edit from now on."
   [_route-params
    _query-params
-   {:keys [ids], :as body} :- [:map
+   {:keys [ids], :as body} :- [:map {:closed true}
                                [:ids                                      [:sequential ms/PositiveInt]]
                                [:display_name            {:optional true} [:maybe ms/NonBlankString]]
                                [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
@@ -318,10 +334,10 @@
    data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
 
    These options are provided for use in the Admin Edit Metadata page."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
-   :- [:map
+   :- [:map {:closed true}
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
@@ -334,12 +350,22 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
+;; the include flags keep the snake_case names they have on `/:id/query_metadata`, since that is the shape the
+;; frontend sends
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   ;; the frontend types this route and `/:id/query_metadata` with a single `GetTableQueryMetadataRequest`, so a
+   ;; caller holding a `card__<id>` table id can send the include flags here too. They get a slot (this route
+   ;; ignores them: a virtual table has no hidden/sensitive fields to filter) so the map can stay closed.
+   _query-params :- [:map {:closed true}
+                     [:include_sensitive_fields    {:optional true} [:maybe ms/BooleanValue]]
+                     [:include_hidden_fields       {:optional true} [:maybe ms/BooleanValue]]
+                     [:include_editable_data_model {:optional true} [:maybe ms/BooleanValue]]]]
   (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -352,8 +378,9 @@
 (api.macros/defendpoint :get "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
-  [_route-params :- [:map
-                     [:id ms/PositiveInt]]]
+  [_route-params :- [:map {:closed true}
+                     [:id ms/PositiveInt]]
+   _query-params]
   []) ; return empty array
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -362,8 +389,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
     (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)
@@ -387,8 +415,10 @@
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body]
   (let [table (api/write-check (t2/select-one :model/Table :id id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
@@ -411,8 +441,10 @@
 (api.macros/defendpoint :post "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body]
   (api/write-check (t2/select-one :model/Table :id id))
   (when-let [field-ids (t2/select-pks-set :model/Field :table_id id)]
     (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
@@ -424,20 +456,22 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params]
   (-> (t2/select-one :model/Table :id id) api/read-check xrays/related))
 
 (api.macros/defendpoint :put "/:id/fields/order" :- [:map
                                                      [:success [:= true]]]
   "Reorder fields"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    ;; Accept either a bare sequential (legacy) or a wrapped {:field_order [...]} body.
    body :- [:or
             [:sequential ms/PositiveInt]
-            [:map [:field_order [:sequential ms/PositiveInt]]]]]
+            [:map {:closed true}
+             [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
     (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order)))
   {:success true})
@@ -470,17 +504,18 @@
   The file may be at most 50 MB; larger uploads are rejected with a 413 response."
   {:multipart {:max-file-size  upload/max-upload-size-bytes
                :max-file-count upload/max-upload-part-count}}
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    _body
-   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
-   ;; frontend sends alongside the file.
-   {:keys [multipart-params], :as _request} :- [:map
+   ;; The outer map is the raw Ring request, so it stays open. Multipart-params is closed so a file part smuggled
+   ;; under another part name is rejected; collection_id is the text field the frontend sends alongside the file.
+   ;; The part itself stays open: Ring's multipart middleware attaches `:content-type` and `:size` to each part.
+   {:keys [multipart-params], :as _request} :- [:map {:closed false}
                                                 [:multipart-params
                                                  [:map {:closed true}
                                                   ["file"
-                                                   [:map
+                                                   [:map {:closed false}
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]
                                                   ["collection_id" {:optional true} :string]]]]]
@@ -500,17 +535,18 @@
   The file may be at most 50 MB; larger uploads are rejected with a 413 response."
   {:multipart {:max-file-size  upload/max-upload-size-bytes
                :max-file-count upload/max-upload-part-count}}
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    _body
-   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
-   ;; frontend sends alongside the file.
-   {:keys [multipart-params], :as _request} :- [:map
+   ;; The outer map is the raw Ring request, so it stays open. Multipart-params is closed so a file part smuggled
+   ;; under another part name is rejected; collection_id is the text field the frontend sends alongside the file.
+   ;; The part itself stays open: Ring's multipart middleware attaches `:content-type` and `:size` to each part.
+   {:keys [multipart-params], :as _request} :- [:map {:closed false}
                                                 [:multipart-params
                                                  [:map {:closed true}
                                                   ["file"
-                                                   [:map
+                                                   [:map {:closed false}
                                                     [:filename :string]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]
                                                   ["collection_id" {:optional true} :string]]]]]
@@ -533,8 +569,10 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Table`."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body]
   (let [table    (api/check-404 (t2/select-one :model/Table :id id))
         database (api/check-404 (t2/select-one :model/Database
                                                :id (:db_id table)

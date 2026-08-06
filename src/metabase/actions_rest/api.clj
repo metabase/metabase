@@ -186,10 +186,11 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
-  [{:keys [action-id]} :- [:map
+  [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]
    _query-params
-   {:keys [parameters]} :- [:map
+   ;; TODO: `parameters` is a parameter map keyed by parameter id, typed loosely; give it a real schema.
+   {:keys [parameters]} :- [:map {:closed true}
                             [:parameters [:map-of :string :any]]]]
   (actions/check-actions-enabled! action-id)
   (-> (actions/select-action :id action-id :archived false)
@@ -228,10 +229,11 @@
   "Execute the Action.
 
    `parameters` should be the mapped dashboard parameters with values."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
-   {:keys [parameters], :as _body} :- [:maybe [:map
+   ;; TODO: `parameters` is a parameter map keyed by parameter id, typed loosely; give it a real schema.
+   {:keys [parameters], :as _body} :- [:maybe [:map {:closed true}
                                                [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
   (let [resolved-id (eid-translation/->id-or-404 :action id)
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]

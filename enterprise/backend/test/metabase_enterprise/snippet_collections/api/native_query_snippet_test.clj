@@ -78,9 +78,11 @@
       (test-perms!
        :write
        (fn [snippet]
-         ;; try creating a copy of the Snippet, but with a different name and with `:id` removed
+         ;; try creating a copy of the Snippet under a different name
          (let [snippet-name       (mt/random-name)
-               snippet-properties (-> snippet (assoc :name snippet-name) (dissoc :id))]
+               snippet-properties (-> snippet
+                                      (select-keys [:content :description :collection_id])
+                                      (assoc :name snippet-name))]
            (try
              (let [response (mt/user-http-request :rasta :post "native-query-snippet" snippet-properties)]
                (not= response "You don't have permissions to do that."))

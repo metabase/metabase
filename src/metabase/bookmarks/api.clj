@@ -18,7 +18,7 @@
 
 (def BookmarkOrderings
   "Schema for an ordered of bookmark orderings"
-  [:sequential [:map
+  [:sequential [:map {:closed true}
                 [:type Models]
                 [:item_id ms/PositiveInt]]])
 
@@ -36,7 +36,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all bookmarks for the user"
-  []
+  [_route-params
+   _query-params]
   ;; already sorted by created_at in query. Can optionally use user sort preferences here and not in the function
   ;; below
   (bookmark/bookmarks-for-user api/*current-user-id*))
@@ -47,9 +48,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:model/:id"
   "Create a new bookmark for user."
-  [{:keys [model id]} :- [:map
+  [{:keys [model id]} :- [:map {:closed true}
                           [:model Models]
-                          [:id    ms/PositiveInt]]]
+                          [:id    ms/PositiveInt]]
+   _query-params]
   (let [[item-model bookmark-model item-key] (lookup model)]
     (api/read-check item-model id)
     (api/check (not (t2/exists? bookmark-model item-key id
@@ -63,9 +65,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:model/:id"
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."
-  [{:keys [model id]} :- [:map
+  [{:keys [model id]} :- [:map {:closed true}
                           [:model Models]
-                          [:id    ms/PositiveInt]]]
+                          [:id    ms/PositiveInt]]
+   _query-params]
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
   (let [[_ bookmark-model item-key] (lookup model)]
     (t2/delete! bookmark-model
@@ -81,7 +84,7 @@
   "Sets the order of bookmarks for user."
   [_route-params
    _query-params
-   {:keys [orderings]} :- [:map
+   {:keys [orderings]} :- [:map {:closed true}
                            [:orderings BookmarkOrderings]]]
   (bookmark/save-ordering! api/*current-user-id* orderings)
   api/generic-204-no-content)

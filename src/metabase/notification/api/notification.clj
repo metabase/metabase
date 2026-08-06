@@ -264,9 +264,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/send"
   "Send a notification by id."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
    _query
-   {:keys [handler_ids]} :- [:map [:handler_ids {:optional true} [:sequential ms/PositiveInt]]]]
+   {:keys [handler_ids]} :- [:map {:closed true}
+                             [:handler_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (let [notification (cond-> (get-notification id)
                        (seq handler_ids)
                        (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers))))]

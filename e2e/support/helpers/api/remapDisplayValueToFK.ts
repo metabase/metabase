@@ -25,7 +25,6 @@ export function remapDisplayValueToFK({
   fk: number;
 }): Cypress.Chainable<Cypress.Response<unknown>> {
   return cy.request("POST", `/api/field/${display_value}/dimension`, {
-    field_id: display_value,
     name,
     human_readable_field_id: fk,
     type: "external",

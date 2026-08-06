@@ -30,7 +30,15 @@ function EditTimelineModalContainer({ params, ...props }: ModalComponentProps) {
   }
 
   const handleSubmit = async (timeline: Timeline) => {
-    await updateTimeline(timeline).unwrap();
+    await updateTimeline({
+      id: timeline.id,
+      name: timeline.name,
+      description: timeline.description,
+      icon: timeline.icon,
+      collection_id: timeline.collection_id,
+      default: timeline.default,
+      archived: timeline.archived,
+    }).unwrap();
     navigate(Urls.timelineInCollection(timeline));
   };
 

@@ -45,7 +45,6 @@
        ;; open: an MBQL fragment, checked against the MBQL schema rather than here
        [:definition  (mut/update-properties ms/Map assoc :closed false)]
        [:description {:optional true} [:maybe :string]]]]
-  ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
     (let [segment (api/check-500
@@ -128,10 +127,7 @@
             [:definition              {:optional true} [:maybe [:map {:closed false}]]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
-            [:caveats                 {:optional true} [:maybe :string]]
-            [:description             {:optional true} [:maybe :string]]
-            [:points_of_interest      {:optional true} [:maybe :string]]
-            [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
+            [:description             {:optional true} [:maybe :string]]]]
   (write-check-and-update-segment! id body))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest

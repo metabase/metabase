@@ -18,11 +18,8 @@
 
 (set! *warn-on-reflection* true)
 
-;; Not closed: the frontend describes both the publish and the unpublish payload with one
-;; `BulkTableRequest` type that carries an optional `collection_id`, so an unpublish call can send a
-;; `collection_id` this schema has no place for. ::publish-table-selectors inherits the openness.
 (mr/def ::table-selectors
-  [:map {:closed false}
+  [:map {:closed true}
    ;; disjunctive filters (e.g. db_id IN $database_ids OR id IN $table_ids)
    [:database_ids {:optional true} [:sequential ms/PositiveInt]]
    [:schema_ids {:optional true} [:sequential :string]]
@@ -31,7 +28,7 @@
 (mr/def ::publish-table-selectors
   [:merge
    ::table-selectors
-   [:map {:closed false}
+   [:map {:closed true}
     [:collection_id ms/PositiveInt]]])
 
 (mu/defn ^:private table-selectors->filter

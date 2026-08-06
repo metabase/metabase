@@ -116,14 +116,10 @@
                (t2/count :model/NativeQuerySnippet :name "test-snippet-1"))))
       (finally
         (t2/delete! :model/NativeQuerySnippet :name "test-snippet-1"))))
-  (testing "Shouldn't be able to specify non-default creator_id"
-    (try
-      (let [snippet (mt/user-http-request :crowberto :post 200 (snippet-url)
-                                          {:name "test-snippet", :content "1", :creator_id (mt/user->id :rasta)})]
-        (is (= (mt/user->id :crowberto)
-               (:creator_id snippet))))
-      (finally
-        (t2/delete! :model/NativeQuerySnippet :name "test-snippet")))))
+  (testing "Shouldn't be able to specify creator_id"
+    (is (=? {:errors {:creator_id "disallowed key"}}
+            (mt/user-http-request :crowberto :post 400 (snippet-url)
+                                  {:name "test-snippet", :content "1", :creator_id (mt/user->id :rasta)})))))
 
 (deftest create-snippet-in-collection-test
   (mt/with-full-data-perms-for-all-users!
@@ -181,7 +177,8 @@
                                   [:id :name]))))))
         (testing "Shouldn't be able to change creator_id"
           (mt/with-temp [:model/NativeQuerySnippet snippet {:name "test-snippet", :content "1", :creator_id (mt/user->id :lucky)}]
-            (mt/user-http-request :crowberto :put 200 (snippet-url (:id snippet)) {:creator_id (mt/user->id :rasta)})
+            (is (=? {:errors {:creator_id "disallowed key"}}
+                    (mt/user-http-request :crowberto :put 400 (snippet-url (:id snippet)) {:creator_id (mt/user->id :rasta)})))
             (is (= (mt/user->id :lucky)
                    (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id (:id snippet))))))))))
 

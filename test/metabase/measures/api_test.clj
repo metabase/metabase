@@ -147,7 +147,6 @@
                :definition  map?}
               (mt/user-http-request
                :crowberto :put 200 (format "measure/%d" id)
-               ;; no `:id` in the body -- the endpoint takes it from the route and would ignore it here
                {:name             "Updated Measure"
                 :description      nil
                 :revision_message "I got me some revisions"

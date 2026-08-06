@@ -325,6 +325,7 @@
    _query-params
    {:keys [parameter value field_ids]} :- [:map {:closed true}
                                            [:parameter ::parameters.schema/parameter]
+                                           ;; TODO: `value` is a parameter value typed loosely; give it a real schema.
                                            [:value :any]
                                            [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (param-remapped-value field_ids parameter value))

@@ -204,7 +204,10 @@
   [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
-   {:keys [query]}            :- [:map {:closed true} [:query ms/NonBlankString]]]
+   {:keys [query]}            :- [:map {:closed true}
+                                  [:query ms/NonBlankString]
+                                  ;; sent by the FilterValuePicker in the FE; the search itself is not paginated yet
+                                  [:limit {:optional true} [:maybe ms/PositiveInt]]]]
   (let [measure (hydrated-measure id false)]
     (metrics/dimension-search-values
      (:dimensions measure)
@@ -220,7 +223,8 @@
   [{:keys [id dimension-key]} :- [:map {:closed true}
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
-   {:keys [value]}             :- [:map {:closed true} [:value :string]]]
+   {:keys [value]}             :- [:map {:closed true}
+                                   [:value :string]]]
   (let [measure (hydrated-measure id false)]
     (metrics/dimension-remapped-value
      (:dimensions measure)

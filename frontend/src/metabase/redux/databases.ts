@@ -5,7 +5,7 @@ import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
 import { DatabaseSchema } from "metabase/schema";
-import type { DatabaseData } from "metabase-types/api";
+import type { CreateDatabaseRequest, DatabaseData } from "metabase-types/api";
 
 export const editParamsForUserControlledScheduling = _.compose(
   editScheduleParamsForUserControlledScheduling,
@@ -43,10 +43,22 @@ function editScheduleParamsForUserControlledScheduling(
 export const createDatabase = function (inputDatabase: DatabaseData) {
   const database = editParamsForUserControlledScheduling(inputDatabase);
 
+  const request: CreateDatabaseRequest = {
+    name: database.name,
+    engine: database.engine ?? "",
+    details: database.details ?? {},
+    is_full_sync: database.is_full_sync,
+    is_on_demand: database.is_on_demand,
+    schedules: database.schedules,
+    auto_run_queries: database.auto_run_queries ?? undefined,
+    cache_ttl: database.cache_ttl ?? undefined,
+    provider_name: database.provider_name,
+  };
+
   return async function (dispatch: Dispatch) {
     try {
       const savedDatabase = await runRtkEndpoint(
-        database,
+        request,
         dispatch,
         databaseApi.endpoints.createDatabase,
       );

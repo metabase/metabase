@@ -300,12 +300,11 @@
 (api.macros/defendpoint :get "/mentions"
   "Get a list of entities suitable for mentions. NOTE: only users for now."
   [_route
-   ;; Not closed: paging params are read off the request by the paging middleware ([[request/limit]] /
-   ;; [[request/offset]]), not from this map; they are declared here for documentation only.
-   _query :- [:map {:closed false}
+   _query :- [:map {:closed true}
               [:limit  {:optional true} [:maybe ms/PositiveInt]]
               [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]
-   _body req]
+   _body
+   req]
   ;; no access in embedding context
   (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
   (let [clauses (user/filter-clauses {:limit  (request/limit)

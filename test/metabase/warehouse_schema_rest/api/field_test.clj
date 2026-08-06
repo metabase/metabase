@@ -141,8 +141,7 @@
           (let [;; set it
                 response (mt/user-http-request :crowberto :put 200
                                                (format "field/%d" field-id)
-                                               {:name            "something else"
-                                                :display_name    "yay"
+                                               {:display_name    "yay"
                                                 :description     "foobar"
                                                 :semantic_type   :type/Name
                                                 :json_unfolding  true
@@ -183,6 +182,22 @@
                       :fk_target_field_id nil
                       :nfc_path           nil}
                      (simple-field-details (t2/select-one :model/Field :id field-id)))))))))))
+
+(deftest update-field-rejects-read-only-attributes-test
+  (testing "PUT /api/field/:id"
+    (testing "server-owned Field attributes are rejected rather than silently ignored"
+      (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
+        (doseq [[k v] {:name         "something else"
+                       :table_id     1
+                       :base_type    "type/Text"
+                       ;; pre-0.39 alias for `semantic_type`; never translated by this endpoint
+                       :special_type "type/FK"}]
+          (testing k
+            (is (=? {:errors {k "disallowed key"}}
+                    (mt/user-http-request :crowberto :put 400 (format "field/%d" field-id) {k v})))))
+        (testing "and nothing was written"
+          (is (= "Field Test"
+                 (t2/select-one-fn :name :model/Field :id field-id))))))))
 
 (deftest update-field-test-2
   (testing "PUT /api/field/:id"
@@ -237,7 +252,7 @@
   (testing "PUT /api/field/:id"
     (testing "A field can only be updated by a superuser"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
-        (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})))))
+        (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:display_name "Field Test 2"})))))
 
 (deftest ^:parallel update-field-hydrated-target-test
   (testing "PUT /api/field/:id"
@@ -246,7 +261,7 @@
                      :model/Field fk-field-2 {}
                      :model/Field field {:semantic_type :type/FK :fk_target_field_id (:id fk-field-1)}]
         (is (= (:id fk-field-2)
-               (:id (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :fk_target_field_id (:id fk-field-2)))))))))))
+               (:id (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) {:fk_target_field_id (:id fk-field-2)})))))))))
 
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"
@@ -340,7 +355,7 @@
           (is (= {:status "success"}
                  (mt/boolean-ids-and-timestamps
                   (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
-                                        {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :has_more_values false})))))
+                                        {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))))
         (testing "fetch updated values"
           (is (= {:values [[nil "no $"] [1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                  (mt/boolean-ids-and-timestamps
@@ -374,7 +389,7 @@
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))
           (testing "API response"
             (is (= {:status "success"}
-                   (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id) {:values [], :field_id true}))))
+                   (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id) {:values []}))))
           (testing "after updating values"
             (is (= {:values [], :field_id true, :has_more_values false}
                    (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))) [])))))
@@ -433,7 +448,7 @@
       (testing "before update"
         (is (= "Widget ID"
                (:name (dimension-for-field (:id field))))))
-      (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :display_name "SKU"))
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) {:display_name "SKU"})
       (testing "after update"
         (is (= "SKU"
                (:name (dimension-for-field (:id field)))))))))
@@ -850,11 +865,10 @@
                     get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                     set-json-unfolding-for-field! (fn [v]
                                                     (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                          (assoc field :json_unfolding v)))
+                                                                          {:json_unfolding v}))
                     set-json-unfolding-for-db! (fn [v]
-                                                 (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
-                                                   (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
-                                                                         updated-db)))
+                                                 (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
+                                                                       {:details (assoc (:details database) :json-unfolding v)}))
                     nested-fields          (fn []
                                              (->> (t2/select :model/Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
                                                   (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
@@ -892,11 +906,10 @@
                       get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                       set-json-unfolding-for-field! (fn [v]
                                                       (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
-                                                                            (assoc (get-field) :json_unfolding v)))
+                                                                            {:json_unfolding v}))
                       set-json-unfolding-for-db! (fn [v]
-                                                   (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
-                                                     (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
-                                                                           updated-db)))
+                                                   (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
+                                                                         {:details (assoc (:details database) :json-unfolding v)}))
                       nested-fields (fn []
                                       (->> (t2/select :model/Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
                                            (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]

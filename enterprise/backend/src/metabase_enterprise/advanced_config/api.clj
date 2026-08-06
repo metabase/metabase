@@ -32,10 +32,11 @@
    _query-params
    _body
    {{config "config"} :multipart-params, :as _request}
-   :- [:map
+   ;; Ring populates all three maps: the request, the parts the uploading client sent, and the part itself.
+   :- [:map {:closed false}
        [:multipart-params
-        [:map
-         ["config" [:map
+        [:map {:closed false}
+         ["config" [:map {:closed false}
                     [:filename :string]
                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (api/check-superuser)

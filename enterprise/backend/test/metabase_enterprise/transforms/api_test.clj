@@ -142,7 +142,7 @@
                          :model/Transform transform (query-transform-payload table-name)]
             (is (= "Transforms are not supported on databases with DB routing enabled."
                    (mt/user-http-request :crowberto :put 400 (format "transform/%s" (:id transform))
-                                         (assoc transform :name "Gadget Products 2"))))))))))
+                                         {:name "Gadget Products 2"})))))))))
 
 (deftest search-filters-transform-source-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

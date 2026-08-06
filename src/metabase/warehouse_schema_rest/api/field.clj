@@ -48,9 +48,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get `Field` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {include-editable-data-model? :include_editable_data_model} :- [:map
+   {include-editable-data-model? :include_editable_data_model} :- [:map {:closed true}
                                                                    [:include_editable_data_model {:default false} ms/BooleanValue]]]
   (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
 
@@ -59,7 +59,7 @@
   "Get unique Table IDs for a list of Field IDs."
   [_route-params
    _query-params
-   {:keys [field_ids]} :- [:map
+   {:keys [field_ids]} :- [:map {:closed true}
                            [:field_ids [:sequential ms/PositiveInt]]]]
   (api/check-400 (<= (count field_ids) max-field-ids-for-table-id-lookup)
                  (format "field_ids may contain at most %d IDs." max-field-ids-for-table-id-lookup))
@@ -137,13 +137,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update `Field` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    {display-name      :display_name
     coercion-strategy :coercion_strategy
     json-unfolding    :json_unfolding
-    :as body} :- [:map
+    :as body} :- [:map {:closed true}
                   [:caveats            {:optional true} [:maybe ms/NonBlankString]]
                   [:description        {:optional true} [:maybe ms/NonBlankString]]
                   [:display_name       {:optional true} [:maybe ms/NonBlankString]]
@@ -222,8 +222,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params]
   (let [field (api/read-check :model/Field id)]
     [[:count     (metadata-from-qp/field-count field)]
      [:distincts (metadata-from-qp/field-distinct-count field)]]))
@@ -236,11 +237,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/dimension"
   "Sets the dimension for the given field at ID"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    {dimension-type :type, dimension-name :name, human-readable-field-id :human_readable_field_id}
-   :- [:map
+   :- [:map {:closed true}
        [:type                    [:enum "internal" "external"]]
        [:name                    ms/NonBlankString]
        [:human_readable_field_id {:optional true} [:maybe ms/PositiveInt]]]]
@@ -269,8 +270,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/dimension"
   "Remove the dimension associated to field at ID"
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params]
   (api/write-check :model/Field id)
   (t2/delete! :model/Dimension :field_id id)
   api/generic-204-no-content)
@@ -283,10 +285,18 @@
   "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field (or
   remapped Field), and (if defined by a User) a map of human-readable remapped values. If `has_field_values` is not
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params]
   (let [field (api/query-check (t2/select-one :model/Field :id id))]
     (parameters.field/field->values field)))
+
+(def ^:private RawFieldValue
+  "A single distinct value of a Field, as it round-trips through the JSON-encoded `values` column of FieldValues.
+  Only Fields that [[field-values/field-should-have-field-values?]] accepts can get here, which rules out
+  `:type/Temporal` and `:type/Collection`/`:type/Structured` (both `:type/field-values-unsupported`), leaving text,
+  numeric and boolean columns. `nil` is included because NULL is a legitimate distinct value and can be remapped."
+  [:maybe [:or :string number? :boolean]])
 
 (defn- validate-human-readable-pairs
   "Human readable values are optional, but if present they must be present for each field value. Throws if invalid,
@@ -306,11 +316,13 @@
 (api.macros/defendpoint :post "/:id/values"
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {value-pairs :values} :- [:map
-                             [:values [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]]]]
+   {value-pairs :values} :- [:map {:closed true}
+                             [:values [:sequential [:or
+                                                    [:tuple RawFieldValue]
+                                                    [:tuple RawFieldValue ms/NonBlankString]]]]]]
   (let [field (api/write-check :model/Field id)]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
@@ -334,8 +346,10 @@
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body]
   (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
   (let [field (api/write-check (t2/select-one :model/Field :id id))]
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
@@ -355,8 +369,10 @@
 (api.macros/defendpoint :post "/:id/discard_values"
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body]
   (field-values/clear-field-values-for-field! (api/write-check (t2/select-one :model/Field :id id)))
   {:status :success})
 
@@ -369,10 +385,12 @@
 (api.macros/defendpoint :get "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   [[metabase.parameters.field/search-values]] for a more detailed explanation."
-  [{:keys [id search-id]} :- [:map
+  ;; `limit` is sent by the frontend too, but the offset-paging middleware strips it out of the query params before
+  ;; we get here and exposes it as [[request/limit]]
+  [{:keys [id search-id]} :- [:map {:closed true}
                               [:id        ms/PositiveInt]
                               [:search-id ms/PositiveInt]]
-   {:keys [value]} :- [:map
+   {:keys [value]} :- [:map {:closed true}
                        [:value {:optional true} ms/NonBlankString]]]
   (when-not value
     (api/check-400 (request/limit) "Limit required if value is omitted"))
@@ -388,10 +406,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
-  [{:keys [id remapped-id]} :- [:map
+  [{:keys [id remapped-id]} :- [:map {:closed true}
                                 [:id          ms/PositiveInt]
                                 [:remapped-id ms/PositiveInt]]
-   {:keys [value]} :- [:map
+   {:keys [value]} :- [:map {:closed true}
                        [:value ms/NonBlankString]]]
   (let [field          (api/read-check :model/Field id)
         remapped-field (api/read-check :model/Field remapped-id)
@@ -404,6 +422,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params]
   (-> (t2/select-one :model/Field :id id) api/read-check xrays/related))

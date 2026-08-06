@@ -66,15 +66,26 @@ export const DestinationDatabaseConnectionModal = () => {
   const handleCreateDestinationDatabase = async (database: DatabaseData) => {
     return createDistinationDatabase({
       router_database_id: parseInt(databaseId, 10),
-      destination_database: database,
+      destination_database: {
+        name: database.name,
+        details: database.details,
+      },
     }).unwrap();
   };
 
   const handleSaveDatabase = async (database: DatabaseData) => {
     if (typeof database.id === "number") {
       return updateDatabase({
-        ...database,
         id: database.id,
+        name: database.name,
+        engine: database.engine,
+        refingerprint: database.refingerprint,
+        details: database.details,
+        schedules: database.schedules,
+        is_full_sync: database.is_full_sync,
+        is_on_demand: database.is_on_demand,
+        cache_ttl: database.cache_ttl,
+        provider_name: database.provider_name,
         auto_run_queries: database.auto_run_queries ?? true,
       }).unwrap();
     } else {

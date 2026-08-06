@@ -190,17 +190,23 @@
   :- [:map [:status [:enum 201 400 403 404 429]] [:body :any]]
   "Handles dynamic client registration (RFC 7591)."
   [_route-params
-   _query-params
+   ;; RFC 7591 defines no query parameters for the registration endpoint and this handler reads none, but the
+   ;; endpoint is advertised via discovery and called by third-party OAuth clients, so a stray query param must not
+   ;; turn a registration into a 400.
+   _query-params :- [:map {:closed false}]
    ;; RFC 7591 client metadata, supplied by third-party OAuth clients and extensible by spec. The whole map is
    ;; handed to `oidc-provider`, which validates it and may accept metadata fields we know nothing about, so this
-   ;; stays open and only declares the fields this handler itself reads. `:maybe` because a missing body has to
-   ;; reach the handler, which answers it with an RFC-shaped `invalid_client_metadata` error.
-   body :- [:maybe [:map {:closed false}
-                    [:application_type {:optional true} [:maybe :string]]
-                    [:client_name      {:optional true} [:maybe :string]]
-                    [:grant_types      {:optional true} [:maybe [:sequential :string]]]
-                    [:redirect_uris    {:optional true} [:maybe [:sequential :string]]]
-                    [:scope            {:optional true} [:maybe :string]]]]
+   ;; stays open and only declares the fields this handler itself reads. `:maybe` plus the decoder because when
+   ;; nothing parsed the request body (no or unknown Content-Type, unparseable JSON) `defendpoint` passes the raw
+   ;; request `InputStream` through as the body; folding that to `nil` lets the handler answer with its RFC-shaped
+   ;; `invalid_client_metadata` error instead of a Malli validation error.
+   body :- [:maybe {:decode/api {:enter (fn [body] (when (map? body) body))}}
+            [:map {:closed false}
+             [:application_type {:optional true} [:maybe :string]]
+             [:client_name      {:optional true} [:maybe :string]]
+             [:grant_types      {:optional true} [:maybe [:sequential :string]]]
+             [:redirect_uris    {:optional true} [:maybe [:sequential :string]]]
+             [:scope            {:optional true} [:maybe :string]]]]
    request]
   (if-not (oauth-settings/oauth-server-dynamic-registration-enabled)
     {:status  403
@@ -250,7 +256,10 @@
   "Handles client configuration read (RFC 7592)."
   [{:keys [client-id]} :- [:map {:closed true}
                            [:client-id ms/NonBlankString]]
-   _query-params _body
+   ;; RFC 7592 puts the credential in the `Authorization` header and defines no query parameters, but the client
+   ;; calls the `registration_client_uri` we handed it, so leave room for a caller-appended param rather than 400.
+   _query-params :- [:map {:closed false}]
+   _body
    request]
   (or (when-let [provider (oauth-server/get-provider)]
         (let [token (oauth-server/extract-bearer-token request)]
@@ -317,7 +326,31 @@
 (api.macros/defendpoint :post "/authorize/decision"
   :- [:map [:status [:enum 302 400 401 403 404 429]] [:body [:or :string :map]]]
   "Handles the authorization decision (POST /oauth/authorize/decision)."
-  [_route-params _query-params body
+  [_route-params
+   ;; Closed: this is not a spec endpoint but the target of our own consent form, whose action URL carries no query
+   ;; string.
+   _query-params
+   ;; Form POST from the consent page: our own `csrf_token`/`params_sig`/`approved` fields plus the OAuth
+   ;; authorization parameters echoed back as hidden inputs (see [[oauth-param-keys]]). Those are re-parsed by
+   ;; `oidc/parse-authorization-request`, which owns the validation, so this map stays open for the same reason
+   ;; the GET /authorize query string does — PKCE/OIDC/resource-indicator extensions may add fields we don't know.
+   ;; Everything is a string because it arrives form-encoded; `resource` may repeat and so may arrive as a vector.
+   ;; The decoder folds a body nothing parsed (an empty form POST leaves the raw request `InputStream` here) to an
+   ;; empty map, so such a request still gets the endpoint's own CSRF/OAuth error rather than a Malli one.
+   body :- [:map {:closed false
+                  :decode/api {:enter (fn [body] (if (map? body) body {}))}}
+            [:csrf_token            {:optional true} [:maybe :string]]
+            [:params_sig            {:optional true} [:maybe :string]]
+            [:approved              {:optional true} [:maybe :string]]
+            [:client_id             {:optional true} [:maybe :string]]
+            [:response_type         {:optional true} [:maybe :string]]
+            [:redirect_uri          {:optional true} [:maybe :string]]
+            [:scope                 {:optional true} [:maybe :string]]
+            [:state                 {:optional true} [:maybe :string]]
+            [:code_challenge        {:optional true} [:maybe :string]]
+            [:code_challenge_method {:optional true} [:maybe :string]]
+            [:nonce                 {:optional true} [:maybe :string]]
+            [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]]
    request]
   (if-not (:metabase-user-id request)
     {:status  401
@@ -360,7 +393,29 @@
 (api.macros/defendpoint :post "/token"
   :- [:map [:status [:enum 200 400 401 404 429]] [:body :map]]
   "Handles the token endpoint (POST /oauth/token)."
-  [_route-params _query-params body
+  [_route-params
+   ;; RFC 6749 §3.2 puts the token request in the body and this handler reads no query params, but the endpoint is
+   ;; advertised via discovery and called by third-party OAuth clients, so a stray query param must not break a
+   ;; token exchange.
+   _query-params :- [:map {:closed false}]
+   ;; RFC 6749 §4.1.3/§6 token request, form-encoded by third-party OAuth clients and extended by PKCE (RFC 7636
+   ;; `code_verifier`) and resource indicators (RFC 8707 `resource`). The whole map is handed to
+   ;; `oidc/token-request`, which validates it and answers with RFC-shaped OAuth errors, so the map stays open and
+   ;; every key is optional — which key is required depends on `grant_type`, and a confidential client may send its
+   ;; credentials in the `Authorization: Basic` header instead of in the body. The decoder folds a body nothing
+   ;; parsed (an empty form POST leaves the raw request `InputStream` here) to an empty map, so such a request still
+   ;; gets the library's `invalid_request` OAuth error rather than a Malli one.
+   body :- [:map {:closed false
+                  :decode/api {:enter (fn [body] (if (map? body) body {}))}}
+            [:grant_type    {:optional true} [:maybe :string]]
+            [:code          {:optional true} [:maybe :string]]
+            [:redirect_uri  {:optional true} [:maybe :string]]
+            [:refresh_token {:optional true} [:maybe :string]]
+            [:client_id     {:optional true} [:maybe :string]]
+            [:client_secret {:optional true} [:maybe :string]]
+            [:scope         {:optional true} [:maybe :string]]
+            [:code_verifier {:optional true} [:maybe :string]]
+            [:resource      {:optional true} [:maybe [:or :string [:sequential :string]]]]]
    request]
   (let [ip-address (request/ip-address request)
         ;; Fall back to IP when client_id isn't in the body (e.g. confidential clients using
@@ -392,7 +447,20 @@
 (api.macros/defendpoint :post "/revoke"
   :- [:map [:status [:enum 200 404]]]
   "Handles the token revocation endpoint (POST /oauth/revoke) per RFC 7009."
-  [_route-params _query-params _body
+  [_route-params
+   ;; Open for the same reason as POST /token: RFC 7009 puts everything in the body, but this endpoint is advertised
+   ;; via discovery and called by third-party OAuth clients.
+   _query-params :- [:map {:closed false}]
+   ;; RFC 7009 §2.1 revocation request, plus the client credentials RFC 6749 §2.3.1 allows in the body. Declared for
+   ;; documentation only: the library's revocation handler reads the raw Ring `:params` off the request rather than
+   ;; this binding. Open for the same reason as the other OAuth endpoints — third-party clients may send extension
+   ;; parameters, and the library owns the validation and the RFC-shaped error responses.
+   _body :- [:map {:closed false
+                   :decode/api {:enter (fn [body] (if (map? body) body {}))}}
+             [:token           {:optional true} [:maybe :string]]
+             [:token_type_hint {:optional true} [:maybe :string]]
+             [:client_id       {:optional true} [:maybe :string]]
+             [:client_secret   {:optional true} [:maybe :string]]]
    request]
   (or (when-let [provider (oauth-server/get-provider)]
         ((oidc/revocation-handler provider) request))

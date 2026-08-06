@@ -122,7 +122,11 @@
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
   "Health check endpoint for the Agent API."
   {:scope :unchecked}
-  []
+  [_route-params
+   ;; Left open: this is the unauthenticated-shaped connectivity probe external agent/MCP clients
+   ;; hit directly, and a cache-busting or client-appended query param must not turn a health check
+   ;; into a 400. Nothing here is read.
+   _query-params :- [:map {:closed false}]]
   {:message "pong"})
 
 (defn- coerce-query-list
@@ -158,10 +162,14 @@
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
   [_route-params
-   _query-params
+   _query-params :- [:map {:closed true}
+                     [:limit  {:optional true} [:maybe ms/PositiveInt]]
+                     [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
-   :- [:map
+   ;; Closed: the body is the MCP `search` tool's argument map, which the client builds from the
+   ;; published input schema — an undeclared key is a hallucination and is better rejected than ignored.
+   :- [:map {:closed true}
        [:term_queries {:optional true
                        :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
         [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
@@ -206,6 +214,8 @@
      are not `[:maybe ...]` — for sound reasons unrelated to this endpoint. Recursing into
      them would force a wide schema change just to satisfy the lint at the agent boundary."
   [:map {:closed true}
+   ;; TODO: `:query` is the external MBQL 5 payload, typed as a bare `:map` because deep validation
+   ;; happens downstream (see the two reasons above); give it a real schema.
    [:query {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
                                    "`construct_notebook_query` tool for the format reference.")}
     :map]
@@ -464,7 +474,11 @@
                          (:continuation_token m) :continuation
                          (string? (:query m))    :handle
                          :else                   :fresh))}
+   ;; TODO: `:continuation_token` is a base64-encoded JSON envelope carrying a serialized MBQL query
+   ;; plus pagination state, typed loosely as a string; give it a real schema.
    [:continuation [:map {:closed true} [:continuation_token ms/NonBlankString]]]
+   ;; TODO: `:query` here is a base64-encoded serialized MBQL payload typed loosely as a string;
+   ;; give it a real schema.
    [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
@@ -610,8 +624,11 @@
 ;;; ------------------------------------------------- Execute Query --------------------------------------------------
 
 (mr/def ::execute-query-request
-  "Request schema for /v1/execute. Accepts a base64-encoded MBQL query."
-  [:map
+  "Request schema for /v1/execute. Accepts a base64-encoded MBQL query.
+  Closed: `:query` is the only argument the MCP `execute_query` tool sends (it swaps its
+  `query_handle` for this key before dispatch)."
+  [:map {:closed true}
+   ;; TODO: `:query` is a base64-encoded MBQL payload typed loosely as a string; give it a real schema.
    [:query {:tool/description "A base64-encoded query string returned by /v1/construct-query. Do not construct this value manually."}
     ms/NonBlankString]])
 
@@ -674,9 +691,12 @@
 ;;; --------------------------------------------------- Execute SQL --------------------------------------------------
 
 (mr/def ::execute-sql-request
-  "Request shape for /v1/execute-sql. The LLM passes a raw SQL string against a target database."
-  [:map
+  "Request shape for /v1/execute-sql. The LLM passes a raw SQL string against a target database.
+  Closed: these are the only arguments the MCP `execute_sql` tool publishes."
+  [:map {:closed true}
    [:database_id ms/PositiveInt]
+   ;; `:sql` is raw query text: a non-blank string is the tightest schema it can have. The QP and
+   ;; the native-query permission check do the real validation.
    [:sql         ms/NonBlankString]])
 
 (api.macros/defendpoint :post "/v1/execute-sql"
@@ -716,8 +736,9 @@
 ;;; -------------------------------------------------- Read Resource -------------------------------------------------
 
 (mr/def ::read-resource-request
-  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs."
-  [:map
+  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs.
+  Closed: `:uris` is the only argument the MCP `read_resource` tool publishes."
+  [:map {:closed true}
    [:uris [:sequential ms/NonBlankString]]])
 
 (mr/def ::read-resource-item
@@ -919,8 +940,13 @@
     (update-card-response (t2/select-one :model/Card :id id))))
 
 (mr/def ::create-question-request
-  [:map
+  "Request shape for `create_question`. Closed: these are the only arguments the MCP tool
+  publishes (its `query_handle` is swapped for `:query` before dispatch), so an undeclared
+  key means the caller invented one."
+  [:map {:closed true}
    [:name                   ms/NonBlankString]
+   ;; TODO: `:query` is a base64-encoded MBQL (or native) payload typed loosely as a string;
+   ;; give it a real schema.
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
@@ -969,8 +995,9 @@
 ;;; -------------------------------------------------- Create Metric -------------------------------------------------
 
 (mr/def ::create-metric-request
-  [:map
+  [:map {:closed true}
    [:name                   ms/NonBlankString]
+   ;; TODO: `query` is a base64-encoded MBQL payload typed as a string; give it a real schema.
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
    [:description            {:optional true} [:maybe :string]]
@@ -1036,13 +1063,14 @@
   "Patch shape for `update_metric`. Every field is optional; only the fields the caller
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
   resolved upstream in the MCP layer) and must still describe a valid metric."
-  [:map
+  [:map {:closed true}
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
    [:visualization_settings {:optional true} [:maybe :map]]
    [:archived               {:optional true} [:maybe :boolean]]
+   ;; TODO: `query` is a base64-encoded MBQL payload typed as a string; give it a real schema.
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
 (mr/def ::update-metric-response
@@ -1077,7 +1105,7 @@
                              "(a query_handle from construct_query) - it must still have exactly one "
                              "aggregation and at most one date/datetime grouping. The target must be a "
                              "metric; use update_question for regular questions.")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-metric-request]
   (let [card-before-update (api/write-check :model/Card id)]
@@ -1093,14 +1121,18 @@
 (mr/def ::update-question-request
   "Patch shape for `update_question`. Every field is optional; only the fields the caller
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
-  resolved upstream in the MCP layer)."
-  [:map
+  resolved upstream in the MCP layer).
+  Closed: an undeclared key would otherwise be silently dropped instead of telling the caller
+  it changed nothing."
+  [:map {:closed true}
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:display                {:optional true} [:maybe ::card-display]]
    [:visualization_settings {:optional true} [:maybe :map]]
    [:archived               {:optional true} [:maybe :boolean]]
+   ;; TODO: `:query` is a base64-encoded MBQL (or native) replacement payload typed loosely as a
+   ;; string; give it a real schema.
    [:query                  {:optional true} [:maybe ms/NonBlankString]]])
 
 (mr/def ::update-question-response
@@ -1133,7 +1165,7 @@
                              "delete or remove a question; set archived false to restore. "
                              "To replace the underlying query, pass query "
                              "(a query_handle from construct_query or construct_native_query).")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-question-request]
   (apply-agent-card-patch! (api/write-check :model/Card id) body nil))
@@ -1169,7 +1201,7 @@
                              "if the question takes parameters or template-tag input, this returns an "
                              "error.")
            :annotations {:read-only? true :idempotent? true}}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    _body]
   (let [card (api/read-check :model/Card id)]
@@ -1199,7 +1231,9 @@
     (autoplace/get-position-for-new-dashcard placed display)))
 
 (mr/def ::create-dashboard-request
-  [:map
+  "Request shape for `create_dashboard`. Closed: these are the only arguments the MCP tool
+  publishes, so an undeclared key means the caller invented one."
+  [:map {:closed true}
    [:name          ms/NonBlankString]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1340,8 +1374,10 @@
 
 (mr/def ::update-dashboard-request
   "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of
-   add/add_heading/add_text/update_text/remove/move mutations applied in order."
-  [:map
+   add/add_heading/add_text/update_text/remove/move mutations applied in order.
+   Closed, like the `::dashcard-mutation` branches: an undeclared top-level key would otherwise be
+   silently dropped instead of telling the caller it changed nothing."
+  [:map {:closed true}
    [:name          {:optional true} [:maybe ms/NonBlankString]]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1560,7 +1596,7 @@
                              "The response dashcard_ids lists all dashcards in row/col order; "
                              "metabase://dashboard/{id}/items (via read_resource) shows each "
                              "dashcard with its dashcard_id.")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    body :- ::update-dashboard-request]
   (let [current-dash (api/write-check :model/Dashboard id)
@@ -1636,8 +1672,9 @@
 (mr/def ::create-collection-request
   "Request shape for `create_collection`. `:parent_collection_id` is named separately from
   the internal `:parent_id` field to make the LLM-facing API less ambiguous (the caller is
-  saying \"put it under this parent\", not echoing back a server-set field)."
-  [:map
+  saying \"put it under this parent\", not echoing back a server-set field).
+  Closed: `:parent_id` and other internal collection fields are deliberately not accepted here."
+  [:map {:closed true}
    [:name                 ms/NonBlankString]
    [:description          {:optional true} [:maybe :string]]
    [:parent_collection_id {:optional true} [:maybe ms/PositiveInt]]])

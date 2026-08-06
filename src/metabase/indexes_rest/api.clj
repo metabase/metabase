@@ -77,7 +77,7 @@
 
 (api.macros/defendpoint :get "/request/:id" :- RequestIndex
   "Fetch a single index request (e.g. to poll its status)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (doto (api/check-404 (t2/select-one :model/TableIndex :id id))
     (read-check-owner!)))
 
@@ -86,7 +86,7 @@
   not under `/request`."
   [_route-params
    _query-params
-   {:keys [transform_id structured]} :- [:map
+   {:keys [transform_id structured]} :- [:map {:closed true}
                                          [:transform_id ms/PositiveInt]
                                          [:structured ::schema/index-structured]]]
   (api/write-check :model/Transform transform_id)
@@ -117,9 +117,9 @@
 
 (api.macros/defendpoint :put "/request/:id" :- RequestIndex
   "Replace the structured definition of an index request, marking it update-pending."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [structured]} :- [:map [:structured ::schema/index-structured]]]
+   {:keys [structured]} :- [:map {:closed true} [:structured ::schema/index-structured]]]
   (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
     (write-check-owner! existing)
     (assert-stable-key! existing structured)
@@ -132,7 +132,7 @@
 (api.macros/defendpoint :delete "/request/:id"
   "Mark an index request `delete-pending`. The physical index is only dropped when the target table is next rebuilt
   (pending changes force a full run), so the row stays visible in this state until that rebuild removes it."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
     (write-check-owner! existing)
     (t2/update! :model/TableIndex id {:status :delete-pending}))

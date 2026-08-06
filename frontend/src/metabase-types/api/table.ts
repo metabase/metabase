@@ -261,7 +261,14 @@ export interface BulkTableRequest {
   database_ids?: DatabaseId[];
   schema_ids?: SchemaId[];
   table_ids?: TableId[];
-  collection_id?: CollectionId;
+}
+
+/** Publishing also names the collection to publish into; unpublishing takes no `collection_id`. */
+export interface PublishTablesRequest {
+  database_ids?: DatabaseId[];
+  schema_ids?: SchemaId[];
+  table_ids?: TableId[];
+  collection_id: CollectionId;
 }
 
 export interface BulkTableSelectionInfo {

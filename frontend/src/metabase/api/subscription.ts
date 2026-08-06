@@ -1,9 +1,9 @@
-import type { DashboardSubscriptionData } from "metabase/redux/store";
 import type {
   ChannelApiResponse,
   CreateSubscriptionRequest,
   DashboardSubscription,
   ListSubscriptionsRequest,
+  TestSubscriptionRequest,
   UpdateSubscriptionRequest,
 } from "metabase-types/api";
 
@@ -79,7 +79,7 @@ export const subscriptionApi = Api.injectEndpoints({
     }),
     testSubscription: builder.mutation<
       { ok: boolean },
-      DashboardSubscriptionData
+      TestSubscriptionRequest
     >({
       query: (body) => ({
         method: "POST",

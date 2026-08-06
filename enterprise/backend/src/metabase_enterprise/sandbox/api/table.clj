@@ -77,10 +77,10 @@
   excluded from what is show in the query builder. When the user has full permissions (or no permissions) this route
   doesn't add/change anything from the OSS version. See the docs on the OSS version of the endpoint for more
   information."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
-   :- [:map
+   :- [:map {:closed true}
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]

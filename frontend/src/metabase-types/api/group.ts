@@ -45,6 +45,11 @@ export type BaseGroupInfo = {
   is_tenant_group?: boolean;
 };
 
+export type UpdatePermissionsGroupRequest = {
+  id: GroupId;
+  name: string;
+};
+
 export type ListInviteGroupIdsRequest = {
   type: "dashboard" | "question";
   id: number;

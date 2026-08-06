@@ -57,8 +57,13 @@
    return a handle UUID the iframe will thread into the agent message so the
    `render_drill_through` tool can fetch it."
   [_route-params
+   ;; Closed: the iframe posts to a fixed URL with no query string.
    _query-params
-   {:keys [encodedQuery]} :- [:map [:encodedQuery ms/NonBlankString]]
+   ;; Posted by the MCP UI iframe, which is a separately-loaded bundle running inside a third-party MCP host, so the
+   ;; map is left open: a newer iframe may thread additional context alongside `encodedQuery` and must not 400
+   ;; against an older backend. Only the key this handler reads is declared.
+   {:keys [encodedQuery]} :- [:map {:closed false}
+                              [:encodedQuery ms/NonBlankString]]
    request]
   (let [session-id (mcp-session-id-from-headers request)]
     (check-session-header! session-id api/*current-user-id* request)
@@ -69,13 +74,17 @@
                                               [:body :nil]]
   "Persist MCP Apps visualization feedback."
   [_route-params
+   ;; Closed: the iframe posts to a fixed URL with no query string.
    _query-params
-   body :- [:map
-            [:feedback [:map
+   ;; Posted by the MCP UI iframe (see the note on `/drills`): open at every level so a newer iframe bundle can add
+   ;; feedback or conversation context without 400ing against an older backend. The keys this handler persists are
+   ;; declared and bounded.
+   body :- [:map {:closed false}
+            [:feedback [:map {:closed false}
                         [:positive          :boolean]
                         [:issue_type        {:optional true} [:maybe [:string {:max 64}]]]
                         [:freeform_feedback {:optional true} OptionalFeedbackText]]]
-            [:conversation_data [:map
+            [:conversation_data [:map {:closed false}
                                  [:source [:= "mcp"]]
                                  [:prompt {:optional true} OptionalFeedbackText]
                                  [:query  {:optional true} OptionalFeedbackText]]]]

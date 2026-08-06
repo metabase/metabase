@@ -54,7 +54,8 @@
   [_route
    _query
    {:keys [branch force merge expected_branch]}
-   :- [:map [:branch {:optional true} ms/NonBlankString]
+   :- [:map {:closed true}
+       [:branch {:optional true} ms/NonBlankString]
        [:force {:optional true} :boolean]
        [:merge {:optional true} :boolean]
        ;; the branch the client believes is currently active; rejected if it disagrees with the
@@ -127,7 +128,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch force merge]} :- [:map
+   {:keys [message branch force merge]} :- [:map {:closed true}
                                             [:message {:optional true} ms/NonBlankString]
                                             [:branch ms/NonBlankString]
                                             [:force {:optional true} :boolean]
@@ -209,7 +210,7 @@
   [_route-params
    _query-params
    {:keys [remote-sync-url remote-sync-token] :as body}
-   :- [:map
+   :- [:map {:closed true}
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]]]
   (api/check-superuser)
@@ -239,7 +240,7 @@
   [_route-params
    _query-params
    {:keys [remote-sync-type collections] :as settings}
-   :- [:map
+   :- [:map {:closed true}
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
        [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
@@ -326,7 +327,8 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [name]} :- [:map [:name ms/NonBlankString]]]
+   {:keys [name]} :- [:map {:closed true}
+                      [:name ms/NonBlankString]]]
   (api/check-superuser)
   (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
     (api/check-400 (source/source-from-settings) "Source not configured")
@@ -348,7 +350,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {new-branch :new_branch message :message} :- [:map
+   {new-branch :new_branch message :message} :- [:map {:closed true}
                                                  [:new_branch ms/NonBlankString]
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)

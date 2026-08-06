@@ -29,7 +29,17 @@ function EditEventModalContainer({
   }
 
   const onSubmit = async (event: TimelineEvent) => {
-    await updateTimelineEvent(event).unwrap();
+    await updateTimelineEvent({
+      id: event.id,
+      name: event.name,
+      description: event.description,
+      timestamp: event.timestamp,
+      time_matters: event.time_matters,
+      timezone: event.timezone,
+      icon: event.icon,
+      timeline_id: event.timeline_id,
+      archived: event.archived,
+    }).unwrap();
     dispatch(addUndo({ message: t`Updated event` }));
   };
 

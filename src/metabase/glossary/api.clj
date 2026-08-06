@@ -72,7 +72,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query-params]
   (api/check-data-analyst)
   (let [glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
     (t2/delete! :model/Glossary :id id)

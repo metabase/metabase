@@ -16,6 +16,8 @@ import type {
   Segment,
   SegmentId,
   Table,
+  UpdateDatabaseRequest,
+  UpdateTableRequest,
 } from "metabase-types/api";
 
 const UPDATE = "metabase/entities/UPDATE";
@@ -62,9 +64,26 @@ export const fetchDatabaseMetadata =
 export const updateDatabase =
   (database: Database) =>
   async (dispatch: Dispatch): Promise<unknown> => {
-    const slimDatabase = _.omit(database, "tables", "tables_lookup");
+    const request: UpdateDatabaseRequest = {
+      id: database.id,
+      name: database.name,
+      engine: database.engine,
+      refingerprint: database.refingerprint,
+      details: database.details,
+      write_data_details: database.write_data_details,
+      is_full_sync: database.is_full_sync,
+      is_on_demand: database.is_on_demand,
+      schedules: database.schedules,
+      description: database.description,
+      caveats: database.caveats,
+      points_of_interest: database.points_of_interest,
+      auto_run_queries: database.auto_run_queries ?? undefined,
+      cache_ttl: database.cache_ttl,
+      provider_name: database.provider_name,
+      settings: database.settings,
+    };
     const result: unknown = await runRtkEndpoint(
-      slimDatabase,
+      request,
       dispatch,
       databaseApi.endpoints.updateDatabase,
     );
@@ -75,15 +94,15 @@ export const updateDatabase =
 export const updateTable =
   (table: Table) =>
   async (dispatch: Dispatch): Promise<unknown> => {
-    const slimTable = _.omit(
-      table,
-      "fields",
-      "fields_lookup",
-      "aggregation_operators",
-      "segments",
-    );
+    const request: UpdateTableRequest = {
+      id: table.id,
+      display_name: table.display_name,
+      description: table.description,
+      caveats: table.caveats,
+      points_of_interest: table.points_of_interest,
+    };
     const result: unknown = await runRtkEndpoint(
-      slimTable,
+      request,
       dispatch,
       tableApi.endpoints.updateTable,
     );

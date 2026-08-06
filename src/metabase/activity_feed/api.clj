@@ -121,7 +121,8 @@
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   {:deprecated true}
-  []
+  [_route-params
+   _query-params]
   {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -136,9 +137,10 @@
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
   Allows for filtering by context: views or selections"
   [_route-params
-   {:keys [context include_metadata]} :- [:map
+   {:keys [context include_metadata]} :- [:map {:closed true}
+                                          ;; repeated query param: `?context=views&context=selections`
                                           [:context (ms/QueryVectorOf [:enum :selections :views])]
-                                          [:include_metadata {:default false} [:maybe :boolean]]]]
+                                          [:include_metadata {:default false} [:maybe ms/BooleanValue]]]]
   (when-not (seq context) (throw (ex-info "context is required." {})))
   (recent-views/get-recents *current-user-id* context {:include-metadata? include_metadata}))
 
@@ -150,7 +152,7 @@
   "Adds a model to the list of recently selected items."
   [_route-params
    _query-params
-   {:keys [model model_id context]} :- [:map
+   {:keys [model model_id context]} :- [:map {:closed true}
                                         [:model    (into [:enum] recent-views/rv-models)]
                                         [:model_id ms/PositiveInt]
                                         [:context  [:enum :selection]]]]
@@ -171,7 +173,8 @@
 (api.macros/defendpoint :get "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
    in the last 24 hours."
-  []
+  [_route-params
+   _query-params]
   (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id *current-user-id*)]
     (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
                         api/check-404
@@ -274,5 +277,6 @@
 (api.macros/defendpoint :get "/popular_items"
   "Get the list of 5 popular things on the instance. Query takes 8 and limits to 5 so that if it finds anything
   archived, deleted, etc it can usually still get 5. "
-  []
+  [_route-params
+   _query-params]
   {:popular_items (get-popular-items-model-and-id)})

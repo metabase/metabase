@@ -86,10 +86,18 @@
 
   If the skip-graph query param is truthy, then the graph will not be returned."
   [_route-params
-   {:keys [skip-graph force]} :- [:map
+   {:keys [skip-graph force]} :- [:map {:closed true}
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]
                                   [:force      {:default false} [:maybe ms/BooleanValue]]]
-   body :- :map]
+   ;; `:groups` is keyed dynamically by group ID, then database ID, schema name and table ID;
+   ;; `:sandboxes`/`:impersonations` are EE payloads validated by the EE code below. Body `:force` is
+   ;; accepted for backwards compatibility, but the query parameter is what the handler reads.
+   body :- [:map {:closed true}
+            [:groups                          :map]
+            [:revision       {:optional true} [:maybe ms/Int]]
+            [:force          {:optional true} [:maybe :boolean]]
+            [:sandboxes      {:optional true} [:maybe [:sequential :map]]]
+            [:impersonations {:optional true} [:maybe [:sequential :map]]]]]
   (api/check-superuser)
   (let [new-graph (mc/decode ::permissions-rest.schema/strict-api-permissions-graph
                              body
@@ -244,7 +252,7 @@
   "Create a new `PermissionsGroup`."
   [_route-params
    _query-params
-   {:keys [name is_tenant_group]} :- [:map
+   {:keys [name is_tenant_group]} :- [:map {:closed true}
                                       [:name ms/NonBlankString]
                                       [:is_tenant_group {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
@@ -262,10 +270,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
-  [{:keys [group-id]} :- [:map
+  [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]
    _query-params
-   {:keys [name]} :- [:map
+   {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
   (perms/check-manager-of-group group-id)
   (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
@@ -330,7 +338,7 @@
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [_route-params
    _query-params
-   {:keys [group_id user_id is_group_manager]} :- [:map
+   {:keys [group_id user_id is_group_manager]} :- [:map {:closed true}
                                                    [:group_id         ms/PositiveInt]
                                                    [:user_id          ms/PositiveInt]
                                                    [:is_group_manager {:default false} [:maybe :boolean]]]]
@@ -354,11 +362,15 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [is_group_manager]} :- [:map
-                                  [:is_group_manager :boolean]]]
+   ;; `group_id`/`user_id` ride along from the membership row the caller is editing; neither is
+   ;; updatable here.
+   {:keys [is_group_manager]} :- [:map {:closed true}
+                                  [:is_group_manager                  :boolean]
+                                  [:group_id         {:optional true} :any]
+                                  [:user_id          {:optional true} :any]]]
   ;; currently this API is only used to update the `is_group_manager` flag and it requires advanced-permissions
   (perms/check-advanced-permissions-enabled :group-manager)
   ;; Make sure only Super user or Group Managers can call this

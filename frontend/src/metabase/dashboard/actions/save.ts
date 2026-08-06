@@ -12,6 +12,7 @@ import type {
   DashCardId,
   ParameterId,
   UpdateCardRequest,
+  UpdateDashboardRequest,
 } from "metabase-types/api";
 
 import { trackDashboardSaved } from "../analytics";
@@ -193,12 +194,20 @@ export const updateDashboardAndCards = createThunkAction(
         .filter((tab) => !tab.isRemoved)
         .map(({ id, name }) => ({ id, name }));
 
+      const request: UpdateDashboardRequest = {
+        id: dashboard.id,
+        name: dashboard.name,
+        description: dashboard.description,
+        parameters: dashboard.parameters,
+        embedding_params: dashboard.embedding_params,
+        width: dashboard.width,
+        auto_apply_filters: dashboard.auto_apply_filters,
+        dashcards: dashcardsToUpdate,
+        tabs: tabsToUpdate,
+      };
+
       const updatedDashboard = await runRtkEndpoint(
-        {
-          ...dashboard,
-          dashcards: dashcardsToUpdate,
-          tabs: tabsToUpdate,
-        },
+        request,
         dispatch,
         dashboardApi.endpoints.updateDashboard,
       );

@@ -13,7 +13,7 @@
   [_route-params
    _query-params
    {:keys [entity_ids]} :- [:map {:closed true}
-                            ;; deliberately left as a plain map: the shape is validated by
-                            ;; [[eid-translation/model->entity-ids->ids]], which reports the allowed models.
-                            [:entity_ids :map]]]
+                            ;; keyed by API model name; [[eid-translation/model->entity-ids->ids]] rejects unknown
+                            ;; models with the list of allowed ones.
+                            [:entity_ids [:map-of :keyword [:sequential :string]]]]]
   {:entity_ids (eid-translation/model->entity-ids->ids entity_ids)})

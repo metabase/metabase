@@ -1331,11 +1331,12 @@
 
 (api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
   "Move candidate cards to the dashboards they appear in."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [card_ids]} :- [:maybe
-                          [:map [:card_ids {:optional true}
-                                 [:set ms/PositiveInt]]]]]
+                          [:map {:closed true}
+                           [:card_ids {:optional true}
+                            [:set ms/PositiveInt]]]]]
   (api/read-check :model/Collection id)
   {:moved (move-dashboard-question-candidates id card_ids)})
 
@@ -1344,8 +1345,9 @@
   [_route-params
    _query-params
    {:keys [card_ids]} :- [:maybe
-                          [:map [:card_ids {:optional true}
-                                 [:set ms/PositiveInt]]]]]
+                          [:map {:closed true}
+                           [:card_ids {:optional true}
+                            [:set ms/PositiveInt]]]]]
   {:moved (move-dashboard-question-candidates nil card_ids)})
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
@@ -1467,7 +1469,7 @@
   "Create a new Collection."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:name            ms/NonBlankString]
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
@@ -1605,10 +1607,12 @@
   If the `skip_graph` query parameter is `true`, it will only return the current revision, not the entire permissions
   graph."
   [_route-params
-   {:keys [skip-graph force]} :- [:map
+   {:keys [skip-graph force]} :- [:map {:closed true}
                                   [:force      {:default false} [:maybe ms/BooleanValue]]
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]]
-   {:keys [namespace revision groups]} :- [:map
+   ;; `:groups` is keyed dynamically by group ID then collection ID; it is decoded and validated
+   ;; against [[PermissionsGraph]] below.
+   {:keys [namespace revision groups]} :- [:map {:closed true}
                                            [:namespace {:optional true} [:maybe ms/NonBlankString]]
                                            [:revision  {:optional true} [:maybe ms/Int]]
                                            [:groups    :map]]]
@@ -1637,10 +1641,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {authority-level :authority_level, :as collection-updates} :- [:map
+   {authority-level :authority_level, :as collection-updates} :- [:map {:closed true}
                                                                   [:name             {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:description      {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:archived         {:default false} [:maybe ms/BooleanValue]]

@@ -43,8 +43,8 @@ import { Box } from "metabase/ui";
 import { extractEntityId } from "metabase/urls";
 import * as Urls from "metabase/urls";
 import type {
-  Card,
   CollectionId,
+  DocumentCardRequest,
   RegularCollectionId,
 } from "metabase-types/api";
 
@@ -329,7 +329,7 @@ export const DocumentPage = () => {
       }
 
       try {
-        const cardsToSave: Record<number, Card> = {};
+        const cardsToSave: Record<number, DocumentCardRequest> = {};
         const processedCardIds = new Set<number>();
 
         editorInstance.state.doc.descendants((node: ProseMirrorNode) => {
@@ -339,7 +339,19 @@ export const DocumentPage = () => {
               processedCardIds.add(cardId);
 
               if (cardId < 0 && draftCards[cardId]) {
-                cardsToSave[cardId] = draftCards[cardId];
+                const draftCard = draftCards[cardId];
+                cardsToSave[cardId] = {
+                  name: draftCard.name,
+                  dataset_query: draftCard.dataset_query,
+                  display: draftCard.display,
+                  visualization_settings: draftCard.visualization_settings,
+                  description: draftCard.description,
+                  parameters: draftCard.parameters,
+                  parameter_mappings: draftCard.parameter_mappings,
+                  result_metadata: draftCard.result_metadata,
+                  cache_ttl: draftCard.cache_ttl,
+                  collection_id: draftCard.collection_id,
+                };
               }
             }
           }

@@ -189,12 +189,8 @@
                   :definition              true}
                  (-> (mt/user-http-request
                       :crowberto :put 200 (format "segment/%d" id)
-                      ;; no `:id` in the body -- the endpoint takes it from the route and would ignore it here
                       {:name                    "Costa Rica"
                        :description             nil
-                       :show_in_getting_started false
-                       :caveats                 nil
-                       :points_of_interest      nil
                        :revision_message        "I got me some revisions"
                        :definition              (eq-fn (mt/id :users :name) "cans")})
                      segment-response))))))))
