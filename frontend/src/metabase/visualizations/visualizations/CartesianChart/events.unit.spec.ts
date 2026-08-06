@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import {
   createMockBreakoutSeriesModel,
   createMockCartesianChartModel,
@@ -12,7 +14,10 @@ import type {
   Datum,
   DimensionModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
+import type {
+  EChartsSeriesBrushEndEvent,
+  EChartsSeriesMouseEvent,
+} from "metabase/visualizations/echarts/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createMockColumn,
@@ -22,6 +27,7 @@ import {
 
 import {
   canBrush,
+  getBrushClickObject,
   getEventDimensions,
   getSeriesClickData,
   normalizeDimensionValue,
@@ -503,5 +509,108 @@ describe("canBrush", () => {
     expect(
       canBrush(series, baseSettings, sumSubtotalColumn, undefined, onBrush),
     ).toBe(true);
+  });
+});
+
+describe("getBrushClickObject", () => {
+  // Unjustified type cast. FIXME
+  const chartElement = {
+    getBoundingClientRect: () => ({
+      left: 100,
+      top: 50,
+      width: 400,
+      height: 200,
+      right: 500,
+      bottom: 250,
+      x: 100,
+      y: 50,
+      toJSON: () => ({}),
+    }),
+  } as HTMLElement;
+
+  it("builds a temporal brush click object with naive wall-clock strings and sorted bounds", () => {
+    const chartModel = createMockCartesianChartModel({
+      dimensionModel: {
+        column: createdAtColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: createdAtColumn },
+      },
+      xAxisModel: {
+        axisType: "time",
+        toEChartsAxisValue: (value) => String(value),
+        fromEChartsAxisValue: (value) => dayjs.utc(value),
+        interval: { unit: "month", count: 1 },
+        intervalsCount: 12,
+        range: [dayjs.utc("2020-01-01"), dayjs.utc("2020-12-01")],
+        formatter: String,
+      },
+    });
+    // Unjustified type cast. FIXME
+    const event = {
+      areas: [
+        {
+          brushType: "lineX",
+          coordRange: [Date.UTC(2020, 2, 1), Date.UTC(2020, 0, 1)],
+          range: [40, 180],
+        },
+      ],
+    } as EChartsSeriesBrushEndEvent;
+
+    const clicked = getBrushClickObject(chartModel, event, chartElement, {});
+
+    expect(clicked?.brushRange).toEqual({
+      type: "temporal",
+      start: "2020-01-01T00:00:00",
+      end: "2020-03-01T00:00:00",
+    });
+    expect(clicked?.column).toBe(createdAtColumn);
+    expect(clicked?.event.clientX).toBe(280);
+    expect(clicked?.event.clientY).toBe(150);
+  });
+
+  it("builds a numeric brush click object with sorted bounds", () => {
+    const priceColumn = createMockColumn({
+      name: "PRICE",
+      source: "breakout",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+    });
+    const chartModel = createMockCartesianChartModel({
+      dimensionModel: {
+        column: priceColumn,
+        columnIndex: 0,
+        columnByCardId: { [CARD_ID]: priceColumn },
+      },
+      xAxisModel: {
+        axisType: "value",
+        toEChartsAxisValue: (value) =>
+          typeof value === "number" ? value : null,
+        fromEChartsAxisValue: (value) => value,
+        extent: [0, 10],
+        interval: 1,
+        intervalsCount: 10,
+        isPadded: false,
+        formatter: String,
+      },
+    });
+    // Unjustified type cast. FIXME
+    const event = {
+      areas: [
+        {
+          brushType: "lineX",
+          coordRange: [4, 1],
+          range: [20, 90],
+        },
+      ],
+    } as EChartsSeriesBrushEndEvent;
+
+    const clicked = getBrushClickObject(chartModel, event, chartElement, {});
+
+    expect(clicked?.brushRange).toEqual({
+      type: "numeric",
+      start: 1,
+      end: 4,
+    });
+    expect(clicked?.column).toBe(priceColumn);
   });
 });

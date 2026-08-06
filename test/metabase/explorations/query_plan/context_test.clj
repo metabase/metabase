@@ -174,7 +174,7 @@
                       (:id t) cid
                       {:metrics    [{:card_id cid
                                      :dimension_mappings mappings
-                                     :explore_filters    [{:field_ref ["field" {} (mt/id :venues :price)]
+                                     :explore_filters    [{:operator "=" :field_ref ["field" {} (mt/id :venues :price)]
                                                            :value     2}]}]
                        :dimensions [{:dimension-id "d1" :display-name "Price"
                                      :effective-type "type/Number"}]}
@@ -184,6 +184,67 @@
         (is (some? ctx))
         (is (some #(and (str/includes? % "Price") (str/includes? % "2"))
                   (card-filter-display-names (:card ctx))))))))
+
+(deftest build-row-context-applies-between-explore-filter-test
+  (testing "build-row-context applies a numeric between explore filter with ordered bounds"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (let [cid      (:id metric)
+            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+                       :target ["field" {} (mt/id :venues :price)]}]
+            page-id  (insert-block-page-row!
+                      (:id t) cid
+                      {:metrics    [{:card_id cid
+                                     :dimension_mappings mappings
+                                     :explore_filters    [{:operator "between"
+                                                           :field_ref ["field" {} (mt/id :venues :price)]
+                                                           :values    [4 1]
+                                                           :display_value "1 - 4"}]}]
+                       :dimensions [{:dimension_id "d1" :display_name "Price"
+                                     :effective_type "type/Number"}]}
+                      "d1")
+            ctx      (qp.context/build-row-context {:card_id cid :dimension_id "d1"
+                                                    :page_id page-id :params {}})
+            q        (lib/query (mt/metadata-provider) (:dataset_query (:card ctx)))
+            filter   (first (lib/filters q))]
+        (is (some? ctx))
+        (is (= :between (first filter)))
+        (is (= 1 (nth filter 3)))
+        (is (= 4 (nth filter 4)))
+        (is (some #(and (str/includes? % "Price")
+                        (str/includes? % "1")
+                        (str/includes? % "4"))
+                  (card-filter-display-names (:card ctx)))))))
+  (testing "build-row-context applies a temporal between explore filter and preserves the click bucket"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (orders-count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (let [cid        (:id metric)
+            created-at (mt/id :orders :created_at)
+            mappings   [{:dimension_id "d1" :table_id (mt/id :orders)
+                         :target ["field" {} created-at]}]
+            page-id    (insert-block-page-row!
+                        (:id t) cid
+                        {:metrics    [{:card_id cid
+                                       :dimension_mappings mappings
+                                       :explore_filters    [{:operator "between"
+                                                             :field_ref ["field" {:temporal-unit :month} created-at]
+                                                             :values    ["2020-03-01T00:00:00"
+                                                                         "2020-01-01T00:00:00"]
+                                                             :display_value "Jan 2020 - Mar 2020"}]}]
+                         :dimensions [{:dimension_id "d1" :display_name "Created At"
+                                       :effective_type "type/DateTimeWithLocalTZ"}]}
+                        "d1")
+            ctx        (qp.context/build-row-context {:card_id cid :dimension_id "d1"
+                                                      :page_id page-id :params {}})
+            q          (lib/query (mt/metadata-provider) (:dataset_query (:card ctx)))
+            filter     (first (lib/filters q))
+            lhs        (nth filter 2)]
+        (is (= :between (first filter)))
+        (is (= :month (lib/raw-temporal-bucket lhs)))
+        (is (= "2020-01-01T00:00:00" (nth filter 3)))
+        (is (= "2020-03-01T00:00:00" (nth filter 4)))))))
 
 (deftest build-row-context-applies-multiple-explore-filters-test
   (testing "build-row-context reduces multiple explore_filters onto the metric Card in order"
@@ -199,9 +260,9 @@
                       (:id t) cid
                       {:metrics    [{:card_id cid
                                      :dimension_mappings mappings
-                                     :explore_filters    [{:field_ref ["field" {} (mt/id :venues :price)]
+                                     :explore_filters    [{:operator "=" :field_ref ["field" {} (mt/id :venues :price)]
                                                            :value     2}
-                                                          {:field_ref ["field" {} (mt/id :venues :name)]
+                                                          {:operator "=" :field_ref ["field" {} (mt/id :venues :name)]
                                                            :value     "Smallville"}]}]
                        :dimensions [{:dimension-id "d1" :display-name "Price"
                                      :effective-type "type/Number"}
@@ -228,7 +289,7 @@
                         (:id t) cid
                         {:metrics    [{:card_id cid
                                        :dimension_mappings mappings
-                                       :explore_filters    [{:field_ref ["field" {:temporal-unit :month} created-at]
+                                       :explore_filters    [{:operator "=" :field_ref ["field" {:temporal-unit :month} created-at]
                                                              :value     "2020-01-01T00:00:00Z"}]}]
                          :dimensions [{:dimension-id "d1" :display-name "Created At"
                                        :effective-type "type/DateTimeWithLocalTZ"}]}
@@ -259,7 +320,7 @@
                             (:id t) cid
                             {:metrics    [{:card_id cid
                                            :dimension_mappings mappings
-                                           :explore_filters    [{:field_ref ["field" {:temporal-unit unit} created-at]
+                                           :explore_filters    [{:operator "=" :field_ref ["field" {:temporal-unit unit} created-at]
                                                                  :value     value}]}]
                              :dimensions [{:dimension-id "d1" :display-name "Created At"
                                            :effective-type "type/DateTimeWithLocalTZ"}]}
@@ -284,7 +345,7 @@
                       (:id t) cid
                       {:metrics    [{:card_id cid
                                      :dimension_mappings mappings
-                                     :explore_filters    [{:field_ref ["field" {:binning {:strategy :default}} price-id]
+                                     :explore_filters    [{:operator "=" :field_ref ["field" {:binning {:strategy :default}} price-id]
                                                            :value     10}]}]
                        :dimensions [{:dimension-id "d1" :display-name "Price"
                                      :effective-type "type/Number"}]}
@@ -323,7 +384,7 @@
                                                       :target ["field" {} users-field]}
                                                      {:dimension-id orders-created :table-id (mt/id :venues)
                                                       :target ["field" {} orders-field]}]}
-              filter          {:field_ref ["field" {} users-field] :value 40.7}
+              filter          {:operator "=" :field_ref ["field" {} users-field] :value 40.7}
               [enriched]      (qp.context/enrich-explore-filters mp metric block metric-selection [filter])]
           (is (= "Users → Created At" (:dimension_name enriched))
               "the clicked filter is labeled with the dim's group when the display_name is shared"))))))
@@ -349,7 +410,7 @@
                       {:metrics    [{:card_id cid
                                      :dimension_mappings mappings
                                      ;; a column from another table — not resolvable on this query
-                                     :explore_filters    [{:field_ref ["field" {} (mt/id :orders :total)]
+                                     :explore_filters    [{:operator "=" :field_ref ["field" {} (mt/id :orders :total)]
                                                            :value     10}]}]
                        :dimensions [{:dimension-id "d1" :display-name "Name"
                                      :effective-type "type/Text"}]}
@@ -373,7 +434,7 @@
             block      {:metrics    [metric-sel]
                         :dimensions [{:dimension-id "d1" :display-name "Name"
                                       :effective-type "type/Text"}]}
-            filters    [{:field_ref ["expression" "Name"] :value "Smallville"}]
+            filters    [{:operator "=" :field_ref ["expression" "Name"] :value "Smallville"}]
             [enriched] (qp.context/enrich-explore-filters (mt/metadata-provider) metric block metric-sel filters)]
         (testing "field_ref no longer references the synthetic expression"
           (is (not (contains? #{"expression" :expression} (first (:field_ref enriched))))))
@@ -398,7 +459,7 @@
       (let [metric-sel {:card_id (:id metric) :dimension_mappings []}
             block      {:metrics    [metric-sel]
                         :dimensions [{:dimension-id "d1" :display-name "Name"}]}
-            filters    [{:field_ref ["expression" "Nonexistent"] :value "x"}]
+            filters    [{:operator "=" :field_ref ["expression" "Nonexistent"] :value "x"}]
             enriched   (qp.context/enrich-explore-filters (mt/metadata-provider) metric block metric-sel filters)]
         (is (= 1 (count enriched)))
         (is (nil? (:dimension_name (first enriched))) "no label resolved, but no exception thrown")
@@ -415,7 +476,7 @@
                      :model/Exploration e {:name "x"}
                      :model/ExplorationThread t {:exploration_id (:id e)}]
         (let [cid      (:id metric)
-              filters  [{:field_ref ["field" {} (mt/id :venues :name)] :value "foo"}]
+              filters  [{:operator "=" :field_ref ["field" {} (mt/id :venues :name)] :value "foo"}]
               mappings [{:dimension-id "d1" :table-id (mt/id :venues)
                          :target ["field" {} (mt/id :venues :name)]}]
               page-id  (insert-block-page-row!
