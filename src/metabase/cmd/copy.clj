@@ -149,7 +149,10 @@
     :model/ExplorationQuery
     :model/ExplorationBookmark
     ;; 63+
-    :model/McpFeedback]
+    :model/McpFeedback
+    ;; 64+
+    ;; Administrator-authored state, not a derived usage-metadata snapshot. Copy it after its Table and User references.
+    :model/UsageMetadataCandidateDismissal]
    (when config/ee-available?
      [:model/MetabotPermissions
       :model/MetabotGroupLimit

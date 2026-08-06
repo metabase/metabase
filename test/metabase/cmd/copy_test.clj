@@ -74,9 +74,9 @@
     :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
-    ;; Derived cleanup-analysis snapshots are rebuilt from source Cards after a migration.
+    ;; Derived cleanup-analysis snapshots are rebuilt from source Cards after a migration. Dismissals are deliberately
+    ;; absent: they are administrator-authored state and must be copied by `copy/entities`.
     :model/UsageMetadataCandidate
-    :model/UsageMetadataCandidateDismissal
     :model/UsageMetadataCandidateMatch
     :model/UsageMetadataCandidateRun
     :model/UsageMetadataCandidateSource
@@ -98,6 +98,14 @@
         (comp (filter #(= (namespace %) "model"))
               (remove models-to-exclude))
         (descendants :metabase/model)))
+
+(deftest ^:parallel usage-metadata-dismissals-are-migrated-test
+  (let [entity-position (into {} (map-indexed (fn [index model] [model index])) copy/entities)]
+    (is (< (entity-position :model/Table)
+           (entity-position :model/UsageMetadataCandidateDismissal))
+        "dismissals are copied after their owning Tables")
+    (is (not (contains? models-to-exclude :model/UsageMetadataCandidateDismissal))
+        "dismissals are durable administrator-authored state, not a derived analysis snapshot")))
 
 (deftest ^:parallel all-models-accounted-for-test
   ;; make sure the entire system is loaded before running this test, to make sure we account for all the models.
