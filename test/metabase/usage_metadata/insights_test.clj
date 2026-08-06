@@ -652,9 +652,8 @@
                                                    :type :question
                                                    :dataset_query (orders-multi-stage-query)
                                                    :view_count 0}]
-    (let [opts       {:query-source (selected-cards-source joined-id implicit-id multi-stage-id)
-                      :limit 1000}
-          report     (insights/candidate-tables opts)
+    (let [opts       {:query-source (selected-cards-source joined-id implicit-id multi-stage-id)}
+          report     (insights/candidate-table-observations (assoc opts :limit 1))
           candidates (into {} (map (juxt #(get-in % [:table :id]) identity)) (:candidates report))
           orders     (candidates (mt/id :orders))
           products   (candidates (mt/id :products))]
@@ -669,8 +668,10 @@
                     (concat (get-in orders [:evidence :source-items])
                             (get-in products [:evidence :source-items])))))
       (is (empty? (:unsupported-source-items report)))
-      (is (= report (insights/candidate-tables opts))
-          "repeating the same analysis returns byte-for-byte deterministic output"))))
+      (is (= report (insights/candidate-table-observations opts))
+          "repeating the same analysis returns byte-for-byte deterministic output")
+      (is (= 1 (count (:candidates (insights/candidate-tables (assoc opts :limit 1)))))
+          "the public presentation function applies its limit after observation production"))))
 
 (deftest candidate-tables-preserve-curation-through-model-lineage-test
   (mt/with-temp [:model/Collection {official-collection-id :id} {:authority_level "official"}
@@ -843,11 +844,27 @@
                                   [:official "official" {:distinct-sources 1 :official? true}]
                                   [:verified "verified" {:distinct-sources 1 :verified? true}]])
           table-index   {1 {:id 1, :database-name "db", :schema "schema", :name "table"}}
-          limited       (merge-metric-candidates raw-candidates #{} table-index 6)]
+          limited       (->> (merge-metric-candidates raw-candidates #{} table-index)
+                             (take 6)
+                             vec)]
       (is (= [:verified :official :distinct :popular :views :signature-a]
              (mapv :label limited)))
-      (is (empty? (merge-metric-candidates raw-candidates #{} {} 6))
+      (is (empty? (merge-metric-candidates raw-candidates #{} {}))
           "a candidate is rejected if any required physical table is unavailable"))))
+
+(deftest candidate-metric-limit-is-applied-only-at-presentation-boundary-test
+  (mt/with-temp [:model/Card {first-id :id} {:name "First filtered metric"
+                                             :type :question
+                                             :dataset_query (orders-filtered-metric-query 900001)}
+                 :model/Card {second-id :id} {:name "Second filtered metric"
+                                              :type :question
+                                              :dataset_query (orders-filtered-metric-query 900002)}]
+    (let [opts         {:query-source (selected-cards-source first-id second-id), :limit 1}
+          observations (insights/candidate-metric-observations opts)]
+      (is (= 2 (count observations))
+          "the persistence producer ignores presentation limits")
+      (is (= 1 (count (insights/candidate-metrics opts)))
+          "the public presentation function applies the requested limit"))))
 
 (deftest candidate-metrics-return-creation-ready-filtered-and-temporal-definitions-test
   (mt/with-temp [:model/Card {card-id :id} {:name "Paid revenue"

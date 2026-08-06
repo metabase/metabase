@@ -314,9 +314,9 @@
                  :model/UsageMetadataCandidate old-candidate (candidate-row (:id old-run) (mt/id :orders))]
     (mt/with-dynamic-fn-redefs [insights/qualified-card-ids (constantly [])
                                 insights/cleanup-candidates (constantly {:measures [], :segments []})
-                                insights/candidate-tables (constantly {:candidates []
-                                                                       :unsupported-source-items []})
-                                insights/candidate-metrics (constantly [])]
+                                insights/candidate-table-observations (constantly {:candidates []
+                                                                                   :unsupported-source-items []})
+                                insights/candidate-metric-observations (constantly [])]
       (let [run (candidates/queue-refresh! :manual (mt/user->id :crowberto))]
         (is (= :succeeded (:status (candidates/run-refresh! run))))
         (is (= (:id run) (:id (candidates/latest-successful-run))))
@@ -345,7 +345,9 @@
         (is (t2/exists? :model/UsageMetadataCandidate :id (:id old-candidate)))))))
 
 (deftest persisted-refresh-uses-recent-view-source-configuration-test
-  (let [cleanup-opts (atom nil)]
+  (let [cleanup-opts (atom nil)
+        table-opts   (atom nil)
+        metric-opts  (atom nil)]
     (mt/with-dynamic-fn-redefs
       [insights/qualified-card-ids (fn [minimum-view-count window-days]
                                      (is (= 10 minimum-view-count))
@@ -354,9 +356,12 @@
        insights/cleanup-candidates (fn [opts]
                                      (reset! cleanup-opts opts)
                                      {:measures [], :segments []})
-       insights/candidate-tables (constantly {:candidates []
-                                              :unsupported-source-items []})
-       insights/candidate-metrics (constantly [])]
+       insights/candidate-table-observations (fn [opts]
+                                               (reset! table-opts opts)
+                                               {:candidates [], :unsupported-source-items []})
+       insights/candidate-metric-observations (fn [opts]
+                                                (reset! metric-opts opts)
+                                                [])]
       (let [run (candidates/queue-refresh! :manual (mt/user->id :crowberto))]
         (is (= :succeeded (:status (candidates/run-refresh! run))))
         (is (= {:kind                      "qualified-cards"
@@ -369,7 +374,11 @@
                                                        :minimum-total-view-count      25}}}
                (:source_config (t2/select-one :model/UsageMetadataCandidateRun :id (:id run)))))
         (is (= 10 (:min-view-count @cleanup-opts)))
-        (is (= 90 (:view-count-window-days @cleanup-opts)))))))
+        (is (= 90 (:view-count-window-days @cleanup-opts)))
+        (is (not (contains? @table-opts :limit))
+            "persisted table observations are not presentation-limited")
+        (is (not (contains? @metric-opts :limit))
+            "persisted metric observations are not presentation-limited")))))
 
 (deftest persisted-refresh-materializes-table-and-metric-recommendations-test
   (let [table-id          (mt/id :orders)
@@ -391,7 +400,7 @@
         (mt/with-dynamic-fn-redefs
           [insights/qualified-card-ids (constantly [(:id card)])
            insights/cleanup-candidates (constantly {:measures [], :segments []})
-           insights/candidate-tables
+           insights/candidate-table-observations
            (constantly {:candidates
                         [{:table {:id table-id
                                   :database-id (mt/id)
@@ -412,7 +421,7 @@
                                      :popular-source-count 1
                                      :total-view-count 20}}]
                         :unsupported-source-items []})
-           insights/candidate-metrics
+           insights/candidate-metric-observations
            (constantly [{:definition definition
                          :suggested-name "Large order count"
                          :suggested-description "Count large orders"
