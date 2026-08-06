@@ -225,9 +225,13 @@
 
 (def ^:private write-scopes
   "The scopes a mutating tool may gate on. GHY-4225 collapsed the per-entity write scopes into
-   these two, so a mutating tool gating on anything else is a mistake until someone argues
-   otherwise here."
-  #{"agent:content:write" "agent:delivery:write"})
+   `content:write` and `delivery:write`, so a mutating tool gating on anything else is a mistake
+   until someone argues otherwise here.
+
+   `sql:run` is the one such argument. `execute_sql` runs arbitrary SQL, which can write — but it is
+   a sharper capability than editing content, and one a user should be able to withhold while still
+   granting writes, so it keeps its own scope rather than folding into `content:write`."
+  #{"agent:content:write" "agent:delivery:write" "agent:sql:run"})
 
 (defn- mutating-tools
   "Registered tools that declare they mutate, as `{name tool}`. Enumerated from the registry rather

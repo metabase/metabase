@@ -387,11 +387,13 @@ Dialect (JSON): tables and columns go by NUMERIC ID — discover ids first (brow
 
 (registry/deftool execute-sql
   "Execute a raw SQL string against a database, returning rows plus a query_handle. Requires native-query permission on the database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. Prefer execute_query for anything MBQL can express. The sql runs verbatim against the warehouse, so it is the injection surface — never splice caller- or user-supplied values into it; put values behind {{tag}} placeholders bound via template_tag_values, driver-level prepared-statement parameters that are injection-safe for the values. {{snippet: …}} and {{#123}} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (tags and permissions checked; the SQL text itself is not) — stage SQL for saving or visualizing without pulling rows into context. The query_handle is accepted by question_write; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination: the server cannot know whether arbitrary SQL has a total order, so page it yourself — ORDER BY a unique key plus WHERE <key> > <last value returned>, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (filters/aggregation) or raise row_limit (max 2000)."
-  ;; No `:readOnlyHint` — unlike execute_query, arbitrary SQL can write. MCP's defaults for an
-  ;; unannotated tool (not read-only, possibly destructive) are the honest ones here.
-  {:name  "execute_sql"
-   :scope metabot.scope/agent-sql-run
-   :args  execute-sql-args-schema}
+  {:name        "execute_sql"
+   :scope       metabot.scope/agent-sql-run
+   ;; Unlike execute_query, arbitrary SQL can write. These match MCP's defaults for an unannotated
+   ;; tool, stated explicitly so the tool is covered by the mutating-tool invariants in
+   ;; `metabase.mcp.v2.registry-test`, which enumerate on `:readOnlyHint`.
+   :annotations {:readOnlyHint false :destructiveHint true}
+   :args        execute-sql-args-schema}
   [{:keys [database_id sql template_tag_values prompt validate_only row_limit]} {:keys [session-id]}]
   (check-execute-sql-gates! database_id)
   (let [mp    (lib-be/application-database-metadata-provider database_id)
