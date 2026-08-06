@@ -46,6 +46,11 @@ const embeddingHubAppearancePage = () =>
     Component: EmbeddingHubAppearancePage,
   }));
 
+const embeddingHubLocalizationPage = () =>
+  import("./pages").then(({ EmbeddingHubLocalizationPage }) => ({
+    Component: EmbeddingHubLocalizationPage,
+  }));
+
 const setupPermissionsAndTenantsPage = () =>
   import("metabase/embedding/setup-guide").then(
     ({ SetupPermissionsAndTenantsPage }) => ({
@@ -110,6 +115,7 @@ export function getEmbeddingHubRoutes() {
             }
           />
         </Route>
+        <Route path="localization" lazy={embeddingHubLocalizationPage} />
       </Route>
     </Route>
   );
