@@ -1,5 +1,5 @@
 import debounce from "lodash.debounce";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 
 import { TextInput } from "metabase/ui";
@@ -9,6 +9,8 @@ interface ChartSettingInputProps {
   placeholder: string;
   onChange: (value: string) => void;
   id?: string;
+  leftSection?: ReactNode;
+  rightSection?: ReactNode;
 }
 
 export const ChartSettingInput = ({
@@ -16,6 +18,8 @@ export const ChartSettingInput = ({
   onChange,
   placeholder,
   id,
+  leftSection,
+  rightSection,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState(value ?? "");
 
@@ -34,6 +38,10 @@ export const ChartSettingInput = ({
       id={id}
       data-testid={id}
       placeholder={placeholder}
+      leftSection={leftSection}
+      leftSectionPointerEvents="all"
+      rightSection={rightSection}
+      rightSectionPointerEvents="all"
       value={inputValue}
       onChange={(e) => {
         setInputValue(e.target.value);

@@ -10,7 +10,7 @@ import {
   shouldUsePivotEndpoint,
 } from "metabase/api/query-endpoints";
 import type { Dispatch } from "metabase/redux/store";
-import { getReferencedCardsFromVizSettings } from "metabase/visualizations/lib/dynamic-goals";
+import { getReferencedEntitiesFromVizSettings } from "metabase/visualizations/lib/dynamic-goals";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -21,7 +21,7 @@ import type {
   DashboardCardQueryRequest,
   Dataset,
   DatasetQuery,
-  ReferencedCard,
+  ReferencedEntity,
 } from "metabase-types/api";
 
 type RunQuestionQueryOptions = {
@@ -95,7 +95,7 @@ export function runAdhocDatasetQuery(
   body: DatasetQuery & {
     parameters?: unknown[];
     ignore_cache?: boolean;
-    referenced_cards?: ReferencedCard[];
+    referenced_entities?: ReferencedEntity[];
   },
   signal?: AbortSignal,
 ): Promise<Dataset> {
@@ -108,7 +108,7 @@ export function runAdhocDatasetQuery(
   const requestBody = {
     ...(isPivot
       ? {
-          ..._.omit(body, "referenced_cards"),
+          ..._.omit(body, "referenced_entities"),
           ...getPivotOptions(new Question(card, metadata)),
         }
       : body),
@@ -226,7 +226,7 @@ export async function runQuestionQuery(
     ];
   }
 
-  const referencedCards = getReferencedCardsFromVizSettings(
+  const referencedEntities = getReferencedEntitiesFromVizSettings(
     card.visualization_settings ?? {},
   );
 
@@ -239,8 +239,8 @@ export async function runQuestionQuery(
         {
           ...question.datasetQuery(),
           parameters,
-          ...(referencedCards.length > 0
-            ? { referenced_cards: referencedCards }
+          ...(referencedEntities.length > 0
+            ? { referenced_entities: referencedEntities }
             : {}),
         },
         signal,

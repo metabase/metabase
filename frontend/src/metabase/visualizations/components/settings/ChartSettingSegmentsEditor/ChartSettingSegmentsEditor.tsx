@@ -6,26 +6,25 @@ import { ColorSelector } from "metabase/common/components/ColorSelector";
 import {
   Box,
   Button,
-  Card,
   Group,
   Icon,
-  SimpleGrid,
   Stack,
   Text,
   Tooltip,
+  UnstyledButton,
 } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
-import type { DatasetColumn, GoalSegment, GoalValue } from "metabase-types/api";
+import { resolveGoalValue } from "metabase/visualizations/lib/dynamic-goals";
+import type { DatasetData, GoalSegment, GoalValue } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
 
-import S from "./ChartSettingSegmentsEditor.module.css";
-import { SegmentBoundInput } from "./SegmentBoundInput";
+import { GoalValueInput, StaticGoalValueInput } from "./GoalValueInput";
 
 export type ChartSettingSegmentsEditorProps = {
   allowQuestionReference?: boolean;
-  columns?: DatasetColumn[];
+  data?: DatasetData;
   value: GoalSegment[];
   onChange: (value: GoalSegment[]) => void;
   canRemoveAll?: boolean;
@@ -33,7 +32,7 @@ export type ChartSettingSegmentsEditorProps = {
 
 export const ChartSettingSegmentsEditor = ({
   allowQuestionReference = false,
-  columns,
+  data,
   value: segments,
   onChange,
   canRemoveAll = false,
@@ -50,67 +49,105 @@ export const ChartSettingSegmentsEditor = ({
     ]);
 
   const canRemove = segments.length > 1 || canRemoveAll;
+  const canReferenceEntities = allowQuestionReference && data != null;
 
   return (
-    <Stack px="lg">
+    <Stack px="lg" gap="lg">
       {segments.length > 0 ? (
-        <Stack>
+        <Stack gap="lg">
           {segments.map((segment, index) => (
-            <Card key={index} shadow="none" withBorder>
-              <Stack>
-                <Group align="center" gap="sm" wrap="nowrap">
+            <Stack key={index} gap="sm">
+              <ChartSettingInput
+                placeholder={t`Value ${index + 1}`}
+                value={segment.label}
+                onChange={(label) => onChangeProperty(index, "label", label)}
+                leftSection={
                   <ColorSelector
-                    pillSize="large"
-                    className={S.ColorPill}
                     value={segment.color}
                     colors={getColorPalette()}
-                    onChange={(color) =>
-                      onChangeProperty(index, "color", color)
+                    onChange={(newColor) =>
+                      onChangeProperty(index, "color", newColor)
                     }
                   />
-
-                  <Box flex={1} miw={0}>
-                    <ChartSettingInput
-                      placeholder={t`Label for this range (optional)`}
-                      value={segment.label}
-                      onChange={(val) => onChangeProperty(index, "label", val)}
-                    />
-                  </Box>
-
-                  {canRemove && (
+                }
+                rightSection={
+                  canRemove ? (
                     <Tooltip label={t`Remove range`}>
-                      <Button
+                      <UnstyledButton
                         aria-label={t`Remove range`}
-                        leftSection={<Icon name="trash" c="text-disabled" />}
+                        display="flex"
+                        c="text-secondary"
                         onClick={() =>
                           onChange(segments.filter((v, i) => i !== index))
                         }
-                      />
+                      >
+                        <Icon name="trash" size={16} />
+                      </UnstyledButton>
                     </Tooltip>
+                  ) : undefined
+                }
+              />
+
+              <Group gap="sm" wrap="nowrap" align="center">
+                <Box flex={1} miw={0}>
+                  {canReferenceEntities ? (
+                    <GoalValueInput
+                      id={`segment-min-${index}`}
+                      aria-label={t`Min`}
+                      placeholder={t`Min`}
+                      value={segment.min}
+                      onChange={(newValue) =>
+                        onChangeProperty(index, "min", newValue)
+                      }
+                      data={data}
+                      allowQuestionReference
+                    />
+                  ) : (
+                    <StaticGoalValueInput
+                      id={`segment-min-${index}`}
+                      ariaLabel={t`Min`}
+                      placeholder={t`Min`}
+                      value={segment.min}
+                      onCommit={(newValue) =>
+                        onChangeProperty(index, "min", newValue)
+                      }
+                    />
                   )}
-                </Group>
+                </Box>
+                <Icon name="arrow_right" size={12} c="text-secondary" />
+                <Box flex={1} miw={0}>
+                  {canReferenceEntities ? (
+                    <GoalValueInput
+                      id={`segment-max-${index}`}
+                      aria-label={t`Max`}
+                      placeholder={t`Max`}
+                      value={segment.max}
+                      onChange={(newValue) =>
+                        onChangeProperty(index, "max", newValue)
+                      }
+                      data={data}
+                      allowQuestionReference
+                    />
+                  ) : (
+                    <StaticGoalValueInput
+                      id={`segment-max-${index}`}
+                      ariaLabel={t`Max`}
+                      placeholder={t`Max`}
+                      value={segment.max}
+                      onCommit={(newValue) =>
+                        onChangeProperty(index, "max", newValue)
+                      }
+                    />
+                  )}
+                </Box>
+              </Group>
 
-                <SimpleGrid cols={2} spacing="sm">
-                  <SegmentBoundInput
-                    id={`segment-min-${index}`}
-                    label={t`Min`}
-                    value={segment.min}
-                    onChange={(value) => onChangeProperty(index, "min", value)}
-                    columns={columns}
-                    allowQuestionReference={allowQuestionReference}
-                  />
-
-                  <SegmentBoundInput
-                    id={`segment-max-${index}`}
-                    label={t`Max`}
-                    value={segment.max}
-                    onChange={(value) => onChangeProperty(index, "max", value)}
-                    columns={columns}
-                    allowQuestionReference={allowQuestionReference}
-                  />
-                </SimpleGrid>
-              </Stack>
-            </Card>
+              {data != null && hasResolutionError(segment, data) && (
+                <Text c="error" fz="sm">
+                  {t`Couldn't load the referenced value`}
+                </Text>
+              )}
+            </Stack>
           ))}
         </Stack>
       ) : (
@@ -123,16 +160,25 @@ export const ChartSettingSegmentsEditor = ({
           px="1.5rem"
         >{t`Add color ranges to make this number change color depending on it's value`}</Text>
       )}
-      <Button
-        leftSection={<Icon name="add" />}
-        onClick={() => onChange(segments.concat(newSegment(segments)))}
-        w="100%"
-      >
-        {t`Add a range`}
-      </Button>
+      <Group justify="center">
+        <Button
+          variant="subtle"
+          leftSection={<Icon name="add" />}
+          onClick={() => onChange(segments.concat(newSegment(segments)))}
+        >
+          {t`Add a range`}
+        </Button>
+      </Group>
     </Stack>
   );
 };
+
+function hasResolutionError(segment: GoalSegment, data: DatasetData): boolean {
+  return (
+    resolveGoalValue(segment.min, data).error != null ||
+    resolveGoalValue(segment.max, data).error != null
+  );
+}
 
 function getColorPalette() {
   return [

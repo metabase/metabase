@@ -75,7 +75,7 @@ function GaugeComponent({
   );
 
   const errorsKey = errors
-    .map((error) => `${error.card_id}:${error.column}:${error.reason}`)
+    .map((error) => `${error.type}:${error.id}:${error.column}:${error.reason}`)
     .join("|");
 
   useEffect(() => {

@@ -33,7 +33,7 @@ const STATIC_SEGMENTS: VisualizationSettings = {
 
 const DYNAMIC_SEGMENTS: VisualizationSettings = {
   "gauge.segments": [
-    { min: 0, max: { card_id: 1, column: "total" }, color: "red" },
+    { min: 0, max: { type: "card", id: 1, column: "total" }, color: "red" },
   ],
 };
 
@@ -101,7 +101,7 @@ describe("onReplaceAllVisualizationSettings", () => {
       DYNAMIC_SEGMENTS,
       onReplaceAllVisualizationSettings({
         "gauge.segments": [
-          { min: 0, max: { card_id: 2, column: "avg" }, color: "red" },
+          { min: 0, max: { type: "card", id: 2, column: "avg" }, color: "red" },
         ],
       }),
     );

@@ -1,0 +1,276 @@
+import userEvent from "@testing-library/user-event";
+
+import {
+  setupCardEndpoints,
+  setupMeasureEndpoint,
+} from "__support__/server-mocks";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import type { DatasetData } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDatasetData,
+  createMockMeasure,
+} from "metabase-types/api/mocks";
+
+import { GoalValueInput, type GoalValueInputProps } from "./GoalValueInput";
+
+const DATA = createMockDatasetData({
+  cols: [
+    createMockColumn({
+      name: "count",
+      display_name: "Count",
+      base_type: "type/Integer",
+    }),
+    createMockColumn({
+      name: "sum",
+      display_name: "Sum of Total",
+      base_type: "type/Integer",
+    }),
+  ],
+  rows: [[10, 42]],
+});
+
+const setup = (
+  props: Partial<GoalValueInputProps> = {},
+  { data = DATA }: { data?: DatasetData } = {},
+) => {
+  const onChange = jest.fn();
+  renderWithProviders(
+    <GoalValueInput
+      id="goal-value"
+      aria-label="Min"
+      value={0}
+      onChange={onChange}
+      data={data}
+      allowQuestionReference
+      {...props}
+    />,
+  );
+  return { onChange };
+};
+
+const openMenu = async () => {
+  await userEvent.click(
+    screen.getByRole("button", { name: "Pick a dynamic value" }),
+  );
+};
+
+describe("GoalValueInput", () => {
+  it("commits a typed static value on blur", () => {
+    const { onChange } = setup({ value: 5 });
+
+    const input = screen.getByRole("textbox", { name: "Min" });
+    fireEvent.change(input, { target: { value: "12.5" } });
+    fireEvent.blur(input);
+
+    expect(onChange).toHaveBeenCalledWith(12.5);
+  });
+
+  it("shows the two source options in the root menu", async () => {
+    setup();
+
+    await openMenu();
+
+    expect(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", {
+        name: /A measure, metric, or saved question/,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the self-columns option when the question has no numeric columns", async () => {
+    setup({}, { data: createMockDatasetData({ cols: [], rows: [] }) });
+
+    await openMenu();
+
+    expect(
+      screen.queryByRole("menuitem", { name: /Value from this question/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lists self columns with their current values and commits on click", async () => {
+    const { onChange } = setup();
+
+    await openMenu();
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    );
+
+    const item = await screen.findByRole("menuitem", {
+      name: /Sum of Total/,
+    });
+    expect(within(item).getByText("42")).toBeInTheDocument();
+
+    await userEvent.click(item);
+    expect(onChange).toHaveBeenCalledWith("sum");
+  });
+
+  it("selects the sole numeric column directly from the root menu", async () => {
+    const { onChange } = setup(
+      {},
+      {
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({
+              name: "count",
+              display_name: "Count",
+              base_type: "type/Integer",
+            }),
+          ],
+          rows: [[7]],
+        }),
+      },
+    );
+
+    await openMenu();
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith("count");
+  });
+
+  it("renders a self reference as a pill with the resolved value", async () => {
+    setup({ value: "sum" });
+
+    const pill = screen.getByRole("button", { name: "Change value source" });
+    expect(within(pill).getByText("42")).toBeInTheDocument();
+  });
+
+  it("renders a foreign reference pill with the value from referenced_entities", () => {
+    setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
+    setup(
+      { value: { type: "card", id: 9, column: "total" } },
+      {
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            card: {
+              9: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "total" })],
+                  rows: [[250]],
+                },
+              },
+            },
+          },
+        }),
+      },
+    );
+
+    const pill = screen.getByRole("button", { name: "Change value source" });
+    expect(within(pill).getByText("250")).toBeInTheDocument();
+  });
+
+  it("shows a loader in the pill while the reference is resolving", () => {
+    setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
+    setup({ value: { type: "card", id: 9, column: "total" } });
+
+    expect(screen.getByTestId("goal-value-loader")).toBeInTheDocument();
+  });
+
+  it("clears the reference with the remove button", async () => {
+    const { onChange } = setup({ value: "sum" });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove value source" }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it("clears the reference with backspace", async () => {
+    const { onChange } = setup({ value: "sum" });
+
+    const shell = screen.getByRole("button", { name: "Min" });
+    fireEvent.keyDown(shell, { key: "Backspace" });
+
+    expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it("opens the column submenu with the current column highlighted when clicking the pill", async () => {
+    const { onChange } = setup({ value: "sum" });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+
+    const item = await screen.findByRole("menuitem", { name: /Count/ });
+    await userEvent.click(item);
+
+    expect(onChange).toHaveBeenCalledWith("count");
+  });
+
+  it("opens the root menu when clicking the pill of a single-column source", async () => {
+    setup(
+      { value: "count" },
+      {
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({
+              name: "count",
+              display_name: "Count",
+              base_type: "type/Integer",
+            }),
+          ],
+          rows: [[7]],
+        }),
+      },
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", {
+        name: /A measure, metric, or saved question/,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("resolves a measure reference and treats it as a single-column source", async () => {
+    setupMeasureEndpoint(
+      createMockMeasure({
+        id: 4,
+        name: "Total revenue",
+        result_column_name: "revenue",
+      }),
+    );
+    setup(
+      { value: { type: "measure", id: 4, column: "revenue" } },
+      {
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            measure: {
+              4: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "revenue" })],
+                  rows: [[999]],
+                },
+              },
+            },
+          },
+        }),
+      },
+    );
+
+    const pill = screen.getByRole("button", { name: "Change value source" });
+    expect(within(pill).getByText("999")).toBeInTheDocument();
+
+    // a measure has a single column, so clicking the pill opens the root menu
+    await userEvent.click(pill);
+    expect(
+      await screen.findByRole("menuitem", {
+        name: /A measure, metric, or saved question/,
+      }),
+    ).toBeInTheDocument();
+  });
+});

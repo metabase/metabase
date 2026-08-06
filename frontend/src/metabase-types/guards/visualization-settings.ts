@@ -23,7 +23,8 @@ export function isGoalForeignColumnRef(
 ): value is GoalForeignColumnRef {
   return (
     isObject(value) &&
-    typeof value.card_id === "number" &&
+    (value.type === "card" || value.type === "measure") &&
+    typeof value.id === "number" &&
     typeof value.column === "string"
   );
 }

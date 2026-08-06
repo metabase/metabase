@@ -83,7 +83,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       widget: "segmentsEditor",
       persistDefault: true,
       getProps: ([{ data }]) => ({
-        columns: data.cols,
+        data,
         allowQuestionReference: true,
       }),
       getWrapperStyle: () => ({

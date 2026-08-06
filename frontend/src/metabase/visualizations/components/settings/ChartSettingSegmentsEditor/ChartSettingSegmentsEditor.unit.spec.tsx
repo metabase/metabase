@@ -3,6 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { fireEvent, render, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type { ScalarSegment } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
 import {
   ChartSettingSegmentsEditor,
@@ -34,10 +38,8 @@ describe("ChartSettingSegmentsEditor", () => {
   it("Should render a segment editor", () => {
     setup();
 
-    const labelInputs = screen.getAllByPlaceholderText(/optional/);
-    expect(labelInputs).toHaveLength(2);
-    expect(labelInputs[0]).toHaveValue("bad");
-    expect(labelInputs[1]).toHaveValue("good");
+    expect(screen.getByPlaceholderText("Value 1")).toHaveValue("bad");
+    expect(screen.getByPlaceholderText("Value 2")).toHaveValue("good");
 
     const minInputs = screen.getAllByPlaceholderText("Min");
     expect(minInputs[0]).toHaveValue("0");
@@ -54,15 +56,19 @@ describe("ChartSettingSegmentsEditor", () => {
         value={DEFAULT_VALUE}
         onChange={jest.fn()}
         allowQuestionReference
+        data={createMockDatasetData({
+          cols: [createMockColumn({ name: "count" })],
+          rows: [[10]],
+        })}
       />,
     );
 
     const inputsPerSegmentCount = 2;
     const segmentsCount = DEFAULT_VALUE.length;
 
-    expect(screen.getAllByRole("img", { name: /chevrondown/ })).toHaveLength(
-      inputsPerSegmentCount * segmentsCount,
-    );
+    expect(
+      screen.getAllByRole("button", { name: "Pick a dynamic value" }),
+    ).toHaveLength(inputsPerSegmentCount * segmentsCount);
   });
 
   it("Should pass back a new array of segments on change", async () => {

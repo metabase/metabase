@@ -1,4 +1,5 @@
 import type { CardId } from "./card";
+import type { MeasureId } from "./measure";
 
 // SmartScalar (Trend Chart)
 export type SmartScalarComparisonType =
@@ -76,10 +77,11 @@ export type GoalStaticValue = number;
 // name of another column in the same question
 export type GoalSelfColumnRef = string;
 
-export type GoalForeignColumnRef = {
-  card_id: CardId;
-  column: string;
-};
+export type ReferencedEntityType = "card" | "measure";
+
+export type GoalForeignColumnRef =
+  | { type: "card"; id: CardId; column: string }
+  | { type: "measure"; id: MeasureId; column: string };
 
 export type GoalSegment = {
   color: string;

@@ -15,6 +15,7 @@ import type {
   FieldVisibilityType,
 } from "./field";
 import type { Insight } from "./insight";
+import type { MeasureId } from "./measure";
 import type { ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
@@ -100,7 +101,7 @@ export interface ResultsMetadata {
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
-  referenced_cards?: ReferencedCardsResults | null;
+  referenced_entities?: ReferencedEntitiesResults | null;
   insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
@@ -292,14 +293,16 @@ export type GetRemappedParameterValueRequest = {
 
 export type Point = [number, number];
 
-export type ReferencedCard = {
-  card_id: CardId;
-  columns?: string[];
+export type ReferencedEntity =
+  | { type: "card"; id: CardId; columns?: string[] }
+  | { type: "measure"; id: MeasureId; columns?: string[] };
+
+export type ReferencedEntitiesResults = {
+  card?: Record<CardId, ReferencedEntityResult>;
+  measure?: Record<MeasureId, ReferencedEntityResult>;
 };
 
-export type ReferencedCardsResults = Record<CardId, ReferencedCardResult>;
-
-export interface ReferencedCardResult {
+export interface ReferencedEntityResult {
   status: string;
   error?: string;
   data?: {

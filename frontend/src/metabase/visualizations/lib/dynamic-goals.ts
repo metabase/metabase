@@ -3,7 +3,9 @@ import type {
   DatasetData,
   GoalForeignColumnRef,
   GoalValue,
-  ReferencedCard,
+  MeasureId,
+  ReferencedEntity,
+  ReferencedEntityType,
   ResolvedGoalSegment,
   RowValue,
   VisualizationSettings,
@@ -25,7 +27,8 @@ export type GoalRefErrorReason =
   | "not-a-number";
 
 export type GoalRefError = {
-  card_id?: CardId;
+  type?: ReferencedEntityType;
+  id?: number;
   column: string;
   reason: GoalRefErrorReason;
 };
@@ -33,6 +36,8 @@ export type GoalRefError = {
 export type ResolvedGoalValue = {
   value: number | null;
   error?: GoalRefError;
+  // referenced results not delivered yet (query still running) - not an error
+  isResolving?: boolean;
 };
 
 export const resolveGoalValue = (
@@ -88,39 +93,32 @@ const resolveSelfColumnValue = (
 };
 
 const resolveForeignColumnRef = (
-  goalForeignColumnRef: GoalForeignColumnRef,
+  { type, id, column }: GoalForeignColumnRef,
   data: DatasetData,
 ): ResolvedGoalValue => {
-  // Referenced results are not available yet (e.g. still loading): treat as
-  // unresolved without surfacing an error to avoid transient error toasts.
-  if (data.referenced_cards == null) {
-    return { value: null };
+  // A missing entry means the current results predate this reference (the
+  // query re-runs after a settings change): treat as still resolving without
+  // surfacing an error to avoid transient error toasts.
+  const result = data.referenced_entities?.[type]?.[id];
+  if (result == null) {
+    return { value: null, isResolving: true };
   }
 
-  const result = data.referenced_cards?.[goalForeignColumnRef.card_id];
-  if (result == null || result.status !== "completed" || result.data == null) {
+  if (result.status !== "completed" || result.data == null) {
     return {
       value: null,
-      error: {
-        card_id: goalForeignColumnRef.card_id,
-        column: goalForeignColumnRef.column,
-        reason: "query-failed",
-      },
+      error: { type, id, column, reason: "query-failed" },
     };
   }
 
   const columnIndex = result.data.cols.findIndex(
-    (column) => column.name === goalForeignColumnRef.column,
+    (resultColumn) => resultColumn.name === column,
   );
 
   if (columnIndex === -1) {
     return {
       value: null,
-      error: {
-        card_id: goalForeignColumnRef.card_id,
-        column: goalForeignColumnRef.column,
-        reason: "column-not-found",
-      },
+      error: { type, id, column, reason: "column-not-found" },
     };
   }
 
@@ -129,11 +127,7 @@ const resolveForeignColumnRef = (
   if (value == null) {
     return {
       value: null,
-      error: {
-        card_id: goalForeignColumnRef.card_id,
-        column: goalForeignColumnRef.column,
-        reason: "not-a-number",
-      },
+      error: { type, id, column, reason: "not-a-number" },
     };
   }
 
@@ -148,22 +142,32 @@ const toNumberOrNull = (raw: RowValue | undefined): number | null => {
   return null;
 };
 
-export const getReferencedCardsFromVizSettings = (
+type ReferencedEntityColumns =
+  | { type: "card"; id: CardId; columns: Set<string> }
+  | { type: "measure"; id: MeasureId; columns: Set<string> };
+
+export const getReferencedEntitiesFromVizSettings = (
   settings: VisualizationSettings,
-): ReferencedCard[] => {
-  const sources = getSegmentGoalValues(settings["gauge.segments"]).filter(
+): ReferencedEntity[] => {
+  const refs = getSegmentGoalValues(settings["gauge.segments"]).filter(
     isGoalForeignColumnRef,
   );
 
-  const columnsByCard = sources.reduce((map, source) => {
-    const columns = map.get(source.card_id) ?? new Set<string>();
-    columns.add(source.column);
-    map.set(source.card_id, columns);
+  const columnsByEntity = refs.reduce((map, ref) => {
+    const key = `${ref.type}:${ref.id}`;
+    const entry = map.get(key) ?? {
+      type: ref.type,
+      id: ref.id,
+      columns: new Set<string>(),
+    };
+    entry.columns.add(ref.column);
+    map.set(key, entry);
     return map;
-  }, new Map<CardId, Set<string>>());
+  }, new Map<string, ReferencedEntityColumns>());
 
-  return Array.from(columnsByCard, ([cardId, columns]) => ({
-    card_id: cardId,
+  return Array.from(columnsByEntity.values(), ({ type, id, columns }) => ({
+    type,
+    id,
     columns: Array.from(columns),
   }));
 };

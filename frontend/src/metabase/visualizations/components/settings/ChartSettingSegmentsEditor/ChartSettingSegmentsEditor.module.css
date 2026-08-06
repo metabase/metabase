@@ -1,7 +1,0 @@
-.ColorPill {
-  border-radius: 0.5rem;
-
-  & > div {
-    border-radius: 0.5rem !important;
-  }
-}

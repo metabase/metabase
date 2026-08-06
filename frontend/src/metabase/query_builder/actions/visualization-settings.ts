@@ -1,5 +1,5 @@
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { getReferencedCardsFromVizSettings } from "metabase/visualizations/lib/dynamic-goals";
+import { getReferencedEntitiesFromVizSettings } from "metabase/visualizations/lib/dynamic-goals";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -103,9 +103,9 @@ function getForeignColumnRefsKeys(
   settings: VisualizationSettings,
 ): Set<string> {
   return new Set(
-    getReferencedCardsFromVizSettings(settings).flatMap((ref) => {
+    getReferencedEntitiesFromVizSettings(settings).flatMap((ref) => {
       const columns = ref.columns ?? [];
-      return columns.map((column) => `${ref.card_id}:${column}`);
+      return columns.map((column) => `${ref.type}:${ref.id}:${column}`);
     }),
   );
 }
