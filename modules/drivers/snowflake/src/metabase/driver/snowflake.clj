@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys not-empty mapv])
+  (:refer-clojure :exclude [some select-keys not-empty mapv])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -37,7 +37,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv not-empty select-keys]]
+   [metabase.util.performance :refer [mapv not-empty select-keys some]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -87,14 +87,23 @@
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ messages]
-  (let [message (first messages)]
-    (log/spy :error (type message))
-    (condp re-matches message
-      #"(?s).*Object does not exist.*$"
+  (let [message      (first messages)
+        any-message? (fn [re] (boolean (some (partial re-find re) (filter string? messages))))]
+    (cond
+      ;; An encrypted PKCS#8 key with no passphrase: the JDBC driver NPEs on the missing password instead of saying
+      ;; anything useful, so the raw message is worse than nothing.
+      (any-message? #"(?s)privateKeyPwd.*is null")
+      (tru "This private key is encrypted. Enter the passphrase for the key to connect.")
+
+      ;; Passphrase supplied, but it doesn't decrypt the key.
+      (any-message? #"(?s)Error finalising cipher|unable to read encrypted data")
+      (tru "The passphrase for this private key is incorrect.")
+
+      (and (string? message) (re-matches #"(?s).*Object does not exist.*$" message))
       :database-name-incorrect
 
-      ; default - the Snowflake errors have a \n in them
-      message)))
+      ;; default - the Snowflake errors have a \n in them
+      :else message)))
 
 (defmethod driver/db-start-of-week :snowflake
   [_]
@@ -112,7 +121,7 @@
   []
   (inc (driver.common/start-of-week->int)))
 
-(defn- handle-conn-uri [details user account private-key-file]
+(defn- handle-conn-uri [details user account private-key-file private-key-passphrase]
   (let [existing-conn-uri (or (:connection-uri details)
                               (when-let [sub (:subname details)]
                                 (format "jdbc:snowflake:%s" sub))
@@ -121,7 +130,16 @@
                                                           (cond-> {:user (codec/url-encode user)
                                                                    :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))}
                                                             (:db details)
-                                                            (assoc :db (codec/url-encode (:db details)))))
+                                                            (assoc :db (codec/url-encode (:db details)))
+                                                            ;; Passphrase for an encrypted (non `-nocrypt`) PKCS#8 key. It has to ride on the
+                                                            ;; connection URI rather than a connection property for the same reason `role` does
+                                                            ;; -- see [[maybe-add-role-to-spec-url]].
+                                                            ;;
+                                                            ;; `form-encode`, not `url-encode`: Snowflake parses these params with
+                                                            ;; form-urlencoded semantics, so a literal `+` has to be escaped as `%2B` or it
+                                                            ;; arrives as a space and decryption fails.
+                                                            (not (str/blank? private-key-passphrase))
+                                                            (assoc :private_key_pwd (codec/form-encode private-key-passphrase))))
         new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
     (-> details
         (assoc :connection-uri new-conn-uri)
@@ -133,16 +151,26 @@
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
   Snowflake driver expects a java.security.PrivateKey instance."
-  [{:keys [user password account]
+  [{:keys [user password account private-key-passphrase]
     :as   details}]
-  (if password
-    details
-    (if-let [private-key-file (driver-api/secret-value-as-file! :snowflake details "private-key")]
-      (-> details
-          (driver-api/clean-secret-properties-from-details :snowflake)
-          (handle-conn-uri user account private-key-file)
-          (assoc :private_key_file private-key-file))
-      (driver-api/clean-secret-properties-from-details details :snowflake))))
+  ;; `private-key-passphrase` is translated into the driver's own `private_key_pwd` below, so drop the Metabase-side
+  ;; key -- otherwise it reaches the JDBC spec as a bogus connection property.
+  (-> (if password
+        details
+        (if-let [private-key-file (driver-api/secret-value-as-file! :snowflake details "private-key")]
+          (-> details
+              (driver-api/clean-secret-properties-from-details :snowflake)
+              (handle-conn-uri user account private-key-file private-key-passphrase)
+              (assoc :private_key_file private-key-file)
+              ;; The passphrase has to be set in both places, exactly like `private_key_file` above: testing a
+              ;; connection goes through `DriverManager` with the `:connection-uri`, but a pooled connection builds
+              ;; its URL from `:subprotocol`/`:subname` and passes everything else as properties, so a URI-only
+              ;; passphrase is silently dropped and the key fails to decrypt. Unlike the URI copy this one is the
+              ;; raw value -- it is not going through a URL parser.
+              (cond-> (not (str/blank? private-key-passphrase))
+                (assoc :private_key_pwd private-key-passphrase)))
+          (driver-api/clean-secret-properties-from-details details :snowflake)))
+      (dissoc :private-key-passphrase)))
 
 (defn- quote-name
   [raw-name]
@@ -195,7 +223,8 @@
                              (-> details
                                  ;; Setting private-key-value to nil will delete the secret
                                  (assoc :use-password true :private-key-value nil)
-                                 (dissoc :private-key-id :private-key-path :private-key-options)
+                                 (dissoc :private-key-id :private-key-path :private-key-options
+                                         :private-key-passphrase)
                                  ;; Add meta for testing
                                  (with-meta {:auth :password})))
           private-key-path-details (when private-key-path
