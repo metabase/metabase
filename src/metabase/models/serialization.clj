@@ -1273,29 +1273,22 @@
     (import-mbql-map m)))
 
 (def ^:dynamic *skip-schema-validation?*
-  "When true, [[import-mbql]] stores a normalized query without checking it against this instance's query schema.
-  Bound from the `serialization-skip-schema-validation` setting by the serdes load entry point."
+  "When true, [[import-mbql]] stores a normalized query without checking it against this instance's query schema."
   false)
 
 (defn- validate-imported-query!
-  "Throws when `query` is a full MBQL query that this instance's own query schema rejects.
-
-  The exporting Metabase decides the shape of a serialized query, so an import can carry a shape this version has no
-  representation for. Such a query normalizes without complaint and is then stored, breaking the card on read, so
-  refuse it instead.
-
-  This also catches queries the *source* instance stored without validating - `mu/defn` schemas are not instrumented
-  in prod, so an app DB can hold MBQL the QP tolerates but the schema rejects. Those refusals are not false alarms,
-  but they are not evidence of a newer export either, which is why the message names both.
-
-  Only MBQL5 queries are checked. Bare refs and the MBQL fragments embedded in visualization settings have no
-  standalone schema to check them against."
+  "Throws when `query` is a full MBQL 5 query that this instance's query schema rejects. Anything else - bare refs,
+  the MBQL fragments inside visualization settings, legacy MBQL 4 queries - is left alone."
   [query]
-  ;; `validate` before `explain` - explain is much slower, and this runs on every imported query
+  ;; the point of checking at all: a shape this version has no representation for normalizes without complaint and
+  ;; is then stored, breaking the card on read. `validate` before `explain` - explain is much slower, and this runs
+  ;; on every imported query.
   (when (and (= (:lib/type query) :mbql/query)
              (not *skip-schema-validation?*)
              (not (mr/validate ::lib.schema/query query)))
     (let [errors (mu.humanize/humanize (mr/explain ::lib.schema/query query))]
+      ;; the message names two causes because `mu/defn` is not instrumented in prod: an app DB can hold MBQL the QP
+      ;; tolerates but this schema rejects, so a refusal is not on its own evidence of a newer export
       (throw (ex-info (str "Refusing to import a query that does not match this Metabase's query schema. It was "
                            "either exported by a newer Metabase whose query shape this version cannot represent, "
                            "or stored by an instance that never validated it. Pass continue_on_error to skip just "
@@ -1306,16 +1299,15 @@
                       {:schema-errors errors})))))
 
 (defn- normalize-imported
-  "Normalizes ingested MBQL into this instance's representation, and refuses a result its schema rejects.
-
-  Normalization failures stay non-fatal: they fire on content this instance produced itself - pivot column refs in
-  visualization settings raise `:malli.core/invalid-schema` today - so promoting them would reject legitimate
-  imports. The un-normalized value is stored, as it has been. A query that normalizes *successfully* into something
-  the schema rejects is a different matter, and throws."
+  "Normalizes ingested MBQL into this instance's representation, returning `x` unchanged if normalization fails.
+  Throws when the normalized result is a query [[validate-imported-query!]] rejects."
   [x]
   (when x
-    ;; the sentinel keeps `validate-imported-query!` outside the `catch`, so its refusal propagates instead of
-    ;; being swallowed as a normalization failure. Returning `x` from the catch would put it inside.
+    ;; normalization failures stay non-fatal because they fire on content this instance produced itself - pivot
+    ;; column refs in visualization settings raise `:malli.core/invalid-schema` - so promoting them would reject
+    ;; legitimate imports. The sentinel keeps `validate-imported-query!` outside the `catch`, so its refusal
+    ;; propagates instead of being swallowed as a normalization failure; returning `x` from the catch would put it
+    ;; inside.
     (let [normalized (try
                        (if (mbql-ref? x)
                          (normalize-mbql-ref x)

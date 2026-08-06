@@ -62,9 +62,10 @@
 ;;; `(into [] (extract/extract ...))` in these tests.
 
 (defn- cause-chain-messages
-  "Messages of `e` and every exception beneath it."
+  "Messages of `e` and every exception beneath it, skipping any that have none."
   [e]
-  (mapv ex-message (take-while some? (iterate ex-cause e))))
+  ;; `keep`, not `map` - an exception with a nil message would NPE the callers' `re-find` and hide the real failure
+  (into [] (keep ex-message) (take-while some? (iterate ex-cause e))))
 
 (defn- load-failure-messages!
   "Loads `ingestion`, expecting it to throw, and returns the thrown exception's cause-chain messages."
