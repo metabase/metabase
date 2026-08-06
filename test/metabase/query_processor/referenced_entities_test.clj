@@ -10,6 +10,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.referenced-entities :as referenced-entities]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]))
@@ -259,3 +260,66 @@
           (is (= "completed" (:status response)))
           (is (= "completed" (:status goal)))
           (is (= [[1000]] (get-in goal [:data :rows]))))))))
+
+(deftest cross-database-referenced-entity-test
+  (testing "a referenced card on a different database than the main query still runs"
+    ;; the reason referenced queries run before the main query's QP store is bound: a store holds one database,
+    ;; so a nested run against a different one would be rejected if it happened any later
+    (let [main-query (mt/mbql-query venues {:aggregation [[:count]]})]
+      (mt/dataset places-cam-likes
+        (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query places {:aggregation [[:count]]})}]
+          (let [response (mt/user-http-request
+                          :crowberto :post 202 "dataset"
+                          (assoc main-query :referenced_entities [{:type "card" :id goal-id}]))
+                goal     (ref-entity response :card goal-id)]
+            (testing "main query ran against its own database"
+              (is (= "completed" (:status response)))
+              (is (= [[100]] (get-in response [:data :rows]))))
+            (testing "referenced card ran against the other database"
+              (is (nil? (:error goal)))
+              (is (= "completed" (:status goal)))
+              (is (= [[3]] (get-in goal [:data :rows]))))))))))
+
+(deftest card-endpoint-measure-goal-test
+  (testing "POST /api/card/:id/query resolves a measure GoalSource from viz settings"
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (venues-count-measure)}
+                   :model/Card    {chart-id :id}   {:dataset_query          (mt/mbql-query checkins {:aggregation [[:count]]})
+                                                    :visualization_settings {:graph.goal_value {:id     measure-id
+                                                                                                :type   "measure"
+                                                                                                :column "count"}}}]
+      (let [response (mt/user-http-request :crowberto :post 202 (format "card/%d/query" chart-id))
+            goal     (ref-entity response :measure measure-id)]
+        (is (= "completed" (:status response)))
+        (is (= "completed" (:status goal)))
+        (is (= [[100]] (get-in goal [:data :rows])))))))
+
+(deftest dataset-endpoint-unreadable-measure-test
+  (testing "a referenced measure whose table the caller can't read fails softly without failing the main query"
+    ;; measure perms delegate to its table, a different route from the collection perms a card goes through
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue count"
+                                                    :table_id   (mt/id :venues)
+                                                    :definition (venues-count-measure)}]
+      (mt/with-perm-for-group-and-table! (perms/all-users-group) (mt/id :venues) :perms/view-data :blocked
+        (let [response (mt/user-http-request
+                        :rasta :post 202 "dataset"
+                        (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
+                               :referenced_entities [{:type "measure" :id measure-id}]))
+              goal     (ref-entity response :measure measure-id)]
+          (testing "main query, on a table rasta can still read, succeeds"
+            (is (= "completed" (:status response))))
+          (testing "the measure is marked failed"
+            (is (= "failed" (:status goal)))
+            (is (string? (:error goal)))))))))
+
+(deftest dataset-endpoint-unknown-column-projection-test
+  (testing "a requested column that isn't in the result is dropped rather than erroring"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:limit 1})}]
+      (let [response (mt/user-http-request
+                      :crowberto :post 202 "dataset"
+                      (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                             :referenced_entities [{:type "card" :id goal-id :columns ["NAME" "NOPE"]}]))
+            goal     (ref-entity response :card goal-id)]
+        (is (= "completed" (:status goal)))
+        (is (= ["NAME"] (map :name (get-in goal [:data :cols]))))))))

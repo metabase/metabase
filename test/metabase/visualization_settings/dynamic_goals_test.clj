@@ -70,6 +70,13 @@
   (testing "card ref resolves to the referenced column's first-row value"
     (is (= 100 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "total"} referenced-entities)))
     (is (= 3 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "count"} referenced-entities))))
+  (testing "a measure ref resolves out of the measure sub-map, not the card one"
+    (is (= 7 (dynamic-goals/resolve-goal-value {:id 1 :type "measure" :column "avg"} referenced-entities))))
+  (testing "same id, different type, different value"
+    (is (= 100 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "total"} referenced-entities)))
+    (is (= 7 (dynamic-goals/resolve-goal-value {:id 1 :type "measure" :column "avg"} referenced-entities))))
+  (testing "a type with no results at all is :query-failed"
+    (is (= :query-failed (unresolved-reason {:id 1 :type "dashboard" :column "avg"} referenced-entities))))
   (testing "keyword statuses are accepted too"
     (is (= 100 (dynamic-goals/resolve-goal-value
                 {:id 1 :type "card" :column "total"}
