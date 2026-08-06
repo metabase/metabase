@@ -987,7 +987,7 @@
 
   embeddings
   {:team "Metabot"
-   :api  #{}
+   :api  #{metabase.embeddings.provider}
    :uses #{util}}
 
   entity-retrieval
@@ -3301,6 +3301,11 @@
            premium-features
            settings
            util}}
+
+  enterprise/embedder
+  {:team "Metabot"
+   :api  #{}
+   :uses #{classloader embeddings util}}
 
   enterprise/embedding-hub
   {:team "Embedding"
