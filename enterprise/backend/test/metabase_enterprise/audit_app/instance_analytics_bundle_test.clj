@@ -7,15 +7,19 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- bundled-queries
-  "Every full query in the shipped instance-analytics bundle, as `[entity-id query]` pairs."
+(defn- bundle-ingestion
+  "An ingestion over the shipped instance-analytics bundle."
   []
-  (let [dir       (io/file (io/resource "instance_analytics"))
-        ingestion (v2.ingest/ingest-yaml (.getPath dir))]
-    (for [path (v2.ingest/ingest-list ingestion)
-          :let [query (:dataset_query (v2.ingest/ingest-one ingestion path))]
-          :when query]
-      [(:id (last path)) query])))
+  (let [dir (io/file (io/resource "instance_analytics"))]
+    (v2.ingest/ingest-yaml (.getPath dir))))
+
+(defn- bundled-queries
+  "Every full query in `ingestion`, as `[entity-id query]` pairs."
+  [ingestion]
+  (vec (for [path (v2.ingest/ingest-list ingestion)
+             :let [query (:dataset_query (v2.ingest/ingest-one ingestion path))]
+             :when query]
+         [(:id (last path)) query])))
 
 (deftest ^:parallel bundled-queries-match-this-instances-mbql-schema-test
   (testing (str "GHY-4241: every query in resources/instance_analytics must import cleanly into this version. "
@@ -28,14 +32,19 @@
               serdes/*import-table-fk*    (constantly 1)
               serdes/*import-field-fk*    (constantly 1)
               serdes/*import-fk*          (fn [& _] 1)]
-      (let [queries  (bundled-queries)
-            failures (for [[entity-id query] queries
-                           :let  [error (try
-                                          (serdes/import-mbql query)
-                                          nil
-                                          (catch Exception e (ex-message e)))]
-                           :when error]
-                       [entity-id error])]
+      (let [ingestion (bundle-ingestion)
+            queries   (bundled-queries ingestion)
+            failures  (for [[entity-id query] queries
+                            :let  [error (try
+                                           (serdes/import-mbql query)
+                                           nil
+                                           (catch Exception e (ex-message e)))]
+                            :when error]
+                        [entity-id error])]
         (testing "the bundle was found and actually contains queries, so an empty pass can't be a false negative"
           (is (pos? (count queries))))
+        (testing (str "every bundled file parses - `ingest-list` collects unreadable ones in an errors atom instead "
+                      "of failing, so they would vanish from the queries above while still crashing boot")
+          (is (= [] (mapv #(or (:file (ex-data %)) (ex-message %))
+                          (v2.ingest/ingest-errors ingestion)))))
         (is (= [] (vec failures)))))))

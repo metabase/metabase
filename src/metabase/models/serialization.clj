@@ -1284,6 +1284,10 @@
   representation for. Such a query normalizes without complaint and is then stored, breaking the card on read, so
   refuse it instead.
 
+  This also catches queries the *source* instance stored without validating - `mu/defn` schemas are not instrumented
+  in prod, so an app DB can hold MBQL the QP tolerates but the schema rejects. Those refusals are not false alarms,
+  but they are not evidence of a newer export either, which is why the message names both.
+
   Only MBQL5 queries are checked. Bare refs and the MBQL fragments embedded in visualization settings have no
   standalone schema to check them against."
   [query]
@@ -1293,8 +1297,10 @@
              (not (mr/validate ::lib.schema/query query)))
     (let [errors (mu.humanize/humanize (mr/explain ::lib.schema/query query))]
       (throw (ex-info (str "Refusing to import a query that does not match this Metabase's query schema. It was "
-                           "most likely exported by a newer Metabase whose query shape this version cannot "
-                           "represent. Set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to import it anyway.")
+                           "either exported by a newer Metabase whose query shape this version cannot represent, "
+                           "or stored by an instance that never validated it. Pass continue_on_error to skip just "
+                           "this entity, or set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to skip this check "
+                           "for the whole import.")
                       ;; no `:status`/`:status-code` here - `load-one!` rewraps everything thrown from this
                       ;; block in a fresh ex-info, so nothing we attach reaches the API's status handling
                       {:schema-errors errors})))))
