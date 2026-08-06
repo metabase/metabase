@@ -398,8 +398,7 @@
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
   [_route-params
-   _query-params
-   _body         :- [:map {:closed true}]]
+   _query-params]
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API

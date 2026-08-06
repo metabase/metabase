@@ -300,7 +300,7 @@ export const createProbes = (
       run: () => {
         const font = new FontFace(
           "isolation",
-          `url('${env.instanceUrl}/api/session/properties')`,
+          `url('${env.instanceUrl}/api/session/properties?font=1')`,
         );
 
         Promise.resolve(font.load()).catch(() => {});
