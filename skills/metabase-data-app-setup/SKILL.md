@@ -131,6 +131,7 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
 
    ```yaml
    name: Sales App        # display name shown in the admin UI
+   description: Pipeline health and quota attainment by region  # optional — see below
    path: ./dist/index.js  # bundle path, relative to this app's directory — leave as-is unless you change the build output
    # allowed_hosts:       # optional — external origins the app may fetch/XHR (see below)
    #   - https://api.example.com
@@ -138,6 +139,14 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    ```
 
    Commit it alongside the built bundle (the file `path` points at).
+
+   **`description`** — optional, and **must stay one line**: a single short
+   sentence saying what the app does, shown beside its name in the admin UI so
+   admins can tell apps apart at a glance. Do not use a YAML block scalar (`|`,
+   `>`) or write a paragraph — the UI renders it on one truncated line, and
+   anything over 255 characters is rejected on sync. Replace the template's
+   placeholder with a real sentence about *this* app, or delete the line entirely
+   if a one-liner adds nothing beyond the name.
 
    **`allowed_hosts`** — only needed if the app calls an **external** API directly
    with `fetch`/`XHR`. The sandbox blocks all network egress by default; listing an

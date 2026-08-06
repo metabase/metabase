@@ -15,9 +15,35 @@
   ([s dir] (data-app.config/parse-app-config (->bytes s) dir)))
 
 (deftest parse-valid-config-test
-  (is (= {:slug "sales" :display_name "Sales dashboard" :path "dist/index.js" :allowed_hosts []}
+  (is (= {:slug "sales" :display_name "Sales dashboard" :description nil :path "dist/index.js" :allowed_hosts []}
          (parse "name: Sales dashboard
 path: ./dist/index.js"))))
+
+(deftest parse-description-test
+  (testing "an optional one-liner is trimmed and carried through"
+    (is (= "Pipeline health by region"
+           (:description (parse "name: X\ndescription: '  Pipeline health by region  '\npath: dist/index.js")))))
+  (testing "absent → nil (the field is optional)"
+    (is (nil? (:description (parse "name: X\npath: dist/index.js")))))
+  (testing "blank → nil, so an unfilled placeholder doesn't become an empty description"
+    (doseq [blank ["" "'   '"]]
+      (is (nil? (:description (parse (str "name: X\ndescription: " blank "\npath: dist/index.js"))))
+          (str "should be nil for: " (pr-str blank)))))
+  (testing "a YAML block scalar spanning several lines is folded onto one"
+    (is (= "First line second line"
+           (:description (parse "name: X\ndescription: |\n  First line\n  second line\npath: dist/index.js")))))
+  (testing "a description at the length cap is accepted"
+    (is (= 255
+           (count (:description (parse (str "name: X\ndescription: " (apply str (repeat 255 "x"))
+                                            "\npath: dist/index.js")))))))
+  (testing "one over the cap is rejected — a paragraph here would be stored in full and returned on every list request"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"description.*255 characters or fewer"
+                          (parse (str "name: X\ndescription: " (apply str (repeat 256 "x"))
+                                      "\npath: dist/index.js")))))
+  (testing "the cap applies to the folded value, not the raw YAML"
+    (is (= 255
+           (count (:description (parse (str "name: X\ndescription: >\n  " (apply str (repeat 255 "x"))
+                                            "\npath: dist/index.js"))))))))
 
 (deftest slug-comes-from-the-directory-test
   (testing "the app's slug is the name of the directory it lives in"
@@ -50,7 +76,7 @@ path: ./dist/index.js"))))
 
 (deftest unknown-fields-are-ignored-test
   (testing "unknown keys don't fail the parse — including a stray `slug`, which the directory name overrides"
-    (is (= {:slug "sales" :display_name "X" :path "dist/index.js" :allowed_hosts []}
+    (is (= {:slug "sales" :display_name "X" :description nil :path "dist/index.js" :allowed_hosts []}
            (parse "name: X\nslug: elsewhere\nfuture_option: 1\npath: dist/index.js")))))
 
 (deftest parse-errors-test
