@@ -323,6 +323,27 @@
         (is (t2/exists? :model/UsageMetadataCandidateRun :id (:id old-run)))
         (is (not (t2/exists? :model/UsageMetadataCandidate :id (:id old-candidate))))))))
 
+(deftest failed-snapshot-pruning-rolls-back-promotion-and-retirement-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun old-run {:status            :succeeded
+                                                           :trigger           :scheduled
+                                                           :algorithm_version 1
+                                                           :source_config     {}
+                                                           :finished_at       (mi/now)}
+                 :model/UsageMetadataCandidate old-candidate (candidate-row (:id old-run) (mt/id :orders))]
+    (mt/with-dynamic-fn-redefs [insights/qualified-card-ids (constantly [])]
+      (let [run (candidates/queue-refresh! :manual (mt/user->id :crowberto))]
+        (with-redefs-fn {#'candidates/prune-old-snapshots!
+                         (fn [_current-run-id]
+                           (t2/delete! :model/UsageMetadataCandidate :id (:id old-candidate))
+                           (throw (ex-info "Injected snapshot pruning failure" {})))}
+          #(is (thrown-with-msg? Exception
+                                 #"Injected snapshot pruning failure"
+                                 (candidates/run-refresh! run))))
+        (is (= :failed
+               (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id (:id run))))
+        (is (= (:id old-run) (:id (candidates/latest-successful-run))))
+        (is (t2/exists? :model/UsageMetadataCandidate :id (:id old-candidate)))))))
+
 (deftest persisted-refresh-uses-recent-view-source-configuration-test
   (let [cleanup-opts (atom nil)]
     (mt/with-dynamic-fn-redefs
