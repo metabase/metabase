@@ -612,8 +612,10 @@ export const DocumentPage = () => {
                   }
 
                   const response = await copyDocument({
-                    ...object,
                     id: documentData.id,
+                    name: object.name,
+                    collection_id: object.collection_id,
+                    collection_position: object.collection_position,
                   });
 
                   if (!response.data) {
