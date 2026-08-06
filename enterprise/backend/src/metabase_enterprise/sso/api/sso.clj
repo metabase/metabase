@@ -148,7 +148,7 @@
   this provides a path for them to do so."
   [_route-params
    _query-params
-   {:keys [jwt]} :- [:map {:closed true}
+   {:keys [jwt]} :- [:map
                      [:jwt ms/NonBlankString]]
    request]
   (when-not (sso-settings/jwt-enabled-and-configured)
@@ -198,7 +198,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key"
   "Initiate OIDC SSO for a specific provider."
-  [{provider-key :key} :- [:map {:closed true}
+  [{provider-key :key} :- [:map
                            [:key ProviderKey]]
    ;; not closed: callers may append their own params to the login link. Read off the raw request `:params`.
    _query-params :- [:map {:closed false}
@@ -216,7 +216,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key/callback"
   "OIDC callback for a specific provider."
-  [{provider-key :key} :- [:map {:closed true}
+  [{provider-key :key} :- [:map
                            [:key ProviderKey]]
    ;; not closed: the IdP controls this query string and adds provider-specific params (`iss`, `session_state`,
    ;; `error`, ...). Read off the raw request `:params`.

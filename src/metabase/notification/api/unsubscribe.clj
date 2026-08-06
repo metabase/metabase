@@ -46,7 +46,7 @@
   "Allow non-users to unsubscribe from notifications, with the hash given through email."
   [_route-params
    _query-params
-   {:keys [email hash notification-handler-id]} :- [:map {:closed true}
+   {:keys [email hash notification-handler-id]} :- [:map
                                                     [:notification-handler-id ms/PositiveInt]
                                                     [:email                   ms/NonBlankString]
                                                     [:hash                    ms/NonBlankString]]
@@ -72,7 +72,7 @@
   "Allow non-users to undo an unsubscribe from notifications, with the hash given through email."
   [_route-params
    _query-params
-   {:keys [email hash notification-handler-id]} :- [:map {:closed true}
+   {:keys [email hash notification-handler-id]} :- [:map
                                                     [:notification-handler-id ms/PositiveInt]
                                                     [:email                   ms/NonBlankString]
                                                     [:hash                    ms/NonBlankString]]

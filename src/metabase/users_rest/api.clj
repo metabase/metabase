@@ -173,7 +173,7 @@
   If the user is a sandboxed user, only return themselves regardless of the query parameters."
   [_route-params
    {:keys [status query group_id include_deactivated tenant_id tenancy is_data_analyst can_access_data_studio] :as params}
-   :- [:map {:closed true}
+   :- [:map
        [:status                  {:optional true} [:maybe :string]]
        [:query                   {:optional true} [:maybe :string]]
        [:group_id                {:optional true} [:maybe ms/PositiveInt]]
@@ -393,7 +393,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params]
   (try
@@ -419,7 +419,7 @@
   `user_group_memberships`."
   [_route-params
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:first_name             {:optional true} [:maybe ms/NonBlankString]]
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
@@ -479,11 +479,11 @@
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [email first_name last_name user_group_memberships is_superuser is_data_analyst] :as body}
-   :- [:map {:closed true}
+   :- [:map
        [:email                  {:optional true} [:maybe ms/Email]]
        [:first_name             {:optional true} [:maybe ms/NonBlankString]]
        [:last_name              {:optional true} [:maybe ms/NonBlankString]]
@@ -568,7 +568,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/reactivate"
   "Reactivate user at `:id`"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params]
   (api/check-superuser)
@@ -595,10 +595,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/password"
   "Update a user's password."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [password old_password]} :- [:map {:closed true}
+   {:keys [password old_password]} :- [:map
                                        [:password ms/ValidPassword]
                                        [:old_password {:optional true} [:maybe :string]]]
    request]
@@ -628,7 +628,7 @@
 (api.macros/defendpoint :post "/:id/password-reset-url" :- [:map [:password_reset_url :string]]
   "Generate a password reset URL for a user. Admins can share this URL directly with the user.
   The link expires in 48 hours."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body]
@@ -652,7 +652,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body]
@@ -676,7 +676,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
-  [{:keys [id modal]} :- [:map {:closed true}
+  [{:keys [id modal]} :- [:map
                           [:id ms/PositiveInt]
                           [:modal [:enum "qbnewb" "datasetnewb"]]]
    _query-params

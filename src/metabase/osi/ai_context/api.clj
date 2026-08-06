@@ -71,7 +71,7 @@
   ;; entity-type is any non-blank string at the route level — a write to a non-writable type gets a clear
   ;; 400 in the handler (an enum here would 404 the route instead), and reads/deletes of an unknown type
   ;; simply find no row and 404.
-  [:map {:closed true}
+  [:map
    [:entity-type     ms/NonBlankString]
    [:entity-local-id ms/PositiveInt]])
 
@@ -110,7 +110,7 @@
   upsert keep two concurrent writers from racing in a duplicate row."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
    _query-params
-   {:keys [ai_context]} :- [:map {:closed true} [:ai_context AiContextInput]]]
+   {:keys [ai_context]} :- [:map [:ai_context AiContextInput]]]
   (api/check-superuser)
   (api/check-400 (contains? writable-entity-types entity-type)
                  "entity_type must be one of: measure, metric, model, segment, table")

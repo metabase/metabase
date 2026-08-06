@@ -187,7 +187,7 @@
    _query-params
    ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
    ;; reads it from the raw body to decide session-vs-permanent cookie.
-   {:keys [username password]} :- [:map {:closed true}
+   {:keys [username password]} :- [:map
                                    [:username ms/NonBlankString]
                                    [:password ms/NonBlankString]
                                    [:remember {:optional true} [:maybe :boolean]]]
@@ -307,7 +307,7 @@
   "Send a reset email when user has forgotten their password."
   [_route-params
    _query-params
-   {:keys [email]} :- [:map {:closed true}
+   {:keys [email]} :- [:map
                        [:email ms/Email]]
    request]
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
@@ -345,7 +345,7 @@
   "Reset password with a reset token."
   [_route-params
    _query-params
-   request-body :- [:map {:closed true}
+   request-body :- [:map
                     [:token    ms/NonBlankString]
                     [:password ms/ValidPassword]]
    request]
@@ -382,7 +382,7 @@
 (api.macros/defendpoint :get "/password_reset_token_valid"
   "Check if a password reset token is valid and isn't expired."
   [_route-params
-   {:keys [token]} :- [:map {:closed true}
+   {:keys [token]} :- [:map
                        [:token ms/NonBlankString]]]
   (let [auth-result (auth-identity/with-fallback auth-identity/authenticate
                       [:provider/support-access-grant
@@ -414,7 +414,7 @@
    _query-params
    ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
    ;; reads it from the raw body to decide session-vs-permanent cookie.
-   {:keys [token]} :- [:map {:closed true}
+   {:keys [token]} :- [:map
                        [:token    ms/NonBlankString]
                        [:remember {:optional true} [:maybe :boolean]]]
    request]
@@ -454,7 +454,7 @@
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
   [_route-params
    _query-params
-   _body :- [:map {:closed true}
+   _body :- [:map
              [:password ms/ValidPassword]]]
   ;; if we pass the [[ms/ValidPassword]] test we're g2g
   {:valid true})
@@ -472,7 +472,7 @@
    ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
    ;; reads it from the raw body to decide session-vs-permanent cookie, exactly as on
    ;; `POST /api/session` — for MFA users THIS request is the one that creates the session.
-   {challenge-token :challenge_token, code :code} :- [:map {:closed true}
+   {challenge-token :challenge_token, code :code} :- [:map
                                                       [:challenge_token ms/NonBlankString]
                                                       [:code            ms/NonBlankString]
                                                       [:remember        {:optional true} :boolean]]
@@ -512,7 +512,7 @@
   `POST /mfa/verify` like any other code."
   [_route-params
    _query-params
-   {challenge-token :challenge_token} :- [:map {:closed true}
+   {challenge-token :challenge_token} :- [:map
                                           [:challenge_token ms/NonBlankString]]
    request]
   (let [claims (or (session.challenge/verify-challenge-token challenge-token)

@@ -103,7 +103,7 @@
    {:keys                [archived]
     dashboard-id         :dashboard_id
     creator-or-recipient :creator_or_recipient}
-   :- [:map {:closed true}
+   :- [:map
        [:archived             {:default false} [:maybe ms/BooleanValue]]
        [:dashboard_id         {:optional true} [:maybe ms/PositiveInt]]
        [:creator_or_recipient {:default false} [:maybe ms/BooleanValue]]]]
@@ -158,7 +158,7 @@
     collection-id       :collection_id
     collection-position :collection_position
     dashboard-id        :dashboard_id}
-   :- [:map {:closed true}
+   :- [:map
        [:name                ms/NonBlankString]
        [:cards               [:+ models.pulse/CoercibleToCardRef]]
        [:channels            [:+ :map]]
@@ -187,7 +187,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/let-404 [pulse (models.pulse/retrieve-pulse id)]
     (api/check-403 (mi/can-read? pulse))
@@ -227,10 +227,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a Pulse with `id`."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [cards], :as pulse-updates} :- [:map {:closed true}
+   {:keys [cards], :as pulse-updates} :- [:map
                                           [:name          {:optional true} [:maybe ms/NonBlankString]]
                                           [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
                                           [:channels      {:optional true} [:maybe [:+ :map]]]
@@ -321,7 +321,7 @@
   "Test send an unsaved pulse."
   [_route-params
    _query-params
-   {:keys [cards channels] :as body} :- [:map {:closed true}
+   {:keys [cards channels] :as body} :- [:map
                                          [:id                  {:optional true} [:maybe ms/PositiveInt]]
                                          [:name                ms/NonBlankString]
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
@@ -359,7 +359,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/let-404 [pulse-id (t2/select-one-pk :model/Pulse :id id)
                 pc-id    (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id :channel_type "email")

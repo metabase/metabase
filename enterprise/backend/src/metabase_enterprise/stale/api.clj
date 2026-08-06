@@ -135,9 +135,9 @@
   - `is_recursive` - if true, return entities from all children of the collection, not just the direct children (default: false)
   - `sort_column` - the column to sort by (default: name)
   - `sort_direction` - the direction to sort by (default: asc)"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt [:= :root]]]]
-   {:keys [before_date is_recursive sort_column sort_direction]} :- [:map {:closed true}
+   {:keys [before_date is_recursive sort_column sort_direction]} :- [:map
                                                                      [:before_date    {:optional true}  [:maybe :string]]
                                                                      [:is_recursive   {:default false}  :boolean]
                                                                      [:sort_column    {:default :name}  [:enum :name :last_used_at]]

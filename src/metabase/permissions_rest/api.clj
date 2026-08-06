@@ -37,7 +37,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph/db/:db-id"
   "Fetch a graph of all Permissions for db-id `db-id`."
-  [{:keys [db-id]} :- [:map {:closed true}
+  [{:keys [db-id]} :- [:map
                        [:db-id ms/PositiveInt]]]
   (api/check-superuser)
   (data-perms.graph/api-graph {:db-id db-id}))
@@ -48,7 +48,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph/group/:group-id"
   "Fetch a graph of all Permissions for group-id `group-id`."
-  [{:keys [group-id]} :- [:map {:closed true}
+  [{:keys [group-id]} :- [:map
                           [:group-id ms/PositiveInt]]]
   (api/check-superuser)
   (data-perms.graph/api-graph {:group-id group-id}))
@@ -86,13 +86,13 @@
 
   If the skip-graph query param is truthy, then the graph will not be returned."
   [_route-params
-   {:keys [skip-graph force]} :- [:map {:closed true}
+   {:keys [skip-graph force]} :- [:map
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]
                                   [:force      {:default false} [:maybe ms/BooleanValue]]]
    ;; `:groups` is keyed dynamically by group ID, then database ID, schema name and table ID;
    ;; `:sandboxes`/`:impersonations` are EE payloads validated by the EE code below. Body `:force` is
    ;; accepted for backwards compatibility, but the query parameter is what the handler reads.
-   body :- [:map {:closed true}
+   body :- [:map
             [:groups                          :map]
             [:revision       {:optional true} [:maybe ms/Int]]
             [:force          {:optional true} [:maybe :boolean]]
@@ -179,7 +179,7 @@
   - `tenancy=internal`: Returns only non-tenant groups (where `is_tenant_group = false`)
   - No `tenancy` parameter: Returns all groups (default behavior)"
   [_route_params
-   {:keys [tenancy]} :- [:map {:closed true}
+   {:keys [tenancy]} :- [:map
                          [:tenancy {:optional true} [:enum "external" "internal"]]]]
   (try
     (perms/check-group-manager)
@@ -218,7 +218,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/group/:id"
   "Fetch the details for a certain permissions group."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (perms/check-manager-of-group id)
   (api/check-404
@@ -234,7 +234,7 @@
   never included. The ids are otherwise unfiltered; system-managed groups like Data Analysts appear when they hold a
   grant, and clients intersect the ids with the groups they display. Superuser-only, like the invite action itself."
   [_route-params
-   {:keys [id] item-type :type} :- [:map {:closed true}
+   {:keys [id] item-type :type} :- [:map
                                     [:type [:enum "dashboard" "question"]]
                                     [:id   ms/PositiveInt]]]
   (api/check-superuser)
@@ -252,7 +252,7 @@
   "Create a new `PermissionsGroup`."
   [_route-params
    _query-params
-   {:keys [name is_tenant_group]} :- [:map {:closed true}
+   {:keys [name is_tenant_group]} :- [:map
                                       [:name ms/NonBlankString]
                                       [:is_tenant_group {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
@@ -270,10 +270,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
-  [{:keys [group-id]} :- [:map {:closed true}
+  [{:keys [group-id]} :- [:map
                           [:group-id ms/PositiveInt]]
    _query-params
-   {:keys [name]} :- [:map {:closed true}
+   {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (perms/check-manager-of-group group-id)
   (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
@@ -293,7 +293,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
-  [{:keys [group-id]} :- [:map {:closed true}
+  [{:keys [group-id]} :- [:map
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
   (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
@@ -338,7 +338,7 @@
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [_route-params
    _query-params
-   {:keys [group_id user_id is_group_manager]} :- [:map {:closed true}
+   {:keys [group_id user_id is_group_manager]} :- [:map
                                                    [:group_id         ms/PositiveInt]
                                                    [:user_id          ms/PositiveInt]
                                                    [:is_group_manager {:default false} [:maybe :boolean]]]]
@@ -362,12 +362,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    ;; `group_id`/`user_id` ride along from the membership row the caller is editing; neither is
    ;; updatable here.
-   {:keys [is_group_manager]} :- [:map {:closed true}
+   {:keys [is_group_manager]} :- [:map
                                   [:is_group_manager                  :boolean]
                                   [:group_id         {:optional true} :any]
                                   [:user_id          {:optional true} :any]]]
@@ -391,7 +391,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/membership/:group-id/clear"
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
-  [{:keys [group-id]} :- [:map {:closed true}
+  [{:keys [group-id]} :- [:map
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
@@ -405,7 +405,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/membership/:id"
   "Remove a User from a PermissionsGroup (delete their membership)."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [membership (t2/select-one :model/PermissionsGroupMembership :id id)]
     (api/check-404 membership)

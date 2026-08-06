@@ -18,7 +18,7 @@
 
 (def BookmarkOrderings
   "Schema for an ordered of bookmark orderings"
-  [:sequential [:map {:closed true}
+  [:sequential [:map
                 [:type Models]
                 [:item_id ms/PositiveInt]]])
 
@@ -48,7 +48,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:model/:id"
   "Create a new bookmark for user."
-  [{:keys [model id]} :- [:map {:closed true}
+  [{:keys [model id]} :- [:map
                           [:model Models]
                           [:id    ms/PositiveInt]]
    _query-params]
@@ -65,7 +65,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:model/:id"
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."
-  [{:keys [model id]} :- [:map {:closed true}
+  [{:keys [model id]} :- [:map
                           [:model Models]
                           [:id    ms/PositiveInt]]
    _query-params]
@@ -84,7 +84,7 @@
   "Sets the order of bookmarks for user."
   [_route-params
    _query-params
-   {:keys [orderings]} :- [:map {:closed true}
+   {:keys [orderings]} :- [:map
                            [:orderings BookmarkOrderings]]]
   (bookmark/save-ordering! api/*current-user-id* orderings)
   api/generic-204-no-content)

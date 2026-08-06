@@ -31,7 +31,7 @@
    [:type [:= :nocache]]])
 
 (mr/def ::cache-strategy.ttl
-  [:map {:closed true}
+  [:map
    [:type            [:= :ttl]]
    [:multiplier      ms/PositiveInt]
    [:min_duration_ms ms/IntGreaterThanOrEqualToZero]])
@@ -45,7 +45,7 @@
     [:ttl     ::cache-strategy.ttl]]])
 
 (mr/def ::cache-strategy.ee.duration
-  [:map {:closed true}
+  [:map
    [:type                  [:= :duration]]
    [:duration              ms/PositiveInt]
    ;; TODO (Cam 10/3/25) -- change these to keywords and let API coercion convert them for us automatically.
@@ -53,7 +53,7 @@
    [:refresh_automatically {:optional true} [:maybe :boolean]]])
 
 (mr/def ::cache-strategy.ee.schedule
-  [:map {:closed true}
+  [:map
    [:type                  [:= :schedule]]
    [:schedule              u.cron/CronScheduleString]
    [:refresh_automatically {:optional true} [:maybe :boolean]]])
@@ -171,7 +171,7 @@
   "Store cache configuration."
   [_route-params
    _query-params
-   {:keys [model model_id] :as config} :- [:map {:closed true}
+   {:keys [model model_id] :as config} :- [:map
                                            [:model    cache-config/CachingModel]
                                            [:model_id ms/IntGreaterThanOrEqualToZero]
                                            [:strategy ::cache-strategy]]]
@@ -183,7 +183,7 @@
   "Delete cache configurations."
   [_route-params
    _query-params
-   {:keys [model model_id]} :- [:map {:closed true}
+   {:keys [model model_id]} :- [:map
                                 [:model    cache-config/CachingModel]
                                 [:model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
@@ -201,7 +201,7 @@
   touching all nested configurations, or you want your invalidation to trickle down to every card."
   [_route-params
    {:keys [include database dashboard question]}
-   :- [:map {:closed true}
+   :- [:map
        [:include   {:optional true} [:maybe {:description "All cache configuration overrides should invalidate cache too"}
                                      [:= :overrides]]]
        [:database  {:optional true} [:maybe {:description "A list of database ids"}

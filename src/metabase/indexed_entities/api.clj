@@ -41,7 +41,7 @@
   "Create ModelIndex."
   [_route-params
    _query-params
-   {:keys [model_id pk_ref value_ref] :as _model-index} :- [:map {:closed true}
+   {:keys [model_id pk_ref value_ref] :as _model-index} :- [:map
                                                             [:model_id  ms/PositiveInt]
                                                             [:pk_ref    any?]
                                                             [:value_ref any?]]]
@@ -76,7 +76,7 @@
 (api.macros/defendpoint :get "/"
   "Retrieve list of ModelIndex."
   [_route-params
-   {:keys [model_id]} :- [:map {:closed true}
+   {:keys [model_id]} :- [:map
                           [:model_id ms/PositiveInt]]]
   (let [model (api/read-check :model/Card model_id)]
     (when-not (= (:type model) :model)
@@ -91,7 +91,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Retrieve ModelIndex."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [model-index (api/check-404 (t2/select-one :model/ModelIndex :id id))
         model       (api/read-check :model/Card (:model_id model-index))]
@@ -107,7 +107,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete ModelIndex."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/let-404 [model-index (t2/select-one :model/ModelIndex :id id)]
     (api/write-check :model/Card (:model_id model-index))

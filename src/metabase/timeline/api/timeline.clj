@@ -28,7 +28,7 @@
   "Create a new [[Timeline]]."
   [_route-params
    _query-params
-   {:keys [icon], collection-id :collection_id, :as body} :- [:map {:closed true}
+   {:keys [icon], collection-id :collection_id, :as body} :- [:map
                                                               [:name          ms/NonBlankString]
                                                               [:default       {:optional true} [:maybe :boolean]]
                                                               [:description   {:optional true} [:maybe :string]]
@@ -63,7 +63,7 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
   [_route-params
-   {:keys [include], archived? :archived} :- [:map {:closed true}
+   {:keys [include], archived? :archived} :- [:map
                                               [:include  {:optional true} ::include]
                                               [:archived {:default false} ms/BooleanValue]]]
   (let [timelines (->> (list-timelines archived?)
@@ -75,9 +75,9 @@
 (api.macros/defendpoint :get "/:id" :- ::Timeline
   "Fetch the `Timeline` with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."
-  [{:keys [id]}                         :- [:map {:closed true}
+  [{:keys [id]}                         :- [:map
                                             [:id ms/PositiveInt]]
-   {:keys [include archived start end]} :- [:map {:closed true}
+   {:keys [include archived start end]} :- [:map
                                             [:include  {:optional true}  ::include]
                                             [:archived {:default :false} ms/BooleanValue]
                                             [:start    {:optional true}  ms/TemporalString]
@@ -102,10 +102,10 @@
 (api.macros/defendpoint :put "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [archived] :as timeline-updates} :- [:map {:closed true}
+   {:keys [archived] :as timeline-updates} :- [:map
                                                [:name          {:optional true} [:maybe ms/NonBlankString]]
                                                [:default       {:optional true} [:maybe :boolean]]
                                                [:description   {:optional true} [:maybe :string]]
@@ -130,7 +130,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [timeline (api/write-check :model/Timeline id)]
     (t2/delete! :model/Timeline :id id)
@@ -144,7 +144,7 @@
 (api.macros/defendpoint :get "/collection/root"
   "Fetch the root Collection's timelines."
   [_route-params
-   {:keys [include archived]} :- [:map {:closed true}
+   {:keys [include archived]} :- [:map
                                   [:include  {:optional true} [:maybe [:= "events"]]]
                                   [:archived {:default false} [:maybe :boolean]]]]
   (api/read-check collection/root-collection)
@@ -157,9 +157,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/collection/:id"
   "Fetch a specific Collection's timelines."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include archived]} :- [:map {:closed true}
+   {:keys [include archived]} :- [:map
                                   [:include  {:optional true} [:maybe [:= "events"]]]
                                   [:archived {:default false} [:maybe :boolean]]]]
   (api/read-check (t2/select-one :model/Collection :id id))

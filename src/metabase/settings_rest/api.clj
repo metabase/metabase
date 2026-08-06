@@ -65,7 +65,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key"
   "Fetch a single `Setting`."
-  [{:keys [key]} :- [:map {:closed true}
+  [{:keys [key]} :- [:map
                      [:key kebab-cased-keyword]]]
   (with-setting-access-control
     (setting/user-facing-value key)))
@@ -77,7 +77,7 @@
 (api.macros/defendpoint :put "/:key"
   "Create/update a `Setting`. If called by a non-admin, only user-local settings can be updated.
    This endpoint can also be used to delete Settings by passing `nil` for `:value`."
-  [{:keys [key]} :- [:map {:closed true}
+  [{:keys [key]} :- [:map
                      [:key kebab-cased-keyword]]
    _query-params
    ;; open: a Setting's value is arbitrary, so there is nothing to enumerate beyond `:value`.

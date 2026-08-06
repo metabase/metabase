@@ -19,11 +19,11 @@
   [_route-params
    _query-params
    {:keys [image_base64 name description timeline_events]}
-   :- [:map {:closed true}
+   :- [:map
        [:image_base64    :string]
        [:name            {:optional true} [:maybe :string]]
        [:description     {:optional true} [:maybe :string]]
-       [:timeline_events {:optional true} [:maybe [:sequential [:map {:closed true}
+       [:timeline_events {:optional true} [:maybe [:sequential [:map
                                                                 [:name        :string]
                                                                 [:description {:optional true} [:maybe :string]]
                                                                 [:timestamp   :string]]]]]]]

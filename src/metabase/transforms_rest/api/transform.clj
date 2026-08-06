@@ -33,7 +33,7 @@
   [:enum "none" "global-schedule"])
 
 (def ^:private CreatorResponse
-  [:map {:closed true}
+  [:map
    [:id pos-int?]
    [:email :string]
    [:first_name [:maybe :string]]
@@ -47,7 +47,7 @@
    [:date_joined {:optional true} :any]])
 
 (def ^:private OwnerResponse
-  [:map {:closed true}
+  [:map
    [:id {:optional true} pos-int?]
    [:email :string]
    [:first_name {:optional true} [:maybe :string]]
@@ -55,7 +55,7 @@
    [:common_name {:optional true} [:maybe :string]]])
 
 (def ^:private TransformLastRunResponse
-  [:map {:closed true}
+  [:map
    [:id pos-int?]
    [:transform_id pos-int?]
    [:run_method :keyword]
@@ -75,7 +75,7 @@
    [:metered_as {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
-  [:map {:closed true}
+  [:map
    [:id pos-int?]
    [:name :string]
    [:description [:maybe :string]]
@@ -110,7 +110,7 @@
    [:requestable_indexes {:optional true} [:maybe :metabase.driver/supported-index-methods]]])
 
 (def ^:private TransformRunResponse
-  [:map {:closed true}
+  [:map
    [:id pos-int?]
    [:transform_id [:maybe pos-int?]]
    [:run_method :keyword]
@@ -129,7 +129,7 @@
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
    [:metered_as {:optional true} [:maybe :string]]
    ;; Transform can have id/name when exists, or be nil when deleted
-   [:transform {:optional true} [:maybe [:map {:closed true}
+   [:transform {:optional true} [:maybe [:map
                                          [:id {:optional true} pos-int?]
                                          [:name {:optional true} :string]
                                          [:deleted {:optional true} :boolean]
@@ -168,7 +168,7 @@
   "Create a new transform."
   [_route-params
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:name :string]
             [:description {:optional true} [:maybe :string]]
             ;; TODO: `source` carries an MBQL/native query typed loosely; give it a real schema.
@@ -191,13 +191,13 @@
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (transforms.core/get-transform id))
 
 (api.macros/defendpoint :get "/:id/dependencies" :- [:sequential TransformResponse]
   "Get the dependencies of a specific transform."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
@@ -207,7 +207,7 @@
     (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_execute)
          transforms.u/add-source-readable)))
 
-(api.macros/defendpoint :get "/run" :- [:map {:closed true}
+(api.macros/defendpoint :get "/run" :- [:map
                                         [:data [:sequential TransformRunResponse]]
                                         [:limit pos-int?]
                                         [:offset :int]
@@ -215,7 +215,7 @@
   "Get transform runs based on a set of filter params."
   [_route-params
    query-params :-
-   [:map {:closed true}
+   [:map
     [:sort-column    {:optional true} [:enum "transform-name" "start-time" "end-time" "status" "run-method" "transform-tags" "duration"]]
     [:sort-direction {:optional true} [:enum "asc" "desc"]]
     [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
@@ -237,7 +237,7 @@
   is the id of the associated job/transform (nil if it was deleted) and `name` its name — live if
   it still exists, otherwise the name snapshotted at run start. `direction` and `transform_count`
   (the number of transforms the run's plan selected to run) are set only for DAG runs."
-  [:map {:closed true}
+  [:map
    [:run_type [:enum :job :dag :transform]]
    [:id pos-int?]
    [:entity_id [:maybe pos-int?]]
@@ -252,7 +252,7 @@
    [:message [:maybe :string]]
    [:user_id [:maybe pos-int?]]])
 
-(api.macros/defendpoint :get "/runs" :- [:map {:closed true}
+(api.macros/defendpoint :get "/runs" :- [:map
                                          [:data [:sequential RunSummaryResponse]]
                                          [:limit pos-int?]
                                          [:offset :int]
@@ -265,7 +265,7 @@
   any of the given transforms. The remaining filters work as in `GET /run`."
   [_route-params
    query-params :-
-   [:map {:closed true}
+   [:map
     [:types {:optional true} [:maybe (ms/QueryVectorOf [:enum "job" "dag" "transform"])]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout" "canceled" "canceling"])]]
     [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]
@@ -283,7 +283,7 @@
 
 (api.macros/defendpoint :get "/run/:run-id" :- TransformRunResponse
   "Get a transform run by ID."
-  [{:keys [run-id]} :- [:map {:closed true}
+  [{:keys [run-id]} :- [:map
                         [:run-id ms/PositiveInt]]]
   (api/check-data-analyst)
   (let [run (api/check-404 (t2/select-one :model/TransformRun :id run-id))]
@@ -292,10 +292,10 @@
 
 (api.macros/defendpoint :put "/:id" :- TransformResponse
   "Update a transform."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
             ;; TODO: `source` carries an MBQL/native query typed loosely; give it a real schema.
@@ -311,13 +311,13 @@
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete a transform."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (transforms.core/delete-transform! (api/write-check :model/Transform id)))
 
 (api.macros/defendpoint :delete "/:id/table" :- :nil
   "Delete a transform's output table."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
   (transforms-base.u/delete-target-table-by-id! id)
@@ -325,7 +325,7 @@
 
 (api.macros/defendpoint :post "/:id/cancel" :- :nil
   "Cancel the current run for a given transform."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [transform (api/write-check :model/Transform id)
         run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
@@ -339,7 +339,7 @@
 
 (api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
   "Reset the stored checkpoint for an incremental transform."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
   (t2/update! :model/Transform id {:last_checkpoint_value nil})
   nil)
@@ -366,19 +366,19 @@
                                           :run-method    :manual
                                           :user-id       api/*current-user-id*}))))
 
-(api.macros/defendpoint :post "/:id/run" :- [:map {:closed true}
+(api.macros/defendpoint :post "/:id/run" :- [:map
                                              [:status [:= 202]]
-                                             [:body [:map {:closed true}
+                                             [:body [:map
                                                      [:message :any]
                                                      [:run_id [:maybe pos-int?]]]]]
   "Run a transform."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (run-transform! (api/read-check :model/Transform id)))
 
 (api.macros/defendpoint :post "/:id/run-dag" :- [:map
                                                  [:status [:= 202]]
-                                                 [:body [:map {:closed true}
+                                                 [:body [:map
                                                          [:message :any]
                                                          [:dag_run_id [:maybe pos-int?]]]]]
   "Trigger a DAG-reprocess run starting from a single transform: runs the transform and every
@@ -389,9 +389,9 @@
   `direction` selects which transforms are included:
   - `upstream`   — the seed transform plus all transforms it depends on
   - `downstream` — the seed transform plus all transforms that depend on it"
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [direction]} :- [:map {:closed true}
+   {:keys [direction]} :- [:map
                            [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
   (check-feature-and-lock! (api/write-check :model/Transform id))
   (transforms-rest.api.u/async-run-response
@@ -402,13 +402,13 @@
                                    :user-id       api/*current-user-id*
                                    :start-promise start-promise}))))
 
-(api.macros/defendpoint :get "/:id/dag-transforms" :- [:sequential [:map {:closed true}
+(api.macros/defendpoint :get "/:id/dag-transforms" :- [:sequential [:map
                                                                     [:id pos-int?]
                                                                     [:name :string]]]
   "Preview the transforms a DAG reprocess from this transform would run (see `POST /:id/run-dag`),
   in execution order."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   {:keys [direction]} :- [:map {:closed true} [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [direction]} :- [:map [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
   (api/read-check :model/Transform id)
   (mapv (fn [{xform-id :id, xform-name :name}]
           {:id xform-id, :name xform-name})

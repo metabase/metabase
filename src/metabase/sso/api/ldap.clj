@@ -27,7 +27,7 @@
   "Update LDAP related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   settings :- [:map {:closed true}
+   settings :- [:map
                 [:ldap-port                          {:optional true} [:maybe
                                                                        ;; treat empty string as nil
                                                                        {:decode/api (fn [x]

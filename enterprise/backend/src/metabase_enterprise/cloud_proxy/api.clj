@@ -30,9 +30,9 @@
    ;; body that every operation accepts.
    [:map {:closed true}]
    ;; get-plan
-   [:map {:closed true} [:plan-alias ms/NonBlankString]]
+   [:map [:plan-alias ms/NonBlankString]]
    ;; mb-plan-change-plan, mb-plan-change-plan-preview
-   [:map {:closed true}
+   [:map
     [:new-plan-alias  ms/NonBlankString]
     [:force-end-trial {:optional true} :boolean]]])
 
@@ -47,7 +47,7 @@
    This endpoint is used only for hosted instances, and calls Harbormaster Store using a OpenAPI client.
    :operation-id is the operation-id of the Harbormaster Store endpoint.
    All parameters for the operation are taken in the POST body."
-  [{:keys [operation-id]} :- [:map {:closed true}
+  [{:keys [operation-id]} :- [:map
                               [:operation-id ms/NonBlankString]]
    _query-params
    body :- [:maybe OperationParams]]

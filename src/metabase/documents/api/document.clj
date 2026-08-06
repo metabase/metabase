@@ -24,7 +24,7 @@
 
 (def ^:private CardCreateSchema
   "Schema for creating a new card - simplified version to avoid circular dependencies"
-  [:map {:closed true}
+  [:map
    [:name ms/NonBlankString]
    ;; TODO: `dataset_query` is an MBQL query typed loosely; give it a real schema.
    [:dataset_query ms/Map]
@@ -44,7 +44,7 @@
    [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private DocumentCreateOptions
-  [:map {:closed true}
+  [:map
    [:name m.document/DocumentName]
    [:document :any]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -52,7 +52,7 @@
    [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]])
 
 (def ^:private DocumentUpdateOptions
-  [:map {:closed true}
+  [:map
    [:name {:optional true} m.document/DocumentName]
    [:document {:optional true} :any]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -224,7 +224,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
-  [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]
+  [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]
    _query-params]
   (api/read-check (get-document document-id)))
 
@@ -234,7 +234,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:document-id"
   "Updates an existing `Document`."
-  [{:keys [document-id]} :- [:map {:closed true}
+  [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]
    _query-params
    {:keys [name document collection_id collection_position cards] :as body} :- DocumentUpdateOptions]
@@ -280,7 +280,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:document-id"
   "Permanently deletes an archived Document."
-  [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]
+  [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]
    _query-params]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
     (api/write-check document)
@@ -326,10 +326,10 @@
 
 (api.macros/defendpoint :post "/:from-document-id/copy" :- ::documents.schema/document
   "Copy a Document."
-  [{:keys [from-document-id]} :- [:map {:closed true}
+  [{:keys [from-document-id]} :- [:map
                                   [:from-document-id ms/PositiveInt]]
    _query-params
-   {:keys [name collection_id collection_position]} :- [:map {:closed true}
+   {:keys [name collection_id collection_position]} :- [:map
                                                         [:name                {:optional true} [:maybe ms/NonBlankString]]
                                                         [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                                         [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
@@ -374,7 +374,7 @@
   Returns a map containing `:uuid` (the public UUID string).
 
   Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting."
-  [{:keys [document-id]} :- [:map {:closed true}
+  [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]
    _query-params]
   (api/check-superuser)
@@ -406,7 +406,7 @@
 
   Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.
   Throws a 404 if the Document doesn't exist, is archived, or doesn't have a public link."
-  [{:keys [document-id]} :- [:map {:closed true}
+  [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]
    _query-params]
   (api/check-superuser)
@@ -467,7 +467,7 @@
   - parameters: Optional query parameters (array of maps or JSON string)
   - format_rows: Whether to apply formatting to results (boolean, default false)
   - pivot_results: Whether to pivot results (boolean, default false)"
-  [{:keys [document-id card-id export-format]} :- [:map {:closed true}
+  [{:keys [document-id card-id export-format]} :- [:map
                                                    [:document-id   ms/PositiveInt]
                                                    [:card-id       ms/PositiveInt]
                                                    [:export-format :keyword]]
@@ -476,7 +476,7 @@
     pivot-results? :pivot_results
     format-rows?   :format_rows
     :as            _body}
-   :- [:map {:closed true}
+   :- [:map
        ;; TODO: `parameters` is a parameter list typed loosely; give it a real schema.
        [:parameters    {:optional true} [:maybe [:or
                                                  [:sequential ms/Map]

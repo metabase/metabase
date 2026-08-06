@@ -25,7 +25,7 @@
   present."
   [_route-params
    _query-params
-   {:keys [card_ids]} :- [:map {:closed true}
+   {:keys [card_ids]} :- [:map
                           [:card_ids [:sequential ms/PositiveInt]]]]
   (let [id->card (t2/select-fn->fn :id identity :model/Card :id [:in card_ids])]
     (as-> card_ids $
@@ -45,7 +45,7 @@
   For now, just either succeed or fail as a batch - we can think more about error handling later down the road."
   [_route-params
    _query-params
-   {:keys [card_ids], :as body} :- [:map {:closed true}
+   {:keys [card_ids], :as body} :- [:map
                                     [:card_ids      [:sequential ms/PositiveInt]]
                                     [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                     [:dashboard_id  {:optional true} [:maybe ms/PositiveInt]]]]

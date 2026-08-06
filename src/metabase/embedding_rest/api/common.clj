@@ -36,7 +36,7 @@
 
 (def SearchParams
   "Malli schema for route params of search paths"
-  [:map {:closed true}
+  [:map
    [:token EncodedToken]
    [:param-key ms/NonBlankString]
    [:prefix ms/NonBlankString]])

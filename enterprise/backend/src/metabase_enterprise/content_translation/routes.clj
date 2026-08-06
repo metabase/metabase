@@ -97,9 +97,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dictionary/:token"
   "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
-  [{:keys [token]} :- [:map {:closed true}
+  [{:keys [token]} :- [:map
                        [:token ms/NonBlankString]]
-   {:keys [locale]} :- [:map {:closed true}
+   {:keys [locale]} :- [:map
                         [:locale ms/NonBlankString]]]
   ;; this will error if bad
   (embedding.jwt/unsign token)
@@ -108,7 +108,7 @@
 (api.macros/defendpoint :get "/dictionary" :- DictionaryResponse
   "Fetch the content translation dictionary for authenticated users (auth-based embedding flows)."
   [_route-params
-   {:keys [locale]} :- [:map {:closed true}
+   {:keys [locale]} :- [:map
                         [:locale :string]]]
   (api/check api/*current-user-id* 401 "Unauthenticated")
   {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))})

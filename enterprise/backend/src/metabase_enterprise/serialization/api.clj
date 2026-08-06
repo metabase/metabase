@@ -221,7 +221,7 @@
     continue-on-error?        :continue_on_error
     full-stacktrace?          :full_stacktrace
     :as                       _query-params}
-   :- [:map {:closed true}
+   :- [:map
        [:dirname           {:optional true} [:maybe
                                              {:description "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"}
                                              string?]]
@@ -289,7 +289,7 @@
     full-stacktrace?   :full_stacktrace
     reindex-search?    :reindex
     :as                _query-params}
-   :- [:map {:closed true}
+   :- [:map
        [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
        [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]
        ;; TODO this parameter is a kludge to fix https://linear.app/metabase/issue/GDGT-573

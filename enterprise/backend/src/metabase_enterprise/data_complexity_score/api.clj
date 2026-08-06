@@ -22,12 +22,12 @@
 (def ^:private Failure
   "Sub-score that couldn't be computed; carries only the failure message.
   (Named `Failure` rather than `Error` to avoid shadowing `java.lang.Error`.)"
-  [:map {:closed true}
+  [:map
    [:error string?]])
 
 (def ^:private Leaf
   "Computed leaf sub-score with a raw `:measurement` and its weighted `:score`."
-  [:map {:closed true}
+  [:map
    [:measurement  number?]
    [:score        nat-int?]
    [:rating       [:maybe Rating]]
@@ -35,7 +35,7 @@
 
 (def ^:private Grouping
   "Internal node whose `:score` is the rolled-up sum of its `:components` children."
-  [:map {:closed true}
+  [:map
    [:score        [:maybe nat-int?]]
    [:rating       [:maybe Rating]]
    [:rating_label [:maybe string?]]
@@ -105,7 +105,7 @@
   Pass `force-recalculation=true` to recompute, persist, and return a fresh score.
   Superuser-only."
   [_route
-   {force-recalculation? :force-recalculation} :- [:map {:closed true}
+   {force-recalculation? :force-recalculation} :- [:map
                                                    [:force-recalculation {:default false} ms/BooleanValue]]
    _body]
   (api/check-superuser)

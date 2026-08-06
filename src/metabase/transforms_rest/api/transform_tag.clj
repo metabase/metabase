@@ -13,7 +13,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private TransformTagResponse
-  [:map {:closed true}
+  [:map
    [:id pos-int?]
    [:name [:or :string LocalizedString]]
    [:entity_id [:maybe :string]]
@@ -26,7 +26,7 @@
   "Create a new transform tag."
   [_route-params
    _query-params
-   {:keys [name]} :- [:map {:closed true}
+   {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Creating transform tag")
   (api/check-403 (mi/can-create? :model/TransformTag {:name name}))
@@ -36,10 +36,10 @@
 
 (api.macros/defendpoint :put "/:tag-id" :- TransformTagResponse
   "Update a transform tag."
-  [{:keys [tag-id]} :- [:map {:closed true}
+  [{:keys [tag-id]} :- [:map
                         [:tag-id ms/PositiveInt]]
    _query-params
-   {:keys [name]} :- [:map {:closed true}
+   {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id)
   (api/write-check (t2/select-one :model/TransformTag :id tag-id))
@@ -50,7 +50,7 @@
 
 (api.macros/defendpoint :delete "/:tag-id" :- :nil
   "Delete a transform tag. Removes it from all transforms and jobs."
-  [{:keys [tag-id]} :- [:map {:closed true}
+  [{:keys [tag-id]} :- [:map
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
   (api/write-check (t2/select-one :model/TransformTag :id tag-id))

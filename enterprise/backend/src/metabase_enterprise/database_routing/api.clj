@@ -27,13 +27,13 @@
   reachable before adding it — destination details are not required to be valid at creation time, and an
   unreachable destination is fine."
   [_route-params
-   {:keys [check_connection_details]} :- [:map {:closed true}
+   {:keys [check_connection_details]} :- [:map
                                           [:check_connection_details {:optional true} ms/MaybeBooleanValue]]
-   {:keys [router_database_id destinations]} :- [:map {:closed true}
+   {:keys [router_database_id destinations]} :- [:map
                                                  [:router_database_id ms/PositiveInt]
                                                  [:destinations
                                                   [:sequential
-                                                   [:map {:closed true}
+                                                   [:map
                                                     [:name               ms/NonBlankString]
                                                     ;; TODO: `details` stays open because its keys are driver-defined.
                                                     [:details            ms/Map]]]]]]
@@ -107,10 +107,10 @@
   - change the `user_attribute` used to route for an existing Router database, or
   - turn a Router database into a regular Database
   depending on the value of `user_attribute`"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [user_attribute]} :- [:map {:closed true}
+   {:keys [user_attribute]} :- [:map
                                 [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
   (let [db (t2/select-one :model/Database :id id)]
     (api/check-404 db)

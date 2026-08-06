@@ -37,7 +37,7 @@
 (api.macros/defendpoint :get "/"
   "Get revisions of an object."
   [_route-params
-   {:keys [entity id]} :- [:map {:closed true}
+   {:keys [entity id]} :- [:map
                            [:id     ms/PositiveInt]
                            [:entity Entity]]]
   (let [[model instance] (model-and-instance entity id)]
@@ -52,7 +52,7 @@
   "Revert an object to a prior revision."
   [_route-params
    _query-params
-   {:keys [entity id], revision-id :revision_id} :- [:map {:closed true}
+   {:keys [entity id], revision-id :revision_id} :- [:map
                                                      [:id          ms/PositiveInt]
                                                      [:entity      Entity]
                                                      [:revision_id ms/PositiveInt]]]
@@ -77,7 +77,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:entity/:id"
   "Fetch `Revisions` for an object with ID."
-  [{:keys [id entity]} :- [:map {:closed true}
+  [{:keys [id entity]} :- [:map
                            [:entity Entity]
                            [:id     ms/PositiveInt]]
    _query-params]

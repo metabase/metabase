@@ -17,7 +17,7 @@
 ;;; -------------------------------------------------- Schema --------------------------------------------------
 
 (def ^:private oidc-provider-create-schema
-  [:map {:closed true}
+  [:map
    [:key :string]
    [:login-prompt :string]
    [:issuer-uri :string]
@@ -26,13 +26,13 @@
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
-   [:group-sync {:optional true} [:map {:closed true}
+   [:group-sync {:optional true} [:map
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
                                   [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
 
 (def ^:private oidc-provider-update-schema
-  [:map {:closed true}
+  [:map
    [:login-prompt {:optional true} :string]
    [:issuer-uri {:optional true} :string]
    [:client-id {:optional true} :string]
@@ -40,13 +40,13 @@
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
-   [:group-sync {:optional true} [:map {:closed true}
+   [:group-sync {:optional true} [:map
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
                                   [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
 
 (def ^:private oidc-provider-response-schema
-  [:map {:closed true}
+  [:map
    [:key :string]
    [:login-prompt :string]
    [:issuer-uri :string]
@@ -55,7 +55,7 @@
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
-   [:group-sync {:optional true} [:map {:closed true}
+   [:group-sync {:optional true} [:map
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
                                   [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
@@ -95,7 +95,7 @@
 ;; GET /api/ee/sso/oidc/:key
 (api.macros/defendpoint :get "/:key" :- oidc-provider-response-schema
   "Get a single OIDC provider by key (with client secret masked)."
-  [{provider-key :key} :- [:map {:closed true}
+  [{provider-key :key} :- [:map
                            [:key :string]]
    _query-params]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
@@ -124,7 +124,7 @@
 ;; PUT /api/ee/sso/oidc/:key
 (api.macros/defendpoint :put "/:key" :- oidc-provider-response-schema
   "Update an existing OIDC provider."
-  [{provider-key :key} :- [:map {:closed true}
+  [{provider-key :key} :- [:map
                            [:key :string]]
    _query-params
    body :- oidc-provider-update-schema]
@@ -147,7 +147,7 @@
 
 ;; POST /api/ee/sso/oidc/check
 (def ^:private oidc-check-request-schema
-  [:map {:closed true}
+  [:map
    [:issuer-uri :string]
    [:client-id :string]
    [:client-secret {:optional true} [:maybe :string]]
@@ -186,7 +186,7 @@
 ;; DELETE /api/ee/sso/oidc/:key
 (api.macros/defendpoint :delete "/:key"  :- :nil
   "Delete an OIDC provider."
-  [{provider-key :key} :- [:map {:closed true}
+  [{provider-key :key} :- [:map
                            [:key :string]]
    _query-params]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))

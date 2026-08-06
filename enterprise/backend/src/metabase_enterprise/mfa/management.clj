@@ -97,7 +97,7 @@
   `otpauth_uri` for QR display; enrollment is not active until confirmed with a live code."
   [_route-params
    _query-params
-   {:keys [password]} :- [:map {:closed true}
+   {:keys [password]} :- [:map
                           [:password ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
   (when-not (mfa.settings/mfa-enabled?)
@@ -126,7 +126,7 @@
   factor and returns the single-use recovery codes — the only time they exist in plaintext."
   [_route-params
    _query-params
-   {:keys [code]} :- [:map {:closed true}
+   {:keys [code]} :- [:map
                       [:code ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
   (let [codes (throttled :enroll
@@ -143,7 +143,7 @@
   TOTP code or an unused recovery code — never just the password."
   [_route-params
    _query-params
-   {:keys [code]} :- [:map {:closed true}
+   {:keys [code]} :- [:map
                       [:code ms/NonBlankString]]]
   (throttled :disable
              (fn []
@@ -190,7 +190,7 @@
   strip its own 2FA with only a cookie, turning transient access into a permanent password bypass."
   [_route-params
    _query-params
-   {user-id :user_id} :- [:map {:closed true}
+   {user-id :user_id} :- [:map
                           [:user_id ms/PositiveInt]]]
   (api/check-superuser)
   (when (= user-id api/*current-user-id*)
@@ -300,7 +300,7 @@
    [:is_superuser :boolean]])
 
 (defn- paged-schema [row]
-  [:map {:closed true}
+  [:map
    [:data   [:sequential row]]
    [:total  :int]
    [:limit  [:maybe :int]]
@@ -323,7 +323,7 @@
 
   Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email."
   [_route-params
-   {:keys [query]} :- [:map {:closed true}
+   {:keys [query]} :- [:map
                        [:query {:optional true} [:maybe :string]]]
    _body]
   (api/check-superuser)
@@ -336,7 +336,7 @@
 
   Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email."
   [_route-params
-   {:keys [query]} :- [:map {:closed true}
+   {:keys [query]} :- [:map
                        [:query {:optional true} [:maybe :string]]]
    _body]
   (api/check-superuser)
@@ -350,7 +350,7 @@
   never rotate the codes. The plaintext codes are returned exactly once; only hashes are stored."
   [_route-params
    _query-params
-   {:keys [code]} :- [:map {:closed true}
+   {:keys [code]} :- [:map
                       [:code ms/NonBlankString]]]
   (throttled :regenerate
              (fn []

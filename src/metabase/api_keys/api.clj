@@ -40,7 +40,7 @@
   "Create a new API key (and an associated `User`) with the provided name and group ID."
   [_route-params
    _query-params
-   {group-id :group_id, key-name :name, :as _body} :- [:map {:closed true}
+   {group-id :group_id, key-name :name, :as _body} :- [:map
                                                        [:group_id ::api-keys.schema/id]
                                                        [:name     ms/NonBlankString]]]
   (api/check-superuser)
@@ -63,10 +63,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an API key by changing its group and/or its name"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {group-id :group_id, key-name :name} :- [:map {:closed true}
+   {group-id :group_id, key-name :name} :- [:map
                                             [:group_id {:optional true} [:maybe ms/PositiveInt]]
                                             [:name     {:optional true} [:maybe ::api-keys.schema/name]]]]
   (api/check-superuser)
@@ -82,7 +82,7 @@
                                                    [:masked_key   ::api-keys.schema/key.masked]
                                                    [:prefix       ::api-keys.schema/prefix]]
   "Regenerate an API Key"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ::api-keys.schema/id]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/ApiKey id))
@@ -109,7 +109,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete an ApiKey"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ::api-keys.schema/id]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/ApiKey id))

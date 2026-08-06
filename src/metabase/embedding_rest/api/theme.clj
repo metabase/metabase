@@ -32,7 +32,7 @@
 
 (api.macros/defendpoint :get "/:id" :- ::EmbeddingTheme
   "Fetch a single embedding theme by ID."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
   (t2/select-one :model/EmbeddingTheme :id id))
 
@@ -40,7 +40,7 @@
   "Create a new embedding theme."
   [_route-params
    _query-params
-   {:keys [name settings]} :- [:map {:closed true}
+   {:keys [name settings]} :- [:map
                                [:name     ms/NonBlankString]
                                ;; open: the theme blob is free-form, stored and returned verbatim.
                                [:settings :map]]]
@@ -50,9 +50,9 @@
 
 (api.macros/defendpoint :put "/:id" :- ::EmbeddingTheme
   "Update an embedding theme."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [name settings]} :- [:map {:closed true}
+   {:keys [name settings]} :- [:map
                                [:name {:optional true} [:maybe ms/NonBlankString]]
                                [:settings {:optional true} [:maybe :map]]]]
   (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
@@ -64,14 +64,14 @@
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete an embedding theme."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
   (t2/delete! :model/EmbeddingTheme :id id)
   nil)
 
 (api.macros/defendpoint :post "/:id/copy" :- ::EmbeddingTheme
   "Copy an embedding theme."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
   (let [source-theme (t2/select-one :model/EmbeddingTheme :id id)]
     (t2/insert-returning-instance! :model/EmbeddingTheme
@@ -86,8 +86,8 @@
   are no-ops even if the admin has since deleted the seeded themes, so deletions are preserved."
   [_route-params
    _query-params
-   {:keys [themes]} :- [:map {:closed true}
-                        [:themes [:sequential [:map {:closed true}
+   {:keys [themes]} :- [:map
+                        [:themes [:sequential [:map
                                                [:name     ms/NonBlankString]
                                                [:settings :map]]]]]]
   (locking seed-defaults-lock

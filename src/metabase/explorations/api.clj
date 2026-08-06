@@ -334,7 +334,7 @@
   ;; Mapping objects are decoded from the snake_case wire shape to the internal kebab-case shape
   ;; at the `defendpoint` edge by the wire-annotated schema (see [[metabase.metrics.core]]);
   ;; the envelope `:dimension_mappings` key itself stays snake_case, matching storage.
-  [:map {:closed true}
+  [:map
    [:card_id ms/PositiveInt]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]])
 
@@ -355,7 +355,7 @@
    `ExplorationBlock` row; the planners cross this block's metrics with this block's
    dimensions only. The sidebar heading is computed read-side (the `:name` of an
    `ExplorationBlockNode`), not supplied here."
-  [:map {:closed true}
+  [:map
    ;; Whether the block is anchored on its metric or its dimension. The read side
    ;; uses this to build the sidebar heading + sub-item names.
    [:type       {:optional true} [:maybe [:enum "metric" "dimension"]]]
@@ -518,7 +518,7 @@
    The FE sends one entry per Research-plan block (`:blocks` — each a metric/dimension
    area), each persisted verbatim. `:timeline_ids` is thread-scoped (timelines aren't part of
    any metric×dimension cross-product) and lives at the top level, not inside a block."
-  [:map {:closed true}
+  [:map
    [:name          expl.model/ExplorationName]
    [:description   {:optional true} [:maybe :string]]
    [:prompt        {:optional true} [:maybe :string]]
@@ -528,7 +528,7 @@
 
 (def ^:private ExploreFilterSpec
   "One segment filter stamped onto a block metric selection's `:explore_filters` vector."
-  [:map {:closed true}
+  [:map
    ;; TODO: `field_ref` is an MBQL field reference typed loosely as a sequence of anything; give it
    ;; a real schema.
    [:field_ref     [:sequential :any]]
@@ -541,7 +541,7 @@
   page — its block (metric selection + dimensions) is copied verbatim so the new thread re-runs
   the same charts. `explore_filters` is appended to each copied metric selection's existing
   `:explore_filters`."
-  [:map {:closed true}
+  [:map
    [:page_id         ms/PositiveInt]
    [:explore_filters [:sequential {:min 1} ExploreFilterSpec]]])
 
@@ -550,7 +550,7 @@
   actually includes are forwarded to the underlying `t2/update!`. `collection_id` may be `nil`
   to move the exploration to the root collection (\"Our Analytics\"). `collection_position` may
   be `nil` to unpin the exploration."
-  [:map {:closed true}
+  [:map
    [:name                {:optional true} expl.model/ExplorationName]
    [:description         {:optional true} [:maybe :string]]
    [:archived            {:optional true} :boolean]
@@ -674,7 +674,7 @@
   keeps the earlier scope (see
   `metabase.explorations.query-plan.context/build-row-context`). Returns immediately with the new
   thread stamped `started_at`; clients poll `GET /:id` for the queries to land, exactly like create."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [page_id explore_filters]} :- ExploreFurther]
   (let [exploration (get-exploration-or-404 id)]
@@ -816,7 +816,7 @@
 
 (api.macros/defendpoint :get "/:id" :- ::HydratedExploration
   "Fetch an exploration with its thread, selections, and generated queries."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [expl (api/read-check (get-exploration-or-404 id))]
     (hydrate-exploration expl)))
 
@@ -826,7 +826,7 @@
   When `collection_id` changes, the caller must have write perms on the destination collection
   (or the root collection when `collection_id` is nil). Source perms are enforced by
   `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
   (let [existing (get-exploration-or-404 id)
@@ -848,7 +848,7 @@
 
   Cascades to every `exploration_thread` and `exploration_query` via the on-delete-cascade
   FKs configured in the explorations migration."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [existing (get-exploration-or-404 id)]
     (api/write-check existing)
     (t2/delete! :model/Exploration :id id))
@@ -877,7 +877,7 @@
 
   No `:event/exploration-update` is published: nothing on the Exploration row changes, so there
   is no revision to record (the revision push skips unchanged objects)."
-  [{:keys [thread-id]} :- [:map {:closed true} [:thread-id ms/PositiveInt]]]
+  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
   (let [thread      (get-thread-or-404 thread-id)
         exploration (api/write-check (get-exploration-or-404 (:exploration_id thread)))]
     (when-not (reset-thread-for-rerun! thread-id)
@@ -902,7 +902,7 @@
   Idempotent: a thread with `completed_at IS NOT NULL` (already terminal — natural completion or
   prior cancel) returns 200 with its existing state. Authorization is the same write check as
   other thread-mutating endpoints."
-  [{:keys [thread-id]} :- [:map {:closed true} [:thread-id ms/PositiveInt]]]
+  [{:keys [thread-id]} :- [:map [:thread-id ms/PositiveInt]]]
   (write-check-thread thread-id)
   (let [now (t/offset-date-time)]
     (t2/with-transaction [_conn]
@@ -963,8 +963,8 @@
   "Stream the result of a single completed exploration query. The optional `format` query param
   is one of `api`, `json`, `csv`, `xlsx` (default `api`). When the underlying query is still
   pending or has errored, returns a 409 with status info instead of streaming."
-  [{:keys [id]}     :- [:map {:closed true} [:id ms/PositiveInt]]
-   {:keys [format]} :- [:map {:closed true}
+  [{:keys [id]}     :- [:map [:id ms/PositiveInt]]
+   {:keys [format]} :- [:map
                         [:format {:default :api}
                          [:enum {:decode/api keyword} :api :csv :json :xlsx]]]]
   (let [q (get-exploration-query-or-404 id)]
@@ -988,9 +988,9 @@
 
 (api.macros/defendpoint :put "/page/:id/starred" :- :nil
   "Set whether an exploration page is starred."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [starred]} :- [:map {:closed true} [:starred :boolean]]]
+   {:keys [starred]} :- [:map [:starred :boolean]]]
   (let [page (get-exploration-page-or-404 id)]
     (api/write-check page)
     (t2/update! :model/ExplorationPage id {:starred starred}))
@@ -1001,7 +1001,7 @@
   page passes a one-element `page_ids`; hiding a whole group passes all its page ids."
   [_route-params
    _query-params
-   {:keys [page_ids hidden]} :- [:map {:closed true}
+   {:keys [page_ids hidden]} :- [:map
                                  [:page_ids [:sequential ms/PositiveInt]]
                                  [:hidden :boolean]]]
   (doseq [id page_ids]

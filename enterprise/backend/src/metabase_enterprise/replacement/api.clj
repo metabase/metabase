@@ -23,7 +23,7 @@
   [_route-params
    _query-params
    {:keys [source_entity_id source_entity_type target_entity_id target_entity_type]}
-   :- [:map {:closed true}
+   :- [:map
        [:source_entity_id   ::replacement.schema/source-entity-id]
        [:source_entity_type ::replacement.schema/source-entity-type]
        [:target_entity_id   ::replacement.schema/source-entity-id]
@@ -35,14 +35,14 @@
 
 (api.macros/defendpoint :post "/replace-source" :- [:map
                                                     [:status [:= 202]] ;; throws to return 409
-                                                    [:body [:map {:closed true}
+                                                    [:body [:map
                                                             [:run_id ::replacement.schema/run-id]]]]
   "Replace all usages of a source entity with a target entity asynchronously.
    Returns 202 with a run_id for polling. Returns 409 if a replacement is already running."
   [_route-params
    _query-params
    {:keys [source_entity_id source_entity_type target_entity_id target_entity_type]}
-   :- [:map {:closed true}
+   :- [:map
        [:source_entity_id   ::replacement.schema/source-entity-id]
        [:source_entity_type ::replacement.schema/source-entity-type]
        [:target_entity_id   ::replacement.schema/source-entity-id]
@@ -78,7 +78,7 @@
 
 (api.macros/defendpoint :post "/replace-model-with-transform" :- [:map
                                                                   [:status [:= 202]]
-                                                                  [:body [:map {:closed true}
+                                                                  [:body [:map
                                                                           [:run_id ::replacement.schema/run-id]]]]
   "Create a transform from a model, execute it, and replace all usages of the model
    with the output table. Un-persists the model and converts it to a saved question.
@@ -94,7 +94,7 @@
   [_route-params
    _query-params
    {:keys [card_id transform_name transform_target target_collection_id transform_tag_ids]}
-   :- [:map {:closed true}
+   :- [:map
        [:card_id              ::replacement.schema/source-entity-id]
        [:transform_name       :string]
        ;; TODO: `transform_target` is a transform target typed loosely; give it a real schema.
@@ -138,7 +138,7 @@
 (api.macros/defendpoint :get "/runs" :- [:sequential ::replacement.schema/run]
   "List replacement runs, optionally filtered by is-active."
   [_route-params
-   {:keys [is-active]} :- [:map {:closed true} [:is-active {:optional true} [:maybe :boolean]]]]
+   {:keys [is-active]} :- [:map [:is-active {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (t2/select :model/ReplacementRun
              (cond-> {:order-by [[:start_time :desc]]}
@@ -146,14 +146,14 @@
 
 (api.macros/defendpoint :get "/runs/:id" :- ::replacement.schema/run
   "Get the status of a source replacement run."
-  [{:keys [id]} :- [:map {:closed true} [:id ::replacement.schema/run-id]]]
+  [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
   (or (t2/select-one :model/ReplacementRun :id id)
       (throw (ex-info "Run not found" {:status-code 404}))))
 
-(api.macros/defendpoint :post "/runs/:id/cancel" :- [:map {:closed true} [:success boolean?]]
+(api.macros/defendpoint :post "/runs/:id/cancel" :- [:map [:success boolean?]]
   "Cancel a running source replacement."
-  [{:keys [id]} :- [:map {:closed true} [:id ::replacement.schema/run-id]]]
+  [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
   (let [run (t2/select-one :model/ReplacementRun :id id)]
     (when-not run

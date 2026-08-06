@@ -162,12 +162,12 @@
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
   [_route-params
-   _query-params :- [:map {:closed true}
+   _query-params :- [:map
                      [:limit  {:optional true} [:maybe ms/PositiveInt]]
                      [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
-   :- [:map {:closed true}
+   :- [:map
        [:term_queries {:optional true
                        :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
         [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
@@ -211,7 +211,7 @@
      carries several `:optional` keys (`:lib/metadata`, `:database`, `:settings`, …) that
      are not `[:maybe ...]` — for sound reasons unrelated to this endpoint. Recursing into
      them would force a wide schema change just to satisfy the lint at the agent boundary."
-  [:map {:closed true}
+  [:map
    ;; TODO: `:query` is the external MBQL 5 payload, typed as a bare `:map` because deep validation
    ;; happens downstream (see the two reasons above); give it a real schema.
    [:query {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
@@ -313,7 +313,7 @@
 
 (mr/def ::construct-native-query-request
   "Request body for /v1/construct-native-query: a target database and a raw SQL string."
-  [:map {:closed true}
+  [:map
    [:database_id {:tool/description "Numeric id of the database to run the SQL against."}
     ms/PositiveInt]
    [:sql {:tool/description "The raw SQL query text."}
@@ -472,8 +472,8 @@
                          (:continuation_token m) :continuation
                          (string? (:query m))    :handle
                          :else                   :fresh))}
-   [:continuation [:map {:closed true} [:continuation_token ms/NonBlankString]]]
-   [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
+   [:continuation [:map [:continuation_token ms/NonBlankString]]]
+   [:handle       [:map [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
 (defn- native-marker?
@@ -621,7 +621,7 @@
   "Request schema for /v1/execute. Accepts a base64-encoded MBQL query.
   Closed: `:query` is the only argument the MCP `execute_query` tool sends (it swaps its
   `query_handle` for this key before dispatch)."
-  [:map {:closed true}
+  [:map
    [:query {:tool/description "A base64-encoded query string returned by /v1/construct-query. Do not construct this value manually."}
     ms/NonBlankString]])
 
@@ -686,7 +686,7 @@
 (mr/def ::execute-sql-request
   "Request shape for /v1/execute-sql. The LLM passes a raw SQL string against a target database.
   Closed: these are the only arguments the MCP `execute_sql` tool publishes."
-  [:map {:closed true}
+  [:map
    [:database_id ms/PositiveInt]
    [:sql         ms/NonBlankString]])
 
@@ -729,7 +729,7 @@
 (mr/def ::read-resource-request
   "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs.
   Closed: `:uris` is the only argument the MCP `read_resource` tool publishes."
-  [:map {:closed true}
+  [:map
    [:uris [:sequential ms/NonBlankString]]])
 
 (mr/def ::read-resource-item
@@ -934,7 +934,7 @@
   "Request shape for `create_question`. Closed: these are the only arguments the MCP tool
   publishes (its `query_handle` is swapped for `:query` before dispatch), so an undeclared
   key means the caller invented one."
-  [:map {:closed true}
+  [:map
    [:name                   ms/NonBlankString]
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
@@ -984,7 +984,7 @@
 ;;; -------------------------------------------------- Create Metric -------------------------------------------------
 
 (mr/def ::create-metric-request
-  [:map {:closed true}
+  [:map
    [:name                   ms/NonBlankString]
    [:query                  ms/NonBlankString]
    [:display                {:optional true} [:maybe ::card-display]]
@@ -1051,7 +1051,7 @@
   "Patch shape for `update_metric`. Every field is optional; only the fields the caller
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
   resolved upstream in the MCP layer) and must still describe a valid metric."
-  [:map {:closed true}
+  [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
@@ -1092,7 +1092,7 @@
                              "(a query_handle from construct_query) - it must still have exactly one "
                              "aggregation and at most one date/datetime grouping. The target must be a "
                              "metric; use update_question for regular questions.")}}
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- ::update-metric-request]
   (let [card-before-update (api/write-check :model/Card id)]
@@ -1111,7 +1111,7 @@
   resolved upstream in the MCP layer).
   Closed: an undeclared key would otherwise be silently dropped instead of telling the caller
   it changed nothing."
-  [:map {:closed true}
+  [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
@@ -1150,7 +1150,7 @@
                              "delete or remove a question; set archived false to restore. "
                              "To replace the underlying query, pass query "
                              "(a query_handle from construct_query or construct_native_query).")}}
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- ::update-question-request]
   (apply-agent-card-patch! (api/write-check :model/Card id) body nil))
@@ -1186,7 +1186,7 @@
                              "if the question takes parameters or template-tag input, this returns an "
                              "error.")
            :annotations {:read-only? true :idempotent? true}}}
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    _body]
   (let [card (api/read-check :model/Card id)]
@@ -1218,7 +1218,7 @@
 (mr/def ::create-dashboard-request
   "Request shape for `create_dashboard`. Closed: these are the only arguments the MCP tool
   publishes, so an undeclared key means the caller invented one."
-  [:map {:closed true}
+  [:map
    [:name          ms/NonBlankString]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1331,28 +1331,28 @@
   [:multi {:dispatch :action}
    ;; Branches are closed so an inapplicable key (e.g. `display_size` on `add_heading`, which is
    ;; always full-width) fails validation instead of being silently ignored.
-   ["add"         [:map {:closed true}
+   ["add"         [:map
                    [:action       [:= "add"]]
                    [:card_id      ms/PositiveInt]
                    [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]
                    [:tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
-   ["add_heading" [:map {:closed true}
+   ["add_heading" [:map
                    [:action [:= "add_heading"]]
                    [:text   ms/NonBlankString]
                    [:tab_id {:optional true} [:maybe ms/PositiveInt]]]]
-   ["add_text"    [:map {:closed true}
+   ["add_text"    [:map
                    [:action       [:= "add_text"]]
                    [:text         ms/NonBlankString]
                    [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]
                    [:tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
-   ["update_text" [:map {:closed true}
+   ["update_text" [:map
                    [:action      [:= "update_text"]]
                    [:dashcard_id ms/PositiveInt]
                    [:text        ms/NonBlankString]]]
-   ["remove"      [:map {:closed true}
+   ["remove"      [:map
                    [:action      [:= "remove"]]
                    [:dashcard_id ms/PositiveInt]]]
-   ["move"        [:map {:closed true}
+   ["move"        [:map
                    [:action      [:= "move"]]
                    [:dashcard_id ms/PositiveInt]
                    [:position    [:enum "top" "bottom"]]]]])
@@ -1362,7 +1362,7 @@
    add/add_heading/add_text/update_text/remove/move mutations applied in order.
    Closed, like the `::dashcard-mutation` branches: an undeclared top-level key would otherwise be
    silently dropped instead of telling the caller it changed nothing."
-  [:map {:closed true}
+  [:map
    [:name          {:optional true} [:maybe ms/NonBlankString]]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1581,7 +1581,7 @@
                              "The response dashcard_ids lists all dashcards in row/col order; "
                              "metabase://dashboard/{id}/items (via read_resource) shows each "
                              "dashcard with its dashcard_id.")}}
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- ::update-dashboard-request]
   (let [current-dash (api/write-check :model/Dashboard id)
@@ -1659,7 +1659,7 @@
   the internal `:parent_id` field to make the LLM-facing API less ambiguous (the caller is
   saying \"put it under this parent\", not echoing back a server-set field).
   Closed: `:parent_id` and other internal collection fields are deliberately not accepted here."
-  [:map {:closed true}
+  [:map
    [:name                 ms/NonBlankString]
    [:description          {:optional true} [:maybe :string]]
    [:parent_collection_id {:optional true} [:maybe ms/PositiveInt]]])

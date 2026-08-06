@@ -94,7 +94,7 @@
   [_route-params
    _query-params
    {:keys [slack-app-token slack-bug-report-channel] :as body}
-   :- [:map {:closed true}
+   :- [:map
        [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
        [:slack-bug-report-channel {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
@@ -185,10 +185,10 @@
 (def SlackAppInfo
   "Malli schema for Slack app info response. Fields are nullable when
    Slack is not configured or the token doesn't provide app info."
-  [:map {:closed true}
+  [:map
    [:app_id  [:maybe ms/NonBlankString]]
    [:team_id [:maybe ms/NonBlankString]]
-   [:scopes  [:maybe [:map {:closed true}
+   [:scopes  [:maybe [:map
                       [:actual   [:sequential :string]]
                       [:required [:sequential :string]]
                       [:missing  [:sequential :string]]
@@ -251,7 +251,7 @@
   "Send diagnostic information to the configured Slack channels."
   [_route-params
    _query-params
-   {diagnostic-info :diagnosticInfo} :- [:map {:closed true}
+   {diagnostic-info :diagnosticInfo} :- [:map
                                          ;; TODO FIXME -- this should not use `camelCase` keys
                                          [:diagnosticInfo map?]]]
   (try

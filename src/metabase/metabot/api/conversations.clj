@@ -66,7 +66,7 @@
    [:title  [:maybe :string]]])
 
 (def ^:private ConversationIdParams
-  [:map {:closed true} [:id ms/UUIDString]])
+  [:map [:id ms/UUIDString]])
 
 (def ^:private ListConversationsQueryParams
   [:maybe
@@ -74,12 +74,12 @@
     [:profile_id {:optional true} [:maybe ms/NonBlankString]]]])
 
 (def ^:private ForkConversationBody
-  [:map {:closed true}
+  [:map
    ;; the `external_id` of the assistant message to fork at (the FE's message id)
    [:message_id ms/UUIDString]])
 
 (def ^:private SaveEntityCard
-  [:map {:closed true}
+  [:map
    [:name                   ms/NonBlankString]
    [:description            {:optional true} [:maybe :string]]
    ;; TODO: `dataset_query` is an MBQL query typed loosely as a map; give it a real schema.
@@ -91,7 +91,7 @@
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private SaveEntityBody
-  [:map {:closed true}
+  [:map
    ;; stamped onto report_card.metabot_chart_id, a varchar(36) — clamp to fit
    [:chart_id [:and ms/NonBlankString [:string {:max 36}]]]
    [:card     SaveEntityCard]])

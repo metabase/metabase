@@ -77,7 +77,7 @@
   [_ :- [:map {:closed true}]
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
            published-only can-query can-write include-transform-targets]}
-   :- [:map {:closed true}
+   :- [:map
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
        [:data-layer {:optional true} ::data-layers]
@@ -156,10 +156,10 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get `Table` with ID."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model]}
-   :- [:map {:closed true}
+   :- [:map
        [:include_editable_data_model {:optional true} [:maybe ms/BooleanValue]]]]
   ;; partial schema only
   :- [:map {:closed false}
@@ -177,7 +177,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:table-id/data"
   "Get the data for the given table"
-  [{:keys [table-id]} :- [:map {:closed true}
+  [{:keys [table-id]} :- [:map
                           [:table-id ms/PositiveInt]]
    _query-params]
   (let [table (t2/select-one :model/Table :id table-id)
@@ -268,10 +268,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update `Table` with ID."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:display_name            {:optional true} [:maybe ms/NonBlankString]]
             [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
             [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
@@ -298,7 +298,7 @@
   Deprecated, should use PUT /table/edit from now on."
   [_route-params
    _query-params
-   {:keys [ids], :as body} :- [:map {:closed true}
+   {:keys [ids], :as body} :- [:map
                                [:ids                                      [:sequential ms/PositiveInt]]
                                [:display_name            {:optional true} [:maybe ms/NonBlankString]]
                                [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
@@ -334,10 +334,10 @@
    data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
 
    These options are provided for use in the Admin Edit Metadata page."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
-   :- [:map {:closed true}
+   :- [:map
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
@@ -357,12 +357,12 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    ;; the frontend types this route and `/:id/query_metadata` with a single `GetTableQueryMetadataRequest`, so a
    ;; caller holding a `card__<id>` table id can send the include flags here too. They get a slot (this route
    ;; ignores them: a virtual table has no hidden/sensitive fields to filter) so the map can stay closed.
-   _query-params :- [:map {:closed true}
+   _query-params :- [:map
                      [:include_sensitive_fields    {:optional true} [:maybe ms/BooleanValue]]
                      [:include_hidden_fields       {:optional true} [:maybe ms/BooleanValue]]
                      [:include_editable_data_model {:optional true} [:maybe ms/BooleanValue]]]]
@@ -378,7 +378,7 @@
 (api.macros/defendpoint :get "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
-  [_route-params :- [:map {:closed true}
+  [_route-params :- [:map
                      [:id ms/PositiveInt]]
    _query-params]
   []) ; return empty array
@@ -389,7 +389,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params]
   (api/read-check :model/Table id)
@@ -415,7 +415,7 @@
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body]
@@ -441,7 +441,7 @@
 (api.macros/defendpoint :post "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body]
@@ -456,7 +456,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params]
   (-> (t2/select-one :model/Table :id id) api/read-check xrays/related))
@@ -464,13 +464,13 @@
 (api.macros/defendpoint :put "/:id/fields/order" :- [:map
                                                      [:success [:= true]]]
   "Reorder fields"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    ;; Accept either a bare sequential (legacy) or a wrapped {:field_order [...]} body.
    body :- [:or
             [:sequential ms/PositiveInt]
-            [:map {:closed true}
+            [:map
              [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
     (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order)))
@@ -504,13 +504,13 @@
   The file may be at most 50 MB; larger uploads are rejected with a 413 response."
   {:multipart {:max-file-size  upload/max-upload-size-bytes
                :max-file-count upload/max-upload-part-count}}
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body
    {:keys [multipart-params], :as _request} :- [:map {:closed false}
                                                 [:multipart-params
-                                                 [:map {:closed true}
+                                                 [:map
                                                   ["file"
                                                    [:map {:closed false}
                                                     [:filename :string]
@@ -532,13 +532,13 @@
   The file may be at most 50 MB; larger uploads are rejected with a 413 response."
   {:multipart {:max-file-size  upload/max-upload-size-bytes
                :max-file-count upload/max-upload-part-count}}
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body
    {:keys [multipart-params], :as _request} :- [:map {:closed false}
                                                 [:multipart-params
-                                                 [:map {:closed true}
+                                                 [:map
                                                   ["file"
                                                    [:map {:closed false}
                                                     [:filename :string]
@@ -563,7 +563,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Table`."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    _body]

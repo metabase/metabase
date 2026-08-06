@@ -173,7 +173,7 @@
   `archived`. See corresponding implementation functions above for the specific behavior of each filter
   option. :card_index:"
   [_route-params
-   {:keys [f], model-id :model_id} :- [:map {:closed true}
+   {:keys [f], model-id :model_id} :- [:map
                                        [:f        {:default :all}  (into [:enum] card-filter-options)]
                                        [:model_id {:optional true} [:maybe ms/PositiveInt]]]]
   (when (contains? #{:database :table :using_model :using_segment} f)
@@ -258,10 +258,10 @@
 
   As of v57, returns the MBQL query (`dataset_query`) as MBQL 5; to return the query as MBQL 4 (aka legacy MBQL)
   instead, you can specify `?legacy-mbql=true`."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql}
-   :- [:map {:closed true}
+   :- [:map
        [:legacy-mbql {:optional true, :default false} [:maybe ms/BooleanValue]]
        ;; `context` is ignored by this endpoint, but the frontend's `GetCardRequest` type declares it and real
        ;; callers still send it -- the pinned-question loader sends `context=collection`. It gets a slot here so the
@@ -288,7 +288,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/dashboards"
   "Get a list of `{:name ... :id ...}` pairs for all the dashboards this card appears in."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [card (get-card id)
         dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
@@ -386,7 +386,7 @@
   Use `fetch-compatible-series` for that."
   [card    :- :map
    {:keys [query last-cursor page-size exclude-ids] :as _options}
-   :- [:map {:closed true}
+   :- [:map
        [:query       {:optional true} [:maybe ms/NonBlankString]]
        [:last-cursor {:optional true} [:maybe ms/PositiveInt]]
        [:page-size   {:optional true} [:maybe ms/PositiveInt]]
@@ -462,10 +462,10 @@
   - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.
   - `query` to search card by name.
   - `exclude_ids` to filter out a list of card ids"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id int?]]
    {:keys [last_cursor query exclude_ids]}
-   :- [:map {:closed true}
+   :- [:map
        [:last_cursor {:optional true} [:maybe ms/PositiveInt]]
        [:query       {:optional true} [:maybe ms/NonBlankString]]
        [:exclude_ids {:optional true} [:maybe [:fn
@@ -527,7 +527,7 @@
 
 (def ^:private CardCreateSchema
   "Schema for creating a new card"
-  [:map {:closed true}
+  [:map
    [:name                   ms/NonBlankString]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
    ;; TODO: `dataset_query` is an MBQL query typed loosely as a map; give it a real schema.
@@ -602,7 +602,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [orig-card (api/read-check :model/Card id)
         new-name  (trs "Copy of {0}" (:name orig-card))
@@ -647,7 +647,7 @@
 
 ;;; TODO -- merge this into `:metabase.queries.schema/card`
 (def ^:private CardUpdateSchema
-  [:map {:closed true}
+  [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
@@ -769,9 +769,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Card`."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {delete-old-dashcards? :delete_old_dashcards} :- [:map {:closed true}
+   {delete-old-dashcards? :delete_old_dashcards} :- [:map
                                                      [:delete_old_dashcards {:optional true} [:maybe ms/BooleanValue]]]
    body :- CardUpdateSchema]
   (update-card! id body (boolean delete-old-dashcards?)))
@@ -785,7 +785,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]
     (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
@@ -798,7 +798,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [card (api/write-check :model/Card id)]
     (t2/delete! :model/Card :id id)
@@ -886,7 +886,7 @@
   `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
   [_route-params
    _query-params
-   {:keys [card_ids collection_id]} :- [:map {:closed true}
+   {:keys [card_ids collection_id]} :- [:map
                                         [:card_ids      [:sequential ms/PositiveInt]]
                                         [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (move-cards-to-collection! collection_id card_ids)
@@ -918,11 +918,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card."
-  [{:keys [card-id]} :- [:map {:closed true}
+  [{:keys [card-id]} :- [:map
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id collection_preview]}
-   :- [:map {:closed true}
+   :- [:map
        [:parameters         {:optional true} [:maybe ParameterValues]]
        [:ignore_cache       {:default false} :boolean]
        [:collection_preview {:optional true} [:maybe :boolean]]
@@ -957,7 +957,7 @@
   `csv_include_bom`, `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
   or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use
   HTML `form` actions)."
-  [{:keys [card-id export-format]} :- [:map {:closed true}
+  [{:keys [card-id export-format]} :- [:map
                                        [:card-id       ms/PositiveInt]
                                        [:export-format ::qp.schema/export-format]]
    _query-params
@@ -966,7 +966,7 @@
     format-rows?    :format_rows
     csv-include-bom? :csv_include_bom
     :as             _body}
-   :- [:map {:closed true}
+   :- [:map
        [:parameters    {:optional true} [:maybe
                                          ;; support JSON-encoded parameters for backwards compatibility when with this
                                          ;; was still submitted with a `<form>`... see
@@ -1004,7 +1004,7 @@
   "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
-  [{:keys [card-id]} :- [:map {:closed true}
+  [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
@@ -1029,7 +1029,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
-  [{:keys [card-id]} :- [:map {:closed true}
+  [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
@@ -1048,11 +1048,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:card-id/query"
   "Run the query associated with a Card."
-  [{:keys [card-id]} :- [:map {:closed true}
+  [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id]
-    :or   {ignore_cache false}} :- [:map {:closed true}
+    :or   {ignore_cache false}} :- [:map
                                     [:parameters   {:optional true} [:maybe ParameterValues]]
                                     [:ignore_cache {:optional true} [:maybe :boolean]]
                                     [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1079,7 +1079,7 @@
 
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/queries/1/params/abc/values"
-  [{:keys [card-id param-key]} :- [:map {:closed true}
+  [{:keys [card-id param-key]} :- [:map
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]]
   (binding [qp.perms/*param-values-query* true]
@@ -1096,7 +1096,7 @@
      GET /api/queries/1/params/abc/search/Orange
 
   Currently limited to first 1000 results."
-  [{:keys [card-id param-key query]} :- [:map {:closed true}
+  [{:keys [card-id param-key query]} :- [:map
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
                                          [:query     ms/NonBlankString]]]
@@ -1112,10 +1112,10 @@
 
     ;; fetch the remapped value for Card 1 parameter 'abc' for value 100
     GET /api/queries/1/params/abc/remapping?value=100"
-  [{:keys [id param-key]} :- [:map {:closed true}
+  [{:keys [id param-key]} :- [:map
                               [:id ::lib.schema.id/card]
                               [:param-key ::lib.schema.parameter/id]]
-   {:keys [value]}        :- [:map {:closed true} [:value :string]]]
+   {:keys [value]}        :- [:map [:value :string]]]
   (binding [qp.perms/*param-values-query* true]
     (-> (api/read-check :model/Card id)
         (queries/card-param-remapped-value param-key (codec/url-decode value)))))

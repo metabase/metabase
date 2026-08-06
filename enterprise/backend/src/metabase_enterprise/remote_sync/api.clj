@@ -54,7 +54,7 @@
   [_route
    _query
    {:keys [branch force merge expected_branch]}
-   :- [:map {:closed true}
+   :- [:map
        [:branch {:optional true} ms/NonBlankString]
        [:force {:optional true} :boolean]
        [:merge {:optional true} :boolean]
@@ -94,7 +94,7 @@
    - local_version: Git SHA of last successful import (nil if never imported)
    - cached: true if result was served from cache"
   [_route-params
-   {:keys [force-refresh]} :- [:map {:closed true} [:force-refresh {:optional true} :boolean]]
+   {:keys [force-refresh]} :- [:map [:force-refresh {:optional true} :boolean]]
    _body]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
@@ -128,7 +128,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch force merge]} :- [:map {:closed true}
+   {:keys [message branch force merge]} :- [:map
                                             [:message {:optional true} ms/NonBlankString]
                                             [:branch ms/NonBlankString]
                                             [:force {:optional true} :boolean]
@@ -164,7 +164,7 @@
 
   Requires superuser permissions."
   [_route
-   {:keys [branch]} :- [:map {:closed true} [:branch ms/NonBlankString]]]
+   {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [branch-name (check-branch-matches-setting! branch)
@@ -210,7 +210,7 @@
   [_route-params
    _query-params
    {:keys [remote-sync-url remote-sync-token] :as body}
-   :- [:map {:closed true}
+   :- [:map
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]]]
   (api/check-superuser)
@@ -240,7 +240,7 @@
   [_route-params
    _query-params
    {:keys [remote-sync-type collections] :as settings}
-   :- [:map {:closed true}
+   :- [:map
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
        [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
@@ -327,7 +327,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [name]} :- [:map {:closed true}
+   {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (api/check-superuser)
   (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
@@ -350,7 +350,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {new-branch :new_branch message :message} :- [:map {:closed true}
+   {new-branch :new_branch message :message} :- [:map
                                                  [:new_branch ms/NonBlankString]
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)

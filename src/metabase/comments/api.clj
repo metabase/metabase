@@ -72,7 +72,7 @@
 
 (def CreateComment
   "Schema for creating a new comment"
-  [:map {:closed true}
+  [:map
    [:target_type TargetType]
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
@@ -82,7 +82,7 @@
 
 (def UpdateComment
   "Schema for updating a comment"
-  [:map {:closed true}
+  [:map
    [:content {:optional true} CommentContent]
    [:is_resolved {:optional true} :boolean]])
 
@@ -122,7 +122,7 @@
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
   [_route-params
-   {:keys [target_type target_id]} :- [:map {:closed true}
+   {:keys [target_type target_id]} :- [:map
                                        [:target_type TargetType]
                                        [:target_id ms/PositiveInt]]
    _body
@@ -224,7 +224,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:comment-id"
   "Update a comment"
-  [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
+  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params
    {:keys [content is_resolved]} :- UpdateComment]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))
@@ -258,7 +258,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:comment-id"
   "Soft delete a comment"
-  [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
+  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
@@ -282,9 +282,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:comment-id/reaction"
   "Toggle a reaction on a comment"
-  [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
+  [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params
-   {:keys [emoji]} :- [:map {:closed true} [:emoji [:string {:min 1 :max 10}]]]]
+   {:keys [emoji]} :- [:map [:emoji [:string {:min 1 :max 10}]]]]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")
@@ -300,7 +300,7 @@
 (api.macros/defendpoint :get "/mentions"
   "Get a list of entities suitable for mentions. NOTE: only users for now."
   [_route
-   _query :- [:map {:closed true}
+   _query :- [:map
               [:limit  {:optional true} [:maybe ms/PositiveInt]]
               [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]
    _body

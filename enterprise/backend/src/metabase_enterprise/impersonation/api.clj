@@ -17,7 +17,7 @@
   "Fetch a list of all Impersonation policies currently in effect, or a single policy if both `group_id` and `db_id`
   are provided."
   [_route-params
-   {:keys [group_id db_id]} :- [:map {:closed true}
+   {:keys [group_id db_id]} :- [:map
                                 [:group_id {:optional true} [:maybe ms/PositiveInt]]
                                 [:db_id    {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
@@ -31,7 +31,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a Connection Impersonation entry."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/ConnectionImpersonation :id id))

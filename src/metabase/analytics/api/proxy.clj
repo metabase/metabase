@@ -22,7 +22,7 @@
   "Schema for the Snowplow `tp2` request envelope, mirroring the collector's own `payload_data` JSON schema: the iglu
   URI of that schema plus one entry per event, keyed by tracker field name (`e`, `p`, `tv`, `ue_px`, ...). The tracker
   stringifies every field value, so the values are always strings."
-  [:map {:closed true}
+  [:map
    [:schema ms/NonBlankString]
    [:data [:sequential [:map-of :keyword :string]]]])
 

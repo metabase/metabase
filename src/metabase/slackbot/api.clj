@@ -451,7 +451,7 @@
 (def SlackBotSettingsRequest
   "Malli schema for the request body of PUT /api/metabot/slack/settings.
    All credential fields must be provided together (either all set or all nil)."
-  [:map {:closed true}
+  [:map
    [:slack-connect-client-id      [:maybe ms/NonBlankString]]
    [:slack-connect-client-secret  [:maybe ms/NonBlankString]]
    [:metabot-slack-signing-secret [:maybe ms/NonBlankString]]])

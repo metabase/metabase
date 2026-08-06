@@ -19,7 +19,7 @@
   "Update SAML related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   settings :- [:map {:closed true}
+   settings :- [:map
                 [:saml-identity-provider-issuer      {:optional true} :string]
                 [:saml-identity-provider-uri         {:optional true} :string]
                 [:saml-identity-provider-certificate {:optional true} :string]

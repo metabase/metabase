@@ -199,7 +199,7 @@
   "Temporarily adjust the log levels."
   [_route-params
    _query-params
-   {:keys [duration duration_unit log_levels]} :- [:map {:closed true}
+   {:keys [duration duration_unit log_levels]} :- [:map
                                                    [:duration :int]
                                                    [:duration_unit ::time-unit]
                                                    ;; validated by hand below so we can return a friendly error message

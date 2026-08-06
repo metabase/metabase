@@ -29,7 +29,7 @@
   "Revoke an existing support access grant.
 
   Requires superuser permissions. Any admin can revoke any grant."
-  [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{id :id} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/write-check :model/SupportAccessGrantLog id)
   (grants/revoke-grant! api/*current-user-id* id))
@@ -47,7 +47,7 @@
   [_route-params
    {:keys [ticket-number
            user-id
-           include-revoked]} :- [:map {:closed true}
+           include-revoked]} :- [:map
                                  [:ticket-number {:optional true} [:maybe :string]]
                                  [:user-id {:optional true} [:maybe ms/PositiveInt]]
                                  [:include-revoked {:optional true} [:maybe :boolean]]]]

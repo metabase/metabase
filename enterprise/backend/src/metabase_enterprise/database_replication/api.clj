@@ -133,10 +133,10 @@
      :schema-filters schema-filters}))
 
 (def ^:private body-schema
-  [:map {:closed true}
+  [:map
    [:replicationSchemaFilters
     {:optional true}
-    [:map {:closed true}
+    [:map
      [:schema-filters-type [:enum "inclusion" "exclusion" "all"]]
      [:schema-filters-patterns :string]]]])
 
@@ -146,7 +146,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/connection/:database-id/preview"
   "Return info about pg-replication connection that is about to be created."
-  [{:keys [database-id]} :- [:map {:closed true}
+  [{:keys [database-id]} :- [:map
                              [:database-id ms/PositiveInt]]
    _
    {:keys [replicationSchemaFilters]} :- body-schema]
@@ -161,7 +161,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map {:closed true}
+  [{:keys [database-id]} :- [:map
                              [:database-id ms/PositiveInt]]
    _
    {:keys [replicationSchemaFilters]} :- body-schema]
@@ -195,7 +195,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/connection/:database-id"
   "Delete PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map {:closed true}
+  [{:keys [database-id]} :- [:map
                              [:database-id ms/PositiveInt]]]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
   (let [conns (pruned-database-replication-connections)]

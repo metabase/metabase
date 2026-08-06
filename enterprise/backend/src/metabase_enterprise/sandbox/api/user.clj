@@ -25,10 +25,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/attributes"
   "Update the `login_attributes` for a User."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [login_attributes]} :- [:map {:closed true}
+   {:keys [login_attributes]} :- [:map
                                   [:login_attributes {:optional true} [:maybe UserAttributes]]]]
   (api/check-404 (t2/select-one :model/User :id id))
   (pos? (t2/update! :model/User id {:login_attributes login_attributes})))

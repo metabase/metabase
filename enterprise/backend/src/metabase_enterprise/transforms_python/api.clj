@@ -27,7 +27,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/library/:path"
   "Get the Python library for user modules."
-  [{:keys [path]} :- [:map {:closed true} [:path ms/NonBlankString]]
+  [{:keys [path]} :- [:map [:path ms/NonBlankString]]
    _query-params]
   (get-python-library-by-path path))
 
@@ -37,9 +37,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/library/:path"
   "Update the Python library source code for user modules."
-  [{:keys [path]} :- [:map {:closed true} [:path ms/NonBlankString]]
+  [{:keys [path]} :- [:map [:path ms/NonBlankString]]
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:source :string]]]
   ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
   (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
@@ -62,7 +62,7 @@
            per_input_row_limit]
     :or   {output_row_limit    100
            per_input_row_limit 100}}
-   :- [:map {:closed true}
+   :- [:map
        [:code                                 :string]
        [:source_tables                        [:sequential {:min 1} ::transforms-base.u/source-table-entry]]
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]

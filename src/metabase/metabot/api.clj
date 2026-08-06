@@ -388,7 +388,7 @@
   "Send a chat message to the LLM via the AI Proxy."
   [_route-params
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:profile_id {:optional true} :string]
             [:metabot_id {:optional true} :string]
             [:message ms/NonBlankString]
@@ -421,7 +421,7 @@
   "Persist Metabot feedback."
   [_route-params
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:metabot_id        ms/PositiveInt]
             [:message_id        ms/NonBlankString]
             [:positive          :boolean]
@@ -437,7 +437,7 @@
   "Persist Metabot source feedback."
   [_route-params
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:metabot_id   ms/PositiveInt]
             [:message_id   ms/NonBlankString]
             [:source_id    ms/PositiveInt]
@@ -465,7 +465,7 @@
 (def ^:private provider-credentials-schema
   "Provider credentials carried by the request body's `:credentials` map.
   Bedrock sends AWS key material; Azure sends an API key and base URL."
-  [:map {:closed true}
+  [:map
    [:access-key-id     {:optional true} [:maybe :string]]
    [:secret-access-key {:optional true} [:maybe :string]]
    [:region            {:optional true} [:maybe :string]]
@@ -474,7 +474,7 @@
    [:base-url          {:optional true} [:maybe :string]]])
 
 (def ^:private metabot-settings-request-schema
-  [:map {:closed true}
+  [:map
    [:provider metabot-provider-schema]
    [:model {:optional true} [:maybe :string]]
    [:api-key {:optional true} [:maybe :string]]
@@ -649,7 +649,7 @@
   :- metabot-settings-response-schema
   "Return available models for a provider using its configured credentials."
   [_route-params
-   {:keys [provider]} :- [:map {:closed true}
+   {:keys [provider]} :- [:map
                           [:provider {:optional true} metabot-provider-schema]]]
   (perms/check-has-application-permission :setting)
   (settings-response (or provider (current-provider))))

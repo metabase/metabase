@@ -35,7 +35,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Retrieve one metabot instance"
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/Metabot :id id)))
@@ -46,9 +46,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a metabot instance"
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   metabot-updates :- [:map {:closed true}
+   metabot-updates :- [:map
                        [:use_verified_content {:optional true} :boolean]
                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
@@ -67,19 +67,19 @@
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
   :- [:multi {:dispatch :status}
-      [:generated              [:map {:closed true}
+      [:generated              [:map
                                 [:status       [:= :generated]]
                                 ;; `:generated` is only returned when total > 0 — see
                                 ;; [[metabot.suggested-prompts/generate-sample-prompts]].
                                 [:prompt_count pos-int?]]]
-      [:no-library-content     [:map {:closed true} [:status [:= :no-library-content]]]]
-      [:ai-produced-no-prompts [:map {:closed true} [:status [:= :ai-produced-no-prompts]]]]]
+      [:no-library-content     [:map [:status [:= :no-library-content]]]]
+      [:ai-produced-no-prompts [:map [:status [:= :ai-produced-no-prompts]]]]]
   "Remove any existing prompt suggestions for the Metabot with `id` and generate new ones.
    The response `:status` is `:generated` (with a `:prompt_count`) when prompts were created,
    `:no-library-content` when the Metabot has no models or metrics to summarize, or
    `:ai-produced-no-prompts` when generation produced nothing.
    Returns a 402 if the instance has reached its managed-AI usage limit."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    _body]
   (api/check-superuser)
@@ -99,8 +99,8 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/prompt-suggestions"
   "Return the prompt suggestions for the metabot instance with `id`."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   {:keys [sample model model_id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [sample model model_id]} :- [:map
                                        [:sample   {:optional true} [:maybe ms/BooleanValue]]
                                        [:model    {:optional true} [:maybe [:enum "metric" "model"]]]
                                        [:model_id {:optional true} [:maybe ms/PositiveInt]]
@@ -148,7 +148,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/prompt-suggestions"
   "Delete all prompt suggestions for the metabot instance with `id`."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (api/check-superuser)
   (metabot.suggested-prompts/delete-all-metabot-prompts id)
@@ -160,7 +160,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/prompt-suggestions/:prompt-id"
   "Delete the prompt suggestion with ID `prompt-id` for the metabot instance with `id`."
-  [{:keys [id prompt-id]} :- [:map {:closed true}
+  [{:keys [id prompt-id]} :- [:map
                               [:id        ms/PositiveInt]
                               [:prompt-id ms/PositiveInt]]
    _query-params]

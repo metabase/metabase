@@ -147,7 +147,7 @@
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
   [_route-params
-   {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map {:closed true}
+   {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map
                                                                                  [:archived                       {:default false} [:maybe ms/BooleanValue]]
                                                                                  [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
                                                                                  [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
@@ -248,7 +248,7 @@
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
            namespace namespaces shallow collection-id]}
-   :- [:map {:closed true}
+   :- [:map
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
        [:include-library                {:default false} [:maybe :boolean]]
@@ -1299,7 +1299,7 @@
 
   To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a
   dashboard question."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check :model/Collection id)
   (present-dashboard-question-candidates
    (dashboard-question-candidates id)))
@@ -1331,10 +1331,10 @@
 
 (api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
   "Move candidate cards to the dashboards they appear in."
-  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [card_ids]} :- [:maybe
-                          [:map {:closed true}
+                          [:map
                            [:card_ids {:optional true}
                             [:set ms/PositiveInt]]]]]
   (api/read-check :model/Collection id)
@@ -1345,7 +1345,7 @@
   [_route-params
    _query-params
    {:keys [card_ids]} :- [:maybe
-                          [:map {:closed true}
+                          [:map
                            [:card_ids {:optional true}
                             [:set ms/PositiveInt]]]]]
   {:moved (move-dashboard-question-candidates nil card_ids)})
@@ -1362,7 +1362,7 @@
 (api.macros/defendpoint :get "/root"
   "Return the 'Root' Collection object with standard details added"
   [_route-params
-   {:keys [namespace]} :- [:map {:closed true}
+   {:keys [namespace]} :- [:map
                            [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
   (-> (root-collection namespace)
       (api/read-check)
@@ -1419,7 +1419,7 @@
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query include_library collection_type
-           show_dashboard_questions]} :- [:map {:closed true}
+           show_dashboard_questions]} :- [:map
                                           [:models                      {:optional true} [:maybe Models]]
                                           [:collection_type             {:optional true} CollectionType]
                                           [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
@@ -1469,7 +1469,7 @@
   "Create a new Collection."
   [_route-params
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:name            ms/NonBlankString]
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
@@ -1545,7 +1545,7 @@
 (api.macros/defendpoint :get "/graph"
   "Fetch a graph of all Collection Permissions."
   [_route-params
-   {:keys [namespace]} :- [:map {:closed true}
+   {:keys [namespace]} :- [:map
                            [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-superuser)
   (perms/graph namespace))
@@ -1573,7 +1573,7 @@
 (def PermissionsGraph
   "Map describing permissions for 1 or more groups.
   Revision # is used for consistency"
-  [:map {:closed true}
+  [:map
    [:revision {:optional true} [:maybe int?]]
    [:groups [:map-of GroupID GroupPermissionsGraph]]])
 
@@ -1607,12 +1607,12 @@
   If the `skip_graph` query parameter is `true`, it will only return the current revision, not the entire permissions
   graph."
   [_route-params
-   {:keys [skip-graph force]} :- [:map {:closed true}
+   {:keys [skip-graph force]} :- [:map
                                   [:force      {:default false} [:maybe ms/BooleanValue]]
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]]
    ;; `:groups` is keyed dynamically by group ID then collection ID; it is decoded and validated
    ;; against [[PermissionsGraph]] below.
-   {:keys [namespace revision groups]} :- [:map {:closed true}
+   {:keys [namespace revision groups]} :- [:map
                                            [:namespace {:optional true} [:maybe ms/NonBlankString]]
                                            [:revision  {:optional true} [:maybe ms/Int]]
                                            [:groups    :map]]]
@@ -1630,7 +1630,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch a specific Collection with standard details added"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
     (collection-detail (api/read-check :model/Collection resolved-id))))
@@ -1641,10 +1641,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {authority-level :authority_level, :as collection-updates} :- [:map {:closed true}
+   {authority-level :authority_level, :as collection-updates} :- [:map
                                                                   [:name             {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:description      {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:archived         {:default false} [:maybe ms/BooleanValue]]
@@ -1680,7 +1680,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Deletes a collection permanently"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-403 api/*is-superuser?*)
   (let [collection (t2/select-one :model/Collection id)
@@ -1722,11 +1722,11 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query
-           show_dashboard_questions]} :- [:map {:closed true}
+           show_dashboard_questions]} :- [:map
                                           [:models                      {:optional true} [:maybe Models]]
                                           [:archived                    {:default false} [:maybe ms/BooleanValue]]
                                           [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]

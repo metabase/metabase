@@ -124,7 +124,7 @@
 (api.macros/defendpoint :post "/re-init"
   "This will blow away any search indexes, re-create, and re-populate them."
   [_route-params
-   _query-params :- [:map {:closed true}
+   _query-params :- [:map
                      ;; [[+engine-cookie]] wraps every route in this namespace and injects the engine cookie's
                      ;; value into `:query-params`, so it can show up here even though nothing sends it
                      [:search_engine {:optional true} [:maybe :string]]]
@@ -144,7 +144,7 @@
   "This will trigger an immediate reindexing, if we are using search index."
   [_route-params
    ;; see `POST /re-init`: `search_engine` can be injected by [[+engine-cookie]]
-   _query-params :- [:map {:closed true}
+   _query-params :- [:map
                      [:search_engine {:optional true} [:maybe :string]]]
    _body]
   (api/check-superuser)
@@ -226,7 +226,7 @@
 ;;
 (def ^:private search-request-schema
   "Query-parameter schema shared by `GET /api/search` and `GET /api/search/debug`."
-  [:map {:closed true}
+  [:map
    [:q                                   {:optional true} [:maybe :string]]
    ;; no `:optional true`: default-value-transformer skips defaults for absent optional keys, so it's
    ;; what makes `:default :api` actually apply when the param is omitted

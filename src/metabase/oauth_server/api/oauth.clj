@@ -252,7 +252,7 @@
 (api.macros/defendpoint :get "/register/:client-id"
   :- [:map [:status [:enum 200 401 404]] [:body :map]]
   "Handles client configuration read (RFC 7592)."
-  [{:keys [client-id]} :- [:map {:closed true}
+  [{:keys [client-id]} :- [:map
                            [:client-id ms/NonBlankString]]
    ;; declared but not read: OAuth clients may append their own params
    _query-params

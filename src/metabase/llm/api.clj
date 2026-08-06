@@ -145,7 +145,7 @@
     or field value fetching."
   [_route-params
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:database_id pos-int?]
             [:sql :string]
             [:template_tags {:optional true} template-tags-schema]]]
@@ -188,12 +188,12 @@
    Returns generated SQL and the list of tables used for context."
   [_route-params
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:prompt :string]
             [:database_id pos-int?]
             [:source_sql {:optional true} :string]
             [:referenced_entities {:optional true}
-             [:sequential [:map {:closed true}
+             [:sequential [:map
                            [:model :string]
                            [:id pos-int?]]]]]
    request]

@@ -32,7 +32,7 @@
    _query-params
    ;; NOTE: `include_inactive` is read out of the JSON *body* of this GET, not out of the query string -- that is how
    ;; the only callers (our own tests) send it. Closed: nothing sends anything else here.
-   {:keys [include_inactive]} :- [:map {:closed true}
+   {:keys [include_inactive]} :- [:map
                                   [:include_inactive {:optional true} [:maybe {:default false} :boolean]]]]
   (->> (if include_inactive
          (t2/select :model/Channel)
@@ -54,7 +54,7 @@
   "Create a channel"
   [_route-params
    _query-params
-   {channel-name :name, :as body} :- [:map {:closed true}
+   {channel-name :name, :as body} :- [:map
                                       [:name        ms/NonBlankString]
                                       [:description {:optional true} [:maybe ms/NonBlankString]]
                                       [:type        ChannelType]
@@ -73,7 +73,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get a channel"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (-> (t2/select-one :model/Channel id) api/read-check remove-details-if-needed))
 
@@ -83,11 +83,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a channel"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
    ;; `details` stays open: its shape is connection-specific and validated by the channel implementation
-   body :- [:map {:closed true}
+   body :- [:map
             [:name        {:optional true} [:maybe ms/NonBlankString]]
             [:description {:optional true} [:maybe ms/NonBlankString]]
             [:type        {:optional true} [:maybe ChannelType]]
@@ -124,7 +124,7 @@
   [_route-params
    _query-params
    ;; `details` stays open: its shape is connection-specific and validated by the channel implementation
-   {:keys [type details]} :- [:map {:closed true}
+   {:keys [type details]} :- [:map
                               [:type    ChannelType]
                               [:details :map]]]
   (perms/check-has-application-permission :setting)

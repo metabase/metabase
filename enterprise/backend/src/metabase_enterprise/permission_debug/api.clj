@@ -66,7 +66,7 @@
     }
     ```"
   [_route-params
-   {:keys [user_id model_id action_type]} :- [:map {:closed true}
+   {:keys [user_id model_id action_type]} :- [:map
                                               [:user_id     ms/PositiveInt]
                                               [:model_id    :string]
                                               [:action_type permission-debug.impl/ActionType]]

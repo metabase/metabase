@@ -32,7 +32,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token"
   "Fetch a Card you're considering embedding by passing a JWT `token`."
-  [{:keys [token]} :- [:map {:closed true}
+  [{:keys [token]} :- [:map
                        [:token api.embed.common/EncodedToken]]]
   (let [unsigned-token (check-and-unsign token)]
     (api.embed.common/card-for-unsigned-token unsigned-token
@@ -48,7 +48,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
-  [{:keys [token]} :- [:map {:closed true}
+  [{:keys [token]} :- [:map
                        [:token api.embed.common/EncodedToken]]
    query-params :- api.embed.common/QueryParams]
   (let [unsigned-token (check-and-unsign token)
@@ -64,7 +64,7 @@
 
 (api.macros/defendpoint :get "/card/:token/params/:param-key/values" :- ms/FieldValuesResult
   "Embedded version of api.card filter values endpoint."
-  [{:keys [token param-key]} :- [:map {:closed true}
+  [{:keys [token param-key]} :- [:map
                                  [:token     api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]]
   (let [unsigned-token (check-and-unsign token)
@@ -81,10 +81,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/params/:param-key/remapping"
   "Embedded version of api.card filter values endpoint."
-  [{:keys [token param-key]} :- [:map {:closed true}
+  [{:keys [token param-key]} :- [:map
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
-   {:keys [value]}           :- [:map {:closed true}
+   {:keys [value]}           :- [:map
                                  [:value :string]]]
   (let [unsigned-token (check-and-unsign token)
         card           (api.embed.common/card-for-unsigned-token
@@ -101,7 +101,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
-  [{:keys [token]} :- [:map {:closed true}
+  [{:keys [token]} :- [:map
                        [:token api.embed.common/EncodedToken]]]
   (let [unsigned-token (check-and-unsign token)]
     (api.embed.common/dashboard-for-unsigned-token unsigned-token
@@ -113,7 +113,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
-  [{:keys [token param-key]} :- [:map {:closed true}
+  [{:keys [token param-key]} :- [:map
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
    query-params :- api.embed.common/QueryParams]
@@ -143,10 +143,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/remapping"
   "Embedded version of the remapped dashboard param value endpoint."
-  [{:keys [token param-key]} :- [:map {:closed true}
+  [{:keys [token param-key]} :- [:map
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
-   {:keys [value]} :- [:map {:closed true}
+   {:keys [value]} :- [:map
                        [:value :string]]]
   (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value) {:preview true}))
 
@@ -156,7 +156,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
-  [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
+  [{:keys [token dashcard-id card-id]} :- [:map
                                            [:token api.embed.common/EncodedToken]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
@@ -183,7 +183,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
-  [{:keys [token]} :- [:map {:closed true}
+  [{:keys [token]} :- [:map
                        [:token api.embed.common/EncodedToken]]
    query-params :- api.embed.common/QueryParams]
   (let [unsigned-token (check-and-unsign token)
@@ -203,7 +203,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
-  [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
+  [{:keys [token dashcard-id card-id]} :- [:map
                                            [:token api.embed.common/EncodedToken]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
@@ -232,13 +232,13 @@
 (api.macros/defendpoint :get "/tiles/card/:token/:zoom/:x/:y"
   "Generates a single tile image for an embedded Card using the map visualization."
   [{:keys [token zoom x y]}
-   :- [:map {:closed true}
+   :- [:map
        [:token api.embed.common/EncodedToken]
        [:zoom ms/Int]
        [:x ms/Int]
        [:y ms/Int]]
    {:keys [parameters latField lonField]}
-   :- [:map {:closed true}
+   :- [:map
        [:parameters {:optional true} ms/JSONString]
        [:latField string?]
        [:lonField string?]]]
@@ -258,7 +258,7 @@
 (api.macros/defendpoint :get "/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a Card on an embedded Dashboard using the map visualization."
   [{:keys [token dashcard-id card-id zoom x y]}
-   :- [:map {:closed true}
+   :- [:map
        [:token api.embed.common/EncodedToken]
        [:dashcard-id ms/PositiveInt]
        [:card-id     ms/PositiveInt]
@@ -266,7 +266,7 @@
        [:x           ms/Int]
        [:y           ms/Int]]
    {:keys [parameters latField lonField]}
-   :- [:map {:closed true}
+   :- [:map
        [:parameters {:optional true} ms/JSONString]
        [:latField string?]
        [:lonField string?]]]

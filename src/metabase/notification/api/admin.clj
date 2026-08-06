@@ -59,21 +59,21 @@
   [:enum :failing :successful])
 
 (mr/def ::run-summary
-  [:map {:closed true}
+  [:map
    [:at     ms/TemporalInstant]
    [:error  [:maybe :string]]
    [:status ::run-status]])
 
 (mr/def ::channel-entry
   "One channel delivery attempt within a tick."
-  [:map {:closed true}
+  [:map
    [:channel_type :keyword]
    [:status       ::run-status]
    [:error        [:maybe :string]]])
 
 (mr/def ::tick-send-entry
   "One tick's worth of sends, rolled up across all channels that fired in that tick."
-  [:map {:closed true}
+  [:map
    [:at       ms/TemporalInstant]
    [:status   ::run-status]
    [:error    [:maybe :string]]
@@ -544,7 +544,7 @@
   [_route
    {:keys [active creator_id creator_active creatorless card_id recipient_email channel last_send_status
            last_check_status query sort_column sort_direction]} :-
-   [:map {:closed true}
+   [:map
     [:active            {:optional true} [:maybe ms/BooleanValue]]
     [:creator_id        {:optional true} ms/PositiveInt]
     [:creator_active    {:optional true} [:maybe ms/BooleanValue]]
@@ -673,7 +673,7 @@
   "Get a single card-type notification with last_check, last_send, check_history (up to 10
   most-recent terminal alert-type TaskRuns) and send_history (up to 10 most-recent channel-send
   delivery attempts). 404 if the notification doesn't exist or isn't a card-type notification."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (get-notification-detail id)))
@@ -718,7 +718,7 @@
   [_route
    _query
    {:keys [notification_ids action creator_id]} :-
-   [:map {:closed true}
+   [:map
     [:notification_ids [:sequential {:min 1} ms/PositiveInt]]
     [:action           [:enum "archive" "change-creator"]]
     [:creator_id       {:optional true} ms/PositiveInt]]]

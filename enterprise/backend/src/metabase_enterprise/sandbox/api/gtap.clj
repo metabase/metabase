@@ -24,7 +24,7 @@
 (api.macros/defendpoint :get "/"
   "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided."
   [_route-params
-   {:keys [group_id table_id]} :- [:map {:closed true}
+   {:keys [group_id table_id]} :- [:map
                                    [:group_id {:optional true} [:maybe ms/PositiveInt]]
                                    [:table_id {:optional true} [:maybe ms/PositiveInt]]]]
   (if (and group_id table_id)
@@ -37,7 +37,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch GTAP by `id`"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-404 (t2/select-one :model/Sandbox :id id)))
 
@@ -51,7 +51,7 @@
   "Create a new GTAP."
   [_route-params
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:table_id             ms/PositiveInt]
             [:card_id              {:optional true} [:maybe ms/PositiveInt]]
             [:group_id             ms/PositiveInt]
@@ -68,10 +68,10 @@
   "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the
   parameter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
   one. If that's what you want to do, do so explicitly with appropriate calls to the `DELETE` and `POST` endpoints."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:card_id              {:optional true} [:maybe ms/PositiveInt]]
             [:attribute_remappings {:optional true} ::sandbox.schema/attribute-remappings]]]
   (api/check-404 (t2/select-one :model/Sandbox :id id))
@@ -94,7 +94,7 @@
    _query-params
    ;; `group_id`/`attribute_remappings` ride along from the sandbox being edited; only the table/card
    ;; pair is validated here.
-   {:keys [table_id card_id]} :- [:map {:closed true}
+   {:keys [table_id card_id]} :- [:map
                                   [:table_id                              ms/PositiveInt]
                                   [:card_id              {:optional true} [:maybe ms/PositiveInt]]
                                   ;; TODO: accepted but unused by this endpoint; untyped. Give them real schemas.
@@ -118,7 +118,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a GTAP entry."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-404 (t2/select-one :model/Sandbox :id id))
   (t2/delete! :model/Sandbox :id id)

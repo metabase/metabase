@@ -163,11 +163,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
-  [{:keys [product-type]} :- [:map {:closed true}
+  [{:keys [product-type]} :- [:map
                               [:product-type cloud-add-on-product-types]]
    _query-params
    {:keys            [quantity]
-    terms-of-service :terms_of_service} :- [:map {:closed true}
+    terms-of-service :terms_of_service} :- [:map
                                             [:quantity {:optional true} [:maybe :int]]
                                             [:terms_of_service {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
@@ -220,7 +220,7 @@
                                                      [:status :int]
                                                      [:body :any]]
   "Remove an add-on."
-  [{:keys [product-type]} :- [:map {:closed true}
+  [{:keys [product-type]} :- [:map
                               [:product-type cloud-add-on-product-types]]
    _query-params
    _body]

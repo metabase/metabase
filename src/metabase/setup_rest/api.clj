@@ -74,9 +74,9 @@
    {{first-name :first_name, last-name :last_name, :keys [email password]} :user
     {site-name :site_name
      site-locale :site_locale} :prefs}
-   :- [:map {:closed true}
+   :- [:map
        [:token SetupToken]
-       [:user [:map {:closed true}
+       [:user [:map
                [:email      ms/Email]
                [:password   ms/ValidPassword]
                [:first_name {:optional true} [:maybe ms/NonBlankString]]
@@ -84,7 +84,7 @@
                ;; the setup flow posts its whole user object, which also carries these two; both are ignored here.
                [:site_name        {:optional true} [:maybe :string]]
                [:password_confirm {:optional true} [:maybe :string]]]]
-       [:prefs [:map {:closed true}
+       [:prefs [:map
                 [:site_name   ms/NonBlankString]
                 [:site_locale {:optional true} [:maybe ms/ValidLocale]]
                 ;; legacy key still sent by existing clients; ignored -- anonymous tracking is always enabled here.
