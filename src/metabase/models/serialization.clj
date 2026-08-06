@@ -1295,10 +1295,9 @@
       (throw (ex-info (str "Refusing to import a query that does not match this Metabase's query schema. It was "
                            "most likely exported by a newer Metabase whose query shape this version cannot "
                            "represent. Set MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION=true to import it anyway.")
-                      {:schema-errors errors
-                       ;; `:status`, not `:status-code` - the serdes import API reads `:status` off ex-data
-                       ;; itself rather than going through the API layer's exception handling
-                       :status        400})))))
+                      ;; no `:status`/`:status-code` here - `load-one!` rewraps everything thrown from this
+                      ;; block in a fresh ex-info, so nothing we attach reaches the API's status handling
+                      {:schema-errors errors})))))
 
 (defn- normalize-imported
   "Normalizes ingested MBQL into this instance's representation, and refuses a result its schema rejects.
