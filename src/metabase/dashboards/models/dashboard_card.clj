@@ -163,8 +163,8 @@
   [:map
    [:id                                      ms/PositiveInt]
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
-   [:parameter_mappings     {:optional true} [:maybe [:sequential ms/Map]]]
-   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential :map]]]
+   [:visualization_settings {:optional true} [:maybe :map]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
    [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
