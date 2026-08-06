@@ -1,6 +1,7 @@
 (ns metabase.usage-metadata.candidates
   "Durable snapshots of deterministic Library cleanup observations."
   (:require
+   [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -622,19 +623,40 @@
    (when (= candidate_type :measure)
      (measure-base definition))])
 
+(defn- candidate-with-atom-signatures
+  [candidate]
+  (if (contains? candidate ::atom-signatures)
+    candidate
+    (assoc candidate ::atom-signatures
+           (into #{} (map :signature) (candidate-atom-details candidate)))))
+
 (defn- candidate-primary-parent
-  [candidate candidates]
+  [candidate candidates-by-atom-set]
   (let [candidate-atoms (::atom-signatures candidate)]
     (when (seq candidate-atoms)
-      (->> candidates
-           (filter (fn [other]
-                     (let [other-atoms (::atom-signatures other)]
-                       (and (< (count other-atoms) (count candidate-atoms))
-                            (set/subset? other-atoms candidate-atoms)))))
-           (sort-by (fn [other]
-                      (into [(- (count (::atom-signatures other)))]
-                            (candidate-priority-key other))))
-           first))))
+      ;; Candidate mining limits definitions to five atoms. Exact subset lookups are therefore bounded,
+      ;; unlike scanning every candidate in the table/type/status domain for each candidate.
+      (some (fn [parent-atom-count]
+              (->> (math.combo/combinations (sort candidate-atoms) parent-atom-count)
+                   (mapcat #(get candidates-by-atom-set (set %)))
+                   (sort-by candidate-priority-key)
+                   first))
+            (range (dec (count candidate-atoms)) -1 -1)))))
+
+(defn- candidate-family-parent-index
+  [candidates]
+  (let [candidates            (mapv candidate-with-atom-signatures candidates)
+        candidates-by-domain  (group-by candidate-family-domain candidates)
+        candidates-by-domain-and-atoms
+        (update-vals candidates-by-domain #(group-by ::atom-signatures %))]
+    (into {}
+          (keep (fn [candidate]
+                  (when-let [parent (candidate-primary-parent
+                                     candidate
+                                     (get candidates-by-domain-and-atoms
+                                          (candidate-family-domain candidate)))]
+                    [(:id candidate) (:id parent)])))
+          candidates)))
 
 (defn- candidate-root-id
   [candidate-id parent-index]
@@ -690,19 +712,9 @@
 
 (defn- candidate-families
   [candidates]
-  (let [candidates          (mapv #(assoc % ::atom-signatures
-                                          (into #{} (map :signature) (candidate-atom-details %)))
-                                  candidates)
+  (let [candidates          (mapv candidate-with-atom-signatures candidates)
         candidates-by-id    (u/index-by :id candidates)
-        candidates-by-domain (group-by candidate-family-domain candidates)
-        parent-index        (into {}
-                                  (keep (fn [candidate]
-                                          (when-let [parent (candidate-primary-parent
-                                                             candidate
-                                                             (get candidates-by-domain
-                                                                  (candidate-family-domain candidate)))]
-                                            [(:id candidate) (:id parent)])))
-                                  candidates)
+        parent-index        (candidate-family-parent-index candidates)
         children-index      (update-vals (group-by val parent-index)
                                          #(mapv key %))
         families-by-root-id (group-by #(candidate-root-id (:id %) parent-index) candidates)]
