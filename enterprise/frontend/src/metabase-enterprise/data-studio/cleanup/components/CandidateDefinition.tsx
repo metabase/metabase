@@ -1,9 +1,13 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { SegmentEditor } from "metabase/data-studio/segments/components/SegmentEditor";
+import ErrorBoundary from "metabase/ErrorBoundary";
+import { useLocale } from "metabase/common/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
+import { getDetailedTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
 import { MeasureAggregationPicker } from "metabase/querying/measures";
-import { SegmentFilterEditor } from "metabase/querying/segments";
+import { ClauseStep } from "metabase/querying/notebook/components/ClauseStep";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Badge, Card, Group, Stack, Text } from "metabase/ui";
@@ -22,6 +26,44 @@ const CONDITIONAL_MEASURE_OPERATORS = new Set([
 type CandidateDefinitionProps = {
   candidate: UsageMetadataCandidateSummary;
 };
+
+export function CandidateFilterDefinition({ query }: { query: Lib.Query }) {
+  const tc = useTranslateContent();
+  const { locale } = useLocale();
+  const filters = useMemo(() => Lib.filters(query, -1), [query]);
+  const renderFilterName = useMemo(
+    () => (filter: Lib.FilterClause) =>
+      getDetailedTranslatedFilterDisplayName(query, -1, filter, tc, locale),
+    [locale, query, tc],
+  );
+
+  return (
+    <ErrorBoundary>
+      <ClauseStep
+        items={filters}
+        initialAddText=""
+        readOnly
+        isItemPopoverDisabled={false}
+        color="core-filter"
+        isLastOpened={false}
+        renderName={renderFilterName}
+        renderPopover={({ item: filter, index, onClose }) => (
+          <FilterPicker
+            query={query}
+            stageIndex={-1}
+            filter={filter}
+            filterIndex={index}
+            onSelect={() => undefined}
+            onClose={onClose}
+            readOnly
+          />
+        )}
+        onReorder={() => undefined}
+        onRemove={() => undefined}
+      />
+    </ErrorBoundary>
+  );
+}
 
 export function flattenAndConditions(
   condition: Lib.ExpressionParts,
@@ -80,13 +122,7 @@ function CandidateMeasureDefinition({ query }: { query: Lib.Query }) {
         {conditionalMeasureQuery && (
           <Stack gap="sm">
             <Text fw="bold">{t`Where`}</Text>
-            <SegmentFilterEditor
-              query={conditionalMeasureQuery}
-              onChange={() => undefined}
-              readOnly
-              detailedFilterNames
-              inspectableFilters
-            />
+            <CandidateFilterDefinition query={conditionalMeasureQuery} />
           </Stack>
         )}
       </Stack>
@@ -109,13 +145,7 @@ function CandidateMetricDefinition({ query }: { query: Lib.Query }) {
         {hasFilters && (
           <Stack gap="sm">
             <Text fw="bold">{t`Where`}</Text>
-            <SegmentFilterEditor
-              query={query}
-              onChange={() => undefined}
-              readOnly
-              detailedFilterNames
-              inspectableFilters
-            />
+            <CandidateFilterDefinition query={query} />
           </Stack>
         )}
         {breakouts.length > 0 && (
@@ -163,15 +193,9 @@ export function CandidateDefinition({ candidate }: CandidateDefinitionProps) {
       return <CandidateMetricDefinition query={query} />;
     case "segment":
       return (
-        <SegmentEditor
-          query={query}
-          description=""
-          readOnly
-          detailedFilterNames
-          inspectableFilters
-          onQueryChange={() => undefined}
-          onDescriptionChange={() => undefined}
-        />
+        <Card withBorder p="xl">
+          <CandidateFilterDefinition query={query} />
+        </Card>
       );
     case "table":
       return null;

@@ -240,7 +240,14 @@ export type CreateUsageMetadataCandidateRequest = {
 
 export type CreateUsageMetadataCandidateResponse = {
   candidate: UsageMetadataCandidateDetail;
-  entity: Measure | Segment;
+  entity: {
+    id: number;
+    name: string;
+    table_id?: TableId;
+    definition?: DatasetQuery;
+    description?: string | null;
+    archived?: boolean;
+  };
 };
 
 export type UsageMetadataRunStatus =
