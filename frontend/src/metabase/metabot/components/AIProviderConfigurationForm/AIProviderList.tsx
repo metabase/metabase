@@ -148,12 +148,9 @@ export function AIProviderList() {
           </Stack>
         )}
 
-        {/* once something is connected this reads as an inline link, so it takes the height of
-            its label rather than a button's 42px box, which otherwise pads it top and bottom */}
         <Button
           variant={hasConnections ? "subtle" : "filled"}
           p={hasConnections ? 0 : undefined}
-          h={hasConnections ? "auto" : undefined}
           w="fit-content"
           leftSection={<Icon name="add" />}
           onClick={startAdding}
