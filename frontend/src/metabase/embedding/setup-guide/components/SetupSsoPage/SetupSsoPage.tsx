@@ -13,7 +13,9 @@ import { SetupJwtStep } from "./SetupJwtStep";
 import S from "./SetupSsoPage.module.css";
 import { TestJwtStep } from "./TestJwtStep";
 
-const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
+// Relative so the wizard resolves back to whichever host mounted it: the
+// admin setup guide, or the embedding hub's Get started tab.
+const SETUP_GUIDE_PATH = "..";
 
 export const SetupSsoPage = () => {
   const stepperRef = useRef<OnboardingStepperHandle>(null);
