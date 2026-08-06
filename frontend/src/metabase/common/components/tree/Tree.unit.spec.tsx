@@ -139,9 +139,28 @@ describe("Tree", () => {
       expect(screen.getByText("Item 2")).toBeInTheDocument();
     });
 
-    it("should reserve the height of the page it is loading", async () => {
-      const PAGE_SIZE = 5;
+    const ROW_HEIGHT = 32;
 
+    it("should reserve the height of the rows it has not read", () => {
+      render(
+        <Tree
+          data={data}
+          onSelect={jest.fn()}
+          hasMore
+          onLoadMore={jest.fn()}
+          loadingMoreIds={new Set()}
+          pageSize={5}
+          remainingByLevel={new Map([[null, 10]])}
+        />,
+      );
+
+      expect(screen.getByTestId("tree-reserved-space")).toHaveStyle({
+        height: `${10 * ROW_HEIGHT}px`,
+      });
+    });
+
+    it("should keep the reserved height unchanged while a page loads", async () => {
+      const PAGE_SIZE = 5;
       render(
         <Tree
           data={data}
@@ -150,13 +169,18 @@ describe("Tree", () => {
           onLoadMore={jest.fn()}
           loadingMoreIds={new Set([null])}
           pageSize={PAGE_SIZE}
+          remainingByLevel={new Map([[null, 10]])}
         />,
       );
 
-      // One placeholder per incoming row, so the list does not grow under the pointer when the page lands.
+      // The placeholders stand in the space already reserved rather than adding to it, so the total is still 10 rows
+      // and the scrollbar does not move.
       expect(await screen.findAllByTestId("tree-node-skeleton")).toHaveLength(
         PAGE_SIZE,
       );
+      expect(screen.getByTestId("tree-reserved-space")).toHaveStyle({
+        height: `${(10 - PAGE_SIZE) * ROW_HEIGHT}px`,
+      });
     });
 
     it("should report expansion to an external controller", () => {

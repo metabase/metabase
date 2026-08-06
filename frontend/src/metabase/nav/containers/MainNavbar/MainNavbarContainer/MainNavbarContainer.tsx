@@ -157,6 +157,7 @@ function MainNavbarContainer({
     prefetchChildren,
     loadMore,
     loadingMoreIds,
+    remainingByLevel,
     hasMore,
     pageSize,
   } = useLazyCollectionTree({
@@ -281,6 +282,7 @@ function MainNavbarContainer({
         loadingMoreCollectionIds={loadingMoreIds}
         collectionsHaveMore={hasMore}
         collectionPageSize={pageSize}
+        remainingCollectionsByLevel={remainingByLevel}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}
         reorderBookmarks={reorderBookmarks}

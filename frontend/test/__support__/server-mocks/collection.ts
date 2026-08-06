@@ -130,6 +130,7 @@ export function setupCollectionsEndpoints({
       data: level.slice(levelOffset, levelOffset + lazyPageSize).map(asLevel),
       has_more: level.length > levelOffset + lazyPageSize,
       next_offset: levelOffset + lazyPageSize,
+      total: level.length,
     });
 
     // A lazy request for one node's children returns just that node's direct children.

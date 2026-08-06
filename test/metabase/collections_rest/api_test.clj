@@ -554,6 +554,26 @@
               (is (true? (:has_more response)))
               (is (= 2 (count (:data response)))))))))))
 
+(deftest collection-tree-lazy-total-test
+  (testing "GET /api/collection/tree?lazy=true reports how many rows the level holds, not how many it returned"
+    (with-redefs [api.collection/lazy-tree-page-size 2]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection parent {:name "Parent"}
+                       :model/Collection c1 {:name "Child 1", :location (collection/children-location parent)}
+                       :model/Collection c2 {:name "Child 2", :location (collection/children-location parent)}
+                       :model/Collection c3 {:name "Child 3", :location (collection/children-location parent)}
+                       :model/Collection _unreadable {:name     "Child 4"
+                                                      :location (collection/children-location parent)}]
+          (doseq [collection [parent c1 c2 c3]]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection))
+          (let [response (mt/user-http-request :rasta :get 200 "collection/tree"
+                                               :lazy true :collection-id (:id parent))]
+            (testing "the page is capped, as before"
+              (is (= 2 (count (:data response))))
+              (is (true? (:has_more response))))
+            (testing "the total covers the rest of the level, and stops at what the user may read"
+              (is (= 3 (:total response))))))))))
+
 (deftest collection-tree-lazy-permissions-test
   (testing "GET /api/collection/tree?lazy=true never reveals a collection the user cannot read"
     (mt/with-non-admin-groups-no-root-collection-perms

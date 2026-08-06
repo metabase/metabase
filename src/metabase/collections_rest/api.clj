@@ -360,6 +360,18 @@
                                         :limit    (inc lazy-tree-page-size)))]
     [(take lazy-tree-page-size rows) (> (count rows) lazy-tree-page-size)]))
 
+(defn- level-total
+  "How many collections sit directly in `location`. The FE sizes the part of the level it has not read yet from this,
+  so the sidebar reserves the whole level's height up front and its scrollbar stops moving as pages arrive.
+
+  Counted in SQL, so it does not see the post-query filtering [[select-collections]] applies. That filter only drops
+  collections nested under another user's personal collection, which the sidebar cannot reach, and an over-count
+  costs no more than a slightly long runway that ends when the level runs out."
+  [location options]
+  (:count (t2/query-one {:select [[:%count.* :count]]
+                         :from   [:collection]
+                         :where  (collection-filter-clause (assoc options :locations #{location}))})))
+
 (defn- read-one-level-deeper
   "The level below `collections`, when it is small enough to be worth sending unasked. Returns `nil` otherwise.
 
@@ -402,7 +414,8 @@
      :has_more    (boolean (second (get pages primary)))
      ;; The FE cannot work this out from what it received: the page is filtered after the limit is applied, so the
      ;; number of rows it holds is not where the next page starts.
-     :next_offset (+ (or offset 0) lazy-tree-page-size)}))
+     :next_offset (+ (or offset 0) lazy-tree-page-size)
+     :total       (level-total primary options)}))
 
 (defn- lazy-collection-tree
   "Adaptive collection tree for the nav sidebar.
@@ -431,12 +444,14 @@
                                 :look-ahead? true}))
     (let [[collections complete?] (select-collections-up-to options lazy-tree-collection-budget)]
       (if (and complete? (nil? offset))
-        {:data     (->> (t2/hydrate collections :can_write)
-                        prep-collections-for-export
-                        (collection/collections->tree nil)
-                        complete-tree-nodes)
-         :has_more    false
-         :next_offset 0}
+        (let [nodes (->> (t2/hydrate collections :can_write)
+                         prep-collections-for-export
+                         (collection/collections->tree nil)
+                         complete-tree-nodes)]
+          {:data        nodes
+           :has_more    false
+           :next_offset 0
+           :total       (count nodes)})
         (partial-collection-tree {:locations (lazy-tree-locations expand-to)
                                   :primary   "/"
                                   :offset    offset

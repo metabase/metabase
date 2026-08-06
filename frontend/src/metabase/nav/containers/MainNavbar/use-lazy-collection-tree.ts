@@ -24,6 +24,8 @@ type Level = {
   isLoadingMore: boolean;
   /** Where the second page would start, which is also how many rows a page holds. */
   pageSize: number;
+  /** Rows the level holds that have not been read yet, whose height the list reserves. */
+  remaining: number;
 };
 
 /**
@@ -199,12 +201,14 @@ export function useLazyCollectionTree({
         return;
       }
       const last = loaded[loaded.length - 1];
+      const items = loaded.flatMap((page) => page.data);
       byKey.set(key, {
-        items: loaded.flatMap((page) => page.data),
+        items,
         hasMore: last.has_more,
         nextOffset: last.next_offset,
         isLoadingMore: loaded.length < pages.length,
         pageSize: loaded[0].next_offset,
+        remaining: Math.max(last.total - items.length, 0),
       });
     });
 
@@ -318,6 +322,18 @@ export function useLazyCollectionTree({
     [levels],
   );
 
+  // Every level that was cut short, keyed the way the tree asks for it. The list gives the unread rows their height
+  // so it is as tall as it will ever be, and the scrollbar stops moving as pages arrive.
+  const remainingByLevel = useMemo(() => {
+    const remaining = new Map<NodeId | null, number>();
+    levels.forEach((level, key) => {
+      if (level.hasMore) {
+        remaining.set(key === ROOT_LEVEL ? null : key, level.remaining);
+      }
+    });
+    return remaining;
+  }, [levels]);
+
   const loadingMoreIds = useMemo(() => {
     const ids = new Set<NodeId | null>();
     levels.forEach((level, key) => {
@@ -337,6 +353,7 @@ export function useLazyCollectionTree({
     prefetchChildren,
     loadMore,
     loadingMoreIds,
+    remainingByLevel,
     hasMore: levels.get(ROOT_LEVEL)?.hasMore ?? false,
     pageSize: levels.get(ROOT_LEVEL)?.pageSize,
     isLoading,

@@ -247,6 +247,8 @@ export type ListCollectionsTreeLazyResponse = {
   has_more: boolean;
   /** Where the next page of the requested level starts. Not derivable from `data.length`. */
   next_offset: number;
+  /** How many collections the requested level holds in total, so the unread part can be given its height. */
+  total: number;
 };
 
 export interface DeleteCollectionRequest {
