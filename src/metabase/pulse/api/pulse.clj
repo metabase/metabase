@@ -166,7 +166,7 @@
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-       [:parameters          {:optional true} [:maybe [:sequential :map]]]]
+       [:parameters          {:optional true} [:maybe [:sequential ms/Map]]]]
    request]
   (create-pulse-with-perm-checks!
    cards
