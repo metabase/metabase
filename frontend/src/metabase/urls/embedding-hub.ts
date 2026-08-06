@@ -29,3 +29,7 @@ export function embeddingHubTenancy() {
 export function embeddingHubAppearance() {
   return `${ROOT_URL}/appearance`;
 }
+
+export function embeddingHubLocalization() {
+  return `${ROOT_URL}/localization`;
+}

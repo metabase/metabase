@@ -42,6 +42,7 @@ export function EmbeddingHubLayout() {
   const hasSsoJwt = useHasTokenFeature("sso_jwt");
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
   const hasTenants = useHasTokenFeature("tenants");
+  const hasContentTranslation = useHasTokenFeature("content_translation");
 
   useEnsureDefaultEmbeddingThemes();
 
@@ -76,6 +77,12 @@ export function EmbeddingHubLayout() {
       icon: "palette",
       to: Urls.embeddingHubAppearance(),
       isGated: !hasSimpleEmbedding,
+    },
+    {
+      label: t`Localization`,
+      icon: "globe",
+      to: Urls.embeddingHubLocalization(),
+      isGated: !hasContentTranslation,
     },
   ];
 
