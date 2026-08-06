@@ -62,24 +62,27 @@ function CandidatePill({
       className={S.pill}
       data-kind={kind}
       title={label}
-      aria-label={`${getKindLabel(kind)}: ${label}`}
+      aria-label={getCandidatePillAriaLabel(kind, label)}
     >
       {label}
     </Pill>
   );
 }
 
-function getKindLabel(kind: UsageMetadataPredicateKind) {
+export function getCandidatePillAriaLabel(
+  kind: UsageMetadataPredicateKind,
+  label: string,
+) {
   switch (kind) {
     case "boolean":
-      return t`Boolean predicate`;
+      return t`Boolean predicate: ${label}`;
     case "category":
-      return t`Category predicate`;
+      return t`Category predicate: ${label}`;
     case "number":
-      return t`Number predicate`;
+      return t`Number predicate: ${label}`;
     case "temporal":
-      return t`Time predicate`;
+      return t`Time predicate: ${label}`;
     case "other":
-      return t`Predicate`;
+      return t`Predicate: ${label}`;
   }
 }

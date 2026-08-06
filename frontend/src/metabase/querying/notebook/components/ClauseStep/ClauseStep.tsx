@@ -36,29 +36,54 @@ type RenderPopoverOpts<T> = {
   onClose: () => void;
 };
 
-export type ClauseStepProps<T> = {
+/**
+ * Static clauses are display-only. Inspectable clauses still open their
+ * read-only popover so people can examine values without mutation controls.
+ */
+type ClauseStepReadOnlyMode = "static" | "inspectable";
+
+type ClauseStepBaseProps<T> = {
   color: ColorName;
   items: T[];
   initialAddText?: string;
-  readOnly?: boolean;
-  isItemPopoverDisabled?: boolean;
   isLastOpened?: boolean;
   hasAddButton?: boolean;
   isAddButtonDisabled?: boolean;
   hasRemoveButton?: boolean;
   renderName: (item: T, index: number) => JSX.Element | string;
   renderPopover: (opts: RenderPopoverOpts<T>) => JSX.Element | null;
-  onRemove: (item: T, index: number) => void;
-  onReorder: (sourceItem: T, targetItem: T) => void;
   "data-testid"?: string;
 };
+
+type ClauseStepInteractionProps<T> =
+  | {
+      readOnly: true;
+      readOnlyMode?: ClauseStepReadOnlyMode;
+      onRemove?: never;
+      onReorder?: never;
+    }
+  | {
+      readOnly?: false;
+      readOnlyMode?: never;
+      onRemove: (item: T, index: number) => void;
+      onReorder: (sourceItem: T, targetItem: T) => void;
+    }
+  | {
+      readOnly: boolean;
+      readOnlyMode?: ClauseStepReadOnlyMode;
+      onRemove: (item: T, index: number) => void;
+      onReorder: (sourceItem: T, targetItem: T) => void;
+    };
+
+export type ClauseStepProps<T> = ClauseStepBaseProps<T> &
+  ClauseStepInteractionProps<T>;
 
 export const ClauseStep = <T,>({
   color,
   items,
   initialAddText,
   readOnly = false,
-  isItemPopoverDisabled = readOnly,
+  readOnlyMode = "static",
   isLastOpened = false,
   hasAddButton = !readOnly,
   isAddButtonDisabled = false,
@@ -89,7 +114,7 @@ export const ClauseStep = <T,>({
             name="close"
             onClick={(e) => {
               e.stopPropagation();
-              onRemove(item, index);
+              onRemove?.(item, index);
             }}
           />
         )}
@@ -112,7 +137,7 @@ export const ClauseStep = <T,>({
         {items.map((item, index) => (
           <ClausePopover
             key={index}
-            disabled={isItemPopoverDisabled}
+            disabled={readOnly && readOnlyMode === "static"}
             renderItem={(onOpen, hasPopover) =>
               renderItem({ item, index, onOpen, hasPopover })
             }
@@ -134,7 +159,7 @@ export const ClauseStep = <T,>({
 type ClauseStepDndContextProps<T> = {
   items: T[];
   children: ReactNode;
-  onReorder: (sourceItem: T, targetItem: T) => void;
+  onReorder?: (sourceItem: T, targetItem: T) => void;
 };
 
 function ClauseStepDndContext<T>({
@@ -146,7 +171,7 @@ function ClauseStepDndContext<T>({
 
   const handleSortEnd: DndContextProps["onDragEnd"] = useCallback(
     (input: DragEndEvent) => {
-      if (input.over) {
+      if (input.over && onReorder) {
         const sourceIndex = getItemIndexFromId(input.active.id);
         const targetIndex = getItemIndexFromId(input.over.id);
         onReorder(items[sourceIndex], items[targetIndex]);

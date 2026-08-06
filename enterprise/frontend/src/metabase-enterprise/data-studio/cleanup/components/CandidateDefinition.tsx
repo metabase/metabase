@@ -45,7 +45,7 @@ export function CandidateFilterDefinition({ query }: { query: Lib.Query }) {
         items={filters}
         initialAddText=""
         readOnly
-        isItemPopoverDisabled={false}
+        readOnlyMode="inspectable"
         color="core-filter"
         isLastOpened={false}
         renderName={renderFilterName}
@@ -55,13 +55,10 @@ export function CandidateFilterDefinition({ query }: { query: Lib.Query }) {
             stageIndex={-1}
             filter={filter}
             filterIndex={index}
-            onSelect={() => undefined}
             onClose={onClose}
             readOnly
           />
         )}
-        onReorder={() => undefined}
-        onRemove={() => undefined}
       />
     </ErrorBoundary>
   );
@@ -116,11 +113,7 @@ function CandidateMeasureDefinition({ query }: { query: Lib.Query }) {
   return (
     <Card withBorder p="xl">
       <Stack gap="xl">
-        <MeasureAggregationPicker
-          query={query}
-          onChange={() => undefined}
-          readOnly
-        />
+        <MeasureAggregationPicker query={query} readOnly />
         {conditionalMeasureQuery && (
           <Stack gap="sm">
             <Text fw="bold">{t`Where`}</Text>
@@ -139,11 +132,7 @@ function CandidateMetricDefinition({ query }: { query: Lib.Query }) {
   return (
     <Card withBorder p="xl">
       <Stack gap="xl">
-        <MeasureAggregationPicker
-          query={query}
-          onChange={() => undefined}
-          readOnly
-        />
+        <MeasureAggregationPicker query={query} readOnly />
         {hasFilters && (
           <Stack gap="sm">
             <Text fw="bold">{t`Where`}</Text>

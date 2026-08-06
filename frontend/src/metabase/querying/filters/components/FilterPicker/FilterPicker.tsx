@@ -27,21 +27,36 @@ import type {
   SegmentListItem,
 } from "./types";
 
-export type FilterPickerProps = {
+type FilterPickerBaseProps = {
   className?: string;
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
   filterIndex?: number;
 
-  onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
   onBack?: () => void;
-  readOnly?: boolean;
 } & Pick<
   FilterColumnPickerProps,
   "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
 >;
+
+type FilterPickerInteractionProps =
+  | {
+      readOnly: true;
+      onSelect?: never;
+    }
+  | {
+      readOnly?: false;
+      onSelect: (filter: Lib.Filterable) => void;
+    }
+  | {
+      readOnly: boolean;
+      onSelect: (filter: Lib.Filterable) => void;
+    };
+
+export type FilterPickerProps = FilterPickerBaseProps &
+  FilterPickerInteractionProps;
 
 export function FilterPicker({
   className,
@@ -81,7 +96,7 @@ export function FilterPicker({
   }, [initialFilter]);
 
   const handleChange = (filter: Lib.Filterable) => {
-    onSelect(filter);
+    onSelect?.(filter);
     onClose?.();
   };
 
@@ -126,7 +141,7 @@ export function FilterPicker({
 
   const handleClauseChange = useCallback(
     (_name: string, clause: Lib.ExpressionClause | Lib.FilterClause) => {
-      onSelect(clause);
+      onSelect?.(clause);
       onClose?.();
     },
     [onSelect, onClose],
