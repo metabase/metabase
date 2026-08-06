@@ -109,7 +109,7 @@
                                (m/dissoc-in result [:data :rows])
                                {}))
        (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
-             min-duration-ms (:min-duration-ms strategy 0)
+             min-duration-ms (:min_duration_ms strategy 0)
              eligible?       (and @has-rows?
                                   (> duration-ms min-duration-ms))]
          (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
