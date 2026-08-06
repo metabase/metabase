@@ -278,14 +278,15 @@
 
 (defn- suppressed-in
   "How many warnings one linter's config map waives: 1 for a `{:level :off}` switch, one per excluded
-  item, and one per nested per-var or per-namespace `:off`."
+  item, and one per scoped `:off` nested under it at any depth. Scopes nest arbitrarily deep --
+  `:discouraged-java-method` keys by class and then by method -- so counting only the first level
+  would let an `:off` hide one map further down."
   [cfg]
   (if-not (map? cfg)
     0
     (+ (if (= (:level cfg) :off) 1 0)
        (excluded-items (:exclude cfg))
-       (count (filter #(and (map? %) (= (:level %) :off))
-                      (vals (dissoc cfg :level :exclude)))))))
+       (reduce + 0 (map suppressed-in (vals (dissoc cfg :level :exclude)))))))
 
 (defn config-suppressions
   "Per-linter counts of config-level suppressions in `config` (default: `.clj-kondo/config.edn`):
