@@ -8,7 +8,6 @@ import { t } from "ttag";
 import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
 import { useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
-import { useMetabotName } from "metabase/metabot/hooks";
 import {
   type MetabotAgentChatMessage,
   type MetabotAgentDataPartMessage,
@@ -24,6 +23,7 @@ import {
   isChainOfThoughtMessage,
 } from "metabase/metabot/state";
 import { useDispatch } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,
@@ -454,7 +454,7 @@ const AbortedTurnAlert = ({
   debug: boolean;
   onRetry?: (messageId: string) => void;
 }) => {
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   return (
     <AgentTurnAlert
       variant="info"

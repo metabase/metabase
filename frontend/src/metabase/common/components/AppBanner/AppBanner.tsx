@@ -2,7 +2,6 @@ import dayjs from "dayjs";
 
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getIsHosted } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useSetting, useUserSetting } from "metabase/settings";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -23,7 +22,7 @@ export const AppBanner = () => {
   );
 
   const isAdmin = useSelector(getUserIsAdmin);
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const tokenStatus = useSetting("token-status");
   const migrateReadOnly = useSetting("read-only-mode");
   const isDevMode = useSetting("development-mode?");

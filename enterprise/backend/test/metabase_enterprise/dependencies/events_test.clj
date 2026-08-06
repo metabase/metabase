@@ -260,12 +260,16 @@
      (fn [mp]
        (let [base (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                       (lib/aggregate (lib/count)))]
-         (mt/with-temp [:model/Card {card-id :id} {:type               :metric
-                                                   :dataset_query      base
-                                                   :dimension_mappings [{:type         :table
-                                                                         :dimension-id "550e8400-e29b-41d4-a716-446655440000"
-                                                                         :table-id     (mt/id :categories)
-                                                                         :target       [:field {} (mt/id :categories :name)]}]}]
+         (mt/with-temp [:model/Card {card-id :id} {:type :metric :dataset_query base}]
+           ;; Set the mappings after insert: a freshly-inserted metric with nil `:dimensions` counts as
+           ;; uncurated, so the after-insert dimension auto-sync would seed dimensions from the query and
+           ;; overwrite mappings passed to with-temp. A plain update sticks — the after-update hook only
+           ;; re-syncs when `:dataset_query` changes.
+           (t2/update! :model/Card card-id
+                       {:dimension_mappings [{:type         :table
+                                              :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                              :table-id     (mt/id :categories)
+                                              :target       [:field {} (mt/id :categories :name)]}]})
            (events/publish-event! :event/metric-dimensions-update {:object {:id card-id}})
            (assert-stale :card card-id)
            (deps.test/synchronously-run-backfill!)
