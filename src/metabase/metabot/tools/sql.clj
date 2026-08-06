@@ -109,7 +109,6 @@
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/errorf "Error creating SQL query: %s" (ex-message e))
       (metabot.tools.u/handle-agent-error e))))
 
 (mu/defn ^{:tool-name    "create_sql_query"
@@ -139,7 +138,6 @@
               {:output (format-validation-error-output instr)
                :instructions instr})))))
     (catch Exception e
-      (log/errorf "Error creating SQL query: %s" (ex-message e))
       (metabot.tools.u/handle-agent-error e))))
 
 ;;; ──────────────────────────────────────────────────────────────────

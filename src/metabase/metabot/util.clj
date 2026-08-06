@@ -51,3 +51,12 @@
    (get-in query [:stages 0 :native])
    ;; Try legacy format
    (get-in query [:native :query])))
+
+(defn transform-query->text
+  "Render a transform source query for model context: the native SQL when the query
+  has any, otherwise the EDN of the query with its metadata provider stripped so the
+  provider is never printed into the context window."
+  [query]
+  (when query
+    (or (extract-sql-content query)
+        (pr-str (dissoc query :lib/metadata)))))

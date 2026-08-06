@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.dependencies :as deps]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.transforms :as agent-transforms]
@@ -17,22 +18,34 @@
 (deftest get-transform-details-tool-test
   (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
     (mt/with-current-user (mt/user->id :crowberto)
-      (testing "query source renders as SQL text"
+      (testing "query source renders as verbatim SQL text, unescaped"
         (mt/with-temp [:model/Transform {transform-id :id}
                        {:name   "Gadget Products"
                         :source {:type  "query"
                                  :query (lib/native-query (mt/metadata-provider)
-                                                          "SELECT * FROM products WHERE category = 'Gadget'")}}]
+                                                          "SELECT * FROM products WHERE price < 100 AND category <> 'Widget'")}}]
           (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
             (is (str/includes? output "name=\"Gadget Products\""))
-            (is (str/includes? output "<query>SELECT * FROM products WHERE category = 'Gadget'</query>")))))
-      (testing "python source renders its source database"
+            (is (str/includes? output "<source type=\"query\">"))
+            (is (str/includes? output "<query>SELECT * FROM products WHERE price < 100 AND category <> 'Widget'</query>")))))
+      (testing "notebook-built source falls back to EDN with the metadata provider stripped"
+        (mt/with-temp [:model/Transform {transform-id :id}
+                       {:name   "Notebook Products"
+                        :source {:type  "query"
+                                 :query (lib/query (mt/metadata-provider)
+                                                   (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}]
+          (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
+            (is (str/includes? output ":lib/type"))
+            (is (not (str/includes? output ":lib/metadata"))))))
+      (testing "python source renders its body and source database"
         (mt/with-temp [:model/Transform {transform-id :id}
                        {:name   "Gadget Metrics"
                         :source {:type            "python"
                                  :source-database (mt/id)
                                  :body            "import pandas as pd"}}]
           (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
+            (is (str/includes? output "<source type=\"python\">"))
+            (is (str/includes? output "<body>import pandas as pd</body>"))
             (is (str/includes? output (str "<database>" (mt/id) "</database>")))))))))
 
 ;;; ----------------------------------- write tool integration tests --------------------------------------------------

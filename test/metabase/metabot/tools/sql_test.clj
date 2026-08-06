@@ -61,15 +61,23 @@
       (let [{:keys [output]} (create-sql-query-in-code-editor {:database_id Integer/MAX_VALUE})]
         (is (str/includes? output "not found"))))))
 
+(deftest create-sql-query-code-edit-permission-error-output-test
+  (testing "create_sql_query in the code editor returns a permission failure as output with its status code"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [output status-code]} (create-sql-query-in-code-editor {:database_id db-id})]
+            (is (= 403 status-code))
+            (is (str/includes? output "permissions"))))))))
+
 (deftest create-sql-query-code-edit-unexpected-error-test
   (testing "create_sql_query in the code editor rethrows non-agent errors so they stay tracked as failures"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
-        (with-redefs [create-sql-query-tools/create-sql-query
-                      (fn [& _] (throw (ex-info "boom" {})))]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo #"boom"
-               (create-sql-query-in-code-editor {:database_id db-id}))))))))
+      (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                  (fn [& _] (throw (ex-info "boom" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"boom"
+             (create-sql-query-in-code-editor {:database_id 1})))))))
 
 (deftest edit-sql-query-output-test
   (testing "edit_sql_query output includes edit-specific instructions with query ID"
