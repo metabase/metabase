@@ -48,14 +48,18 @@
   everything in it, is admin-only.
 
   Mirrors [[collection-editable?]] but needs no enterprise implementation -- `worktree_id` is an OSS column, so
-  the rule is the same on both editions. Asking the collection rather than the row keeps the answer right for a
-  row whose own denormalized `worktree_id` was not selected."
+  the rule is the same on both editions.
+
+  A collection passed as a map has to carry `worktree_id`: a projection that left it out cannot answer the
+  question, so this refuses rather than assume the main app. Pass the id instead to have it read."
   [collection-or-id]
   (or api/*is-superuser?*
-      (nil? (cond
-              (nil? collection-or-id) nil
-              (map? collection-or-id) (:worktree_id collection-or-id)
-              :else                   (t2/select-one-fn :worktree_id :model/Collection :id collection-or-id)))))
+      (cond
+        (nil? collection-or-id) true
+        (map? collection-or-id) (and (contains? collection-or-id :worktree_id)
+                                     (nil? (:worktree_id collection-or-id)))
+        :else                   (nil? (t2/select-one-fn :worktree_id :model/Collection
+                                                        :id collection-or-id)))))
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.
