@@ -88,10 +88,16 @@ export function registerCustomVizPlugin(
     pluginId,
     getUiName: () => identifier,
   });
-  if (!visualizations.has(display)) {
-    // TO IMPROVE: The registry accepts later down the line only Visualization components, so the cast is necessary to satisfy the type-checker.
-    // Static viz components might not need registration at all.
-    registerVisualization(Component as unknown as Visualization);
+  // TO IMPROVE: The registry accepts later down the line only Visualization components, so the cast is necessary to satisfy the type-checker.
+  // Static viz components might not need registration at all.
+  const registryComponent = Component as unknown as Visualization;
+
+  // Use registerVisualization for first load; overwrite directly for updates
+  // (registerVisualization throws on duplicate identifiers).
+  if (visualizations.has(display)) {
+    visualizations.set(display, registryComponent);
+  } else {
+    registerVisualization(registryComponent);
   }
 }
 
