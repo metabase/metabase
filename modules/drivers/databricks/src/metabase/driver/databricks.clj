@@ -150,14 +150,24 @@
                            {}
                            e))))))})
 
-(defn- schema-names-filter [schema-names multi-level-schema catalog-column schema-column]
-  (when schema-names
+(defn- schema-names-filter
+  "Build a HoneySQL predicate restricting rows to `schema-names`.
+
+  When `multi-level-schema` is enabled, schema names are `catalog.schema` pairs. Databricks's
+  optimizer handles `(catalog, schema) IN ((?, ?))` extremely poorly on large Unity Catalog
+  `information_schema` tables (~3.5 minutes per schema vs ~2 seconds for equality). Expand each
+  pair into `catalog = ? AND schema = ?`, OR-ed together when there are multiple. See #79504."
+  [schema-names multi-level-schema catalog-column schema-column]
+  (when (seq schema-names)
     (if multi-level-schema
-      [:in [:composite catalog-column schema-column]
-       (map (comp (fn [catalog+schema]
-                    (into [:composite] catalog+schema))
-                  split-catalog+schema)
-            schema-names)]
+      (let [clauses (for [catalog+schema schema-names
+                          :let [[catalog schema] (split-catalog+schema catalog+schema)]]
+                      [:and
+                       [:= catalog-column catalog]
+                       [:= schema-column schema]])]
+        (if (= 1 (count clauses))
+          (first clauses)
+          (into [:or] clauses)))
       [:in schema-column schema-names])))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
