@@ -354,4 +354,28 @@ describe("getSensibleDisplays", () => {
   it("should keep every `isSensible` visualization for a single row (metabase#12476)", () => {
     expect(getSensibleDisplays(createMockRawSeries(1))).toContain("scalar");
   });
+
+  it("should keep a visualization without `isSensible` for an empty result", () => {
+    const display: CustomVizDisplayType = "custom:empty-result";
+    registerCustomViz(display, () => {
+      throw new Error("Unsupported data");
+    });
+
+    expect(getSensibleDisplays(createMockRawSeries(0))).toContain(display);
+  });
+
+  it("should keep a visualization without `isSensible` when a guest embed has no data", () => {
+    const display: CustomVizDisplayType = "custom:guest-embed-placeholder";
+    registerCustomViz(display, () => {
+      throw new Error("Unsupported data");
+    });
+    const rawSeries: RawSeries = [
+      {
+        card: createMockCard(),
+        data: createMockDatasetData({ cols: [], rows: [] }),
+      },
+    ];
+
+    expect(getSensibleDisplays(rawSeries)).toContain(display);
+  });
 });

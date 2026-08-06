@@ -3,6 +3,7 @@ import _ from "underscore";
 import visualizations, {
   type RegisteredVisualization,
 } from "metabase/visualizations";
+import { getSeriesWithDisplay } from "metabase/visualizations/lib/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import {
@@ -35,12 +36,7 @@ function isRenderable(
   rawSeries: RawSeries,
   display: VisualizationDisplay,
 ) {
-  // `checkRenderable` reads settings computed for the display it is asked
-  // about, not for whichever display the card currently has.
-  const series = rawSeries.map((single) => ({
-    ...single,
-    card: { ...single.card, display },
-  }));
+  const series = getSeriesWithDisplay(rawSeries, display);
 
   try {
     viz.checkRenderable(series, getComputedSettingsForSeries(series));
@@ -60,6 +56,10 @@ function isRenderable(
  */
 export function getSensibleDisplays(rawSeries: RawSeries) {
   const [{ data }] = rawSeries;
+  // An empty result — or the placeholder a guest embed gets instead of query
+  // results — gives `checkRenderable` nothing to judge by, and it would reject
+  // most visualizations. Keep them all so the card keeps its own display.
+  const hasNothingToJudgeBy = data.rows.length === 0;
 
   return Array.from(visualizations)
     .filter(([display, viz]) => {
@@ -67,7 +67,10 @@ export function getSensibleDisplays(rawSeries: RawSeries) {
         // don't rule out displays if there's no data
         return data.rows.length <= 1 || viz.isSensible(data);
       }
-      return !viz.hidden && isRenderable(viz, rawSeries, display);
+      return (
+        !viz.hidden &&
+        (hasNothingToJudgeBy || isRenderable(viz, rawSeries, display))
+      );
     })
     .map(([display]) => display);
 }

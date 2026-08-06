@@ -1,7 +1,11 @@
 import { assocIn } from "icepick";
 
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
-import type { Series } from "metabase-types/api";
+import type {
+  RawSeries,
+  Series,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import type { Card, VisualizationSettings } from "metabase-types/api/card";
 
 export const updateSeriesColor = (
@@ -15,6 +19,19 @@ export const updateSeriesColor = (
 export const getNameForCard = (card: Card) => {
   return card?.name || "";
 };
+
+/**
+ * Settings are computed for the display the cards carry, so asking about a
+ * different display means handing the series that display first.
+ */
+export const getSeriesWithDisplay = (
+  rawSeries: RawSeries,
+  display: VisualizationDisplay,
+): RawSeries =>
+  rawSeries.map((series) => ({
+    ...series,
+    card: { ...series.card, display },
+  }));
 
 export const createRawSeries = (options: {
   card: Card;
