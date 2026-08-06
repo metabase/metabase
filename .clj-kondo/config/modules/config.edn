@@ -737,7 +737,6 @@
            public-sharing
            queries
            query-processor
-           remote-sync
            search
            settings
            staleness
@@ -834,11 +833,11 @@
            collections
            events
            models
+           permissions
            public-sharing
            queries
            query-permissions
            query-processor
-           remote-sync
            revisions
            search
            util
@@ -1852,7 +1851,6 @@
            pulse
            query-permissions
            query-processor
-           remote-sync
            request
            search
            settings
@@ -2468,7 +2466,7 @@
            collections
            events
            models
-           remote-sync
+           permissions
            util}
    :model-exports #{:model/Timeline}
    :model-imports #{:model/Collection :model/User}}
@@ -3531,6 +3529,7 @@
            events
            models
            premium-features
+           remote-sync
            search
            settings
            startup

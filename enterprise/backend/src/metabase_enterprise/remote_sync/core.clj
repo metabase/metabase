@@ -10,6 +10,7 @@
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util.malli :as mu]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -31,8 +32,9 @@
   or when the collection is not a remote-synced collection. Always returns true on OSS."
   :feature :none
   [collection]
-  (or (= (settings/remote-sync-type) :read-write)
-      (not (collections/remote-synced-collection? collection))))
+  (and (remote-sync/collection-readable? collection)
+       (or (= (settings/remote-sync-type) :read-write)
+           (not (collections/remote-synced-collection? collection)))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.

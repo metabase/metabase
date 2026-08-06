@@ -40,7 +40,6 @@
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -142,7 +141,6 @@
   ([instance]
    ;; Cards in audit collection should not be writable.
    (and
-    (remote-sync/worktree-accessible? instance)
     (not (and
           ;; We want to make sure there's an existing audit collection before doing the equality check below.
           ;; If there is no audit collection, this will be nil:

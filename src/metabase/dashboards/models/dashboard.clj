@@ -23,7 +23,6 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -53,8 +52,7 @@
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
    ;; Dashboards in audit collection should be read only
-   (and (remote-sync/worktree-accessible? instance)
-        (not (and
+   (and (not (and
               ;; We want to make sure there's an existing audit collection before doing the equality check below.
               ;; If there is no audit collection, this will be nil:
               (some? (:id (audit/default-audit-collection)))

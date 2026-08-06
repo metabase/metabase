@@ -43,13 +43,28 @@
                      :target-worktree-id container-worktree-id})))
   nil)
 
+(defn collection-readable?
+  "Whether content in `collection-or-id` may be read: a collection checked out into a remote-sync worktree, and
+  everything in it, is admin-only.
+
+  Mirrors [[collection-editable?]] but needs no enterprise implementation -- `worktree_id` is an OSS column, so
+  the rule is the same on both editions. Asking the collection rather than the row keeps the answer right for a
+  row whose own denormalized `worktree_id` was not selected."
+  [collection-or-id]
+  (or api/*is-superuser?*
+      (nil? (cond
+              (nil? collection-or-id) nil
+              (map? collection-or-id) (:worktree_id collection-or-id)
+              :else                   (t2/select-one-fn :worktree_id :model/Collection :id collection-or-id)))))
+
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.
 
-  Always true on OSS."
+  Worktree content is admin-only on both editions, so editability implies [[collection-readable?]]. Beyond that
+  always true on OSS: only enterprise has a read-only remote-sync mode."
   metabase-enterprise.remote-sync.core
-  [_collection]
-  true)
+  [collection]
+  (collection-readable? collection))
 
 (defenterprise table-editable?
   "Returns if a table's metadata can be edited. Takes a table to check.

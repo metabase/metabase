@@ -7,8 +7,8 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -18,7 +18,8 @@
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.instance :as t2.instance]))
+   [toucan2.instance :as t2.instance]
+  ))
 
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
 
@@ -36,21 +37,7 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(defmethod mi/can-read? :model/Document
-  ([instance]
-   (and (remote-sync/worktree-accessible? instance)
-        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :read))))
-  ([_model pk]
-   (when-let [document (t2/select-one :model/Document :id pk)]
-     (mi/can-read? document))))
-
-(defmethod mi/can-write? :model/Document
-  ([instance]
-   (and (remote-sync/worktree-accessible? instance)
-        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
-  ([_model pk]
-   (when-let [document (t2/select-one :model/Document :id pk)]
-     (mi/can-write? document))))
+(perms/define-collection-based-visibility! :model/Document)
 
 (defmethod mi/visible-filter-clause :model/Document
   [_model column-or-exp user-info _perm-type->perm-level & [opts]]

@@ -308,12 +308,15 @@
 
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
-  (if (or (= read-or-write :read)
-          (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
-    (perms-objects-set-for-parent-collection instance read-or-write)
-    ;; We need to return a dummy permissions string that cannot possibly belong to a user in
-    ;; the case where an instance is not syncable due to remote-sync being in ':production' mode
-    #{"___no-remote-sync-access"}))
+  (let [collection (or (:collection instance) (:collection_id instance))]
+    (if (if (= read-or-write :read)
+          (remote-sync/collection-readable? collection)
+          (remote-sync/collection-editable? collection))
+      (perms-objects-set-for-parent-collection instance read-or-write)
+      ;; We need to return a dummy permissions string that cannot possibly belong to a user: the collection is
+      ;; either checked out into a remote-sync worktree, which is admin-only, or not syncable because remote-sync
+      ;; is in ':production' mode. Doing it here means no collection-based model has to remember the check.
+      #{"___no-remote-sync-access"})))
 
 (methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
   [_model k models]
@@ -538,7 +541,8 @@
     `(do
        (defmethod mi/can-read? ~target
          ([instance#] (can-read-via-parent-collection? (:collection_id instance#) (:worktree_id instance#)))
-         ([_# pk#]    (mi/can-read? (t2/select-one ~target :id pk#))))
+         ([_# pk#]    (when-let [instance# (t2/select-one ~target :id pk#)]
+                        (mi/can-read? instance#))))
        (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
 
     (string? target)
