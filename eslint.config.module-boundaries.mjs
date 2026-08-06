@@ -78,6 +78,19 @@ export default defineConfig([
     settings: {
       "boundaries/elements": boundaryElements,
       "boundaries/ignore": ["**/e2e/**", "test/**"],
+      // Uncomment to also enforce boundary rules on TypeScript type-only
+      // imports (`import type { ... } from "..."`). Off by default since the
+      // plugin ignores type imports — they're erased at compile time and
+      // create no runtime coupling — but turning this on catches conceptual
+      // coupling (e.g. mlv1 importing types from custom-viz). Expect a
+      // backlog of newly-surfaced violations on first run.
+      // "boundaries/additional-dependency-nodes": [
+      //   {
+      //     selector: "ImportDeclaration[importKind=type] > Literal",
+      //     name: "type-import",
+      //     kind: "type",
+      //   },
+      // ],
       "import-x/resolver": {
         node: true,
         webpack: {
