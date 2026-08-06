@@ -200,6 +200,12 @@
                      :direct-count (count direct-deps)
                      :transitive-count (count transitive-deps)
                      :reachable-namespace-count reachable-namespace-count
+                     ;; Longest of the paths `all-module-deps-paths` happened to record, which keeps
+                     ;; the FIRST path by which it reaches each dependency. That makes this a function
+                     ;; of DFS visitation order, not a graph-theoretic depth: it is neither the longest
+                     ;; path nor the maximum shortest-path distance. Comparable across snapshots taken
+                     ;; with the same code, which is what the history CSV needs, but do not read it as
+                     ;; "how deep is this module's dependency tree".
                      :max-depth (reduce max 0 dependency-depths))
                     :dependents
                     (ordered-map/ordered-map
