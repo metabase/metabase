@@ -546,6 +546,56 @@
         (is (= "sk-or-v1-fresh"
                (llm.settings/llm-openrouter-api-key)))))))
 
+(deftest settings-put-connect-zai-defaults-model-test
+  (testing "connecting zai with only an api-key switches to the default zai model"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                       llm.settings/llm-zai-api-key          nil]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
+                                                             ([provider]
+                                                              (is (= "zai" provider))
+                                                              {:models [{:id "glm-5.2"
+                                                                         :display_name "GLM-5.2"}]})
+                                                             ([provider {:keys [credentials]}]
+                                                              (is (= "zai" provider))
+                                                              (is (= {:api-key "zai-key.fresh"} credentials))
+                                                              {:models [{:id "glm-5.2"
+                                                                         :display_name "GLM-5.2"}]}))]
+        (is (= {:value  "zai/glm-5.2"
+                :models [{:id "glm-5.2"
+                          :display_name "GLM-5.2"}]}
+               (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                     {:provider "zai"
+                                      :api-key  "zai-key.fresh"})))
+        (is (= "zai/glm-5.2"
+               (metabot.settings/llm-metabot-provider)))
+        (is (= "zai-key.fresh"
+               (llm.settings/llm-zai-api-key)))))))
+
+(deftest settings-put-connect-mistral-defaults-model-test
+  (testing "connecting mistral with only an api-key switches to the default mistral model"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                       llm.settings/llm-mistral-api-key      nil]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
+                                                             ([provider]
+                                                              (is (= "mistral" provider))
+                                                              {:models [{:id "mistral-medium-3-5"
+                                                                         :display_name "Mistral Medium 3.5"}]})
+                                                             ([provider {:keys [credentials]}]
+                                                              (is (= "mistral" provider))
+                                                              (is (= {:api-key "mistral-key-fresh"} credentials))
+                                                              {:models [{:id "mistral-medium-3-5"
+                                                                         :display_name "Mistral Medium 3.5"}]}))]
+        (is (= {:value  "mistral/mistral-medium-3-5"
+                :models [{:id "mistral-medium-3-5"
+                          :display_name "Mistral Medium 3.5"}]}
+               (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                     {:provider "mistral"
+                                      :api-key  "mistral-key-fresh"})))
+        (is (= "mistral/mistral-medium-3-5"
+               (metabot.settings/llm-metabot-provider)))
+        (is (= "mistral-key-fresh"
+               (llm.settings/llm-mistral-api-key)))))))
+
 (deftest settings-put-updates-metabase-provider-without-api-key-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn

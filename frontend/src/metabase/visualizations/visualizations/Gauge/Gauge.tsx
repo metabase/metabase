@@ -32,9 +32,7 @@ import { GAUGE_CHART_DEFINITION } from "./definition";
 import { isGaugeRange } from "./types";
 import { getValue, radians } from "./utils";
 
-Object.assign(Gauge, GAUGE_CHART_DEFINITION);
-
-export function Gauge({
+function GaugeComponent({
   className,
   dispatch,
   isSettings,
@@ -261,3 +259,5 @@ export function Gauge({
     </div>
   );
 }
+
+export const Gauge = Object.assign(GaugeComponent, GAUGE_CHART_DEFINITION);

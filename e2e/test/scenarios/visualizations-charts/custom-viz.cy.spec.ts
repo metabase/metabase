@@ -576,6 +576,28 @@ describe("admin > custom visualizations", () => {
         .should("be.visible");
       // Default threshold from getDefault
       H.main().findByText("Threshold: 0").should("be.visible");
+
+      cy.findByTestId("demo-viz-measured-width")
+        .invoke("text")
+        .then((text) => {
+          const measuredWidth = Number(text.replace(/\D/g, ""));
+          expect(measuredWidth).to.be.within(197, 217);
+        });
+      cy.findByTestId("demo-viz-measured-height")
+        .invoke("text")
+        .then((text) => {
+          const measuredHeight = Number(text.replace(/\D/g, ""));
+          expect(measuredHeight).to.be.within(10, 15);
+        });
+      cy.findByTestId("demo-viz-brand-color")
+        .invoke("text")
+        .should("match", /Brand color: (#[0-9a-fA-F]{3,8}|(rgb|hsl)a?\(.+\))$/);
+      cy.findByTestId("demo-viz-font-family").should("contain", "Lato");
+      cy.findByTestId("demo-viz-color-scheme").should(
+        "have.text",
+        "Color scheme: light",
+      );
+
       H.expectUnstructuredSnowplowEvent({ event: "custom_viz_selected" });
       H.expectNoBadSnowplowEvents();
     });
@@ -601,6 +623,25 @@ describe("admin > custom visualizations", () => {
         .findByText("Custom viz rendered successfully")
         .should("be.visible");
       H.main().findByText("Threshold: 42").should("be.visible");
+    });
+
+    it("opens the column formatting popover from a field setting (metabase#78039)", () => {
+      H.visitQuestion("@questionId");
+      switchToDemoViz();
+
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByTestId("chartsettings-sidebar")
+        .findByTestId("settings-count")
+        .click();
+
+      cy.findByTestId("chart-settings-widget-popover-content").within(() => {
+        cy.findByText("Add a prefix").should("be.visible");
+        cy.findByPlaceholderText("$").type("foo").blur();
+      });
+
+      H.main()
+        .findByTestId("demo-viz-formatted-value")
+        .should("contain", "foo");
     });
 
     describe("errors", () => {
@@ -1424,27 +1465,6 @@ describe("admin > custom visualizations", () => {
         },
       );
 
-      // The scaffolded template requires Metabase >= 60.0, but the e2e runner may
-      // run an older version. Rewrite the manifest to a permissive range so the
-      // dev-only plugin is included in /api/ee/custom-viz-plugin/list and becomes
-      // selectable in the visualization picker.
-      cy.readFile(`${projectDir}/metabase-plugin.json`).then((manifest) => {
-        cy.writeFile(
-          `${projectDir}/metabase-plugin.json`,
-          JSON.stringify(
-            {
-              ...manifest,
-              metabase: {
-                ...(manifest?.metabase ?? {}),
-                version: "", // empty strings means compatibility with any version
-              },
-            },
-            null,
-            2,
-          ),
-        );
-      });
-
       // Use current version of the SDK in the plugin.
       cy.readFile(`${projectDir}/package.json`).then((pkg) => {
         cy.writeFile(
@@ -2254,7 +2274,7 @@ describe("sandbox", () => {
     cy.get("@consoleLog").should(
       "have.been.calledWith",
       "plugin treewalker(document) saw non-empty nodes:",
-      13,
+      25,
     );
   });
 

@@ -3,6 +3,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import type {
   DatePickerOperator,
   DatePickerUnit,
+  SpecificDatePickerOperator,
   SpecificDatePickerValue,
 } from "metabase/querying/common/types";
 import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
@@ -56,10 +57,9 @@ export function SpecificDatePicker({
   const hasTimeToggle = canSetTime(value, availableUnits);
   const coercedValue = coerceValue(value);
 
-  const handleTabChange = (tabValue: string | null) => {
-    const tab = tabs.find((tab) => tab.operator === tabValue);
-    if (tab) {
-      setValue(setOperator(value, tab.operator));
+  const handleTabChange = (operator: SpecificDatePickerOperator | null) => {
+    if (operator) {
+      setValue(setOperator(value, operator));
     }
   };
 

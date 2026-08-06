@@ -153,9 +153,8 @@
                                       (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))
                                       (some?
                                        (some
-                                        (fn [{:keys [level e message]}]
+                                        (fn [{:keys [level message]}]
                                           (and (= level :warn)
-                                               (instance? clojure.lang.ExceptionInfo e)
                                                (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
                                         (messages)))))]
             (testing "sense checks before deleting the database"

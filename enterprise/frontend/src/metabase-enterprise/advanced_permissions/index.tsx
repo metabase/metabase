@@ -13,7 +13,7 @@ import {
   PLUGIN_REDUCERS,
   type PermissionOption,
 } from "metabase/plugins";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { DataPermissionValue } from "metabase-types/api";
 
@@ -138,12 +138,12 @@ export function initializePlugin() {
       label: t`Edit Impersonated`,
       iconColor: "warning",
       icon: "database",
-      actionCreator: (entityId, groupId, view) => {
+      onSelect: (entityId, groupId, view) => {
         if (entityId == null) {
           throw new Error("Impersonation can only be configured for databases");
         }
 
-        return push(getEditImpersonationUrl(entityId, groupId, view));
+        navigate(getEditImpersonationUrl(entityId, groupId, view));
       },
     });
 

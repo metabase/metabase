@@ -10,8 +10,7 @@ import {
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Box,
   Button,
@@ -47,12 +46,12 @@ export const TenantsListing = ({
   children,
   hasNoTenants,
 }: TenantsListingProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const openNewTenantModal = () => {
     const param = hasNoTenants ? "?onboarding=true" : "";
 
-    dispatch(push(Urls.newTenant() + param));
+    navigate(Urls.newTenant() + param);
   };
 
   const filteredTenants = useMemo(() => {

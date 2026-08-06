@@ -7,7 +7,7 @@ import type {
   GetState,
 } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 
 import { getQuestion } from "../selectors";
 
@@ -26,8 +26,8 @@ export const setDatasetEditorTab =
     dispatch(runDirtyQuestionQuery());
   };
 
-export const onCancelCreateNewModel = () => async (dispatch: Dispatch) => {
-  await dispatch(push("/"));
+export const onCancelCreateNewModel = () => async () => {
+  navigate("/");
 };
 
 export const turnQuestionIntoModel =

@@ -2,9 +2,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateSettingsMutation } from "metabase/api";
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
+import { useSetting, useUpdateSettingsMutation } from "metabase/settings";
 import { Button, Group, Stack, Text, TextInput } from "metabase/ui";
 
 export const SetupJwtStep = ({ onSuccess }: { onSuccess: () => void }) => {

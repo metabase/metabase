@@ -532,6 +532,8 @@ import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
 import table_index_component from "./table_index.svg?component";
 import table_index_source from "./table_index.svg?source";
+import telescope_component from "./telescope.svg?component";
+import telescope_source from "./telescope.svg?source";
 import test_tube_component from "./test_tube.svg?component";
 import test_tube_source from "./test_tube.svg?source";
 import text_bold_component from "./text_bold.svg?component";
@@ -596,8 +598,6 @@ import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
 import webhook_source from "./webhook.svg?source";
-import workspace_component from "./workspace.svg?component";
-import workspace_source from "./workspace.svg?source";
 import zap_component from "./zap.svg?component";
 import zap_source from "./zap.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
@@ -1645,6 +1645,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: table_index_component,
       source: table_index_source,
     },
+    telescope: {
+      component: telescope_component,
+      source: telescope_source,
+    },
     text_bold: {
       component: text_bold_component,
       source: text_bold_source,
@@ -1784,10 +1788,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     webhook: {
       component: webhook_component,
       source: webhook_source,
-    },
-    workspace: {
-      component: workspace_component,
-      source: workspace_source,
     },
     "10k": {
       component: ten_thousand_component,

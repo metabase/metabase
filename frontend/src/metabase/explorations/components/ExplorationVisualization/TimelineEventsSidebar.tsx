@@ -1,0 +1,53 @@
+import { msgid, ngettext, t } from "ttag";
+
+import { ActionIcon, Group, Icon, ScrollArea, Stack, Text } from "metabase/ui";
+import type { TimelineEvent } from "metabase-types/api";
+
+import { TimelineEventCard } from "./TimelineEventCard";
+import S from "./TimelineEventsSidebar.module.css";
+
+interface TimelineEventsSidebarProps {
+  events: TimelineEvent[];
+  onClose: () => void;
+}
+
+export function TimelineEventsSidebar({
+  events,
+  onClose,
+}: TimelineEventsSidebarProps) {
+  return (
+    <Stack
+      w="23rem"
+      h="100%"
+      gap={0}
+      className={S.sidebar}
+      data-testid="exploration-timeline-events-sidebar"
+    >
+      <Group
+        justify="space-between"
+        align="center"
+        px="lg"
+        py="md"
+        wrap="nowrap"
+      >
+        <Text fw="bold">
+          {ngettext(
+            msgid`${events.length} event`,
+            `${events.length} events`,
+            events.length,
+          )}
+        </Text>
+        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+          <Icon name="close" />
+        </ActionIcon>
+      </Group>
+      <ScrollArea flex={1} pb="lg">
+        <Stack gap="sm" data-testid="timeline-events-list">
+          {events.map((event) => (
+            <TimelineEventCard key={event.id} event={event} />
+          ))}
+        </Stack>
+      </ScrollArea>
+    </Stack>
+  );
+}

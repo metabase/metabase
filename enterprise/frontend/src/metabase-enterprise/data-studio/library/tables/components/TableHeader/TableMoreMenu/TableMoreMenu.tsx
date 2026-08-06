@@ -7,7 +7,7 @@ import { CollectionPickerModal } from "metabase/common/components/Pickers";
 import { useSetCollection } from "metabase/common/hooks/use-set-collection";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { ActionIcon, Box, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionId, CollectionItem, Table } from "metabase-types/api";
@@ -23,6 +23,7 @@ export type TableMoreMenuProps = {
 
 export function TableMoreMenu({ table, onMoved }: TableMoreMenuProps) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [modalType, setModalType] = useState<TableModalType>();
   const setCollection = useSetCollection();
   const remoteSyncReadOnly = useSelector(
@@ -33,7 +34,7 @@ export function TableMoreMenu({ table, onMoved }: TableMoreMenuProps) {
 
   const handleUnpublish = () => {
     setModalType(undefined);
-    dispatch(push(Urls.dataStudioLibrary()));
+    navigate(Urls.dataStudioLibrary());
   };
 
   const handleMove = async (newCollection: { id: CollectionId }) => {

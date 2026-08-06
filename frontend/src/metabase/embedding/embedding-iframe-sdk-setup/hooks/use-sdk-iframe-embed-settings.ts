@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 
-import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { USER_SETTINGS_DEBOUNCE_MS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import type {
   SdkIframeEmbedSetupRecentItem,
@@ -9,6 +8,7 @@ import type {
 } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { determineDashboardId } from "metabase/embedding/embedding-iframe-sdk-setup/utils/determine-dashboard-id";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import { useSetting, useUserSetting } from "metabase/settings";
 
 import { getAdjustedSdkIframeEmbedSetting } from "../utils/get-adjusted-sdk-iframe-embed-setting";
 import {

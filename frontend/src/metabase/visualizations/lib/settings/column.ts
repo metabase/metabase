@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import {
   type TimeEnabled,
   currency,
@@ -13,7 +14,7 @@ import {
 } from "metabase/utils/formatting";
 import { hasHour } from "metabase/utils/formatting/datetime-utils";
 import MetabaseSettings from "metabase/utils/settings";
-import { getVisualizationRaw } from "metabase/visualizations";
+import { getVisualization, getVisualizationRaw } from "metabase/visualizations";
 import {
   getDateFormatFromStyle,
   getDateStyleOptionsForUnit,
@@ -29,6 +30,7 @@ import {
 } from "metabase/visualizations/shared/settings/column";
 import type {
   ComputedVisualizationSettings,
+  FormattableColumn,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import {
@@ -348,7 +350,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       }
       return (
         settings.number_style !== "currency" ||
-        series[0].card.display !== "table"
+        series[0]?.card.display !== "table"
       );
     },
     readDependencies: ["number_style"],
@@ -472,9 +474,12 @@ const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
 
 export function getSettingDefinitionsForColumn(
   series: Series,
-  column: DatasetColumn,
+  column: FormattableColumn,
 ) {
-  const visualization = getVisualizationRaw(series);
+  // ColumnSettings passes an empty fake series when formatting outside a viz;
+  // fall back to the default visualization's column settings in that case
+  const visualization =
+    series.length > 0 ? getVisualizationRaw(series) : getVisualization(null);
   const extraColumnSettings =
     typeof visualization?.columnSettings === "function"
       ? visualization.columnSettings(column)
@@ -534,7 +539,7 @@ export const getTitleForColumn = (
   const pivoted = isPivoted(series, settings);
 
   if (pivoted) {
-    return displayNameForColumn(column) || t`Unset`;
+    return displayNameForColumn(column) || NULL_DISPLAY_VALUE;
   }
 
   return (

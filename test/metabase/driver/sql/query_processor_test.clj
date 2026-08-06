@@ -234,9 +234,7 @@
                     (sql.qp/mbql->native :h2))))))))
 
 (defn- legacy-join->honeysql [driver join]
-  (sql.qp/join->honeysql driver (if (isa? driver/hierarchy driver :sql-mbql5)
-                                  (lib.convert/->mbql5 (#'lib.util/join->pipeline join))
-                                  join)))
+  (sql.qp/join->honeysql driver (lib.convert/->mbql5 (#'lib.util/join->pipeline join))))
 
 (deftest ^:parallel joins-against-native-queries-test
   (testing "Joins against native SQL queries should get converted appropriately! make sure correct HoneySQL is generated"
@@ -1426,7 +1424,7 @@
         (let [uuid #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
           (is (= uuid
                  (sql.qp/->honeysql driver
-                                    (sql.qp/mbql-clause-with-opts driver :value {:base_type :type/UUID :effective_type :type/UUID} uuid)))))))))
+                                    [:value {:base_type :type/UUID :effective_type :type/UUID} uuid]))))))))
 
 (deftest ^:parallel multiple-counts-test
   (testing "Count of count grouping works (#15074)"

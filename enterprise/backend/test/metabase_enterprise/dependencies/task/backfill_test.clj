@@ -10,6 +10,7 @@
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.events.core :as events]
+   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -470,3 +471,137 @@
         (assert-processed :card card-id)
         (is (false? (deps.dependency-status/has-stale-or-outdated?))
             "Expected no pending work once the card has been processed")))))
+
+(deftest ^:sequential batch-size-zero-suppresses-event-triggers-but-stays-warm-test
+  (testing "A non-positive batch size stops the job doing work, but leaves it on its slow periodic schedule so it
+           resumes if the setting ever becomes positive. What it must not do is keep firing the 1-second event-driven
+           trigger, which is what made a disabled job wake roughly once a second on a busy instance -- entity changes
+           fire it, and it never consulted the batch size."
+    (let [scheduled    (atom [])
+          scheduled-by (fn [thunk]
+                         (reset! scheduled [])
+                         (thunk)
+                         (count @scheduled))]
+      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
+        (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
+          (testing "the 1-second event-driven trigger is suppressed"
+            (is (zero? (scheduled-by dependencies.backfill/trigger-backfill-job!))))
+          (testing "but task/init! still puts the job on its periodic schedule"
+            (is (= 1 (scheduled-by #(task/init! ::dependencies.backfill/DependencyBackfill)))))
+          (testing "and a run keeps the chain going rather than stopping"
+            (mt/with-premium-features #{:dependencies}
+              (is (= 1 (scheduled-by #(#'dependencies.backfill/run-and-reschedule! nil)))))))
+        (testing "a positive batch size schedules from the event trigger too"
+          (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "5")]
+            (is (= 1 (scheduled-by dependencies.backfill/trigger-backfill-job!)))))))))
+
+(deftest ^:sequential backfill-batch-shares-one-metadata-provider-test
+  (testing "GHY-4251: every entity in a batch must share one MetadataProvider per database. Reading an entity attaches
+           a provider to its query, so without a batch-scoped cache each entity gets a private one; native dep
+           calculation then fills each with that database's table metadata and the batch retains one copy per entity,
+           which is what exhausted the heap on instances with large warehouses."
+    (backfill-all-existing-entities!)
+    (let [providers (atom [])
+          calculate-deps deps.calculation/calculate-deps
+          native-card (fn [sql] {:database (mt/id) :type :native :native {:query sql}})]
+      (mt/with-premium-features #{}
+        (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (native-card "select id from orders")}
+                       :model/Card {card2-id :id} {:dataset_query (native-card "select id from products")}]
+          (mark-stale! :card card1-id)
+          (mark-stale! :card card2-id)
+          (with-redefs [deps.calculation/calculate-deps
+                        (fn [entity-type entity]
+                          (when-let [mp (:lib/metadata (:dataset_query entity))]
+                            (swap! providers conj mp))
+                          (calculate-deps entity-type entity))]
+            (backfill-dependencies-single-trigger!))
+          (testing "both cards were analyzed, so the assertion below is meaningful"
+            (is (<= 2 (count @providers))))
+          (testing "and they were analyzed through the same provider instance"
+            ;; Identity, not equality: providers compare equal when they wrap the same database id, so `=` would be
+            ;; satisfied by two separate caches and would not detect the regression.
+            (is (= 1 (count (into #{} (map #(System/identityHashCode %)) @providers))))))))))
+
+(deftest ^:sequential backfill-records-failure-for-fatal-error-test
+  (testing "GHY-4251: a fatal Error must record the entity's failure before propagating. Only Exception was caught,
+           so an OutOfMemoryError escaped without recording anything and the next run selected the identical batch --
+           a crash loop that never made progress. Recording first means the entity backs off and eventually goes
+           terminal, so the batch drains even if one entity always kills the process."
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+        (mark-stale! :card card-id)
+        (with-redefs [deps.calculation/calculate-deps (fn [& _] (throw (Error. "simulated fatal error")))]
+          (testing "the Error propagates instead of being swallowed, failing the job"
+            (is (thrown-with-msg? Error #"simulated fatal error"
+                                  (backfill-dependencies-single-trigger!)))))
+        (testing "and the failure was recorded first, so the next run backs off instead of replaying the batch"
+          (let [{:keys [fail_count next_retry_at terminal]}
+                (t2/select-one :model/DependencyStatus :entity_type :card :entity_id card-id)]
+            (is (= 1 fail_count))
+            (is (some? next_retry_at))
+            (is (false? terminal))))))))
+
+(deftest ^:sequential pending-retries-licence-states-test
+  (testing "A pending retry keeps the backfill job scheduled, but only when the licence permits acting on it. A retry
+           marker is cleared by processing the entity -- on success via upsert-status!, or by going terminal past
+           max-retries -- and both are gated on the feature, so without it the job could never resolve the condition
+           keeping it awake and rescheduled hourly forever.
+
+           The licence is resolved with canonically-has-feature? rather than has-feature?, which collapses 'no licence'
+           and 'could not check' into the same false. Both inputs to the job's reschedule decision consult the licence,
+           so a transient token failure would take the job down permanently -- nothing re-fires when the check
+           recovers, because the token never changed."
+    (backfill-all-existing-entities!)
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+      (mark-stale! :card card-id)
+      (backfill-dependencies-single-trigger!)
+      (deps.dependency-status/record-failure! :card card-id 5 60)
+      (is (t2/exists? :model/DependencyStatus
+                      :entity_type :card :entity_id card-id
+                      :terminal false :next_retry_at [:not= nil])
+          "test setup: the card must be in retry backoff")
+      (let [actionable? (fn [licence]
+                          (with-redefs [premium-features/canonically-has-feature? (constantly licence)]
+                            (#'dependencies.backfill/has-pending-retries?)))]
+        (testing "licensed: the pending retry keeps the job scheduled"
+          (is (true? (actionable? true))))
+        (testing "indeterminate: treated as actionable, so a blip cannot end the chain"
+          (is (true? (actionable? nil))))
+        (testing "definitively unlicensed: not actionable"
+          (is (false? (actionable? false))))))))
+
+(deftest ^:sequential backfill-records-failure-for-never-processed-entity-test
+  (testing "An entity with no dependency_status row yet must still get a failure recorded when it fails. Such entities
+           are explicitly selected for processing (instances-for-dependency-calculation matches a null status row), so
+           on a first backfill every entity is in this state -- exactly the population most likely to fail on a large
+           instance. record-failure! only updated an existing row, so nothing was recorded and the next run selected
+           the identical batch: the crash loop, unbroken for the entities most likely to cause it."
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+        (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id))
+            "test setup: the card must have no status row, which is what makes it eligible")
+        (with-redefs [deps.calculation/calculate-deps (fn [& _] (throw (ex-info "boom" {})))]
+          (backfill-dependencies-single-trigger!))
+        (testing "the failure is recorded, so the entity backs off instead of being reselected unchanged"
+          (let [{:keys [fail_count next_retry_at]}
+                (t2/select-one :model/DependencyStatus :entity_type :card :entity_id card-id)]
+            (is (= 1 fail_count))
+            (is (some? next_retry_at))))))))
+
+(deftest ^:sequential fatal-error-still-reschedules-test
+  (testing "A failure must not leave the job unscheduled. The job is one-shot self-rescheduling with no cron
+           backstop, so an Error propagating out of the batch skipped schedule-run! entirely and the chain ended
+           until a content-change event or a restart. A real OutOfMemoryError usually takes the process with it and
+           task/init! recovers on boot, but survivable Errors -- StackOverflowError from deeply nested SQL, an
+           AssertionError, a LinkageError -- leave a live process with a dead job."
+    (let [scheduled (atom [])]
+      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)
+                    dependencies.backfill/backfill-dependencies!
+                    (fn [& _] (throw (Error. "simulated fatal error")))]
+        (testing "the Error still propagates"
+          (is (thrown-with-msg? Error #"simulated fatal error"
+                                (#'dependencies.backfill/run-and-reschedule! nil))))
+        (testing "and the next run was scheduled anyway"
+          (is (= 1 (count @scheduled))))))))

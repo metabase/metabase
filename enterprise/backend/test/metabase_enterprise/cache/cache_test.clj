@@ -210,7 +210,7 @@
                                                           :invalidated_at (t/offset-date-time)}]
         (let [run-query!  (fn [card-id & params]
                             (-> (apply mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id) params)
-                                (select-keys [:cached])))
+                                (select-keys [:cached :data])))
               invalidate! (fn [status & args]
                             (apply mt/user-http-request :crowberto :post status "cache/invalidate" args))]
           (is (=? {:data [{:model "database" :model_id (mt/id)}]}

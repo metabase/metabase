@@ -195,7 +195,78 @@ describe("metabase/visualization/lib/table", () => {
     });
 
     describe("pivoted table", () => {
-      // TODO:
+      const ROW_COLUMN = createMockColumn({
+        name: "CREATED_AT",
+        display_name: "Created At",
+        source: "breakout",
+      });
+      const PIVOT_COLUMN = createMockColumn({
+        name: "SOURCE",
+        display_name: "Source",
+        source: "breakout",
+      });
+      const METRIC = createMockColumn({
+        name: "count",
+        display_name: "Count",
+        source: "aggregation",
+      });
+      const ORGANIC_METRIC_COLUMN = {
+        ...METRIC,
+        _dimension: { value: "Organic", column: PIVOT_COLUMN },
+      };
+      const PAID_METRIC_COLUMN = {
+        ...METRIC,
+        _dimension: { value: "Paid", column: PIVOT_COLUMN },
+      };
+
+      it("preserves source breakout dimensions on metric-cell clicks", () => {
+        const sourceData = createMockDatasetData({
+          cols: [ROW_COLUMN, PIVOT_COLUMN, METRIC],
+          rows: [
+            ["2024-01-01", "Organic", 10],
+            ["2024-01-01", "Paid", 20],
+          ],
+        });
+        const pivotedData = createMockDatasetData({
+          cols: [ROW_COLUMN, ORGANIC_METRIC_COLUMN, PAID_METRIC_COLUMN],
+          rows: [
+            Object.assign(["2024-01-01", 10, 20], {
+              _dimension: { value: "2024-01-01", column: ROW_COLUMN },
+            }),
+          ],
+          sourceRows: [[0, 0, 1]],
+        });
+        const series: Series = [
+          {
+            card: createMockCard(),
+            data: sourceData,
+          },
+        ];
+
+        expect(
+          getTableCellClickedObject(
+            pivotedData,
+            {},
+            0,
+            2,
+            true,
+            getTableClickedObjectRowData(series, 0, 2, true, pivotedData),
+          ),
+        ).toEqual({
+          value: 20,
+          column: PAID_METRIC_COLUMN,
+          settings: {},
+          dimensions: [
+            { value: "2024-01-01", column: ROW_COLUMN },
+            { value: "Paid", column: PIVOT_COLUMN },
+          ],
+          data: [
+            { col: ROW_COLUMN, value: "2024-01-01" },
+            { col: PIVOT_COLUMN, value: "Paid" },
+            { col: METRIC, value: 20 },
+          ],
+        });
+      });
     });
   });
 

@@ -48,6 +48,11 @@ export const getTimelineEventsSelectionSeries = (
     type: "line",
     data: [],
     markLine: {
+      blur: {
+        lineStyle: {
+          opacity: 1,
+        },
+      },
       symbol: "none",
       lineStyle: {
         type: "solid",

@@ -174,7 +174,7 @@
         (-> (selmer/render template payload)
             str/trim)
         (catch Exception e
-          (log/error e "Error rendering LLM representations template" {:type type})
+          (log/error "Error rendering LLM representations template" {:type type :error (ex-message e)})
           (pr-str payload)))
       (do
         (log/warn "LLM representations template missing" {:template llm-template-name})

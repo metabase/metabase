@@ -3,7 +3,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource])
   (:import
-   (com.mchange.v2.c3p0 PoolBackedDataSource)))
+   (com.mchange.v2.c3p0 PoolBackedDataSource)
+   (java.sql SQLException SQLTimeoutException)
+   (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -49,9 +51,34 @@
         (finally
           (reset! semantic.db.datasource/data-source orig-data-source))))))
 
+(deftest probe-dedicated-connection-test
+  (testing "the readiness probe connects without initializing the dedicated pool"
+    (when semantic.db.datasource/db-url
+      (with-redefs [semantic.db.datasource/data-source (atom nil)]
+        (is (= {:test 1} (semantic.db.datasource/probe-dedicated-connection!)))
+        (is (nil? @semantic.db.datasource/data-source))))))
+
 (def ^:private parse-db-url #'semantic.db.datasource/parse-db-url)
 
+(def ^:private probe-jdbc-url #'semantic.db.datasource/probe-jdbc-url)
+
 (def ^:private base-url "jdbc:postgresql://localhost:5432/mb_semantic_search")
+
+(deftest probe-jdbc-url-test
+  (testing "the probe URL fills in the fail-fast timeouts the one-shot datasource would otherwise lack"
+    ;; db-url is a value, not a fn, so with-dynamic-fn-redefs can't bind it
+    (with-redefs [semantic.db.datasource/db-url base-url]
+      (is (= (str base-url "?connectTimeout=5&socketTimeout=10")
+             (probe-jdbc-url)))))
+  (testing "a timeout the operator set on MB_PGVECTOR_DB_URL is replaced, not deferred to"
+    ;; An abandoned probe can't be interrupted out of a socket read, so it must not inherit a long wait.
+    (with-redefs [semantic.db.datasource/db-url (str base-url "?socketTimeout=60")]
+      (is (= (str base-url "?connectTimeout=5&socketTimeout=10")
+             (probe-jdbc-url)))))
+  (testing "unrelated connection params pass through, in the order they were written"
+    (with-redefs [semantic.db.datasource/db-url (str base-url "?user=mb&sslmode=require")]
+      (is (= (str base-url "?user=mb&sslmode=require&connectTimeout=5&socketTimeout=10")
+             (probe-jdbc-url))))))
 
 (deftest parse-db-url-defaults-test
   (testing "a URL with no params leaves the URL untouched and uses the default pool props"
@@ -142,3 +169,38 @@
               (is (= "metabase-semantic-search-db" (.getDataSourceName pool-ds))))
             (finally
               (semantic.db.datasource/shutdown-db!))))))))
+
+(def ^:private can-provision? #'semantic.db.datasource/app-db-can-provision-pgvector?)
+
+(defn- failing-datasource
+  "A datasource whose every connection attempt throws `e`, so the provisioning check fails before it can
+  ask the question."
+  ^DataSource [^Exception e]
+  (reify DataSource
+    (getConnection [_] (throw e))
+    (getConnection [_ _ _] (throw e))))
+
+(deftest app-db-can-provision-pgvector-distinguishes-refusal-from-failure-test
+  (testing "the database refusing to provision is an answer, and reads as no"
+    (doseq [[state what] {"42501" "the role lacks CREATE"
+                          "0A000" "the extension is not available on this server"
+                          "58P01" "the extension's control file is missing"}]
+      (testing what
+        ;; Hinted: SQLException also has a (String, Throwable) ctor, so untyped args reflect.
+        (is (false? (can-provision? (failing-datasource (SQLException. ^String what ^String state))
+                                    true true))))))
+  (testing "a check that never got an answer throws, rather than reading as a settled no"
+    (doseq [[e what] {(SQLTimeoutException. "statement timeout" "57014") "a timed-out DDL probe"
+                      (SQLException. "connection refused" "08006")      "a dropped connection"
+                      (SQLException. "too many connections" "53300")    "an exhausted server"
+                      (InterruptedException. "abandoned")               "an interrupted probe"}]
+      (testing what
+        (is (thrown? Exception (can-provision? (failing-datasource e) true true))))))
+  (testing "a refusal wrapped in another exception is still recognised"
+    (let [wrapped (SQLException. "rollback failed" "25P02" (SQLException. "denied" "42501"))]
+      (is (false? (can-provision? (failing-datasource wrapped) true true)))))
+  (testing "a refusal hung off getNextException is still recognised"
+    ;; JDBC chains sibling errors there rather than through getCause, so a cause-only walk misses it.
+    (let [chained (doto (SQLException. "batch failed" "25P02")
+                    (.setNextException (SQLException. "denied" "42501")))]
+      (is (false? (can-provision? (failing-datasource chained) true true))))))

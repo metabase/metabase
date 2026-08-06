@@ -203,5 +203,4 @@ function getErrorTooltip({
   return t`Something’s gone wrong`;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(ActionFn);
+export const Action = connect(mapStateToProps)(ActionFn);

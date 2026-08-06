@@ -38,19 +38,17 @@ import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_AI_CONTROLS,
-  PLUGIN_AUDIT,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
-  PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
   PerformanceTabId,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
-import { getTokenFeature } from "metabase/selectors/settings";
+import { getTokenFeature } from "metabase/settings";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
 import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
@@ -87,7 +85,6 @@ export const getRoutes = (
           </Route>
           <Route path=":databaseId/edit" element={<DatabasePage />} />
           {PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes(IsAdmin)}
-          {PLUGIN_WORKSPACES.getWorkspaceDatabaseRoutes(IsAdmin)}
           <Route path=":databaseId" element={<DatabaseEditApp />}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>
@@ -128,13 +125,13 @@ export const getRoutes = (
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
               element={redirect(
-                "database/:databaseId/schema/:schemaId/table/:tableId",
+                "../database/:databaseId/schema/:schemaId/table/:tableId",
               )}
             />
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
               element={redirect(
-                "database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
+                "../database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
               )}
             />
           </Route>
@@ -288,8 +285,6 @@ export const getRoutes = (
           path="metabot"
           element={createElement(createAdminRouteGuard("metabot"))}
         >
-          {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
-          {PLUGIN_AUDIT.getMcpAnalyticsRoutes()}
           <Route key="index-layout" element={<MetabotAdminLayout />}>
             <Route index key="index" element={<AISettingsPage />} />
             <Route key="mcp" path="mcp" element={<McpSettingsPage />} />

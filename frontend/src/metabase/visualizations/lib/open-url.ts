@@ -1,11 +1,7 @@
-import querystring from "querystring";
-
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type {
-  LocationDescriptor,
-  LocationDescriptorObject,
-} from "metabase/router";
+import { type Path, queryToSearch } from "metabase/router";
+import { parseSearchQuery } from "metabase/utils/browser";
 import {
   clickLink,
   getPathnameWithoutSubPath,
@@ -14,7 +10,6 @@ import {
   isSameOrSiteUrlOrigin,
   isSameOrigin,
 } from "metabase/utils/dom";
-import { isObject } from "metabase-types/guards";
 
 // need to keep track of the latest click's state because sometimes
 // `openUrl` is called asynchronously, thus window.event isn't the click event
@@ -82,7 +77,7 @@ export function getUrlTarget(
 export type OpenUrlOptions = {
   openInSameWindow?: (url: string) => void;
   openInBlankWindow?: (url: string) => void;
-  openInSameOrigin?: (location: LocationDescriptorObject) => void;
+  openInSameOrigin?: (location: Partial<Path>) => void;
   ignoreSiteUrl?: boolean;
 } & ShouldOpenInBlankWindowOptions;
 
@@ -122,7 +117,7 @@ export async function openUrl(
       clickLink(url, false);
     } else if (openInSameOrigin) {
       const location = getLocation(url);
-      if (isObject(location) && "pathname" in location) {
+      if ("pathname" in location) {
         openInSameOrigin(location);
       } else {
         openInSameWindow(url);
@@ -162,14 +157,16 @@ function isAbsoluteUrl(url: string): boolean {
   );
 }
 
-function getLocation(url: string): LocationDescriptor {
+function getLocation(url: string): Partial<Path> {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
-    const query = querystring.parse(search.substring(1));
     return {
       pathname: getPathnameWithoutSubPath(pathname),
-      search,
-      query,
+      // Round-tripped rather than passed through, because a click behavior's
+      // custom destination is a hand-written URL whose params land in whatever
+      // order the author typed them, and the resulting URL is asserted against
+      // with the keys sorted.
+      search: queryToSearch(parseSearchQuery(search)),
       hash,
     };
   } catch {
