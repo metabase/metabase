@@ -63,8 +63,13 @@ const UNDERLYING_RECORDS_DATASET = createMockDataset({
 const CARD = createMockCard({
   id: 1,
   name: "Orders by month",
+  description: "Count of orders bucketed by month",
   type: "question",
   display: DISPLAY,
+  visualization_settings: {
+    "card.title": "Orders by month",
+    "custom.setting": "kept",
+  },
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
@@ -142,7 +147,13 @@ describe("query builder > custom visualization drill-through", () => {
     expect(await screen.findByText("Custom viz rendered")).toBeInTheDocument();
 
     const card = checkNotNull(getCard(store.getState()));
-    expect(card.display).toBe(DISPLAY);
+    expect(card).toMatchObject({
+      display: DISPLAY,
+      name: CARD.name,
+      description: CARD.description,
+      type: CARD.type,
+      visualization_settings: CARD.visualization_settings,
+    });
     expect(card.dataset_query).toMatchObject({
       stages: [
         {

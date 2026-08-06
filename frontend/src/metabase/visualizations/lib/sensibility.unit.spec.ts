@@ -1,6 +1,14 @@
 import { registerVisualization } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { CustomVizDisplayType, RawSeries } from "metabase-types/api";
+import type { Visualization } from "metabase/visualizations/types";
+import { SAMPLE_METADATA } from "metabase-lib/query/test-helpers";
+import Question from "metabase-lib/v1/Question";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
+import type {
+  CustomVizDisplayType,
+  DatasetData,
+  RawSeries,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCategoryColumn,
@@ -10,6 +18,7 @@ import {
   createMockLongitudeColumn,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
+import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 import {
   getSensibleDisplays,
@@ -18,6 +27,24 @@ import {
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 registerVisualizations();
+
+function throwUnsupportedData(): never {
+  throw new Error("Unsupported data");
+}
+
+function registerCustomViz({
+  display,
+  checkRenderable,
+}: {
+  display: CustomVizDisplayType;
+  checkRenderable: Visualization["checkRenderable"];
+}) {
+  registerVisualization({
+    identifier: display,
+    getUiName: () => `Custom viz ${display}`,
+    checkRenderable,
+  });
+}
 
 function createMockMetrics(count: number, isNative: boolean) {
   return Array.from({ length: count }, (_, i) =>
@@ -295,17 +322,6 @@ describe("groupVisualizationsBySensibility", () => {
 });
 
 describe("getSensibleDisplays", () => {
-  function registerCustomViz(
-    display: CustomVizDisplayType,
-    checkRenderable: () => void,
-  ) {
-    registerVisualization({
-      identifier: display,
-      getUiName: () => `Custom viz ${display}`,
-      checkRenderable,
-    });
-  }
-
   function createMockRawSeries(numRows: number): RawSeries {
     return [
       {
@@ -317,25 +333,21 @@ describe("getSensibleDisplays", () => {
 
   it("should keep a visualization without `isSensible` when it can render the data", () => {
     const display: CustomVizDisplayType = "custom:renderable";
-    registerCustomViz(display, () => undefined);
+    registerCustomViz({ display, checkRenderable: () => undefined });
 
     expect(getSensibleDisplays(createMockRawSeries(10))).toContain(display);
   });
 
   it("should drop a visualization without `isSensible` when it cannot render the data (metabase#GDGT-2218)", () => {
     const display: CustomVizDisplayType = "custom:not-renderable";
-    registerCustomViz(display, () => {
-      throw new Error("Unsupported data");
-    });
+    registerCustomViz({ display, checkRenderable: throwUnsupportedData });
 
     expect(getSensibleDisplays(createMockRawSeries(10))).not.toContain(display);
   });
 
   it("should judge renderability of a visualization without `isSensible` even for a single row", () => {
     const display: CustomVizDisplayType = "custom:not-renderable-single-row";
-    registerCustomViz(display, () => {
-      throw new Error("Unsupported data");
-    });
+    registerCustomViz({ display, checkRenderable: throwUnsupportedData });
 
     expect(getSensibleDisplays(createMockRawSeries(1))).not.toContain(display);
   });
@@ -357,18 +369,14 @@ describe("getSensibleDisplays", () => {
 
   it("should keep a visualization without `isSensible` for an empty result", () => {
     const display: CustomVizDisplayType = "custom:empty-result";
-    registerCustomViz(display, () => {
-      throw new Error("Unsupported data");
-    });
+    registerCustomViz({ display, checkRenderable: throwUnsupportedData });
 
     expect(getSensibleDisplays(createMockRawSeries(0))).toContain(display);
   });
 
   it("should keep a visualization without `isSensible` when a guest embed has no data", () => {
     const display: CustomVizDisplayType = "custom:guest-embed-placeholder";
-    registerCustomViz(display, () => {
-      throw new Error("Unsupported data");
-    });
+    registerCustomViz({ display, checkRenderable: throwUnsupportedData });
     const rawSeries: RawSeries = [
       {
         card: createMockCard(),
@@ -377,5 +385,76 @@ describe("getSensibleDisplays", () => {
     ];
 
     expect(getSensibleDisplays(rawSeries)).toContain(display);
+  });
+});
+
+describe("getSensibleDisplays with maybeResetDisplay", () => {
+  const DISPLAY: CustomVizDisplayType = "custom:needs-a-date-column";
+
+  registerCustomViz({
+    display: DISPLAY,
+    checkRenderable: ([{ data }]) => {
+      if (!data?.cols.some(isDate)) {
+        throwUnsupportedData();
+      }
+    },
+  });
+
+  function createRawSeries(data: DatasetData): RawSeries {
+    return [{ card: createMockCard({ display: DISPLAY }), data }];
+  }
+
+  const customVizQuestion = new Question(
+    createMockCard({
+      display: DISPLAY,
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": ORDERS_ID },
+      },
+    }),
+    SAMPLE_METADATA,
+  ).lockDisplay();
+
+  const byDate = createRawSeries(
+    createMockData({ numRows: 10, numMetrics: 1, numDateDimensions: 1 }),
+  );
+  const byCategory = createRawSeries(
+    createMockData({ numRows: 10, numMetrics: 1, numStringDimensions: 1 }),
+  );
+
+  it("should switch away from a custom visualization that can no longer render the data (metabase#GDGT-2218)", () => {
+    const question = customVizQuestion.maybeResetDisplay(
+      byCategory[0].data,
+      getSensibleDisplays(byCategory),
+      // no previous data on the first drill
+      undefined,
+    );
+
+    expect(question.displayIsLocked()).toBe(false);
+    expect(question.display()).not.toBe(DISPLAY);
+  });
+
+  it("should switch away from a custom visualization that can no longer render the data when navigating back and forth (metabase#GDGT-2218)", () => {
+    const question = customVizQuestion.maybeResetDisplay(
+      byCategory[0].data,
+      getSensibleDisplays(byCategory),
+      // going back and forth replays the drill with the previous data at hand
+      getSensibleDisplays(byDate),
+    );
+
+    expect(question.displayIsLocked()).toBe(false);
+    expect(question.display()).not.toBe(DISPLAY);
+  });
+
+  it("should keep a custom visualization that still renders the data", () => {
+    const question = customVizQuestion.maybeResetDisplay(
+      byDate[0].data,
+      getSensibleDisplays(byDate),
+      getSensibleDisplays(byDate),
+    );
+
+    expect(question.displayIsLocked()).toBe(true);
+    expect(question.display()).toBe(DISPLAY);
   });
 });
