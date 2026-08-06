@@ -20,19 +20,17 @@
    [metabase.util.performance :as perf]))
 
 ;;; ---------------------------------------------------------------------------------------------------------
-;;; Running the specs. Generic: a spec is `{:card_id, :columns}`, and `max-rows` is the caller's call.
+;;; Running the specs. Generic: a spec is `{:card_id, :columns, :max_rows}`, whatever produced it.
 ;;; ---------------------------------------------------------------------------------------------------------
-
-(def ^:const max-specs
-  "Maximum number of referenced cards honored per request."
-  10)
 
 (def specs-schema
   "Schema for the `referenced_cards` request param."
-  [:maybe [:sequential {:max max-specs}
+  [:maybe [:sequential
            [:map
             [:card_id :int]
-            [:columns {:optional true} [:maybe [:sequential :string]]]]]])
+            [:columns {:optional true} [:maybe [:sequential :string]]]
+            ;; bounded because these rows ride along in someone else's response
+            [:max_rows {:optional true} [:maybe [:int {:min 1, :max 100}]]]]]])
 
 (defn- project-columns
   "Narrow `data` to the requested `columns`, matched by column `:name`."
@@ -68,28 +66,29 @@
 
 (defn- run-referenced-card
   "Never throws: any failure becomes `{:status \"failed\" :error ...}`."
-  [{:keys [card_id columns]} max-rows]
-  (try
-    (let [card   (api/read-check :model/Card card_id)
-          ;; a nested run inside the outer streaming response must return an in-memory map,
-          ;; not write to the outer stream
-          result (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
-                           qp.pipeline/*canceled-chan* (child-canceled-chan qp.pipeline/*canceled-chan*)]
-                   (qp/process-query (referenced-query card max-rows)))
-          data   (:data result)]
-      (if (> (count (:rows data)) max-rows)
-        (do
-          (log/warnf "Referenced card %s returned more than the requested %s row(s)" card_id max-rows)
-          {:status "failed"
-           :error  (tru "Referenced card {0} returned more rows than the requested maximum of {1}." card_id max-rows)})
-        {:status "completed"
-         :data   (-> data
-                     (perf/select-keys [:cols :rows])
-                     (project-columns columns))}))
-    (catch Throwable e
-      (log/warnf e "Failed to run referenced card %s" card_id)
-      {:status "failed"
-       :error  (or (ex-message e) (tru "Failed to run referenced query"))})))
+  [{:keys [card_id columns max_rows]} default-max-rows]
+  (let [max-rows (or max_rows default-max-rows)]
+    (try
+      (let [card   (api/read-check :model/Card card_id)
+            ;; a nested run inside the outer streaming response must return an in-memory map,
+            ;; not write to the outer stream
+            result (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
+                             qp.pipeline/*canceled-chan* (child-canceled-chan qp.pipeline/*canceled-chan*)]
+                     (qp/process-query (referenced-query card max-rows)))
+            data   (:data result)]
+        (if (> (count (:rows data)) max-rows)
+          (do
+            (log/warnf "Referenced card %s returned more than the requested %s row(s)" card_id max-rows)
+            {:status "failed"
+             :error  (tru "Referenced card {0} returned more rows than the requested maximum of {1}." card_id max-rows)})
+          {:status "completed"
+           :data   (-> data
+                       (perf/select-keys [:cols :rows])
+                       (project-columns columns))}))
+      (catch Throwable e
+        (log/warnf e "Failed to run referenced card %s" card_id)
+        {:status "failed"
+         :error  (or (ex-message e) (tru "Failed to run referenced query"))}))))
 
 (defn- referenced-cards-result
   "Run each spec and return `{card-id-string result}`, nil when there are none. Must run before the main
@@ -98,12 +97,11 @@
   (when (seq specs)
     (perf/not-empty
      (into {}
-           (comp (take max-specs)
-                 ;; don't start the next one if the client already hung up
-                 (take-while (fn [_] (not (qp.pipeline/canceled?))))
-                 (map (fn [{:keys [card_id] :as spec}]
-                        ;; string keys so the map serializes to JSON as `{"1": {...}}`
-                        [(str card_id) (run-referenced-card spec max-rows)])))
+           (comp ;; don't start the next one if the client already hung up
+            (take-while (fn [_] (not (qp.pipeline/canceled?))))
+            (map (fn [{:keys [card_id] :as spec}]
+                   ;; string keys so the map serializes to JSON as `{"1": {...}}`
+                   [(str card_id) (run-referenced-card spec max-rows)])))
            specs))))
 
 (defn- inject-referenced-cards

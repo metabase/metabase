@@ -92,14 +92,24 @@
             (is (= "failed" (:status goal)))
             (is (string? (:error goal)))))))))
 
-(deftest dataset-endpoint-spec-cap-test
-  (testing (format "more than %d referenced cards is a 400" referenced-cards/max-specs)
-    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
-      (let [specs (vec (repeat (inc referenced-cards/max-specs) {:card_id goal-id :columns ["count"]}))]
-        (is (mt/user-http-request
-             :crowberto :post 400 "dataset"
-             (assoc (mt/mbql-query venues {:aggregation [[:count]]})
-                    :referenced_cards specs)))))))
+(deftest dataset-endpoint-max-rows-test
+  (testing "a spec can ask for more than one row"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:limit 3})}]
+      (let [response (mt/user-http-request
+                      :crowberto :post 202 "dataset"
+                      (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                             :referenced_cards [{:card_id goal-id :columns ["NAME"] :max_rows 3}]))
+            goal     (get (ref-cards response) goal-id)]
+        (is (= "completed" (:status goal)))
+        (is (= 3 (count (get-in goal [:data :rows])))))))
+  (testing "a card returning more than the spec asked for still fails"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (let [response (mt/user-http-request
+                      :crowberto :post 202 "dataset"
+                      (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                             :referenced_cards [{:card_id goal-id :columns ["NAME"] :max_rows 3}]))
+            goal     (get (ref-cards response) goal-id)]
+        (is (= "failed" (:status goal)))))))
 
 (deftest dataset-endpoint-no-referenced-cards-test
   (testing "omitting `referenced_cards` leaves the response untouched"
