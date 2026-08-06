@@ -94,8 +94,12 @@
 (def driver-affecting-overrides
   "Modules that do NOT trigger driver tests when changed, even though the dependency graph says they
   affect drivers. Read from a committed config file so the set is ratcheted and staleness-checked by
-  `metabase.core.modules-test`."
-  (:exempt-modules (edn/read-string (slurp ".clj-kondo/config/modules/driver-test-overrides.edn"))))
+  `metabase.core.modules-test`.
+
+  A `delay` rather than a plain value: reading at namespace-load time would turn a missing file or a
+  non-repo-root working directory into a `mage.modules` load failure, breaking every task that
+  requires the namespace instead of the one that needs the set."
+  (delay (:exempt-modules (edn/read-string (slurp ".clj-kondo/config/modules/driver-test-overrides.edn")))))
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.
@@ -248,7 +252,7 @@
      (throw (ex-info (str "Driver-trigger module(s) not declared in the module config: "
                           (pr-str missing))
                      {:missing missing})))
-   (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
+   (let [unaffected (unaffected-modules deps (remove @driver-affecting-overrides modules))]
      (boolean
       (some #(not (contains? unaffected %)) trigger-modules)))))
 
