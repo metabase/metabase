@@ -17,6 +17,8 @@ on:
       - "**.clj"
       - "**.cljc"
       - "**.cljs"
+      # config-level suppressions are ratcheted too, so removing one here can leave a stale budget
+      - ".clj-kondo/config.edn"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}

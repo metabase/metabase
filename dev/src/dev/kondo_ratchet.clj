@@ -289,7 +289,8 @@
 
 (defn config-suppressions
   "Per-linter counts of config-level suppressions in `config` (default: `.clj-kondo/config.edn`):
-  top-level `:linters` entries, every `:config-in-ns` group, and `:config-in-comment`.
+  top-level `:linters` entries, `:config-in-comment`, and every `:config-in-ns` / `:config-in-call`
+  group. Scoped groups count too, or a linter could be switched off inside one and never show up.
   Entries that add discouragements or turn linters on count nothing — only weakening counts."
   ([]
    (config-suppressions (edn/read-string (slurp kondo-config-file))))
@@ -303,8 +304,9 @@
      (apply merge-with +
             (counts (:linters config))
             (counts (get-in config [:config-in-comment :linters]))
-            (for [[_group group-cfg] (:config-in-ns config)]
-              (counts (:linters group-cfg)))))))
+            (for [scope    [:config-in-ns :config-in-call]
+                  [_k cfg] (get config scope)]
+              (counts (:linters cfg)))))))
 
 (defn config-drift
   "Linters whose config-suppression count differs from its budget (absent = 0, either side).
