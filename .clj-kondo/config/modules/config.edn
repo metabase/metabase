@@ -2881,6 +2881,7 @@
 
   typed-schemas
   {:team "Embedding"
+   :module-exports #{typed-schemas.rest}
    :api #{metabase.typed-schemas.core}
    :uses #{actions
            collections
