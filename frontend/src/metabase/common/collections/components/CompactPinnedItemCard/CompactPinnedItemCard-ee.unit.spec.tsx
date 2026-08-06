@@ -10,7 +10,7 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import PinnedItemCard from "./PinnedItemCard";
+import { CompactPinnedItemCard } from "./CompactPinnedItemCard";
 
 const defaultCollection = createMockCollection({
   can_write: true,
@@ -41,7 +41,7 @@ function setup({
     <Route
       path="/"
       element={
-        <PinnedItemCard
+        <CompactPinnedItemCard
           item={item}
           collection={collection}
           createBookmark={jest.fn()}
@@ -53,7 +53,7 @@ function setup({
   );
 }
 
-describe("PinnedItemCard enterprise", () => {
+describe("CompactPinnedItemCard enterprise", () => {
   describe("models", () => {
     const model = createMockCollectionItem({
       id: 1,
