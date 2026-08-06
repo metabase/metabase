@@ -95,7 +95,7 @@
 (api.macros/defendpoint :get "/card/:uuid"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
-  [{:keys [uuid]} :- [:map
+  [{:keys [uuid]} :- [:map {:closed true}
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (card-with-uuid uuid))
@@ -177,14 +177,18 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; `ignore_cache` is snake_case for consistency with what the FE sends to the other query-running endpoints
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
-  [{:keys [uuid]} :- [:map
+  [{:keys [uuid]} :- [:map {:closed true}
                       [:uuid ms/UUIDString]]
-   {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+   {:keys [parameters]} :- [:map {:closed true}
+                            [:parameters   {:optional true} [:maybe ms/JSONString]]
+                            ;; sent by the FE, handled by the QP cache middleware rather than this endpoint
+                            [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -198,13 +202,15 @@
 (api.macros/defendpoint :get "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
-  [{:keys [uuid export-format]} :- [:map
+  [{:keys [uuid export-format]} :- [:map {:closed true}
                                     [:uuid          ms/UUIDString]
                                     [:export-format ::qp.schema/export-format]]
-   {:keys [parameters format_rows pivot_results]} :- [:map
+   {:keys [parameters format_rows pivot_results]} :- [:map {:closed true}
                                                       [:format_rows   {:default false} :boolean]
                                                       [:pivot_results {:default false} :boolean]
-                                                      [:parameters    {:optional true} [:maybe ms/JSONString]]]]
+                                                      [:parameters    {:optional true} [:maybe ms/JSONString]]
+                                                      ;; sent by the FE download code, consumed by the CSV writer
+                                                      [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (process-query-for-card-with-public-uuid
    uuid
    export-format
@@ -274,11 +280,16 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; `dashboard_load_id` is snake_case for consistency with what the FE sends to `GET /api/dashboard/:id`
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid"
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
-  [{:keys [uuid]} :- [:map
-                      [:uuid ms/UUIDString]]]
+  [{:keys [uuid]} :- [:map {:closed true}
+                      [:uuid ms/UUIDString]]
+   ;; sent by the FE to correlate the requests that make up one dashboard load; not used by this endpoint
+   _query-params :- [:map {:closed true}
+                     [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (u/prog1 (dashboard-with-uuid uuid)
     (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*})))
@@ -324,16 +335,20 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; `ignore_cache` is snake_case for consistency with what the FE sends to the other query-running endpoints
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
-  [{:keys [uuid dashcard-id card-id]} :- [:map
+  [{:keys [uuid dashcard-id card-id]} :- [:map {:closed true}
                                           [:uuid        ms/UUIDString]
                                           [:dashcard-id ms/PositiveInt]
                                           [:card-id     ms/PositiveInt]]
-   {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+   {:keys [parameters]} :- [:map {:closed true}
+                            [:parameters   {:optional true} [:maybe ms/JSONString]]
+                            ;; sent by the FE, handled by the QP cache middleware rather than this endpoint
+                            [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
         dashboard (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
@@ -353,21 +368,23 @@
                                :export-format qp.schema/export-formats-regex]
   "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the
   export formats. Does not require auth credentials. Public sharing must be enabled."
-  [{:keys [uuid dashcard-id card-id export-format]} :- [:map
+  [{:keys [uuid dashcard-id card-id export-format]} :- [:map {:closed true}
                                                         [:uuid          ms/UUIDString]
                                                         [:dashcard-id   ms/PositiveInt]
                                                         [:card-id       ms/PositiveInt]
                                                         [:export-format ::qp.schema/export-format]]
    _query-parameters
-   {:keys [format_rows pivot_results parameters]} :- [:map
+   {:keys [format_rows pivot_results parameters]} :- [:map {:closed true}
                                                       [:parameters    {:optional true} [:maybe
                                                                                         {:decode/api
                                                                                          (fn [x]
                                                                                            (cond-> x
                                                                                              (string? x) json/decode+kw))}
-                                                                                        [:sequential :map]]]
+                                                                                        [:sequential api.dashboard/ParameterWithID]]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
-                                                      [:pivot_results {:default false} ms/BooleanValue]]]
+                                                      [:pivot_results {:default false} ms/BooleanValue]
+                                                      ;; sent by the FE download code, consumed by the CSV writer
+                                                      [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
         dashboard (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
@@ -387,11 +404,11 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
-  [{:keys [uuid dashcard-id]} :- [:map
+  [{:keys [uuid dashcard-id]} :- [:map {:closed true}
                                   [:uuid        ms/UUIDString]
                                   [:dashcard-id ms/PositiveInt]]
    _query-params
-   {:keys [parameters]} :- [:map
+   {:keys [parameters]} :- [:map {:closed true}
                             [:parameters [:map-of :string :any]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid :archived false))]
@@ -410,12 +427,14 @@
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values."
-  [{:keys [uuid dashcard-id]} :- [:map
+  [{:keys [uuid dashcard-id]} :- [:map {:closed true}
                                   [:uuid        ms/UUIDString]
                                   [:dashcard-id ms/PositiveInt]]
    _query-params
-   {:keys [parameters], :as _body} :- [:map
-                                       [:parameters {:optional true} [:maybe [:map-of :keyword :any]]]]]
+   {:keys [parameters], :as _body} :- [:map {:closed true}
+                                       [:parameters {:optional true} [:maybe [:map-of :keyword :any]]]
+                                       ;; sent by the FE alongside the parameters; not used by this endpoint
+                                       [:modelId    {:optional true} [:maybe ms/PositiveInt]]]]
   (let [throttle-message (try
                            (throttle/check dashcard-execution-throttle dashcard-id)
                            nil
@@ -453,7 +472,7 @@
   "oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL."
   [_route-params
    {:keys [url maxheight maxwidth]}
-   :- [:map
+   :- [:map {:closed true}
        [:url       ms/NonBlankString]
        [:format    {:optional true} [:maybe
                                      {:description (str "The format param is not used by the API, but is required as"
@@ -477,7 +496,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/action/:uuid"
   "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
-  [{:keys [uuid]} :- [:map
+  [{:keys [uuid]} :- [:map {:closed true}
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [action (api/check-404 (actions/select-action :public_uuid uuid :archived false))]
@@ -496,7 +515,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/values"
   "Fetch values for a parameter on a public card."
-  [{:keys [uuid param-key]} :- [:map
+  [{:keys [uuid param-key]} :- [:map {:closed true}
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]]
   (public-sharing.validation/check-public-sharing-enabled)
@@ -510,7 +529,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/search/:query"
   "Fetch values for a parameter on a public card containing `query`."
-  [{:keys [uuid param-key query]} :- [:map
+  [{:keys [uuid param-key query]} :- [:map {:closed true}
                                       [:uuid      ms/UUIDString]
                                       [:param-key ms/NonBlankString]
                                       [:query     ms/NonBlankString]]]
@@ -525,10 +544,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of card with UUID `uuid`."
-  [{:keys [uuid param-key]} :- [:map
+  [{:keys [uuid param-key]} :- [:map {:closed true}
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
-   {:keys [value]}          :- [:map [:value :any]]]
+   ;; URL-encoded, so always a string
+   {:keys [value]}          :- [:map {:closed true} [:value :string]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
@@ -540,7 +560,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
-  [{:keys [uuid param-key]} :- [:map
+  [{:keys [uuid param-key]} :- [:map {:closed true}
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
@@ -556,11 +576,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
-  [{:keys [uuid param-key query]} :- [:map
+  [{:keys [uuid param-key query]} :- [:map {:closed true}
                                       [:uuid      ms/UUIDString]
                                       [:param-key ms/NonBlankString]
                                       [:query     ms/NonBlankString]]
-   constraint-param-key->value]
+   constraint-param-key->value :- [:map-of string? any?]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard (dashboard-with-uuid-for-param-values uuid)]
     (request/as-admin
@@ -573,10 +593,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of dashboard with UUID `uuid`."
-  [{:keys [uuid param-key]} :- [:map
+  [{:keys [uuid param-key]} :- [:map {:closed true}
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
-   {:keys [value]}          :- [:map [:value :any]]]
+   ;; URL-encoded, so always a string
+   {:keys [value]}          :- [:map {:closed true} [:value :string]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard (dashboard-with-uuid-for-param-values uuid)]
     (request/as-admin
@@ -590,30 +611,38 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; `ignore_cache` is snake_case for consistency with what the FE sends to the other query-running endpoints
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
-  [{:keys [uuid]} :- [:map
+  [{:keys [uuid]} :- [:map {:closed true}
                       [:uuid ms/UUIDString]]
-   {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+   {:keys [parameters]} :- [:map {:closed true}
+                            [:parameters   {:optional true} [:maybe ms/JSONString]]
+                            ;; sent by the FE, handled by the QP cache middleware rather than this endpoint
+                            [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)
                                            :qp qp.pivot/run-pivot-query))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; `ignore_cache` is snake_case for consistency with what the FE sends to the other query-running endpoints
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
   sharing must be enabled."
-  [{:keys [uuid dashcard-id card-id]} :- [:map
+  [{:keys [uuid dashcard-id card-id]} :- [:map {:closed true}
                                           [:uuid        ms/UUIDString]
                                           [:card-id     ms/PositiveInt]
                                           [:dashcard-id ms/PositiveInt]]
-   {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+   {:keys [parameters]} :- [:map {:closed true}
+                            [:parameters   {:optional true} [:maybe ms/JSONString]]
+                            ;; sent by the FE, handled by the QP cache middleware rather than this endpoint
+                            [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
         dashboard (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
@@ -644,10 +673,10 @@
   "Execute the Action.
 
    `parameters` should be the mapped dashboard parameters with values."
-  [{:keys [uuid]} :- [:map
+  [{:keys [uuid]} :- [:map {:closed true}
                       [:uuid ms/UUIDString]]
    _query-params
-   {:keys [parameters], :as _body} :- [:map
+   {:keys [parameters], :as _body} :- [:map {:closed true}
                                        [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]
   (let [throttle-message (try
                            (throttle/check action-execution-throttle uuid)
@@ -686,13 +715,13 @@
   "Generates a single tile image for a publicly-accessible Card using the map visualization. Does not require auth
   credentials. Public sharing must be enabled."
   [{:keys [uuid zoom x y]}
-   :- [:map
+   :- [:map {:closed true}
        [:uuid ms/UUIDString]
        [:zoom ms/Int]
        [:x ms/Int]
        [:y ms/Int]]
    {:keys [parameters latField lonField]}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters {:optional true} ms/JSONString]
        [:latField string?]
        [:lonField string?]]]
@@ -712,7 +741,7 @@
   "Generates a single tile image for a Card using the map visualization in a publicly-accessible Dashboard. Does not
   require auth credentials. Public sharing must be enabled."
   [{:keys [uuid dashcard-id card-id zoom x y]}
-   :- [:map
+   :- [:map {:closed true}
        [:uuid        ms/UUIDString]
        [:dashcard-id ms/PositiveInt]
        [:card-id     ms/PositiveInt]
@@ -720,7 +749,7 @@
        [:x           ms/Int]
        [:y           ms/Int]]
    {:keys [parameters latField lonField]}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters {:optional true} ms/JSONString]
        [:latField string?]
        [:lonField string?]]]
@@ -786,7 +815,7 @@
   Returns a Document with sensitive fields removed (excludes collection_id, permissions, creator details, etc.).
   Includes all embedded Cards with their metadata hydrated so the frontend doesn't need to make separate
   requests for each card — just like public Dashboards do."
-  [{:keys [uuid]} :- [:map
+  [{:keys [uuid]} :- [:map {:closed true}
                       [:uuid ms/UUIDString]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [document (public-document :public_uuid uuid)]
@@ -800,10 +829,10 @@
 (api.macros/defendpoint :get "/document/:uuid/card/:card-id"
   "Run a query for a Card that's embedded in a public Document. Doesn't require auth credentials. Public sharing must
   be enabled."
-  [{:keys [uuid card-id]} :- [:map
+  [{:keys [uuid card-id]} :- [:map {:closed true}
                               [:uuid    ms/UUIDString]
                               [:card-id ms/PositiveInt]]
-   {:keys [parameters]} :- [:map
+   {:keys [parameters]} :- [:map {:closed true}
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card (validate-card-in-public-document uuid card-id)]
@@ -822,17 +851,19 @@
 (api.macros/defendpoint :post "/document/:uuid/card/:card-id/:export-format"
   "Fetch a Card embedded in a public Document and return query results in the specified format.
   Does not require auth credentials. Public sharing must be enabled."
-  [{:keys [uuid card-id export-format]} :- [:map
+  [{:keys [uuid card-id export-format]} :- [:map {:closed true}
                                             [:uuid          ms/UUIDString]
                                             [:card-id       ms/PositiveInt]
                                             [:export-format ::qp.schema/export-format]]
    _query-params
-   {:keys [parameters format_rows pivot_results]} :- [:map
+   {:keys [parameters format_rows pivot_results]} :- [:map {:closed true}
                                                       [:parameters    {:optional true} [:maybe [:or
-                                                                                                [:sequential ms/Map]
+                                                                                                [:sequential api.dashboard/ParameterWithID]
                                                                                                 ms/JSONString]]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
-                                                      [:pivot_results {:default false} ms/BooleanValue]]]
+                                                      [:pivot_results {:default false} ms/BooleanValue]
+                                                      ;; sent by the FE download code, consumed by the CSV writer
+                                                      [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card (validate-card-in-public-document uuid card-id)]
     (process-query-for-card-with-id
