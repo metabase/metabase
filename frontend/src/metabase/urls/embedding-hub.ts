@@ -13,3 +13,11 @@ export function embeddingHubGetStarted() {
 export function embeddingHubSecurity() {
   return `${ROOT_URL}/security`;
 }
+
+export function embeddingHubAuthentication() {
+  return `${ROOT_URL}/authentication`;
+}
+
+export function embeddingHubAppearance() {
+  return `${ROOT_URL}/appearance`;
+}
