@@ -1,0 +1,66 @@
+## Content Diagnostics - denormalized sort columns: entity_collection_name + entity_kind.
+## Append-only, on the `content_diagnostics_finding` table created in 064/20260708_content_diagnostics.yaml.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.6xtq88
+      author: yb
+      comment: Content Diagnostics - scan-time collection name denormalized on findings
+      changes:
+        - addColumn:
+            tableName: content_diagnostics_finding
+            columns:
+              - column:
+                  name: entity_collection_name
+                  type: varchar(254)
+                  remarks: Name of the scope_collection_id collection at scan time; null for root-resident entities. Denormalized sort key for the collection sort column (mutable upstream - drift until the next scan, like entity_name).
+
+  - changeSet:
+      id: v64.rt255f
+      author: yb
+      comment: Content Diagnostics - index for the collection sort column
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_coll_name
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_collection_name
+
+  - changeSet:
+      id: v64.w2669a
+      author: yb
+      comment: Content Diagnostics - flat entity kind denormalized on findings
+      changes:
+        - addColumn:
+            tableName: content_diagnostics_finding
+            columns:
+              - column:
+                  name: entity_kind
+                  type: varchar(32)
+                  remarks: Flat entity kind at scan time - card_type for cards (question/model/metric), else entity_type. One column serves the flat entity-types filter and the entity-type sort (the search_index.model pattern). Null on pre-existing rows until the next scan.
+
+  - changeSet:
+      id: v64.ubyoxn
+      author: yb
+      comment: Content Diagnostics - index for the flat entity-types filter + entity-type sort
+      changes:
+        - createIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_entity_kind
+            columns:
+              - column:
+                  name: finding_type
+              - column:
+                  name: entity_kind
+
+  - changeSet:
+      id: v64.y5bgcb
+      author: yb
+      comment: Content Diagnostics - drop the card-type filter index superseded by entity_kind
+      changes:
+        - dropIndex:
+            tableName: content_diagnostics_finding
+            indexName: idx_cd_finding_ftype_etype_card_type
