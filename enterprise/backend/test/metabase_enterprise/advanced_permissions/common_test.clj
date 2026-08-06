@@ -510,7 +510,7 @@
                                 (update :base_type u/qualified-name)
                                 (update :visibility_type u/qualified-name))
             update-target   (fn []
-                              (mt/user-http-request :rasta :put 200 (format "field/%d" (:id field)) {:fk_target_field_id (:id fk-field-2)}))]
+                              (mt/user-http-request :rasta :put 200 (format "field/%d" (:id field)) (assoc field :fk_target_field_id (:id fk-field-2))))]
         (testing "target should be hydrated if a non-admin has data model perms for the DB"
           (mt/with-all-users-data-perms-graph! {db-id {:data-model {:schemas :all}}}
             (is (= expected-target
@@ -542,27 +542,27 @@
           (testing "a non-admin cannot update field metadata if the advanced-permissions feature flag is not present"
             (mt/with-all-users-data-perms-graph! {db-id {:data-model {:schemas {schema {table-id :all}}}}}
               (mt/with-premium-features #{}
-                (mt/user-http-request :rasta :put 403 endpoint {:display_name "Field Test 4"}))))
+                (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 4"}))))
           (testing "a non-admin cannot update field metadata if they have no data model permissions for the DB"
             (mt/with-all-users-data-perms-graph! {db-id {:data-model {:schemas :none}}}
-              (mt/user-http-request :rasta :put 403 endpoint {:display_name "Field Test 2"})))
+              (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 2"})))
           (testing "a non-admin cannot update field metadata if they only have data model permissions for other schemas"
             (mt/with-all-users-data-perms-graph! {db-id {:data-model {:schemas {schema             :none
                                                                                 "different schema" :all}}}}
-              (mt/user-http-request :rasta :put 403 endpoint {:display_name "Field Test 2"})))
+              (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 2"})))
           (testing "a non-admin cannot update field metadata if they only have data model permissions for other tables"
             (mt/with-all-users-data-perms-graph! {db-id {:data-model {:schemas {schema {table-id   :none
                                                                                         table-id-2 :all}}}}}
-              (mt/user-http-request :rasta :put 403 endpoint {:display_name "Field Test 2"})))
+              (mt/user-http-request :rasta :put 403 endpoint {:name "Field Test 2"})))
           (testing "a non-admin can update field metadata if they have data model perms for the DB"
             (mt/with-all-users-data-perms-graph! {db-id {:data-model {:schemas :all}}}
-              (mt/user-http-request :rasta :put 200 endpoint {:display_name "Field Test 2"})))
+              (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 2"})))
           (testing "a non-admin can update field metadata if they have data model perms for the schema"
             (mt/with-all-users-data-perms-graph! {db-id {:data-model {:schemas {schema :all}}}}
-              (mt/user-http-request :rasta :put 200 endpoint {:display_name "Field Test 3"})))
+              (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 3"})))
           (testing "a non-admin can update field metadata if they have data model perms for the table"
             (mt/with-all-users-data-perms-graph! {db-id {:data-model {:schemas {schema {table-id :all}}}}}
-              (mt/user-http-request :rasta :put 200 endpoint {:display_name "Field Test 3"})))))
+              (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 3"})))))
       (testing "POST /api/field/:id/rescan_values"
         (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {schema {table-id :none}}}}}
@@ -618,27 +618,27 @@
         (testing "a non-admin cannot update table metadata if the advanced-permissions feature flag is not present"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas :all}}}
             (mt/with-premium-features #{}
-              (mt/user-http-request :rasta :put 403 endpoint {:display_name "Table Test 2"}))))
+              (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"}))))
         (testing "a non-admin cannot update table metadata if they have no data model permissions for the DB"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas :none}}}
-            (mt/user-http-request :rasta :put 403 endpoint {:display_name "Table Test 2"})))
+            (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"})))
         (testing "a non-admin cannot update table metadata if they only have data model permissions for other schemas"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC"           :none
                                                                                 "different schema" :all}}}}
-            (mt/user-http-request :rasta :put 403 endpoint {:display_name "Table Test 2"})))
+            (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"})))
         (testing "a non-admin cannot update table metadata if they only have data model permissions for other tables"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id   :none
                                                                                           table-id-2 :all}}}}}
-            (mt/user-http-request :rasta :put 403 endpoint {:display_name "Table Test 2"})))
+            (mt/user-http-request :rasta :put 403 endpoint {:name "Table Test 2"})))
         (testing "a non-admin can update table metadata if they have data model perms for the DB"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas :all}}}
-            (mt/user-http-request :rasta :put 200 endpoint {:display_name "Table Test 2"})))
+            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 2"})))
         (testing "a non-admin can update table metadata if they have data model perms for the schema"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" :all}}}}
-            (mt/user-http-request :rasta :put 200 endpoint {:display_name "Table Test 3"})))
+            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 3"})))
         (testing "a non-admin can update table metadata if they have data model perms for the table"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-            (mt/user-http-request :rasta :put 200 endpoint {:display_name "Table Test 3"})))))))
+            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 3"})))))))
 
 (deftest table-rescan-values-test
   (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]

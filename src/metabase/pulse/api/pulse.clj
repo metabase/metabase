@@ -236,7 +236,6 @@
                                           [:channels      {:optional true} [:maybe [:+ :map]]]
                                           [:skip_if_empty {:default false} [:maybe :boolean]]
                                           [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                           [:archived      {:default false} [:maybe :boolean]]
                                           [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]
   ;; do various perms checks
@@ -322,18 +321,14 @@
   [_route-params
    _query-params
    {:keys [cards channels] :as body} :- [:map
-                                         [:id                  {:optional true} [:maybe ms/PositiveInt]]
                                          [:name                ms/NonBlankString]
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
                                          [:channels            [:+ :map]]
                                          [:skip_if_empty       {:default false} [:maybe :boolean]]
+                                         [:disable_links       {:default false} [:maybe :boolean]]
                                          [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-                                         [:parameters          {:optional true} [:maybe [:sequential :map]]]
-                                         [:alert_condition     {:optional true} [:maybe models.pulse/AlertConditions]]
-                                         [:alert_above_goal    {:optional true} [:maybe :boolean]]
-                                         [:alert_first_only    {:optional true} [:maybe :boolean]]]
+                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]]
    request]
   ;; Check permissions on cards that exist. Placeholders and iframes don't matter.
   (check-card-read-permissions

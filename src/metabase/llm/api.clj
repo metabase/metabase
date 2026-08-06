@@ -93,7 +93,8 @@
   "List available LLM models from the configured provider.
 
    Requires LLM to be configured for the selected provider in admin settings."
-  []
+  [_route-params
+   _query-params]
   (when-not (metabot.settings/llm-metabot-configured?)
     (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
                     {:status-code 403})))
@@ -123,10 +124,8 @@
                  [:field_name :string]]]]]]])
 
 (def ^:private template-tags-schema
-  "Native-query template tags, keyed by tag name. The tag maps stay open: callers pass the native
-  editor's whole `TemplateTags` object through verbatim."
   [:map-of :string
-   [:map {:closed false}
+   [:map
     [:type :string]
     [:card-id {:optional true} pos-int?]]])
 

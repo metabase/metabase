@@ -132,10 +132,10 @@
    _query-params
    _body
    {{file "file"} :multipart-params, :as _request}
-   :- [:map {:closed false}
+   :- [:map
        [:multipart-params
-        [:map {:closed false}
-         ["file" [:map {:closed false}
+        [:map
+         ["file" [:map
                   [:filename :string]
                   [:tempfile (ms/InstanceOfClass File)]]]]]]]
   (api/check-superuser)
@@ -248,10 +248,10 @@
    _query-params
    _body
    {{file "file"} :multipart-params, :as _request}
-   :- [:map {:closed false}
+   :- [:map
        [:multipart-params
-        [:map {:closed false}
-         ["file" [:map {:closed false}
+        [:map
+         ["file" [:map
                   [:filename :string]
                   [:tempfile (ms/InstanceOfClass File)]]]]]]]
   (let [existing (api/write-check (custom-viz-plugin/select-one-non-blob :id id))
@@ -277,8 +277,7 @@
    Returns application/javascript with ETag and Cache-Control headers.
    In dev mode, proxies from `dev_bundle_url` if set."
   [{:keys [id], :as _route-params} :- [:map [:id ms/PositiveInt]]
-   _query-params :- [:map {:closed false}
-                     [:v {:optional true} [:maybe :string]]]
+   _query-params
    _body
    _request
    respond

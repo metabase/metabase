@@ -28,12 +28,10 @@
   50)
 
 (def ^:private AiContext
-  "OSI ai_context blob. All fields optional. String and list lengths are capped so a single curated entity
-  can't bloat the index, its embeddings, or the agent prompt.
-
-  Not closed: the blob is a verbatim slice of the external OSI spec, and this same schema types rows on
-  reads ([[Entry]]) — including ones serdes import or a direct appdb write put there."
-  [:map {:closed false}
+  "OSI ai_context blob. All fields optional; extra keys tolerated for forward-compat with the OSI spec.
+  String and list lengths are capped so a single curated entity can't bloat the index, its embeddings, or
+  the agent prompt."
+  [:map
    [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
    [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
    [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])
@@ -82,7 +80,8 @@
       [:limit  :int]
       [:offset :int]]
   "Get all ai_context entries, paginated."
-  []
+  [_route-params
+   _query-params]
   (api/check-superuser)
   (let [limit  (or (request/limit) default-limit)
         offset (or (request/offset) default-offset)]
@@ -140,7 +139,8 @@
   share.
   Requires the library entity-retrieval feature; returns a 400 when the index is unavailable (the feature
   isn't licensed, or the pgvector store or embedding backend isn't configured)."
-  []
+  [_route-params
+   _query-params]
   (api/check-superuser)
   (api/check-400 (entity-retrieval/force-reconcile!)
                  (str "The library entity index is unavailable: it needs the library entity-retrieval "

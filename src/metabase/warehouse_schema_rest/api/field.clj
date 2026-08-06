@@ -223,8 +223,7 @@
 (api.macros/defendpoint :get "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params]
+                    [:id ms/PositiveInt]]]
   (let [field (api/read-check :model/Field id)]
     [[:count     (metadata-from-qp/field-count field)]
      [:distincts (metadata-from-qp/field-distinct-count field)]]))
@@ -271,8 +270,7 @@
 (api.macros/defendpoint :delete "/:id/dimension"
   "Remove the dimension associated to field at ID"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params]
+                    [:id ms/PositiveInt]]]
   (api/write-check :model/Field id)
   (t2/delete! :model/Dimension :field_id id)
   api/generic-204-no-content)
@@ -286,17 +284,9 @@
   remapped Field), and (if defined by a User) a map of human-readable remapped values. If `has_field_values` is not
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params]
+                    [:id ms/PositiveInt]]]
   (let [field (api/query-check (t2/select-one :model/Field :id id))]
     (parameters.field/field->values field)))
-
-(def ^:private RawFieldValue
-  "A single distinct value of a Field, as it round-trips through the JSON-encoded `values` column of FieldValues.
-  Only Fields that [[field-values/field-should-have-field-values?]] accepts can get here, which rules out
-  `:type/Temporal` and `:type/Collection`/`:type/Structured` (both `:type/field-values-unsupported`), leaving text,
-  numeric and boolean columns. `nil` is included because NULL is a legitimate distinct value and can be remapped."
-  [:maybe [:or :string number? :boolean]])
 
 (defn- validate-human-readable-pairs
   "Human readable values are optional, but if present they must be present for each field value. Throws if invalid,
@@ -320,9 +310,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    {value-pairs :values} :- [:map
-                             [:values [:sequential [:or
-                                                    [:tuple RawFieldValue]
-                                                    [:tuple RawFieldValue ms/NonBlankString]]]]]]
+                             [:values [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]]]]
   (let [field (api/write-check :model/Field id)]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
@@ -347,9 +335,7 @@
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body]
+                    [:id ms/PositiveInt]]]
   (analytics/track-event! :snowplow/simple_event {:event "field_manual_scan" :target_id id})
   (let [field (api/write-check (t2/select-one :model/Field :id id))]
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
@@ -370,9 +356,7 @@
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body]
+                    [:id ms/PositiveInt]]]
   (field-values/clear-field-values-for-field! (api/write-check (t2/select-one :model/Field :id id)))
   {:status :success})
 
@@ -421,6 +405,5 @@
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params]
+                    [:id ms/PositiveInt]]]
   (-> (t2/select-one :model/Field :id id) api/read-check xrays/related))

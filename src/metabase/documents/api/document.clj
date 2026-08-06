@@ -34,10 +34,7 @@
    [:display ms/NonBlankString]
    [:visualization_settings ms/Map]
    [:result_metadata {:optional true} [:maybe [:sequential ms/Map]]]
-   [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:type {:optional true} [:maybe :keyword]]
-   [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]])
+   [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private DocumentCreateOptions
   [:map
@@ -166,7 +163,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Gets existing `Documents`."
-  []
+  [_route-params
+   _query-params]
   {:items (t2/hydrate (t2/select :model/Document {:where [:and
                                                           (collection/visible-collection-filter-clause)
                                                           [:= :archived false]]})
@@ -219,8 +217,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
-  [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]
-   _query-params]
+  [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
   (api/read-check (get-document document-id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -275,8 +272,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:document-id"
   "Permanently deletes an archived Document."
-  [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]
-   _query-params]
+  [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]]
   (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
     (api/write-check document)
     (when-not (:archived document)
@@ -370,8 +366,7 @@
 
   Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting."
   [{:keys [document-id]} :- [:map
-                             [:document-id ms/PositiveInt]]
-   _query-params]
+                             [:document-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :archived false)
@@ -402,8 +397,7 @@
   Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.
   Throws a 404 if the Document doesn't exist, is archived, or doesn't have a public link."
   [{:keys [document-id]} :- [:map
-                             [:document-id ms/PositiveInt]]
-   _query-params]
+                             [:document-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :public_uuid [:not= nil], :archived false)
@@ -475,8 +469,7 @@
                                                  [:sequential ms/Map]
                                                  ms/JSONString]]]
        [:format_rows   {:default false} ms/BooleanValue]
-       [:pivot_results {:default false} ms/BooleanValue]
-       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
+       [:pivot_results {:default false} ms/BooleanValue]]]
   (validate-card-in-document document-id card-id)
   (qp.card/process-query-for-card
    (api/check-404 (t2/select-one :model/Card card-id)) export-format

@@ -337,12 +337,20 @@
               (mt/user-http-request :crowberto :get 200 "search" :q "x" :context "search-app"))))))
 
 (deftest removed-temporal-params-ignored-test
-  (testing "the removed has_temporal_dim / non_temporal_dim_ids params are dropped rather than rejected"
-    (is (=? {:engine string?}
-            (mt/user-http-request :crowberto :get 200 "search"
-                                  :q "x"
-                                  :has_temporal_dim "true"
-                                  :non_temporal_dim_ids "[1,2]")))))
+  (testing "the removed has_temporal_dim / non_temporal_dim_ids params are silently ignored"
+    ;; Stale FE bundles may still send these during rolling deploys; the request schema is an open map,
+    ;; so they pass validation and never reach the search context.
+    (let [captured (atom nil)]
+      (mt/with-dynamic-fn-redefs [search/search (fn [search-ctx]
+                                                  (reset! captured search-ctx)
+                                                  {:data [] :total 0 :engine "test"})]
+        (is (=? {:engine string?}
+                (mt/user-http-request :crowberto :get 200 "search"
+                                      :q "x"
+                                      :has_temporal_dim "true"
+                                      :non_temporal_dim_ids "[1,2]"))))
+      (is (not (contains? @captured :has-temporal-dim)))
+      (is (not (contains? @captured :non-temporal-dim-ids))))))
 
 (deftest explicit-engine-validation-test
   (testing "an explicit search_engine that cannot serve returns a 400 naming the reason"
@@ -1398,7 +1406,7 @@
             (testing "return intersections of supported models with provided models"
               (is (= #{"card" "dashboard"}
                      (->> (mt/user-http-request :crowberto :get 200 "search"
-                                                :q search-term :verified true :models "card" :models "dashboard")
+                                                :q search-term :verified true :models "card" :models "dashboard" :model "table")
                           :data
                           (map :model)
                           set))))))
@@ -1432,14 +1440,14 @@
                 (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today"
                                       :calculate_available_models true))))
       (testing "works with others filter too"
-        (is (= #{"dashboard" "dataset" "action" "card" "metric" "measure"}
-               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today" :created_by (mt/user->id :rasta)
+        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric" "measure"}
+               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today" :creator_id (mt/user->id :rasta)
                                          :calculate_available_models true)
                    :available_models
                    set))))
       (testing "error if invalids created_at string"
         (is (= "Failed to parse datetime value: today~"
-               (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_at "today~" :created_by (mt/user->id :rasta))))))))
+               (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_at "today~" :creator_id (mt/user->id :rasta))))))))
 
 (deftest filter-by-last-edited-at-test
   (let [search-term "last-edited-at-filtering"]
@@ -1494,7 +1502,7 @@
                    set))))
       (testing "error if invalids last_edited_at string"
         (is (= "Failed to parse datetime value: today~"
-               (mt/user-http-request :crowberto :get 400 "search" :q search-term :last_edited_at "today~" :created_by (mt/user->id :rasta))))))))
+               (mt/user-http-request :crowberto :get 400 "search" :q search-term :last_edited_at "today~" :creator_id (mt/user->id :rasta))))))))
 
 (deftest filter-by-ids-test
   (let [ids #(->> % :data (map :id) set)]

@@ -137,7 +137,7 @@
   todo-read-tool
   "Read the current todo list from memory.
   Returns the list of todos that have been created during this conversation."
-  [_args]
+  [_args :- [:map {:closed true}]]
   (try
     (add-output
      (todo-read {:memory-atom shared/*memory-atom*})

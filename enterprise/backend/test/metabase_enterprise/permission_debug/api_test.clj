@@ -109,8 +109,8 @@
                                    :model_id "999"
                                    :action_type "unknown/permission"))))
     (testing "should require valid parameters"
-      (is (= {:errors {:user_id "value must be an integer greater than zero."},
-              :specific-errors {:user_id ["value must be an integer greater than zero., received: \"invalid\""]}}
+      (is (= {:errors {:user_id "integer greater than 0"},
+              :specific-errors {:user_id ["should be a positive int, received: \"invalid\""]}}
              (mt/user-http-request :crowberto :get "ee/permission_debug"
                                    :user_id "invalid"
                                    :model_id "999"

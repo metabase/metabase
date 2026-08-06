@@ -14,8 +14,7 @@
 (api.macros/defendpoint :get "/"
   "Fetch all glossary entries, optionally filtered by search term."
   [_route-params
-   {:keys [search]} :- [:maybe [:map
-                                [:search {:optional true} [:maybe ms/NonBlankString]]]]]
+   {:keys [search]} :- [:maybe [:map [:search {:optional true} [:maybe ms/NonBlankString]]]]]
   (let [where (when search
                 [:or
                  [:like [:lower :term] [:lower (str "%" search "%")]]
@@ -72,8 +71,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-data-analyst)
   (let [glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
     (t2/delete! :model/Glossary :id id)

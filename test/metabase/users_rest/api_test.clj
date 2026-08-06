@@ -896,8 +896,8 @@
 
 (deftest create-user-add-to-admin-group-test-2
   (testing "POST /api/user"
-    (testing (str "we don't let you set is_superuser in the POST endpoint -- it is dropped, so use "
-                  "user_group_memberships with the Admin group instead")
+    (testing (str "for whatever reason we don't let you set is_superuser in the POST endpoint so if someone tries to "
+                  "pass that it should get ignored")
       (with-temp-user-email! [email]
         (mt/user-http-request :crowberto :post 200 "user"
                               {:first_name "Cam"
@@ -905,8 +905,7 @@
                                :email email
                                :is_superuser true})
         (is (= {:is-superuser? false, :pgm-exists? false}
-               (superuser-and-admin-pgm-info email))
-            "the user is created without superuser rights")))))
+               (superuser-and-admin-pgm-info email)))))))
 
 (deftest create-user-must-assign-to-all-users-group
   (testing "POST /api/user"
@@ -1087,28 +1086,34 @@
 
 (deftest login-attributes-cannot-start-with-at-symbol
   (testing "PUT /api/user/:id"
-    (testing "A login attribute starting with `@` is dropped rather than stored"
+    (testing "We can't create login attributes starting with `@`"
       (mt/with-temp [:model/User {user-id :id} {:first_name   "Test"
                                                 :last_name    "User"
                                                 :email        "testuser@metabase.com"
                                                 :is_superuser true}]
-        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
-                              {:email            "testuser@metabase.com"
-                               :login_attributes {"@foo" "foo", "ok" "bar"}})
-        (is (= {"ok" "bar"}
-               (t2/select-one-fn :login_attributes :model/User :id user-id))))))
+        (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
+                :errors
+                {:login_attributes
+                 {(keyword "@foo")
+                  "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}}
+               (mt/user-http-request :crowberto :put 400 (str "user/" user-id)
+                                     {:email            "testuser@metabase.com"
+                                      :login_attributes {"@foo" "foo"}}))))))
   (testing "POST /api/user"
     (let [user-name (mt/random-name)
           email     (mt/random-email)]
       (mt/with-model-cleanup [:model/User]
         (mt/with-fake-inbox
-          (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "user"
-                                                   {:first_name       user-name
-                                                    :last_name        user-name
-                                                    :email            email
-                                                    :login_attributes {"@foo" "bar", "ok" "baz"}})]
-            (is (= {"ok" "baz"}
-                   (t2/select-one-fn :login_attributes :model/User :id id)))))))))
+          (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
+                  :errors
+                  {:login_attributes
+                   {(keyword "@foo")
+                    "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}}
+                 (mt/user-http-request :crowberto :post 400 "user"
+                                       {:first_name       user-name
+                                        :last_name        user-name
+                                        :email            email
+                                        :login_attributes {"@foo" "bar"}}))))))))
 
 (deftest ^:parallel updated-user-name-test
   (testing "Test that `metabase.users-rest.api/updated-user-name` works as intended."
@@ -1239,9 +1244,7 @@
                 (t2/select-one [:model/User :first_name :last_name :is_superuser :email], :id (mt/user->id :rasta)))]
         (let [before (fetch-rasta)]
           (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
-                                (-> (fetch-rasta)
-                                    (select-keys [:first_name :last_name :email])
-                                    (assoc :is_superuser true)))
+                                (assoc (fetch-rasta) :is_superuser true))
           (is (= before
                  (fetch-rasta))))))))
 
@@ -1538,7 +1541,11 @@
   (testing "PUT /api/user/:id/reactivate"
     (testing "Test that reactivating a disabled account works"
       (mt/with-temp [:model/User user {:is_active false}]
-        (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
+        ;; now try creating the same user again, should re-activiate the original
+        (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user))
+                              {:first_name (:first_name user)
+                               :last_name "whatever"
+                               :email (:email user)})
         (is (true?
              (t2/select-one-fn :is_active :model/User :id (:id user)))
             "the user should now be active")))

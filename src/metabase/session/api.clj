@@ -185,11 +185,9 @@
   "Login."
   [_route-params
    _query-params
-   ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
    {:keys [username password]} :- [:map
                                    [:username ms/NonBlankString]
-                                   [:password ms/NonBlankString]
-                                   [:remember {:optional true} [:maybe :boolean]]]
+                                   [:password ms/NonBlankString]]
    request]
   (let [ip-address (request/ip-address request)
         do-login   (fn []
@@ -407,10 +405,8 @@
   "Login with Google Auth."
   [_route-params
    _query-params
-   ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
    {:keys [token]} :- [:map
-                       [:token    ms/NonBlankString]
-                       [:remember {:optional true} [:maybe :boolean]]]
+                       [:token ms/NonBlankString]]
    request]
   (when-not (sso/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
@@ -506,8 +502,7 @@
   `POST /mfa/verify` like any other code."
   [_route-params
    _query-params
-   {challenge-token :challenge_token} :- [:map
-                                          [:challenge_token ms/NonBlankString]]
+   {challenge-token :challenge_token} :- [:map [:challenge_token ms/NonBlankString]]
    request]
   (let [claims (or (session.challenge/verify-challenge-token challenge-token)
                    (throw (ex-info (tru "Authentication session expired. Please log in again.")

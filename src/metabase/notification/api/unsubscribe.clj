@@ -48,8 +48,8 @@
    _query-params
    {:keys [email hash notification-handler-id]} :- [:map
                                                     [:notification-handler-id ms/PositiveInt]
-                                                    [:email                   ms/NonBlankString]
-                                                    [:hash                    ms/NonBlankString]]
+                                                    [:email                   :string]
+                                                    [:hash                    :string]]
    request]
   (check-hash notification-handler-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
@@ -74,8 +74,8 @@
    _query-params
    {:keys [email hash notification-handler-id]} :- [:map
                                                     [:notification-handler-id ms/PositiveInt]
-                                                    [:email                   ms/NonBlankString]
-                                                    [:hash                    ms/NonBlankString]]
+                                                    [:email                   :string]
+                                                    [:hash                    :string]]
    request]
   (check-hash notification-handler-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]

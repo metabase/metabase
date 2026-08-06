@@ -54,8 +54,8 @@
                                  [:rows [:sequential :any]]]]]
   "Evaluate an ad-hoc python transform on a sample of input data.
   Intended for short runs for early feedback. Input/output/timeout limits apply."
-  [_route-params
-   _query-params
+  [_
+   _
    {:keys [code
            source_tables
            output_row_limit

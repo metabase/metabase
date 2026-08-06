@@ -217,9 +217,7 @@
                                                      [:body :any]]
   "Remove an add-on."
   [{:keys [product-type]} :- [:map
-                              [:product-type cloud-add-on-product-types]]
-   _query-params
-   _body]
+                              [:product-type cloud-add-on-product-types]]]
   (api/check-superuser)
   (cond
     (not (premium-features/is-hosted?))

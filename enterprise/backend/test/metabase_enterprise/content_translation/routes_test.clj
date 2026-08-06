@@ -181,8 +181,8 @@
                  (client/client :get 402 (str (embedded-dictionary-url (jwt/sign {} k))
                                               "?locale=sv")))))
             (testing "requires locale"
-              (is (=? {:errors {:locale "value must be a non-blank string."}}
-                      (client/client :get 400 (embedded-dictionary-url (jwt/sign {} k))))))
+              (is (= "Locale is required."
+                     (client/client :get 400 (embedded-dictionary-url (jwt/sign {} k))))))
             (testing "requires valid token"
               (is (= "Message seems corrupt or manipulated"
                      (client/client :get 400 (str (embedded-dictionary-url

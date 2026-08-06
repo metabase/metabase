@@ -80,14 +80,10 @@
                [:email      ms/Email]
                [:password   ms/ValidPassword]
                [:first_name {:optional true} [:maybe ms/NonBlankString]]
-               [:last_name  {:optional true} [:maybe ms/NonBlankString]]
-               [:site_name        {:optional true} [:maybe :string]]
-               [:password_confirm {:optional true} [:maybe :string]]]]
+               [:last_name  {:optional true} [:maybe ms/NonBlankString]]]]
        [:prefs [:map
                 [:site_name   ms/NonBlankString]
-                [:site_locale {:optional true} [:maybe ms/ValidLocale]]
-                [:allow_tracking {:optional true} [:maybe [:or :boolean :string]]]]]
-       [:database {:optional true} [:maybe [:map-of :keyword :any]]]]
+                [:site_locale {:optional true} [:maybe ms/ValidLocale]]]]]
    request]
   (letfn [(create! []
             (try

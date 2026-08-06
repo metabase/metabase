@@ -31,10 +31,9 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [table_id table_name scan synchronous?]} :- [:map
-                                                       [:table_id     {:optional true} [:maybe ms/PositiveInt]]
-                                                       [:table_name   {:optional true} [:maybe ms/NonBlankString]]
-                                                       [:scan         {:optional true} [:maybe [:enum "full" "schema"]]]
-                                                       [:synchronous? {:default false} [:maybe ms/BooleanValue]]]]
+                                                       [:table_id   {:optional true} [:maybe ms/PositiveInt]]
+                                                       [:table_name {:optional true} [:maybe ms/NonBlankString]]
+                                                       [:scan       {:optional true} [:maybe [:enum "full" "schema"]]]]]
   (let [schema?       (when scan (#{"schema" :schema} scan))
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)
         db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]
@@ -112,8 +111,7 @@
    _query-params
    {:keys [schema_name table_name]} :- [:map
                                         [:schema_name ms/NonBlankString]
-                                        [:table_name  ms/NonBlankString]
-                                        [:synchronous? {:optional true} [:maybe ms/BooleanValue]]]]
+                                        [:table_name  ms/NonBlankString]]]
   (api/let-404 [database (t2/select-one :model/Database :id id)]
     (if-not (t2/select-one :model/Table :db_id id :name table_name :schema schema_name)
       (find-and-sync-new-table database table_name schema_name)

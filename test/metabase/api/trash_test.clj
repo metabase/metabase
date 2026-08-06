@@ -59,8 +59,9 @@
 (deftest ^:parallel cannot-create-timeline-in-trash-test
   (testing "Cannot create a timeline in the trash"
     (is (= "You don't have permissions to do that."
-           (mt/user-http-request :crowberto :post 403 "timeline" {:name          "Timeline in trash"
+           (mt/user-http-request :crowberto :post 403 "timeline" {:name "Timeline in trash"
                                                                   :default       false
+                                                                  :creator_id    (mt/user->id :crowberto)
                                                                   :collection_id (collection/trash-collection-id)})))))
 
 (deftest ^:parallel cannot-move-card-to-trash-test
@@ -113,8 +114,9 @@
 
 (deftest ^:parallel cannot-move-timeline-to-trash-test
   (testing "Cannot move a timeline to the trash"
-    (let [{id :id} (mt/user-http-request :crowberto :post 200 "timeline" {:name    "Timeline in trash"
-                                                                          :default false})]
+    (let [{id :id} (mt/user-http-request :crowberto :post 200 "timeline" {:name       "Timeline in trash"
+                                                                          :default    false
+                                                                          :creator_id (mt/user->id :crowberto)})]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :crowberto :put 403 (str "timeline/" id) {:collection_id (collection/trash-collection-id)}))))))
 

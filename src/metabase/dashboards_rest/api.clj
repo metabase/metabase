@@ -905,13 +905,13 @@
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe int?]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:visualization_settings {:optional true} [:maybe :map]]
+   [:visualization_settings {:optional true} [:maybe ms/Map]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-   [:series                 {:optional true} [:maybe [:sequential [:map
-                                                                   [:id ms/PositiveInt]]]]]])
+   [:series                 {:optional true} [:maybe [:sequential ms/Map]]]])
 
 (def ^:private UpdatedDashboardTab
   [:map
+   ;; id can be negative, it indicates a new card and BE should create them
    [:id   ms/Int]
    [:name ms/NonBlankString]])
 
@@ -1138,7 +1138,6 @@
    [:embedding_type          {:optional true} [:maybe :string]]
    [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
    [:parameters              {:optional true} [:maybe ::parameters.schema/parameters]]
-   [:auto_apply_filters      {:optional true} [:maybe :boolean]]
    [:position                {:optional true} [:maybe ms/PositiveInt]]
    [:width                   {:optional true} [:enum "fixed" "full"]]
    [:archived                {:optional true} [:maybe :boolean]]
@@ -1154,7 +1153,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
-  structure as the response from `GET /api/dashboard/:id`, restricted to the writable properties below."
+  structure as the response from `GET /api/dashboard/:id`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
@@ -1454,11 +1453,8 @@
                                                   [:card-id      ms/PositiveInt]]
    _query-params
    {:keys [dashboard_load_id], :as body} :- [:map
-                                             [:dashboard_load_id  {:optional true} [:maybe ms/NonBlankString]]
-                                             [:parameters         {:optional true} [:maybe [:sequential ParameterWithID]]]
-                                             [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
-                                             [:ignore_cache       {:optional true} [:maybe ms/BooleanValue]]
-                                             [:collection_preview {:optional true} [:maybe ms/BooleanValue]]]]
+                                             [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
+                                             [:parameters        {:optional true} [:maybe [:sequential ParameterWithID]]]]]
   (with-dashboard-load-id dashboard_load_id
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
@@ -1487,12 +1483,13 @@
     format-rows?   :format_rows
     pivot-results? :pivot_results}
    :- [:map
-       [:parameters      {:optional true} [:maybe [:or
-                                                   [:sequential ParameterWithID]
-                                                   ms/JSONString]]]
-       [:format_rows     {:default false} ms/BooleanValue]
-       [:pivot_results   {:default false} ms/BooleanValue]
-       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
+       [:parameters    {:optional true} [:maybe [:or
+                                                 [:sequential ParameterWithID]
+                                                 ;; support <form> encoded params for backwards compatibility... see
+                                                 ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
+                                                 ms/JSONString]]]
+       [:format_rows   {:default false} ms/BooleanValue]
+       [:pivot_results {:default false} ms/BooleanValue]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
             {:dashboard     (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
              :card          (api/check-404 (t2/select-one :model/Card card-id))
@@ -1521,14 +1518,10 @@
   [{:keys [dashboard-id dashcard-id card-id]} :- [:map
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
-                                                  [:card-id      ms/PositiveInt]]
+                                                  [:card-id ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:parameters         {:optional true} [:maybe [:sequential ParameterWithID]]]
-            [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
-            [:dashboard_load_id  {:optional true} [:maybe ms/NonBlankString]]
-            [:ignore_cache       {:optional true} [:maybe ms/BooleanValue]]
-            [:collection_preview {:optional true} [:maybe ms/BooleanValue]]]]
+            [:parameters {:optional true} [:maybe [:sequential ParameterWithID]]]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body

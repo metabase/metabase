@@ -116,14 +116,14 @@
                (t2/count :model/NativeQuerySnippet :name "test-snippet-1"))))
       (finally
         (t2/delete! :model/NativeQuerySnippet :name "test-snippet-1"))))
-  (testing "Shouldn't be able to specify creator_id"
-    (mt/with-model-cleanup [:model/NativeQuerySnippet]
-      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 (snippet-url)
-                                               {:name       (mt/random-name)
-                                                :content    "1"
-                                                :creator_id (mt/user->id :rasta)})]
+  (testing "Shouldn't be able to specify non-default creator_id"
+    (try
+      (let [snippet (mt/user-http-request :crowberto :post 200 (snippet-url)
+                                          {:name "test-snippet", :content "1", :creator_id (mt/user->id :rasta)})]
         (is (= (mt/user->id :crowberto)
-               (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id id)))))))
+               (:creator_id snippet))))
+      (finally
+        (t2/delete! :model/NativeQuerySnippet :name "test-snippet")))))
 
 (deftest create-snippet-in-collection-test
   (mt/with-full-data-perms-for-all-users!

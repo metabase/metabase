@@ -571,18 +571,18 @@
   (testing "GET /session/properties"
     (testing "don't return the token for admins"
       (is (= nil
-             (-> (mt/client (mt/user->credentials :crowberto) :get 200 "session/properties")
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :crowberto))
                  keys #{:premium-embedding-token}))))
     (testing "don't return the token for non-admins"
       (is (= nil
-             (-> (mt/client (mt/user->credentials :rasta) :get 200 "session/properties")
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :rasta))
                  keys #{:premium-embedding-token}))))))
 
 (deftest properties-skip-include-in-list?=false
   (testing "GET /session/properties"
     (testing "don't return the version-info property"
       (is (= nil
-             (-> (mt/client (mt/user->credentials :crowberto) :get 200 "session/properties")
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :crowberto))
                  keys #{:version-info}))))))
 
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------

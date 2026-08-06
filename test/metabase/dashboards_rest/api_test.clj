@@ -850,7 +850,9 @@
               (let [put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
                                                        {:name        "My Cool Dashboard"
                                                         :description "Some awesome description"
-                                                        :cache_ttl   1234})
+                                                        :cache_ttl   1234
+                                                        ;; these things should fail to update
+                                                        :creator_id  (mt/user->id :trashbird)})
                     get-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))]
                 (is (=? {:name           "My Cool Dashboard"
                          :dashcards      []
@@ -875,16 +877,18 @@
                        :collection_id true
                        :view_count    1}
                       (dashboard-response (t2/select-one :model/Dashboard :id dashboard-id)))))
-            (testing "server-owned properties are dropped rather than written"
-              (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                    {:creator_id (mt/user->id :trashbird)})
-              (is (= (mt/user->id :rasta)
-                     (t2/select-one-fn :creator_id :model/Dashboard :id dashboard-id))))
-            (testing "`cards` is dropped: this endpoint takes `dashcards` (`cards` belongs to PUT /api/dashboard/:id/cards)"
+            (testing "No-op PUT: Do not return 500"
               (mt/with-temp [:model/Card {card-id :id} {}
                              :model/DashboardCard dashcard {:card_id card-id, :dashboard_id dashboard-id}]
-                (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                      {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))
+                ;; so, you can't actually set `:cards` with THIS endpoint (you have to use PUT /api/dashboard/:id/cards)
+                ;; but the e2e tests are trying to do it. With Toucan 1, it would silently do nothing and return truthy for
+                ;; whatever reason (I'm guessing it was a bug?) if you did something like (update! Dashboard 1 {}). Toucan 2
+                ;; returns falsey, since it doesn't do anything, which is what Toucan 1 SAID it was supposed to do.
+                ;;
+                ;; In the interest of un-busting the e2e tests let's just check to make sure the endpoint no-ops
+                (is (=? {:id dashboard-id}
+                        (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                              {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))
         (testing "auto_apply_filters test"
           (doseq [enabled? [true false]]
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name               "Test Dashboard"
@@ -1051,7 +1055,7 @@
                                       swapped-card-entity-id :entity_id} {:name "Swapped Card"}]
             ;; Update the card_id.
             (let [updated-card-payload {:dashcards [(assoc
-                                                     (select-keys dashcard [:id :size_x :size_y :row :col])
+                                                     (select-keys dashcard [:id :entity_id :size_x :size_y :row :col])
                                                      :card_id new-card-id)]}
                   {updated-dashcard-entity-id          :entity_id
                    {updated-card-entity-id :entity_id} :card} (-> (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
@@ -1871,33 +1875,23 @@
                                                      :tabs      []}))
               :dashcards    (fn [] (t2/select :model/DashboardCard :dashboard_id dashboard-id))}))))))
 
-(defn- ->dashcard-update
-  "Narrows a persisted dashcard down to the keys `PUT /api/dashboard/:id` accepts."
-  [dashcard]
-  (-> dashcard
-      (select-keys [:id :size_x :size_y :row :col :card_id :action_id :dashboard_tab_id
-                    :parameter_mappings :visualization_settings :inline_parameters])
-      (m/assoc-some :series (some->> (:series dashcard) (mapv #(select-keys % [:id]))))))
-
 (defn- dashcard-like-response
   [id]
-  (->dashcard-update (t2/hydrate (t2/select-one :model/DashboardCard :id id) :series)))
+  (t2/hydrate (t2/select-one :model/DashboardCard :id id) :series))
 
 (defn- current-cards
-  "Returns the current ordered cards of a dashboard, narrowed to the keys `PUT /api/dashboard/:id` accepts."
+  "Returns the current ordered cards of a dashboard."
   [dashboard-id]
-  (->> (-> (t2/select-one :model/Dashboard dashboard-id)
-           (t2/hydrate [:dashcards :series])
-           :dashcards)
-       (mapv ->dashcard-update)))
+  (-> (t2/select-one :model/Dashboard dashboard-id)
+      (t2/hydrate [:dashcards :series])
+      :dashcards))
 
 (defn- tabs
-  "Returns the tabs of a dashboard, narrowed to the keys `PUT /api/dashboard/:id` accepts."
+  "Returns the tabs of a dashboard."
   [dashboard-id]
-  (->> (-> (t2/select-one :model/Dashboard dashboard-id)
-           (t2/hydrate :tabs)
-           :tabs)
-       (mapv #(select-keys % [:id :name]))))
+  (-> (t2/select-one :model/Dashboard dashboard-id)
+      (t2/hydrate :tabs)
+      :tabs))
 
 (defn do-with-update-cards-parameter-mapping-permissions-fixtures! [f]
   (do-with-add-card-parameter-mapping-permissions-fixtures!
@@ -2569,8 +2563,8 @@
           ;; TODO adds test for return
           ;; Update **both** cards to use the new card id
           (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
-                                {:dashcards [(assoc (->dashcard-update action-card) :card_id model-id-2)
-                                             (assoc (->dashcard-update question-card) :card_id model-id-2)]
+                                {:dashcards [(assoc action-card :card_id model-id-2)
+                                             (assoc question-card :card_id model-id-2)]
                                  :tabs      []})
           (testing "Both updated card ids should be reflected after making the dashcard changes."
             (is (partial= [{:card_id model-id-2}
@@ -2646,7 +2640,7 @@
         (is (=? {:tabs [{:id dashtab-id-1}]}
                 (mt/user-http-request :rasta :put 200
                                       (format "dashboard/%d" dashboard-id)
-                                      {:tabs      [(select-keys (t2/select-one :model/DashboardTab :id dashtab-id-1) [:id :name])]
+                                      {:tabs      [(t2/select-one :model/DashboardTab :id dashtab-id-1)]
                                        :dashcards (remove #(= (:dashboard_tab_id %) dashtab-id-2) (current-cards dashboard-id))})))
         (testing "deteted 1 tab, we should have"
           (testing "1 card left"
@@ -5253,7 +5247,8 @@
                                           :size_x 1
                                           :size_y 1
                                           :row 0 :col 0
-                                          :card_id card-id}]}))
+                                          :card_id card-id
+                                          :dashboard_id other-dash-id}]}))
     (testing "Should archive all dashboard internal cards with their dashboard"
       (is (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
                                 {:archived true}))
@@ -5864,9 +5859,9 @@
                                                      :parameter_mappings [{:parameter_id "p1" :card_id (:id c2) :target p1-target}
                                                                           {:parameter_id "p2" :card_id (:id c2) :target p2-target}]}]
         (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
-                              {:dashcards [(assoc (->dashcard-update (dashboard-card/retrieve-dashboard-card dc1)) :id dc1
+                              {:dashcards [(assoc (dashboard-card/retrieve-dashboard-card dc1) :id dc1
                                                   :parameter_mappings [{:parameter_id "p2" :card_id (:id c1) :target p2-target}])
-                                           (assoc (->dashcard-update (dashboard-card/retrieve-dashboard-card dc2)) :id dc2
+                                           (assoc (dashboard-card/retrieve-dashboard-card dc2) :id dc2
                                                   :parameter_mappings [{:parameter_id "p2" :card_id (:id c2) :target p2-target}])]
                                :tabs []})
         (is (every? #(= 1 (count %)) (t2/select-fn-vec :parameter_mappings :model/DashboardCard :dashboard_id dash-id)))))))
@@ -6138,7 +6133,7 @@
                    :model/Card dq {:dashboard_id (:id d)}
                    :model/DashboardCard _dc1 {:dashboard_id (:id d) :card_id (:id dq)}
                    :model/DashboardCard dc2 {:dashboard_id (:id d) :card_id (:id dq)}]
-      (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id d)) {:dashcards [(->dashcard-update dc2)] :tabs []})
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id d)) {:dashcards [dc2] :tabs []})
       (is (false? (t2/select-one-fn :archived :model/Card (:id dq))))
       (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id d)) {:dashcards [] :tabs []})
       (is (true? (t2/select-one-fn :archived :model/Card (:id dq)))))))
@@ -6149,7 +6144,7 @@
                    :model/Card dq-a {:dashboard_id (:id d)} :model/Card dq-b {:dashboard_id (:id d)}
                    :model/DashboardCard _dc-a {:dashboard_id (:id d) :card_id (:id dq-a)}
                    :model/DashboardCard dc-b {:dashboard_id (:id d) :card_id (:id dq-b)}]
-      (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id d)) {:dashcards [(->dashcard-update dc-b)] :tabs []})
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id d)) {:dashcards [dc-b] :tabs []})
       (is (true? (t2/select-one-fn :archived :model/Card (:id dq-a))))
       (is (false? (t2/select-one-fn :archived :model/Card (:id dq-b)))))))
 
@@ -6191,8 +6186,7 @@
                                :parameter_mappings [{:parameter_id "_a" :target [:text-tag "foo"]}]})
             resp     (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id) {:tabs [] :dashcards [(mk -1) (mk -2)]})
             updated  (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id)
-                                           {:tabs [] :dashcards (mapv #(assoc (->dashcard-update %)
-                                                                              :parameter_mappings [{:parameter_id "_a" :target [:text-tag "bar"]}])
+                                           {:tabs [] :dashcards (mapv #(assoc % :parameter_mappings [{:parameter_id "_a" :target [:text-tag "bar"]}])
                                                                       (:dashcards resp))})]
         (is (every? #(= [{:parameter_id "_a" :target ["text-tag" "bar"]}] (:parameter_mappings %))
                     (:dashcards updated)))))))

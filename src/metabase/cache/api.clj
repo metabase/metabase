@@ -19,15 +19,15 @@
 ;;; TODO (Cam 10/3/25) -- move these schemas into a `.schemas` namespace to follow module shape guidelines
 
 (mr/def ::cache-strategy.base.oss
-  [:map {:closed true}
+  [:map
    [:type [:enum :nocache :ttl]]])
 
 (mr/def ::cache-strategy.base.ee
-  [:map {:closed true}
+  [:map
    [:type [:enum :nocache :ttl :duration :schedule]]])
 
 (mr/def ::cache-strategy.nocache
-  [:map {:closed false}
+  [:map ; not closed due to a way it's used in tests for clarity
    [:type [:= :nocache]]])
 
 (mr/def ::cache-strategy.ttl
@@ -45,7 +45,7 @@
     [:ttl     ::cache-strategy.ttl]]])
 
 (mr/def ::cache-strategy.ee.duration
-  [:map
+  [:map {:closed true}
    [:type                  [:= :duration]]
    [:duration              ms/PositiveInt]
    ;; TODO (Cam 10/3/25) -- change these to keywords and let API coercion convert them for us automatically.
@@ -53,7 +53,7 @@
    [:refresh_automatically {:optional true} [:maybe :boolean]]])
 
 (mr/def ::cache-strategy.ee.schedule
-  [:map
+  [:map {:closed true}
    [:type                  [:= :schedule]]
    [:schedule              u.cron/CronScheduleString]
    [:refresh_automatically {:optional true} [:maybe :boolean]]])

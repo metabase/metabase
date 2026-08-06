@@ -260,10 +260,8 @@
   instead, you can specify `?legacy-mbql=true`."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {legacy-mbql? :legacy-mbql}
-   :- [:map {:closed true}
-       [:legacy-mbql {:optional true, :default false} [:maybe ms/BooleanValue]]
-       [:context {:optional true} [:maybe :string]]]]
+   {legacy-mbql? :legacy-mbql
+    :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
         card (get-card resolved-id)]
     (cond-> card
@@ -383,7 +381,7 @@
   Use `fetch-compatible-series` for that."
   [card    :- :map
    {:keys [query last-cursor page-size exclude-ids] :as _options}
-   :- [:map
+   :- [:map {:closed true}
        [:query       {:optional true} [:maybe ms/NonBlankString]]
        [:last-cursor {:optional true} [:maybe ms/PositiveInt]]
        [:page-size   {:optional true} [:maybe ms/PositiveInt]]
@@ -767,7 +765,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    {delete-old-dashcards? :delete_old_dashcards} :- [:map
-                                                     [:delete_old_dashcards {:optional true} [:maybe ms/BooleanValue]]]
+                                                     [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
    body :- CardUpdateSchema]
   (update-card! id body (boolean delete-old-dashcards?)))
 
@@ -889,10 +887,6 @@
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
-(def ^:private ParameterValues
-  "Parameter values submitted alongside a Card query."
-  [:sequential [:map-of :keyword :any]])
-
 (defn- metric-card-without-query-breakouts
   [card]
   (if-not (= :metric (:type card))
@@ -916,7 +910,6 @@
    _query-params
    {:keys [parameters ignore_cache dashboard_id collection_preview]}
    :- [:map
-       [:parameters         {:optional true} [:maybe ParameterValues]]
        [:ignore_cache       {:default false} :boolean]
        [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
@@ -967,7 +960,10 @@
                                          {:decode/api (fn [x]
                                                         (cond-> x
                                                           (string? x) json/decode+kw))}
-                                         ParameterValues]]
+                                         ;; TODO -- figure out what the actual schema for parameters is supposed to be
+                                         ;; here... [[::parameters.schema/parameter]] is used for other endpoints in this namespace but
+                                         ;; it breaks existing tests
+                                         [:sequential [:map-of :keyword :any]]]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]
        [:csv_include_bom {:default false} ms/BooleanValue]]]
@@ -1046,10 +1042,8 @@
    _query-params
    {:keys [parameters ignore_cache dashboard_id]
     :or   {ignore_cache false}} :- [:map
-                                    [:parameters   {:optional true} [:maybe ParameterValues]]
                                     [:ignore_cache {:optional true} [:maybe :boolean]]
-                                    [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]
-                                    [:collection_preview {:optional true} [:maybe :boolean]]]]
+                                    [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]]]
   (let [card (api/check-404 (t2/select-one :model/Card card-id))]
     (when dashboard_id
       (api/read-check :model/Dashboard dashboard_id))

@@ -77,7 +77,7 @@
 
   If a timeline looks relevant to the user's request, fetch its events using the
   get_timeline_details tool."
-  [_args]
+  [_args :- [:map {:closed true}]]
   (add-output (get-timelines {}) format-timeline-list-output))
 
 (mu/defn ^{:tool-name "get_timeline_details"

@@ -308,7 +308,7 @@
                  (client/client :get 200 (str "public/card/" uuid "/query/json?format_rows=true")))))
         (testing ":csv download response format"
           (is (= "Count\n100\n"
-                 (u/strip-bom (client/client :get 200 (str "public/card/" uuid "/query/csv?format_rows=true"))))))
+                 (u/strip-bom (client/client :get 200 (str "public/card/" uuid "/query/csv?format_rows=true"), :format :csv)))))
         (testing ":xlsx download response format"
           (is (= [{:col "Count"} {:col 100.0}]
                  (parse-xlsx-response
@@ -641,7 +641,7 @@
               (is (= :public-xlsx-download (:context (qe))))))
           (testing ":csv download response format"
             (process-userland-query-test/with-query-execution! [qe query]
-              (client/client :get 200 (str "public/card/" uuid "/query/csv"))
+              (client/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv)
               (is (= :public-csv-download (:context (qe)))))))))))
 
 (deftest card-endpoints-require-public-sharing-enabled-test

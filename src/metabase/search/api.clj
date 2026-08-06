@@ -117,14 +117,10 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema
-                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/re-init"
   "This will blow away any search indexes, re-create, and re-populate them."
-  [_route-params
-   _query-params :- [:map
-                     [:search_engine {:optional true} [:maybe :string]]]
-   _body]
+  []
   (api/check-superuser)
   (if (search/supports-index?)
     {:message (search/init-index! {:force-reset? true})}
@@ -133,14 +129,10 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema
-                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/force-reindex"
   "This will trigger an immediate reindexing, if we are using search index."
-  [_route-params
-   _query-params :- [:map
-                     [:search_engine {:optional true} [:maybe :string]]]
-   _body]
+  []
   (api/check-superuser)
   (if (search/supports-index?)
     ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
@@ -180,8 +172,7 @@
 (api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"
   [_route-params
-   {:keys [context]} :- [:map {:closed false}
-                         [:context {:default :default} :keyword]]]
+   {:keys [context]} :- [:map [:context {:default :default} :keyword]]]
   ;; normalize so the reported weights match what search actually applies for this context
   (search.config/weights {:context (search.config/normalized-context context)}))
 
@@ -196,7 +187,7 @@
 (api.macros/defendpoint :put "/weights"
   "Update the current weights being used to rank the search results"
   [_route-params
-   {:keys [context], :as overrides} :- [:map {:closed false}
+   {:keys [context], :as overrides} :- [:map
                                         [:context {:default :default} :keyword]
                                         [:search_engine {:optional true} :any]]]
   ;; remove cookie

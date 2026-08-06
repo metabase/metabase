@@ -341,8 +341,8 @@
 (def ^:private DimensionSelection
   ;; The FE sends snake_case dimension snapshots; the `:decode/api` rule kebab-cases them at the
   ;; `defendpoint` edge, so entries here are declared in the internal kebab-case shape the
-  [:map {:closed    true
-         :decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
+  ;; handler receives and persists. Open map: snapshot keys beyond these pass through kebab-cased.
+  [:map {:decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe :string]]
@@ -555,12 +555,12 @@
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private updatable-columns
-  "Columns a client may set through `PUT /api/exploration/:id`. `UpdateExploration` rejects any
-  other body key, and the request is still `select-keys`'d to this set before `t2/update!` so
-  mass-assignment of protected columns (`creator_id`, `entity_id`, timestamps, ...) can't come
-  back if the schema is ever widened. `:archived_directly` is intentionally excluded — it is
-  derived server-side by `updates-with-archived-directly`, never accepted from the client. Keep in
-  sync with `UpdateExploration`."
+  "Columns a client may set through `PUT /api/exploration/:id`. `UpdateExploration` is an open map,
+  so extra body keys survive decoding; the request is `select-keys`'d to this set before
+  `t2/update!` to prevent mass-assignment of protected columns (`creator_id`, `entity_id`,
+  timestamps, ...). `:archived_directly` is intentionally excluded — it is derived server-side by
+  `updates-with-archived-directly`, never accepted from the client. Keep in sync with
+  `UpdateExploration`."
   #{:name :description :archived :collection_id :collection_position})
 
 ;;; ----------------------------------------- /dimensions schemas + helpers -----------------------------------------

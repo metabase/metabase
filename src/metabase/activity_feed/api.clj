@@ -138,7 +138,7 @@
   [_route-params
    {:keys [context include_metadata]} :- [:map
                                           [:context (ms/QueryVectorOf [:enum :selections :views])]
-                                          [:include_metadata {:default false} [:maybe ms/BooleanValue]]]]
+                                          [:include_metadata {:default false} [:maybe :boolean]]]]
   (when-not (seq context) (throw (ex-info "context is required." {})))
   (recent-views/get-recents *current-user-id* context {:include-metadata? include_metadata}))
 

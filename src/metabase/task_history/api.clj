@@ -21,11 +21,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of recent tasks stored as Task History"
-  [_route-params
-   params :- [:maybe [:merge
-                      task-history/FilterParams
-                      task-history/SortParams
-                      [:map {:closed true}]]]]
+  [_
+   params :- [:maybe [:merge task-history/FilterParams task-history/SortParams]]]
   (perms/check-has-application-permission :monitoring)
   {:total  (task-history/total params)
    :limit  (request/limit)
@@ -39,8 +36,7 @@
 (api.macros/defendpoint :get "/:id"
   "Get `TaskHistory` entry with ID."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params]
+                    [:id ms/PositiveInt]]]
   (api/check-404 (api/read-check :model/TaskHistory id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -241,11 +237,8 @@
 
 (api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
   "List task runs with optional filters. Returns runs with hydrated entity names and task counts."
-  [_route-params
-   params :- [:maybe [:merge
-                      ::RunFilterParams
-                      ::RunSortParams
-                      [:map {:closed true}]]]]
+  [_
+   params :- [:maybe [:merge ::RunFilterParams ::RunSortParams]]]
   (perms/check-has-application-permission :monitoring)
   (let [where-clause (build-run-where-clause params)
         limit        (request/limit)
@@ -261,8 +254,7 @@
 
 (api.macros/defendpoint :get "/runs/:id" :- ::TaskRunWithTasks
   "Get a single task run with all its child tasks."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
   (let [run   (api/check-404 (t2/select-one :model/TaskRun :id id))
         tasks (t2/select :model/TaskHistory :run_id id {:order-by [[:started_at :asc]]})]
@@ -274,7 +266,7 @@
 
 (api.macros/defendpoint :get "/runs/entities" :- [:sequential ::RunEntity]
   "Get distinct entities that have task runs for a given run type. Used for populating entity filter picker."
-  [_route-params
+  [_
    params :- [:map
               [:run-type   (into [:enum] (map name task-run/run-types))]
               [:started-at ms/NonBlankString]]]

@@ -121,44 +121,39 @@
     (mt/with-temp [:model/Channel chn-1 default-test-channel]
       (is (=? {:errors {:type "nullable Must be a namespaced channel. E.g: channel/http"}}
               (mt/user-http-request :crowberto :put 400 (str "channel/" (:id chn-1))
-                                    {:type "metabase-test"})))
+                                    (assoc chn-1 :type "metabase-test"))))
       (is (=? {:errors {:type "nullable Must be a namespaced channel. E.g: channel/http"}}
               (mt/user-http-request :crowberto :put 400 (str "channel/" (:id chn-1))
-                                    {:type "metabase/metabase-test"}))))))
-
-(defn- test-channel-request
-  [details]
-  {:type    (:type default-test-channel)
-   :details details})
+                                    (assoc chn-1 :type "metabase/metabase-test")))))))
 
 (deftest test-cahnnel-permission-test
   (testing "only admin can test channel"
     (mt/user-http-request :crowberto :post 200 "channel/test"
-                          (test-channel-request {:return-type  "return-value"
-                                                 :return-value true})))
+                          (assoc default-test-channel :details {:return-type  "return-value"
+                                                                :return-value true})))
   (testing "non-admin gets 403"
     (mt/user-http-request :rasta :post 403 "channel/test"
-                          (test-channel-request {:return-type  "return-value"
-                                                 :return-value true}))))
+                          (assoc default-test-channel :details {:return-type  "return-value"
+                                                                :return-value true}))))
 
 (deftest test-channel-connection-test
   (testing "return 200 if channel connects successfully"
     (is (= {:ok true}
            (mt/user-http-request :crowberto :post 200 "channel/test"
-                                 (test-channel-request {:return-type  "return-value"
-                                                        :return-value true})))))
+                                 (assoc default-test-channel :details {:return-type  "return-value"
+                                                                       :return-value true})))))
   (testing "returns text error message if the channel return falsy value"
     (is (= {:message "Unable to connect channel"
             :data    {:connection-result false}}
            (mt/user-http-request :crowberto :post 400 "channel/test"
-                                 (test-channel-request {:return-type  "return-value"
-                                                        :return-value false})))))
+                                 (assoc default-test-channel :details {:return-type  "return-value"
+                                                                       :return-value false})))))
   (testing "return the exception message and data if the channel throws an exception"
     (is (= {:message "Test error"
             :data    {:errors {:email "Invalid email"}}}
            (mt/user-http-request :crowberto :post 400 "channel/test"
-                                 (test-channel-request {:return-type  "throw"
-                                                        :return-value {:errors {:email "Invalid email"}}}))))))
+                                 (assoc default-test-channel :details {:return-type  "throw"
+                                                                       :return-value {:errors {:email "Invalid email"}}}))))))
 
 (deftest test-channel-http-test
   (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]

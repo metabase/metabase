@@ -36,7 +36,9 @@
                       (let [response   (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                                              {:message         "Hi"
                                                               :context         {}
-                                                              :conversation_id (str (random-uuid))})
+                                                              :conversation_id (str (random-uuid))
+                                                              :history         []
+                                                              :state           {}})
                             events      (->> (str/split-lines response)
                                              (filter #(str/starts-with? % "data: "))
                                              (remove #(= "data: [DONE]" %))

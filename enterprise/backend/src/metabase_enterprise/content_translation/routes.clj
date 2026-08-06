@@ -3,7 +3,6 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.string :as str]
-   [malli.core :as mc]
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase.api.common :as api]
@@ -70,17 +69,13 @@
   [_route_params
    _query-params
    _body
-   {:keys [multipart-params], :as _request} :- [:map {:closed false}
+   {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
-                                                 [:map {:closed false}
+                                                 [:map
                                                   ["file"
-                                                   [:map {:closed false}
-                                                    [:filename     :string]
-                                                    [:size         :int]
-                                                    [:tempfile     (ms/InstanceOfClass java.io.File)]
-                                                    [:content-type {:optional true} [:maybe :string]]
-                                                    [::mc/default  [:map-of :keyword :any]]]]
-                                                  [::mc/default [:map-of :string :any]]]]]]
+                                                   [:map
+                                                    [:filename :string]
+                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (api/check-superuser)
   (let [file (get-in multipart-params ["file" :tempfile])]
     (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size-bytes)
@@ -99,17 +94,17 @@
   "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
   [{:keys [token]} :- [:map
                        [:token ms/NonBlankString]]
-   {:keys [locale]} :- [:map
-                        [:locale ms/NonBlankString]]]
+   {:keys [locale]}]
   ;; this will error if bad
   (embedding.jwt/unsign token)
-  {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))})
+  (if locale
+    {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))}
+    (throw (ex-info (str (tru "Locale is required.")) {:status-code 400}))))
 
 (api.macros/defendpoint :get "/dictionary" :- DictionaryResponse
   "Fetch the content translation dictionary for authenticated users (auth-based embedding flows)."
   [_route-params
-   {:keys [locale]} :- [:map
-                        [:locale :string]]]
+   {:keys [locale]} :- [:map [:locale :string]]]
   (api/check api/*current-user-id* 401 "Unauthenticated")
   {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))})
 

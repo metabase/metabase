@@ -420,14 +420,13 @@
              (testing "on update"
                (mt/with-temp [:model/Pulse {pulse-id :id} {:name          "Test Pulse"
                                                            :dashboard_id  dashboard-id}]
-                 (let [pulse (dissoc pulse :dashboard_id)]
-                   (testing "fail if recipients does not match allowed domains"
-                     (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
-                            (mt/user-http-request :crowberto :put 403 (format "pulse/%d" pulse-id)
-                                                  (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
-                   (testing "success if recipients matches allowed domains"
-                     (mt/user-http-request :crowberto :put 200 (format "pulse/%d" pulse-id)
-                                           (assoc-in pulse [:channels 0 :recipients] success-recipients))))))
+                 (testing "fail if recipients does not match allowed domains"
+                   (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
+                          (mt/user-http-request :crowberto :put 403 (format "pulse/%d" pulse-id)
+                                                (assoc-in pulse [:channels 0 :recipients] failed-recipients)))))
+                 (testing "success if recipients matches allowed domains"
+                   (mt/user-http-request :crowberto :put 200 (format "pulse/%d" pulse-id)
+                                         (assoc-in pulse [:channels 0 :recipients] success-recipients)))))
              (testing "on test send"
                (testing "fail if recipients does not match allowed domains"
                  (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"

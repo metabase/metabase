@@ -79,8 +79,7 @@
   "Fetch `Revisions` for an object with ID."
   [{:keys [id entity]} :- [:map
                            [:entity Entity]
-                           [:id     ms/PositiveInt]]
-   _query-params]
+                           [:id     ms/PositiveInt]]]
   (let [model (entity->model entity)]
     (assert (keyword? model))
     ;; Ensure the model namespace is loaded before using it

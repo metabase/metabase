@@ -520,22 +520,10 @@
     (testing "The id captured in the database-create event matches the new db's id"
       (mt/with-premium-features #{:audit-app}
         (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
-          (let [{:keys [id] :as _db} (create-db-via-api!)
+          (let [{:keys [id] :as _db} (create-db-via-api! {:id 19999999})
                 audit-entry (mt/latest-audit-log-entry "database-create")]
             (is (= id (-> audit-entry :model_id)))
             (is (= id (-> audit-entry :details :id)))))))))
-
-(deftest create-db-ignores-caller-supplied-id-test
-  (testing "POST /api/database ignores a caller-supplied :id rather than honouring it"
-    (mt/with-model-cleanup [:model/Database]
-      (with-redefs [driver/available?   (constantly true)
-                    driver/can-connect? (constantly true)]
-        (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "database"
-                                                 {:id      19999999
-                                                  :name    (mt/random-name)
-                                                  :engine  (u/qualified-name ::test-driver)
-                                                  :details {:db "my_db"}})]
-          (is (not= 19999999 id)))))))
 
 (deftest disallow-creating-h2-database-test
   (testing "POST /api/database/:id"
@@ -638,26 +626,33 @@
             (let [curr-db (t2/select-one [:model/Database :cache_ttl], :id db-id)]
               (is (= nil (:cache_ttl curr-db))))))))))
 
-(deftest ignore-is-stub-in-create-test
-  (testing "POST /api/database ignores :is_stub in the request body (advanced-config only path)"
+(deftest reject-is-stub-in-create-test
+  (testing "POST /api/database rejects :is_stub in the request body (advanced-config only path)"
     (mt/with-model-cleanup [:model/Database]
       (with-redefs [driver/available?   (constantly true)
                     driver/can-connect? (constantly true)]
-        (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "database"
-                                                 {:name    (mt/random-name)
-                                                  :engine  (u/qualified-name ::test-driver)
-                                                  :details {:db "my_db"}
-                                                  :is_stub true})]
-          (is (false? (t2/select-one-fn :is_stub :model/Database :id id))))))))
+        (is (re-find #"is_stub"
+                     (mt/user-http-request :crowberto :post 400 "database"
+                                           {:name    (mt/random-name)
+                                            :engine  (u/qualified-name ::test-driver)
+                                            :details {:db "my_db"}
+                                            :is_stub true})))))))
 
-(deftest ignore-is-stub-in-update-test
-  (testing "PUT /api/database/:id ignores :is_stub in the request body, whatever its value"
-    (doseq [is-stub [true false]]
-      (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
-        (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
-                              {:is_stub is-stub})
-        (testing "the row is unchanged"
-          (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id))))))))
+(deftest reject-is-stub-in-update-test
+  (testing "PUT /api/database/:id rejects :is_stub=true in the request body"
+    (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
+      (is (re-find #"is_stub"
+                   (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                         {:is_stub true})))
+      (testing "the row is unchanged"
+        (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
+  (testing "PUT /api/database/:id passes when :is_stub=false is in the body (no-op, matches default)"
+    ;; Real callers often PUT the full database row (which includes :is_stub false) and the API
+    ;; must not reject that.
+    (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
+      (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                            {:is_stub false :name "still-fine"})
+      (is (= "still-fine" (t2/select-one-fn :name :model/Database :id db-id))))))
 
 (deftest clear-is-stub-on-successful-main-connection-update-test
   (testing "PUT /api/database/:id with new :details clears :is_stub when the main connection test succeeds"

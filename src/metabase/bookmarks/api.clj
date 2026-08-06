@@ -49,8 +49,7 @@
   "Create a new bookmark for user."
   [{:keys [model id]} :- [:map
                           [:model Models]
-                          [:id    ms/PositiveInt]]
-   _query-params]
+                          [:id    ms/PositiveInt]]]
   (let [[item-model bookmark-model item-key] (lookup model)]
     (api/read-check item-model id)
     (api/check (not (t2/exists? bookmark-model item-key id
@@ -66,8 +65,7 @@
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."
   [{:keys [model id]} :- [:map
                           [:model Models]
-                          [:id    ms/PositiveInt]]
-   _query-params]
+                          [:id    ms/PositiveInt]]]
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
   (let [[_ bookmark-model item-key] (lookup model)]
     (t2/delete! bookmark-model

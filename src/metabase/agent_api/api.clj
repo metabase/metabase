@@ -158,9 +158,7 @@
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
   [_route-params
-   _query-params :- [:map
-                     [:limit  {:optional true} [:maybe ms/PositiveInt]]
-                     [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]
+   _query-params
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
    :- [:map
@@ -221,7 +219,7 @@
   "Response containing a base64-encoded MBQL query for use with /v1/execute. The optional
   `:prompt` echoes the request's prompt back so the MCP layer can store it with the
   handle (see `metabase.mcp.tools/make-store-construct-query-result`)."
-  [:map {:closed true}
+  [:map
    [:query  ms/NonBlankString]
    [:prompt {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -307,7 +305,7 @@
 
 (mr/def ::construct-native-query-request
   "Request body for /v1/construct-native-query: a target database and a raw SQL string."
-  [:map
+  [:map {:closed true}
    [:database_id {:tool/description "Numeric id of the database to run the SQL against."}
     ms/PositiveInt]
    [:sql {:tool/description "The raw SQL query text."}
@@ -612,9 +610,7 @@
 ;;; ------------------------------------------------- Execute Query --------------------------------------------------
 
 (mr/def ::execute-query-request
-  "Request schema for /v1/execute. Accepts a base64-encoded MBQL query.
-  Closed: `:query` is the only argument the MCP `execute_query` tool sends (it swaps its
-  `query_handle` for this key before dispatch)."
+  "Request schema for /v1/execute. Accepts a base64-encoded MBQL query."
   [:map
    [:query {:tool/description "A base64-encoded query string returned by /v1/construct-query. Do not construct this value manually."}
     ms/NonBlankString]])
@@ -678,8 +674,7 @@
 ;;; --------------------------------------------------- Execute SQL --------------------------------------------------
 
 (mr/def ::execute-sql-request
-  "Request shape for /v1/execute-sql. The LLM passes a raw SQL string against a target database.
-  Closed: these are the only arguments the MCP `execute_sql` tool publishes."
+  "Request shape for /v1/execute-sql. The LLM passes a raw SQL string against a target database."
   [:map
    [:database_id ms/PositiveInt]
    [:sql         ms/NonBlankString]])
@@ -721,8 +716,7 @@
 ;;; -------------------------------------------------- Read Resource -------------------------------------------------
 
 (mr/def ::read-resource-request
-  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs.
-  Closed: `:uris` is the only argument the MCP `read_resource` tool publishes."
+  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs."
   [:map
    [:uris [:sequential ms/NonBlankString]]])
 
@@ -925,9 +919,6 @@
     (update-card-response (t2/select-one :model/Card :id id))))
 
 (mr/def ::create-question-request
-  "Request shape for `create_question`. Closed: these are the only arguments the MCP tool
-  publishes (its `query_handle` is swapped for `:query` before dispatch), so an undeclared
-  key means the caller invented one."
   [:map
    [:name                   ms/NonBlankString]
    [:query                  ms/NonBlankString]
@@ -1102,9 +1093,7 @@
 (mr/def ::update-question-request
   "Patch shape for `update_question`. Every field is optional; only the fields the caller
   passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID
-  resolved upstream in the MCP layer).
-  Closed: an undeclared key would otherwise be silently dropped instead of telling the caller
-  it changed nothing."
+  resolved upstream in the MCP layer)."
   [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:description            {:optional true} [:maybe :string]]
@@ -1210,8 +1199,6 @@
     (autoplace/get-position-for-new-dashcard placed display)))
 
 (mr/def ::create-dashboard-request
-  "Request shape for `create_dashboard`. Closed: these are the only arguments the MCP tool
-  publishes, so an undeclared key means the caller invented one."
   [:map
    [:name          ms/NonBlankString]
    [:description   {:optional true} [:maybe :string]]
@@ -1353,9 +1340,7 @@
 
 (mr/def ::update-dashboard-request
   "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of
-   add/add_heading/add_text/update_text/remove/move mutations applied in order.
-   Closed, like the `::dashcard-mutation` branches: an undeclared top-level key would otherwise be
-   silently dropped instead of telling the caller it changed nothing."
+   add/add_heading/add_text/update_text/remove/move mutations applied in order."
   [:map
    [:name          {:optional true} [:maybe ms/NonBlankString]]
    [:description   {:optional true} [:maybe :string]]
@@ -1651,8 +1636,7 @@
 (mr/def ::create-collection-request
   "Request shape for `create_collection`. `:parent_collection_id` is named separately from
   the internal `:parent_id` field to make the LLM-facing API less ambiguous (the caller is
-  saying \"put it under this parent\", not echoing back a server-set field).
-  Closed: `:parent_id` and other internal collection fields are deliberately not accepted here."
+  saying \"put it under this parent\", not echoing back a server-set field)."
   [:map
    [:name                 ms/NonBlankString]
    [:description          {:optional true} [:maybe :string]]

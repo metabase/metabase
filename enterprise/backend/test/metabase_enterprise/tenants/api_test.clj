@@ -189,8 +189,7 @@
                  :model/User {other-tenant-user-id :id} {:tenant_id other-tenant-id}
                  :model/User {normal-user-id :id} {}]
     (let [get-users (fn [& query-params]
-                      (->> (mt/user-http-request :crowberto :get 200
-                                                 (apply str "user" (when (seq query-params) "?") query-params))
+                      (->> (mt/user-http-request :crowberto :get 200 (apply str "user?" query-params))
                            :data
                            (filter #(contains? #{tenant-user-id normal-user-id other-tenant-user-id} (:id %)))
                            (sort-by :id)))]
@@ -575,6 +574,7 @@
                                :collection_id tenant-collection-id
                                :visualization_settings {}
                                :display "table"
+                               :database_id (mt/id)
                                :dataset_query (mt/mbql-query venues)}
                     response (mt/user-http-request tenant-user-id :post 200 "card" card-data)]
                 ;; TODO look into why this is failing

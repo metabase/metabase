@@ -58,7 +58,7 @@
    [:and
     {:error/message "Comment content must be valid JSON"
      :json-schema   {:type "object"}}
-    [:map {:closed false}]]
+    [:map]]
    (deferred-tru "Comment content must be valid JSON.")))
 
 (def CommentContext
@@ -67,7 +67,7 @@
    [:and
     {:error/message "Comment context must be a valid JSON object"
      :json-schema   {:type "object"}}
-    [:map {:closed false}]]
+    [:map]]
    (deferred-tru "Comment context must be a valid JSON object.")))
 
 (def CreateComment
@@ -299,12 +299,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/mentions"
   "Get a list of entities suitable for mentions. NOTE: only users for now."
-  [_route
-   _query :- [:map
-              [:limit  {:optional true} [:maybe ms/PositiveInt]]
-              [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]
-   _body
-   req]
+  [_route _query _body req]
   ;; no access in embedding context
   (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
   (let [clauses (user/filter-clauses {:limit  (request/limit)

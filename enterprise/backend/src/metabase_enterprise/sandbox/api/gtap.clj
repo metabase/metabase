@@ -93,10 +93,8 @@
   [_route-params
    _query-params
    {:keys [table_id card_id]} :- [:map
-                                  [:table_id                              ms/PositiveInt]
-                                  [:card_id              {:optional true} [:maybe ms/PositiveInt]]
-                                  [:group_id             {:optional true} :any]
-                                  [:attribute_remappings {:optional true} :any]]]
+                                  [:table_id ms/PositiveInt]
+                                  [:card_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (when card_id
     (let [db (t2/select-one :model/Database
                             :id {:select [:t.db_id]

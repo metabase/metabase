@@ -97,7 +97,7 @@
    :- [:map
        [:card_id              ::replacement.schema/source-entity-id]
        [:transform_name       :string]
-       [:transform_target     [:map {:closed false}]]
+       [:transform_target     :map]
        [:target_collection_id {:optional true} [:maybe ::replacement.schema/source-entity-id]]
        [:transform_tag_ids    {:optional true} [:maybe [:sequential pos-int?]]]]]
   (api/check-superuser)

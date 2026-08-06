@@ -392,8 +392,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params]
+                    [:id ms/PositiveInt]]]
   (try
     (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -411,17 +410,13 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
-  "Create a new `User`, return a 400 if the email address is already taken.
-
-  `is_superuser` is not accepted here -- to create an admin, put the Administrators group in
-  `user_group_memberships`."
+  "Create a new `User`, return a 400 if the email address is already taken"
   [_route-params
    _query-params
    body :- [:map
             [:first_name             {:optional true} [:maybe ms/NonBlankString]]
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
-            [:password               {:optional true} [:maybe ms/NonBlankString]]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
             [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
             [:source                 {:optional true, :default :admin} [:maybe keyword?]]
@@ -567,8 +562,7 @@
 (api.macros/defendpoint :put "/:id/reactivate"
   "Reactivate user at `:id`"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params]
+                    [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-not-internal-user id)
   (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source :tenant_id]
@@ -597,8 +591,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [password old_password]} :- [:map
-                                       [:password ms/ValidPassword]
-                                       [:old_password {:optional true} [:maybe :string]]]
+                                       [:password ms/ValidPassword]]
    request]
   (users/check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],
@@ -627,9 +620,7 @@
   "Generate a password reset URL for a user. Admins can share this URL directly with the user.
   The link expires in 48 hours."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body]
+                    [:id ms/PositiveInt]]]
   (api/check-superuser)
   (let [user (api/check-404 (t2/select-one [:model/User :id :is_active :type] :id id))]
     (api/check-404 (:is_active user))
@@ -651,9 +642,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body]
+                    [:id ms/PositiveInt]]]
   (api/check-superuser)
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
@@ -676,9 +665,7 @@
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [{:keys [id modal]} :- [:map
                           [:id ms/PositiveInt]
-                          [:modal [:enum "qbnewb" "datasetnewb"]]]
-   _query-params
-   _body]
+                          [:modal [:enum "qbnewb" "datasetnewb"]]]]
   (users/check-self-or-superuser id)
   (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
