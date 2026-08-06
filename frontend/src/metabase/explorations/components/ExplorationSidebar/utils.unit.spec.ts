@@ -27,7 +27,14 @@ const allTreeFilter = getExplorationSidebarTabsInfo().all.treeItemFilter;
 function getAllTabExplorationSidebarTree(
   opts: Parameters<typeof createExploration>[0],
 ) {
-  return getExplorationSidebarTree(createExploration(opts), allTreeFilter);
+  return getExplorationSidebarTree(
+    createExploration(opts),
+    allTreeFilter,
+    undefined,
+    {
+      keepEmptyRestartableThreads: true,
+    },
+  );
 }
 
 function getMetricHeadings(tree: ReturnType<typeof getExplorationSidebarTree>) {
@@ -1406,6 +1413,60 @@ describe("getExplorationSidebarModel", () => {
         },
       }).contentMode,
     ).toBe("forbidden");
+  });
+
+  it.each(["failed", "canceled"] as const)(
+    "keeps an empty %s initial thread on the All tab so Restart stays reachable",
+    (status) => {
+      const model = modelFor({
+        queries: [],
+        thread: {
+          status,
+          completed_at: "2026-04-30T00:01:00Z",
+          ...(status === "canceled"
+            ? { canceled_at: "2026-04-30T00:01:00Z" }
+            : {}),
+        },
+      });
+
+      expect(model.contentMode).toBe("tree");
+      expect(model.tree).toHaveLength(1);
+      expect(model.tree[0]?.data).toMatchObject({
+        type: "heading",
+        headingKind: "root",
+        status: status === "failed" ? "error" : "canceled",
+      });
+      expect(model.tree[0]?.children ?? []).toHaveLength(0);
+    },
+  );
+
+  it("still prunes an empty planner-empty thread on the All tab", () => {
+    const model = modelFor({
+      queries: [],
+      thread: {
+        status: "empty",
+        completed_at: "2026-04-30T00:01:00Z",
+      },
+    });
+
+    expect(model.contentMode).toBe("empty");
+    expect(model.tree).toHaveLength(0);
+  });
+
+  it("does not keep an empty failed thread on the Stars tab", () => {
+    const model = modelFor(
+      {
+        queries: [],
+        thread: {
+          status: "failed",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      },
+      { tab: "stars" },
+    );
+
+    expect(model.contentMode).toBe("empty");
+    expect(model.tree).toHaveLength(0);
   });
 
   it("detects all-hidden when the tab filter matches only hidden pages", () => {

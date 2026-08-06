@@ -313,6 +313,43 @@ describe("ExplorationSidebar", () => {
       expect(screen.getByText("Nothing to see here yet.")).toBeInTheDocument();
     });
 
+    it("shows an empty failed thread heading instead of the generic empty message", () => {
+      setup({
+        queries: [],
+        thread: {
+          status: "failed",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      });
+
+      expect(
+        screen.getByRole("group", { name: /Initial investigation/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Failed")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Nothing to see here yet."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows an empty canceled thread heading instead of the generic empty message", () => {
+      setup({
+        queries: [],
+        thread: {
+          status: "canceled",
+          canceled_at: "2026-04-30T00:01:00Z",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      });
+
+      expect(
+        screen.getByRole("group", { name: /Initial investigation/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Stopped")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Nothing to see here yet."),
+      ).not.toBeInTheDocument();
+    });
+
     it("shows a permission message when derived data is forbidden", () => {
       setup({
         queries: [],

@@ -18,6 +18,7 @@ import type {
 import {
   getExplorationPages,
   getExplorationQueryGroupStatus,
+  isRestartableExplorationThreadStatus,
   isTerminalExplorationThreadStatus,
 } from "metabase-types/api";
 
@@ -116,6 +117,9 @@ export function getExplorationSidebarTree(
   exploration: Exploration,
   treeItemFilter: TreeItemFilter,
   sortOrder: ExplorationSortOrder = DEFAULT_SORT_ORDER,
+  {
+    keepEmptyRestartableThreads = false,
+  }: { keepEmptyRestartableThreads?: boolean } = {},
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   const threads = exploration.threads ?? [];
   const initialThreadId = threads[0]?.id;
@@ -209,7 +213,7 @@ export function getExplorationSidebarTree(
     }
   });
 
-  return pruneEmptyHeadings(topLevel);
+  return pruneEmptyHeadings(topLevel, keepEmptyRestartableThreads);
 }
 
 type PageKey = string;
@@ -238,21 +242,38 @@ function getInterestingnessByPageKey(
   return interestingnessByPageKey;
 }
 
+function isEmptyRestartableThreadHeading(
+  node: ITreeNodeItem<ExplorationTreeNode>,
+): boolean {
+  const data = node.data;
+  return (
+    data?.type === "heading" &&
+    data.thread != null &&
+    isRestartableExplorationThreadStatus(data.thread.status)
+  );
+}
+
 function pruneEmptyHeadings(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
+  keepEmptyRestartableThreads: boolean,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   return nodes
     .map((node) =>
       node.children?.length
         ? {
             ...node,
-            children: pruneEmptyHeadings(node.children),
+            children: pruneEmptyHeadings(
+              node.children,
+              keepEmptyRestartableThreads,
+            ),
           }
         : node,
     )
     .filter(
       (node) =>
-        node.data?.type !== "heading" || (node.children?.length ?? 0) > 0,
+        node.data?.type !== "heading" ||
+        (node.children?.length ?? 0) > 0 ||
+        (keepEmptyRestartableThreads && isEmptyRestartableThreadHeading(node)),
     );
 }
 
@@ -526,15 +547,19 @@ export function getExplorationSidebarModel({
     : (node: ITreeNodeItem<ExplorationTreeNode>) =>
         tabFilter(node) && !isHiddenTreeItem(node);
 
+  // Empty failed/canceled threads only belong on All
+  const keepEmptyRestartableThreads = selectedSidebarTab === "all";
   const tree = getExplorationSidebarTree(
     exploration,
     treeItemFilter,
     sortOrder,
+    { keepEmptyRestartableThreads },
   );
   const treeWithHidden = getExplorationSidebarTree(
     exploration,
     tabFilter,
     sortOrder,
+    { keepEmptyRestartableThreads },
   );
 
   const hasPages = treeHasPages(tree);

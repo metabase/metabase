@@ -521,6 +521,22 @@ describe("ExplorationTreeNode", () => {
       ).toBeInTheDocument();
     });
 
+    it("offers Restart on an empty failed thread (planning failed before pages)", async () => {
+      setup({
+        queries: [],
+        thread: { status: "failed", completed_at: "2026-04-30T00:01:00Z" },
+      });
+
+      expect(screen.getByLabelText("Failed")).toBeInTheDocument();
+
+      const threadHeading = findThreadMenuButton();
+      await userEvent.click(within(threadHeading!).getByRole("button"));
+
+      expect(
+        screen.getByRole("menuitem", { name: /Restart/ }),
+      ).toBeInTheDocument();
+    });
+
     it("does not offer Restart when the user lacks write access", async () => {
       setup({
         queries: [pendingQuery],

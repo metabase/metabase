@@ -462,6 +462,16 @@ function ExplorationHeadingIcon({
       <Icon name="octagon_alert" c="icon-primary" aria-label={t`Stopped`} />
     );
   }
+  // Thread-level failure only — metric-group headings with errored children keep
+  // their normal icon; the page rows surface the error marker.
+  if (
+    status === "error" &&
+    (headingKind === "root" || headingKind === "sub-exploration")
+  ) {
+    return (
+      <Icon name="warning_triangle_filled" c="error" aria-label={t`Failed`} />
+    );
+  }
   if (headingKind == null) {
     return null;
   }
