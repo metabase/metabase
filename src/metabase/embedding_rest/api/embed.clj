@@ -74,7 +74,7 @@
    Token should have the following format:
 
      {:resource {:question <card-id>}}"
-  [{:keys [token]} :- [:map
+  [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id  (api.embed.common/unsigned-token->card-id unsigned)]
@@ -112,9 +112,9 @@
 
      {:resource {:question <card-id>}
       :params   <parameters>}"
-  [{:keys [token]} :- [:map
+  [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]
-   query-params :- :map]
+   query-params :- api.embed.common/QueryParams]
   (run-query-for-unsigned-token-async (unsign-and-translate-ids token) :api (api.embed.common/parse-query-params query-params)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -127,7 +127,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/query/:export-format"
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
-  [{:keys [token export-format]} :- [:map
+  [{:keys [token export-format]} :- [:map {:closed true}
                                      [:token api.embed.common/EncodedToken]
                                      [:export-format ::qp.schema/export-format]]
    {format-rows? :format_rows
@@ -157,7 +157,7 @@
    Token should have the following format:
 
      {:resource {:dashboard <dashboard-id>}}"
-  [{:keys [token]} :- [:map
+  [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]]
   (let [unsigned     (unsign-and-translate-ids token)
         dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)]
@@ -206,11 +206,11 @@
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
-  [{:keys [token dashcard-id card-id]} :- [:map
+  [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
                                            [:token api.embed.common/EncodedToken]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id ms/PositiveInt]]
-   query-params :- :map]
+   query-params :- api.embed.common/QueryParams]
   (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api
                                                 (api.embed.common/parse-query-params query-params)))
 
@@ -231,7 +231,7 @@
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
-  [{:keys [token dashcard-id card-id export-format]} :- [:map
+  [{:keys [token dashcard-id card-id export-format]} :- [:map {:closed true}
                                                          [:token api.embed.common/EncodedToken]
                                                          [:dashcard-id ms/PositiveInt]
                                                          [:card-id ms/PositiveInt]
@@ -266,10 +266,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
-  [{:keys [token param-key]} :- [:map
+  [{:keys [token param-key]} :- [:map {:closed true}
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
-   query-params]
+   query-params :- api.embed.common/QueryParams]
   (api.embed.common/dashboard-param-values token param-key nil
                                            (api.embed.common/parse-query-params query-params)))
 
@@ -280,7 +280,7 @@
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [{:keys [token param-key prefix]} :- api.embed.common/SearchParams
-   query-params]
+   query-params :- api.embed.common/QueryParams]
   (api.embed.common/dashboard-param-values token param-key prefix
                                            (api.embed.common/parse-query-params query-params)))
 
@@ -290,10 +290,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/remapping"
   "Embedded version of the remapped dashboard param value endpoint."
-  [{:keys [token param-key]} :- [:map
+  [{:keys [token param-key]} :- [:map {:closed true}
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
-   {:keys [value]}]
+   {:keys [value]} :- [:map {:closed true}
+                       [:value :string]]]
   (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -302,7 +303,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
-  [{:keys [token param-key]} :- [:map
+  [{:keys [token param-key]} :- [:map {:closed true}
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]]
   (let [unsigned (unsign-and-translate-ids token)
@@ -335,10 +336,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:token/params/:param-key/remapping"
   "Embedded version of api.card filter values endpoint."
-  [{:keys [token param-key]} :- [:map
+  [{:keys [token param-key]} :- [:map {:closed true}
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
-   {:keys [value]} :- [:map [:value :string]]]
+   {:keys [value]} :- [:map {:closed true}
+                       [:value :string]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id (api.embed.common/unsigned-token->card-id unsigned)
         card (api/check-404 (t2/select-one :model/Card card-id))]
@@ -359,9 +361,9 @@
 
      {:resource {:question <card-id>}
       :params   <parameters>}"
-  [{:keys [token]} :- [:map
+  [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]
-   query-params :- :map]
+   query-params :- api.embed.common/QueryParams]
   (run-query-for-unsigned-token-async (unsign-and-translate-ids token)
                                       :api (api.embed.common/parse-query-params query-params)
                                       :qp qp.pivot/run-pivot-query))
@@ -373,11 +375,11 @@
 (api.macros/defendpoint :get "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
-  [{:keys [token dashcard-id card-id]} :- [:map
+  [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
                                            [:token api.embed.common/EncodedToken]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id ms/PositiveInt]]
-   query-params :- :map]
+   query-params :- api.embed.common/QueryParams]
   (process-query-for-dashcard-with-signed-token token dashcard-id card-id
                                                 :api (api.embed.common/parse-query-params query-params)
                                                 :qp qp.pivot/run-pivot-query))
@@ -389,13 +391,13 @@
 (api.macros/defendpoint :get "/tiles/card/:token/:zoom/:x/:y"
   "Generates a single tile image for an embedded Card using the map visualization."
   [{:keys [token zoom x y]}
-   :- [:map
+   :- [:map {:closed true}
        [:token api.embed.common/EncodedToken]
        [:zoom ms/Int]
        [:x ms/Int]
        [:y ms/Int]]
    {:keys [parameters latField lonField]}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters {:optional true} ms/JSONString]
        [:latField string?]
        [:lonField string?]]]
@@ -416,7 +418,7 @@
 (api.macros/defendpoint :get "/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a Card on an embedded Dashboard using the map visualization."
   [{:keys [token dashcard-id card-id zoom x y]}
-   :- [:map
+   :- [:map {:closed true}
        [:token api.embed.common/EncodedToken]
        [:dashcard-id ms/PositiveInt]
        [:card-id ms/PositiveInt]
@@ -424,7 +426,7 @@
        [:x ms/Int]
        [:y ms/Int]]
    {:keys [parameters latField lonField]}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters {:optional true} ms/JSONString]
        [:latField string?]
        [:lonField string?]]]

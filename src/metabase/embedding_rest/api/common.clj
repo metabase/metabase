@@ -36,10 +36,17 @@
 
 (def SearchParams
   "Malli schema for route params of search paths"
-  [:map
+  [:map {:closed true}
    [:token EncodedToken]
    [:param-key ms/NonBlankString]
    [:prefix ms/NonBlankString]])
+
+(def QueryParams
+  "Malli schema for the raw query-string parameter map of the embed query and param-values endpoints: dashboard/card
+  parameter slugs (or parameter IDs, for the param-values endpoints) mapped to values exactly as they come off the
+  query string, plus the optional `:parameters` JSON blob (see [[parse-query-params]]). Keys that don't read cleanly
+  as keywords (e.g. slugs starting with a digit) arrive as strings (see [[normalize-query-params]])."
+  [:map-of [:or :keyword :string] [:maybe [:or :string [:sequential :string]]]])
 
 (comment
   ;; load dynamic model resolution code... should already be loaded by [[metabase.core.init]] so this is mostly here for
