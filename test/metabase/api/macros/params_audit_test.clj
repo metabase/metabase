@@ -92,12 +92,21 @@
    {:own {} :shared {}}
    findings))
 
+(defn- api-findings
+  "Findings for the real API. `dev/src` endpoints are development scaffolding, not something a client calls, so they
+  are not worth auditing."
+  [findings]
+  (into {}
+        (remove (fn [[{:keys [ns]} _]]
+                  (str/starts-with? (name ns) "dev.")))
+        findings))
+
 (deftest ^:parallel every-param-map-is-explicitly-closed-or-open-test
   (testing (str "Every `:map` reachable from a `defendpoint` param schema should say `{:closed true}`, so that a "
                 "param the endpoint doesn't declare is rejected, or `{:closed false}` where it genuinely accepts "
                 "anything. A shared schema that has to stay open for internal callers wants an API-layer sibling "
                 "that is closed, the way `::qp.schema/api-query` sits alongside `::qp.schema/any-query`.")
-    (let [{:keys [own shared]} (split-findings @params-audit/findings)]
+    (let [{:keys [own shared]} (split-findings (api-findings @params-audit/findings))]
       (is (and (empty? own) (empty? shared))
           (str "\n" (count own) " endpoint(s) with an unmarked `:map` written inline:\n"
                (endpoint-report own)
