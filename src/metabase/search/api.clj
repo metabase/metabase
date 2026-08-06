@@ -225,12 +225,8 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 (def ^:private search-request-schema
-  "Query-parameter schema shared by `GET /api/search` and `GET /api/search/debug`.
-
-  Deliberately open: silently ignoring unrecognised params is a contract here, not an oversight.
-  `metabase.search.api-test/removed-temporal-params-ignored-test` asserts that `has_temporal_dim` and
-  `non_temporal_dim_ids` -- params we removed, but that older clients still send -- get a 200, not a 400."
-  [:map {:closed false}
+  "Query-parameter schema shared by `GET /api/search` and `GET /api/search/debug`."
+  [:map {:closed true}
    [:q                                   {:optional true} [:maybe :string]]
    ;; no `:optional true`: default-value-transformer skips defaults for absent optional keys, so it's
    ;; what makes `:default :api` actually apply when the param is omitted

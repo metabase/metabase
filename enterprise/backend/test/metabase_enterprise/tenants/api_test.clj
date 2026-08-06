@@ -189,7 +189,8 @@
                  :model/User {other-tenant-user-id :id} {:tenant_id other-tenant-id}
                  :model/User {normal-user-id :id} {}]
     (let [get-users (fn [& query-params]
-                      (->> (mt/user-http-request :crowberto :get 200 (apply str "user?" query-params))
+                      (->> (mt/user-http-request :crowberto :get 200
+                                                 (apply str "user" (when (seq query-params) "?") query-params))
                            :data
                            (filter #(contains? #{tenant-user-id normal-user-id other-tenant-user-id} (:id %)))
                            (sort-by :id)))]

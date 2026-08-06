@@ -38,11 +38,11 @@
   "Create a new `Segment`. The Segment's table is derived from its `definition`."
   [_route-params
    _query-params
-   {:keys [name description definition], :as body} :- [:map
-                                                       [:name        ms/NonBlankString]
-                                                       [:definition  ms/Map]
-                                                       [:description {:optional true} [:maybe :string]]]]
-  ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
+   {:keys [name description definition], :as body} :- [:map {:closed true}
+                                                       [:name                    ms/NonBlankString]
+                                                       ;; TODO: `definition` is an MBQL query typed loosely as a map; give it a real schema.
+                                                       [:definition              ms/Map]
+                                                       [:description             {:optional true} [:maybe :string]]]]
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
     (let [segment (api/check-500
@@ -65,7 +65,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch `Segment` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (hydrated-segment id))
 
@@ -116,18 +116,16 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Segment` with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
+            ;; TODO: `definition` is an MBQL query typed loosely as a map; give it a real schema.
             [:definition              {:optional true} [:maybe :map]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
-            [:caveats                 {:optional true} [:maybe :string]]
-            [:description             {:optional true} [:maybe :string]]
-            [:points_of_interest      {:optional true} [:maybe :string]]
-            [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
+            [:description             {:optional true} [:maybe :string]]]]
   (write-check-and-update-segment! id body))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -140,9 +138,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [revision_message]} :- [:map
+   {:keys [revision_message]} :- [:map {:closed true}
                                   [:revision_message ms/NonBlankString]]]
   (log/warn "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id.")
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
@@ -154,6 +152,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (t2/select-one :model/Segment :id id) api/read-check xrays/related))

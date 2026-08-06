@@ -258,10 +258,15 @@
 
   As of v57, returns the MBQL query (`dataset_query`) as MBQL 5; to return the query as MBQL 4 (aka legacy MBQL)
   instead, you can specify `?legacy-mbql=true`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {legacy-mbql? :legacy-mbql
-    :keys        []} :- [:map [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
+   {legacy-mbql? :legacy-mbql}
+   :- [:map {:closed true}
+       [:legacy-mbql {:optional true, :default false} [:maybe ms/BooleanValue]]
+       ;; `context` is ignored by this endpoint, but the frontend's `GetCardRequest` type declares it and real
+       ;; callers still send it -- the pinned-question loader sends `context=collection`. It gets a slot here so the
+       ;; map can stay closed. (`GetCardRequest` also declares `ignore_view`, but nothing sends it any more.)
+       [:context {:optional true} [:maybe :string]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
         card (get-card resolved-id)]
     (cond-> card

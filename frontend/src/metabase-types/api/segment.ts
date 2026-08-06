@@ -35,8 +35,5 @@ export interface UpdateSegmentRequest {
   definition?: DatasetQuery;
   revision_message: string;
   archived?: boolean;
-  caveats?: string;
   description?: string;
-  points_of_interest?: string;
-  show_in_getting_started?: boolean;
 }

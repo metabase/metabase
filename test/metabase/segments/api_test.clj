@@ -100,9 +100,6 @@
              (-> (mt/user-http-request :crowberto :post 200 "segment"
                                        {:name                    "A Segment"
                                         :description             "I did it!"
-                                        :show_in_getting_started false
-                                        :caveats                 nil
-                                        :points_of_interest      nil
                                         :definition              (definition-fn (mt/id :users :id) 20)})
                  segment-response))))))
 
@@ -181,12 +178,8 @@
                   :definition              true}
                  (-> (mt/user-http-request
                       :crowberto :put 200 (format "segment/%d" id)
-                      {:id                      id
-                       :name                    "Costa Rica"
+                      {:name                    "Costa Rica"
                        :description             nil
-                       :show_in_getting_started false
-                       :caveats                 nil
-                       :points_of_interest      nil
                        :revision_message        "I got me some revisions"
                        :definition              (eq-fn (mt/id :users :name) "cans")})
                      segment-response))))))))

@@ -147,8 +147,7 @@
                :definition  map?}
               (mt/user-http-request
                :crowberto :put 200 (format "measure/%d" id)
-               {:id               id
-                :name             "Updated Measure"
+               {:name             "Updated Measure"
                 :description      nil
                 :revision_message "I got me some revisions"
                 :definition       (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}))))))
