@@ -108,6 +108,7 @@ export const CommandSuggestion = forwardRef<
 ) {
   const host = useEditorHost();
   const document = useSelector(host.selectors.getCurrentDocument);
+  const isPublicDocument = Boolean(document?.public_uuid);
   const [sendToast] = useToast();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -174,7 +175,7 @@ export const CommandSuggestion = forwardRef<
         }
       } else {
         const isBlockedCustomViz =
-          Boolean(document?.public_uuid) && isCustomVizDisplay(item.display);
+          isPublicDocument && isCustomVizDisplay(item.display);
         if (isBlockedCustomViz) {
           sendToast({
             icon: "warning",
@@ -193,7 +194,7 @@ export const CommandSuggestion = forwardRef<
         }
       }
     },
-    [viewMode, command, document, host, sendToast],
+    [viewMode, command, document, host, sendToast, isPublicDocument],
   );
 
   const onTriggerCreateNewQuestion = useCallback(() => {
@@ -407,6 +408,7 @@ export const CommandSuggestion = forwardRef<
           canBrowseAll
           canCreateNewQuestion={canCreateNewQuestion}
           onTriggerCreateNew={onTriggerCreateNewQuestion}
+          isPublicDocument={isPublicDocument}
         />
       )}
 
@@ -433,15 +435,28 @@ export const CommandSuggestion = forwardRef<
               {query && searchMenuItems.length > 0 ? (
                 // When searching, show question search results first, then matching commands
                 <>
-                  {searchMenuItems.map((item, index) => (
-                    <MenuItemComponent
-                      key={`search-${index}`}
-                      item={item}
-                      isSelected={selectedIndex === index}
-                      onClick={() => selectItem(index)}
-                      onMouseEnter={() => setSelectedIndex(index)}
-                    />
-                  ))}
+                  {searchMenuItems.map((item, index) => {
+                    // In default command search, matches are always
+                    // embedded (not linked), so the same block applies.
+                    const isBlockedCustomViz =
+                      isPublicDocument && isCustomVizDisplay(item.display);
+
+                    return (
+                      <MenuItemComponent
+                        key={`search-${index}`}
+                        item={item}
+                        isSelected={selectedIndex === index}
+                        isDisabled={isBlockedCustomViz}
+                        disabledReason={
+                          isBlockedCustomViz
+                            ? t`This chart uses a custom visualization, which isn't supported in public links.`
+                            : undefined
+                        }
+                        onClick={() => selectItem(index)}
+                        onMouseEnter={() => setSelectedIndex(index)}
+                      />
+                    );
+                  })}
                   {searchMenuItems.length > 0 && commandOptions.length > 0 && (
                     <Divider my="sm" mx="sm" />
                   )}
