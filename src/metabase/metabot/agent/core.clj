@@ -8,6 +8,7 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.metabot.agent.context-planner :as context-planner]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
@@ -46,7 +47,8 @@
 (def ^:dynamic *debug-log*
   "When bound to an atom, collects full LLM request/response data per iteration.
   Each entry is a map with :iteration, :request, and :response keys.
-  The :request contains :model, :system, :messages (full history), and :tools.
+  The :request contains :model, :system, :parts (the provider-bound planned
+  history), :context-plan statistics, and :tools.
   The :response contains the collected parts from that iteration."
   nil)
 
@@ -238,18 +240,28 @@
   Builds AISDK parts from memory and passes them to the adapter which converts
   them to its native wire format."
   [memory context profile tools iteration tracking-opts link-registry-atom]
-  (let [model        (:model profile)
-        system-msg   (messages/build-system-message context profile tools)
-        input-parts  (-> (messages/build-message-history context memory)
-                         (invert-links @link-registry-atom))
-        llm-opts     (cond-> {}
-                       (:required-tool-call? profile) (assoc :tool-choice "required"))]
+  (let [model         (:model profile)
+        system-msg    (messages/build-system-message context profile tools)
+        history-parts (-> (messages/build-message-history context memory)
+                          (invert-links @link-registry-atom))
+        context-plan  (context-planner/plan-message-history
+                       history-parts
+                       {:budget (:context-token-budget profile
+                                                       context-planner/default-context-token-budget)
+                        :steps  (memory/get-steps memory)})
+        input-parts   (:parts context-plan)
+        context-stats (:stats context-plan)
+        llm-opts      (cond-> {}
+                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
+    (when (pos? (:compacted-unit-count context-stats))
+      (log/info "Compacted Metabot message context" context-stats))
     (when *debug-log*
       (debug-log! {:iteration iteration
                    :phase     :request
                    :model     model
                    :system    (:content system-msg)
                    :parts     input-parts
+                   :context-plan context-stats
                    :tools     (vec tools)}))
     (when (ait/capture-active?)
       (ait/record! {:ai/system      (:content system-msg)

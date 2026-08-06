@@ -10,6 +10,7 @@
    [malli.error :as me]
    [metabase.api-scope.core :as api-scope]
    [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.metabot.agent.context-planner :as context-planner]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
@@ -54,6 +55,8 @@
   - :name - Keyword identifier for the profile (e.g. :internal)
   - :prompt-template - Selmer template name from resources/metabot/prompts/system/
   - :max-iterations - Maximum agent loop iterations
+  - :context-token-budget - Optional deterministic message-history budget. The
+    conservative agent default is used when omitted.
   - :tools - Vector of tool vars (e.g. #'tools/search-tool)
   - :always-on-skills - Optional vector of skill ids (keywords) whose bodies are inlined into this
     profile's system prompt instead of being loaded on demand via `load_skill`. Always-on is a
@@ -74,6 +77,7 @@
                [:name :keyword]
                [:prompt-template :string]
                [:max-iterations :int]
+               [:context-token-budget {:optional true} pos-int?]
                [:tools [:vector :any]]
                [:always-on-skills {:optional true} [:vector :keyword]]
                [:terminal-tools {:optional true} [:set :string]]
@@ -292,7 +296,10 @@
                       (do (log/warn "nlq-fallback profile is not registered; serving :nlq unredirected")
                           profile))
                     profile)]
-      (assoc profile :model (metabot.settings/llm-metabot-provider)))
+      (assoc profile
+             :model (metabot.settings/llm-metabot-provider)
+             :context-token-budget (or (:context-token-budget profile)
+                                       context-planner/default-context-token-budget)))
     ;; An unregistered profile-id is a wiring bug; warn so it's diagnosable (callers handle the nil).
     (log/warnf "No metabot profile registered for %s" profile-id)))
 
