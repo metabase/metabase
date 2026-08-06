@@ -431,7 +431,7 @@
         entities    (hydrate-duplicate-entities findings excluded-personal-ids)
         ctx         {:culprits culprits :entities entities}]
     (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at entity_created_at
-                       entity_name entity_creator_id entity_creator_name card_type details] :as row}]
+                       entity_name entity_creator_id entity_creator_name card_type entity_kind details] :as row}]
             (let [entity    (get-in ctx-by-type [entity_type entity_id])
                   details*  (merge details
                                    {:collection  (entity-breadcrumb entity_type entity breadcrumbs)
@@ -450,7 +450,9 @@
                                      :detected_at         detected_at
                                      :entity_display_name entity_name
                                      :created_at          entity_created_at
-                                     :details             details*}
+                                     :details             details*
+                                     ;; additive flat kind; coalesce pre-migration rows
+                                     :entity_kind         (or entity_kind card_type entity_type)}
                               ;; keyed on entity type so a card row with NULL card_type still serves
                               ;; the key, as null
                               (= entity_type :card) (assoc :card_type card_type))]

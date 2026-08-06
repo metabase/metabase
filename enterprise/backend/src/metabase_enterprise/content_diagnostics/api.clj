@@ -55,6 +55,10 @@
    ;; on when given a card sub-kind (question/model/metric);
    ;; nullable (rows can predate the column, and a card deleted mid-scan stamps nil)
    [:card_type           {:optional true} [:maybe :keyword]]
+   ;; additive flat kind - the same vocabulary the entity-types filter and entity-type sort use;
+   ;; `card` only for the deleted-mid-scan fallback. The entity_type/card_type pair stays for
+   ;; shipped FE consumers; prefer entity_kind for new FE work.
+   [:entity_kind         :keyword]
    [:entity_id           :int]
    [:detected_at         ms/TemporalInstant]
    [:entity_display_name [:maybe :string]]

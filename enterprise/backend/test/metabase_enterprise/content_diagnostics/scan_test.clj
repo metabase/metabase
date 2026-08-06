@@ -758,6 +758,34 @@
               (testing "blank query is a no-op → all findings"
                 (is (set/subset? #{rev-fid cost-fid} (ids :query "   ")))))))))))
 
+(deftest api-response-serves-entity-kind-test
+  (testing "findings carry additive entity_kind; the entity_type/card_type pair is unchanged"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {card-a :id} {:collection_id coll-id :type :model}
+                         :model/Card {card-b :id} {:collection_id coll-id :type :model}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [prefix (scope-prefix)
+                  insert (fn [row] (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                                    (merge {:scan_id "s" :entity_type :card
+                                                                            :finding_type :stale :details {}}
+                                                                           row))))
+                  kind-fid (insert {:entity_id card-a :card_type :model :entity_kind :model
+                                    :entity_name (str prefix " new-row")})
+                  ;; pre-migration shape: entity_kind NULL, card_type present - coalesce covers it
+                  old-fid  (insert {:entity_id card-b :card_type :model
+                                    :entity_name (str prefix " old-row")})
+                  by-id    (m/index-by :id (:data (mt/user-http-request :rasta :get 200
+                                                                        "ee/content-diagnostics/stale"
+                                                                        :query prefix)))]
+              (is (= "model" (get-in by-id [kind-fid :entity_kind])))
+              (is (= "model" (get-in by-id [old-fid :entity_kind])))
+              ;; the shipped pair is untouched
+              (is (= "card"  (get-in by-id [kind-fid :entity_type])))
+              (is (= "model" (get-in by-id [kind-fid :card_type]))))))))))
+
 (deftest api-endpoint-is-feature-gated-test
   (testing "GET /stale is gated on the :content-diagnostics premium feature (premium-handler)"
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
