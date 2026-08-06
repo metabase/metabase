@@ -30,6 +30,7 @@ import {
   CleanupQueueTabs,
 } from "../../components/CleanupFilters";
 import { CleanupHeader } from "../../components/CleanupHeader";
+import { PublicationStatusBadge } from "../../components/PublicationStatusBadge";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
 import { hasActiveFilters, parseCleanupParams } from "../../utils";
 
@@ -86,11 +87,7 @@ export function CleanupPage() {
         header: t`Library status`,
         width: 130,
         cell: ({ row }) => (
-          <Badge
-            color={row.original.table.is_published ? "positive" : "neutral"}
-          >
-            {row.original.table.is_published ? t`Published` : t`Unpublished`}
-          </Badge>
+          <PublicationStatusBadge published={row.original.table.is_published} />
         ),
       },
       {

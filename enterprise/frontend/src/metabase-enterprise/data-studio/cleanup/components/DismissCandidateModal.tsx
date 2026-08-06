@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { trackDataStudioCleanupCandidateAction } from "metabase/common/data-studio/analytics";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Group, Modal, Stack, Text, Textarea } from "metabase/ui";
 import { useDismissUsageMetadataCandidateMutation } from "metabase-enterprise/api";
 import type { UsageMetadataCandidateDetail } from "metabase-types/api";
 
-import { getErrorStatus } from "../utils";
+import { useCandidateAction } from "../hooks/useCandidateAction";
 
 type DismissCandidateModalProps = {
   candidate: UsageMetadataCandidateDetail;
@@ -27,34 +25,21 @@ export function DismissCandidateModal({
   const [reason, setReason] = useState("");
   const [dismissCandidate, { isLoading }] =
     useDismissUsageMetadataCandidateMutation();
-  const { sendErrorToast } = useMetadataToasts();
+  const runCandidateAction = useCandidateAction();
 
   const handleDismiss = async () => {
-    try {
-      await dismissCandidate({
-        id: candidate.id,
-        reason: reason.trim() || null,
-      }).unwrap();
-      trackDataStudioCleanupCandidateAction({
-        action: "dismiss",
-        candidateId: candidate.id,
-        candidateType: candidate.candidate_type,
-        result: "success",
-      });
-      onDismissed();
-    } catch (error) {
-      trackDataStudioCleanupCandidateAction({
-        action: "dismiss",
-        candidateId: candidate.id,
-        candidateType: candidate.candidate_type,
-        result: "failure",
-      });
-      if (getErrorStatus(error) === 409) {
-        onStale();
-      } else {
-        sendErrorToast(t`The candidate could not be dismissed`);
-      }
-    }
+    await runCandidateAction({
+      action: "dismiss",
+      candidate,
+      request: () =>
+        dismissCandidate({
+          id: candidate.id,
+          reason: reason.trim() || null,
+        }).unwrap(),
+      errorMessage: t`The candidate could not be dismissed`,
+      onStale,
+      onSuccess: onDismissed,
+    });
   };
 
   return (

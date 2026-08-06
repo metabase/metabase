@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
-  trackDataStudioCleanupCandidateAction,
   trackDataStudioCleanupCandidateInspected,
   trackDataStudioCleanupPublicationStarted,
 } from "metabase/common/data-studio/analytics";
@@ -22,7 +21,6 @@ import { useDispatch } from "metabase/redux";
 import { replace, useParams, useSearchParams } from "metabase/router";
 import {
   ActionIcon,
-  Badge,
   Box,
   Button,
   Card,
@@ -57,8 +55,11 @@ import {
   CleanupFilters,
   CleanupQueueTabs,
 } from "../../components/CleanupFilters";
+import { EvidenceBadges } from "../../components/EvidenceBadges";
+import { PublicationStatusBadge } from "../../components/PublicationStatusBadge";
+import { useCandidateAction } from "../../hooks/useCandidateAction";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
-import { getErrorStatus, parseCleanupParams } from "../../utils";
+import { parseCleanupParams } from "../../utils";
 
 import S from "./CleanupTablePage.module.css";
 
@@ -82,6 +83,7 @@ export function CleanupTablePage() {
     useDismissUsageMetadataCandidateMutation();
   const [restoreCandidate, restoreState] =
     useRestoreUsageMetadataCandidateMutation();
+  const runCandidateAction = useCandidateAction();
   const tableQuery = useGetUsageMetadataTableQuery(tableId ?? 0, {
     skip: tableId == null,
   });
@@ -139,60 +141,34 @@ export function CleanupTablePage() {
   const restoreDismissedCandidate = async (
     candidate: UsageMetadataCandidateSummary,
   ) => {
-    try {
-      await restoreCandidate(candidate.id).unwrap();
-      trackDataStudioCleanupCandidateAction({
-        action: "restore",
-        candidateId: candidate.id,
-        candidateType: candidate.candidate_type,
-        result: "success",
-      });
-      sendSuccessToast(t`Suggestion restored`);
-    } catch (error) {
-      trackDataStudioCleanupCandidateAction({
-        action: "restore",
-        candidateId: candidate.id,
-        candidateType: candidate.candidate_type,
-        result: "failure",
-      });
-      if (getErrorStatus(error) === 409) {
-        handleStale();
-      } else {
-        sendErrorToast(t`The suggestion could not be restored`);
-      }
-    }
+    await runCandidateAction({
+      action: "restore",
+      candidate,
+      request: () => restoreCandidate(candidate.id).unwrap(),
+      errorMessage: t`The suggestion could not be restored`,
+      onStale: handleStale,
+      onSuccess: () => sendSuccessToast(t`Suggestion restored`),
+    });
   };
 
   const handleDismiss = async (candidate: UsageMetadataCandidateSummary) => {
-    try {
-      await dismissCandidate({ id: candidate.id }).unwrap();
-      trackDataStudioCleanupCandidateAction({
-        action: "dismiss",
-        candidateId: candidate.id,
-        candidateType: candidate.candidate_type,
-        result: "success",
-      });
-      if (params.candidateId === candidate.id) {
-        closeCandidate();
-      }
-      sendSuccessToast(
-        t`Suggestion dismissed`,
-        () => restoreDismissedCandidate(candidate),
-        t`Undo`,
-      );
-    } catch (error) {
-      trackDataStudioCleanupCandidateAction({
-        action: "dismiss",
-        candidateId: candidate.id,
-        candidateType: candidate.candidate_type,
-        result: "failure",
-      });
-      if (getErrorStatus(error) === 409) {
-        handleStale();
-      } else {
-        sendErrorToast(t`The suggestion could not be dismissed`);
-      }
-    }
+    await runCandidateAction({
+      action: "dismiss",
+      candidate,
+      request: () => dismissCandidate({ id: candidate.id }).unwrap(),
+      errorMessage: t`The suggestion could not be dismissed`,
+      onStale: handleStale,
+      onSuccess: () => {
+        if (params.candidateId === candidate.id) {
+          closeCandidate();
+        }
+        sendSuccessToast(
+          t`Suggestion dismissed`,
+          () => restoreDismissedCandidate(candidate),
+          t`Undo`,
+        );
+      },
+    });
   };
 
   useEffect(() => {
@@ -276,11 +252,9 @@ export function CleanupTablePage() {
                       {t`Analyzed ${dayjs(detail.snapshot.finished_at).fromNow()}`}
                     </Text>
                   )}
-                  <Badge
-                    color={detail.table.is_published ? "positive" : "neutral"}
-                  >
-                    {detail.table.is_published ? t`Published` : t`Unpublished`}
-                  </Badge>
+                  <PublicationStatusBadge
+                    published={detail.table.is_published}
+                  />
                   {!detail.table.is_published && (
                     <Button
                       onClick={() => {
@@ -558,16 +532,10 @@ function CandidateSignals({
 }) {
   const { evidence } = candidate;
   return (
-    <Group gap="xs">
-      {evidence.verified_source_count > 0 && (
-        <Badge variant="light">{t`Verified`}</Badge>
-      )}
-      {evidence.official_source_count > 0 && (
-        <Badge variant="light">{t`Official`}</Badge>
-      )}
-      {evidence.popular_source_count > 0 && (
-        <Badge variant="light">{t`Popular`}</Badge>
-      )}
-    </Group>
+    <EvidenceBadges
+      verified={evidence.verified_source_count > 0}
+      official={evidence.official_source_count > 0}
+      popular={evidence.popular_source_count > 0}
+    />
   );
 }
