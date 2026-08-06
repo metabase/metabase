@@ -1,7 +1,7 @@
 import type {
+  Card,
   CardId,
   Document,
-  DocumentCardRequest,
   DocumentContent,
   RegularCollectionId,
 } from "metabase-types/api";
@@ -17,7 +17,7 @@ export const createDocument = ({
   name: string;
   collection_id?: RegularCollectionId | null;
   document: DocumentContent;
-  cards?: Record<CardId, DocumentCardRequest>;
+  cards?: Record<CardId, Card>;
   alias?: string;
   idAlias?: string;
 }): Cypress.Chainable<Cypress.Response<Document>> => {

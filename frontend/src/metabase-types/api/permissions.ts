@@ -48,11 +48,13 @@ export type PermissionsGraph = {
   revision: number;
 };
 
+// The `groups`/`revision` pair is always present; advanced-permissions plugins
+// (sandboxing, impersonation, …) append their own top-level keys, hence the
+// open index signature.
 export type UpdatePermissionsGraphRequest = {
   groups: GroupsPermissions;
   revision: number;
-  sandboxes?: unknown[];
-  impersonations?: unknown[];
+  [key: string]: unknown;
 };
 
 export type GroupsPermissions = {
@@ -172,11 +174,6 @@ export type GroupTableAccessPolicy = {
   };
   permission_id: number | null;
 };
-
-export type ValidateGroupTableAccessPolicyRequest = Pick<
-  GroupTableAccessPolicy,
-  "table_id" | "group_id" | "card_id" | "attribute_remappings"
->;
 
 export type Impersonation = {
   db_id: DatabaseId;

@@ -30,19 +30,11 @@ export function CardCopyModal({ card, onCopy, onClose }: CardCopyModalProps) {
 
   const handleCopy = async (values: CopyCardProperties) => {
     const action = createCard({
+      ...card,
       name: values.name,
       description: values.description || null,
       collection_id: values.collection_id ?? null,
       dashboard_id: values.dashboard_id,
-      type: card.type,
-      dataset_query: card.dataset_query,
-      display: card.display,
-      visualization_settings: card.visualization_settings,
-      parameters: card.parameters,
-      parameter_mappings: card.parameter_mappings,
-      collection_position: card.collection_position,
-      result_metadata: card.result_metadata,
-      cache_ttl: card.cache_ttl,
     });
     return await action.unwrap();
   };

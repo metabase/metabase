@@ -2,9 +2,8 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
-  CollectionId,
+  CreateCardRequest,
   DashboardId,
-  DashboardTabId,
   DatabaseId,
   DatasetQuery,
   DraftTransform,
@@ -15,7 +14,6 @@ import type {
   SuggestedTransform,
   Transform,
   UnsavedCard,
-  VisualizationSettings,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -375,21 +373,10 @@ export interface MetabotGenerateContentResponse {
 
 /* Metabot v3 - Conversations */
 
-export interface SaveMetabotEntityCard {
-  name: string;
-  dataset_query: DatasetQuery;
-  display: string;
-  description?: string | null;
-  visualization_settings?: VisualizationSettings | null;
-  collection_id?: CollectionId | null;
-  dashboard_id?: DashboardId | null;
-  dashboard_tab_id?: DashboardTabId | null;
-}
-
 export interface SaveMetabotEntityRequest {
   conversation_id: string;
   chart_id: string;
-  card: SaveMetabotEntityCard;
+  card: CreateCardRequest;
 }
 
 export interface ForkMetabotConversationRequest {

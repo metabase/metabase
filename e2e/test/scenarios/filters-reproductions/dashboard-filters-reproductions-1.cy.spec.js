@@ -10,7 +10,10 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 import { setAdHocFilter } from "../native-filters/helpers/e2e-date-filter-helpers";
 
@@ -1851,10 +1854,9 @@ describe("issue 26230, issue 27356", () => {
   function createDashCard(dashboardId, mappedFilter) {
     cy.request("PUT", `/api/dashboard/${dashboardId}`, {
       dashcards: [
-        {
+        createMockDashboardCard({
           id: -dashboardId,
-          row: 0,
-          col: 0,
+          dashboard_id: dashboardId,
           size_x: 5,
           size_y: 20,
           card_id: ORDERS_QUESTION_ID,
@@ -1872,7 +1874,7 @@ describe("issue 26230, issue 27356", () => {
               ],
             },
           ],
-        },
+        }),
       ],
     });
   }

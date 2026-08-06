@@ -288,17 +288,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       ).then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           dashcards: [
-            {
-              id: -1,
+            createMockDashboardCard({
               card_id: ORDERS_QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 1,
-              size_y: 1,
               parameter_mappings: [
                 createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
               ],
-            },
+            }),
           ],
         });
       });
@@ -347,18 +342,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       ).then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           dashcards: [
-            {
-              id: -1,
+            createMockDashboardCard({
               card_id: ORDERS_QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 1,
-              size_y: 1,
               parameter_mappings: [
                 createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
                 createTimeFilterMapping({ card_id: ORDERS_QUESTION_ID }),
               ],
-            },
+            }),
           ],
         });
       });
@@ -675,20 +665,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           return cy
             .request("PUT", `/api/dashboard/${dashboardId}`, {
               dashcards: [
-                {
-                  id: -1,
+                createMockDashboardCard({
                   card_id: ORDERS_QUESTION_ID,
-                  row: 0,
-                  col: 0,
-                  size_x: 1,
-                  size_y: 1,
                   parameter_mappings: [
                     createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
                     createTextFilterWithDefaultMapping({
                       card_id: ORDERS_QUESTION_ID,
                     }),
                   ],
-                },
+                }),
               ],
             })
             .then(() => dashboardId);
@@ -759,20 +744,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           return cy
             .request("PUT", `/api/dashboard/${dashboardId}`, {
               dashcards: [
-                {
-                  id: -1,
+                createMockDashboardCard({
                   card_id: ORDERS_QUESTION_ID,
-                  row: 0,
-                  col: 0,
-                  size_x: 1,
-                  size_y: 1,
                   parameter_mappings: [
                     createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
                     createTextFilterWithDefaultMapping({
                       card_id: ORDERS_QUESTION_ID,
                     }),
                   ],
-                },
+                }),
               ],
             })
             .then(() => dashboardId);
@@ -2685,17 +2665,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     ).then((dashboardId) => {
       cy.request("PUT", `/api/dashboard/${dashboardId}`, {
         dashcards: [
-          {
-            id: -1,
+          createMockDashboardCard({
             card_id: ORDERS_QUESTION_ID,
-            row: 0,
-            col: 0,
-            size_x: 1,
-            size_y: 1,
             parameter_mappings: [
               createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
             ],
-          },
+          }),
         ],
       });
     });
@@ -2998,18 +2973,9 @@ const createDashboardWithTabsLocal = ({
       cy.wrap(dashboard.id).as(options.idAlias ?? "dashboardId");
     }
     cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-      dashcards: dashcards.map((dashcard) => ({
-        id: dashcard.id,
-        card_id: dashcard.card_id,
-        dashboard_tab_id: dashcard.dashboard_tab_id,
-        row: dashcard.row,
-        col: dashcard.col,
-        size_x: dashcard.size_x,
-        size_y: dashcard.size_y,
-        visualization_settings: dashcard.visualization_settings,
-        parameter_mappings: dashcard.parameter_mappings,
-      })),
-      tabs: tabs.map(({ id, name }) => ({ id, name })),
+      ...dashboard,
+      dashcards,
+      tabs,
     }).then(({ body: dashboard }) => {
       dashboard.tabs.forEach((tab) => {
         cy.wrap(tab.id).as(`${tab.name}-id`);

@@ -309,6 +309,7 @@ describe("Actions > ActionViz > Action", () => {
 
       const call = fetchMock.callHistory.lastCall(ACTION_EXEC_MOCK_PATH);
       expect(await call?.request?.json()).toEqual({
+        modelId: ACTION_MODEL_ID,
         parameters: {
           parameter_1: 44,
         },
@@ -454,6 +455,7 @@ describe("Actions > ActionViz > Action", () => {
 
     it("should submit provided form input values to the action execution endpoint", async () => {
       const expectedBody = {
+        modelId: ACTION_MODEL_ID,
         parameters: {
           parameter_1: "foo",
           parameter_2: 5,
@@ -482,6 +484,7 @@ describe("Actions > ActionViz > Action", () => {
 
     it("should combine data from dashboard parameters and form input when submitting for execution", async () => {
       const expectedBody = {
+        modelId: ACTION_MODEL_ID,
         parameters: {
           parameter_1: "foo",
           parameter_2: 5,

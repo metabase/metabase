@@ -84,19 +84,17 @@ export const SearchResults = ({
     [searchText],
   );
 
-  const { type: filterTypes, ...apiSearchFilters } = searchFilters;
-
   const query: {
     q?: string;
     limit: number;
     models?: SearchModel[];
     context: SearchContext;
-  } & Omit<SearchFilters, "type"> = {
+  } & SearchFilters = {
     q: debouncedSearchText,
     limit: DEFAULT_SEARCH_LIMIT,
     context,
-    ...apiSearchFilters,
-    models: models ?? filterTypes,
+    ...searchFilters,
+    models: models ?? searchFilters.type,
   };
 
   const { data: response, isLoading } = useSearchQuery(

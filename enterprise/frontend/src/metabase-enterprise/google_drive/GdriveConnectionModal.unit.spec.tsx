@@ -127,6 +127,7 @@ describe("Google Drive > Connect / Disconnect modal", () => {
 
     const [{ body: postBody }] = await findRequests("POST");
     expect(postBody).toEqual({
+      link_type: "folder",
       url: "https://drive.google.com/drive/folders/1234567890",
     });
   });
@@ -159,6 +160,7 @@ describe("Google Drive > Connect / Disconnect modal", () => {
     const [{ body: postBody }] = await findRequests("POST");
     expect(postBody).toEqual({
       url: "https://drive.google.com/drive/folders/1234567890",
+      link_type: "file",
     });
   });
 

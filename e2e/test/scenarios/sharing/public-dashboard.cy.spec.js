@@ -81,7 +81,7 @@ const prepareDashboard = () => {
       cy.wrap(dashboard_id).as("dashboardId");
       // Connect filter to the card
       cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-        tabs: dashboardTabs.map(({ id, name }) => ({ id, name })),
+        tabs: dashboardTabs,
         dashcards: [
           {
             id,

@@ -53,7 +53,7 @@ export const GroupsListingApp = ({
   };
 
   const handleUpdate = async (group: { id: number; name: string }) => {
-    await updateGroup({ id: group.id, name: group.name }).unwrap();
+    await updateGroup(group).unwrap();
   };
 
   const handleDelete = async (

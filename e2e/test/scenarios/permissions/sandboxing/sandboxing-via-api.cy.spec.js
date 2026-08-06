@@ -1160,7 +1160,9 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
 
       // Remap REVIEWS.PRODUCT_ID Field Type to ORDERS.ID
       cy.request("PUT", `/api/field/${REVIEWS.PRODUCT_ID}`, {
-        semantic_type: "type/FK",
+        table_id: REVIEWS_ID,
+        special_type: "type/FK",
+        name: "PRODUCT_ID",
         fk_target_field_id: ORDERS.ID,
         display_name: "Product ID",
       });

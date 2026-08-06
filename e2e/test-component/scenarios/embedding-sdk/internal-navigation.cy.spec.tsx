@@ -924,22 +924,9 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                     (externalDashboardTab2Id) => {
                       const updatedDashcards = (dashboard.dashcards ?? []).map(
                         (dashcard) => {
-                          const base = {
-                            id: dashcard.id,
-                            card_id: dashcard.card_id,
-                            dashboard_tab_id: dashcard.dashboard_tab_id,
-                            row: dashcard.row,
-                            col: dashcard.col,
-                            size_x: dashcard.size_x,
-                            size_y: dashcard.size_y,
-                            parameter_mappings: dashcard.parameter_mappings,
-                            visualization_settings:
-                              dashcard.visualization_settings,
-                          };
-
                           if (dashcard.dashboard_tab_id === resolvedTab1.id) {
                             return {
-                              ...base,
+                              ...dashcard,
                               visualization_settings: {
                                 column_settings: {
                                   [`["ref",["field",${ORDERS.ID},null]]`]: {
@@ -971,7 +958,7 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                           }
                           if (dashcard.dashboard_tab_id === resolvedTab3.id) {
                             return {
-                              ...base,
+                              ...dashcard,
                               visualization_settings: {
                                 column_settings: {
                                   // ID column on Tab 3 links to Dashboard B's
@@ -993,12 +980,12 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                               },
                             };
                           }
-                          return base;
+                          return dashcard;
                         },
                       );
 
                       cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-                        tabs: tabs.map(({ id, name }) => ({ id, name })),
+                        ...dashboard,
                         dashcards: updatedDashcards,
                       });
 

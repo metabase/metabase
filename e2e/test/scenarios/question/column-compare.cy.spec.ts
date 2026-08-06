@@ -223,11 +223,13 @@ describe("scenarios > question", { tags: "@skip" }, () => {
       });
     });
 
-    // TODO: this block used to PUT `base_type: "type/Text"` onto PRODUCTS.CREATED_AT to remove the
-    // only temporal column. `PUT /api/field/:id` never applied `base_type` (it is a synced,
-    // server-owned attribute), so the setup was a no-op and these cases are currently identical to
-    // the ones above. Re-establish the setup another way before re-enabling this spec.
     describe("no temporal columns", () => {
+      beforeEach(() => {
+        cy.request("PUT", `/api/field/${PRODUCTS.CREATED_AT}`, {
+          base_type: "type/Text",
+        });
+      });
+
       it("no breakout", () => {
         H.createQuestion(
           { query: QUERY_NO_AGGREGATION },

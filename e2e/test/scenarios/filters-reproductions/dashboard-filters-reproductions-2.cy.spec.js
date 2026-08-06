@@ -816,15 +816,12 @@ describe("issue 32573", () => {
             return cy
               .request("PUT", `/api/dashboard/${dashboard.id}`, {
                 dashcards: [
-                  {
-                    id: -1,
+                  createMockDashboardCard({
                     card_id: question.id,
                     parameter_mappings: [getParameterMapping(question.id)],
-                    row: 0,
-                    col: 0,
                     size_x: 6,
                     size_y: 6,
-                  },
+                  }),
                 ],
               })
               .then(() => H.visitDashboard(dashboard.id));
@@ -920,15 +917,12 @@ describe("issue 45670", { tags: ["@external"] }, () => {
           H.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
             cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
               dashcards: [
-                {
-                  id: -1,
+                createMockDashboardCard({
                   card_id: card.id,
                   parameter_mappings: [getParameterMapping(card.id, field.id)],
-                  row: 0,
-                  col: 0,
                   size_x: 8,
                   size_y: 8,
-                },
+                }),
               ],
             });
             H.visitDashboard(dashboard.id, {

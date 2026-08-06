@@ -1,3 +1,4 @@
+import { dissoc } from "icepick";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -41,25 +42,21 @@ function CollectionCopyEntityModal({
   };
 
   const handleCopy = async (values: Record<string, any>) => {
-    const { name, description, collection_id, collection_position } = values;
+    const overrides = dissoc(values, "id");
 
     if (entityObject.model === "dashboard") {
+      const { is_shallow_copy, ...rest } = overrides;
       return copyDashboard({
         id: entityObject.id,
-        name,
-        description,
-        collection_id,
-        collection_position,
-        is_deep_copy: !values.is_shallow_copy,
+        ...rest,
+        is_deep_copy: !is_shallow_copy,
       }).unwrap();
     }
 
     if (entityObject.model === "document") {
       return copyDocument({
         id: entityObject.id,
-        name,
-        collection_id,
-        collection_position,
+        ...overrides,
       }).unwrap();
     }
 

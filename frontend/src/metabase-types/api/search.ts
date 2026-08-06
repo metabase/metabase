@@ -1,7 +1,12 @@
 import type { UserId } from "metabase-types/api/user";
 
 import type { CardId } from "./card";
-import type { Collection, CollectionId, LastEditInfo } from "./collection";
+import type {
+  Collection,
+  CollectionId,
+  CollectionNamespace,
+  LastEditInfo,
+} from "./collection";
 import type { Dashboard, DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { ExplorationId } from "./exploration";
@@ -167,7 +172,8 @@ export type SearchRequest = {
   search_engine?: "appdb" | "in-place" | "semantic" | null;
   display_type?: string[] | null;
 
-  // this should be in ListCollectionItemsRequest but legacy code expects it here
+  // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;
+  namespace?: CollectionNamespace;
   calculate_available_models?: true;
 } & PaginationRequest;

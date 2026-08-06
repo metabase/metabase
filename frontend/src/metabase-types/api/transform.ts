@@ -403,6 +403,7 @@ export type TransformDagDirection = (typeof TRANSFORM_DAG_DIRECTIONS)[number];
 export type RunTransformDagRequest = {
   id: TransformId;
   direction: TransformDagDirection;
+  skip_fresh_deps?: boolean;
 };
 
 export type RunTransformDagResponse = {

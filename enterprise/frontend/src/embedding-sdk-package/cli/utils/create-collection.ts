@@ -16,6 +16,7 @@ export async function createCollection(options: Options) {
     body: JSON.stringify({
       parent_id: null,
       authority_level: null,
+      color: "#509EE3",
       description: null,
       name,
     }),

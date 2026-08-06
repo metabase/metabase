@@ -1,3 +1,4 @@
+import { dissoc } from "icepick";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -64,25 +65,10 @@ const DashboardCopyModal = ({ onClose }: DashboardCopyModalProps) => {
       title={title}
       overwriteOnInitialValuesChange
       copy={async (object) => {
-        if (dashboardIdFromSlug == null) {
-          throw new Error(
-            "Cannot duplicate a dashboard that has not been saved",
-          );
-        }
-
-        const {
-          is_shallow_copy,
-          name,
-          description,
-          collection_id,
-          collection_position,
-        } = object;
+        const { is_shallow_copy, ...overrides } = dissoc(object, "id");
         return await copyDashboard({
           id: dashboardIdFromSlug,
-          name,
-          description,
-          collection_id,
-          collection_position,
+          ...overrides,
           is_deep_copy: !is_shallow_copy,
         }).unwrap();
       }}

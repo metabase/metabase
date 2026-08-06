@@ -5,6 +5,7 @@ import type {
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import type { CardId, DashboardParameterMapping } from "metabase-types/api";
+import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -347,15 +348,12 @@ describe("scenarios > custom column > boolean functions", () => {
             return cy
               .request("PUT", `/api/dashboard/${dashboard.id}`, {
                 dashcards: [
-                  {
-                    id: -1,
+                  createMockDashboardCard({
                     card_id: card.id,
                     parameter_mappings: [getParameterMapping(card.id)],
-                    row: 0,
-                    col: 0,
                     size_x: 8,
                     size_y: 8,
-                  },
+                  }),
                 ],
               })
               .then(() => dashboard);

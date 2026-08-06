@@ -24,7 +24,7 @@ export const gdriveApi = EnterpriseApi.injectEndpoints({
     // server-side, so these also invalidate session-properties.
     saveGsheetsFolderLink: builder.mutation<
       { success: boolean },
-      { url: string }
+      { url: string; link_type?: "folder" | "file" }
     >({
       query: (body) => ({
         method: "POST",

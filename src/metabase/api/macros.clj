@@ -306,6 +306,10 @@
 
 (def ^:private decode-transformer
   (mtx/transformer
+   ;; A param map drops keys it doesn't declare rather than rejecting them, so that a client sending a field the
+   ;; endpoint has no use for still gets served. A map that genuinely passes its extras on to something else has to
+   ;; say `{:closed false}`, which also stops it being stripped.
+   (mtx/strip-extra-keys-transformer)
    (mtx/string-transformer)
    (mtx/json-transformer)
    (mtx/default-value-transformer)

@@ -318,7 +318,15 @@ export const assignAttributeToUser = ({
       return userData.id;
     })
     .then((userId) => {
-      cy.request("PUT", `/api/user/${userId}`, {
+      return cy.request("GET", `/api/user/${userId}`);
+    })
+    .then((response) => {
+      const user = response.body;
+      return user;
+    })
+    .then((user) => {
+      cy.request("PUT", `/api/user/${user.id}`, {
+        ...user,
         login_attributes: {
           [attributeKey]: attributeValue,
         },

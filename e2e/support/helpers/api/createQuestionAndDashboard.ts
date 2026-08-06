@@ -1,9 +1,4 @@
-import type {
-  CardId,
-  Dashboard,
-  DashboardCard,
-  UpdateDashboardCardRequest,
-} from "metabase-types/api";
+import type { CardId, Dashboard, DashboardCard } from "metabase-types/api";
 
 import { type DashboardDetails, createDashboard } from "./createDashboard";
 import {
@@ -18,7 +13,7 @@ export const createQuestionAndDashboard = ({
 }: {
   questionDetails: StructuredQuestionDetails;
   dashboardDetails?: DashboardDetails;
-  cardDetails?: Partial<UpdateDashboardCardRequest>;
+  cardDetails?: Partial<DashboardCard>;
 }): Cypress.Chainable<
   Cypress.Response<DashboardCard> & { questionId: CardId }
 > => {
@@ -26,33 +21,18 @@ export const createQuestionAndDashboard = ({
     ({ body: { id: questionId } }) => {
       return createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
-          const dashcard: Partial<UpdateDashboardCardRequest> = {
-            id: -1,
-            card_id: questionId,
-            // Add sane defaults for the dashboard card size
-            row: 0,
-            col: 0,
-            size_x: 11,
-            size_y: 6,
-            ...cardDetails,
-          };
-
           return cy
             .request<Dashboard>("PUT", `/api/dashboard/${dashboardId}`, {
               dashcards: [
                 {
-                  id: dashcard.id,
-                  card_id: dashcard.card_id,
-                  action_id: dashcard.action_id,
-                  dashboard_tab_id: dashcard.dashboard_tab_id,
-                  row: dashcard.row,
-                  col: dashcard.col,
-                  size_x: dashcard.size_x,
-                  size_y: dashcard.size_y,
-                  visualization_settings: dashcard.visualization_settings,
-                  parameter_mappings: dashcard.parameter_mappings,
-                  inline_parameters: dashcard.inline_parameters,
-                  series: dashcard.series,
+                  id: -1,
+                  card_id: questionId,
+                  // Add sane defaults for the dashboard card size
+                  row: 0,
+                  col: 0,
+                  size_x: 11,
+                  size_y: 6,
+                  ...cardDetails,
                 },
               ],
             })

@@ -33,25 +33,23 @@ export const executeRowAction = async ({
   dispatch,
   shouldToast = true,
 }: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
+  const executeActionRequest = {
+    dashboardId: dashboard.id,
+    dashcardId: dashcard.id,
+    modelId: dashcard.card_id,
+    parameters,
+  };
+
   try {
     const result =
       getDashboardType(dashboard.id) === "public"
         ? await runRtkEndpoint(
-            {
-              dashboardId: dashboard.id,
-              dashcardId: dashcard.id,
-              modelId: dashcard.card_id,
-              parameters,
-            },
+            executeActionRequest,
             dispatch,
             publicApi.endpoints.executePublicDashcardAction,
           )
         : await runRtkEndpoint(
-            {
-              dashboardId: dashboard.id,
-              dashcardId: dashcard.id,
-              parameters,
-            },
+            executeActionRequest,
             dispatch,
             actionApi.endpoints.executeDashcardAction,
           );

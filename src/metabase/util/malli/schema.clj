@@ -215,9 +215,10 @@
    (deferred-tru "value must be a valid entity type (keyword or string).")))
 
 (def Map
-  "Schema for a valid map."
+  "Schema for a valid map. Open, since it constrains nothing about the keys: an API param typed this way is passed
+  through as it arrived, so stripping it would empty it."
   (mu/with-api-error-message
-   :map
+   [:map {:closed false}]
    (deferred-tru "Value must be a map.")))
 
 (def Email

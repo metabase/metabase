@@ -1,6 +1,9 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -22,7 +25,7 @@ const MAPPED_QUESTION_CREATE_INFO = {
 };
 
 function createMappedDashcard(mappedQuestionId) {
-  return {
+  return createMockDashboardCard({
     id: 1,
     card_id: mappedQuestionId,
     parameter_mappings: [
@@ -36,7 +39,7 @@ function createMappedDashcard(mappedQuestionId) {
     col: 0,
     size_x: 10,
     size_y: 5,
-  };
+  });
 }
 
 const EVENTS = {

@@ -261,13 +261,7 @@ export interface BulkTableRequest {
   database_ids?: DatabaseId[];
   schema_ids?: SchemaId[];
   table_ids?: TableId[];
-}
-
-export interface PublishTablesRequest {
-  database_ids?: DatabaseId[];
-  schema_ids?: SchemaId[];
-  table_ids?: TableId[];
-  collection_id: CollectionId;
+  collection_id?: CollectionId;
 }
 
 export interface BulkTableSelectionInfo {

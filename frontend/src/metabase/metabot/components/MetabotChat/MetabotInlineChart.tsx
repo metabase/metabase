@@ -197,18 +197,11 @@ function SaveChartAction({
     newQuestion: Question,
     options?: { dashboardTabId?: DashboardTabId },
   ) => {
-    const newCard = newQuestion.card();
     const created = await saveMetabotEntity({
       conversation_id: conversationId,
       chart_id: chartId,
       card: {
-        name: newCard.name,
-        dataset_query: newCard.dataset_query,
-        display: newCard.display,
-        description: newCard.description,
-        visualization_settings: newCard.visualization_settings,
-        collection_id: newCard.collection_id,
-        dashboard_id: newCard.dashboard_id,
+        ...newQuestion.card(),
         dashboard_tab_id: options?.dashboardTabId,
       },
     }).unwrap();
