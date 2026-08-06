@@ -51,9 +51,7 @@ describe("scenarios > collections > lazy collection tree", () => {
       cy.log("expanding fetches exactly that collection's children");
       expandSidebarCollection("Deep root");
 
-      cy.wait("@collectionTree")
-        .its("request.url")
-        .should("include", "collection-id=");
+      countLevelFetches().should("be.greaterThan", 0);
 
       H.navigationSidebar()
         .findByRole("treeitem", { name: /Deep child/ })
@@ -75,18 +73,16 @@ describe("scenarios > collections > lazy collection tree", () => {
         .should("be.visible");
 
       cy.log("expanding one level further needs nothing from the server");
-      cy.get("@collectionTree.all")
-        .its("length")
-        .then((requestsSoFar) => {
-          expandSidebarCollection("Deep child");
+      countLevelFetches().then((levelFetchesSoFar) => {
+        expandSidebarCollection("Deep child");
 
-          // Asserting the render first, so the request count is checked after the expansion actually happened.
-          H.navigationSidebar()
-            .findByRole("treeitem", { name: /Deep grandchild/ })
-            .should("be.visible");
+        // Asserting the render first, so the count is checked after the expansion actually happened.
+        H.navigationSidebar()
+          .findByRole("treeitem", { name: /Deep grandchild/ })
+          .should("be.visible");
 
-          cy.get("@collectionTree.all").should("have.length", requestsSoFar);
-        });
+        countLevelFetches().should("equal", levelFetchesSoFar);
+      });
     });
 
     it("should reveal the whole ancestor path when landing on a nested collection", () => {
@@ -114,6 +110,23 @@ function expandSidebarCollection(name: string) {
     .findByRole("treeitem", { name: new RegExp(name) })
     .findByRole("button")
     .click();
+}
+
+/**
+ * How many times the sidebar asked for one collection's children.
+ *
+ * Counted rather than waited on, and filtered to those requests alone. The sidebar also reads further pages of the
+ * root level on its own as the end of that level comes into reach, so the next request after an expand is not
+ * reliably the expand's.
+ */
+function countLevelFetches() {
+  return cy.get("@collectionTree.all").then((calls) => {
+    // `cy.get` on an intercept alias yields the captured interceptions, but its subject is typed as a jQuery element.
+    const interceptions = calls as unknown as { request: { url: string } }[];
+    return interceptions.filter(({ request }) =>
+      request.url.includes("collection-id="),
+    ).length;
+  });
 }
 
 /** Asserts the sidebar never asked for a single collection's children. */
