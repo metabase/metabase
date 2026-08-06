@@ -105,7 +105,7 @@
 (apply require clojure.main/repl-requires)
 
 ;; REPL spy helper; tap> is the point
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:discouraged-var :missing-docstring]}
 (defn tap>-spy [x]
   (doto x tap>))
 
@@ -393,7 +393,7 @@
   (hashp/p* form))
 
 ;; pipeline tap helper; calling tap> is the point
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn tap
   "#tap, but to use in pipelines like `(-> 1 inc dev/tap prn inc)`."
   [form]

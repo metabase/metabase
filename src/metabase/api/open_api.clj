@@ -345,7 +345,7 @@
                                  :description "API key for authentication"}}))))
 
 ;; REPL example; api.macros requires this ns (cycle) and api-routes is cross-module, so no requires
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:metabase/modules :unresolved-namespace]}
 (comment
   (open-api-spec (metabase.api.macros/ns-handler 'metabase.geojson.api) "/api/geojson")
   (root-open-api-object (requiring-resolve 'metabase.api-routes.core/routes)))

@@ -188,13 +188,13 @@
       nil
       ;; these trigger Kondo warnings because the function expects a string or nil, but we should probably test behavior
       ;; anyway for cases where you're passing in a local and Kondo can't infer the type
-      #_:clj-kondo/ignore {}
+      #_{:clj-kondo/ignore [:type-mismatch]} {}
       ;; the rows below feed intentionally wrong types to exercise runtime validation
-      #_:clj-kondo/ignore []
-      #_:clj-kondo/ignore true
-      #_:clj-kondo/ignore false
-      #_:clj-kondo/ignore (keyword "/asdf/")
-      #_:clj-kondo/ignore 1234)))
+      #_{:clj-kondo/ignore [:type-mismatch]} []
+      #_{:clj-kondo/ignore [:type-mismatch]} true                 ;; boolean, not a string or nil
+      #_{:clj-kondo/ignore [:type-mismatch]} false                ;; boolean, not a string or nil
+      #_{:clj-kondo/ignore [:type-mismatch]} (keyword "/asdf/")   ;; keyword, not a string or nil
+      #_{:clj-kondo/ignore [:type-mismatch]} 1234)))              ;; number, not a string or nil
 
 (deftest ^:parallel permission-classify-path
   (are [path expected] (= expected

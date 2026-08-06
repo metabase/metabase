@@ -17,7 +17,7 @@
 
 (comment
   ;; REPL setup snippet; environ.core isn't in this ns's requires
-  #_:clj-kondo/ignore
+  #_{:clj-kondo/ignore [:unresolved-namespace]}
   (alter-var-root #'environ.core/env assoc
                   :mb-gentest-run "true"
                   :mb-gentest-context-seed "1"))

@@ -73,7 +73,7 @@
       (when usage-fn
         (println "\n"
                  ;; usage-fn comes as data from bb.edn; eval makes it callable
-                 #_:clj-kondo/ignore
+                 #_{:clj-kondo/ignore [:discouraged-var]}
                  ((eval usage-fn) current-task)))
       ;; u/exit's exit-exception would be swallowed by parse!'s catch-all; only a hard exit works here
       #_{:clj-kondo/ignore [:discouraged-java-method]}

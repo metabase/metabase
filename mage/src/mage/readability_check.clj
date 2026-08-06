@@ -14,7 +14,7 @@
                           'js)]
     (zipmap reader-tags (map (fn [tag]
                                ;; eval builds a quoting reader fn per dynamic tag
-                               #_:clj-kondo/ignore
+                               #_{:clj-kondo/ignore [:discouraged-var]}
                                (eval `(fn [v] (list (quote ~tag) v))))
                              reader-tags))))
 
@@ -102,7 +102,7 @@
   (let [content (try (slurp file) (catch Exception _ (read-check-problem :missing-file)))]
     (if-not line-number
       ;; CLI output; results print to stdout by design
-      #_:clj-kondo/ignore
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (let [result (can-read-content? content)]
         (prn result)
         result)
@@ -138,7 +138,7 @@
                 :data data}))))))
 
 ;; REPL scratch full of deliberately unreadable tokens and ad-hoc requires
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:duplicate-require]}
 (comment ;; hi self
 
   (check "test/metabase/queries/models/card_test.clj" 20)
