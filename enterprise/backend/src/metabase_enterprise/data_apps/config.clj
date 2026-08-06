@@ -54,6 +54,23 @@
   "Cap on `description`. Checked here, not by the column type, so an over-long one fails just its own app."
   255)
 
+(defn- parse-description
+  "Validate + normalize the optional one-line `description`. Returns nil when it's
+   absent or blank; throws a 400 when it's present but not a string — a YAML list or
+   mapping would otherwise `str`-ify into Clojure collection syntax and sync as-is —
+   or when it exceeds [[max-description-chars]]."
+  [raw ^String dir]
+  (when (some? raw)
+    (when-not (string? raw)
+      (throw (ex-info (tru "{0}/{1}: \"description\" must be a one-line string." dir config-file-name)
+                      {:status-code 400})))
+    (let [d (not-empty (normalize-description raw))]
+      (when (and d (> (count d) max-description-chars))
+        (throw (ex-info (tru "{0}/{1}: \"description\" is a one-line summary — it must be {2} characters or fewer."
+                             dir config-file-name max-description-chars)
+                        {:status-code 400})))
+      d)))
+
 (def ^:private allowed-host-re
   "A single `allowed_hosts` entry: an origin the app's sandboxed bundle may
    `fetch`/XHR — scheme + host, an optional `*.` subdomain wildcard, and an
@@ -128,7 +145,7 @@
   (let [parsed        (parse-yaml bytes dir)
         slug          (dir-slug dir)
         name          (some-> (:name parsed) str str/trim not-empty)
-        description   (some-> (:description parsed) normalize-description not-empty)
+        description   (parse-description (:description parsed) dir)
         path          (some-> (:path parsed) normalize-path not-empty)
         allowed-hosts (parse-allowed-hosts parsed dir)]
     (when-not (re-matches slug-pattern slug)
@@ -145,9 +162,5 @@
                       {:status-code 400})))
     (when (path-traversal? path)
       (throw (ex-info (tru "{0}/{1}: \"path\" must not contain \"..\"." dir config-file-name)
-                      {:status-code 400})))
-    (when (and description (> (count description) max-description-chars))
-      (throw (ex-info (tru "{0}/{1}: \"description\" is a one-line summary — it must be {2} characters or fewer."
-                           dir config-file-name max-description-chars)
                       {:status-code 400})))
     {:slug slug, :display_name name, :description description, :path path, :allowed_hosts allowed-hosts}))

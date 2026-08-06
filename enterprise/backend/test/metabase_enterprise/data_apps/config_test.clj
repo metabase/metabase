@@ -43,7 +43,13 @@ path: ./dist/index.js"))))
   (testing "the cap applies to the folded value, not the raw YAML"
     (is (= 255
            (count (:description (parse (str "name: X\ndescription: >\n  " (apply str (repeat 255 "x"))
-                                            "\npath: dist/index.js"))))))))
+                                            "\npath: dist/index.js")))))))
+  (testing "a non-string description (a YAML list or mapping) is rejected, not str-ified into the row"
+    (doseq [bad ["description: [foo, bar]"
+                 "description:\n  key: value"]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"description.*must be a one-line string"
+                            (parse (str "name: X\n" bad "\npath: dist/index.js")))
+          (str "should reject: " (pr-str bad))))))
 
 (deftest slug-comes-from-the-directory-test
   (testing "the app's slug is the name of the directory it lives in"
