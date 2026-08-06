@@ -88,13 +88,17 @@
 (deftest add-research-groups-summary-is-bounded-test
   (testing "a dimension anchor naming no metrics covers every related one, so the summary counts
             the tail instead of listing it — :output is the agent's context, not a report"
-    (let [payload (assoc (picker-payload 50)
-                         :groups [{:anchor "dimension" :dimension_id "d0"}])]
-      (with-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
-        (let [{:keys [output]} (tools.explorations/add-research-groups-tool
-                                {:groups (:groups payload)})]
-          (is (str/includes? output "and 42 more"))
-          (is (> 200 (count output))))))))
+    (let [summary-for (fn [n-metrics]
+                        (let [payload (assoc (picker-payload n-metrics)
+                                             :groups [{:anchor "dimension" :dimension_id "d0"}])]
+                          (with-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
+                            (:output (tools.explorations/add-research-groups-tool
+                                      {:groups (:groups payload)})))))
+          fifty       (summary-for 50)]
+      (testing "the tail past the first `summary-max-names` members is counted, not listed"
+        (is (str/includes? fifty "and 35 more")))
+      (testing "so a 10x larger group costs only the extra digits in that count"
+        (is (> 5 (- (count (summary-for 500)) (count fifty))))))))
 
 (deftest ^:parallel remove-from-research-plan-tool-test
   (testing "echoes the block ids the agent asked to remove (pure-echo; the FE applies them)"
