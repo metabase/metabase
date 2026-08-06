@@ -162,7 +162,6 @@
 (defn resolve-model
   "Resolve a requested embedding model to its immutable vector-space descriptor."
   [embedding-model]
-  (embeddings.provider/activate-provider! embedding-model)
   (embeddings.provider/resolve-model embedding-model))
 
 (defn- in-process-token-model
@@ -182,7 +181,6 @@
   - `:snowplow?`      — ai-service only, default true; synthetic callers (e.g. the health probe) pass
                         false so the call emits no token_usage event"
   [embedding-model text & {:as opts}]
-  (embeddings.provider/activate-provider! embedding-model)
   (let [token-model (in-process-token-model embedding-model)]
     (u/prog1 (embeddings.provider/embed-text (or token-model embedding-model) text opts)
       (when token-model
@@ -192,7 +190,6 @@
   "Return one embedding vector per input text, in the same order.
   Takes the same `opts` as [[get-embedding]], minus `:snowplow?` (batch callers are all organic)."
   [embedding-model texts & {:as opts}]
-  (embeddings.provider/activate-provider! embedding-model)
   (let [token-model (in-process-token-model embedding-model)]
     (u/prog1 (embeddings.provider/embed-texts (or token-model embedding-model) texts opts)
       (when token-model
@@ -210,7 +207,6 @@
 (defn pull-model
   "Prepare a provider model eagerly when the provider supports it."
   [embedding-model]
-  (embeddings.provider/activate-provider! embedding-model)
   (embeddings.provider/prepare! embedding-model))
 
 ;;;; Embedding-service circuit breaker
