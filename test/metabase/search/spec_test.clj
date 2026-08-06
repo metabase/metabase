@@ -146,29 +146,31 @@
       (testing "... and nothing else does"
         (is (empty? (sort-by name (remove expected-models actual-models))))))))
 
+(deftest ^:parallel model-hooks-are-cached-test
+  ;; The first call resolves lazily loaded models, which registers more spec methods and changes the cache key.
+  (search.spec/model-hooks)
+  (is (identical? (search.spec/model-hooks) (search.spec/model-hooks))))
+
 (deftest ^:synchronized model-hooks-cache-invalidates-on-spec-redefinition-test
-  (testing "replacing a spec method invalidates the single-entry model-hooks cache"
-    (let [spec-multifn search.spec/spec*]
-      ;; Load lazily resolved models and warm the cache before replacing the method, which is the REPL/test-reload
-      ;; path this guards.
-      (search.spec/model-hooks)
-      (let [cached   (search.spec/model-hooks)
-            original (get-method spec-multifn "card")]
-        (is (identical? cached (search.spec/model-hooks)))
-        (try
-          (.addMethod ^clojure.lang.MultiFn spec-multifn
-                      "card"
-                      (fn [_]
-                        (update (original "card") :render-terms assoc :cache-probe :cache_probe)))
-          (is (contains? (->> (get (search.spec/model-hooks) :model/Card)
-                              (filter #(= "card" (:search-model %)))
-                              first
-                              :fields)
-                         :cache_probe))
-          (finally
-            (.addMethod ^clojure.lang.MultiFn spec-multifn "card" original)
-            ;; Do not leave the temporary method table cached for later tests.
-            (search.spec/model-hooks)))))))
+  (testing "replacing a spec method invalidates the cached model-hooks"
+    ;; Registering a throwaway spec would derive a fake model into :hook/search-index and break
+    ;; every-model-is-hooked-test, so probe by swapping an existing method out and back.
+    (let [spec-multifn search.spec/spec*
+          ;; Model resolution registers more spec methods, so settle those before capturing the original.
+          _            (search.spec/model-hooks)
+          original     (get-method spec-multifn "card")]
+      (try
+        (.addMethod ^clojure.lang.MultiFn spec-multifn
+                    "card"
+                    (fn [_]
+                      (update (original "card") :render-terms assoc :cache-probe :cache_probe)))
+        (is (contains? (->> (get (search.spec/model-hooks) :model/Card)
+                            (filter #(= "card" (:search-model %)))
+                            first
+                            :fields)
+                       :cache_probe))
+        (finally
+          (.addMethod ^clojure.lang.MultiFn spec-multifn "card" original))))))
 
 (deftest ^:parallel index-version-hash-test
   (testing "index-version-hash returns a consistent value"

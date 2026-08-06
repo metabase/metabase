@@ -425,7 +425,7 @@
        (derive (:model spec#) :hook/search-index)
        (defmethod spec* ~search-model [~'_] spec#))))
 
-(def ^{:arglists '([spec-methods]), :private true} model-hooks*
+(def ^:private model-hooks*
   ;; Specs are immutable in production. Keying on the methods map also does the useful thing after a REPL/test reload.
   ;; Model resolution can register more methods during the first computation; in that case the next call recomputes.
   (memoize/fifo
