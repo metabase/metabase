@@ -394,6 +394,32 @@
                              "tag"           "embedding_generation"}}]
                     events))))))))
 
+(deftest test-embedding-service-snowplow-suppression
+  (testing "ai-service fires no token_usage event when the caller passes :snowplow? false"
+    ;; The health and circuit-recovery probes embed a synthetic string; counting those as organic usage
+    ;; would inflate the token_usage series by however often the probes run.
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
+                                       ee-embedding-service-api-key  "mock-key"]
+      (let [mock-response {:data  [{:object    "embedding"
+                                    :embedding (encode-floats-to-base64 [1.0 2.0 3.0])
+                                    :index     0}]
+                           :model "test-model"
+                           :usage {:prompt_tokens 5
+                                   :total_tokens  5}}]
+        (snowplow-test/with-fake-snowplow-collector
+          (mt/with-dynamic-fn-redefs [http/post (fn [_url & _opts]
+                                                  {:status  200
+                                                   :headers {"Content-Type" "application/json"}
+                                                   :body    (json/encode mock-response)})]
+            (embedding/get-embedding {:provider          "ai-service"
+                                      :model-name        "test-model"
+                                      :vector-dimensions 3}
+                                     "health check"
+                                     {:type :query, :record-tokens? false, :snowplow? false}))
+          (let [events (->> (snowplow-test/pop-event-data-and-user-id!)
+                            (filter #(= "embedding_generation" (get-in % [:data "tag"]))))]
+            (is (empty? events))))))))
+
 (deftest ^:sequential token-tracking-write-test
   (mt/with-premium-features #{:semantic-search}
     (when (string? (not-empty (:mb-pgvector-db-url env/env)))

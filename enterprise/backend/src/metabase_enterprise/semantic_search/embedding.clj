@@ -574,7 +574,7 @@
   (first (embedding-service-resolve-config!)))
 
 (defn- ai-service-get-embeddings-batch
-  [{:keys [model-name vector-dimensions]} texts {:keys [record-tokens? type]}]
+  [{:keys [model-name vector-dimensions]} texts {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
   (let [[endpoint api-key] (embedding-service-resolve-config!)]
     (openai-compatible-get-embeddings-batch
      {:provider       "ai-service"
@@ -583,7 +583,7 @@
       :model-name     model-name
       :vector-dimensions vector-dimensions
       :texts          texts
-      :snowplow?      true
+      :snowplow?      snowplow?
       :record-tokens? record-tokens?
       :type           type})))
 
