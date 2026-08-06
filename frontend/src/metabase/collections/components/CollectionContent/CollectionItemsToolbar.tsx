@@ -5,14 +5,21 @@ import { Flex, Icon, Input, TextInput } from "metabase/ui";
 type CollectionItemsToolbarProps = {
   searchText: string;
   onSearchTextChange: (searchText: string) => void;
+  hasPinnedItems?: boolean;
 };
 
 export function CollectionItemsToolbar({
   searchText,
   onSearchTextChange,
+  hasPinnedItems,
 }: CollectionItemsToolbarProps) {
   return (
-    <Flex gap="md" mt="3rem" mb="md" data-testid="collection-items-toolbar">
+    <Flex
+      mb="md"
+      gap="0.75rem"
+      mt={hasPinnedItems ? "xl" : 0}
+      data-testid="collection-items-toolbar"
+    >
       <TextInput
         flex="1"
         bdrs="md"

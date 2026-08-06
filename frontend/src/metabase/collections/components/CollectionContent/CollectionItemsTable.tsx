@@ -327,6 +327,7 @@ const CollectionItemsTableContent = ({
         <CollectionItemsToolbar
           searchText={searchText}
           onSearchTextChange={onSearchTextChange}
+          hasPinnedItems={hasPinnedItems}
         />
       )}
       {showLoading && <CollectionItemsLoading />}
