@@ -66,10 +66,16 @@ function ProviderRowSkeleton() {
 }
 
 export function AIProviderList() {
-  const { data: connections = [], isLoading: isLoadingConnections } =
-    useListLlmProvidersQuery();
-  const { data: providerTypes = [], isLoading: isLoadingProviderTypes } =
-    useListLlmProviderTypesQuery();
+  const {
+    data: connections = [],
+    isLoading: isLoadingConnections,
+    error: connectionsError,
+  } = useListLlmProvidersQuery();
+  const {
+    data: providerTypes = [],
+    isLoading: isLoadingProviderTypes,
+    error: providerTypesError,
+  } = useListLlmProviderTypesQuery();
   const [deleteProvider] = useDeleteLlmProviderMutation();
   const { errorByConnectionKey } = useLlmConnectionModels();
 
@@ -104,6 +110,15 @@ export function AIProviderList() {
     return <ProviderListSkeleton />;
   }
 
+  const loadError = connectionsError ?? providerTypesError;
+  if (loadError) {
+    return (
+      <Text c="error">
+        {getErrorMessage(loadError, t`Unable to load your AI providers.`)}
+      </Text>
+    );
+  }
+
   const hasConnections = connections.length > 0;
 
   const addableProviderTypes = getAddableProviderTypes(
@@ -112,7 +127,7 @@ export function AIProviderList() {
   );
 
   return (
-    <Stack gap="lg">
+    <Stack gap="md">
       <Stack gap="sm">
         {hasConnections && (
           <Stack gap={0}>
@@ -194,10 +209,12 @@ function ProviderConnectionRow({
   const detailsId = useId();
 
   const summary = (
-    <Group gap="sm" wrap="nowrap" flex={1}>
+    <Group gap="sm" wrap="nowrap" flex={1} align="flex-start">
       <ProviderTypeIcon type={connection.type} size={PROVIDER_ICON_SIZE} />
       <Stack gap={0} align="flex-start">
-        <Group gap="xs" wrap="nowrap">
+        {/* the icon is taller than a line of text, so the name matches its height and centres
+            within it — otherwise the icon drifts off the name as further lines appear */}
+        <Group gap="xs" wrap="nowrap" mih={PROVIDER_ICON_SIZE}>
           <Text fw="bold">{connection.name}</Text>
           {!connection.usable && (
             <Tooltip

@@ -90,6 +90,7 @@ interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   hasMetabotPlugin?: boolean;
   providerTypes?: LlmProviderType[];
+  providerTypesFail?: boolean;
   connections?: LlmProviderConnection[];
   createdConnection?: LlmProviderConnection;
 }
@@ -100,6 +101,7 @@ const setup = ({
   tokenFeatures = {},
   hasMetabotPlugin = false,
   providerTypes = [ANTHROPIC_TYPE, OPENAI_TYPE],
+  providerTypesFail = false,
   connections = [],
   createdConnection = ANTHROPIC_CONNECTION,
 }: SetupOpts = {}) => {
@@ -125,7 +127,14 @@ const setup = ({
 
   fetchMock.get("path:/api/setting", []);
   setupPropertiesEndpoints(sessionProperties);
-  setupLlmProviderTypesEndpoint(providerTypes);
+  if (providerTypesFail) {
+    fetchMock.get("path:/api/llm/provider-types", {
+      status: 500,
+      body: { message: "Provider types are unavailable" },
+    });
+  } else {
+    setupLlmProviderTypesEndpoint(providerTypes);
+  }
   setupLlmProvidersEndpoint(connections);
   setupLlmModelsEndpoint([
     createMockLlmConnectionModels({
@@ -301,6 +310,17 @@ describe("AIConfigStep", () => {
     setup({ step: "completed" });
 
     expect(await screen.findByText("I'll set up AI later")).toBeInTheDocument();
+  });
+
+  it("should report a failure to load the providers rather than an empty picker", async () => {
+    setup({ providerTypesFail: true });
+
+    expect(
+      await screen.findByText("Provider types are unavailable"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Anthropic" }),
+    ).not.toBeInTheDocument();
   });
 
   it("should offer a way out when only an unusable connection is listed", async () => {
