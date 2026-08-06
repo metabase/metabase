@@ -30,7 +30,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
-   [metabase.util.ui-logic :as ui-logic]
+   [metabase.visualization-settings.ui-logic :as ui-logic]
    [ring.util.codec :as codec])
   (:import
    (java.io File)))
@@ -249,7 +249,8 @@
                             creator_id)
         attachments        (concat [icon-attachment] card-attachments result-attachments)
         html-content       (html (:content rendered-card))
-        goal               (ui-logic/find-goal-value payload)
+        ;; card_part, not payload: find-goal-value reads [:result :data ...], which only card_part has
+        goal               (ui-logic/find-goal-value card_part)
         message-context-fn (fn [non-user-email]
                              (assoc notification-payload
                                     :computed {:subject         (case (keyword (:send_condition notification_card))
