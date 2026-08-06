@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
@@ -20,6 +21,9 @@
   [topic {database :object, previous-database :previous-object, details-changed? :details-changed? :as _event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
+    ;; evict unconditionally: the relevance filter below is about connection-pool churn, but any
+    ;; update can change feature support (e.g. toggling `database-enable-actions`).
+    (driver.u/invalidate-features-cache! (:id database))
     ;; notify the appropriate driver about the updated database to release any related resources, such as connections.
     ;; avoid notifying if the changes shouldn't impact the observable behaviour of any resource, otherwise drivers might
     ;; close connections or other resources unnecessarily (metabase#27877).

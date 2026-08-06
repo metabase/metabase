@@ -21,7 +21,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.audit-app.impl :as audit-app.impl]
    [metabase.collections.models.collection :as collection]
-   [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field :as schema.field]
@@ -38,8 +37,9 @@
    #'database/table-id->database-id
    #'database/db-id->router-db-id
    #'audit-app.impl/memoized-select-audit-entity*
-   #'driver.u/memoized-supports?*
-   #'driver.u/memoized-features*
+   ;; NOTE: the driver.u feature-support caches this used to monitor were replaced by a plain
+   ;; atom (`driver.u/db-feature-sets`, bounded by #databases); measuring atom-backed caches
+   ;; here is a planned follow-up.
    #'mi/cached-encrypted-json-out
    #'collection/can-access-root-collection?
    #'serialization.dump/serialization-sorted-map])
