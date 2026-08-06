@@ -97,8 +97,7 @@
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
-   query :- [:map
-             [:database {:optional true} [:maybe :int]]]]
+   query :- ::qp.schema/api-query]
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
@@ -127,7 +126,7 @@
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and download the result data as a file in the specified format."
-  [{:keys [export-format]} :- [:map
+  [{:keys [export-format]} :- [:map {:closed true}
                                [:export-format ::qp.schema/export-format]]
    _query-params
    {{:keys [was-pivot] :as query} :query
@@ -137,13 +136,19 @@
     visualization-settings        :visualization_settings}
    ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
-   :- [:map
+   :- [:map {:closed true}
        [:query                  [:map
-                                 {:decode/api (fn [x]
+                                 ;; open: the query is checked against the schema for its own MBQL version further
+                                 ;; down, and it may not be normalized yet when it gets here
+                                 {:closed     false
+                                  :decode/api (fn [x]
                                                 (cond-> x
                                                   (string? x) json/decode+kw))}]]
        [:visualization_settings {:default {}} [:map
-                                               {:decode/api (fn [x]
+                                               ;; open: visualization settings are an open-ended bag of display
+                                               ;; options keyed by column reference as well as by setting name
+                                               {:closed     false
+                                                :decode/api (fn [x]
                                                               (cond-> x
                                                                 (string? x) (json/decode viz-setting-key-fn)))}]]
        [:format_rows            {:default false} ms/BooleanValue]
@@ -184,10 +189,12 @@
   visibility_type :sensitive in the response."
   [_route-params
    _query-params
-   query :- [:map
-             [:database ms/PositiveInt]
-             [:settings {:optional true} [:maybe [:map
-                                                  [:include_sensitive_fields {:optional true} :boolean]]]]]]
+   query :- [:merge
+             ::qp.schema/api-query
+             [:map {:closed true}
+              [:database ms/PositiveInt]
+              [:settings {:optional true} [:maybe [:map {:closed true}
+                                                   [:include_sensitive_fields {:optional true} :boolean]]]]]]]
   (queries/batch-fetch-query-metadata
    [query]
    (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
@@ -201,9 +208,11 @@
   "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
-   {:keys [database pretty] :as query} :- [:map
-                                           [:database ms/PositiveInt]
-                                           [:pretty   {:default true} [:maybe :boolean]]]]
+   {:keys [database pretty] :as query} :- [:merge
+                                           ::qp.schema/api-query
+                                           [:map {:closed true}
+                                            [:database ms/PositiveInt]
+                                            [:pretty {:default true} [:maybe :boolean]]]]]
   (model-persistence/with-persisted-substituion-disabled
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
@@ -217,8 +226,18 @@
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
-   {:keys [database] :as query} :- [:map
-                                    [:database ms/PositiveInt]]]
+   {:keys [database] :as query} :- [:merge
+                                    ::qp.schema/api-query
+                                    [:map {:closed true}
+                                     [:database ms/PositiveInt]
+                                     ;; pivot options ride along at the top level of the query. They are snake_case
+                                     ;; here and get kebab-cased by query normalization further down, so it is the
+                                     ;; snake_case spelling that has to be declared
+                                     [:pivot_rows         {:optional true} [:maybe [:sequential :int]]]
+                                     [:pivot_cols         {:optional true} [:maybe [:sequential :int]]]
+                                     [:pivot_measures     {:optional true} [:maybe [:sequential :int]]]
+                                     [:show_row_totals    {:optional true} [:maybe :boolean]]
+                                     [:show_column_totals {:optional true} [:maybe :boolean]]]]]
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
@@ -262,7 +281,7 @@
   [_route-params
    _query-params
    {:keys     [parameter]
-    field-ids :field_ids} :- [:map
+    field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids nil))
@@ -273,11 +292,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
-  [{:keys [query]} :- [:map
+  [{:keys [query]} :- [:map {:closed true}
                        [:query ms/NonBlankString]]
    _query-params
    {:keys     [parameter]
-    field-ids :field_ids} :- [:map
+    field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids query))
@@ -304,7 +323,7 @@
   "Return the remapped parameter values for cards or dashboards that are being edited."
   [_route-params
    _query-params
-   {:keys [parameter value field_ids]} :- [:map
+   {:keys [parameter value field_ids]} :- [:map {:closed true}
                                            [:parameter ::parameters.schema/parameter]
                                            [:value :any]
                                            [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
