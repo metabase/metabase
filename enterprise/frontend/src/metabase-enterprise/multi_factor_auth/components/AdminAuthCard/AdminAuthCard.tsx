@@ -7,7 +7,7 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useAdminSetting } from "metabase/settings";
-import { Alert, Anchor, DateInput, Group, Switch, Text } from "metabase/ui";
+import { Alert, Anchor, DateInput, Group, Select, Text } from "metabase/ui";
 import { useGetMfaAdminOverviewQuery } from "metabase-enterprise/api";
 import type { MfaAdminOverview, MfaEnforcement } from "metabase-types/api";
 
@@ -26,18 +26,29 @@ const getEnforcementOptions = (): EnforcementOption[] => [
 
 const DEADLINE_INPUT_FORMAT = "YYYY-MM-DD";
 
-// The backend compares the deadline against `now` on every authenticated request, so it has to be
-// stored as a full instant — a bare date parses to a LocalDate there and breaks that comparison.
 const toDeadlineSetting = (date: string | null) =>
   date ? dayjs(date).startOf("day").toISOString() : null;
 
 const toDeadlineInput = (deadline: string | null | undefined) =>
   deadline ? dayjs(deadline).format(DEADLINE_INPUT_FORMAT) : null;
 
+const DEFAULT_GRACE_PERIOD_DAYS = 14;
+
+const getDefaultDeadline = () =>
+  toDeadlineSetting(
+    dayjs().add(DEFAULT_GRACE_PERIOD_DAYS, "day").format(DEADLINE_INPUT_FORMAT),
+  );
+
+const hasGracePeriodLeft = (deadline: string | null | undefined) =>
+  deadline != null && dayjs(deadline).isAfter(dayjs());
+
 export function AdminAuthCard() {
   const hasFeature = useHasTokenFeature("multi-factor-auth");
-  const { value: enforcement, updateSetting } =
-    useAdminSetting("mfa-enforcement");
+  const {
+    value: enforcement,
+    updateSetting,
+    updateSettings,
+  } = useAdminSetting("mfa-enforcement");
   const { value: deadline } = useAdminSetting("mfa-requirement-deadline");
 
   const enabled = enforcement != null && enforcement !== "off";
@@ -61,9 +72,19 @@ export function AdminAuthCard() {
   const handleChange = (value: string | null) => {
     const option = options.find((option) => option.value === value);
 
-    if (option) {
-      updateSetting({ key: "mfa-enforcement", value: option.value });
+    if (!option) {
+      return;
     }
+
+    if (option.value === "required" && !hasGracePeriodLeft(deadline)) {
+      updateSettings({
+        "mfa-enforcement": option.value,
+        "mfa-requirement-deadline": getDefaultDeadline(),
+      });
+      return;
+    }
+
+    updateSetting({ key: "mfa-enforcement", value: option.value });
   };
 
   const handleDeadlineChange = (date: string | null) => {
@@ -98,7 +119,9 @@ export function AdminAuthCard() {
           minDate={dayjs().format(DEADLINE_INPUT_FORMAT)}
           disabled={!hasFeature}
           clearable
+          clearButtonProps={{ "aria-label": t`Clear enrollment deadline` }}
           maw="20rem"
+          data-1p-ignore // 1Password will cover the clear button without this.
         />
       )}
       {enabled && overview && !overview.encryption_key_set && (

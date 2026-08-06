@@ -7,6 +7,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
+  setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -56,6 +57,7 @@ function setup({
     }),
   ]);
   setupUpdateSettingEndpoint();
+  setupUpdateSettingsEndpoint();
   setupMfaAdminOverviewEndpoint(overview);
 
   renderWithProviders(<AdminAuthCard />, {
@@ -75,6 +77,22 @@ async function findSettingUpdate(key: string) {
 
   expect(put).toBeDefined();
   return put;
+}
+
+/** The combined write, which goes to `/api/setting` with no key in the path. */
+async function findBulkSettingUpdate() {
+  const puts = await findRequests("PUT");
+  const put = puts.find(({ url }: { url: string }) =>
+    url.endsWith("/api/setting"),
+  );
+
+  expect(put).toBeDefined();
+  return put;
+}
+
+async function selectEnforcement(label: string) {
+  await userEvent.click(screen.getByLabelText("Enforcement"));
+  await userEvent.click(await screen.findByRole("option", { name: label }));
 }
 
 describe("AdminAuthCard", () => {
@@ -127,17 +145,76 @@ describe("AdminAuthCard", () => {
     ).toBeInTheDocument();
   });
 
-  it("should save the selected enforcement level", async () => {
+  it("should save an enforcement level that needs no grace period on its own", async () => {
     setup({ enforcement: "optional" });
 
-    await userEvent.click(screen.getByLabelText("Enforcement"));
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Required" }),
-    );
+    await selectEnforcement("Off");
 
     await waitFor(async () => {
       const put = await findSettingUpdate("mfa-enforcement");
-      expect(put?.body).toEqual({ value: "required" });
+      expect(put?.body).toEqual({ value: "off" });
+    });
+  });
+
+  describe("default grace period", () => {
+    it("should seed a two-week deadline when enforcement becomes required", async () => {
+      setup({ enforcement: "optional", deadline: null });
+
+      await selectEnforcement("Required");
+
+      await waitFor(async () => {
+        const put = await findBulkSettingUpdate();
+        expect(put?.body["mfa-enforcement"]).toBe("required");
+        expect(
+          dayjs(put?.body["mfa-requirement-deadline"]).format("YYYY-MM-DD"),
+        ).toBe(dayjs().add(14, "day").format("YYYY-MM-DD"));
+      });
+    });
+
+    it("should write the enforcement and the deadline in a single request", async () => {
+      setup({ enforcement: "optional", deadline: null });
+
+      await selectEnforcement("Required");
+
+      await waitFor(async () => {
+        await findBulkSettingUpdate();
+      });
+
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+    });
+
+    it("should not overwrite a deadline the admin already set in the future", async () => {
+      const chosen = dayjs().add(90, "day").startOf("day").toISOString();
+
+      setup({ enforcement: "optional", deadline: chosen });
+
+      await selectEnforcement("Required");
+
+      await waitFor(async () => {
+        const put = await findSettingUpdate("mfa-enforcement");
+        expect(put?.body).toEqual({ value: "required" });
+      });
+
+      const puts = await findRequests("PUT");
+      expect(
+        puts.filter(({ url }: { url: string }) => url.endsWith("/api/setting")),
+      ).toHaveLength(0);
+    });
+
+    it("should replace a deadline that has already passed", async () => {
+      const stale = dayjs().subtract(30, "day").startOf("day").toISOString();
+
+      setup({ enforcement: "optional", deadline: stale });
+
+      await selectEnforcement("Required");
+
+      await waitFor(async () => {
+        const put = await findBulkSettingUpdate();
+        expect(
+          dayjs(put?.body["mfa-requirement-deadline"]).format("YYYY-MM-DD"),
+        ).toBe(dayjs().add(14, "day").format("YYYY-MM-DD"));
+      });
     });
   });
 
@@ -183,6 +260,23 @@ describe("AdminAuthCard", () => {
 
       await userEvent.clear(screen.getByLabelText(DEADLINE_LABEL));
       await userEvent.tab();
+
+      await waitFor(async () => {
+        const put = await findSettingUpdate("mfa-requirement-deadline");
+        expect(put?.body).toEqual({ value: null });
+      });
+    });
+
+    // Clearing is how an admin makes enforcement take effect immediately, so the button
+    // needs a name rather than being a bare icon.
+    it("should offer a labelled clear button", async () => {
+      const stored = dayjs("2099-01-01").startOf("day").toISOString();
+
+      setup({ enforcement: "required", deadline: stored });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Clear enrollment deadline" }),
+      );
 
       await waitFor(async () => {
         const put = await findSettingUpdate("mfa-requirement-deadline");

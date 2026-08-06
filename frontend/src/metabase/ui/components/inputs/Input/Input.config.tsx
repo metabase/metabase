@@ -55,4 +55,9 @@ export const inputOverrides = {
       label: Styles.label,
     },
   }),
+  InputClearButton: Input.ClearButton.extend({
+    classNames: {
+      root: Styles.clearButton,
+    },
+  }),
 };

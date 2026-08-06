@@ -61,6 +61,10 @@
   color: var(--mb-color-text-primary);
 }
 
+.clearButton {
+  color: var(--mb-color-text-secondary);
+}
+
 .label {
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);

@@ -1,11 +1,5 @@
 import type { LoginData } from "metabase/redux/auth";
-import {
-  isValidColorScheme,
-  setUserColorSchemeAfterUpdate,
-} from "metabase/utils/color-scheme";
-import MetabaseSettings from "metabase/utils/settings";
 import type {
-  EnterpriseSettings,
   MfaEnrollResponse,
   MfaMethod,
   PasswordResetTokenStatus,
