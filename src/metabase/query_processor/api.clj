@@ -79,9 +79,8 @@
                            (= (:type source-card) :model)
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (qp.streaming/streaming-response [rff export-format]
-        ;; THROW-AWAY (GDGT-2789): run any referenced queries (e.g. dynamic Gauge goals) and add their
-        ;; values under `data.referenced_cards`. Must happen before `process-query` sets up the QP store.
-        (let [rff (qp.referenced-cards/wrap-rff rff referenced-cards-specs)]
+        ;; must run before `process-query` sets up the QP store
+        (let [rff (qp.referenced-cards/maybe-wrap-rff-for-goals rff referenced-cards-specs)]
           (if was-pivot
             (let [constraints (if (= export-format :api)
                                 (qp.constraints/default-query-constraints)
@@ -98,10 +97,11 @@
 
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
-  "Execute a query and retrieve the results in the usual format. The query will not use the cache."
+  "Execute a query and retrieve the results in the usual format. The query will not use the cache.
+  `referenced_cards` also runs the given cards' queries and returns their single-row values under
+  `data.referenced_cards`."
   [_route-params
    _query-params
-   ;; THROW-AWAY (GDGT-2789): `referenced_cards` requests values from other cards (dynamic Gauge goals).
    {:keys [referenced_cards] :as query} :- [:map
                                             [:database {:optional true} [:maybe :int]]
                                             [:referenced_cards {:optional true} qp.referenced-cards/specs-schema]]]
