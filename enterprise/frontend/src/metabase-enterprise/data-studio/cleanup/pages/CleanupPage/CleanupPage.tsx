@@ -31,7 +31,7 @@ import {
 import { CleanupHeader } from "../../components/CleanupHeader";
 import { PublicationStatusBadge } from "../../components/PublicationStatusBadge";
 import { useCleanupRefresh } from "../../hooks/useCleanupRefresh";
-import { useAllUsageMetadataTables } from "../../hooks/useUsageMetadataList";
+import { useUsageMetadataTables } from "../../hooks/useUsageMetadataList";
 import { hasActiveFilters, parseCleanupParams } from "../../utils";
 
 type CleanupTableNode = UsageMetadataTableSummary & { id: number };
@@ -41,7 +41,7 @@ export function CleanupPage() {
   const [searchParams] = useSearchParams();
   const params = parseCleanupParams(searchParams);
   const refresh = useCleanupRefresh();
-  const query = useAllUsageMetadataTables({
+  const query = useUsageMetadataTables({
     "database-id": params.databaseId,
     queue: params.queue,
     search: params.search,
@@ -150,11 +150,11 @@ export function CleanupPage() {
             />
           </>
         )}
-        {query.isFetching ? (
+        {query.isFetching && query.data == null ? (
           <Card withBorder p={0} flex={1} mih={0}>
             <TreeTableSkeleton columnWidths={[0.4, 0.3, 0.15, 0.15]} />
           </Card>
-        ) : query.error ? (
+        ) : query.error && query.data == null ? (
           <Center h="100%" flex={1}>
             <LoadingAndErrorWrapper error={query.error} />
           </Center>
@@ -173,6 +173,7 @@ export function CleanupPage() {
             mih={0}
             style={{ overflow: "hidden" }}
             data-testid="cleanup-table-list"
+            aria-busy={query.isFetchingNextPage}
           >
             <TreeTable
               instance={treeTableInstance}
@@ -192,6 +193,7 @@ export function CleanupPage() {
                   {...props}
                 />
               )}
+              onScrollEnd={query.fetchNextPage}
             />
           </Card>
         )}

@@ -1,8 +1,12 @@
+import { useEffect, useRef, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { Flex, Icon, Select, Tabs, TextInput } from "metabase/ui";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { Flex, Icon, Loader, Select, Tabs, TextInput } from "metabase/ui";
 import type * as Urls from "metabase/urls";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { UsageMetadataCleanupQueue } from "metabase-types/api";
 
 type CleanupFiltersProps = {
@@ -19,6 +23,30 @@ export function CleanupFilters({
   searchPlaceholder = t`Search suggestions`,
 }: CleanupFiltersProps) {
   const { data: databaseResponse } = useListDatabasesQuery();
+  const [search, setSearch] = useState(params.search ?? "");
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
+  const paramsRef = useLatest(params);
+  const onChangeRef = useLatest(onChange);
+  const lastPushedSearch = useRef(params.search ?? "");
+
+  useEffect(() => {
+    if (debouncedSearch !== lastPushedSearch.current) {
+      lastPushedSearch.current = debouncedSearch;
+      onChangeRef.current({
+        ...paramsRef.current,
+        search: debouncedSearch || undefined,
+        candidateId: undefined,
+      });
+    }
+  }, [debouncedSearch, onChangeRef, paramsRef]);
+
+  useEffect(() => {
+    const urlSearch = params.search ?? "";
+    if (urlSearch !== lastPushedSearch.current) {
+      lastPushedSearch.current = urlSearch;
+      setSearch(urlSearch);
+    }
+  }, [params.search]);
 
   const update = (values: Partial<Urls.DataStudioCleanupParams>) =>
     onChange({ ...params, ...values, candidateId: undefined });
@@ -29,10 +57,9 @@ export function CleanupFilters({
         aria-label={t`Search cleanup candidates`}
         placeholder={searchPlaceholder}
         leftSection={<Icon name="search" />}
-        value={params.search ?? ""}
-        onChange={(event) =>
-          update({ search: event.currentTarget.value || undefined })
-        }
+        value={search}
+        onChange={(event) => setSearch(event.currentTarget.value)}
+        rightSection={search !== debouncedSearch ? <Loader size="xs" /> : null}
         miw="16rem"
         flex={1}
       />

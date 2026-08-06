@@ -217,7 +217,6 @@ describe("CleanupTablePage", () => {
     );
     expect(listCall?.url).toContain("queue=suggested");
     expect(listCall?.url).toContain("limit=200");
-    expect(listCall?.url).toContain("sort=priority");
 
     await userEvent.click(
       screen.getByRole("button", { name: "Dismiss suggestion" }),

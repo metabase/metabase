@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  fireEvent,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -33,9 +34,11 @@ const SORTABLE_COLUMNS: TreeTableColumnDef<TestNode>[] = [
 function setup({
   columns = SORTABLE_COLUMNS,
   onRowActivate,
+  onScrollEnd,
 }: {
   columns?: TreeTableColumnDef<TestNode>[];
   onRowActivate?: (row: { original: TestNode }) => void;
+  onScrollEnd?: () => void;
 } = {}) {
   mockGetBoundingClientRect({ width: 200, height: 40 });
 
@@ -53,6 +56,7 @@ function setup({
         instance={instance}
         hierarchical={false}
         ariaLabel="Test table"
+        onScrollEnd={onScrollEnd}
       />
     );
   }
@@ -75,5 +79,26 @@ describe("TreeTable keyboard interaction", () => {
 
     expect(header).toHaveAttribute("aria-sort", "ascending");
     expect(onRowActivate).not.toHaveBeenCalled();
+  });
+});
+
+describe("TreeTable scrolling", () => {
+  it("calls onScrollEnd only when the scroll container approaches the end", () => {
+    const onScrollEnd = jest.fn();
+    setup({ onScrollEnd });
+
+    const scrollContainer = screen.getByTestId("tree-table-scroll-container");
+
+    Object.defineProperties(scrollContainer, {
+      clientHeight: { configurable: true, value: 500 },
+      scrollHeight: { configurable: true, value: 1_500 },
+      scrollTop: { configurable: true, value: 500, writable: true },
+    });
+    fireEvent.scroll(scrollContainer);
+    expect(onScrollEnd).not.toHaveBeenCalled();
+
+    scrollContainer.scrollTop = 800;
+    fireEvent.scroll(scrollContainer);
+    expect(onScrollEnd).toHaveBeenCalledTimes(1);
   });
 });

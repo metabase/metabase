@@ -25,6 +25,7 @@ type CandidateTableProps = {
   isMutating: boolean;
   onOpen: (candidate: UsageMetadataCandidateSummary) => void;
   onDismiss: (candidate: UsageMetadataCandidateSummary) => void;
+  onScrollEnd?: () => void;
 };
 
 export function CandidateTable({
@@ -33,6 +34,7 @@ export function CandidateTable({
   isMutating,
   onOpen,
   onDismiss,
+  onScrollEnd,
 }: CandidateTableProps) {
   const columns = useMemo<TreeTableColumnDef<UsageMetadataCandidateSummary>[]>(
     () => [
@@ -139,6 +141,7 @@ export function CandidateTable({
         "aria-label": row.original.display_name,
       })}
       onRowClick={(row) => onOpen(row.original)}
+      onScrollEnd={onScrollEnd}
     />
   );
 }
