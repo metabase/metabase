@@ -6,8 +6,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.app-db.core :as mdb]
-   [metabase.events.core :as events]
    [metabase.measures.api :as measures.api]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -716,14 +714,8 @@
                                    (:suggested_description candidate))
                     :definition  (:definition candidate)}
             entity (case (:candidate_type candidate)
-                     :measure (measures.api/create-measure! body {:publish-event? false})
-                     :segment (segments.api/create-segment! body {:publish-event? false}))
-            topic  (case (:candidate_type candidate)
-                     :measure :event/measure-create
-                     :segment :event/segment-create)
-            user-id api/*current-user-id*]
-        (mdb/do-after-commit
-         #(events/publish-event! topic {:object entity :user-id user-id}))
+                     :measure (measures.api/create-measure! body)
+                     :segment (segments.api/create-segment! body))]
         (candidate-service/mark-modeled! candidate entity)))))
 
 (api.macros/defendpoint :post "/candidates/:id/create" :- ::create-response
