@@ -4,7 +4,7 @@ import { Box, Skeleton } from "metabase/ui";
 
 import S from "./TreeNodeSkeleton.module.css";
 
-const DEFAULT_ROW_COUNT = 2;
+const SKELETON_ROW_COUNT = 2;
 
 /**
  * How long a fetch has to be outstanding before it is worth telling the user about. Most of these finish well inside
@@ -15,16 +15,9 @@ const DELAY_BEFORE_SHOWING = 250;
 
 /**
  * Placeholder rows shown while a lazily loaded node fetches its children, once the fetch has taken long enough to be
- * worth acknowledging. Callers that know how many rows are coming pass `rows`, so the list reserves the space they
- * will take rather than growing under the pointer when they land.
+ * worth acknowledging.
  */
-export function TreeNodeSkeleton({
-  depth,
-  rows = DEFAULT_ROW_COUNT,
-}: {
-  depth: number;
-  rows?: number;
-}) {
+export function TreeNodeSkeleton({ depth }: { depth: number }) {
   const [isSlowEnough, setIsSlowEnough] = useState(false);
 
   useEffect(() => {
@@ -41,7 +34,7 @@ export function TreeNodeSkeleton({
 
   return (
     <>
-      {Array.from({ length: rows }, (_, index) => (
+      {Array.from({ length: SKELETON_ROW_COUNT }, (_, index) => (
         <Box
           key={index}
           component="li"

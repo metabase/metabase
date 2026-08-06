@@ -69,13 +69,8 @@ type Props = {
   onCollectionLoadMore: (parentId: string | number | null) => void;
   loadingMoreCollectionIds: Set<string | number | null>;
   collectionsHaveMore: boolean;
-  collectionPageSize?: number;
   remainingCollectionsByLevel?: Map<string | number | null, number>;
-  startOffsetCollectionsByLevel?: Map<string | number | null, number>;
-  onCollectionJumpTo?: (
-    parentId: string | number | null,
-    rowIndex: number,
-  ) => void;
+  totalCollectionsByLevel?: Map<string | number | null, number>;
   selectedItems: SelectedItem[];
   sharedTenantCollections?: Collection[];
   canAccessTenantSpecificCollections: boolean;
@@ -105,10 +100,8 @@ export function MainNavbarView({
   onCollectionLoadMore,
   loadingMoreCollectionIds,
   collectionsHaveMore,
-  collectionPageSize,
   remainingCollectionsByLevel,
-  startOffsetCollectionsByLevel,
-  onCollectionJumpTo,
+  totalCollectionsByLevel,
   selectedItems,
   hasDataAccess,
   reorderBookmarks,
@@ -334,10 +327,8 @@ export function MainNavbarView({
                     hasMore={collectionsHaveMore}
                     onLoadMore={onCollectionLoadMore}
                     loadingMoreIds={loadingMoreCollectionIds}
-                    pageSize={collectionPageSize}
                     remainingByLevel={remainingCollectionsByLevel}
-                    startOffsetByLevel={startOffsetCollectionsByLevel}
-                    onJumpTo={onCollectionJumpTo}
+                    totalByLevel={totalCollectionsByLevel}
                   />
                 ) : (
                   <Tree
@@ -347,10 +338,8 @@ export function MainNavbarView({
                     hasMore={collectionsHaveMore}
                     onLoadMore={onCollectionLoadMore}
                     loadingMoreIds={loadingMoreCollectionIds}
-                    pageSize={collectionPageSize}
                     remainingByLevel={remainingCollectionsByLevel}
-                    startOffsetByLevel={startOffsetCollectionsByLevel}
-                    onJumpTo={onCollectionJumpTo}
+                    totalByLevel={totalCollectionsByLevel}
                     TreeNode={SidebarCollectionLink}
                     role="tree"
                     aria-label="collection-tree"

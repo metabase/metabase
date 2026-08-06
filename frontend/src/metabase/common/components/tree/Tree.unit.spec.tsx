@@ -76,9 +76,7 @@ describe("Tree", () => {
   });
 
   describe("lazily loaded nodes", () => {
-    const { scrollEndOfListTo, scrollAboveWindowTo, findScroller } =
-      setupTreeLayout();
-    const ROW_HEIGHT = 32;
+    const { scrollEndOfListTo, findScroller } = setupTreeLayout();
 
     const lazyData = [
       {
@@ -141,15 +139,8 @@ describe("Tree", () => {
       expect(screen.getByText("Item 2")).toBeInTheDocument();
     });
 
-    const PAGE_SIZE = 5;
-    const START_OFFSET = 40;
-
-    /** A level of 100 rows whose window starts at `startOffset`, inside a box that scrolls. */
-    const renderWindowedLevel = ({
-      startOffset = 0,
-      onLoadMore = jest.fn(),
-      onJumpTo = jest.fn(),
-    } = {}) => {
+    /** A level of 102 rows with 100 still unread, inside a box that scrolls. */
+    const renderLongLevel = ({ onLoadMore = jest.fn() } = {}) => {
       render(
         <div style={{ overflowY: "auto" }}>
           <Tree
@@ -157,11 +148,9 @@ describe("Tree", () => {
             onSelect={jest.fn()}
             hasMore
             onLoadMore={onLoadMore}
-            onJumpTo={onJumpTo}
             loadingMoreIds={new Set()}
-            pageSize={PAGE_SIZE}
             remainingByLevel={new Map([[null, 100]])}
-            startOffsetByLevel={new Map([[null, startOffset]])}
+            totalByLevel={new Map([[null, 102]])}
           />
         </div>,
       );
@@ -170,79 +159,40 @@ describe("Tree", () => {
       if (!scroller) {
         throw new Error("the tree rendered outside any scrolling box");
       }
-      return { onLoadMore, onJumpTo, scroller };
+      return { onLoadMore, scroller };
     };
 
-    it("should grow the level when the reader reaches the end of it", () => {
-      const { onLoadMore, onJumpTo, scroller } = renderWindowedLevel();
+    it("should load the next page when the reader reaches the end of the level", () => {
+      const { onLoadMore, scroller } = renderLongLevel();
+
+      expect(onLoadMore).not.toHaveBeenCalled();
 
       scrollEndOfListTo(0, scroller);
 
       expect(onLoadMore).toHaveBeenCalled();
-      expect(onJumpTo).not.toHaveBeenCalled();
     });
 
-    it("should read the page covering wherever the reader landed, not walk there", () => {
-      const { onLoadMore, onJumpTo, scroller } = renderWindowedLevel();
+    it("should say how much of a long level is on screen", () => {
+      renderLongLevel();
 
-      // Well past the end, which is what a flick down a level of thousands of rows does.
-      scrollEndOfListTo(-60, scroller);
-
-      // `data` renders 2 rows, so row 60 of the unread part is row 62 of the level.
-      expect(onJumpTo).toHaveBeenCalledWith(null, 62);
-      expect(onLoadMore).not.toHaveBeenCalled();
+      expect(screen.getByTestId("tree-level-count")).toHaveTextContent(
+        "2 of 102",
+      );
     });
 
-    it("should read back the rows above the window when the reader scrolls up into them", () => {
-      const { onJumpTo, scroller } = renderWindowedLevel({
-        startOffset: START_OFFSET,
-      });
-
-      scrollAboveWindowTo(10, scroller);
-
-      expect(onJumpTo).toHaveBeenCalledWith(null, 10);
-    });
-
-    it("should reserve the height of the rows it has not read", () => {
+    it("should stop counting once the level is all there", () => {
       render(
         <Tree
           data={data}
           onSelect={jest.fn()}
-          hasMore
           onLoadMore={jest.fn()}
           loadingMoreIds={new Set()}
-          pageSize={5}
-          remainingByLevel={new Map([[null, 10]])}
+          remainingByLevel={new Map([[null, 0]])}
+          totalByLevel={new Map([[null, 2]])}
         />,
       );
 
-      expect(screen.getByTestId("tree-reserved-space")).toHaveStyle({
-        height: `${10 * ROW_HEIGHT}px`,
-      });
-    });
-
-    it("should keep the reserved height unchanged while a page loads", async () => {
-      const PAGE_SIZE = 5;
-      render(
-        <Tree
-          data={data}
-          onSelect={jest.fn()}
-          hasMore
-          onLoadMore={jest.fn()}
-          loadingMoreIds={new Set([null])}
-          pageSize={PAGE_SIZE}
-          remainingByLevel={new Map([[null, 10]])}
-        />,
-      );
-
-      // The placeholders stand in the space already reserved rather than adding to it, so the total is still 10 rows
-      // and the scrollbar does not move.
-      expect(await screen.findAllByTestId("tree-node-skeleton")).toHaveLength(
-        PAGE_SIZE,
-      );
-      expect(screen.getByTestId("tree-reserved-space")).toHaveStyle({
-        height: `${(10 - PAGE_SIZE) * ROW_HEIGHT}px`,
-      });
+      expect(screen.queryByTestId("tree-level-count")).not.toBeInTheDocument();
     });
 
     it("should report expansion to an external controller", () => {

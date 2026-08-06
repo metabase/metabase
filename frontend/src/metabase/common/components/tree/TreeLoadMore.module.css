@@ -5,3 +5,11 @@
 .sentinel {
   height: 1px;
 }
+
+/* How much of a long level is on screen, sat at the end of it. */
+.count {
+  padding-block: 0.5rem;
+  padding-left: 1.75rem;
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+}

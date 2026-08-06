@@ -4,7 +4,7 @@ import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
 import type { BoxProps } from "metabase/ui";
 import { Box } from "metabase/ui";
 
-import { ROW_HEIGHT, TreeLoadMore } from "./TreeLoadMore";
+import { TreeLoadMore } from "./TreeLoadMore";
 import { TreeNodeSkeleton } from "./TreeNodeSkeleton";
 import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 
@@ -25,17 +25,10 @@ interface TreeNodeListProps<TData = unknown> extends Omit<
   loadMoreFor?: ITreeNodeItem<TData>["id"] | null;
   onLoadMore?: (parentId: ITreeNodeItem<TData>["id"] | null) => void;
   loadingMoreIds?: Set<ITreeNodeItem<TData>["id"] | null>;
-  /** How many rows a page brings, so a level loading its next one reserves their height. */
-  pageSize?: number;
   /** Per level, how many rows it holds beyond the ones rendered. Keyed by parent id, or `null` for the top level. */
   remainingByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
-  /** Per level, how many of its rows sit above the ones rendered. Keyed the same way. */
-  startOffsetByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
-  /** Reads the page covering a row of a level, wherever in it the reader has scrolled to. */
-  onJumpTo?: (
-    parentId: ITreeNodeItem<TData>["id"] | null,
-    rowIndex: number,
-  ) => void;
+  /** Per level, how many rows it holds in all. Keyed the same way. */
+  totalByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   TreeNode: TreeNodeComponent<TData>;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
@@ -54,10 +47,8 @@ function BaseTreeNodeList<TData = unknown>({
   loadMoreFor = null,
   onLoadMore,
   loadingMoreIds,
-  pageSize,
   remainingByLevel,
-  startOffsetByLevel,
-  onJumpTo,
+  totalByLevel,
   TreeNode,
   rightSection,
   role,
@@ -65,17 +56,9 @@ function BaseTreeNodeList<TData = unknown>({
   ...boxProps
 }: TreeNodeListProps<TData>) {
   const selectedRef = useScrollOnMount<HTMLLIElement>();
-  const startOffset = startOffsetByLevel?.get(loadMoreFor) ?? 0;
 
   return (
-    <Box
-      component="ul"
-      role={role}
-      // The rows this level holds above the ones rendered, given their height so that reading a page in the middle
-      // of a wide level leaves everything before it where it was.
-      pt={startOffset > 0 ? `${startOffset * ROW_HEIGHT}px` : undefined}
-      {...boxProps}
-    >
+    <Box component="ul" role={role} {...boxProps}>
       {items.map((item) => {
         const isSelected = selectedId === item.id;
         const hasChildren =
@@ -118,10 +101,8 @@ function BaseTreeNodeList<TData = unknown>({
                   loadMoreFor={item.id}
                   onLoadMore={onLoadMore}
                   loadingMoreIds={loadingMoreIds}
-                  pageSize={pageSize}
                   remainingByLevel={remainingByLevel}
-                  startOffsetByLevel={startOffsetByLevel}
-                  onJumpTo={onJumpTo}
+                  totalByLevel={totalByLevel}
                   TreeNode={TreeNode}
                   rightSection={rightSection}
                   wrapNodes={wrapNodes}
@@ -144,14 +125,9 @@ function BaseTreeNodeList<TData = unknown>({
         <TreeLoadMore
           depth={depth}
           isLoading={loadingMoreIds?.has(loadMoreFor) ?? false}
-          pageSize={pageSize}
-          startOffset={startOffset}
-          loadedCount={items.length}
           remaining={remainingByLevel?.get(loadMoreFor)}
+          total={totalByLevel?.get(loadMoreFor)}
           onLoadMore={() => onLoadMore(loadMoreFor)}
-          onJumpTo={
-            onJumpTo ? (rowIndex) => onJumpTo(loadMoreFor, rowIndex) : undefined
-          }
         />
       )}
     </Box>

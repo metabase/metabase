@@ -25,17 +25,10 @@ export interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   /** Called with the parent whose level should grow, or `null` for the top level. */
   onLoadMore?: (parentId: ITreeNodeItem<TData>["id"] | null) => void;
   loadingMoreIds?: Set<ITreeNodeItem<TData>["id"] | null>;
-  /** How many rows a page brings, so a level loading its next one reserves their height. */
-  pageSize?: number;
   /** Per level, how many rows it holds beyond the ones rendered. Keyed by parent id, or `null` for the top level. */
   remainingByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
-  /** Per level, how many of its rows sit above the ones rendered. Keyed the same way. */
-  startOffsetByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
-  /** Reads the page covering a row of a level, wherever in it the reader has scrolled to. */
-  onJumpTo?: (
-    parentId: ITreeNodeItem<TData>["id"] | null,
-    rowIndex: number,
-  ) => void;
+  /** Per level, how many rows it holds in all. Keyed the same way. */
+  totalByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
 }
 
 function BaseTree<TData = unknown>({
@@ -53,10 +46,8 @@ function BaseTree<TData = unknown>({
   hasMore,
   onLoadMore,
   loadingMoreIds,
-  pageSize,
   remainingByLevel,
-  startOffsetByLevel,
-  onJumpTo,
+  totalByLevel,
   ...boxProps
 }: TreeProps<TData>) {
   const defaultController = useTree({
@@ -87,10 +78,8 @@ function BaseTree<TData = unknown>({
       hasMore={hasMore}
       onLoadMore={onLoadMore}
       loadingMoreIds={loadingMoreIds}
-      pageSize={pageSize}
       remainingByLevel={remainingByLevel}
-      startOffsetByLevel={startOffsetByLevel}
-      onJumpTo={onJumpTo}
+      totalByLevel={totalByLevel}
       rightSection={rightSection}
       wrapNodes={wrapNodesInListItem}
       {...boxProps}

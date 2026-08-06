@@ -25,10 +25,6 @@ type Level = {
   hasMore: boolean;
   nextOffset: number;
   isLoadingMore: boolean;
-  /** How many rows a page holds. */
-  pageSize: number;
-  /** Rows of this level that sit above the window, whose height the list reserves ahead of the rows it has. */
-  startOffset: number;
   /** Rows of this level that sit below the window, whose height the list reserves after the rows it has. */
   remaining: number;
   /** Every row the level holds, read or not. */
@@ -105,10 +101,8 @@ export function useLazyCollectionTree({
 }) {
   const dispatch = useDispatch();
   const [expandedIds, setExpandedIds] = useState<Set<NodeId>>(new Set());
-  // The pages a level currently holds, by offset, contiguous and ascending. A level starts at its first page and
-  // grows as the reader reaches the end of it. Jumping somewhere far off replaces the run rather than walking there,
-  // so a level the size of the whole instance costs one request to look at wherever the reader landed.
-  const [windowByLevel, setWindowByLevel] = useState<Map<LevelKey, number[]>>(
+  // Offsets asked for beyond each level's first page, in the order they were asked for.
+  const [extraOffsets, setExtraOffsets] = useState<Map<LevelKey, number[]>>(
     new Map(),
   );
 
@@ -139,9 +133,12 @@ export function useLazyCollectionTree({
     [firstPageRequest, laterPageRequest],
   );
 
-  const levelWindow = useCallback(
-    (key: LevelKey): number[] => windowByLevel.get(key) ?? [FIRST_PAGE_OFFSET],
-    [windowByLevel],
+  const levelOffsets = useCallback(
+    (key: LevelKey): number[] => [
+      FIRST_PAGE_OFFSET,
+      ...(extraOffsets.get(key) ?? []),
+    ],
+    [extraOffsets],
   );
 
   const { isLoading, error } = useListCollectionsTreeLazyQuery(
@@ -177,7 +174,7 @@ export function useLazyCollectionTree({
   const pagesByLevel = useSelector(
     (state: State) =>
       levelKeys.map((key) => {
-        const requests = levelWindow(key).map((offset) =>
+        const requests = levelOffsets(key).map((offset) =>
           pageRequest(key, offset),
         );
         return {
@@ -220,16 +217,12 @@ export function useLazyCollectionTree({
       }
       const last = loaded[loaded.length - 1];
       const items = loaded.flatMap((page) => page.data);
-      const startOffset = levelWindow(key)[0];
       byKey.set(key, {
         items,
         hasMore: last.has_more,
         nextOffset: last.next_offset,
         isLoadingMore: loaded.length < pages.length,
-        // Measured from the window's own first page, which no longer has to be the level's first page.
-        pageSize: loaded[0].next_offset - startOffset,
-        startOffset,
-        remaining: Math.max(last.total - (startOffset + items.length), 0),
+        remaining: Math.max(last.total - items.length, 0),
         total: last.total,
       });
     });
@@ -241,7 +234,7 @@ export function useLazyCollectionTree({
       byKey.set(ROOT_LEVEL, lastRootLevel.current);
     }
     return byKey;
-  }, [pagesByLevel, levelWindow]);
+  }, [pagesByLevel]);
 
   const tree = useMemo(
     () => attachLevels(levels.get(ROOT_LEVEL)?.items ?? [], levels),
@@ -260,7 +253,7 @@ export function useLazyCollectionTree({
   const subscribedRequests = useMemo(() => {
     const requests: ListCollectionsTreeRequest[] = [];
     levelKeys.forEach((key) => {
-      levelWindow(key).forEach((offset) => {
+      levelOffsets(key).forEach((offset) => {
         // The root's own first page is already subscribed by the query above, and a node's first page is only worth
         // holding while it is still waiting on children or has been read for itself.
         const isRootFirstPage =
@@ -276,7 +269,7 @@ export function useLazyCollectionTree({
       });
     });
     return requests;
-  }, [levelKeys, idsAwaitingChildren, levels, levelWindow, pageRequest]);
+  }, [levelKeys, idsAwaitingChildren, levels, levelOffsets, pageRequest]);
 
   useEffect(() => {
     const subscriptions = subscribedRequests.map((request) =>
@@ -337,8 +330,8 @@ export function useLazyCollectionTree({
       if (!level?.hasMore || level.isLoadingMore) {
         return;
       }
-      setWindowByLevel((previous) => {
-        const offsets = previous.get(key) ?? [FIRST_PAGE_OFFSET];
+      setExtraOffsets((previous) => {
+        const offsets = previous.get(key) ?? [];
         // Anything watching the end of a level can ask for the next page, and more than one of them can ask in the
         // same commit, each reading the same `nextOffset` from the level it rendered with. Asking once is what keeps
         // a burst of those from turning into a burst of pages, and the same rows from arriving twice.
@@ -347,39 +340,6 @@ export function useLazyCollectionTree({
         }
         const next = new Map(previous);
         next.set(key, [...offsets, level.nextOffset]);
-        return next;
-      });
-    },
-    [levels],
-  );
-
-  /**
-   * Move a level to the page holding `rowIndex`, dropping the pages it held.
-   *
-   * Walking there a page at a time would be one request per page, and a level as wide as this instance puts most of
-   * its rows hundreds of pages from either end. Reading the one page the reader is actually looking at costs one.
-   */
-  const jumpTo = useCallback(
-    (parentId: NodeId | null, rowIndex: number) => {
-      const key = levelKeyFor(parentId);
-      const level = levels.get(key);
-      if (!level || level.pageSize <= 0) {
-        return;
-      }
-      const lastPageOffset =
-        Math.max(Math.ceil(level.total / level.pageSize) - 1, 0) *
-        level.pageSize;
-      const offset = Math.min(
-        Math.max(Math.floor(rowIndex / level.pageSize) * level.pageSize, 0),
-        lastPageOffset,
-      );
-      setWindowByLevel((previous) => {
-        const offsets = previous.get(key) ?? [FIRST_PAGE_OFFSET];
-        if (offsets.length === 1 && offsets[0] === offset) {
-          return previous;
-        }
-        const next = new Map(previous);
-        next.set(key, [offset]);
         return next;
       });
     },
@@ -396,14 +356,13 @@ export function useLazyCollectionTree({
     return remaining;
   }, [levels]);
 
-  // Rows sitting above each level's window, whose height the list reserves so that jumping into a level leaves the
-  // rows before it where they were rather than pulling everything to the top.
-  const startOffsetByLevel = useMemo(() => {
-    const starts = new Map<NodeId | null, number>();
+  // How many rows each level holds in all, so the end of a level can say how much of it is on screen.
+  const totalByLevel = useMemo(() => {
+    const totals = new Map<NodeId | null, number>();
     levels.forEach((level, key) => {
-      starts.set(key === ROOT_LEVEL ? null : key, level.startOffset);
+      totals.set(key === ROOT_LEVEL ? null : key, level.total);
     });
-    return starts;
+    return totals;
   }, [levels]);
 
   const loadingMoreIds = useMemo(() => {
@@ -426,10 +385,8 @@ export function useLazyCollectionTree({
     loadMore,
     loadingMoreIds,
     remainingByLevel,
-    startOffsetByLevel,
-    jumpTo,
+    totalByLevel,
     hasMore: levels.get(ROOT_LEVEL)?.hasMore ?? false,
-    pageSize: levels.get(ROOT_LEVEL)?.pageSize,
     isLoading,
     error,
   };

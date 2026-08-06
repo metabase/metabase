@@ -158,10 +158,8 @@ function MainNavbarContainer({
     loadMore,
     loadingMoreIds,
     remainingByLevel,
-    startOffsetByLevel,
-    jumpTo,
+    totalByLevel,
     hasMore,
-    pageSize,
   } = useLazyCollectionTree({
     baseRequest: COLLECTION_TREE_REQUEST,
     selectedCollectionId,
@@ -283,10 +281,8 @@ function MainNavbarContainer({
         onCollectionLoadMore={loadMore}
         loadingMoreCollectionIds={loadingMoreIds}
         collectionsHaveMore={hasMore}
-        collectionPageSize={pageSize}
         remainingCollectionsByLevel={remainingByLevel}
-        startOffsetCollectionsByLevel={startOffsetByLevel}
-        onCollectionJumpTo={jumpTo}
+        totalCollectionsByLevel={totalByLevel}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}
         reorderBookmarks={reorderBookmarks}
