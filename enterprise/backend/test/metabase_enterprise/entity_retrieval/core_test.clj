@@ -538,13 +538,21 @@
                     (is (=? [{:model "table" :id table-id}]
                             (distinct (map :entity (entity-retrieval.core/search-unfiltered "orders" 10))))
                         "the query really runs, so the [] below is the degrade path and not a fallback")
-                    ;; Shrink the configured model to one dimension, the way an upgrade would. "q" is a valid
-                    ;; vector for the new model, so the provider accepts it and the dim-4 index column is what
-                    ;; no longer matches -> pgvector SQLState 22000.
+                    ;; Shrink the configured model to one dimension, the way an upgrade would, keeping it
+                    ;; self-consistent so the provider resolves it instead of rejecting a changed space.
+                    ;; The meta row still describes the dim-4 build, so the compatibility preflight would
+                    ;; answer [] on its own; stub it aside to reach the case this test is about — a dim-1
+                    ;; literal meeting the vector(4) column, which is pgvector SQLState 22000.
                     (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
-                                                (constantly (assoc semantic.tu/mock-embedding-model
-                                                                   :vector-dimensions 1))]
-                      (is (= [] (entity-retrieval.core/search-unfiltered "q" 10)))))
+                                                (constantly (semantic.tu/resolved-mock-embedding-model
+                                                             :vector-dimensions 1))
+                                                index-table/index-status (constantly :compatible)]
+                      (mt/with-log-messages-for-level [messages [metabase-enterprise.entity-retrieval.core :warn]]
+                        (is (= [] (entity-retrieval.core/search-unfiltered "q" 10)))
+                        (is (=? [{:level   :warn
+                                  :message #"(?s)library entity index incompatible with the query vector.*"}]
+                                (messages))
+                            "the query reached pgvector and degraded on 22000, not on an earlier preflight"))))
                   (finally
                     (jdbc/execute! ds [(str "DROP TABLE IF EXISTS \"" (index-table/vectors-table)
                                             "\", \"" (index-table/meta-table) "\"")])))))))))))
