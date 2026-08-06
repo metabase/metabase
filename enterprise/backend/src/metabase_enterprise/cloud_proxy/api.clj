@@ -17,13 +17,29 @@
     "mb-plan-change-plan-preview"})
 
 (def ^:private OperationParams
-  "Malli schema for the POST body: the parameter map of the Harbormaster Store operation named by
-  `:operation-id`, forwarded verbatim (via [[m.util/deep-kebab-keys]]) to the Store client. Keys are that
-  operation's kebab-case parameter names. Every allowlisted operation takes a flat map of scalars: the FE
-  sends `new-plan-alias`/`plan-alias` (strings) and `force-end-trial` (boolean), or an empty body; see
-  `frontend/src/metabase/api/cloud-proxy.ts`. An operation taking a nested parameter would have to be added
-  to the allowlist above, so it would be caught here at the same time."
-  [:map-of :keyword [:maybe [:or :string :boolean number?]]])
+  "Malli schema for the POST body: the parameters of the Harbormaster Store operation named by `:operation-id`,
+  forwarded to the Store client via [[m.util/deep-kebab-keys]].
+
+  Each parameter is listed under both its kebab-case spelling, which is what the FE sends (see
+  `frontend/src/metabase/api/cloud-proxy.ts`), and its snake_case spelling, which is what other callers send;
+  `deep-kebab-keys` normalizes either before forwarding. The alternatives span operations rather than being
+  keyed by them because a body schema cannot dispatch on the `:operation-id` route param -- the operation
+  itself rejects parameters that don't belong to it. Adding an operation to the allowlists above means adding
+  its parameters here."
+  [:or
+   ;; mb-plan-trial-up, mb-plan-trial-up-available, list-plans, list-addons: no parameters. Also the empty
+   ;; body that every operation accepts.
+   [:map {:closed true}]
+   ;; get-plan
+   [:map {:closed true} [:plan-alias ms/NonBlankString]]
+   [:map {:closed true} [:plan_alias ms/NonBlankString]]
+   ;; mb-plan-change-plan, mb-plan-change-plan-preview
+   [:map {:closed true}
+    [:new-plan-alias  ms/NonBlankString]
+    [:force-end-trial {:optional true} :boolean]]
+   [:map {:closed true}
+    [:new_plan_alias  ms/NonBlankString]
+    [:force_end_trial {:optional true} :boolean]]])
 
 (def ^:private non-superuser-operation-allowlist
   #{"list-plans"
