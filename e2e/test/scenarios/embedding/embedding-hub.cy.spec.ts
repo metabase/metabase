@@ -218,3 +218,43 @@ describe("scenarios > embedding > embedding hub > get started", () => {
     });
   });
 });
+
+describe("scenarios > embedding > embedding hub > security", () => {
+  describe("pro", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+    });
+
+    it("lists published guest embeds even after guest embeds are switched off", () => {
+      cy.log("Publish a dashboard as a guest embed");
+      H.createDashboard({ name: "Published dashboard" }).then(
+        ({ body: dashboard }) => {
+          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+            enable_embedding: true,
+          });
+        },
+      );
+
+      H.updateSetting("enable-embedding-static", true);
+      cy.visit("/embedding/security");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByText("Published guest embeds").should("be.visible");
+        cy.findByText("Published dashboard").should("be.visible");
+      });
+
+      cy.log(
+        "Turning guest embeds off is exactly when an admin needs to audit what is already out there",
+      );
+      H.updateSetting("enable-embedding-static", false);
+      cy.visit("/embedding/security");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByText("Published guest embeds").should("be.visible");
+        cy.findByText("Published dashboard").should("be.visible");
+      });
+    });
+  });
+});

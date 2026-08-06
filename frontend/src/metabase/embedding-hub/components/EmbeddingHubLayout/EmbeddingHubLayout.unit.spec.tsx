@@ -23,7 +23,7 @@ jest.mock("metabase/nav/components/AppSwitcher", () => ({
   AppSwitcher: () => null,
 }));
 
-const TAB_LABELS = ["Get started"];
+const TAB_LABELS = ["Get started", "Security"];
 
 type SetupOptions = {
   initialRoute?: string;
@@ -55,6 +55,7 @@ function setup({
           element={<div>{"Permissions wizard body"}</div>}
         />
       </Route>
+      <Route path="security" element={<div>{"Security body"}</div>} />
     </Route>,
     {
       withRouter: true,
