@@ -41,13 +41,7 @@ jest.mock("../../components/CandidateDefinition", () => ({
 const snapshot: UsageMetadataSnapshot = {
   id: 7,
   finished_at: "2026-07-24T10:00:00Z",
-  algorithm_version: 1,
   summary: {
-    candidate_count: 42,
-    measure_count: 42,
-    segment_count: 0,
-    metric_count: 0,
-    publish_table_count: 0,
     table_count: 1,
   },
 };
@@ -101,18 +95,9 @@ const candidate: UsageMetadataCandidateDetail = {
 };
 
 const refreshStatus: UsageMetadataRefreshStatus = {
-  snapshot: {
-    ...snapshot,
-    status: "succeeded",
-    trigger: "manual",
-    requested_by: 1,
-    error: null,
-    created_at: snapshot.finished_at,
-    started_at: snapshot.finished_at,
-  },
+  snapshot,
   active: null,
   failure: null,
-  fresh: true,
 };
 
 function setup(
@@ -276,15 +261,9 @@ describe("CleanupTablePage", () => {
       required_tables: [
         {
           id: 2,
-          database_id: 1,
-          database_name: "Sample Database",
+          database: { id: 1, name: "Sample Database" },
           schema: "PUBLIC",
-          name: "customers",
           display_name: "Customers",
-          description: null,
-          data_layer: null,
-          data_authority: null,
-          view_count: 10,
           is_published: false,
         },
       ],

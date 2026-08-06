@@ -96,7 +96,7 @@ export function CandidatePanelBody({
                       {table.display_name}
                     </Text>
                     <Text size="sm" c="text-secondary" truncate>
-                      {[table.database_name, table.schema]
+                      {[table.database.name, table.schema]
                         .filter(Boolean)
                         .join(" · ")}
                     </Text>

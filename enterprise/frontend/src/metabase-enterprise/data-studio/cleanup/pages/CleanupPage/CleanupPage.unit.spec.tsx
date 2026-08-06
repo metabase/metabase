@@ -17,7 +17,7 @@ import {
 import { Route } from "metabase/router";
 import type {
   UsageMetadataRefreshStatus,
-  UsageMetadataRun,
+  UsageMetadataRunState,
   UsageMetadataSnapshot,
   UsageMetadataTableSummary,
 } from "metabase-types/api";
@@ -28,32 +28,20 @@ import { CleanupPage } from "./CleanupPage";
 const snapshot: UsageMetadataSnapshot = {
   id: 7,
   finished_at: "2026-07-24T10:00:00Z",
-  algorithm_version: 1,
   summary: {
-    candidate_count: 6,
-    measure_count: 3,
-    segment_count: 3,
-    metric_count: 0,
-    publish_table_count: 0,
     table_count: 1,
   },
 };
 
-const refreshRun: UsageMetadataRun = {
-  ...snapshot,
-  status: "succeeded",
-  trigger: "manual",
-  requested_by: 1,
-  error: null,
-  created_at: snapshot.finished_at,
-  started_at: snapshot.finished_at,
+const refreshRun: UsageMetadataRunState = {
+  id: snapshot.id,
+  status: "running",
 };
 
 const refreshStatus: UsageMetadataRefreshStatus = {
-  snapshot: refreshRun,
+  snapshot,
   active: null,
   failure: null,
-  fresh: true,
 };
 
 const tableSummary: UsageMetadataTableSummary = {
@@ -104,7 +92,6 @@ function setup({
         ? {
             id: status.snapshot.id,
             finished_at: status.snapshot.finished_at ?? snapshot.finished_at,
-            algorithm_version: status.snapshot.algorithm_version,
             summary: status.snapshot.summary,
           }
         : null,
@@ -261,7 +248,6 @@ describe("CleanupPage", () => {
       snapshot: null,
       active: null,
       failure: null,
-      fresh: false,
     };
     setupStartUsageMetadataRefreshEndpoint({ run_id: 9 });
     setup({ status: emptyStatus, tables: [] });
@@ -281,8 +267,6 @@ describe("CleanupPage", () => {
         ...refreshRun,
         id: 8,
         status: "running",
-        summary: null,
-        finished_at: null,
       },
     };
     setupStartUsageMetadataRefreshEndpoint({ run_id: 9 });
@@ -313,8 +297,6 @@ describe("CleanupPage", () => {
           ...refreshRun,
           id: 6,
           status: "failed",
-          summary: null,
-          error: "Interrupted",
         },
       },
     });
@@ -335,8 +317,6 @@ describe("CleanupPage", () => {
           ...refreshRun,
           id: 8,
           status: "failed",
-          summary: null,
-          error: "Interrupted",
         },
       },
     });

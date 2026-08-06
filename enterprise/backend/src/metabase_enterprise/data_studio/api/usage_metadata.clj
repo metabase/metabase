@@ -34,19 +34,13 @@
 
 (mr/def ::snapshot-summary
   [:map
-   [:candidate_count     ms/IntGreaterThanOrEqualToZero]
-   [:measure_count       ms/IntGreaterThanOrEqualToZero]
-   [:segment_count       ms/IntGreaterThanOrEqualToZero]
-   [:metric_count        ms/IntGreaterThanOrEqualToZero]
-   [:publish_table_count ms/IntGreaterThanOrEqualToZero]
-   [:table_count         ms/IntGreaterThanOrEqualToZero]])
+   [:table_count ms/IntGreaterThanOrEqualToZero]])
 
 (mr/def ::snapshot
   [:map
-   [:id                ms/PositiveInt]
-   [:finished_at       :any]
-   [:algorithm_version ms/IntGreaterThanOrEqualToZero]
-   [:summary           [:maybe ::snapshot-summary]]])
+   [:id          ms/PositiveInt]
+   [:finished_at :any]
+   [:summary     [:maybe ::snapshot-summary]]])
 
 (mr/def ::database
   [:map
@@ -100,19 +94,13 @@
    [:distinct_source_count ms/IntGreaterThanOrEqualToZero]
    [:total_view_count      ms/IntGreaterThanOrEqualToZero]])
 
-(mr/def ::required-table
+(mr/def ::table-reference
   [:map
-   [:id             ms/PositiveInt]
-   [:database_id    ms/PositiveInt]
-   [:database_name  :string]
-   [:schema         [:maybe :string]]
-   [:name           :string]
-   [:display_name   :string]
-   [:description    [:maybe :string]]
-   [:data_layer     [:maybe :string]]
-   [:data_authority [:maybe :string]]
-   [:view_count     ms/IntGreaterThanOrEqualToZero]
-   [:is_published   :boolean]])
+   [:id           ms/PositiveInt]
+   [:schema       [:maybe :string]]
+   [:display_name :string]
+   [:is_published :boolean]
+   [:database     ::database]])
 
 (mr/def ::candidate-clause [:sequential :any])
 
@@ -207,7 +195,7 @@
     [:table                 ::table]
     [:suggested_name        :string]
     [:suggested_description [:maybe :string]]
-    [:required_tables       [:sequential ::required-table]]
+    [:required_tables       [:sequential ::table-reference]]
     [:definition            ::candidate-definition]
     [:creation_blockers     [:sequential ::creation-blocker]]
     [:dismissal             [:maybe ::candidate-dismissal]]
@@ -244,25 +232,16 @@
    [:candidate ::candidate-detail]
    [:entity    ::created-entity]])
 
-(mr/def ::run
+(mr/def ::run-state
   [:map
-   [:id                ms/PositiveInt]
-   [:status            [:enum :queued :running :succeeded :failed]]
-   [:trigger           [:enum :scheduled :manual]]
-   [:requested_by      [:maybe ms/PositiveInt]]
-   [:algorithm_version ms/IntGreaterThanOrEqualToZero]
-   [:summary           [:maybe ::snapshot-summary]]
-   [:error             [:maybe :string]]
-   [:created_at        :any]
-   [:started_at        [:maybe :any]]
-   [:finished_at       [:maybe :any]]])
+   [:id     ms/PositiveInt]
+   [:status [:enum :queued :running :failed]]])
 
 (mr/def ::refresh-status
   [:map
-   [:snapshot [:maybe ::run]]
-   [:active   [:maybe ::run]]
-   [:failure  [:maybe ::run]]
-   [:fresh    :boolean]])
+   [:snapshot [:maybe ::snapshot]]
+   [:active   [:maybe ::run-state]]
+   [:failure  [:maybe ::run-state]]])
 
 (mr/def ::start-refresh-response
   [:map
@@ -288,34 +267,19 @@
 (defn- snapshot-summary-response
   [summary]
   (when summary
-    {:candidate_count     (:candidate-count summary)
-     :measure_count       (:measure-count summary)
-     :segment_count       (:segment-count summary)
-     :metric_count        (:metric-count summary)
-     :publish_table_count (:publish-table-count summary)
-     :table_count         (:table-count summary)}))
+    {:table_count (:table-count summary)}))
 
 (defn- snapshot-response
   [run]
   (when run
-    {:id                (:id run)
-     :finished_at       (:finished_at run)
-     :algorithm_version (:algorithm_version run)
-     :summary           (snapshot-summary-response (:summary run))}))
+    {:id          (:id run)
+     :finished_at (:finished_at run)
+     :summary     (snapshot-summary-response (:summary run))}))
 
-(defn- run-response
+(defn- run-state-response
   [run]
   (when run
-    {:id                (:id run)
-     :status            (:status run)
-     :trigger           (:trigger run)
-     :requested_by      (:requested_by run)
-     :algorithm_version (:algorithm_version run)
-     :summary           (snapshot-summary-response (:summary run))
-     :error             (:error run)
-     :created_at        (:created_at run)
-     :started_at        (:started_at run)
-     :finished_at       (:finished_at run)}))
+    (select-keys run [:id :status])))
 
 (defn- dismissal-key
   [candidate]
@@ -392,17 +356,12 @@
 
 (defn- required-table-response
   [table]
-  {:id             (:id table)
-   :database_id    (:database-id table)
-   :database_name  (:database-name table)
-   :schema         (:schema table)
-   :name           (:name table)
-   :display_name   (:display-name table)
-   :description    (:description table)
-   :data_layer     (:data-layer table)
-   :data_authority (:data-authority table)
-   :view_count     (:view-count table)
-   :is_published   (:published? table)})
+  {:id           (:id table)
+   :schema       (:schema table)
+   :display_name (:display-name table)
+   :is_published (:published? table)
+   :database     {:id   (:database-id table)
+                  :name (:database-name table)}})
 
 (defn- candidate-presentation
   [{:keys [candidate_type semantic_details]}]
@@ -741,11 +700,10 @@
   "Return candidate refresh and snapshot status."
   []
   (api/check-superuser)
-  (let [{:keys [snapshot active failure fresh]} (candidate-service/refresh-status)]
-    {:snapshot (run-response snapshot)
-     :active   (run-response active)
-     :failure  (run-response failure)
-     :fresh    fresh}))
+  (let [{:keys [snapshot active failure]} (candidate-service/refresh-status)]
+    {:snapshot (snapshot-response snapshot)
+     :active   (run-state-response active)
+     :failure  (run-state-response failure)}))
 
 (api.macros/defendpoint :post "/refresh" :- ::start-refresh-response
   "Queue a candidate refresh."

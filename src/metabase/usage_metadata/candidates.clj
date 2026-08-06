@@ -75,13 +75,9 @@
 (defn refresh-status
   "Return the successful, active, and failed refresh state used by the API."
   []
-  (let [snapshot (latest-successful-run)]
-    {:snapshot snapshot
-     :active   (active-run)
-     :failure  (latest-failed-run)
-     :fresh    (boolean
-                (some-> (:finished_at snapshot)
-                        (t/after? (t/minus (t/offset-date-time) (t/hours 25)))))}))
+  {:snapshot (latest-successful-run)
+   :active   (active-run)
+   :failure  (latest-failed-run)})
 
 (defn- create-run!
   "Create a queued refresh run. Callers should use [[queue-refresh!]] so the active-run check is atomic."
