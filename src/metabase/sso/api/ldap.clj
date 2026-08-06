@@ -29,7 +29,6 @@
    _query-params
    settings :- [:map
                 [:ldap-port                          {:optional true} [:maybe
-                                                                       ;; treat empty string as nil
                                                                        {:decode/api (fn [x]
                                                                                       (when-not (= x "")
                                                                                         x))}
@@ -46,10 +45,8 @@
                 [:ldap-attribute-lastname            {:optional true} [:maybe :string]]
                 [:ldap-group-sync                    {:optional true} [:maybe :boolean]]
                 [:ldap-group-base                    {:optional true} [:maybe :string]]
-                ;; LDAP group DN -> Metabase group IDs, mirroring what the `ldap-group-mappings` setter accepts.
                 [:ldap-group-mappings                {:optional true} [:maybe [:map-of [:or :keyword :string]
                                                                                [:sequential pos-int?]]]]
-                ;; EE-only settings; the admin LDAP form submits `ldap-group-membership-filter` with the rest.
                 [:ldap-group-membership-filter       {:optional true} [:maybe :string]]
                 [:ldap-user-provisioning-enabled?    {:optional true} [:maybe :boolean]]
                 [:ldap-sync-user-attributes          {:optional true} [:maybe :boolean]]

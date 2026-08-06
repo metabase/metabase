@@ -261,11 +261,8 @@
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql}
-   :- [:map
+   :- [:map {:closed true}
        [:legacy-mbql {:optional true, :default false} [:maybe ms/BooleanValue]]
-       ;; `context` is ignored by this endpoint, but the frontend's `GetCardRequest` type declares it and real
-       ;; callers still send it -- the pinned-question loader sends `context=collection`. It gets a slot here so the
-       ;; map can stay closed. (`GetCardRequest` also declares `ignore_view`, but nothing sends it any more.)
        [:context {:optional true} [:maybe :string]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
         card (get-card resolved-id)]
@@ -530,7 +527,6 @@
   [:map
    [:name                   ms/NonBlankString]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
-   ;; TODO: `dataset_query` is an MBQL query typed loosely as a map; give it a real schema.
    [:dataset_query          ms/Map]
    ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
@@ -651,7 +647,6 @@
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
-   ;; TODO: `dataset_query` is an MBQL query typed loosely as a map; give it a real schema.
    [:dataset_query          {:optional true} [:maybe ms/Map]]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
@@ -896,8 +891,6 @@
 
 (def ^:private ParameterValues
   "Parameter values submitted alongside a Card query."
-  ;; TODO: `parameters` is a parameter list typed loosely; give it a real schema.
-  ;; [[::parameters.schema/parameter]] is used for other endpoints in this namespace but it breaks existing tests.
   [:sequential [:map-of :keyword :any]])
 
 (defn- metric-card-without-query-breakouts
@@ -1056,8 +1049,6 @@
                                     [:parameters   {:optional true} [:maybe ParameterValues]]
                                     [:ignore_cache {:optional true} [:maybe :boolean]]
                                     [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]
-                                    ;; ignored here, but the frontend sends one card-query body shape to both
-                                    ;; this route and `/api/card/:card-id/query`
                                     [:collection_preview {:optional true} [:maybe :boolean]]]]
   (let [card (api/check-404 (t2/select-one :model/Card card-id))]
     (when dashboard_id

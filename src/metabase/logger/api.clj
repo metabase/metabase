@@ -202,7 +202,6 @@
    {:keys [duration duration_unit log_levels]} :- [:map
                                                    [:duration :int]
                                                    [:duration_unit ::time-unit]
-                                                   ;; validated by hand below so we can return a friendly error message
                                                    [:log_levels :any]]]
   (api/check-superuser)
   (when-not (map? log_levels)

@@ -138,7 +138,6 @@
   Allows for filtering by context: views or selections"
   [_route-params
    {:keys [context include_metadata]} :- [:map
-                                          ;; repeated query param: `?context=views&context=selections`
                                           [:context (ms/QueryVectorOf [:enum :selections :views])]
                                           [:include_metadata {:default false} [:maybe ms/BooleanValue]]]]
   (when-not (seq context) (throw (ex-info "context is required." {})))

@@ -34,7 +34,6 @@
        [:status [:= 404]]
        [:body [:map [:error [:= "not_found"]]]]]]
   "Returns the OAuth Authorization Server Metadata (RFC 8414)."
-  ;; declared but not read: discovery clients may append a cache-buster
   [_route-params
    _query-params]
   (or (discovery-response)
@@ -66,7 +65,6 @@
 (api.macros/defendpoint :get "/oauth-protected-resource/api/metabase-mcp"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
-  ;; declared but not read: discovery clients may append a cache-buster
   [_route-params
    _query-params]
   (protected-resource-metadata "/api/metabase-mcp"))
@@ -74,7 +72,6 @@
 (api.macros/defendpoint :get "/oauth-protected-resource/api/mcp"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the legacy `/api/mcp` MCP alias."
-  ;; declared but not read: discovery clients may append a cache-buster
   [_route-params
    _query-params]
   (protected-resource-metadata "/api/mcp"))
@@ -85,7 +82,6 @@
 (api.macros/defendpoint :get "/oauth-protected-resource"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
-  ;; declared but not read: discovery clients may append a cache-buster
   [_route-params
    _query-params]
   (protected-resource-metadata "/api/metabase-mcp"))

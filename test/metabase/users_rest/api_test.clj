@@ -1240,7 +1240,6 @@
         (let [before (fetch-rasta)]
           (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
                                 (-> (fetch-rasta)
-                                    ;; `common_name` is derived, and PUT doesn't accept it
                                     (select-keys [:first_name :last_name :email])
                                     (assoc :is_superuser true)))
           (is (= before
@@ -1539,7 +1538,6 @@
   (testing "PUT /api/user/:id/reactivate"
     (testing "Test that reactivating a disabled account works"
       (mt/with-temp [:model/User user {:is_active false}]
-        ;; the endpoint takes no body -- it only flips `is_active`
         (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
         (is (true?
              (t2/select-one-fn :is_active :model/User :id (:id user)))

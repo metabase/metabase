@@ -11,11 +11,8 @@
 (api.macros/defendpoint :get "/"
   "Initiate Slack Connect SSO flow."
   [_route-params
-   ;; not closed: read off the raw request `:params`, declared here for documentation and typing only.
    _query-params :- [:map {:closed false}
                      [:redirect {:optional true} [:maybe :string]]]
-   ;; body left undeclared rather than closed: this is a browser-redirect entry point for a Slack-driven
-   ;; flow, so we don't assert on anything Slack or the browser might attach.
    _body request]
   (try
     (slack-connect-integration/sso-initiate request)
@@ -29,12 +26,9 @@
 (api.macros/defendpoint :get "/callback"
   "Slack Connect OIDC callback."
   [_route-params
-   ;; not closed: Slack controls this query string and may add params beyond these (e.g. `error`).
-   ;; Read off the raw request `:params`.
    _query-params :- [:map {:closed false}
                      [:code  {:optional true} [:maybe :string]]
                      [:state {:optional true} [:maybe :string]]]
-   ;; body left undeclared rather than closed: Slack drives this callback, so we don't assert on it.
    _body request]
   (try
     (slack-connect-integration/sso-callback request)

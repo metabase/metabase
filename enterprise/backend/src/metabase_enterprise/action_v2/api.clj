@@ -40,9 +40,9 @@
   ;; - action expressions (e.g., unsaved data app actions. might not need these with auto save)
   ;; - dashboard buttons (unless we deprecate them instead)
   [:or
-   [:map
+   [:map {:closed true}
     [:model-action-id ms/PositiveInt]]
-   [:map
+   [:map {:closed true}
     [:action-kw :keyword]
     [:mapping [:maybe :map]]]])
 
@@ -147,8 +147,6 @@
   [{}
    {}
    {:keys [action scope params input]}
-   ;; TODO: `params` is a parameter map and `input` a table row keyed by column name; both are typed
-   ;; loosely -- give them real schemas.
    :- [:map
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
@@ -187,8 +185,6 @@
   [{}
    {}
    {:keys [action scope inputs params]}
-   ;; TODO: `params` is a parameter map and each `inputs` entry a table row keyed by column name; both
-   ;; are typed loosely -- give them real schemas.
    :- [:map
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]

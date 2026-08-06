@@ -177,7 +177,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-;; `ignore_cache` is snake_case for consistency with what the FE sends to the other query-running endpoints
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:uuid/query"
@@ -187,7 +186,6 @@
                       [:uuid ms/UUIDString]]
    {:keys [parameters]} :- [:map
                             [:parameters   {:optional true} [:maybe ms/JSONString]]
-                            ;; sent by the FE, handled by the QP cache middleware rather than this endpoint
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)))
 
@@ -209,7 +207,6 @@
                                                       [:format_rows   {:default false} :boolean]
                                                       [:pivot_results {:default false} :boolean]
                                                       [:parameters    {:optional true} [:maybe ms/JSONString]]
-                                                      ;; sent by the FE download code, consumed by the CSV writer
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (process-query-for-card-with-public-uuid
    uuid
@@ -280,14 +277,12 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-;; `dashboard_load_id` is snake_case for consistency with what the FE sends to `GET /api/dashboard/:id`
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid"
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]
-   ;; sent by the FE to correlate the requests that make up one dashboard load; not used by this endpoint
    _query-params :- [:map
                      [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
   (public-sharing.validation/check-public-sharing-enabled)
@@ -335,7 +330,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-;; `ignore_cache` is snake_case for consistency with what the FE sends to the other query-running endpoints
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
@@ -347,7 +341,6 @@
                                           [:card-id     ms/PositiveInt]]
    {:keys [parameters]} :- [:map
                             [:parameters   {:optional true} [:maybe ms/JSONString]]
-                            ;; sent by the FE, handled by the QP cache middleware rather than this endpoint
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
@@ -383,7 +376,6 @@
                                                                                         [:sequential api.dashboard/ParameterWithID]]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]
-                                                      ;; sent by the FE download code, consumed by the CSV writer
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
@@ -439,7 +431,6 @@
    _query-params
    {:keys [parameters], :as _body} :- [:map
                                        [:parameters {:optional true} [:maybe [:map-of :keyword ActionParameterValue]]]
-                                       ;; sent by the FE alongside the parameters; not used by this endpoint
                                        [:modelId    {:optional true} [:maybe ms/PositiveInt]]]]
   (let [throttle-message (try
                            (throttle/check dashcard-execution-throttle dashcard-id)
@@ -553,7 +544,6 @@
   [{:keys [uuid param-key]} :- [:map
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
-   ;; URL-encoded, so always a string
    {:keys [value]}          :- [:map [:value :string]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
@@ -602,7 +592,6 @@
   [{:keys [uuid param-key]} :- [:map
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
-   ;; URL-encoded, so always a string
    {:keys [value]}          :- [:map [:value :string]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard (dashboard-with-uuid-for-param-values uuid)]
@@ -617,7 +606,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-;; `ignore_cache` is snake_case for consistency with what the FE sends to the other query-running endpoints
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/card/:uuid/query"
@@ -627,7 +615,6 @@
                       [:uuid ms/UUIDString]]
    {:keys [parameters]} :- [:map
                             [:parameters   {:optional true} [:maybe ms/JSONString]]
-                            ;; sent by the FE, handled by the QP cache middleware rather than this endpoint
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)
                                            :qp qp.pivot/run-pivot-query))
@@ -635,7 +622,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-;; `ignore_cache` is snake_case for consistency with what the FE sends to the other query-running endpoints
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
@@ -647,7 +633,6 @@
                                           [:dashcard-id ms/PositiveInt]]
    {:keys [parameters]} :- [:map
                             [:parameters   {:optional true} [:maybe ms/JSONString]]
-                            ;; sent by the FE, handled by the QP cache middleware rather than this endpoint
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
@@ -868,7 +853,6 @@
                                                                                                 ms/JSONString]]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]
-                                                      ;; sent by the FE download code, consumed by the CSV writer
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card (validate-card-in-public-document uuid card-id)]

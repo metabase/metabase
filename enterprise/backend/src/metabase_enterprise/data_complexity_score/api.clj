@@ -22,12 +22,12 @@
 (def ^:private Failure
   "Sub-score that couldn't be computed; carries only the failure message.
   (Named `Failure` rather than `Error` to avoid shadowing `java.lang.Error`.)"
-  [:map
+  [:map {:closed true}
    [:error string?]])
 
 (def ^:private Leaf
   "Computed leaf sub-score with a raw `:measurement` and its weighted `:score`."
-  [:map
+  [:map {:closed true}
    [:measurement  number?]
    [:score        nat-int?]
    [:rating       [:maybe Rating]]
@@ -35,7 +35,7 @@
 
 (def ^:private Grouping
   "Internal node whose `:score` is the rolled-up sum of its `:components` children."
-  [:map
+  [:map {:closed true}
    [:score        [:maybe nat-int?]]
    [:rating       [:maybe Rating]]
    [:rating_label [:maybe string?]]

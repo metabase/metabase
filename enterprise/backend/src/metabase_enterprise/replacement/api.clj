@@ -35,7 +35,7 @@
 
 (api.macros/defendpoint :post "/replace-source" :- [:map
                                                     [:status [:= 202]] ;; throws to return 409
-                                                    [:body [:map
+                                                    [:body [:map {:closed true}
                                                             [:run_id ::replacement.schema/run-id]]]]
   "Replace all usages of a source entity with a target entity asynchronously.
    Returns 202 with a run_id for polling. Returns 409 if a replacement is already running."
@@ -78,7 +78,7 @@
 
 (api.macros/defendpoint :post "/replace-model-with-transform" :- [:map
                                                                   [:status [:= 202]]
-                                                                  [:body [:map
+                                                                  [:body [:map {:closed true}
                                                                           [:run_id ::replacement.schema/run-id]]]]
   "Create a transform from a model, execute it, and replace all usages of the model
    with the output table. Un-persists the model and converts it to a saved question.
@@ -97,7 +97,6 @@
    :- [:map
        [:card_id              ::replacement.schema/source-entity-id]
        [:transform_name       :string]
-       ;; TODO: `transform_target` is a transform target typed loosely; give it a real schema.
        [:transform_target     [:map {:closed false}]]
        [:target_collection_id {:optional true} [:maybe ::replacement.schema/source-entity-id]]
        [:transform_tag_ids    {:optional true} [:maybe [:sequential pos-int?]]]]]

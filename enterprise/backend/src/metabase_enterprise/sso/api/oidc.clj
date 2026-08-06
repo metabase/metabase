@@ -17,7 +17,7 @@
 ;;; -------------------------------------------------- Schema --------------------------------------------------
 
 (def ^:private oidc-provider-create-schema
-  [:map
+  [:map {:closed true}
    [:key :string]
    [:login-prompt :string]
    [:issuer-uri :string]
@@ -26,13 +26,13 @@
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
-   [:group-sync {:optional true} [:map
+   [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
                                   [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
 
 (def ^:private oidc-provider-update-schema
-  [:map
+  [:map {:closed true}
    [:login-prompt {:optional true} :string]
    [:issuer-uri {:optional true} :string]
    [:client-id {:optional true} :string]
@@ -40,13 +40,13 @@
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
-   [:group-sync {:optional true} [:map
+   [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
                                   [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
 
 (def ^:private oidc-provider-response-schema
-  [:map
+  [:map {:closed true}
    [:key :string]
    [:login-prompt :string]
    [:issuer-uri :string]
@@ -55,7 +55,7 @@
    [:scopes {:optional true} [:sequential :string]]
    [:enabled {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
-   [:group-sync {:optional true} [:map
+   [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
                                   [:group-mappings {:optional true} [:map-of :string [:sequential :int]]]]]])
@@ -147,7 +147,7 @@
 
 ;; POST /api/ee/sso/oidc/check
 (def ^:private oidc-check-request-schema
-  [:map
+  [:map {:closed true}
    [:issuer-uri :string]
    [:client-id :string]
    [:client-secret {:optional true} [:maybe :string]]

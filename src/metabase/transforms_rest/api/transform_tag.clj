@@ -13,7 +13,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private TransformTagResponse
-  [:map
+  [:map {:closed true}
    [:id pos-int?]
    [:name [:or :string LocalizedString]]
    [:entity_id [:maybe :string]]

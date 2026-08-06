@@ -185,10 +185,10 @@
 (def SlackAppInfo
   "Malli schema for Slack app info response. Fields are nullable when
    Slack is not configured or the token doesn't provide app info."
-  [:map
+  [:map {:closed true}
    [:app_id  [:maybe ms/NonBlankString]]
    [:team_id [:maybe ms/NonBlankString]]
-   [:scopes  [:maybe [:map
+   [:scopes  [:maybe [:map {:closed true}
                       [:actual   [:sequential :string]]
                       [:required [:sequential :string]]
                       [:missing  [:sequential :string]]

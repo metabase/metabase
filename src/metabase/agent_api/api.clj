@@ -123,10 +123,7 @@
   "Health check endpoint for the Agent API."
   {:scope :unchecked}
   [_route-params
-   ;; Left open: this is the unauthenticated-shaped connectivity probe external agent/MCP clients
-   ;; hit directly, and a cache-busting or client-appended query param must not turn a health check
-   ;; into a 400. Nothing here is read.
-   _query-params :- [:map {:closed false}]]
+   _query-params]
   {:message "pong"})
 
 (defn- coerce-query-list
@@ -211,9 +208,7 @@
      carries several `:optional` keys (`:lib/metadata`, `:database`, `:settings`, …) that
      are not `[:maybe ...]` — for sound reasons unrelated to this endpoint. Recursing into
      them would force a wide schema change just to satisfy the lint at the agent boundary."
-  [:map
-   ;; TODO: `:query` is the external MBQL 5 payload, typed as a bare `:map` because deep validation
-   ;; happens downstream (see the two reasons above); give it a real schema.
+  [:map {:closed true}
    [:query {:tool/description (str "A Metabase MBQL 5 query as a JSON object. See the "
                                    "`construct_notebook_query` tool for the format reference.")}
     :map]
@@ -227,7 +222,7 @@
   "Response containing a base64-encoded MBQL query for use with /v1/execute. The optional
   `:prompt` echoes the request's prompt back so the MCP layer can store it with the
   handle (see `metabase.mcp.tools/make-store-construct-query-result`)."
-  [:map
+  [:map {:closed true}
    [:query  ms/NonBlankString]
    [:prompt {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -472,8 +467,8 @@
                          (:continuation_token m) :continuation
                          (string? (:query m))    :handle
                          :else                   :fresh))}
-   [:continuation [:map [:continuation_token ms/NonBlankString]]]
-   [:handle       [:map [:query ms/NonBlankString]]]
+   [:continuation [:map {:closed true} [:continuation_token ms/NonBlankString]]]
+   [:handle       [:map {:closed true} [:query ms/NonBlankString]]]
    [:fresh        ::construct-query-request]])
 
 (defn- native-marker?
@@ -1331,28 +1326,28 @@
   [:multi {:dispatch :action}
    ;; Branches are closed so an inapplicable key (e.g. `display_size` on `add_heading`, which is
    ;; always full-width) fails validation instead of being silently ignored.
-   ["add"         [:map
+   ["add"         [:map {:closed true}
                    [:action       [:= "add"]]
                    [:card_id      ms/PositiveInt]
                    [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]
                    [:tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
-   ["add_heading" [:map
+   ["add_heading" [:map {:closed true}
                    [:action [:= "add_heading"]]
                    [:text   ms/NonBlankString]
                    [:tab_id {:optional true} [:maybe ms/PositiveInt]]]]
-   ["add_text"    [:map
+   ["add_text"    [:map {:closed true}
                    [:action       [:= "add_text"]]
                    [:text         ms/NonBlankString]
                    [:display_size {:optional true} [:maybe [:enum "wide" "tall" "full"]]]
                    [:tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
-   ["update_text" [:map
+   ["update_text" [:map {:closed true}
                    [:action      [:= "update_text"]]
                    [:dashcard_id ms/PositiveInt]
                    [:text        ms/NonBlankString]]]
-   ["remove"      [:map
+   ["remove"      [:map {:closed true}
                    [:action      [:= "remove"]]
                    [:dashcard_id ms/PositiveInt]]]
-   ["move"        [:map
+   ["move"        [:map {:closed true}
                    [:action      [:= "move"]]
                    [:dashcard_id ms/PositiveInt]
                    [:position    [:enum "top" "bottom"]]]]])

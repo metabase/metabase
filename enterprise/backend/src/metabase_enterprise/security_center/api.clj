@@ -82,8 +82,7 @@
 
 (api.macros/defendpoint :post "/:advisory-id/acknowledge" :- AcknowledgeResponse
   "Acknowledge a security advisory. Stops repeat notifications."
-  [{:keys [advisory-id]} :- [:map
-                             [:advisory-id ms/NonBlankString]]]
+  [{:keys [advisory-id]} :- [:map [:advisory-id ms/NonBlankString]]]
   (api/check-superuser)
   (let [advisory (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id)]
     (api/check-404 advisory)
@@ -93,8 +92,7 @@
   "Acknowledge multiple security advisories. Skips already-acknowledged advisories."
   [_route-params
    _query-params
-   {:keys [advisory_ids]} :- [:map
-                              [:advisory_ids [:sequential ms/NonBlankString]]]]
+   {:keys [advisory_ids]} :- [:map [:advisory_ids [:sequential ms/NonBlankString]]]]
   (api/check-superuser)
   (api/check (seq advisory_ids) [400 "advisory_ids must be a non-empty array"])
   (mapv acknowledge-response

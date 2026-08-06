@@ -19,11 +19,11 @@
 ;;; TODO (Cam 10/3/25) -- move these schemas into a `.schemas` namespace to follow module shape guidelines
 
 (mr/def ::cache-strategy.base.oss
-  [:map
+  [:map {:closed true}
    [:type [:enum :nocache :ttl]]])
 
 (mr/def ::cache-strategy.base.ee
-  [:map
+  [:map {:closed true}
    [:type [:enum :nocache :ttl :duration :schedule]]])
 
 (mr/def ::cache-strategy.nocache
@@ -31,7 +31,7 @@
    [:type [:= :nocache]]])
 
 (mr/def ::cache-strategy.ttl
-  [:map
+  [:map {:closed true}
    [:type            [:= :ttl]]
    [:multiplier      ms/PositiveInt]
    [:min_duration_ms ms/IntGreaterThanOrEqualToZero]])

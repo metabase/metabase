@@ -25,7 +25,6 @@
    params :- [:maybe [:merge
                       task-history/FilterParams
                       task-history/SortParams
-                      ;; the empty closed map contributes only `{:closed true}` to the merged result;
                       [:map {:closed true}]]]]
   (perms/check-has-application-permission :monitoring)
   {:total  (task-history/total params)
@@ -248,7 +247,6 @@
    params :- [:maybe [:merge
                       ::RunFilterParams
                       ::RunSortParams
-                      ;; see `GET /` above: closes the merged map; `limit`/`offset` are stripped upstream
                       [:map {:closed true}]]]]
   (perms/check-has-application-permission :monitoring)
   (let [where-clause (build-run-where-clause params)

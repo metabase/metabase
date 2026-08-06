@@ -26,12 +26,9 @@
   "Schema for creating a new card - simplified version to avoid circular dependencies"
   [:map
    [:name ms/NonBlankString]
-   ;; TODO: `dataset_query` is an MBQL query typed loosely; give it a real schema.
    [:dataset_query ms/Map]
    [:entity_id {:optional true} [:maybe ms/NonBlankString]]
-   ;; TODO: `parameters` is a parameter list typed loosely; give it a real schema.
    [:parameters {:optional true} [:maybe [:sequential ms/Map]]]
-   ;; TODO: `parameter_mappings` is a parameter-mapping list typed loosely; give it a real schema.
    [:parameter_mappings {:optional true} [:maybe [:sequential ms/Map]]]
    [:description {:optional true} [:maybe ms/NonBlankString]]
    [:display ms/NonBlankString]
@@ -39,7 +36,6 @@
    [:result_metadata {:optional true} [:maybe [:sequential ms/Map]]]
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-   ;; accepted but normalized away: a document card is always a `:question` and never belongs to a dashboard.
    [:type {:optional true} [:maybe :keyword]]
    [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -477,13 +473,11 @@
     format-rows?   :format_rows
     :as            _body}
    :- [:map
-       ;; TODO: `parameters` is a parameter list typed loosely; give it a real schema.
        [:parameters    {:optional true} [:maybe [:or
                                                  [:sequential ms/Map]
                                                  ms/JSONString]]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]
-       ;; accepted for parity with the other `/query/:export-format` endpoints; not honoured yet
        [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (validate-card-in-document document-id card-id)
   (qp.card/process-query-for-card

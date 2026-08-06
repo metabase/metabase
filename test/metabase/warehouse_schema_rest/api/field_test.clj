@@ -190,7 +190,6 @@
         (doseq [[k v] {:name         "something else"
                        :table_id     1
                        :base_type    "type/Text"
-                       ;; pre-0.39 alias for `semantic_type`; never translated by this endpoint
                        :special_type "type/FK"}]
           (testing k
             (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {k v})))

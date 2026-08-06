@@ -341,7 +341,6 @@
 (def ^:private DimensionSelection
   ;; The FE sends snake_case dimension snapshots; the `:decode/api` rule kebab-cases them at the
   ;; `defendpoint` edge, so entries here are declared in the internal kebab-case shape the
-  ;; handler receives and persists.
   [:map {:closed    true
          :decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
    [:dimension-id   ms/UUIDString]
@@ -529,8 +528,6 @@
 (def ^:private ExploreFilterSpec
   "One segment filter stamped onto a block metric selection's `:explore_filters` vector."
   [:map
-   ;; TODO: `field_ref` is an MBQL field reference typed loosely as a sequence of anything; give it
-   ;; a real schema.
    [:field_ref     [:sequential :any]]
    [:value         :any]
    [:display_value {:optional true} [:maybe :string]]

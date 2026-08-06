@@ -42,7 +42,6 @@
    _query-params
    {:keys [name settings]} :- [:map
                                [:name     ms/NonBlankString]
-                               ;; open: the theme blob is free-form, stored and returned verbatim.
                                [:settings :map]]]
   (t2/insert-returning-instance! :model/EmbeddingTheme
                                  {:name name

@@ -17,12 +17,12 @@
 (def ^:private Slug (mu/with-api-error-message tenant/Slug
                                                (deferred-tru "invalid slug")))
 
-(def ^:private CreateTenantArguments [:map
+(def ^:private CreateTenantArguments [:map {:closed true}
                                       [:name ms/NonBlankString]
                                       [:attributes {:optional true} [:maybe tenant/Attributes]]
                                       [:slug Slug]])
 
-(def ^:private Tenant [:map
+(def ^:private Tenant [:map {:closed true}
                        [:id ms/PositiveInt]
                        [:name ms/NonBlankString]
                        [:slug Slug]
@@ -60,7 +60,7 @@
    tenant :- CreateTenantArguments]
   (create-tenant! tenant))
 
-(api.macros/defendpoint :get "/" :- [:map [:data [:sequential Tenant]]]
+(api.macros/defendpoint :get "/" :- [:map {:closed true} [:data [:sequential Tenant]]]
   "Get all tenants"
   [_
    {:keys [status]} :- [:map
@@ -76,7 +76,7 @@
                                                           "deactivated" [:= :is_active false])))))})
 
 (def ^:private UpdateTenantArguments
-  [:map
+  [:map {:closed true}
    [:name {:optional true} [:maybe ms/NonBlankString]]
    [:attributes {:optional true} [:maybe tenant/Attributes]]
    [:is_active {:optional true} [:maybe ms/BooleanValue]]])
@@ -110,7 +110,7 @@
 
 (api.macros/defendpoint :put "/:id" :- Tenant
   "Update a tenant, can set name, attributes, or whether this tenant is active."
-  [{id :id} :- [:map [:id ms/PositiveInt]]
+  [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    tenant :- UpdateTenantArguments]
   (api/check-403 api/*is-superuser?*)
@@ -121,7 +121,7 @@
 
 (api.macros/defendpoint :get "/:id" :- Tenant
   "Get info about a tenant"
-  [{id :id} :- [:map [:id ms/PositiveInt]]]
+  [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-403 (or api/*is-superuser?* (not (:tenant_id @api/*current-user*))))
   (present-tenant (t2/select-one :model/Tenant :id id)))
 

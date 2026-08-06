@@ -64,8 +64,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-;; the `:dbId`/`:include_hidden`/... params below are legacy names the frontend still sends; renaming them is a
-;; frontend change, not something this schema can fix
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema
                       :metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/"
@@ -90,11 +88,6 @@
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:can-write {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]
-       ;; Everything below is ignored by this endpoint, but the frontend's `TableListQuery` type still declares
-       ;; these leftovers from the pre-Data-Studio contract and real callers still send them -- e.g. the Python
-       ;; transform data picker sends `dbId`/`include_hidden`/`include_editable_data_model`, and the tenant
-       ;; permissions setup sends `dbId`. They get a slot here so the map can stay closed; the cleanup is to drop
-       ;; them from `TableListQuery` and its call sites.
        [:dbId {:optional true} [:maybe ms/PositiveInt]]
        [:schemaName {:optional true} [:maybe :string]]
        [:include_hidden {:optional true} [:maybe ms/BooleanValue]]
@@ -350,8 +343,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-;; the include flags keep the snake_case names they have on `/:id/query_metadata`, since that is the shape the
-;; frontend sends
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
@@ -359,9 +350,6 @@
   "Return metadata for the 'virtual' table for a Card."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   ;; the frontend types this route and `/:id/query_metadata` with a single `GetTableQueryMetadataRequest`, so a
-   ;; caller holding a `card__<id>` table id can send the include flags here too. They get a slot (this route
-   ;; ignores them: a virtual table has no hidden/sensitive fields to filter) so the map can stay closed.
    _query-params :- [:map
                      [:include_sensitive_fields    {:optional true} [:maybe ms/BooleanValue]]
                      [:include_hidden_fields       {:optional true} [:maybe ms/BooleanValue]]
@@ -510,7 +498,7 @@
    _body
    {:keys [multipart-params], :as _request} :- [:map {:closed false}
                                                 [:multipart-params
-                                                 [:map
+                                                 [:map {:closed true}
                                                   ["file"
                                                    [:map {:closed false}
                                                     [:filename :string]
@@ -538,7 +526,7 @@
    _body
    {:keys [multipart-params], :as _request} :- [:map {:closed false}
                                                 [:multipart-params
-                                                 [:map
+                                                 [:map {:closed true}
                                                   ["file"
                                                    [:map {:closed false}
                                                     [:filename :string]

@@ -300,7 +300,7 @@
    [:is_superuser :boolean]])
 
 (defn- paged-schema [row]
-  [:map
+  [:map {:closed true}
    [:data   [:sequential row]]
    [:total  :int]
    [:limit  [:maybe :int]]

@@ -30,8 +30,6 @@
   "Get all channels"
   [_route-params
    _query-params
-   ;; NOTE: `include_inactive` is read out of the JSON *body* of this GET, not out of the query string -- that is how
-   ;; the only callers (our own tests) send it. Closed: nothing sends anything else here.
    {:keys [include_inactive]} :- [:map
                                   [:include_inactive {:optional true} [:maybe {:default false} :boolean]]]]
   (->> (if include_inactive
@@ -86,7 +84,6 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   ;; `details` stays open: its shape is connection-specific and validated by the channel implementation
    body :- [:map
             [:name        {:optional true} [:maybe ms/NonBlankString]]
             [:description {:optional true} [:maybe ms/NonBlankString]]
@@ -123,7 +120,6 @@
   "Test a channel connection"
   [_route-params
    _query-params
-   ;; `details` stays open: its shape is connection-specific and validated by the channel implementation
    {:keys [type details]} :- [:map
                               [:type    ChannelType]
                               [:details :map]]]

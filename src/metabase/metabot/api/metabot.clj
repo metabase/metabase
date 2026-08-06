@@ -48,7 +48,7 @@
   "Update a metabot instance"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   metabot-updates :- [:map
+   metabot-updates :- [:map {:closed true}
                        [:use_verified_content {:optional true} :boolean]
                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
@@ -67,13 +67,13 @@
 
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
   :- [:multi {:dispatch :status}
-      [:generated              [:map
+      [:generated              [:map {:closed true}
                                 [:status       [:= :generated]]
                                 ;; `:generated` is only returned when total > 0 — see
                                 ;; [[metabot.suggested-prompts/generate-sample-prompts]].
                                 [:prompt_count pos-int?]]]
-      [:no-library-content     [:map [:status [:= :no-library-content]]]]
-      [:ai-produced-no-prompts [:map [:status [:= :ai-produced-no-prompts]]]]]
+      [:no-library-content     [:map {:closed true} [:status [:= :no-library-content]]]]
+      [:ai-produced-no-prompts [:map {:closed true} [:status [:= :ai-produced-no-prompts]]]]]
   "Remove any existing prompt suggestions for the Metabot with `id` and generate new ones.
    The response `:status` is `:generated` (with a `:prompt_count`) when prompts were created,
    `:no-library-content` when the Metabot has no models or metrics to summarize, or

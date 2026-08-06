@@ -53,7 +53,6 @@
   "Update multiple `Settings` values. If called by a non-superuser, only user-local settings can be updated."
   [_route-params
    _query-params
-   ;; keyed by Setting name; each value has its own per-Setting shape.
    settings :- [:map-of kebab-cased-keyword :any]]
   (with-setting-access-control
     (setting/set-many! settings))
@@ -80,8 +79,7 @@
   [{:keys [key]} :- [:map
                      [:key kebab-cased-keyword]]
    _query-params
-   ;; open: a Setting's value is arbitrary, so there is nothing to enumerate beyond `:value`.
-   {:keys [value]} :- [:map {:closed false} [:value :any]]]
+   {:keys [value]} :- [:map [:value :any]]]
   (with-setting-access-control
     (setting/set! key value))
   (add-settings-last-updated-cookie api/generic-204-no-content))

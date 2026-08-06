@@ -277,8 +277,6 @@
    Returns application/javascript with ETag and Cache-Control headers.
    In dev mode, proxies from `dev_bundle_url` if set."
   [{:keys [id], :as _route-params} :- [:map [:id ms/PositiveInt]]
-   ;; `v` is the cache-busting bundle hash that `plugin->runtime-response` bakes into `bundle_url`; we never read
-   ;; it here, it only has to be accepted. Open, since browsers and proxies may tack on their own params.
    _query-params :- [:map {:closed false}
                      [:v {:optional true} [:maybe :string]]]
    _body

@@ -919,8 +919,6 @@
    :- [:map
        [:name              ms/NonBlankString]
        [:engine            DBEngineString]
-       ;; TODO: `details` is the driver-defined connection property set -- every driver declares its own
-       ;; connection properties -- so it stays an open map.
        [:details           ms/Map]
        [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
        [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
@@ -982,9 +980,6 @@
    {{:keys [engine details]} :details} :- [:map
                                            [:details [:map
                                                       [:engine  DBEngineString]
-                                                      ;; TODO: `details` is the driver-defined connection property
-                                                      ;; set -- every driver declares its own connection properties --
-                                                      ;; so it stays an open map.
                                                       [:details [:map {:closed false}]]]]]]
   (api/check-superuser)
   (let [details-or-error (warehouses/test-connection-details engine details)]
@@ -1081,8 +1076,6 @@
        [:name               {:optional true} [:maybe ms/NonBlankString]]
        [:engine             {:optional true} [:maybe DBEngineString]]
        [:refingerprint      {:optional true} [:maybe :boolean]]
-       ;; TODO: `details` and `write_data_details` are the driver-defined connection property set --
-       ;; every driver declares its own connection properties -- so they stay open maps.
        [:details            {:optional true} [:maybe ms/Map]]
        [:write_data_details {:optional true} [:maybe ms/Map]]
        [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
@@ -1094,7 +1087,6 @@
        [:auto_run_queries   {:optional true} [:maybe :boolean]]
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
        [:provider_name      {:optional true} [:maybe :string]]
-       ;; TODO: `settings` is keyed by Database-local setting name, typed loosely; give it a real schema.
        [:settings           {:optional true} [:maybe ms/Map]]]]
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (when (some? write_data_details)

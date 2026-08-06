@@ -78,7 +78,6 @@
       (test-perms!
        :write
        (fn [snippet]
-         ;; try creating a copy of the Snippet under a different name
          (let [snippet-name       (mt/random-name)
                snippet-properties (-> snippet
                                       (select-keys [:content :description :collection_id])

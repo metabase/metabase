@@ -39,7 +39,7 @@
   "Update the Python library source code for user modules."
   [{:keys [path]} :- [:map [:path ms/NonBlankString]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:source :string]]]
   ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
   (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))

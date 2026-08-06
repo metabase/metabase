@@ -189,7 +189,6 @@
   [{:keys [action-id]} :- [:map
                            [:action-id ms/PositiveInt]]
    _query-params
-   ;; TODO: `parameters` is a parameter map keyed by parameter id, typed loosely; give it a real schema.
    {:keys [parameters]} :- [:map
                             [:parameters [:map-of :string :any]]]]
   (actions/check-actions-enabled! action-id)
@@ -232,7 +231,6 @@
   [{:keys [id]} :- [:map
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
-   ;; TODO: `parameters` is a parameter map keyed by parameter id, typed loosely; give it a real schema.
    {:keys [parameters], :as _body} :- [:maybe [:map
                                                [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
   (let [resolved-id (eid-translation/->id-or-404 :action id)

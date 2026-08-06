@@ -92,12 +92,9 @@
   sandbox is saved, but doesn't actually save the sandbox."
   [_route-params
    _query-params
-   ;; `group_id`/`attribute_remappings` ride along from the sandbox being edited; only the table/card
-   ;; pair is validated here.
    {:keys [table_id card_id]} :- [:map
                                   [:table_id                              ms/PositiveInt]
                                   [:card_id              {:optional true} [:maybe ms/PositiveInt]]
-                                  ;; TODO: accepted but unused by this endpoint; untyped. Give them real schemas.
                                   [:group_id             {:optional true} :any]
                                   [:attribute_remappings {:optional true} :any]]]
   (when card_id

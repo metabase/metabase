@@ -62,9 +62,6 @@
 
 ;;; TODO -- why don't we use [[metabase.util.malli.schema/Parameter]] for this? Are the parameters passed here
 ;;; different?
-;;;
-;;; TODO: `parameters` is a runtime parameter-override list typed loosely (only `:id` is checked); give it a real
-;;; schema.
 (def ParameterWithID
   "Schema for a parameter map with an string `:id`. This is the shape of runtime parameter *overrides* the FE sends
   when running a dashcard query or exporting a dashboard -- distinct from the stored parameter declarations
@@ -906,18 +903,15 @@
    [:col                                     ms/IntGreaterThanOrEqualToZero]
    [:card_id                {:optional true} [:maybe ms/PositiveInt]]
    [:action_id              {:optional true} [:maybe ms/PositiveInt]]
-   ;; like :id, a negative :dashboard_tab_id refers to a tab being created in the same request
    [:dashboard_tab_id       {:optional true} [:maybe int?]]
    [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
    [:visualization_settings {:optional true} [:maybe :map]]
    [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-   ;; only the :id of each series entry is persisted, the rest of the card is ignored
    [:series                 {:optional true} [:maybe [:sequential [:map
                                                                    [:id ms/PositiveInt]]]]]])
 
 (def ^:private UpdatedDashboardTab
   [:map
-   ;; id can be negative, it indicates a new tab and BE should create them
    [:id   ms/Int]
    [:name ms/NonBlankString]])
 
@@ -1421,7 +1415,6 @@
                                           [:dashcard-id  ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map
-                            ;; TODO: `parameters` is an action parameter-value map typed loosely; give it a real schema.
                             [:parameters {:optional true} [:maybe [:map-of :string :any]]]]]
   (api/read-check :model/Dashboard dashboard-id)
   (actions/fetch-values
@@ -1442,7 +1435,6 @@
                                           [:dashcard-id  ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map
-                            ;; TODO: `parameters` is an action parameter-value map typed loosely; give it a real schema.
                             [:parameters {:optional true} [:maybe [:map-of :string :any]]]]]
   (api/read-check :model/Dashboard dashboard-id)
   ;; Undo middleware string->keyword coercion
@@ -1464,7 +1456,6 @@
    {:keys [dashboard_load_id], :as body} :- [:map
                                              [:dashboard_load_id  {:optional true} [:maybe ms/NonBlankString]]
                                              [:parameters         {:optional true} [:maybe [:sequential ParameterWithID]]]
-                                             ;; echoed by the FE query runner alongside the route params
                                              [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
                                              [:ignore_cache       {:optional true} [:maybe ms/BooleanValue]]
                                              [:collection_preview {:optional true} [:maybe ms/BooleanValue]]]]
@@ -1498,12 +1489,9 @@
    :- [:map
        [:parameters      {:optional true} [:maybe [:or
                                                    [:sequential ParameterWithID]
-                                                   ;; support <form> encoded params for backwards compatibility... see
-                                                   ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
                                                    ms/JSONString]]]
        [:format_rows     {:default false} ms/BooleanValue]
        [:pivot_results   {:default false} ms/BooleanValue]
-       ;; sent by the FE download code, consumed by the CSV writer
        [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
             {:dashboard     (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
@@ -1537,7 +1525,6 @@
    _query-params
    body :- [:map
             [:parameters         {:optional true} [:maybe [:sequential ParameterWithID]]]
-            ;; echoed by the FE query runner alongside the route params
             [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
             [:dashboard_load_id  {:optional true} [:maybe ms/NonBlankString]]
             [:ignore_cache       {:optional true} [:maybe ms/BooleanValue]]

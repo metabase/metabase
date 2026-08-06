@@ -54,8 +54,7 @@
   [_route
    _query
    {:keys [branch force merge expected_branch]}
-   :- [:map
-       [:branch {:optional true} ms/NonBlankString]
+   :- [:map [:branch {:optional true} ms/NonBlankString]
        [:force {:optional true} :boolean]
        [:merge {:optional true} :boolean]
        ;; the branch the client believes is currently active; rejected if it disagrees with the
@@ -327,8 +326,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [name]} :- [:map
-                      [:name ms/NonBlankString]]]
+   {:keys [name]} :- [:map [:name ms/NonBlankString]]]
   (api/check-superuser)
   (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
     (api/check-400 (source/source-from-settings) "Source not configured")

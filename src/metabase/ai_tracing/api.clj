@@ -40,8 +40,7 @@
    served only when `MB_AI_EVAL_CAPTURE` is enabled."
   ;; Bound the length here too (not only via `trace-file`): `session-id` is a raw user-supplied path
   ;; segment, and `ait/max-session-id-length` is the single cap enforced at both write and read.
-  [{:keys [session-id]} :- [:map
-                            [:session-id [:string {:min 1, :max ait/max-session-id-length}]]]]
+  [{:keys [session-id]} :- [:map [:session-id [:string {:min 1, :max ait/max-session-id-length}]]]]
   (api/check-superuser)
   (let [f (trace-file session-id)]
     (api/check (and f (.exists ^File f)) [404 (tru "Eval trace not found")])

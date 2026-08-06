@@ -21,7 +21,7 @@
 
 (def ^:private LastRunResponse
   "Schema for a job's last run information."
-  [:map
+  [:map {:closed true}
    [:id pos-int?]
    [:job_id pos-int?]
    [:job_name {:optional true} [:maybe :string]]
@@ -36,11 +36,11 @@
    [:updated_at :any]])
 
 (def ^:private NextRunResponse
-  [:map
+  [:map {:closed true}
    [:start_time :any]])
 
 (def ^:private TransformJobResponse
-  [:map
+  [:map {:closed true}
    [:id pos-int?]
    [:name [:or :string LocalizedString]]
    [:description [:maybe [:or :string LocalizedString]]]
@@ -56,7 +56,7 @@
    [:next_run {:optional true} [:maybe NextRunResponse]]])
 
 (def ^:private CreatorResponse
-  [:map
+  [:map {:closed true}
    [:id pos-int?]
    [:email :string]
    [:date_joined {:optional true} :any]
@@ -127,7 +127,7 @@
     ;; Return with hydrated tag_ids
     (t2/hydrate job :tag_ids)))
 
-(api.macros/defendpoint :put "/active" :- [:map
+(api.macros/defendpoint :put "/active" :- [:map {:closed true}
                                            [:updated :int]
                                            [:failed :int]]
   "Activate or deactivate every transform job. Inactive jobs do not run on schedule. Manual runs
@@ -137,8 +137,7 @@
   error during the flip — the row update or Quartz write failed and was logged)."
   [_route-params
    _query-params
-   {:keys [active]} :- [:map
-                        [:active :boolean]]]
+   {:keys [active]} :- [:map [:active :boolean]]]
   (api/check-superuser)
   (log/info "Setting active =" active "on all transform jobs")
   (let [op         (if active transforms.core/activate-job! transforms.core/deactivate-job!)
@@ -212,8 +211,7 @@
 
 (api.macros/defendpoint :delete "/:job-id" :- nil
   "Delete a transform job."
-  [{:keys [job-id]} :- [:map
-                        [:job-id ms/PositiveInt]]]
+  [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Deleting transform job" job-id)
   (api/write-check (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids))
   (t2/delete! :model/TransformJob :id job-id)
@@ -222,14 +220,13 @@
 
 (api.macros/defendpoint :post "/:job-id/run" :- [:map
                                                  [:status [:= 202]]
-                                                 [:body [:map
+                                                 [:body [:map {:closed true}
                                                          [:message :any]
                                                          [:job_run_id [:maybe pos-int?]]]]]
   "Run a transform job manually. Returns a 202 with the created `job_run_id`, or a nil `job_run_id`
   when nothing was run (the job is already running, or has no transforms). By default, fresh
   pulled-in dependencies are skipped; pass `run_all` to force-refresh the whole plan."
-  [{:keys [job-id]} :- [:map
-                        [:job-id ms/PositiveInt]]
+  [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]
    _query-params
    {:keys [run_all]} :- [:map
                          [:run_all {:default false} :boolean]]]
@@ -293,7 +290,7 @@
           (t2/hydrate jobs :tag_ids :last_run))))
 
 (def ^:private JobRunResponse
-  [:map
+  [:map {:closed true}
    [:id pos-int?]
    [:job_id pos-int?]
    [:job_name {:optional true} [:maybe :string]]
@@ -307,14 +304,13 @@
    [:created_at :any]
    [:updated_at :any]])
 
-(api.macros/defendpoint :get "/:job-id/runs" :- [:map
+(api.macros/defendpoint :get "/:job-id/runs" :- [:map {:closed true}
                                                  [:data [:sequential JobRunResponse]]
                                                  [:limit pos-int?]
                                                  [:offset :int]
                                                  [:total :int]]
   "Get paginated run history for a transform job."
-  [{:keys [job-id]} :- [:map
-                        [:job-id ms/PositiveInt]]
+  [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]
    query-params :- [:map
                     [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout" "canceled"]]]
                     [:run-method {:optional true} [:maybe [:enum "manual" "cron"]]]

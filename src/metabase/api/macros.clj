@@ -309,10 +309,6 @@
    (mtx/default-value-transformer)
    {:name :api}
    {:name :normalize}
-   ;; A param map drops keys it doesn't declare rather than rejecting them, so that a client sending a field the
-   ;; endpoint has no use for is still served. A map that passes its extras on to something else says
-   ;; `{:closed false}`, which also exempts it from stripping. Runs last: `:normalize` renames keys into the ones the
-   ;; schema declares, so stripping any earlier would drop them before they are recognized.
    (mtx/strip-extra-keys-transformer)))
 
 (def ^:private encode-transformer
@@ -386,10 +382,7 @@
                                (when (seq path)
                                  (or (malli.util/get-in schema path)
                                      (recur (pop path)))))]
-           ;; a `:malli.core/extra-key` error against a `{:closed true}` map has no schema at its path to describe.
-           (assoc-in m error-path (if nested-schema
-                                    (umd/describe nested-schema)
-                                    "disallowed key"))))))
+           (assoc-in m error-path (umd/describe nested-schema))))))
    {}
    (:errors explanation)))
 

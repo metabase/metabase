@@ -82,7 +82,6 @@
   [:map
    [:name                   ms/NonBlankString]
    [:description            {:optional true} [:maybe :string]]
-   ;; TODO: `dataset_query` is an MBQL query typed loosely as a map; give it a real schema.
    [:dataset_query          :map]
    [:display                ms/NonBlankString]
    [:visualization_settings {:optional true} [:maybe :map]]

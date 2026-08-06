@@ -53,7 +53,7 @@
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
 (def ^:private DataAppResponse
-  [:map
+  [:map {:closed true}
    [:id              ms/PositiveInt]
    [:name            ms/NonBlankString]
    [:display_name    ms/NonBlankString]
@@ -184,9 +184,6 @@
    `If-None-Match` against the content-hash ETag with a 304."
   [{:keys [slug]} :- [:map
                       [:slug ms/NonBlankString]]
-   ;; not closed: the bundle URL is fetched directly by the browser (see the data-apps runtime
-   ;; `loader.ts`, which appends a `t=<epoch-ms>` cache-buster), so extra cache-busting or
-   ;; proxy-injected params must not turn into a 400 on a static asset route.
    _query-params :- [:map {:closed false}
                      [:t {:optional true} [:maybe :string]]]
    _body

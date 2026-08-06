@@ -59,21 +59,21 @@
   [:enum :failing :successful])
 
 (mr/def ::run-summary
-  [:map
+  [:map {:closed true}
    [:at     ms/TemporalInstant]
    [:error  [:maybe :string]]
    [:status ::run-status]])
 
 (mr/def ::channel-entry
   "One channel delivery attempt within a tick."
-  [:map
+  [:map {:closed true}
    [:channel_type :keyword]
    [:status       ::run-status]
    [:error        [:maybe :string]]])
 
 (mr/def ::tick-send-entry
   "One tick's worth of sends, rolled up across all channels that fired in that tick."
-  [:map
+  [:map {:closed true}
    [:at       ms/TemporalInstant]
    [:status   ::run-status]
    [:error    [:maybe :string]]
@@ -715,8 +715,7 @@
   triggers. Recipient emails and `:event/notification-update` audit events are
   published via the shared [[notification-api/publish-notification-update!]] helper so this
   endpoint's side-effect contract can't drift from `PUT /api/notification/:id`."
-  [_route
-   _query
+  [_route _query
    {:keys [notification_ids action creator_id]} :-
    [:map
     [:notification_ids [:sequential {:min 1} ms/PositiveInt]]

@@ -1010,7 +1010,6 @@
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
     (testing "`enable_embedding` is dropped while creating a Card (this must be done via `PUT /api/card/:id` instead)"
-      ;; should be dropped regardless of the value of the `enable-embedding` Setting.
       (doseq [enable-embedding? [true false]]
         (mt/with-temporary-setting-values [enable-embedding-static enable-embedding?]
           (mt/with-model-cleanup [:model/Card]
@@ -1030,7 +1029,6 @@
 (deftest create-card-disallow-setting-embedding-type-test
   (testing "POST /api/card"
     (testing "`embedding_type` is dropped while creating a Card (this must be done via `PUT /api/card/:id` instead)"
-      ;; should be dropped regardless of the value of the `embedding-type` Setting.
       (doseq [embedding-type [true false]]
         (mt/with-temporary-setting-values [enable-embedding-static embedding-type]
           (mt/with-model-cleanup [:model/Card]
@@ -1196,7 +1194,6 @@
                       card))
               (mt/user-http-request
                :crowberto :put 200 (str "card/" (u/the-id card))
-               ;; the query and metadata are re-sent unchanged, which is what must not trigger a recompute
                {:dataset_query       (:dataset_query card)
                 :result_metadata     (:result_metadata card)
                 :description         "a change that doesn't change the query"

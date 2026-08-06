@@ -214,10 +214,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/Users"
   "Fetch a list of users."
-  [_route-params :- [:map {:closed false}]
+  [_route-params
    {start-index :startIndex, c :count, filter-param :filter}
-   ;; not closed: RFC 7644 §3.4.2 allows `attributes`, `excludedAttributes`, `sortBy` and `sortOrder` on any list
-   ;; query and IdPs do send them. We ignore them, so they are not declared here.
    :- [:map {:closed false}
        [:startIndex {:optional true} [:maybe ms/PositiveInt]]
        [:count      {:optional true} [:maybe ms/PositiveInt]]
@@ -252,8 +250,7 @@
   "Fetch a single user."
   [{:keys [id]} :- [:map {:closed false}
                     [:id ms/NonBlankString]]
-   ;; not closed, see `POST /Users`
-   _query-params :- [:map {:closed false}]]
+   _query-params]
   (with-prometheus-counters
     (-> (get-user-by-entity-id id)
         (t2/hydrate :scim_user_group_memberships)
@@ -265,10 +262,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/Users"
   "Create a single user."
-  [_route-params :- [:map {:closed false}]
-   ;; not closed: RFC 7644 §3.9 lets a client send `attributes`/`excludedAttributes` on any operation. We ignore
-   ;; them, so nothing is declared here.
-   _query-params :- [:map {:closed false}]
+  [_route-params
+   _query-params
    scim-user :- SCIMUser]
   (with-prometheus-counters
     (let [mb-user (scim-user->mb scim-user)
@@ -290,8 +285,7 @@
   "Update a user."
   [{:keys [id]} :- [:map {:closed false}
                     [:id ms/NonBlankString]]
-   ;; not closed, see `POST /Users`
-   _query-params :- [:map {:closed false}]
+   _query-params
    scim-user :- SCIMUser]
   (with-prometheus-counters
     (let [updates      (scim-user->mb scim-user)
@@ -334,8 +328,7 @@
   "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches."
   [{:keys [id]} :- [:map {:closed false}
                     [:id ms/NonBlankString]]
-   ;; not closed, see `POST /Users`
-   _query-params :- [:map {:closed false}]
+   _query-params
    patch-ops :- UserPatch]
   (with-prometheus-counters
     (t2/with-transaction [_conn]
@@ -415,9 +408,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/Groups"
   "Fetch a list of groups."
-  [_route-params :- [:map {:closed false}]
+  [_route-params
    {start-index :startIndex, c :count, filter-param :filter}
-   ;; not closed, see `GET /Users`
    :- [:map {:closed false}
        [:startIndex {:optional true} [:maybe ms/PositiveInt]]
        [:count      {:optional true} [:maybe ms/PositiveInt]]
@@ -453,8 +445,7 @@
   "Fetch a single group."
   [{:keys [id]} :- [:map {:closed false}
                     [:id ms/NonBlankString]]
-   ;; not closed, see `POST /Users`
-   _query-params :- [:map {:closed false}]]
+   _query-params]
   (with-prometheus-counters
     (-> (get-group-by-entity-id id)
         (t2/hydrate :scim_group_members)
@@ -477,9 +468,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/Groups"
   "Create a single group, and populates it if necessary."
-  [_route-params :- [:map {:closed false}]
-   ;; not closed, see `POST /Users`
-   _query-params :- [:map {:closed false}]
+  [_route-params
+   _query-params
    scim-group :- SCIMGroup]
   (with-prometheus-counters
     (let [group-name (:displayName scim-group)
@@ -503,8 +493,7 @@
   "Update a group."
   [{:keys [id]} :- [:map {:closed false}
                     [:id ms/NonBlankString]]
-   ;; not closed, see `POST /Users`
-   _query-params :- [:map {:closed false}]
+   _query-params
    scim-group :- SCIMGroup]
   (with-prometheus-counters
     (let [group-name (:displayName scim-group)
@@ -527,8 +516,7 @@
   "Delete a group."
   [{:keys [id]} :- [:map {:closed false}
                     [:id ms/NonBlankString]]
-   ;; not closed, see `POST /Users`
-   _query-params :- [:map {:closed false}]]
+   _query-params]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
       (t2/delete! :model/PermissionsGroup (u/the-id group))

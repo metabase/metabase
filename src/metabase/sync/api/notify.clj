@@ -113,8 +113,6 @@
    {:keys [schema_name table_name]} :- [:map
                                         [:schema_name ms/NonBlankString]
                                         [:table_name  ms/NonBlankString]
-                                        ;; accepted (callers send it alongside the other notify endpoints) but
-                                        ;; ignored: finding and syncing a new table is always synchronous.
                                         [:synchronous? {:optional true} [:maybe ms/BooleanValue]]]]
   (api/let-404 [database (t2/select-one :model/Database :id id)]
     (if-not (t2/select-one :model/Table :db_id id :name table_name :schema schema_name)

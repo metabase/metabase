@@ -1432,7 +1432,6 @@
                 (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today"
                                       :calculate_available_models true))))
       (testing "works with others filter too"
-        ;; narrower than the unfiltered set above: table/collection/database have no creator to match
         (is (= #{"dashboard" "dataset" "action" "card" "metric" "measure"}
                (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today" :created_by (mt/user->id :rasta)
                                          :calculate_available_models true)

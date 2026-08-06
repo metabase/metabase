@@ -46,7 +46,7 @@
    _query-params
    _body
    {{collection-id "collection_id", file "file"} :multipart-params, :as _request}
-   :- [:map {:closed false}
+   :- [:map
        [:multipart-params
         [:map {:closed true}
          ["collection_id" [:maybe
@@ -54,7 +54,7 @@
                                           (when-not (= collection-id "root")
                                             collection-id))}
                            pos-int?]]
-         ["file" [:map {:closed false}
+         ["file" [:map
                   [:filename :string]
                   [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway

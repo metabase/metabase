@@ -153,7 +153,6 @@
   [_route-params
    {:keys [fail]} :- [:map
                       [:fail {:default false} ms/BooleanValue]]
-   ;; the body is echoed back verbatim, so any JSON payload is accepted.
    body :- :any]
   (if fail
     {:status 400

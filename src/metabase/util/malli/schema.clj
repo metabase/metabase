@@ -215,8 +215,7 @@
    (deferred-tru "value must be a valid entity type (keyword or string).")))
 
 (def Map
-  "Schema for a valid map. Open, since it constrains nothing about the keys: an API param typed this way is passed
-  through as it arrived, so stripping it would empty it."
+  "Schema for a valid map. Open: it constrains nothing about the keys, so its contents pass through as they arrived."
   (mu/with-api-error-message
    [:map {:closed false}]
    (deferred-tru "Value must be a map.")))

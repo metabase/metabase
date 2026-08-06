@@ -13,7 +13,5 @@
   [_route-params
    _query-params
    {:keys [entity_ids]} :- [:map
-                            ;; keyed by API model name; [[eid-translation/model->entity-ids->ids]] rejects unknown
-                            ;; models with the list of allowed ones.
                             [:entity_ids [:map-of :keyword [:sequential :string]]]]]
   {:entity_ids (eid-translation/model->entity-ids->ids entity_ids)})

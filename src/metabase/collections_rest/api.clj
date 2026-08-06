@@ -1334,9 +1334,8 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [card_ids]} :- [:maybe
-                          [:map
-                           [:card_ids {:optional true}
-                            [:set ms/PositiveInt]]]]]
+                          [:map [:card_ids {:optional true}
+                                 [:set ms/PositiveInt]]]]]
   (api/read-check :model/Collection id)
   {:moved (move-dashboard-question-candidates id card_ids)})
 
@@ -1345,9 +1344,8 @@
   [_route-params
    _query-params
    {:keys [card_ids]} :- [:maybe
-                          [:map
-                           [:card_ids {:optional true}
-                            [:set ms/PositiveInt]]]]]
+                          [:map [:card_ids {:optional true}
+                                 [:set ms/PositiveInt]]]]]
   {:moved (move-dashboard-question-candidates nil card_ids)})
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
@@ -1610,8 +1608,6 @@
    {:keys [skip-graph force]} :- [:map
                                   [:force      {:default false} [:maybe ms/BooleanValue]]
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]]
-   ;; `:groups` is keyed dynamically by group ID then collection ID; it is decoded and validated
-   ;; against [[PermissionsGraph]] below.
    {:keys [namespace revision groups]} :- [:map
                                            [:namespace {:optional true} [:maybe ms/NonBlankString]]
                                            [:revision  {:optional true} [:maybe ms/Int]]

@@ -33,7 +33,7 @@
   [:enum "none" "global-schedule"])
 
 (def ^:private CreatorResponse
-  [:map
+  [:map {:closed true}
    [:id pos-int?]
    [:email :string]
    [:first_name [:maybe :string]]
@@ -47,7 +47,7 @@
    [:date_joined {:optional true} :any]])
 
 (def ^:private OwnerResponse
-  [:map
+  [:map {:closed true}
    [:id {:optional true} pos-int?]
    [:email :string]
    [:first_name {:optional true} [:maybe :string]]
@@ -55,7 +55,7 @@
    [:common_name {:optional true} [:maybe :string]]])
 
 (def ^:private TransformLastRunResponse
-  [:map
+  [:map {:closed true}
    [:id pos-int?]
    [:transform_id pos-int?]
    [:run_method :keyword]
@@ -75,7 +75,7 @@
    [:metered_as {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
-  [:map
+  [:map {:closed true}
    [:id pos-int?]
    [:name :string]
    [:description [:maybe :string]]
@@ -110,7 +110,7 @@
    [:requestable_indexes {:optional true} [:maybe :metabase.driver/supported-index-methods]]])
 
 (def ^:private TransformRunResponse
-  [:map
+  [:map {:closed true}
    [:id pos-int?]
    [:transform_id [:maybe pos-int?]]
    [:run_method :keyword]
@@ -129,7 +129,7 @@
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
    [:metered_as {:optional true} [:maybe :string]]
    ;; Transform can have id/name when exists, or be nil when deleted
-   [:transform {:optional true} [:maybe [:map
+   [:transform {:optional true} [:maybe [:map {:closed true}
                                          [:id {:optional true} pos-int?]
                                          [:name {:optional true} :string]
                                          [:deleted {:optional true} :boolean]
@@ -171,7 +171,6 @@
    body :- [:map
             [:name :string]
             [:description {:optional true} [:maybe :string]]
-            ;; TODO: `source` carries an MBQL/native query typed loosely; give it a real schema.
             [:source ::transforms.schema/transform-source]
             [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
@@ -207,7 +206,7 @@
     (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_execute)
          transforms.u/add-source-readable)))
 
-(api.macros/defendpoint :get "/run" :- [:map
+(api.macros/defendpoint :get "/run" :- [:map {:closed true}
                                         [:data [:sequential TransformRunResponse]]
                                         [:limit pos-int?]
                                         [:offset :int]
@@ -237,7 +236,7 @@
   is the id of the associated job/transform (nil if it was deleted) and `name` its name — live if
   it still exists, otherwise the name snapshotted at run start. `direction` and `transform_count`
   (the number of transforms the run's plan selected to run) are set only for DAG runs."
-  [:map
+  [:map {:closed true}
    [:run_type [:enum :job :dag :transform]]
    [:id pos-int?]
    [:entity_id [:maybe pos-int?]]
@@ -252,7 +251,7 @@
    [:message [:maybe :string]]
    [:user_id [:maybe pos-int?]]])
 
-(api.macros/defendpoint :get "/runs" :- [:map
+(api.macros/defendpoint :get "/runs" :- [:map {:closed true}
                                          [:data [:sequential RunSummaryResponse]]
                                          [:limit pos-int?]
                                          [:offset :int]
@@ -298,7 +297,6 @@
    body :- [:map
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
-            ;; TODO: `source` carries an MBQL/native query typed loosely; give it a real schema.
             [:source {:optional true} ::transforms.schema/transform-source]
             [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
@@ -368,7 +366,7 @@
 
 (api.macros/defendpoint :post "/:id/run" :- [:map
                                              [:status [:= 202]]
-                                             [:body [:map
+                                             [:body [:map {:closed true}
                                                      [:message :any]
                                                      [:run_id [:maybe pos-int?]]]]]
   "Run a transform."
@@ -378,7 +376,7 @@
 
 (api.macros/defendpoint :post "/:id/run-dag" :- [:map
                                                  [:status [:= 202]]
-                                                 [:body [:map
+                                                 [:body [:map {:closed true}
                                                          [:message :any]
                                                          [:dag_run_id [:maybe pos-int?]]]]]
   "Trigger a DAG-reprocess run starting from a single transform: runs the transform and every
@@ -402,7 +400,7 @@
                                    :user-id       api/*current-user-id*
                                    :start-promise start-promise}))))
 
-(api.macros/defendpoint :get "/:id/dag-transforms" :- [:sequential [:map
+(api.macros/defendpoint :get "/:id/dag-transforms" :- [:sequential [:map {:closed true}
                                                                     [:id pos-int?]
                                                                     [:name :string]]]
   "Preview the transforms a DAG reprocess from this transform would run (see `POST /:id/run-dag`),

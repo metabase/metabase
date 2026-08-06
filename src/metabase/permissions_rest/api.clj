@@ -89,9 +89,6 @@
    {:keys [skip-graph force]} :- [:map
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]
                                   [:force      {:default false} [:maybe ms/BooleanValue]]]
-   ;; `:groups` is keyed dynamically by group ID, then database ID, schema name and table ID;
-   ;; `:sandboxes`/`:impersonations` are EE payloads validated by the EE code below. Body `:force` is
-   ;; accepted for backwards compatibility, but the query parameter is what the handler reads.
    body :- [:map
             [:groups                          :map]
             [:revision       {:optional true} [:maybe ms/Int]]
@@ -365,8 +362,6 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   ;; `group_id`/`user_id` ride along from the membership row the caller is editing; neither is
-   ;; updatable here.
    {:keys [is_group_manager]} :- [:map
                                   [:is_group_manager                  :boolean]
                                   [:group_id         {:optional true} :any]

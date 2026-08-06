@@ -26,12 +26,8 @@
   schema cannot dispatch on the `:operation-id` route param -- the operation itself rejects parameters that
   don't belong to it. Adding an operation to the allowlists above means adding its parameters here."
   [:or {:decode/api {:enter m.util/deep-kebab-keys}}
-   ;; mb-plan-trial-up, mb-plan-trial-up-available, list-plans, list-addons: no parameters. Also the empty
-   ;; body that every operation accepts.
    [:map {:closed true}]
-   ;; get-plan
    [:map [:plan-alias ms/NonBlankString]]
-   ;; mb-plan-change-plan, mb-plan-change-plan-preview
    [:map
     [:new-plan-alias  ms/NonBlankString]
     [:force-end-trial {:optional true} :boolean]]])

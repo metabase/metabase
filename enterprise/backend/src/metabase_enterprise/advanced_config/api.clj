@@ -32,10 +32,10 @@
    _query-params
    _body
    {{config "config"} :multipart-params, :as _request}
-   :- [:map {:closed false}
+   :- [:map
        [:multipart-params
-        [:map {:closed false}
-         ["config" [:map {:closed false}
+        [:map
+         ["config" [:map
                     [:filename :string]
                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (api/check-superuser)

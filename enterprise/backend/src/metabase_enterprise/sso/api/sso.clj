@@ -38,15 +38,11 @@
 (api.macros/defendpoint :get "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [_route-params
-   ;; not closed: an IdP-initiated login may append its own params. The handlers read these off the raw
-   ;; request `:params`, so they are declared here for documentation and typing only.
    _query-params :- [:map {:closed false}
                      [:jwt              {:optional true} [:maybe :string]]
                      [:preferred_method {:optional true} [:maybe :string]]
                      [:redirect         {:optional true} [:maybe :string]]
                      [:return_to        {:optional true} [:maybe :string]]]
-   ;; body deliberately left unvalidated: this is a browser-redirect target driven by the IdP, and a rejected
-   ;; request here is a broken login rather than a caught bug.
    _body request]
   (try
     (sso.i/sso-get request)
@@ -75,13 +71,9 @@
 (api.macros/defendpoint :post "/"
   "Route the SSO backends call with successful login details"
   [_route-params
-   ;; not closed: the SAML IdP POSTs these form-encoded and may add its own. The handlers read them off the
-   ;; raw request `:params`/`:body`, so they are declared here for documentation and typing only.
    _query-params :- [:map {:closed false}
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]
-   ;; not closed either: a form-encoded IdP POST arrives here as body params (see `api.macros/request-body`), so the
-   ;; SAML fields can show up in the body as well as the query string.
    _body :- [:maybe [:map {:closed false}
                      [:jwt          {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
@@ -168,13 +160,10 @@
 (api.macros/defendpoint :post "/handle_slo"
   "Handles client confirmation of saml logout via slo"
   [_route-params
-   ;; not closed: the IdP POSTs these form-encoded and may add its own. Read off the raw request `:params`.
    _query-params :- [:map {:closed false}
                      [:SAMLRequest  {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
                      [:RelayState   {:optional true} [:maybe :string]]]
-   ;; not closed for the same reason: an HTTP-POST-binding logout request arrives form-encoded, which
-   ;; `api.macros/request-body` turns into body params.
    _body :- [:maybe [:map {:closed false}
                      [:SAMLRequest  {:optional true} [:maybe :string]]
                      [:SAMLResponse {:optional true} [:maybe :string]]
@@ -200,10 +189,8 @@
   "Initiate OIDC SSO for a specific provider."
   [{provider-key :key} :- [:map
                            [:key ProviderKey]]
-   ;; not closed: callers may append their own params to the login link. Read off the raw request `:params`.
    _query-params :- [:map {:closed false}
                      [:redirect {:optional true} [:maybe :string]]]
-   ;; body deliberately left unvalidated, see `GET /`
    _body request]
   (try
     (oidc-integration/sso-initiate provider-key request)
@@ -218,12 +205,9 @@
   "OIDC callback for a specific provider."
   [{provider-key :key} :- [:map
                            [:key ProviderKey]]
-   ;; not closed: the IdP controls this query string and adds provider-specific params (`iss`, `session_state`,
-   ;; `error`, ...). Read off the raw request `:params`.
    _query-params :- [:map {:closed false}
                      [:code  {:optional true} [:maybe :string]]
                      [:state {:optional true} [:maybe :string]]]
-   ;; body deliberately left unvalidated, see `GET /`
    _body request]
   (try
     (oidc-integration/sso-callback provider-key request)

@@ -331,7 +331,6 @@
                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                          [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
                                          [:parameters          {:optional true} [:maybe [:sequential :map]]]
-                                         ;; legacy alert fields, read when this is an alert rather than a subscription
                                          [:alert_condition     {:optional true} [:maybe models.pulse/AlertConditions]]
                                          [:alert_above_goal    {:optional true} [:maybe :boolean]]
                                          [:alert_first_only    {:optional true} [:maybe :boolean]]]

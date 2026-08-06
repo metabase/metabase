@@ -186,7 +186,6 @@
   [_route-params
    _query-params
    ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
-   ;; reads it from the raw body to decide session-vs-permanent cookie.
    {:keys [username password]} :- [:map
                                    [:username ms/NonBlankString]
                                    [:password ms/NonBlankString]
@@ -413,7 +412,6 @@
   [_route-params
    _query-params
    ;; `:remember` is not bound here but is part of the contract: `request/set-session-cookies`
-   ;; reads it from the raw body to decide session-vs-permanent cookie.
    {:keys [token]} :- [:map
                        [:token    ms/NonBlankString]
                        [:remember {:optional true} [:maybe :boolean]]]

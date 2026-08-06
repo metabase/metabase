@@ -420,7 +420,6 @@
              (testing "on update"
                (mt/with-temp [:model/Pulse {pulse-id :id} {:name          "Test Pulse"
                                                            :dashboard_id  dashboard-id}]
-                 ;; PUT doesn't accept `dashboard_id` -- a subscription's dashboard can't be reassigned
                  (let [pulse (dissoc pulse :dashboard_id)]
                    (testing "fail if recipients does not match allowed domains"
                      (is (= "The following email addresses are not allowed: ngoc@metabase.com, ngoc@metaba.be"
