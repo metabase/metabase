@@ -831,9 +831,13 @@
       (prune-non-closed-measure-candidates! run-id)
       (materialize-candidate-families! run-id)
       (let [summary (run-summary run-id)]
-        (t2/update! :model/UsageMetadataCandidateRun run-id
-                    {:status :succeeded, :finished_at (mi/now), :summary summary})
-        (prune-old-snapshots! run-id)
+        ;; Promotion and retirement must commit together. If pruning fails, the
+        ;; previous successful snapshot and all of its payload remain intact,
+        ;; while the outer catch marks this run failed after the rollback.
+        (t2/with-transaction [_conn]
+          (t2/update! :model/UsageMetadataCandidateRun run-id
+                      {:status :succeeded, :finished_at (mi/now), :summary summary})
+          (prune-old-snapshots! run-id))
         (assoc run :status :succeeded, :summary summary)))
     (catch InterruptedException e
       (.interrupt (Thread/currentThread))
