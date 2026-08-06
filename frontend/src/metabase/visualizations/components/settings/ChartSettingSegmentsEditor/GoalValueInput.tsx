@@ -17,6 +17,8 @@ import {
   useGetMeasureQuery,
   useLazyGetCardQuery,
   useLazyGetMeasureQuery,
+  useListRecentsQuery,
+  useSearchQuery,
 } from "metabase/api";
 import {
   EntityPickerModal,
@@ -60,6 +62,12 @@ const ENTITY_PICKER_MODELS: MiniPickerPickableItem["model"][] = [
   "metric",
   "measure",
 ];
+// shown instead when the instance has no metrics or measures at all
+const QUESTION_FALLBACK_MODELS: MiniPickerPickableItem["model"][] = [
+  "card",
+  "dataset",
+];
+const RECENT_QUESTIONS_LIMIT = 5;
 const BROWSE_ALL_MODELS: OmniPickerItem["model"][] = [
   "metric",
   "measure",
@@ -219,6 +227,7 @@ export const GoalValueInput = ({
 
   const openEntityPicker = () => {
     closeMenu();
+    setHasOpenedEntityPicker(true);
     entityPicker.open();
   };
 
@@ -271,7 +280,10 @@ export const GoalValueInput = ({
     }
   };
 
-  const getSearchParams = useLibraryScopedSearchParams();
+  const [hasOpenedEntityPicker, setHasOpenedEntityPicker] = useState(false);
+  const { models: entityPickerModels, getSearchParams } = useEntityPickerSearch(
+    hasOpenedEntityPicker,
+  );
 
   if (!allowQuestionReference) {
     return (
@@ -449,7 +461,7 @@ export const GoalValueInput = ({
       <MiniPicker
         opened={isEntityPickerOpen}
         onClose={entityPicker.close}
-        models={ENTITY_PICKER_MODELS}
+        models={entityPickerModels}
         forceSearch
         showSearchInput
         searchInputPlaceholder={t`Search…`}
@@ -491,14 +503,46 @@ export const GoalValueInput = ({
   );
 };
 
-function useLibraryScopedSearchParams() {
+// Searches metrics and measures, scoping the empty query to the Library
+// metrics collection when one exists. When the instance has no metrics or
+// measures at all, falls back to questions, with the most recent ones shown
+// for the empty query.
+function useEntityPickerSearch(enabled: boolean) {
   const { data: libraryMetricsCollection } =
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
       type: "library-metrics",
     });
 
-  return useCallback(
+  const { data: probe } = useSearchQuery(
+    enabled
+      ? { models: ["metric", "measure"], limit: 1, context: "entity-picker" }
+      : skipToken,
+  );
+  const shouldFallBackToQuestions = probe?.total === 0;
+
+  const { data: recentItems } = useListRecentsQuery(
+    { context: ["selections", "views"] },
+    { skip: !shouldFallBackToQuestions },
+  );
+  const recentQuestionIds = useMemo(
+    () =>
+      (recentItems ?? [])
+        .filter((item) => item.model === "card" || item.model === "dataset")
+        .slice(0, RECENT_QUESTIONS_LIMIT)
+        .map((item) => item.id),
+    [recentItems],
+  );
+
+  const getSearchParams = useCallback(
     (params: SearchRequest): Partial<SearchRequest> => {
+      if (shouldFallBackToQuestions) {
+        const showRecents = !params.q && recentQuestionIds.length > 0;
+        return {
+          limit: RECENT_QUESTIONS_LIMIT,
+          ...(showRecents ? { ids: recentQuestionIds } : {}),
+        };
+      }
+
       const scopeToLibraryMetrics =
         libraryMetricsCollection !== undefined &&
         (libraryMetricsCollection.here?.includes("metric") ||
@@ -512,8 +556,15 @@ function useLibraryScopedSearchParams() {
           : {}),
       };
     },
-    [libraryMetricsCollection],
+    [shouldFallBackToQuestions, recentQuestionIds, libraryMetricsCollection],
   );
+
+  return {
+    models: shouldFallBackToQuestions
+      ? QUESTION_FALLBACK_MODELS
+      : ENTITY_PICKER_MODELS,
+    getSearchParams,
+  };
 }
 
 type GoalColumnMenuItemProps = {
