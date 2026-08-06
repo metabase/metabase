@@ -31,7 +31,7 @@
   (every? (fn [pattern]
             (try
               (boolean (re-pattern pattern))
-              (catch Exception e (log/error e) false)))
+              (catch Exception e (log/error (ex-message e)) false)))
           patterns))
 
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/settings
@@ -105,7 +105,7 @@
         (throw (ex-info (format "To delete database %s set `delete` to %s" (pr-str (:name database)) (pr-str magic-request))
                         {:database-name (:name database)})))
       (when-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
-        (log/info (u/format-color :blue "Deleting Database %s %s" (:engine database) (pr-str (:name database))))
+        (log/info (u/format-color :blue "Deleting Database %s with ID %s" (:engine database) existing-database-id))
         (t2/delete! :model/Database existing-database-id)))
 
     (:is_sample database)
@@ -122,14 +122,14 @@
           ;; A stub entry is just a placeholder to satisfy serdes references. If a real database
           ;; with this name+engine already exists, leave it alone — overwriting it with `:details {}`
           ;; and `:is_stub true` would break a working database.
-          (log/info (u/format-color :yellow "Database %s %s already exists; ignoring stub entry"
-                                    (:engine database) (pr-str (:name database))))
+          (log/info (u/format-color :yellow "Database %s with ID %s already exists; ignoring stub entry"
+                                    (:engine database) existing-database-id))
           (let [database (cond-> database
                            (:is_attached_dwh database) strip-attached-dwh-update-ks)]
-            (log/info (u/format-color :blue "Updating Database %s %s" (:engine database) (pr-str (:name database))))
+            (log/info (u/format-color :blue "Updating Database %s with ID %s" (:engine database) existing-database-id))
             (t2/update! :model/Database existing-database-id (normalize-settings database))))
         (do
-          (log/info (u/format-color :green "Creating new %s Database %s" (:engine database) (pr-str (:name database))))
+          (log/info (u/format-color :green "Creating new %s Database" (:engine database)))
           (let [db (first (t2/insert-returning-instances! :model/Database (normalize-settings database)))]
             (cond
               (:is_stub database)

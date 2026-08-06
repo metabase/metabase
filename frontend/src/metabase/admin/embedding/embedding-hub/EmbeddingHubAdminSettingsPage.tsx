@@ -4,8 +4,9 @@ import {
   RelatedSettingsSection,
   getModularEmbeddingRelatedSettingItems,
 } from "metabase/admin/components/RelatedSettingsSection";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { EmbeddingHub } from "metabase/embedding/embedding-hub";
+import { useSetting } from "metabase/settings";
 import { Stack, Text, Title } from "metabase/ui";
 
 export const EmbeddingHubAdminSettingsPage = () => {

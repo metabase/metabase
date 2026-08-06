@@ -87,7 +87,7 @@ export interface Collection {
 
   // Assigned on FE
   originalName?: string;
-  path?: CollectionId[];
+  path?: CollectionId[] | null;
 }
 
 export const COLLECTION_ITEM_MODELS = [
@@ -102,6 +102,7 @@ export const COLLECTION_ITEM_MODELS = [
   "table",
   "transform",
   "measure",
+  "exploration",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 

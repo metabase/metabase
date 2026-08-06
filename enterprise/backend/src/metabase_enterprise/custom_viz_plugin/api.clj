@@ -61,6 +61,7 @@
    [:dev_only        :boolean]
    [:manifest        {:optional true} [:maybe :any]]
    [:metabase_version {:optional true} [:maybe :string]]
+   [:warnings        [:sequential [:map [:type :string]]]]
    [:created_at      :any]
    [:updated_at      :any]])
 
@@ -73,7 +74,8 @@
    [:bundle_url      ms/NonBlankString]
    [:bundle_hash     {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
-   [:manifest        {:optional true} [:maybe :any]]])
+   [:manifest        {:optional true} [:maybe :any]]
+   [:warnings        [:sequential [:map [:type :string]]]]])
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
@@ -82,11 +84,19 @@
   [plugin]
   (nil? (:bundle_hash plugin)))
 
+(defn- plugin-warnings
+  "Version warnings for a plugin. Dev-only plugins get no warnings."
+  [plugin]
+  (if (dev-only-plugin? plugin)
+    []
+    (manifest/warnings plugin)))
+
 (defn- plugin->response
   "Convert a plugin record to API response format."
   [plugin]
   (-> plugin
-      (assoc :dev_only (dev-only-plugin? plugin))
+      (assoc :dev_only (dev-only-plugin? plugin)
+             :warnings (plugin-warnings plugin))
       ;; never expose the raw bundle bytes
       (dissoc :bundle)))
 
@@ -94,7 +104,8 @@
   "Convert a plugin record to the safe runtime response shape.
    `bundle_url` is suffixed with `?v=<bundle_hash>` so that a re-uploaded bundle is fetched
    instead of served from the browser's `immutable` cache."
-  [{:keys [id identifier display_name icon bundle_hash manifest dev_bundle_url]}]
+  [{:keys [id identifier display_name icon bundle_hash manifest dev_bundle_url]
+    :as   plugin}]
   (cond-> {:id           id
            :identifier   identifier
            :display_name display_name
@@ -102,7 +113,8 @@
            :bundle_url   (cond-> (format "/api/ee/custom-viz-plugin/%d/bundle" id)
                            bundle_hash (str "?v=" bundle_hash))
            :bundle_hash  bundle_hash
-           :manifest     manifest}
+           :manifest     manifest
+           :warnings     (plugin-warnings plugin)}
     dev_bundle_url (assoc :dev_bundle_url dev_bundle_url)))
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
@@ -189,7 +201,7 @@
 
 (api.macros/defendpoint :get "/list" :- [:sequential CustomVizPluginRuntimeResponse]
   "List active and enabled custom visualization plugins. Available to any authenticated user.
-   Plugins with incompatible Metabase version requirements are excluded.
+   Plugins with version mismatches are included, with soft `warnings` attached.
    Dev-only plugins are excluded when dev mode is disabled."
   []
   (let [dev-mode? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
@@ -197,7 +209,6 @@
                                                      :enabled true
                                                      {:order-by [[:display_name :asc]]})]
     (->> plugins
-         (filter manifest/compatible?)
          (remove #(and (not dev-mode?) (dev-only-plugin? %)))
          (mapv (comp plugin->runtime-response api/read-check)))))
 
@@ -260,35 +271,6 @@
           (plugin->response (dissoc result :bundle))))
       (finally
         (try (.delete tempfile) (catch Exception _))))))
-
-(def ^:private sandbox-host-html
-  "Minimal HTML doc that the patched `@locker/near-membrane-dom` loads as the iframe document
-   so plugin code can be `eval`'d under a relaxed, per-iframe CSP."
-  "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>")
-
-(def ^:private sandbox-host-csp
-  "CSP applied ONLY to the sandbox iframe document.
-   - `'unsafe-eval'` required by near-membrane to evaluate plugin code inside the realm.
-   - `frame-ancestors 'self'` - so Metabase can embed this document."
-  (str "default-src 'none'; "
-       "script-src 'unsafe-eval'; "
-       "frame-ancestors 'self';"))
-
-(api.macros/defendpoint :get "/sandbox-host" :- :any
-  "Serve a minimal HTML document used as the iframe `src` for the near-membrane custom-viz
-   sandbox. The response carries a per-document `Content-Security-Policy` that permits
-   `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict
-   nonce-based CSP."
-  []
-  {:status  200
-   :headers {"Content-Type"                 "text/html; charset=utf-8"
-             "Content-Security-Policy"      sandbox-host-csp
-             "X-Frame-Options"              "SAMEORIGIN"
-             "X-Content-Type-Options"       "nosniff"
-             "Cross-Origin-Resource-Policy" "same-origin"
-             "Referrer-Policy"              "no-referrer"
-             "Cache-Control"                "public, max-age=60"}
-   :body    sandbox-host-html})
 
 (api.macros/defendpoint :get "/:id/bundle" :- :any
   "Serve the JS bundle for a plugin from the on-disk cache.

@@ -57,12 +57,11 @@ import {
   showAddParameterPopover,
 } from "metabase/redux/dashboard";
 import type { State } from "metabase/redux/store";
-import { push } from "metabase/router";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import {
   getClickBehaviorSidebarDashcard,
@@ -120,7 +119,7 @@ export const mapStateToProps = (state: State) => ({
   isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   isLoading: getIsLoading(state),
   isLoadingWithoutCards: getIsLoadingWithoutCards(state),
-  isEmbeddingIframe: getIsEmbeddingIframe(state),
+  isEmbeddingIframe: isWithinIframe(),
 });
 
 export const mapDispatchToProps = {
@@ -161,7 +160,6 @@ export const mapDispatchToProps = {
   hideAddParameterPopover,
   fetchDashboard,
   fetchDashboardCardData,
-  onChangeLocation: push,
   reset,
   closeDashboard,
   setArchivedDashboard,

@@ -47,10 +47,6 @@ export const hasActionsEnabled = (database: Pick<Database, "settings">) => {
   return Boolean(database.settings?.["database-enable-actions"]);
 };
 
-export const hasWorkspacesEnabled = (database: Pick<Database, "settings">) => {
-  return Boolean(database.settings?.["database-enable-workspaces"]);
-};
-
 export const hasWritableConnectionDetails = (
   database: Pick<Database, "write_data_details">,
 ) => {

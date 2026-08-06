@@ -206,11 +206,11 @@
        (catch Throwable e
          ;; Not translating this string to prevent an unfortunate stack overflow. If this string happened to be the one
          ;; that had the typo, we'd just recur endlessly without logging an error.
-         (log/errorf e "Unable to translate string %s to %s" (pr-str format-string) (str locale-or-name))
+         (log/errorf "Unable to translate string %s to %s: %s" (pr-str format-string) (str locale-or-name) (ex-message e))
          (try
            (.format (MessageFormat. format-string) (to-array args))
            (catch Throwable _
-             (log/errorf e "Invalid format string %s" (pr-str format-string))
+             (log/errorf "Invalid format string %s: %s" (pr-str format-string) (ex-message e))
              format-string)))))))
 
 (def ^:private ^:dynamic *in-site-locale-from-setting*

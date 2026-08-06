@@ -4,10 +4,12 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useSearchQuery } from "metabase/api";
+import type { UseInitialCollectionIdProps } from "metabase/common/collections/hooks";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { useDatabaseListQuery } from "metabase/common/hooks";
+import { getHasDatabaseWithActionsEnabled } from "metabase/databases/utils/predicates";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import type { ModalName } from "metabase/redux/store/modal";
@@ -16,9 +18,7 @@ import {
   setOpenModal,
   setOpenModalWithProps,
 } from "metabase/redux/ui";
-import type { WithRouterProps } from "metabase/router";
-import { push } from "metabase/router";
-import { getHasDatabaseWithActionsEnabled } from "metabase/selectors/data";
+import { useNavigate } from "metabase/router";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
@@ -42,6 +42,7 @@ import {
 export const BASIC_ACTION_ORDER = [
   "create-new-question",
   "create-new-native-query",
+  "create-new-research",
   "create-new-dashboard",
   "create-new-document",
   "create-new-collection",
@@ -74,8 +75,11 @@ const getActionPriority = (id: string) => {
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
   ...props
-}: WithRouterProps & { isLoggedIn: boolean }) => {
+}: Pick<UseInitialCollectionIdProps, "location" | "params"> & {
+  isLoggedIn: boolean;
+}) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const collectionId = useInitialCollectionId(props) ?? undefined;
 
   const { data: databases = [] } = useDatabaseListQuery({
@@ -123,15 +127,13 @@ export const useCommandPaletteBasicActions = ({
         icon: "insight",
         perform: () => {
           dispatch(closeModal());
-          dispatch(
-            push(
-              Urls.newQuestion({
-                mode: "notebook",
-                creationType: "custom_question",
-                cardType: "question",
-                collectionId,
-              }),
-            ),
+          navigate(
+            Urls.newQuestion({
+              mode: "notebook",
+              creationType: "custom_question",
+              cardType: "question",
+              collectionId,
+            }),
           );
         },
       });
@@ -145,15 +147,26 @@ export const useCommandPaletteBasicActions = ({
         icon: "sql",
         perform: () => {
           dispatch(closeModal());
-          dispatch(
-            push(
-              Urls.newQuestion({
-                DEPRECATED_RAW_MBQL_type: "native",
-                creationType: "native_question",
-                cardType: "question",
-              }),
-            ),
+          navigate(
+            Urls.newQuestion({
+              DEPRECATED_RAW_MBQL_type: "native",
+              creationType: "native_question",
+              cardType: "question",
+            }),
           );
+        },
+      });
+    }
+
+    if (hasDataAccess) {
+      actions.push({
+        id: "create-new-research",
+        name: t`New research`,
+        section: "basic",
+        icon: "telescope",
+        perform: () => {
+          dispatch(closeModal());
+          navigate(Urls.newExploration());
         },
       });
     }
@@ -174,7 +187,7 @@ export const useCommandPaletteBasicActions = ({
       section: "basic",
       icon: "document",
       perform: () => {
-        dispatch(push(Urls.newDocument()));
+        navigate(Urls.newDocument());
       },
     });
 
@@ -196,7 +209,7 @@ export const useCommandPaletteBasicActions = ({
         icon: "model",
         perform: () => {
           dispatch(closeModal());
-          dispatch(push("model/new"));
+          navigate("/model/new");
         },
       });
     }
@@ -210,7 +223,7 @@ export const useCommandPaletteBasicActions = ({
         perform: () => {
           trackMetricCreateStarted("command_palette");
           dispatch(closeModal());
-          dispatch(push(Urls.newMetric({ collectionId })));
+          navigate(Urls.newMetric({ collectionId }));
         },
       });
     }
@@ -230,7 +243,7 @@ export const useCommandPaletteBasicActions = ({
     if (isAdmin) {
       actions.push({
         id: "navigate-admin-settings",
-        perform: () => dispatch(push("/admin/settings")),
+        perform: () => navigate("/admin/settings"),
       });
     }
 
@@ -251,7 +264,7 @@ export const useCommandPaletteBasicActions = ({
     if (personalCollectionId) {
       actions.push({
         id: "navigate-personal-collection",
-        perform: () => dispatch(push(`/collection/${personalCollectionId}`)),
+        perform: () => navigate(`/collection/${personalCollectionId}`),
       });
     }
 
@@ -260,17 +273,17 @@ export const useCommandPaletteBasicActions = ({
         id: "navigate-user-settings",
         section: "basic",
         icon: "person",
-        perform: () => dispatch(push("/account/profile")),
+        perform: () => navigate("/account/profile"),
       },
       {
         id: "navigate-trash",
-        perform: () => dispatch(push("/trash")),
+        perform: () => navigate("/trash"),
       },
       {
         id: "navigate-home",
         section: "basic",
         icon: "home",
-        perform: () => dispatch(push("/")),
+        perform: () => navigate("/"),
       },
     );
 
@@ -279,7 +292,7 @@ export const useCommandPaletteBasicActions = ({
         id: "navigate-data-studio",
         section: "basic",
         icon: "table",
-        perform: () => dispatch(push("/data-studio")),
+        perform: () => navigate("/data-studio"),
       });
     }
 
@@ -290,7 +303,7 @@ export const useCommandPaletteBasicActions = ({
         section: "basic",
         icon: "model",
         perform: () => {
-          dispatch(push("/browse/models"));
+          navigate("/browse/models");
         },
       },
       {
@@ -299,7 +312,7 @@ export const useCommandPaletteBasicActions = ({
         section: "basic",
         icon: "database",
         perform: () => {
-          dispatch(push("/browse/databases"));
+          navigate("/browse/databases");
         },
       },
       {
@@ -308,7 +321,7 @@ export const useCommandPaletteBasicActions = ({
         section: "basic",
         icon: "metric",
         perform: () => {
-          dispatch(push("/browse/metrics"));
+          navigate("/browse/metrics");
         },
       },
     ];
@@ -327,6 +340,7 @@ export const useCommandPaletteBasicActions = ({
     openNewModalWithProps,
     isAdmin,
     personalCollectionId,
+    navigate,
   ]);
 
   useRegisterShortcut(initialActions, [initialActions]);

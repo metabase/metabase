@@ -16,7 +16,7 @@
   (try
     (replacement-run/timeout-old-runs! 30 :minute)
     (catch Throwable t
-      (log/error t "Error timing out old source replacement runs."))))
+      (log/errorf "Error timing out old source replacement runs: %s" (ex-message t)))))
 
 (task/defjob ^{:doc "Timeout long-running source replacement runs."
                org.quartz.DisallowConcurrentExecution true}

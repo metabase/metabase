@@ -10,7 +10,7 @@ import { initialState as documentsInitialState } from "metabase/documents/docume
 import {
   createMockNodeViewProps,
   createMockProseMirrorNode,
-} from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed/__support__/node-view-mocks";
+} from "metabase/metabot/components/editor-extensions/MetabotEmbed/__support__/node-view-mocks";
 import type { Comment } from "metabase-types/api";
 import { createMockDocument } from "metabase-types/api/mocks";
 import { createMockComment } from "metabase-types/api/mocks/comment";

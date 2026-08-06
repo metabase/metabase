@@ -105,6 +105,7 @@
    (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key      "azure-key"
                                       llm.settings/llm-azure-api-base-url base-url]
      (with-redefs [self.core/sse-reducible identity
+                   self.core/reducible-with-api-errors (fn [r _ _] r)
                    debug/capture-stream    (fn [r _] r)
                    http/request            (fn [req] {:body req})]
        (azure/azure-raw opts)))))
@@ -125,7 +126,9 @@
                :stream   true
                :system   [{:type "text" :text "be brief" :cache_control {:type "ephemeral"}}]
                :messages [{:role "user" :content [{:type "text" :text "hi"}]}]}
-              body)))))
+              body)))
+    (testing "a deployment name matches no model, so max_tokens falls back rather than being omitted"
+      (is (= 64000 (:max_tokens body))))))
 
 (deftest openai-family-dispatches-to-responses-api-test
   (let [req  (captured-raw-request! {:model       "openai/gpt-5-deployment"
@@ -146,6 +149,24 @@
             body))
     (testing "temperature is omitted when the deployment is named after a reasoning model"
       (is (not (contains? body :temperature))))))
+
+(deftest reasoning-is-disabled-test
+  (testing "anthropic deployments get no thinking config and reasoning parts are stripped"
+    (let [body (json/decode+kw
+                (:body (captured-raw-request!
+                        {:model "anthropic/claude-opus-4-8"
+                         :input [{:type :reasoning :id "r1" :text ""
+                                  :provider-metadata {:anthropic {:signature "abc"}}}
+                                 {:type :tool-input :id "call-1" :function "search" :arguments {}}]})))]
+      (is (not (contains? body :thinking)))
+      (is (=? [{:role "assistant" :content [{:type "tool_use" :id "call-1"}]}]
+              (:messages body)))))
+  (testing "openai deployments get no reasoning summary or encrypted-content include"
+    (let [body (json/decode+kw
+                (:body (captured-raw-request! {:model "openai/gpt-5.4"
+                                               :input [{:role :user :content "hi"}]})))]
+      (is (not (contains? body :reasoning)))
+      (is (not (contains? body :include))))))
 
 (deftest unsupported-family-throws-test
   (is (thrown-with-msg?

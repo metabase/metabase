@@ -2,19 +2,15 @@
   "Lightweight MCP session management.
 
    An MCP session ID is just a random UUID handed out on `initialize` — no database
-   row is created. When a resource read needs an embedding session, we HMAC-derive a
-   separate session key from an instance-wide signing secret and lazily upsert a
-   `core_session` row keyed by its hash.
+   row is created. Query handles may lazily materialize a `core_session` row, keyed
+   by the hash of a deterministic value derived from the MCP session id.
 
-   The derivation (rather than using the MCP session id directly as the session key)
-   is so that the id we put on the wire in the `Mcp-Session-Id` header is *not* itself
-   a live embedding session secret: capturing the header should not be enough to
-   impersonate the embedded SDK iframe. Any webserver can recompute the same derived
-   key on demand without any per-session plaintext sitting at rest.
+   The backing value is derived rather than reusing the MCP session id directly, so
+   the correlation id on the wire remains distinct from any stored session material.
+   Any webserver can recompute the same value without per-session plaintext at rest.
 
-   MCP sessions themselves do not expire. The underlying `core_session` row has
-   its own TTL and will be reaped independently; if a subsequent resource read
-   finds it missing, `get-or-create-session-key!` will re-insert it."
+   MCP sessions themselves do not expire. Any backing `core_session` has its own
+   TTL and is re-created on demand for query-handle lifecycle management."
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
@@ -27,6 +23,8 @@
   (:import
    (java.nio ByteBuffer)
    (java.nio.charset StandardCharsets)
+   (java.security MessageDigest)
+   (java.time Instant)
    (java.util Base64 UUID)
    (javax.crypto Mac)
    (javax.crypto.spec SecretKeySpec)))
@@ -77,6 +75,53 @@
         low      (bit-or (bit-and raw-low 0x3fffffffffffffff)     ; clear variant (top 2 bits of low)
                          (unchecked-long 0x8000000000000000))]    ; set RFC 4122 variant (10)
     (str (UUID. high low))))
+
+(def ^:private ui-credential-lifetime-seconds
+  "Lifetime of a rendered MCP Apps UI credential. This is deliberately short: the
+   credential is delivered to an iframe through a resource response."
+  300)
+
+(defn- base64url-encode [^String value]
+  (.encodeToString (.withoutPadding (Base64/getUrlEncoder)) (.getBytes value StandardCharsets/UTF_8)))
+
+(defn- base64url-encode-bytes [^bytes value]
+  (.encodeToString (.withoutPadding (Base64/getUrlEncoder)) value))
+
+(defn- base64url-decode [^String value]
+  (String. (.decode (Base64/getUrlDecoder) value) StandardCharsets/UTF_8))
+
+(defn- ui-credential-signature [^String payload]
+  (base64url-encode-bytes
+   (hmac-sha256 (mcp.settings/unobfuscated-mcp-embedding-signing-secret)
+                (str "mcp-ui-v1." payload))))
+
+(declare valid-id?)
+
+(defn issue-ui-credential
+  "Create a short-lived credential for the MCP Apps UI. It authenticates only
+   the narrow server-side UI request surface, never as a core Metabase session."
+  [session-id user-id]
+  (let [payload (base64url-encode
+                 (json/encode {:v 1 :uid user-id :sid session-id
+                               :exp (+ (.getEpochSecond (Instant/now)) ui-credential-lifetime-seconds)}))]
+    (str payload "." (ui-credential-signature payload))))
+
+(defn resolve-ui-credential
+  "Validate a rendered MCP Apps UI credential and return its claims, or nil.
+   Invalid and expired inputs intentionally have the same result and are never logged."
+  [credential]
+  (try
+    (let [[payload ^String signature & extra] (str/split (or credential "") #"\." -1)
+          ^String expected (when (and payload signature (empty? extra)) (ui-credential-signature payload))]
+      (when (and expected
+                 (MessageDigest/isEqual (.getBytes expected StandardCharsets/UTF_8)
+                                        (.getBytes signature StandardCharsets/UTF_8)))
+        (let [{:keys [v uid sid exp] :as claims} (json/decode+kw (base64url-decode payload))]
+          (when (and (= v 1) (integer? uid) (string? sid) (integer? exp)
+                     (valid-id? sid)
+                     (> exp (.getEpochSecond (Instant/now))))
+            claims))))
+    (catch Exception _ nil)))
 
 ;;; -------------------------------------------------- Lifecycle --------------------------------------------------
 

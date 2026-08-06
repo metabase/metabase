@@ -105,7 +105,7 @@
     (try
       (f k)
       (catch Throwable e
-        (log/errorf e "Failed to register listener %s" k)
+        (log/errorf "Failed to register listener %s: %s" k (ex-message e))
         (throw (ex-info (str "Failed to register listener " k)
                         {:channel k}
                         e))))))

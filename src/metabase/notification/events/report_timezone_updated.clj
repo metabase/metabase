@@ -4,8 +4,8 @@
    [metabase.notification.task.send :as send]
    [methodical.core :as methodical]))
 
-(derive ::event :metabase/event)
-(derive :event/report-timezone-updated ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/report-timezone-updated ::event)
 
 (methodical/defmethod events/publish-event! ::event
   "When the report-timezone Setting is updated, update the timezone of all SendNotification triggers."

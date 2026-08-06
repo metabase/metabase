@@ -43,7 +43,7 @@
    (when (and (premium-features/any-transforms-enabled?) (:name table))
      (str/starts-with? (u/lower-case-en (:name table)) transform-temp-table-prefix))))
 
-(derive ::event :metabase/event)
+(events/derive! ::event :metabase/event)
 
 (def ^:private sync-event-topics
   #{:event/sync-begin
@@ -58,14 +58,14 @@
     :event/sync-metadata-end})
 
 (doseq [topic sync-event-topics]
-  (derive topic ::event))
+  (events/derive! topic ::event))
 
 (def ^:private Topic
   [:and
    events/Topic
    [:fn
     {:error/message "Sync event deriving from :metabase.sync.util/event"}
-    #(isa? % ::event)]])
+    #(events/isa? % ::event)]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SYNC OPERATION "MIDDLEWARE"                                           |
@@ -241,7 +241,7 @@
      (catch Throwable e
        (if (and *log-exceptions-and-continue?* (not (transient-exception? e)))
          (do
-           (log/warn e message)
+           (log/warn message (ex-message e))
            e)
          (throw e))))))
 
@@ -262,7 +262,7 @@
        (catch Throwable e
          (if *log-exceptions-and-continue?*
            (do
-             (log/warn e message)
+             (log/warn message (ex-message e))
              {:throwable e})
            (throw e)))))
 

@@ -66,17 +66,17 @@
     stage-number    :- :int
     expression-name :- ::lib.schema.common/non-blank-string]
    (or (maybe-resolve-expression query stage-number expression-name)
-       (log/warnf "Expression %s does not exist in stage %d" (pr-str expression-name) (lib.util/canonical-stage-index query stage-number))
+       (log/warnf "Expression does not exist in stage %d" (lib.util/canonical-stage-index query stage-number))
        (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
          (u/prog1 (resolve-expression query previous-stage-number expression-name)
            (when <>
-             (log/warnf "Found expression %s in previous stage" (pr-str expression-name)))))
+             (log/warn "Found expression in previous stage"))))
        (when (lib.util/first-stage? query stage-number)
          (when-let [source-card (lib.metadata.calculation/primary-source-card query)]
            (u/prog1 (resolve-expression (:dataset-query source-card) expression-name)
              (when <>
-               (log/warnf "Found expression %s in source card %d. Next time, use a :field name ref!"
-                          (pr-str expression-name) (:id source-card))))))
+               (log/warnf "Found expression in source card %d. Next time, use a :field name ref!"
+                          (:id source-card))))))
        (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                        {:expression-name expression-name
                         :query           query
