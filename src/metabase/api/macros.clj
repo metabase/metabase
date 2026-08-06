@@ -28,6 +28,8 @@
    [medley.core :as m]
    [metabase.api.common.internal]
    [metabase.api.macros.defendpoint.open-api]
+   ;; TEMPORARY -- see [[metabase.api.macros.params-audit]]
+   [metabase.api.macros.params-audit :as params-audit]
    [metabase.api.macros.scope]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
@@ -778,6 +780,10 @@
   ;;
   ;; that can't get loaded again when you use the uberjar, we'll just recreate this stuff on namespace load.
   (when-not *compile-files*
+    ;; TEMPORARY, alongside [[metabase.api.macros.params-audit]] -- remove once every param map is explicitly closed
+    ;; or explicitly open and `defendpoint` can reject an unmarked one outright.
+    (params-audit/record! {:ns (ns-name nmspace), :method (first k), :route (second k)}
+                          (get-in info [:form :params]))
     (alter-meta!
      (the-ns nmspace)
      (fn [metadata]
