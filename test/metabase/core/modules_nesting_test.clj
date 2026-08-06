@@ -709,3 +709,30 @@
         (is (nil? (usage-error config 'query-processor 'metabase.lib.schema.foo))))
       (testing "namespaces not in :api are denied"
         (is (some? (usage-error config 'query-processor 'metabase.lib.internal)))))))
+
+(deftest ^:parallel cross-subtree-cycle-pair-count-semantics-test
+  (testing (str "The `:cross-subtree-cycle-pairs` ratchet counts mutual dependencies only when the "
+                "two modules sit in different top-level subtrees, and counts each unordered pair "
+                "once. `module-boundary-debt-matches-ratchets-test` compares this function against "
+                "baselines this same function produced, so it cannot catch a miscount; these "
+                "assertions pin the semantics against a synthetic graph instead.")
+    (let [deps  (fn [pairs]
+                  (for [[m ds] pairs]
+                    {:module m :deps (for [d ds] {:module d})}))
+          count-pairs #'dev.deps-graph/cross-subtree-cycle-pair-count]
+      (testing "a cycle inside one top-level subtree is internal organization and does not count"
+        (is (zero? (count-pairs (deps '{outer       [outer.child]
+                                        outer.child [outer]})
+                                '{outer {} outer.child {}}))))
+      (testing "a mutual dependency across two top-level subtrees counts once, not twice"
+        (is (= 1 (count-pairs (deps '{alpha [beta] beta [alpha]})
+                              '{alpha {} beta {}}))))
+      (testing "nested children in different subtrees still count, and are not collapsed to roots"
+        (is (= 1 (count-pairs (deps '{alpha.leaf [beta.leaf] beta.leaf [alpha.leaf]})
+                              '{alpha {} alpha.leaf {} beta {} beta.leaf {}}))))
+      (testing "a one-way dependency is not a cycle"
+        (is (zero? (count-pairs (deps '{alpha [beta] beta []})
+                                '{alpha {} beta {}}))))
+      (testing "two independent cross-subtree cycles count separately"
+        (is (= 2 (count-pairs (deps '{alpha [beta] beta [alpha] gamma [delta] delta [gamma]})
+                              '{alpha {} beta {} gamma {} delta {}})))))))
