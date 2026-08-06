@@ -93,6 +93,13 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
     value: "mistral/mistral-medium-3-5",
     models: [{ id: "mistral-medium-3-5", display_name: "Mistral Medium 3.5" }],
   },
+  moonshot: {
+    value: "moonshot/kimi-k2.6",
+    models: [
+      { id: "kimi-k2.6", display_name: "Kimi K2.6" },
+      { id: "kimi-k3", display_name: "Kimi K3" },
+    ],
+  },
   openai: {
     value: "openai/gpt-5.4",
     models: [
@@ -133,6 +140,7 @@ type MetabotSettingKey =
   | "llm-azure-api-key"
   | "llm-azure-api-base-url"
   | "llm-mistral-api-key"
+  | "llm-moonshot-api-key"
   | "llm-openai-api-key"
   | "llm-openrouter-api-key"
   | "llm-zai-api-key"
@@ -146,6 +154,7 @@ const API_KEY_SETTING_BY_PROVIDER: Partial<
 > = {
   anthropic: "llm-anthropic-api-key",
   mistral: "llm-mistral-api-key",
+  moonshot: "llm-moonshot-api-key",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
   zai: "llm-zai-api-key",
@@ -238,6 +247,7 @@ async function setup({
     azure: null,
     bedrock: null,
     mistral: null,
+    moonshot: null,
     openai: null,
     openrouter: null,
     zai: null,
@@ -298,6 +308,10 @@ async function setup({
     "llm-mistral-api-key": createMockSettingDefinition({
       key: "llm-mistral-api-key",
       value: mergedApiKeyValues.mistral ?? undefined,
+    }),
+    "llm-moonshot-api-key": createMockSettingDefinition({
+      key: "llm-moonshot-api-key",
+      value: mergedApiKeyValues.moonshot ?? undefined,
     }),
     "llm-openai-api-key": createMockSettingDefinition({
       key: "llm-openai-api-key",
@@ -630,6 +644,7 @@ describe("AIProviderSettingsSection", () => {
       /OpenAI/,
       /OpenRouter/,
       /Mistral/,
+      /Moonshot AI \(Kimi\)/,
       /Z\.AI/,
       /Microsoft Azure/,
       /Amazon Bedrock/,
@@ -1795,6 +1810,67 @@ describe("AIProviderSettingsSection", () => {
       expect(await findSettingUpdates()).toContainEqual({
         "llm-metabot-provider": null,
         "llm-zai-api-key": null,
+      });
+    });
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+  });
+
+  it("connects to Moonshot by saving the API key and selecting a model", async () => {
+    await setup({
+      savedProviderValue: null,
+      isConfigured: false,
+      apiKeyValues: { moonshot: null },
+      updateResponse: {
+        value: "moonshot/kimi-k2.6",
+        models: DEFAULT_RESPONSES.moonshot.models,
+      },
+    });
+
+    await selectProvider("Moonshot AI (Kimi)");
+    await userEvent.type(screen.getByLabelText("API key"), "sk-moonshot-test");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "moonshot", "api-key": "sk-moonshot-test" },
+      ]);
+    });
+
+    await screen.findByLabelText("Model");
+    await openModelSelector();
+    await userEvent.click(await screen.findByText("Kimi K3"));
+
+    await waitFor(async () => {
+      expect(await findMetabotSettingsUpdates()).toEqual([
+        { provider: "moonshot", "api-key": "sk-moonshot-test" },
+        { provider: "moonshot", model: "kimi-k3" },
+      ]);
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects Moonshot by clearing both the provider and API key settings", async () => {
+    await setup({
+      savedProviderValue: "moonshot/kimi-k2.6",
+      isConfigured: true,
+      apiKeyValues: { moonshot: "**********st" },
+    });
+
+    await screen.findByText("Connected to Moonshot AI (Kimi)");
+    await screen.findByLabelText("API key");
+    await confirmDisconnectProvider();
+
+    await waitFor(async () => {
+      expect(await findSettingUpdates()).toContainEqual({
+        "llm-metabot-provider": null,
+        "llm-moonshot-api-key": null,
       });
     });
 
