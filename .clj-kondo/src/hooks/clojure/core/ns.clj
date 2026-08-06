@@ -74,14 +74,14 @@
 (defn- lint-modules [ns-form-node config]
   (let [ns-symb (ns-form-node->ns-symb ns-form-node)]
     (when-not (modules/ignored-namespace? config ns-symb)
-      (when-let [current-module (modules/module ns-symb)]
+      (when-let [current-module (modules/module config ns-symb)]
         (let [required-namespace-symb-nodes (-> ns-form-node
                                                 ns-form-node->require-node
                                                 require-node->namespace-symb-nodes)]
           (doseq [node  required-namespace-symb-nodes
                   :when (not (contains? (hooks.common/ignored-linters node) :metabase/modules))
                   :let  [required-namespace (hooks/sexpr node)
-                         error              (modules/usage-error config current-module required-namespace)]
+                         error              (modules/usage-error config ns-symb current-module required-namespace)]
                   :when error]
             (hooks/reg-finding! (assoc (meta node)
                                        :message error
