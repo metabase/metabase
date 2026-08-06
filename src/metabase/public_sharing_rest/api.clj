@@ -400,6 +400,12 @@
                               :format-rows?          format_rows
                               :pivot?                pivot_results}))))
 
+(def ^:private ActionParameterValue
+  "A value submitted for an action execution parameter, keyed by parameter id. The FE types these as
+  `string | number | boolean | null` (`ParametersForActionExecution` in `metabase-types/api/actions.ts`); dates and
+  other rich types are submitted in their string form."
+  [:maybe [:or :string number? :boolean]])
+
 (api.macros/defendpoint :post "/dashboard/:uuid/dashcard/:dashcard-id/execute/values" :- [:map-of :string :any]
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
@@ -409,7 +415,7 @@
                                   [:dashcard-id ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map {:closed true}
-                            [:parameters [:map-of :string :any]]]]
+                            [:parameters [:map-of :string ActionParameterValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid :archived false))]
     (api/check-404 (t2/select-one-pk :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
@@ -432,7 +438,7 @@
                                   [:dashcard-id ms/PositiveInt]]
    _query-params
    {:keys [parameters], :as _body} :- [:map {:closed true}
-                                       [:parameters {:optional true} [:maybe [:map-of :keyword :any]]]
+                                       [:parameters {:optional true} [:maybe [:map-of :keyword ActionParameterValue]]]
                                        ;; sent by the FE alongside the parameters; not used by this endpoint
                                        [:modelId    {:optional true} [:maybe ms/PositiveInt]]]]
   (let [throttle-message (try
