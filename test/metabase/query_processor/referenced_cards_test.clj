@@ -58,7 +58,7 @@
           (is (= "completed" (:status response)))
           (is (= [[100]] (get-in response [:data :rows]))))
         (is (= "failed" (:status goal)))
-        (is (re-find #"more than one row" (:error goal)))))))
+        (is (re-find #"more rows than the requested maximum" (:error goal)))))))
 
 (deftest dataset-endpoint-error-handling-test
   (testing "a referenced card that cannot be resolved fails softly without failing the main query"

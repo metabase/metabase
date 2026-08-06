@@ -1,15 +1,14 @@
 (ns metabase.query-processor.referenced-cards
-  "Runs the queries a card references for single values (dynamic goals are the first consumer) and injects them into
-  the response under `data.referenced_cards`, keyed by card id.
+  "Runs the queries a card references and injects their values into the response under `data.referenced_cards`,
+  keyed by card id.
 
-  A referenced query must return exactly one row, narrowed to the requested columns. More than one row fails that
-  card, never the main query.
+  A card that returns more rows than its caller asked for fails that card, never the main query.
 
   Referenced queries must run before the main query's QP store is bound: a store holds one database, so a nested run
   against a different one would be rejected.
 
-  The runner takes `{:card_id, :columns}` specs and knows nothing about what they're for. Deriving those specs from
-  dynamic-goal viz settings is the second section below, and is the only goal-aware code here."
+  The runner knows nothing about what the specs are for. One row is the dynamic-goal consumer's requirement, not the
+  runner's, so it's declared in the second section below along with the rest of the goal-aware code."
   (:require
    [clojure.core.async :as a]
    [metabase.api.common :as api]
@@ -21,7 +20,7 @@
    [metabase.util.performance :as perf]))
 
 ;;; ---------------------------------------------------------------------------------------------------------
-;;; Running the specs. Generic: a spec is `{:card_id, :columns}`, whatever produced it.
+;;; Running the specs. Generic: a spec is `{:card_id, :columns}`, and `max-rows` is the caller's call.
 ;;; ---------------------------------------------------------------------------------------------------------
 
 (def ^:const max-specs
@@ -34,11 +33,6 @@
            [:map
             [:card_id :int]
             [:columns {:optional true} [:maybe [:sequential :string]]]]]])
-
-;; two rows rather than one so a card that returns more can be rejected instead of silently truncated. a card with
-;; its own `:limit 1` still comes back with one row, which is how you ask for "the first row of a sorted list".
-(def ^:private single-value-constraints
-  {:max-results 2, :max-results-bare-rows 2})
 
 (defn- project-columns
   "Narrow `data` to the requested `columns`, matched by column `:name`."
@@ -53,9 +47,11 @@
     data))
 
 (defn- referenced-query
-  [{:keys [dataset_query id]}]
+  [{:keys [dataset_query id]} max-rows]
   (assoc dataset_query
-         :constraints single-value-constraints
+         ;; one over the limit, so a card returning too much can be rejected instead of silently truncated. a card
+         ;; with its own `:limit` under this still comes back short, which is how you ask for "the first N rows".
+         :constraints {:max-results (inc max-rows), :max-results-bare-rows (inc max-rows)}
          ;; no :executed-by; it'd require a :query-hash for the query remark
          :info {:context :question
                 :card-id id}))
@@ -72,20 +68,20 @@
 
 (defn- run-referenced-card
   "Never throws: any failure becomes `{:status \"failed\" :error ...}`."
-  [{:keys [card_id columns]}]
+  [{:keys [card_id columns]} max-rows]
   (try
     (let [card   (api/read-check :model/Card card_id)
           ;; a nested run inside the outer streaming response must return an in-memory map,
           ;; not write to the outer stream
           result (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
                            qp.pipeline/*canceled-chan* (child-canceled-chan qp.pipeline/*canceled-chan*)]
-                   (qp/process-query (referenced-query card)))
+                   (qp/process-query (referenced-query card max-rows)))
           data   (:data result)]
-      (if (next (:rows data))
+      (if (> (count (:rows data)) max-rows)
         (do
-          (log/warnf "Referenced card %s returned more than one row" card_id)
+          (log/warnf "Referenced card %s returned more than the requested %s row(s)" card_id max-rows)
           {:status "failed"
-           :error  (tru "Referenced card {0} returned more than one row." card_id)})
+           :error  (tru "Referenced card {0} returned more rows than the requested maximum of {1}." card_id max-rows)})
         {:status "completed"
          :data   (-> data
                      (perf/select-keys [:cols :rows])
@@ -98,7 +94,7 @@
 (defn- referenced-cards-result
   "Run each spec and return `{card-id-string result}`, nil when there are none. Must run before the main
   query's QP store is bound."
-  [specs]
+  [specs max-rows]
   (when (seq specs)
     (perf/not-empty
      (into {}
@@ -107,7 +103,7 @@
                  (take-while (fn [_] (not (qp.pipeline/canceled?))))
                  (map (fn [{:keys [card_id] :as spec}]
                         ;; string keys so the map serializes to JSON as `{"1": {...}}`
-                        [(str card_id) (run-referenced-card spec)])))
+                        [(str card_id) (run-referenced-card spec max-rows)])))
            specs))))
 
 (defn- inject-referenced-cards
@@ -116,25 +112,29 @@
    rff
    (fn [response] (assoc-in response [:data :referenced_cards] result))))
 
-(defn maybe-wrap-rff
-  "Run `specs` eagerly and decorate `rff` to inject their values under `data.referenced_cards`."
-  [rff specs]
-  (if-let [result (referenced-cards-result specs)]
-    (inject-referenced-cards rff result)
-    rff))
-
 (defn- maybe-wrap-qp
   "Wrap a qp fn `(fn [query rff])` to inject the results of `specs` under `data.referenced_cards`."
-  [qp specs]
-  (if-let [result (referenced-cards-result specs)]
+  [qp specs max-rows]
+  (if-let [result (referenced-cards-result specs max-rows)]
     (fn [query rff]
       (qp query (inject-referenced-cards rff result)))
     qp))
 
 ;;; ---------------------------------------------------------------------------------------------------------
-;;; Producing the specs. The only dynamic-goals-aware code here: reads goal sources out of a saved card's viz
-;;; settings. Gets productionized in GDGT-2826.
+;;; The dynamic-goals consumer: both entry points, plus reading goal sources out of a saved card's viz
+;;; settings. The only goal-aware code here. Gets productionized in GDGT-2826.
 ;;; ---------------------------------------------------------------------------------------------------------
+
+(def ^:private goal-max-rows
+  "A goal is a single value, so its card must produce one row."
+  1)
+
+(defn maybe-wrap-rff
+  "Run `specs` eagerly and decorate `rff` to inject their values under `data.referenced_cards`."
+  [rff specs]
+  (if-let [result (referenced-cards-result specs goal-max-rows)]
+    (inject-referenced-cards rff result)
+    rff))
 
 (defn- ->goal-source
   [goal-value]
@@ -157,4 +157,4 @@
 (defn maybe-wrap-qp-for-card
   "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values."
   [qp viz]
-  (maybe-wrap-qp qp (viz-settings->specs viz)))
+  (maybe-wrap-qp qp (viz-settings->specs viz) goal-max-rows))
