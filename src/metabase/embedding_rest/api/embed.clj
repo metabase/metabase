@@ -15,6 +15,7 @@
                   :dashboard <dashboard-id>}
        :params   <params>}"
   (:require
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.eid-translation.core :as eid-translation]
@@ -134,7 +135,10 @@
     pivot? :pivot_results
     :as query-params} :- [:map
                           [:format_rows {:default false} :boolean]
-                          [:pivot_results {:default false} :boolean]]]
+                          [:pivot_results {:default false} :boolean]
+                          ;; the remaining query params are dashboard/card parameter slugs, which are `dissoc`ed off
+                          ;; and handed to [[api.embed.common/parse-query-params]] below.
+                          [::mc/default api.embed.common/QueryParams]]]
   (run-query-for-unsigned-token-async
    (unsign-and-translate-ids token)
    export-format
@@ -240,7 +244,10 @@
     pivot? :pivot_results
     :as query-params} :- [:map
                           [:format_rows {:default false} :boolean]
-                          [:pivot_results {:default false} :boolean]]]
+                          [:pivot_results {:default false} :boolean]
+                          ;; the remaining query params are dashboard/card parameter slugs, which are `dissoc`ed off
+                          ;; and handed to [[api.embed.common/parse-query-params]] below.
+                          [::mc/default api.embed.common/QueryParams]]]
   (process-query-for-dashcard-with-signed-token token
                                                 dashcard-id
                                                 card-id
