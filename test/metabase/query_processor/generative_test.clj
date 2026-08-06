@@ -16,7 +16,7 @@
 (set! *warn-on-reflection* true)
 
 (comment
-  #_:clj-kondo/ignore
+  #_{:clj-kondo/ignore [:unresolved-namespace]}
   (alter-var-root #'environ.core/env assoc
                   :mb-gentest-run "true"
                   :mb-gentest-context-seed "1"))

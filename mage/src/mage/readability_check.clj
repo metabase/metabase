@@ -13,7 +13,7 @@
                                  (slurp "resources/data_readers.clj")))
                           'js)]
     (zipmap reader-tags (map (fn [tag]
-                               #_:clj-kondo/ignore
+                               #_{:clj-kondo/ignore [:discouraged-var]}
                                (eval `(fn [v] (list (quote ~tag) v))))
                              reader-tags))))
 
@@ -100,7 +100,7 @@
   [file & [line-number]]
   (let [content (try (slurp file) (catch Exception _ (read-check-problem :missing-file)))]
     (if-not line-number
-      #_:clj-kondo/ignore
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (let [result (can-read-content? content)]
         (prn result)
         result)
@@ -135,7 +135,7 @@
                 :message (ex-message e)
                 :data data}))))))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:duplicate-require]}
 (comment ;; hi self
 
   (check "test/metabase/queries/models/card_test.clj" 20)
