@@ -192,6 +192,19 @@
   [config parent child]
   (contains? (open-children config parent) child))
 
+(defn- blocking-export
+  "The first blocked export while walking from `m` toward the root, or `nil` if the whole chain
+  is exported. Returns a map containing both the `:ancestor` whose `:module-exports` blocks the
+  path and the direct `:child` that it would need to export."
+  [config m]
+  (let [declared (declared-modules config)]
+    (loop [child m]
+      (when-let [ancestor (parent-module declared child)]
+        (if (opens-child? config ancestor child)
+          (recur ancestor)
+          {:ancestor ancestor
+           :child    child})))))
+
 (defn- visibility-root
   "The module whose subtree `m` is private to, or `nil` if `m` may be named from anywhere.
 
@@ -204,12 +217,7 @@
   This is the `internal/` rule: `x.internal.y` is private to the tree rooted at `x`, wherever
   `x` sits in the hierarchy — NOT to the top-level tree that contains `x`."
   [config m]
-  (let [declared (declared-modules config)]
-    (loop [m m]
-      (when-let [p (parent-module declared m)]
-        (if (opens-child? config p m)
-          (recur p)
-          p)))))
+  (:ancestor (blocking-export config m)))
 
 (defn- externally-visible?
   "True if `m` may be named in the `:uses` of any module at all, wherever it sits in the tree.
@@ -558,11 +566,14 @@
         ;; `:uses`), so enforce the same rule here against the concrete resolved module.
         (and (= (allowed-modules config current-module) :any)
              (not (namable-from? config current-module required-module)))
-        (format "Module %s is nested and not exported by its ancestors; %s may not use it. Add it to its parent's :module-exports chain, or move the caller into the %s subtree. [:metabase/modules %s :module-exports]"
-                required-module
-                current-module
-                (visibility-root config required-module)
-                (parent-module (declared-modules config) required-module))
+        (let [{:keys [ancestor child]} (blocking-export config required-module)]
+          (format "Module %s is nested and not exported by its ancestors; %s may not use it. Add %s to %s's :module-exports, or move the caller into the %s subtree. [:metabase/modules %s :module-exports]"
+                  required-module
+                  current-module
+                  child
+                  ancestor
+                  ancestor
+                  ancestor))
 
         (not (allowed-module-namespace? config current-module required-namespace))
         (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/modules %s :api]"
