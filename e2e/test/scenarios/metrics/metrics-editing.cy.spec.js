@@ -195,7 +195,7 @@ describe("scenarios > metrics > editing", () => {
       verifyMetricAboutTimeseries({ yAxis: "Sum of Total" });
     });
 
-    it("should pin new metrics automatically", () => {
+    it("should not pin new metrics automatically", () => {
       cy.visit("/browse/metrics");
       cy.findByTestId("browse-metrics-header")
         .findByLabelText("Create a new metric")
@@ -212,7 +212,7 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
-      saveNewMetric({ name: "Pinned metric" });
+      saveNewMetric({ name: "New metric" });
 
       H.expectUnstructuredSnowplowEvent({
         event: "metric_created",
@@ -223,10 +223,8 @@ describe("scenarios > metrics > editing", () => {
       H.MetricPage.aboutPage().should("be.visible");
       H.MetricPage.header().findByText("Our analytics").click();
 
-      cy.findByTestId("pinned-items").within(() => {
-        cy.findByText("Pinned metric").should("be.visible");
-        cy.findByText("A metric").should("be.visible");
-      });
+      H.getUnpinnedSection().findByText("New metric").should("be.visible");
+      H.getPinnedSection().should("not.exist");
     });
 
     it("should not crash when cancelling creation or editing of a metric (metabase#48024)", () => {

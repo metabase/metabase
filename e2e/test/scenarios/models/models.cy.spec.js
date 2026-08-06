@@ -603,28 +603,12 @@ describe("scenarios > models", () => {
     });
   });
 
-  it("should automatically pin newly created models", () => {
+  it("should not pin newly created models", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     turnIntoModel();
     H.visitCollection("root");
-    cy.findByTestId("pinned-items").within(() => {
-      cy.findByText("Orders");
-      cy.findByText("A model");
-    });
-  });
-
-  it("should undo pinning a question if turning into a model was undone", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-
-    turnIntoModel();
-    H.undo();
-    cy.wait("@cardUpdate");
-
-    H.visitCollection("root");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Useful data").should("not.exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("A model").should("not.exist");
+    H.getUnpinnedSection().findByText("Orders").should("be.visible");
+    H.getPinnedSection().should("not.exist");
   });
 
   describe("listing", () => {

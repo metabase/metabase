@@ -37,11 +37,7 @@ export const turnQuestionIntoModel =
       return;
     }
 
-    const model = question
-      .setType("model")
-      .setPinned(true)
-      .setDisplay("table")
-      .setSettings({});
+    const model = question.setType("model").setDisplay("table").setSettings({});
     await dispatch(apiUpdateQuestion(model, { rerunQuery: true }));
 
     dispatch(
