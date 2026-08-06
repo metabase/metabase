@@ -462,6 +462,10 @@ export interface CollectionTreeItem extends Collection {
    * `false` while a lazily loaded node still has to fetch its children. `children` is empty until then.
    */
   childrenLoaded?: boolean;
+  /**
+   * `true` when this node's own level of children was cut short by the page size, so more can be loaded.
+   */
+  childrenHaveMore?: boolean;
   schemaName?: string;
   nonNavigable?: boolean;
 }
@@ -511,6 +515,7 @@ export function buildCollectionTree(
       icon: getCollectionIcon(collection, { isTenantUser }),
       children,
       childrenLoaded,
+      childrenHaveMore: collection.children_has_more,
       hasChildren: !childrenLoaded || children.length > 0,
     };
   });

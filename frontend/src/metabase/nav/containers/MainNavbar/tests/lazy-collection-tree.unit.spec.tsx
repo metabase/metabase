@@ -71,6 +71,44 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
       ).toBeInTheDocument();
     });
 
+    it("should page a nested level too, not just the root", async () => {
+      const parent = createMockCollection({
+        id: 300,
+        name: "Parent collection",
+        children: Array.from({ length: 5 }, (_, index) =>
+          createMockCollection({
+            id: 310 + index,
+            name: `Nested child ${index + 1}`,
+            location: "/300/",
+          }),
+        ),
+      });
+
+      await setup({
+        simulateLargeInstance: true,
+        collections: [parent],
+        lazyPageSize: 2,
+      });
+
+      const node = await screen.findByRole("treeitem", {
+        name: /Parent collection/,
+      });
+      await userEvent.click(within(node).getByRole("button"));
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Nested child 1/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("treeitem", { name: /Nested child 3/ }),
+      ).not.toBeInTheDocument();
+
+      setIntersecting(true);
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Nested child 3/ }),
+      ).toBeInTheDocument();
+    });
+
     it("should stop watching once the level is exhausted", async () => {
       await setup({
         simulateLargeInstance: true,
