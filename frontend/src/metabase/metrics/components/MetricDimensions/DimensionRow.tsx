@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { Sortable } from "metabase/common/components/Sortable";
-import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import {
   Badge,
   Box,

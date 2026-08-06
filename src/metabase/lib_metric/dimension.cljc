@@ -57,6 +57,72 @@
     (string? (:has-field-values dim)) (update :has-field-values keyword)
     (string? (:default-temporal-unit dim)) (update :default-temporal-unit keyword)))
 
+(defn same-source?
+  "True when two dimensions share at least one common source. Returns false if either dimension has
+   no sources."
+  [dim-a dim-b]
+  (let [sources-a (:sources dim-a)
+        sources-b (:sources dim-b)]
+    (boolean
+     (when (and (seq sources-a) (seq sources-b))
+       (perf/some (set sources-a) sources-b)))))
+
+;;; ------------------------------------------------- Source-Based Grouping -------------------------------------------------
+
+(defn- uf-find [parent i]
+  (loop [i i]
+    (let [p (get parent i)]
+      (if (= p i) i (recur p)))))
+
+(defn- uf-union [parent a b]
+  (let [ra (uf-find parent a)
+        rb (uf-find parent b)]
+    (if (= ra rb) parent (assoc parent ra rb))))
+
+(defn group-by-source
+  "Groups dimensions that transitively share sources into equivalence classes via union-find.
+   Returns a vector of vectors, where each inner vector contains dimensions that share at least
+   one source (matching the semantics of [[same-source?]]). Dimensions with no sources are each
+   placed in their own singleton group. Within a group, dimensions with duplicate `:id` values are
+   deduplicated by dropping all but the first — no reconciliation of the dropped copies is
+   attempted, so callers that care about the difference must dedupe before calling."
+  [dimensions]
+  (let [dims (vec dimensions)
+        n    (count dims)]
+    (if (< n 2)
+      (if (= n 1) [dims] [])
+      (let [init         (vec (range n))
+            ;; For every distinct source entry, collect which dim indices mention it.
+            source->idxs (reduce (fn [acc i]
+                                   (reduce (fn [acc src]
+                                             (update acc src (fnil conj []) i))
+                                           acc
+                                           (:sources (dims i))))
+                                 {}
+                                 (range n))
+            ;; Union all indices that share any source entry.
+            parent       (reduce (fn [parent idxs]
+                                   (if (< (count idxs) 2)
+                                     parent
+                                     (let [a (first idxs)]
+                                       (reduce (fn [p b] (uf-union p a b))
+                                               parent (rest idxs)))))
+                                 init
+                                 (vals source->idxs))
+            ;; Bucket dimensions by resolved root, deduplicating by :id.
+            buckets      (reduce (fn [acc i]
+                                   (let [r    (uf-find parent i)
+                                         d    (dims i)
+                                         seen (perf/get-in acc [r :seen] #{})]
+                                     (if (contains? seen (:id d))
+                                       acc
+                                       (-> acc
+                                           (update-in [r :seen] (fnil conj #{}) (:id d))
+                                           (update-in [r :dims] (fnil conj []) d)))))
+                                 {}
+                                 (range n))]
+        (perf/mapv :dims (vals buckets))))))
+
 ;;; ------------------------------------------------- Dimension Reconciliation -------------------------------------------------
 
 (defn- orphaned-status-message
