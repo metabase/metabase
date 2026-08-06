@@ -10,8 +10,6 @@ type SegmentEditorProps = {
   query: Lib.Query | undefined;
   description: string;
   readOnly?: boolean;
-  detailedFilterNames?: boolean;
-  inspectableFilters?: boolean;
   onQueryChange: (query: Lib.Query) => void;
   onDescriptionChange: (description: string) => void;
 };
@@ -20,8 +18,6 @@ export function SegmentEditor({
   query,
   description,
   readOnly = false,
-  detailedFilterNames = false,
-  inspectableFilters = false,
   onQueryChange,
   onDescriptionChange,
 }: SegmentEditorProps) {
@@ -33,8 +29,6 @@ export function SegmentEditor({
             query={query}
             onChange={onQueryChange}
             readOnly={readOnly}
-            detailedFilterNames={detailedFilterNames}
-            inspectableFilters={inspectableFilters}
           />
         )}
         {!readOnly && (

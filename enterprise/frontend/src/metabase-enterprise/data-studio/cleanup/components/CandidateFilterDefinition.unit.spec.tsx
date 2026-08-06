@@ -9,7 +9,7 @@ import {
   PRODUCT_CATEGORY_VALUES,
 } from "metabase-types/api/mocks/presets";
 
-import { SegmentFilterEditor } from "./SegmentFilterEditor";
+import { CandidateFilterDefinition } from "./CandidateDefinition";
 
 function createQueryWithCategoryFilter() {
   return Lib.createTestQuery(SAMPLE_PROVIDER, {
@@ -32,19 +32,13 @@ function createQueryWithCategoryFilter() {
   });
 }
 
-describe("SegmentFilterEditor", () => {
-  it("can show and inspect detailed read-only filter values", async () => {
+describe("CandidateFilterDefinition", () => {
+  it("shows and inspects detailed filter values", async () => {
     const user = userEvent.setup();
     setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES]);
 
     renderWithProviders(
-      <SegmentFilterEditor
-        query={createQueryWithCategoryFilter()}
-        onChange={jest.fn()}
-        readOnly
-        detailedFilterNames
-        inspectableFilters
-      />,
+      <CandidateFilterDefinition query={createQueryWithCategoryFilter()} />,
     );
 
     await user.click(screen.getByText("Category is one of Gadget, Widget"));

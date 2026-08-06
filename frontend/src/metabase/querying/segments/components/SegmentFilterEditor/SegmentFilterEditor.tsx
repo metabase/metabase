@@ -6,10 +6,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import {
-  getDetailedTranslatedFilterDisplayName,
-  getTranslatedFilterDisplayName,
-} from "metabase/querying/filters/utils/display";
+import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
 import { ClauseStep } from "metabase/querying/notebook/components/ClauseStep";
 import * as Lib from "metabase-lib";
 
@@ -19,16 +16,12 @@ type SegmentFilterEditorProps = {
   query: Lib.Query;
   onChange: (query: Lib.Query) => void;
   readOnly?: boolean;
-  detailedFilterNames?: boolean;
-  inspectableFilters?: boolean;
 };
 
 export function SegmentFilterEditor({
   query,
   onChange,
   readOnly = false,
-  detailedFilterNames = false,
-  inspectableFilters = false,
 }: SegmentFilterEditorProps) {
   const tc = useTranslateContent();
   const { locale } = useLocale();
@@ -37,23 +30,9 @@ export function SegmentFilterEditor({
   const renderFilterName = useMemo(
     () =>
       _.memoize((filter: Lib.FilterClause) =>
-        detailedFilterNames
-          ? getDetailedTranslatedFilterDisplayName(
-              query,
-              STAGE_INDEX,
-              filter,
-              tc,
-              locale,
-            )
-          : getTranslatedFilterDisplayName(
-              query,
-              STAGE_INDEX,
-              filter,
-              tc,
-              locale,
-            ),
+        getTranslatedFilterDisplayName(query, STAGE_INDEX, filter, tc, locale),
       ),
-    [query, tc, locale, detailedFilterNames],
+    [query, tc, locale],
   );
 
   const handleSelectFilter = useCallback(
@@ -93,12 +72,11 @@ export function SegmentFilterEditor({
         items={filters}
         initialAddText={t`Add filters to narrow your answer`}
         readOnly={readOnly}
-        isItemPopoverDisabled={readOnly && !inspectableFilters}
         color="core-filter"
         isLastOpened={false}
         renderName={renderFilterName}
         renderPopover={({ item: filter, index, onClose }) =>
-          readOnly && !inspectableFilters ? null : (
+          readOnly ? null : (
             <FilterPicker
               query={query}
               stageIndex={STAGE_INDEX}
