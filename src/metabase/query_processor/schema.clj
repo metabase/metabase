@@ -14,26 +14,27 @@
 (def ^:private query-keys
   "Every key a query may have at the top level, whether or not this schema constrains its value.
 
-  The value schemas are deliberately shallow: the shape of each key, not its contents. Pointing them at the real
-  schemas would be wrong, because a query here may not be normalized yet -- `:type` may still be `\"query\"` rather
-  than `:query`. They must also not *coerce*, since a schema used for an API param is decoded and not just validated:
-  `[:or :keyword :string]` would quietly rewrite `\"internal\"` to `:internal`, producing a half-normalized query that
-  no longer matches its unnormalized form. [[ms/KeywordOrString]] leaves both alone."
-  [:map
+  The value schemas are deliberately shallow: the shape of each key, not its contents, which is why the maps among
+  them are explicitly open. Pointing them at the real schemas would be wrong, because a query here may not be
+  normalized yet -- `:type` may still be `\"query\"` rather than `:query`. They must also not *coerce*, since a schema
+  used for an API param is decoded and not just validated: `[:or :keyword :string]` would quietly rewrite
+  `\"internal\"` to `:internal`, producing a half-normalized query that no longer matches its unnormalized form.
+  [[ms/KeywordOrString]] leaves both alone."
+  [:map {:closed false}
    [:database {:optional true} [:or
                                 ::lib.schema.id/database
                                 ::lib.schema.id/saved-questions-virtual-database]]
    ;; legacy MBQL, from [[metabase.legacy-mbql.schema/Query]]
    [:type        {:optional true} [:maybe ms/KeywordOrString]]
-   [:native      {:optional true} [:maybe :map]]
-   [:query       {:optional true} [:maybe :map]]
+   [:native      {:optional true} [:maybe [:map {:closed false}]]]
+   [:query       {:optional true} [:maybe [:map {:closed false}]]]
    [:parameters  {:optional true} [:maybe [:sequential :any]]]
-   [:settings    {:optional true} [:maybe :map]]
-   [:constraints {:optional true} [:maybe :map]]
-   [:middleware  {:optional true} [:maybe :map]]
-   [:info        {:optional true} [:maybe :map]]
-   [:create-row  {:optional true} [:maybe :map]]
-   [:update-row  {:optional true} [:maybe :map]]
+   [:settings    {:optional true} [:maybe [:map {:closed false}]]]
+   [:constraints {:optional true} [:maybe [:map {:closed false}]]]
+   [:middleware  {:optional true} [:maybe [:map {:closed false}]]]
+   [:info        {:optional true} [:maybe [:map {:closed false}]]]
+   [:create-row  {:optional true} [:maybe [:map {:closed false}]]]
+   [:update-row  {:optional true} [:maybe [:map {:closed false}]]]
    ;; MBQL 5, from [[metabase.lib.schema/query]]
    [:lib/type     {:optional true} [:maybe ms/KeywordOrString]]
    [:lib/metadata {:optional true} :any] ; a metadata provider object, not data
@@ -46,8 +47,8 @@
    [:offset {:optional true} [:maybe :int]]
    ;; set while running a query rather than by whoever submitted it, but named so a query that has been through the
    ;; QP once can be submitted again
-   [:cache-strategy {:optional true} [:maybe :map]]
-   [:viz-settings   {:optional true} [:maybe :map]]])
+   [:cache-strategy {:optional true} [:maybe [:map {:closed false}]]]
+   [:viz-settings   {:optional true} [:maybe [:map {:closed false}]]]])
 
 (def ^:private query-has-type
   "A query says which MBQL version it is."
