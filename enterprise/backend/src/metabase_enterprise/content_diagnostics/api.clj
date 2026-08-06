@@ -210,8 +210,11 @@
 
 (def ^:private imbalanced-sort-column->field
   "Sortable imbalanced-list params → their native `content_diagnostics_finding` column: the shared base
-  plus `content-count` (always set on an imbalanced finding)."
-  (assoc api.common/base-sort-column->field :content-count :content_count))
+  plus `content-count` (always set on an imbalanced finding) and `finding-type` (the umbrella spans
+  empty/sparse/crowded, so ordering by type groups the page)."
+  (assoc api.common/base-sort-column->field
+         :content-count :content_count
+         :finding-type  :finding_type))
 
 (def ^:private imbalanced-finding-types
   "The finding types the `/imbalanced` endpoint spans."
@@ -411,8 +414,8 @@
   `entity-types` and `finding-types` (both repeatable) narrow the results; the card sub-kinds are valid
   `entity-types` values, and `card` means any card type. `query` substring-matches the entity name.
   `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|
-  `content-count`, default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` breaks
-  ties."
+  `content-count`|`finding-type`, default `detected-at`) + `sort-direction` (`asc`|`desc`, default
+  `asc`); `id` breaks ties."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types finding-types query]
     :or   {include-personal-collections false

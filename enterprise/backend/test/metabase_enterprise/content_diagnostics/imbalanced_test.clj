@@ -457,3 +457,34 @@
               (is (seq (t2/select :model/ContentDiagnosticsFinding
                                   :entity_type :card :entity_id stale-card
                                   :finding_type :stale :invalidated_at nil))))))))))
+
+(deftest api-sort-by-finding-type-test
+  (testing "GET /imbalanced sorts by finding_type (alphabetical: crowded < empty < sparse)"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-a :id} {}
+                         :model/Collection {coll-b :id} {}
+                         :model/Collection {coll-c :id} {}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-a)
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-b)
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-c)
+            (let [prefix  (scope-prefix)
+                  insert  (fn [cid ftype]
+                            (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                             {:scan_id "s" :entity_type :collection
+                                                              :entity_kind :collection
+                                                              :entity_id cid :finding_type ftype
+                                                              :entity_name (str prefix "-" (name ftype))
+                                                              :details {:threshold 5 :unit "items"}
+                                                              :content_count 1})))
+                  sparse-fid  (insert coll-a :sparse)
+                  crowded-fid (insert coll-b :crowded)
+                  empty-fid   (insert coll-c :empty)
+                  order   (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
+                                                              "ee/content-diagnostics/imbalanced"
+                                                              :query prefix kvs))))]
+              (is (= [crowded-fid empty-fid sparse-fid]
+                     (order :sort-column "finding-type" :sort-direction "asc")))
+              (is (= [sparse-fid empty-fid crowded-fid]
+                     (order :sort-column "finding-type" :sort-direction "desc"))))))))))
