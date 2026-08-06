@@ -153,8 +153,7 @@
 (defn- schema-names-filter [schema-names multi-level-schema catalog-column schema-column]
   (when schema-names
     (if multi-level-schema
-      ;; AND-ed equalities rather than a row-constructor `IN` on `(catalog, schema)`: Databricks' planner is
-      ;; orders of magnitude slower on the latter against `system.information_schema` (GHY-4263).
+      ;; Use OR / AND because they are faster than IN for tuples on Databricks
       (into [:or]
             (map (fn [schema-name]
                    (let [[catalog schema] (split-catalog+schema schema-name)]
