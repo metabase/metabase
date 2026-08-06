@@ -344,7 +344,7 @@
                                  :name        "X-API-Key"
                                  :description "API key for authentication"}}))))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:metabase/modules :unresolved-namespace]}
 (comment
   (open-api-spec (metabase.api.macros/ns-handler 'metabase.geojson.api) "/api/geojson")
   (root-open-api-object (requiring-resolve 'metabase.api-routes.core/routes)))

@@ -184,7 +184,7 @@
    args  :- :map]
   (when-let [ks (not-empty (metabase.api.common.internal/route-arg-keywords route))]
     (let [route-params-schema (some-> (get-in args [:params :route :schema])
-                                      #_:clj-kondo/ignore
+                                      #_{:clj-kondo/ignore [:discouraged-var]}
                                       eval
                                       mr/resolve-schema
                                       mc/schema)]

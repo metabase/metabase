@@ -1,6 +1,6 @@
 (ns mage.modules
   (:require
-   ^:clj-kondo/ignore
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.set :as set]

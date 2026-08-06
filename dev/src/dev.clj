@@ -104,7 +104,7 @@
 
 (apply require clojure.main/repl-requires)
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:discouraged-var :missing-docstring]}
 (defn tap>-spy [x]
   (doto x tap>))
 
@@ -365,7 +365,8 @@
   []
   (binding [t2.connection/*current-connectable* nil]
     (or (t2/select-one :model/Database :name "Application Database")
-        #_:clj-kondo/ignore
+        ;; var-quoting a private var needs the fully-qualified namespace; the alias will not resolve here
+        #_{:clj-kondo/ignore [:aliased-namespace-symbol]}
         (let [details (#'metabase.app-db.env/broken-out-details
                        (mdb/db-type)
                        @#'metabase.app-db.env/env)
@@ -392,7 +393,7 @@
   [form]
   (hashp/p* form))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn tap
   "#tap, but to use in pipelines like `(-> 1 inc dev/tap prn inc)`."
   [form]
