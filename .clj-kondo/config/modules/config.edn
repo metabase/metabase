@@ -2902,12 +2902,13 @@
                     :model/Measure
                     :model/Table}}
 
-  typed-schemas-rest
+
+
+  typed-schemas.rest
   {:team "Embedding"
+   :ns-prefix "metabase.typed-schemas-rest"
    :api #{metabase.typed-schemas-rest.api}
    :uses #{api typed-schemas util}}
-
-
 
   upload
   {:team "Graphy"
