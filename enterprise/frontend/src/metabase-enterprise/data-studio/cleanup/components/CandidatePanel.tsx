@@ -119,10 +119,6 @@ export function CandidatePanel({
     dispatch(
       usageMetadataApi.util.invalidateTags([
         { type: "usage-metadata-candidate", id: "LIST" },
-        {
-          type: "usage-metadata-candidate",
-          id: `table-${candidate?.table.id}`,
-        },
       ]),
     );
     candidateQuery.refetch();

@@ -8,7 +8,6 @@ import type {
   UsageMetadataCandidateSummary,
   UsageMetadataPage,
   UsageMetadataRefreshStatus,
-  UsageMetadataTableDetail,
   UsageMetadataTableSummary,
 } from "metabase-types/api";
 
@@ -29,15 +28,6 @@ export const usageMetadataApi = EnterpriseApi.injectEndpoints({
         params,
       }),
       providesTags: [listTag("usage-metadata-candidate")],
-    }),
-    getUsageMetadataTable: builder.query<UsageMetadataTableDetail, number>({
-      query: (id) => ({
-        method: "GET",
-        url: `${BASE_URL}/tables/${id}`,
-      }),
-      providesTags: (_response, _error, id) => [
-        idTag("usage-metadata-candidate", `table-${id}`),
-      ],
     }),
     listUsageMetadataCandidates: builder.query<
       UsageMetadataPage<UsageMetadataCandidateSummary>,
@@ -80,9 +70,6 @@ export const usageMetadataApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [
           idTag("usage-metadata-candidate", id),
           listTag("usage-metadata-candidate"),
-          ...(response
-            ? [idTag("usage-metadata-candidate", `table-${response.table.id}`)]
-            : []),
         ]),
     }),
     restoreUsageMetadataCandidate: builder.mutation<
@@ -97,9 +84,6 @@ export const usageMetadataApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [
           idTag("usage-metadata-candidate", id),
           listTag("usage-metadata-candidate"),
-          ...(response
-            ? [idTag("usage-metadata-candidate", `table-${response.table.id}`)]
-            : []),
         ]),
     }),
     createUsageMetadataCandidate: builder.mutation<
@@ -115,14 +99,6 @@ export const usageMetadataApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [
           idTag("usage-metadata-candidate", id),
           listTag("usage-metadata-candidate"),
-          ...(response
-            ? [
-                idTag(
-                  "usage-metadata-candidate",
-                  `table-${response.candidate.table.id}`,
-                ),
-              ]
-            : []),
         ]),
     }),
     getUsageMetadataRefreshStatus: builder.query<
@@ -151,7 +127,6 @@ export const usageMetadataApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListUsageMetadataTablesQuery,
-  useGetUsageMetadataTableQuery,
   useListUsageMetadataCandidatesQuery,
   useGetUsageMetadataCandidateQuery,
   useDismissUsageMetadataCandidateMutation,

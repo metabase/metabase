@@ -27,9 +27,9 @@ export function isCreationCandidateType(
   return candidateType === "measure" || candidateType === "segment";
 }
 
-export function isCreationCandidate(
-  candidate: UsageMetadataCandidateSummary,
-): candidate is UsageMetadataCreationCandidate {
+export function isCreationCandidate<T extends UsageMetadataCandidateSummary>(
+  candidate: T,
+): candidate is T & UsageMetadataCreationCandidate {
   return isCreationCandidateType(candidate.candidate_type);
 }
 

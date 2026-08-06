@@ -35,9 +35,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import {
-  usageMetadataApi,
   useDismissUsageMetadataCandidateMutation,
-  useGetUsageMetadataTableQuery,
   useRestoreUsageMetadataCandidateMutation,
 } from "metabase-enterprise/api";
 import type { UsageMetadataCandidateSummary } from "metabase-types/api";
@@ -77,10 +75,11 @@ export function CleanupTablePage() {
   const [restoreCandidate, restoreState] =
     useRestoreUsageMetadataCandidateMutation();
   const runCandidateAction = useCandidateAction();
-  const tableQuery = useGetUsageMetadataTableQuery(tableId ?? 0, {
-    skip: tableId == null,
-  });
-  useLoadTableWithMetadata(tableId);
+  const {
+    table,
+    isLoading: isTableLoading,
+    error: tableError,
+  } = useLoadTableWithMetadata(tableId);
   const candidatesQuery = useUsageMetadataCandidates(
     {
       "table-id": tableId,
@@ -111,7 +110,6 @@ export function CleanupTablePage() {
   const handleStale = () => {
     closeCandidate();
     candidatesQuery.refetch();
-    tableQuery.refetch();
     sendErrorToast(
       t`The analysis changed. Review the refreshed candidate before continuing.`,
     );
@@ -119,13 +117,6 @@ export function CleanupTablePage() {
 
   const handlePublished = () => {
     setShowPublishModal(false);
-    dispatch(
-      usageMetadataApi.util.invalidateTags([
-        { type: "usage-metadata-candidate", id: "LIST" },
-        { type: "usage-metadata-candidate", id: `table-${tableId}` },
-      ]),
-    );
-    tableQuery.refetch();
     candidatesQuery.refetch();
   };
 
@@ -186,7 +177,7 @@ export function CleanupTablePage() {
     );
   }
 
-  if (tableQuery.isFetching && tableQuery.data == null) {
+  if (isTableLoading && table == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading />
@@ -194,23 +185,21 @@ export function CleanupTablePage() {
     );
   }
 
-  if (tableQuery.error && tableQuery.data == null) {
+  if (tableError && table == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper error={tableQuery.error} />
+        <LoadingAndErrorWrapper error={tableError} />
       </Center>
     );
   }
 
-  if (tableQuery.data == null) {
+  if (table == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading />
       </Center>
     );
   }
-
-  const detail = tableQuery.data;
 
   return (
     <>
@@ -239,10 +228,10 @@ export function CleanupTablePage() {
                   <Link to={Urls.dataStudioCleanup({ queue: params.queue })}>
                     {t`Cleanup`}
                   </Link>
-                  <span>{detail.table.display_name}</span>
+                  <span>{table.display_name}</span>
                 </DataStudioBreadcrumbs>
               }
-              title={detail.table.display_name}
+              title={table.display_name}
               icon="table"
               tabs={
                 <CleanupQueueTabs
@@ -253,15 +242,13 @@ export function CleanupTablePage() {
               }
               actions={
                 <Group>
-                  {detail.snapshot?.finished_at && (
+                  {candidatesQuery.data?.snapshot?.finished_at && (
                     <Text c="text-secondary" size="sm">
-                      {t`Analyzed ${dayjs(detail.snapshot.finished_at).fromNow()}`}
+                      {t`Analyzed ${dayjs(candidatesQuery.data.snapshot.finished_at).fromNow()}`}
                     </Text>
                   )}
-                  <PublicationStatusBadge
-                    published={detail.table.is_published}
-                  />
-                  {!detail.table.is_published && (
+                  <PublicationStatusBadge published={table.is_published} />
+                  {!table.is_published && (
                     <Button
                       onClick={() => {
                         trackDataStudioCleanupPublicationStarted(

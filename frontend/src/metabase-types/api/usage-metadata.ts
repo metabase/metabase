@@ -59,35 +59,14 @@ export type UsageMetadataTable = {
   data_layer: TableDataLayer | null;
   data_authority: string | null;
   view_count: number;
-  active?: boolean;
-  visibility_type?: string | null;
   is_published: boolean;
   collection_id: number | null;
   database: UsageMetadataDatabase;
-  publication_ready?: boolean;
-  creation_blockers?: UsageMetadataCreationBlocker[];
 };
-
-export type UsageMetadataStatusCounts = {
-  missing: number;
-  partially_modeled: number;
-  modeled: number;
-};
-
-export type UsageMetadataCandidateCounts = Record<
-  UsageMetadataCandidateType,
-  UsageMetadataStatusCounts
->;
 
 export type UsageMetadataTableSummary = {
   table: UsageMetadataTable;
-  counts: UsageMetadataCandidateCounts;
   candidate_count: number;
-};
-
-export type UsageMetadataTableDetail = UsageMetadataTableSummary & {
-  dismissed_count: number;
-  snapshot: UsageMetadataSnapshot | null;
 };
 
 export type UsageMetadataEvidence = {
@@ -137,22 +116,11 @@ export type UsageMetadataCandidateDefinition =
 export type UsageMetadataCandidateSummary = {
   id: number;
   candidate_type: UsageMetadataCandidateType;
-  table: UsageMetadataTable;
   display_name: string;
-  suggested_name: string;
-  suggested_description: string | null;
-  required_tables: UsageMetadataRequiredTable[];
   presentation: UsageMetadataCandidatePresentation;
-  family: {
-    key: string;
-    position: number;
-    depth: number;
-  };
-  definition: UsageMetadataCandidateDefinition;
   modeling_status: UsageMetadataModelingStatus;
   dismissed: boolean;
   evidence: UsageMetadataEvidence;
-  creation_blockers: UsageMetadataCreationBlocker[];
 };
 
 export type UsageMetadataModelLineageItem = {
@@ -201,6 +169,12 @@ export type UsageMetadataCandidateDismissal = {
 };
 
 export type UsageMetadataCandidateDetail = UsageMetadataCandidateSummary & {
+  table: UsageMetadataTable;
+  suggested_name: string;
+  suggested_description: string | null;
+  required_tables: UsageMetadataRequiredTable[];
+  definition: UsageMetadataCandidateDefinition;
+  creation_blockers: UsageMetadataCreationBlocker[];
   dismissal: UsageMetadataCandidateDismissal | null;
   sources: UsageMetadataCandidateSource[];
   matches: UsageMetadataCandidateMatch[];

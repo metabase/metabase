@@ -8,7 +8,6 @@ import {
   setupUsageMetadataCandidateEndpoint,
   setupUsageMetadataCandidatesEndpoint,
   setupUsageMetadataRefreshEndpoint,
-  setupUsageMetadataTableEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
@@ -25,7 +24,6 @@ import type {
   UsageMetadataCandidateDetail,
   UsageMetadataRefreshStatus,
   UsageMetadataSnapshot,
-  UsageMetadataTableDetail,
 } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -81,7 +79,6 @@ const candidate: UsageMetadataCandidateDetail = {
     aggregation: { display_name: "Sum of Total" },
     predicates: [],
   },
-  family: { key: "family", position: 0, depth: 0 },
   definition: createMockStructuredDatasetQuery({
     query: {
       "source-table": 1,
@@ -101,35 +98,6 @@ const candidate: UsageMetadataCandidateDetail = {
   dismissal: null,
   sources: [],
   matches: [],
-};
-
-const tableDetail: UsageMetadataTableDetail = {
-  table,
-  candidate_count: 42,
-  dismissed_count: 0,
-  counts: {
-    table: {
-      missing: 0,
-      partially_modeled: 0,
-      modeled: 0,
-    },
-    metric: {
-      missing: 0,
-      partially_modeled: 0,
-      modeled: 0,
-    },
-    measure: {
-      missing: 40,
-      partially_modeled: 2,
-      modeled: 0,
-    },
-    segment: {
-      missing: 0,
-      partially_modeled: 0,
-      modeled: 0,
-    },
-  },
-  snapshot,
 };
 
 const refreshStatus: UsageMetadataRefreshStatus = {
@@ -154,9 +122,13 @@ function setup(
   mockGetBoundingClientRect({ width: 1200, height: 700 });
   setupDatabaseListEndpoint([createMockDatabase({ id: 1 })]);
   setupTableQueryMetadataEndpoint(
-    createMockTable({ id: 1, db_id: 1, display_name: "Orders" }),
+    createMockTable({
+      id: 1,
+      db_id: 1,
+      display_name: "Orders",
+      is_published: true,
+    }),
   );
-  setupUsageMetadataTableEndpoint(1, tableDetail);
   setupUsageMetadataCandidatesEndpoint({
     data: [candidateOverride],
     total: 42,
@@ -250,7 +222,6 @@ describe("CleanupTablePage", () => {
           },
         ],
       },
-      family: { key: "active-accounts", position: 2, depth: 2 },
     });
 
     const row = await screen.findByTestId(
@@ -389,7 +360,7 @@ describe("CleanupTablePage", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps loaded table and candidate details visible during background refetches", async () => {
+  it("keeps loaded candidate details visible during background refetches", async () => {
     setupUsageMetadataCandidateEndpoint(candidate.id, candidate);
     const { store } = setup();
 
@@ -403,19 +374,12 @@ describe("CleanupTablePage", () => {
       await within(panel).findByText("Read-only definition"),
     ).toBeVisible();
 
-    let resolveTableRefetch: (value: UsageMetadataTableDetail) => void;
     let resolveCandidateRefetch: (value: UsageMetadataCandidateDetail) => void;
-    const tableRefetch = new Promise<UsageMetadataTableDetail>((resolve) => {
-      resolveTableRefetch = resolve;
-    });
     const candidateRefetch = new Promise<UsageMetadataCandidateDetail>(
       (resolve) => {
         resolveCandidateRefetch = resolve;
       },
     );
-    fetchMock.modifyRoute(`usage-metadata-table-${table.id}`, {
-      response: () => tableRefetch,
-    });
     fetchMock.modifyRoute(`usage-metadata-candidate-${candidate.id}`, {
       response: () => candidateRefetch,
     });
@@ -423,15 +387,11 @@ describe("CleanupTablePage", () => {
     await act(async () => {
       store.dispatch(
         usageMetadataApi.util.invalidateTags([
-          { type: "usage-metadata-candidate", id: `table-${table.id}` },
           { type: "usage-metadata-candidate", id: candidate.id },
         ]),
       );
     });
     await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls(`usage-metadata-table-${table.id}`),
-      ).toHaveLength(2);
       expect(
         fetchMock.callHistory.calls(`usage-metadata-candidate-${candidate.id}`),
       ).toHaveLength(2);
@@ -443,9 +403,8 @@ describe("CleanupTablePage", () => {
     expect(within(panel).getByText("Read-only definition")).toBeVisible();
 
     await act(async () => {
-      resolveTableRefetch!(tableDetail);
       resolveCandidateRefetch!(candidate);
-      await Promise.all([tableRefetch, candidateRefetch]);
+      await candidateRefetch;
     });
   });
 

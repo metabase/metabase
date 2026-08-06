@@ -6,7 +6,6 @@ import type {
   UsageMetadataCandidateSummary,
   UsageMetadataPage,
   UsageMetadataRefreshStatus,
-  UsageMetadataTableDetail,
   UsageMetadataTableSummary,
 } from "metabase-types/api";
 
@@ -16,15 +15,6 @@ export function setupUsageMetadataTablesEndpoint(
   response: UsageMetadataPage<UsageMetadataTableSummary>,
 ) {
   fetchMock.get(`path:${BASE_URL}/tables`, response);
-}
-
-export function setupUsageMetadataTableEndpoint(
-  tableId: number,
-  response: UsageMetadataTableDetail,
-) {
-  fetchMock.get(`path:${BASE_URL}/tables/${tableId}`, response, {
-    name: `usage-metadata-table-${tableId}`,
-  });
 }
 
 export function setupUsageMetadataCandidatesEndpoint(

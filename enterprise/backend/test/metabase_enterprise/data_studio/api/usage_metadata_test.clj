@@ -143,23 +143,30 @@
           (is (=? {:total 1
                    :data [{:id (:id candidate)
                            :candidate_type "segment"
-                           :definition {:lib/type "mbql/query"}
                            :presentation {:predicates [{:signature "recent"
                                                         :display_name "Created At is recent"
                                                         :kind "temporal"}]}
                            :modeling_status "missing"
                            :dismissed false}]}
                   list-response))
-          (is (=? {:id (:id candidate), :sources [], :matches []}
+          (is (= #{:id :candidate_type :display_name :presentation
+                   :modeling_status :dismissed :evidence}
+                 (set (keys (first (:data list-response))))))
+          (is (=? {:id (:id candidate)
+                   :definition {:lib/type "mbql/query"}
+                   :sources []
+                   :matches []}
                   detail-response))
           (is (not (contains? detail-response :semantic_details)))))
       (testing "table summaries use the same current snapshot"
-        (is (=? {:total 1
-                 :data [{:table {:id (mt/id :orders)}
-                         :candidate_count 1
-                         :counts {:segment {:missing 1}}}]}
-                (mt/user-http-request :crowberto :get 200
-                                      "ee/data-studio/usage-metadata/tables"))))
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             "ee/data-studio/usage-metadata/tables")]
+          (is (=? {:total 1
+                   :data [{:table {:id (mt/id :orders)}
+                           :candidate_count 1}]}
+                  response))
+          (is (= #{:table :candidate_count}
+                 (set (keys (first (:data response))))))))
       (testing "dismiss and restore are global and immediately visible"
         (is (=? {:dismissed true}
                 (mt/user-http-request :crowberto :post 200
@@ -222,7 +229,7 @@
         (is (=? {:total 2
                  :limit 1
                  :offset 1
-                 :data [{:id (:id second-candidate), :suggested_name "Zulu"}]}
+                 :data [{:id (:id second-candidate), :display_name "Zulu"}]}
                 (mt/user-http-request :crowberto :get 200
                                       "ee/data-studio/usage-metadata/candidates?limit=1&offset=1"))))
       (testing "candidate type and search filters are applied before pagination"
@@ -266,28 +273,27 @@
                                                         :published? false}]}})]
       (is (=? {:total 1
                :data [{:id (:id table-candidate)
-                       :candidate_type "table"
-                       :definition {:table_id (mt/id :orders)}
-                       :creation_blockers []}]}
+                       :candidate_type "table"}]}
               (mt/user-http-request :crowberto :get 200
                                     "ee/data-studio/usage-metadata/candidates?candidate-type=table")))
       (is (=? {:total 1
                :data [{:id (:id metric-candidate)
-                       :candidate_type "metric"
-                       :required_tables [{:id (mt/id :orders)
-                                          :database_id (mt/id)
-                                          :database_name "Test Database"
-                                          :name "orders"
-                                          :display_name "Orders"
-                                          :data_layer "entity"
-                                          :data_authority "computed"
-                                          :view_count 42
-                                          :is_published false}]
-                       :creation_blockers []}]}
+                       :candidate_type "metric"}]}
               (mt/user-http-request :crowberto :get 200
                                     "ee/data-studio/usage-metadata/candidates?candidate-type=metric")))
-      (is (=? {:data [{:counts {:table {:missing 1}
-                                :metric {:missing 1}}}]}
+      (is (=? {:required_tables [{:id (mt/id :orders)
+                                  :database_id (mt/id)
+                                  :database_name "Test Database"
+                                  :name "orders"
+                                  :display_name "Orders"
+                                  :data_layer "entity"
+                                  :data_authority "computed"
+                                  :view_count 42
+                                  :is_published false}]
+               :creation_blockers []}
+              (mt/user-http-request :crowberto :get 200
+                                    (str "ee/data-studio/usage-metadata/candidates/" (:id metric-candidate)))))
+      (is (=? {:data [{:candidate_count 2}]}
               (mt/user-http-request :crowberto :get 200
                                     "ee/data-studio/usage-metadata/tables"))))))
 
@@ -393,9 +399,7 @@
       (let [response (mt/user-http-request :crowberto :get 200
                                            "ee/data-studio/usage-metadata/candidates")]
         (is (= [(:id root) (:id child) (:id other)]
-               (mapv :id (:data response))))
-        (is (= {:key (apply str (repeat 64 "7")), :position 1, :depth 1}
-               (:family (second (:data response)))))))))
+               (mapv :id (:data response))))))))
 
 (deftest candidate-queue-filtering-test
   (mt/with-premium-features #{:library}
@@ -430,10 +434,7 @@
                                       "ee/data-studio/usage-metadata/candidates?queue=suggested")))
         (is (=? {:total 1
                  :data [{:table {:id (mt/id :orders)}
-                         :candidate_count 2
-                         :counts {:segment {:missing 1
-                                            :partially_modeled 1
-                                            :modeled 0}}}]}
+                         :candidate_count 2}]}
                 (mt/user-http-request :crowberto :get 200
                                       "ee/data-studio/usage-metadata/tables?queue=suggested"))))
       (testing "modeled candidates that are still used raw have a dedicated queue"
@@ -444,10 +445,7 @@
                                       "ee/data-studio/usage-metadata/candidates?queue=used-raw")))
         (is (=? {:total 1
                  :data [{:table {:id (mt/id :orders)}
-                         :candidate_count 1
-                         :counts {:segment {:missing 0
-                                            :partially_modeled 0
-                                            :modeled 1}}}]}
+                         :candidate_count 1}]}
                 (mt/user-http-request :crowberto :get 200
                                       "ee/data-studio/usage-metadata/tables?queue=used-raw")))
         (testing "a previous dismissal does not hide raw usage after it becomes modeled"
@@ -468,11 +466,7 @@
         (is (=? {:total 1
                  :data [{:id (:id missing-candidate), :dismissed true}]}
                 (mt/user-http-request :crowberto :get 200
-                                      "ee/data-studio/usage-metadata/candidates?queue=discarded")))
-        (is (=? {:candidate_count 1
-                 :dismissed_count 1}
-                (mt/user-http-request :crowberto :get 200
-                                      (str "ee/data-studio/usage-metadata/tables/" (mt/id :orders)))))))))
+                                      "ee/data-studio/usage-metadata/candidates?queue=discarded")))))))
 
 (deftest create-candidate-is-idempotent-test
   (mt/with-premium-features #{:library}

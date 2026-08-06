@@ -14,6 +14,7 @@ import { Badge, Card, Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type {
   IconName,
+  UsageMetadataCandidateDetail,
   UsageMetadataCandidateSummary,
 } from "metabase-types/api";
 
@@ -24,7 +25,7 @@ const CONDITIONAL_MEASURE_OPERATORS = new Set([
 ]);
 
 type CandidateDefinitionProps = {
-  candidate: UsageMetadataCandidateSummary;
+  candidate: UsageMetadataCandidateDetail;
 };
 
 export function CandidateFilterDefinition({ query }: { query: Lib.Query }) {

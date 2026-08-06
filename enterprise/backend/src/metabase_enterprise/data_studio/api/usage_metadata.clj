@@ -71,35 +71,12 @@
    [:view_count        ms/IntGreaterThanOrEqualToZero]
    [:is_published      :boolean]
    [:collection_id     [:maybe ms/PositiveInt]]
-   [:database          ::database]
-   [:publication_ready {:optional true} :boolean]
-   [:creation_blockers {:optional true} [:sequential ::creation-blocker]]])
-
-(mr/def ::status-counts
-  [:map
-   [:missing           ms/IntGreaterThanOrEqualToZero]
-   [:partially_modeled ms/IntGreaterThanOrEqualToZero]
-   [:modeled           ms/IntGreaterThanOrEqualToZero]])
-
-(mr/def ::candidate-counts
-  [:map
-   [:table   ::status-counts]
-   [:metric  ::status-counts]
-   [:measure ::status-counts]
-   [:segment ::status-counts]])
+   [:database          ::database]])
 
 (mr/def ::table-summary
   [:map
    [:table           ::table]
-   [:counts          ::candidate-counts]
    [:candidate_count ms/IntGreaterThanOrEqualToZero]])
-
-(mr/def ::table-detail
-  [:merge
-   ::table-summary
-   [:map
-    [:dismissed_count ms/IntGreaterThanOrEqualToZero]
-    [:snapshot        [:maybe ::snapshot]]]])
 
 (mr/def ::candidate-type [:enum :table :metric :measure :segment])
 (mr/def ::modeling-status [:enum :missing :partially-modeled :modeled])
@@ -116,12 +93,6 @@
    [:aggregation {:optional true}
     [:map [:display_name :string]]]
    [:predicates [:sequential ::presented-predicate]]])
-
-(mr/def ::candidate-family
-  [:map
-   [:key      :string]
-   [:position ms/IntGreaterThanOrEqualToZero]
-   [:depth    ms/IntGreaterThanOrEqualToZero]])
 
 (mr/def ::candidate-evidence
   [:map
@@ -198,20 +169,13 @@
 
 (mr/def ::candidate-summary
   [:map
-   [:id                    ms/PositiveInt]
-   [:candidate_type        ::candidate-type]
-   [:table                 ::table]
-   [:display_name          :string]
-   [:suggested_name        :string]
-   [:suggested_description [:maybe :string]]
-   [:required_tables       [:sequential ::required-table]]
-   [:presentation          ::candidate-presentation]
-   [:family                ::candidate-family]
-   [:definition            ::candidate-definition]
-   [:modeling_status       ::modeling-status]
-   [:dismissed             :boolean]
-   [:evidence              ::candidate-evidence]
-   [:creation_blockers     [:sequential ::creation-blocker]]])
+   [:id              ms/PositiveInt]
+   [:candidate_type  ::candidate-type]
+   [:display_name    :string]
+   [:presentation    ::candidate-presentation]
+   [:modeling_status ::modeling-status]
+   [:dismissed       :boolean]
+   [:evidence        ::candidate-evidence]])
 
 (mr/def ::model-lineage-item
   [:map
@@ -260,9 +224,15 @@
   [:merge
    ::candidate-summary
    [:map
-    [:dismissal [:maybe ::candidate-dismissal]]
-    [:sources   [:sequential ::candidate-source]]
-    [:matches   [:sequential ::candidate-match]]]])
+    [:table                 ::table]
+    [:suggested_name        :string]
+    [:suggested_description [:maybe :string]]
+    [:required_tables       [:sequential ::required-table]]
+    [:definition            ::candidate-definition]
+    [:creation_blockers     [:sequential ::creation-blocker]]
+    [:dismissal             [:maybe ::candidate-dismissal]]
+    [:sources               [:sequential ::candidate-source]]
+    [:matches               [:sequential ::candidate-match]]]])
 
 (mr/def ::candidate-page
   [:map
@@ -384,7 +354,7 @@
   [table-ids]
   (if (seq table-ids)
     (let [tables (t2/select [:model/Table :id :db_id :schema :name :display_name :description
-                             :data_layer :data_authority :view_count :active :visibility_type
+                             :data_layer :data_authority :view_count :active
                              :is_published :collection_id]
                             :id [:in table-ids])
           db-ids (into #{} (keep :db_id) tables)
@@ -486,39 +456,40 @@
     (:definition entity) (assoc :definition (query-definition-response (:definition entity)))))
 
 (defn- candidate-summary
+  [candidate dismissals]
+  {:id              (:id candidate)
+   :candidate_type  (:candidate_type candidate)
+   :display_name    (:display_name candidate)
+   :presentation    (candidate-presentation candidate)
+   :modeling_status (:modeling_status candidate)
+   :dismissed       (dismissed? dismissals candidate)
+   :evidence        {:verified_source_count (:verified_source_count candidate)
+                     :official_source_count (:official_source_count candidate)
+                     :popular_source_count (:popular_source_count candidate)
+                     :distinct_source_count (:distinct_source_count candidate)
+                     :total_view_count (:total_view_count candidate)}})
+
+(defn- candidate-detail-summary
   [candidate table dismissals]
   (let [creation-candidate? (contains? #{:measure :segment} (:candidate_type candidate))
         editable?           (and creation-candidate?
                                  (table-editable-for-candidate? candidate table))]
-    {:id                    (:id candidate)
-     :candidate_type        (:candidate_type candidate)
-     :table                 (table-response table)
-     :display_name          (:display_name candidate)
-     :suggested_name        (:suggested_name candidate)
-     :suggested_description (:suggested_description candidate)
-     :required_tables       (mapv required-table-response
+    (assoc (candidate-summary candidate dismissals)
+           :table (table-response table)
+           :suggested_name (:suggested_name candidate)
+           :suggested_description (:suggested_description candidate)
+           :required_tables (mapv required-table-response
                                   (:required-tables (:semantic_details candidate)))
-     :presentation          (candidate-presentation candidate)
-     :family                {:key      (:family_key candidate)
-                             :position (:family_position candidate)
-                             :depth    (:family_depth candidate)}
-     :definition            (candidate-definition-response candidate)
-     :modeling_status       (:modeling_status candidate)
-     :dismissed             (dismissed? dismissals candidate)
-     :evidence              {:verified_source_count (:verified_source_count candidate)
-                             :official_source_count (:official_source_count candidate)
-                             :popular_source_count (:popular_source_count candidate)
-                             :distinct_source_count (:distinct_source_count candidate)
-                             :total_view_count (:total_view_count candidate)}
-     :creation_blockers     (cond-> []
-                              (and creation-candidate? (not (:is_published table)))
-                              (conj :table-not-published)
+           :definition (candidate-definition-response candidate)
+           :creation_blockers (cond-> []
+                                (and creation-candidate? (not (:is_published table)))
+                                (conj :table-not-published)
 
-                              (and creation-candidate? (not (:active table)))
-                              (conj :table-inactive)
+                                (and creation-candidate? (not (:active table)))
+                                (conj :table-inactive)
 
-                              (and creation-candidate? (not editable?))
-                              (conj :table-uneditable))}))
+                                (and creation-candidate? (not editable?))
+                                (conj :table-uneditable)))))
 
 (def ^:private list-query-schema
   [:map
@@ -605,7 +576,14 @@
                                  :limit limit
                                  :offset offset)))
         candidates (if (seq ids)
-                     (t2/select-pk->fn identity :model/UsageMetadataCandidate :id [:in ids])
+                     (t2/select-pk->fn
+                      identity
+                      [:model/UsageMetadataCandidate
+                       :id :candidate_type :table_id :signature_version :signature_hash
+                       :display_name :semantic_details :modeling_status
+                       :verified_source_count :official_source_count :popular_source_count
+                       :distinct_source_count :total_view_count]
+                      :id [:in ids])
                      {})
         rows       (mapv candidates ids)]
     {:rows rows, :total total, :limit limit, :offset offset}))
@@ -625,30 +603,11 @@
   (api/check-superuser)
   (if-let [run (candidates/latest-successful-run)]
     (let [{:keys [rows total limit offset]} (candidate-page run opts)
-          tables     (table-index (into #{} (map :table_id) rows))
           dismissals (dismissal-index rows)
-          presented  (mapv #(candidate-summary % (tables (:table_id %)) dismissals) rows)]
+          presented  (mapv #(candidate-summary % dismissals) rows)]
       (page-response presented total limit offset run))
     (let [{:keys [limit offset]} (paging)]
       (page-response [] 0 limit offset nil))))
-
-(defn- conditional-count-expression
-  [predicate]
-  [:sum
-   [:case
-    predicate
-    [:inline 1]
-    :else [:inline 0]]])
-
-(defn- status-count-expression
-  ([candidate-type modeling-status]
-   (status-count-expression candidate-type modeling-status nil))
-  ([candidate-type modeling-status extra-predicate]
-   (conditional-count-expression
-    (cond-> [:and
-             [:= :candidate.candidate_type (name candidate-type)]
-             [:= :candidate.modeling_status (name modeling-status)]]
-      extra-predicate (conj extra-predicate)))))
 
 (defn- table-page
   ([run opts]
@@ -660,15 +619,7 @@
                              (assoc base-query
                                     :select [[[:count [:distinct :candidate.table_id]] :total]])))
          select     [[:candidate.table_id :table_id]
-                     [[:count :candidate.id] :candidate_count]
-                     [(status-count-expression :table :missing) :table_missing]
-                     [(status-count-expression :metric :missing) :metric_missing]
-                     [(status-count-expression :measure :missing) :measure_missing]
-                     [(status-count-expression :measure :partially-modeled) :measure_partially_modeled]
-                     [(status-count-expression :measure :modeled) :measure_modeled]
-                     [(status-count-expression :segment :missing) :segment_missing]
-                     [(status-count-expression :segment :partially-modeled) :segment_partially_modeled]
-                     [(status-count-expression :segment :modeled) :segment_modeled]]
+                     [[:count :candidate.id] :candidate_count]]
          rows       (t2/query
                      (assoc base-query
                             :select select
@@ -680,51 +631,10 @@
                             :offset offset))]
      {:rows rows, :total total, :limit limit, :offset offset})))
 
-(defn- table-detail-count-row
-  [run-id table-id]
-  (let [suggested? [:and
-                    [:= :dismissal.id nil]
-                    [:!= :candidate.modeling_status "modeled"]]
-        discarded? [:and
-                    [:!= :dismissal.id nil]
-                    [:!= :candidate.modeling_status "modeled"]]
-        select     [[(conditional-count-expression suggested?) :candidate_count]
-                    [(status-count-expression :table :missing suggested?) :table_missing]
-                    [(status-count-expression :metric :missing suggested?) :metric_missing]
-                    [(status-count-expression :measure :missing suggested?) :measure_missing]
-                    [(status-count-expression :measure :partially-modeled suggested?) :measure_partially_modeled]
-                    [(status-count-expression :measure :modeled suggested?) :measure_modeled]
-                    [(status-count-expression :segment :missing suggested?) :segment_missing]
-                    [(status-count-expression :segment :partially-modeled suggested?) :segment_partially_modeled]
-                    [(status-count-expression :segment :modeled suggested?) :segment_modeled]
-                    [(conditional-count-expression discarded?) :dismissed_count]]]
-    (t2/query-one
-     (merge (candidate-joins)
-            {:select select
-             :where [:and
-                     [:= :candidate.run_id run-id]
-                     [:= :candidate.table_id table-id]]}))))
-
 (defn- table-summary
   [table row]
-  (let [{:keys [candidate_count
-                table_missing metric_missing
-                measure_missing measure_partially_modeled measure_modeled
-                segment_missing segment_partially_modeled segment_modeled]} row]
-    {:table (table-response table)
-     :counts {:table {:missing (or table_missing 0)
-                      :partially_modeled 0
-                      :modeled 0}
-              :metric {:missing (or metric_missing 0)
-                       :partially_modeled 0
-                       :modeled 0}
-              :measure {:missing (or measure_missing 0)
-                        :partially_modeled (or measure_partially_modeled 0)
-                        :modeled (or measure_modeled 0)}
-              :segment {:missing (or segment_missing 0)
-                        :partially_modeled (or segment_partially_modeled 0)
-                        :modeled (or segment_modeled 0)}}
-     :candidate_count (or candidate_count 0)}))
+  {:table (table-response table)
+   :candidate_count (or (:candidate_count row) 0)})
 
 (api.macros/defendpoint :get "/tables" :- ::table-page
   "List physical tables with mined Library cleanup activity."
@@ -738,25 +648,6 @@
       (page-response presented total limit offset run))
     (let [{:keys [limit offset]} (paging)]
       (page-response [] 0 limit offset nil))))
-
-(api.macros/defendpoint :get "/tables/:id" :- ::table-detail
-  "Return one table's cleanup summary and publication readiness."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [table         (api/check-404 ((table-index #{id}) id))
-        run           (candidates/latest-successful-run)
-        count-row     (when run (table-detail-count-row (:id run) id))
-        summary       (table-summary table count-row)
-        editable?     (table-editable-for-candidate? {:candidate_type :measure} table)]
-    (-> summary
-        (assoc :table (assoc (:table summary)
-                             :publication_ready (and (:is_published table) editable?)
-                             :creation_blockers (cond-> []
-                                                  (not (:is_published table)) (conj :table-not-published)
-                                                  (not (:active table))       (conj :table-inactive)
-                                                  (not editable?)             (conj :table-uneditable)))
-               :dismissed_count (or (:dismissed_count count-row) 0)
-               :snapshot (snapshot-response run)))))
 
 (defn- conflict!
   [message reason & [data]]
@@ -783,7 +674,7 @@
         dependency-paths (into {}
                                (map (juxt :card-id :dependency-paths))
                                (get-in candidate [:semantic_details :source-dependencies]))]
-    (assoc (candidate-summary candidate table dismissals)
+    (assoc (candidate-detail-summary candidate table dismissals)
            :dismissal (some-> dismissal
                               (select-keys [:id :dismissed_by :dismissed_at :reason]))
            :sources (mapv (fn [source]
