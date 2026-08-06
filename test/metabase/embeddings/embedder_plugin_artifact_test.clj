@@ -15,6 +15,10 @@
   {:provider   "in-process"
    :model-name "Snowflake/snowflake-arctic-embed-l-v2.0"})
 
+(def ^:private requested-minilm-model
+  {:provider   "in-process"
+   :model-name "sentence-transformers/all-MiniLM-L6-v2"})
+
 (def ^:private plugin-name
   "Metabase In-Process Embedder")
 
@@ -24,6 +28,10 @@
     (if (< index (alength a))
       (recur (inc index) (+ dot (* (aget a index) (aget b index))))
       dot)))
+
+(defn- magnitude
+  [^floats embedding]
+  (Math/sqrt (cosine embedding embedding)))
 
 (defn- isolated-thread-call
   [f]
@@ -192,10 +200,17 @@
             (let [[dog puppy invoice]
                   (await-thread!
                    (isolated-thread-call
-                    #(embeddings.provider/embed-texts requested-model ["dog" "puppy" "invoice"])))]
+                    #(embeddings.provider/embed-texts requested-model ["dog" "puppy" "invoice"])))
+                  minilm-embeddings
+                  (await-thread!
+                   (isolated-thread-call
+                    #(embeddings.provider/embed-texts requested-minilm-model ["dog" "invoice"])))]
               (is (some? (find-ns 'metabase-enterprise.embedder.model)))
               (is (= [1024 1024 1024] (mapv alength [dog puppy invoice])))
-              (is (> (cosine dog puppy) (cosine dog invoice))))
+              (is (> (cosine dog puppy) (cosine dog invoice)))
+              (is (= [384 384] (mapv alength minilm-embeddings)))
+              (is (every? #(< (Math/abs (- 1.0 (magnitude %))) 1.0e-5) minilm-embeddings)
+                  "MiniLM produces normalized 384-dimensional embeddings"))
             (finally
               (ProxySelector/setDefault original-proxy)))
           (is (empty? @network-attempts) "bundled inference performs no outbound requests"))))))

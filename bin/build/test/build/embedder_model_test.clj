@@ -10,14 +10,25 @@
     (is (= #{"Snowflake/snowflake-arctic-embed-l-v2.0"
              "sentence-transformers/all-MiniLM-L6-v2"}
            (set (keys models))))
+    (is (= {"Snowflake/snowflake-arctic-embed-l-v2.0"
+            {:vector-dimensions 1024
+             :runtime           {:inference-contract-version 1
+                                 :djl-version                "0.36.0"
+                                 :engine                     "OnnxRuntime"
+                                 :pooling                    "cls"
+                                 :normalize?                 true
+                                 :include-token-types?       false}}
+            "sentence-transformers/all-MiniLM-L6-v2"
+            {:vector-dimensions 384
+             :runtime           {:inference-contract-version 1
+                                 :djl-version                "0.36.0"
+                                 :engine                     "OnnxRuntime"
+                                 :pooling                    "mean"
+                                 :normalize?                 true
+                                 :include-token-types?       true}}}
+           (update-vals models #(select-keys % [:vector-dimensions :runtime]))))
     (doseq [[model-name model] models]
-      (is (contains? #{384 1024} (:vector-dimensions model)))
       (is (= #{"arm64" "avx2"} (set (keys (:architectures model)))))
-      (is (= {:inference-contract-version 1
-              :djl-version                "0.36.0"
-              :engine                     "OnnxRuntime"
-              :normalize?                 true}
-             (select-keys (:runtime model) [:inference-contract-version :djl-version :engine :normalize?])))
       (is (re-matches #"[0-9a-f]{40}" (:model-revision model)))
       (is (str/ends-with? (:bundle-name model) (:model-revision model))
           "the DJL resource URL must change when the pinned model revision changes")
