@@ -39,6 +39,8 @@ import { ProviderTypeIcon } from "./ProviderTypeIcon";
 import { getAddableProviderTypes } from "./addable-provider-types";
 
 const PROVIDER_ICON_SIZE = 32;
+const ROW_LINES = 2;
+const ROW_LINE_HEIGHT = `${PROVIDER_ICON_SIZE / ROW_LINES}px`;
 const PROVIDER_DETAILS_INDENT = "2.5rem";
 // The warning glyph fills its viewBox, so it only sits on the label's cap band at this size.
 const WARNING_ICON_SIZE = 12;
@@ -220,11 +222,16 @@ function ProviderConnectionRow({
   const summary = (
     <Group gap="sm" wrap="nowrap" flex={1} align="flex-start">
       <ProviderTypeIcon type={connection.type} size={PROVIDER_ICON_SIZE} />
-      <Stack gap={0} align="flex-start">
-        {/* the icon is taller than a line of text, so the name matches its height and centres
-            within it — otherwise the icon drifts off the name as further lines appear */}
-        <Group gap="xs" wrap="nowrap" mih={PROVIDER_ICON_SIZE}>
-          <Text fw="bold">{connection.name}</Text>
+      <Stack
+        gap={0}
+        align="flex-start"
+        justify="center"
+        mih={PROVIDER_ICON_SIZE}
+      >
+        <Group gap="xs" wrap="nowrap">
+          <Text fw="bold" lh={ROW_LINE_HEIGHT}>
+            {connection.name}
+          </Text>
           {!connection.usable && (
             <Tooltip
               label={t`Some required settings are missing, so Metabot can't use this provider.`}
@@ -239,12 +246,12 @@ function ProviderConnectionRow({
           )}
         </Group>
         {typeLabel && (
-          <Text size="sm" c="text-secondary">
+          <Text size="sm" c="text-secondary" lh={ROW_LINE_HEIGHT}>
             {typeLabel}
           </Text>
         )}
         {modelsError && (
-          <Text size="sm" c="error">
+          <Text size="sm" c="error" lh={ROW_LINE_HEIGHT}>
             {modelsError}
           </Text>
         )}
