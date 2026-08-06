@@ -53,7 +53,7 @@ export function appendUniqueItems<T>(
   ];
 }
 
-function useUsageMetadataPages<T>(
+export function useUsageMetadataPages<T>(
   params: ListUsageMetadataRequest,
   firstPage: UsageMetadataPage<T> | undefined,
   firstPageError: unknown,
@@ -78,6 +78,14 @@ function useUsageMetadataPages<T>(
     setData(firstPage);
   }, [firstPage, params]);
 
+  const restartPagination = useCallback(() => {
+    generation.current += 1;
+    isNextPagePending.current = false;
+    setNextPageError(undefined);
+    setIsFetchingNextPage(false);
+    refetch();
+  }, [refetch]);
+
   const fetchNextPage = useCallback(async () => {
     const isComplete = data == null || data.data.length >= data.total;
     if (isComplete || isNextPagePending.current) {
@@ -95,18 +103,16 @@ function useUsageMetadataPages<T>(
         return;
       }
       if (nextPage.snapshot?.id !== data.snapshot?.id) {
-        throw new Error(
-          "The usage metadata snapshot changed while loading the list",
-        );
+        // A completed analysis makes every previously loaded offset stale.
+        // Keep the cached list visible while restarting from the new first page.
+        restartPagination();
+        return;
       }
       if (nextPage.total !== data.total) {
         // Candidate mutations can change queue membership without creating a
         // new mining snapshot. Offsets are no longer trustworthy, so keep the
         // cached UI visible and restart pagination from the first page.
-        generation.current += 1;
-        isNextPagePending.current = false;
-        setIsFetchingNextPage(false);
-        refetch();
+        restartPagination();
         return;
       }
       setData((currentData) => {
@@ -132,7 +138,7 @@ function useUsageMetadataPages<T>(
         setIsFetchingNextPage(false);
       }
     }
-  }, [data, fetchPage, getItemId, params, refetch]);
+  }, [data, fetchPage, getItemId, params, restartPagination]);
 
   return {
     data,
