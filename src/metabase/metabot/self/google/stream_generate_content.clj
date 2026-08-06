@@ -7,7 +7,6 @@
   https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/v1/projects.locations.publishers.models/streamGenerateContent"
   (:require
    [clojure.string :as str]
-   [malli.json-schema :as mjs]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
@@ -124,16 +123,11 @@
 
   Uses `parametersJsonSchema`, which is standard JSON Schema, and not the older `parameters` field. The `Schema`
   object of that field is a subset of OpenAPI and rejects keywords such as `additionalProperties`."
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params                     (schema/filter-schema-by-features params)
-        doc                        (if (str/starts-with? (or doc "") "Inputs: ")
-                                     ;; Remove the text that mu/defn adds.
-                                     (second (str/split doc #"\n\n  " 2))
-                                     doc)]
-    {:name                 tool-name
-     :description          doc
-     :parametersJsonSchema (mjs/transform params {:additionalProperties false})}))
+  [tool]
+  (let [{:keys [name description parameters]} (schema/tool-function tool)]
+    {:name                 name
+     :description          description
+     :parametersJsonSchema parameters}))
 
 ;;; Request body
 
