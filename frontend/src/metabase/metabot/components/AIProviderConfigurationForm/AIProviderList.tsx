@@ -45,7 +45,7 @@ const PROVIDER_DETAILS_INDENT = "2.5rem";
 // The warning glyph fills its viewBox, so it only sits on the label's cap band at this size.
 const WARNING_ICON_SIZE = 12;
 
-// mirrors a two-connection list: rows the height of PROVIDER_ICON_SIZE plus their py="xs",
+// mirrors a two-connection list: rows the height of PROVIDER_ICON_SIZE plus their py="sm",
 // divided the same way, then the button that follows them
 export function ProviderListSkeleton() {
   return (
@@ -62,7 +62,7 @@ export function ProviderListSkeleton() {
 
 function ProviderRowSkeleton() {
   return (
-    <Box py="xs">
+    <Box py="sm">
       <Skeleton h={PROVIDER_ICON_SIZE} />
     </Box>
   );
@@ -261,7 +261,7 @@ function ProviderConnectionRow({
 
   return (
     <Stack gap={0} data-testid={`provider-${connection.key}`}>
-      <Group justify="space-between" wrap="nowrap" align="flex-start" py="xs">
+      <Group justify="space-between" wrap="nowrap" align="flex-start" py="sm">
         {hasUsageDetails ? (
           <UnstyledButton
             flex={1}
