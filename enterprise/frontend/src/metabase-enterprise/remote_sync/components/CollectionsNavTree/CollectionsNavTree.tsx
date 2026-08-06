@@ -4,6 +4,7 @@ import { useListCollectionsQuery } from "metabase/api";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import type { TreeController } from "metabase/common/components/tree/useTree";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 
 import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
@@ -13,8 +14,7 @@ interface CollectionsNavTreeProps {
   collections: CollectionTreeItem[];
   selectedId?: number | string;
   onSelect?: (item: ITreeNodeItem) => void;
-  expandedIds?: Set<number | string>;
-  onToggleExpand?: (id: number | string) => void;
+  tree?: TreeController;
   onNodeHover?: (id: number | string) => void;
   hasMore?: boolean;
   onLoadMore?: (parentId: number | string | null) => void;
@@ -25,8 +25,7 @@ export const CollectionsNavTree = ({
   collections,
   selectedId,
   onSelect,
-  expandedIds,
-  onToggleExpand,
+  tree,
   onNodeHover,
   hasMore,
   onLoadMore,
@@ -59,8 +58,7 @@ export const CollectionsNavTree = ({
       data={collections}
       selectedId={selectedId}
       onSelect={onSelect}
-      expandedIds={expandedIds}
-      onToggleExpand={onToggleExpand}
+      tree={tree}
       onNodeHover={onNodeHover}
       hasMore={hasMore}
       onLoadMore={onLoadMore}

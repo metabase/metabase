@@ -160,6 +160,8 @@ describe("Tree", () => {
         screen.queryByTestId("tree-node-skeleton"),
       ).not.toBeInTheDocument();
     });
+  });
+
   it("expands ancestors when selecting a child whose parent was collapsed", () => {
     const { rerender } = render(
       <Tree data={nestedData} onSelect={jest.fn()} selectedId="A1" />,

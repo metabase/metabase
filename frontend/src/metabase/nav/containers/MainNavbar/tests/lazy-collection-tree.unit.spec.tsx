@@ -109,6 +109,34 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
       ).toBeInTheDocument();
     });
 
+    it("should keep the pages it has while opening a collection refetches the first one", async () => {
+      await setup({
+        simulateLargeInstance: true,
+        collections: MANY_COLLECTIONS,
+        lazyPageSize: 3,
+        delayExpandTo: true,
+      });
+
+      const target = await screen.findByRole("treeitem", {
+        name: /Test collection/i,
+      });
+      setIntersecting(true);
+      expect(
+        await screen.findByRole("treeitem", { name: /Wide collection 5/ }),
+      ).toBeInTheDocument();
+
+      // Only the first page carries `expand-to`, so opening a collection re-keys that page alone. The later pages
+      // stay in the cache, and the list must not render with the hole the missing first page leaves.
+      await userEvent.click(within(target).getByRole("link"));
+
+      expect(
+        screen.getByRole("treeitem", { name: /Wide collection 1/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("treeitem", { name: /Wide collection 5/ }),
+      ).toBeInTheDocument();
+    });
+
     it("should stop watching once the level is exhausted", async () => {
       await setup({
         simulateLargeInstance: true,

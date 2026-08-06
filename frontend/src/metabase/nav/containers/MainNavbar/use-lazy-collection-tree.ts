@@ -186,7 +186,13 @@ export function useLazyCollectionTree({
   const levels = useMemo(() => {
     const byKey = new Map<LevelKey, Level>();
     pagesByLevel.forEach(({ key, pages }) => {
-      const loaded = pages.filter((page) => page != null);
+      // Up to the first page still in flight, rather than every page that happens to be in the cache. Only the first
+      // page of the root level carries `expand-to`, so navigating re-keys that page alone and leaves the later ones
+      // behind. Rendering those on their own would drop the top of the list.
+      const gapAt = pages.findIndex((page) => page == null);
+      const loaded = (gapAt === -1 ? pages : pages.slice(0, gapAt)).filter(
+        (page) => page != null,
+      );
       if (loaded.length === 0) {
         return;
       }
