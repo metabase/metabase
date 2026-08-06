@@ -6,6 +6,7 @@ import { useCreateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { trackMeasureCreated } from "metabase/common/data-studio/analytics";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";
@@ -34,6 +35,7 @@ export function NewMeasurePage({
   const navigate = useNavigate();
   const metadata = useSelector(getMetadataWithHiddenTables);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const worktreeId = useWorktreeId();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -76,6 +78,7 @@ export function NewMeasurePage({
       name: name.trim(),
       definition: definition,
       description: description.trim() || undefined,
+      worktree_id: worktreeId,
     });
 
     if (error) {
@@ -95,6 +98,7 @@ export function NewMeasurePage({
     createMeasure,
     sendSuccessToast,
     sendErrorToast,
+    worktreeId,
   ]);
 
   useEffect(() => {

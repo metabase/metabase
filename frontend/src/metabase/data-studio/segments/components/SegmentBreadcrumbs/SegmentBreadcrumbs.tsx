@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   DataModelBreadcrumbs,
   PublishedTableBreadcrumbs,
@@ -16,12 +17,13 @@ export function PublishedTableSegmentBreadcrumbs({
   table,
   segment,
 }: SegmentBreadcrumbsProps) {
+  const worktreeId = useWorktreeId();
   return (
     <PublishedTableBreadcrumbs
       table={table}
       entityName={segment?.name}
       newEntityLabel={t`New segment`}
-      tableListUrl={Urls.dataStudioTableSegments(table.id)}
+      tableListUrl={Urls.dataStudioTableSegments(table.id, { worktreeId })}
     />
   );
 }

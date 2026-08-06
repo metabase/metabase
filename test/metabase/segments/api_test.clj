@@ -404,3 +404,22 @@
       (testing "worktree-id is admin-only"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 "segment" :worktree-id wt-id)))))))
+
+(deftest create-segment-in-a-worktree-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}]
+      (mt/with-model-cleanup [:model/Segment]
+        (let [definition (mbql4-segment-definition (mt/id :users) (mt/id :users :id) 20)]
+          (testing "an admin can create a segment inside a worktree"
+            (let [created (mt/user-http-request :crowberto :post 200 "segment"
+                                                {:name "worktree segment" :definition definition :worktree_id wt-id})]
+              (is (= wt-id (:worktree_id created)))
+              (is (= wt-id (t2/select-one-fn :worktree_id :model/Segment :id (:id created))))))
+          (testing "a non-admin cannot"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "segment"
+                                         {:name "nope" :definition definition :worktree_id wt-id}))))
+          (testing "an unknown worktree 404s rather than failing on the foreign key"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :post 404 "segment"
+                                         {:name "nope" :definition definition :worktree_id 99999999})))))))))

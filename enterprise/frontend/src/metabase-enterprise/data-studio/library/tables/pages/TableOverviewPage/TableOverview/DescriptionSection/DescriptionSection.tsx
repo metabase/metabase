@@ -6,6 +6,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Link } from "metabase/common/components/Link/Link";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -38,6 +39,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
   const [updateTable] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
+  const worktreeId = useWorktreeId();
 
   const formatNumber = useNumberFormatter();
   const isDependenciesEnabled = PLUGIN_DEPENDENCIES.isEnabled;
@@ -282,7 +284,9 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
               {t`Fields`}
             </Text>
             <Link
-              to={Urls.dataStudioTableFields(table.id)}
+              to={Urls.dataStudioTableFields(table.id, undefined, {
+                worktreeId,
+              })}
               className={S.metricLink}
             >
               <Text size="xl" fw={600}>
@@ -314,7 +318,9 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
 
               {dependentsCount > 0 ? (
                 <Link
-                  to={Urls.dataStudioTableDependencies(table.id)}
+                  to={Urls.dataStudioTableDependencies(table.id, {
+                    worktreeId,
+                  })}
                   className={S.metricLink}
                 >
                   <Text size="xl" fw={600}>

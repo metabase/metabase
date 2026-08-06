@@ -3,7 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useToast } from "metabase/common/hooks";
+import { useHasTokenFeature, useToast } from "metabase/common/hooks";
 import { AreaTab, AreaTabGroup } from "metabase/nav/components/AreaLayout";
 import type { DataStudioWorktreesSectionProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -25,6 +25,7 @@ import {
 import * as Urls from "metabase/urls";
 import {
   useDeleteWorktreeMutation,
+  useGetLibraryCollectionQuery,
   useGetRemoteSyncHasChangesQuery,
   useListWorktreesQuery,
 } from "metabase-enterprise/api";
@@ -88,10 +89,18 @@ type WorktreeNavItemProps = {
 function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
   const { pathname } = useLocation();
   const transformsUrl = Urls.transformList({ worktreeId: worktree.id });
+  const libraryUrl = Urls.dataStudioLibrary({ worktreeId: worktree.id });
   const isInsideWorktree = pathname.startsWith(
     `${Urls.dataStudioWorktrees()}/${worktree.id}`,
   );
   const [isExpanded, setIsExpanded] = useState(true);
+
+  const hasLibraryFeature = useHasTokenFeature("library");
+  const { data: libraryCollection } = useGetLibraryCollectionQuery(
+    { "worktree-id": worktree.id },
+    { skip: !hasLibraryFeature },
+  );
+  const hasLibrary = libraryCollection != null && "name" in libraryCollection;
 
   if (!isNavbarOpened) {
     return (
@@ -124,6 +133,15 @@ function WorktreeNavItem({ worktree, isNavbarOpened }: WorktreeNavItemProps) {
       </Flex>
       <Collapse in={isExpanded}>
         <Box pl="xl" pt="xs">
+          {hasLibrary && (
+            <AreaTab
+              label={t`Library`}
+              icon="repository"
+              to={libraryUrl}
+              isSelected={pathname.startsWith(libraryUrl)}
+              showLabel
+            />
+          )}
           <AreaTab
             label={t`Transforms`}
             icon="transform"

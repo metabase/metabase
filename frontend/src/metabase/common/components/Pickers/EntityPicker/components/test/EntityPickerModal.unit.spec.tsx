@@ -1174,8 +1174,9 @@ describe("EntityPickerModal", () => {
       });
 
       it("should scope collection-scoped search to the worktree", async () => {
-        await setup({ worktreeId: 7 });
-        await userEvent.click(await screen.findByText("Our analytics"));
+        await setupWorktreePicker({
+          options: { hasSearch: true, hasRecents: false },
+        });
         await userEvent.click(await screen.findByText("First Collection"));
 
         await searchFor("My");
@@ -1183,6 +1184,19 @@ describe("EntityPickerModal", () => {
         const lastRequest = searchRequests.slice(-1)[0];
         expect(lastRequest?.url).toContain("collection=11");
         expect(lastRequest?.url).toContain("worktree-id=7");
+      });
+
+      it("should hide main-app-only surfaces in worktree scope", async () => {
+        await setup({ worktreeId: 7 });
+
+        await screen.findByTestId("entity-picker-modal");
+        await waitFor(() => {
+          expect(screen.queryByText("Our analytics")).not.toBeInTheDocument();
+        });
+        expect(screen.queryByText("Recent items")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("All personal collections"),
+        ).not.toBeInTheDocument();
       });
 
       it("should not scope the shared databases tree to the worktree", async () => {

@@ -9,9 +9,20 @@ import type {
   SchemaName,
   SegmentId,
   TableId,
+  WorktreeId,
 } from "metabase-types/api";
 
 const ROOT_URL = "/data-studio";
+
+export type LibraryUrlParams = {
+  worktreeId?: WorktreeId | null;
+};
+
+function libraryRootUrl(worktreeId?: WorktreeId | null) {
+  return worktreeId != null
+    ? `${ROOT_URL}/worktrees/${worktreeId}/library`
+    : `${ROOT_URL}/library`;
+}
 
 type OptionalParams = {
   collectionId?: CollectionId;
@@ -91,56 +102,76 @@ export function dataStudioData({
 
 export function dataStudioLibrary({
   expandedIds,
-}: { expandedIds?: CollectionId[] } = {}) {
+  worktreeId,
+}: { expandedIds?: CollectionId[] } & LibraryUrlParams = {}) {
   let query = "";
   if (expandedIds?.length) {
     const params = new URLSearchParams();
     expandedIds.forEach((id) => params.append("expandedId", String(id)));
     query = `?${params.toString()}`;
   }
-  return `${ROOT_URL}/library${query}`;
+  return `${libraryRootUrl(worktreeId)}${query}`;
 }
 
-export function dataStudioTable(tableId: TableId) {
-  return `${dataStudioLibrary()}/tables/${tableId}`;
+export function dataStudioTable(
+  tableId: TableId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${libraryRootUrl(worktreeId)}/tables/${tableId}`;
 }
 
-export function dataStudioTableFields(tableId: TableId, fieldId?: FieldId) {
-  const baseUrl = `${dataStudioLibrary()}/tables/${tableId}/fields`;
+export function dataStudioTableFields(
+  tableId: TableId,
+  fieldId?: FieldId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  const baseUrl = `${dataStudioTable(tableId, { worktreeId })}/fields`;
   return fieldId != null ? `${baseUrl}/${fieldId}` : baseUrl;
 }
 
-export function dataStudioTableDependencies(tableId: TableId) {
-  return `${dataStudioTable(tableId)}/dependencies`;
+export function dataStudioTableDependencies(
+  tableId: TableId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioTable(tableId, { worktreeId })}/dependencies`;
 }
 
-export function dataStudioTableSegments(tableId: TableId) {
-  return `${dataStudioTable(tableId)}/segments`;
+export function dataStudioTableSegments(
+  tableId: TableId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioTable(tableId, { worktreeId })}/segments`;
 }
 
-export function dataStudioPublishedTableSegmentNew(tableId: TableId) {
-  return `${dataStudioTableSegments(tableId)}/new`;
+export function dataStudioPublishedTableSegmentNew(
+  tableId: TableId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioTableSegments(tableId, { worktreeId })}/new`;
 }
 
 export function dataStudioPublishedTableSegment(
   tableId: TableId,
   segmentId: SegmentId,
+  { worktreeId }: LibraryUrlParams = {},
 ) {
-  return `${dataStudioTableSegments(tableId)}/${segmentId}`;
+  return `${dataStudioTableSegments(tableId, { worktreeId })}/${segmentId}`;
 }
 
 export function dataStudioPublishedTableSegmentRevisions(
   tableId: TableId,
   segmentId: SegmentId,
+  { worktreeId }: LibraryUrlParams = {},
 ) {
-  return `${dataStudioPublishedTableSegment(tableId, segmentId)}/revisions`;
+  return `${dataStudioPublishedTableSegment(tableId, segmentId, { worktreeId })}/revisions`;
 }
 
 export function dataStudioPublishedTableSegmentDependencies(
   tableId: TableId,
   segmentId: SegmentId,
+  { worktreeId }: LibraryUrlParams = {},
 ) {
-  return `${dataStudioPublishedTableSegment(tableId, segmentId)}/dependencies`;
+  return `${dataStudioPublishedTableSegment(tableId, segmentId, { worktreeId })}/dependencies`;
 }
 
 type DataModelSegmentParams = {
@@ -179,26 +210,34 @@ export function newDataStudioDataModelSegment({
   return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/new`;
 }
 
-export function dataStudioTableMeasures(tableId: TableId) {
-  return `${dataStudioTable(tableId)}/measures`;
+export function dataStudioTableMeasures(
+  tableId: TableId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioTable(tableId, { worktreeId })}/measures`;
 }
 
-export function dataStudioPublishedTableMeasureNew(tableId: TableId) {
-  return `${dataStudioTableMeasures(tableId)}/new`;
+export function dataStudioPublishedTableMeasureNew(
+  tableId: TableId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioTableMeasures(tableId, { worktreeId })}/new`;
 }
 
 export function dataStudioPublishedTableMeasure(
   tableId: TableId,
   measureId: MeasureId,
+  { worktreeId }: LibraryUrlParams = {},
 ) {
-  return `${dataStudioTableMeasures(tableId)}/${measureId}`;
+  return `${dataStudioTableMeasures(tableId, { worktreeId })}/${measureId}`;
 }
 
 export function dataStudioPublishedTableMeasureDependencies(
   tableId: TableId,
   measureId: MeasureId,
+  { worktreeId }: LibraryUrlParams = {},
 ) {
-  return `${dataStudioPublishedTableMeasure(tableId, measureId)}/dependencies`;
+  return `${dataStudioPublishedTableMeasure(tableId, measureId, { worktreeId })}/dependencies`;
 }
 
 type DataModelMeasureParams = {
@@ -232,8 +271,9 @@ export function dataStudioDataModelMeasureRevisions(
 export function dataStudioPublishedTableMeasureRevisions(
   tableId: TableId,
   measureId: MeasureId,
+  { worktreeId }: LibraryUrlParams = {},
 ) {
-  return `${dataStudioPublishedTableMeasure(tableId, measureId)}/revisions`;
+  return `${dataStudioPublishedTableMeasure(tableId, measureId, { worktreeId })}/revisions`;
 }
 
 export function newDataStudioDataModelMeasure({
@@ -246,34 +286,55 @@ export function newDataStudioDataModelMeasure({
 
 export type NewDataStudioMetricProps = {
   collectionId?: CollectionId;
-};
+} & LibraryUrlParams;
 
-export function newDataStudioMetric(params: NewDataStudioMetricProps = {}) {
-  return `${dataStudioLibrary()}/metrics/new${getQueryString(params)}`;
+export function newDataStudioMetric({
+  worktreeId,
+  ...params
+}: NewDataStudioMetricProps = {}) {
+  return `${dataStudioLibrary({ worktreeId })}/metrics/new${getQueryString(params)}`;
 }
 
-export function dataStudioMetric(cardId: CardId) {
-  return `${dataStudioLibrary()}/metrics/${cardId}`;
+export function dataStudioMetric(
+  cardId: CardId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioLibrary({ worktreeId })}/metrics/${cardId}`;
 }
 
-export function dataStudioMetricOverview(cardId: CardId) {
-  return `${dataStudioMetric(cardId)}/overview`;
+export function dataStudioMetricOverview(
+  cardId: CardId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioMetric(cardId, { worktreeId })}/overview`;
 }
 
-export function dataStudioMetricQuery(cardId: CardId) {
-  return `${dataStudioMetric(cardId)}/query`;
+export function dataStudioMetricQuery(
+  cardId: CardId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioMetric(cardId, { worktreeId })}/query`;
 }
 
-export function dataStudioMetricDimensions(cardId: CardId) {
-  return `${dataStudioMetric(cardId)}/dimensions`;
+export function dataStudioMetricDimensions(
+  cardId: CardId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioMetric(cardId, { worktreeId })}/dimensions`;
 }
 
-export function dataStudioMetricDependencies(cardId: CardId) {
-  return `${dataStudioMetric(cardId)}/dependencies`;
+export function dataStudioMetricDependencies(
+  cardId: CardId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioMetric(cardId, { worktreeId })}/dependencies`;
 }
 
-export function dataStudioMetricHistory(cardId: CardId) {
-  return `${dataStudioMetric(cardId)}/history`;
+export function dataStudioMetricHistory(
+  cardId: CardId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioMetric(cardId, { worktreeId })}/history`;
 }
 
 type DataStudioSchemaViewerParams = {
@@ -325,20 +386,28 @@ export function dataStudioGitSync() {
   return `${dataStudio()}/git-sync`;
 }
 
-export function dataStudioSnippet(snippetId: NativeQuerySnippetId) {
-  return `${dataStudioLibrary()}/snippets/${snippetId}`;
+export function dataStudioSnippet(
+  snippetId: NativeQuerySnippetId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioLibrary({ worktreeId })}/snippets/${snippetId}`;
 }
 
-export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
-  return `${dataStudioSnippet(snippetId)}/dependencies`;
+export function dataStudioSnippetDependencies(
+  snippetId: NativeQuerySnippetId,
+  { worktreeId }: LibraryUrlParams = {},
+) {
+  return `${dataStudioSnippet(snippetId, { worktreeId })}/dependencies`;
 }
 
-export function newDataStudioSnippet() {
-  return `${dataStudioLibrary()}/snippets/new`;
+export function newDataStudioSnippet({ worktreeId }: LibraryUrlParams = {}) {
+  return `${dataStudioLibrary({ worktreeId })}/snippets/new`;
 }
 
-export function dataStudioArchivedSnippets() {
-  return `${dataStudioLibrary()}/snippets/archived`;
+export function dataStudioArchivedSnippets({
+  worktreeId,
+}: LibraryUrlParams = {}) {
+  return `${dataStudioLibrary({ worktreeId })}/snippets/archived`;
 }
 
 export function dataStudioSettings() {

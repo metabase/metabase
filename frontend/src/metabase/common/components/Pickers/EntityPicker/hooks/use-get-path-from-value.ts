@@ -106,7 +106,7 @@ export function useGetPathFromValue({
   const dispatch = useDispatch();
 
   const { data: libraryCollection, isLoading: isLoadingLibraryCollection } =
-    PLUGIN_LIBRARY.useGetLibraryCollection();
+    PLUGIN_LIBRARY.useGetLibraryCollection({ worktreeId });
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollection } =
     useGetPersonalCollection();

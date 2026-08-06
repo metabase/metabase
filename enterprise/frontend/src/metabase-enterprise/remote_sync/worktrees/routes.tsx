@@ -1,6 +1,9 @@
+import type { ComponentType } from "react";
+
 import { TransformsSectionLayout } from "metabase/data-studio/app/pages/TransformsSectionLayout";
 import {
   PLUGIN_DEPENDENCIES,
+  PLUGIN_LIBRARY,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { Navigate, Route } from "metabase/router";
@@ -16,10 +19,12 @@ import { TransformSettingsPage } from "metabase/transforms/pages/TransformSettin
 
 import { WorktreeLayout } from "./WorktreeLayout";
 
-export function getDataStudioWorktreeRoutes() {
+export function getDataStudioWorktreeRoutes(IsAdmin: ComponentType) {
   return (
     <Route path="worktrees/:worktreeId" element={<WorktreeLayout />}>
       <Route index element={<Navigate to="transforms" replace />} />
+      {PLUGIN_LIBRARY.isEnabled &&
+        PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)}
       <Route path="transforms" element={<TransformsSectionLayout />}>
         <Route index element={<TransformListPage />} />
         <Route path="new/query" element={<NewQueryTransformPage />} />

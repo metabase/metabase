@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { isEmptyStateData } from "metabase/data-studio/common/utils";
@@ -46,6 +47,7 @@ export function useLibraryTreeTableInstance({
 }: Params) {
   const [searchParams] = useSearchParams();
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const worktreeId = useWorktreeId();
 
   const expandedIdsFromUrl = useMemo(() => {
     const ids = searchParams.getAll("expandedId");
@@ -170,7 +172,7 @@ export function useLibraryTreeTableInstance({
             />
           );
 
-          const href = getTreeRowHref(row);
+          const href = getTreeRowHref(row, worktreeId);
           if (href === null) {
             return nameCell;
           }
@@ -221,6 +223,7 @@ export function useLibraryTreeTableInstance({
     ],
     [
       isRemoteSyncReadOnly,
+      worktreeId,
       onPublishTableClick,
       refreshMetricCollections,
       refreshTableCollections,

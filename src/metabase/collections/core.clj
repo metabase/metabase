@@ -33,6 +33,7 @@
   remote-synced-collection
   remote-synced-collection?
   shared-tenant-collection?
-  transforms-ns]
+  transforms-ns
+  worktree-collection-counterpart-ids]
  [metabase.collections.util
   annotate-dashboards])

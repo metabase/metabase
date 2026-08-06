@@ -9,6 +9,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -65,13 +66,18 @@
                  (tru "Measure definition must specify a source table.")))
 
 (api.macros/defendpoint :post "/" :- ::measure
-  "Create a new `Measure`. The Measure's table is derived from its `definition`."
+  "Create a new `Measure`. The Measure's table is derived from its `definition`. Pass `worktree_id` to create it
+  inside a remote-sync worktree, which is admin-only; the table itself is shared with the main app."
   [_route-params
    _query-params
-   {:keys [name description definition], :as body} :- [:map
-                                                       [:name        ms/NonBlankString]
-                                                       [:definition  ms/Map]
-                                                       [:description {:optional true} [:maybe :string]]]]
+   {:keys [name description definition worktree_id], :as body} :- [:map
+                                                                   [:name        ms/NonBlankString]
+                                                                   [:definition  ms/Map]
+                                                                   [:description {:optional true} [:maybe :string]]
+                                                                   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree_id
+    (api/check-superuser)
+    (remote-sync/check-worktree-exists! worktree_id))
   (let [normalized-definition (normalize-input-definition definition)
         table-id (definition-table-id normalized-definition)]
     (api/create-check :model/Measure (assoc body :table_id table-id))
@@ -80,7 +86,8 @@
                                                           :creator_id  api/*current-user-id*
                                                           :name        name
                                                           :description description
-                                                          :definition  normalized-definition)))]
+                                                          :definition  normalized-definition
+                                                          :worktree_id worktree_id)))]
       (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
       (t2/hydrate measure :creator))))
 

@@ -12,8 +12,10 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { RemoteSyncEntity, Worktree } from "metabase-types/api";
 import {
+  createMockCollectionItem,
   createMockRemoteSyncEntity,
   createMockSettings,
+  createMockTokenFeatures,
   createMockUser,
   createMockWorktree,
 } from "metabase-types/api/mocks";
@@ -29,6 +31,8 @@ type SetupOpts = {
   dirty?: RemoteSyncEntity[];
   exportPreflight?: Partial<RemoteSyncExportPreflightResponse>;
   syncType?: "read-only" | "read-write";
+  hasLibraryFeature?: boolean;
+  worktreeHasLibrary?: boolean;
 };
 
 function setup({
@@ -40,6 +44,8 @@ function setup({
   dirty = [],
   exportPreflight,
   syncType = "read-write",
+  hasLibraryFeature = false,
+  worktreeHasLibrary = false,
 }: SetupOpts = {}) {
   setupRemoteSyncEndpoints({
     worktrees,
@@ -49,21 +55,29 @@ function setup({
     exportPreflight,
   });
   setupSettingsEndpoints([]);
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "remote-sync-enabled": isRemoteSyncEnabled,
-      "remote-sync-type": syncType,
+  const settings = createMockSettings({
+    "remote-sync-enabled": isRemoteSyncEnabled,
+    "remote-sync-type": syncType,
+    "token-features": createMockTokenFeatures({
+      library: hasLibraryFeature,
     }),
+  });
+  setupPropertiesEndpoints(settings);
+  fetchMock.get(
+    "path:/api/ee/library",
+    worktreeHasLibrary
+      ? createMockCollectionItem({
+          id: 100,
+          name: "Library",
+          model: "collection",
+        })
+      : { data: null },
   );
-  fetchMock.get("path:/api/ee/library", { data: null });
   fetchMock.get("path:/api/collection/tree", []);
 
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
-    settings: mockSettings({
-      "remote-sync-enabled": isRemoteSyncEnabled,
-      "remote-sync-type": syncType,
-    }),
+    settings: mockSettings(settings),
   });
 
   renderWithProviders(<WorktreesNavSection isNavbarOpened />, {
@@ -103,6 +117,54 @@ describe("WorktreesNavSection", () => {
       "href",
       "/data-studio/worktrees/2/transforms",
     );
+  });
+
+  it("shows a Library item linking into the worktree when the worktree contains a library", async () => {
+    setup({
+      worktrees: [createMockWorktree({ id: 7, branch: "feature-branch" })],
+      hasLibraryFeature: true,
+      worktreeHasLibrary: true,
+    });
+    await screen.findByText("feature-branch");
+
+    const libraryLink = await screen.findByRole("link", { name: "Library" });
+    expect(libraryLink).toHaveAttribute(
+      "href",
+      "/data-studio/worktrees/7/library",
+    );
+    const request = fetchMock.callHistory.lastCall(
+      "path:/api/ee/library",
+    )?.request;
+    expect(request?.url).toContain("worktree-id=7");
+  });
+
+  it("shows no Library item when the worktree has no library", async () => {
+    setup({
+      worktrees: [createMockWorktree({ id: 7, branch: "feature-branch" })],
+      hasLibraryFeature: true,
+      worktreeHasLibrary: false,
+    });
+    await screen.findByText("feature-branch");
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/ee/library")).toBe(true);
+    });
+    expect(
+      screen.queryByRole("link", { name: "Library" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows no Library item without the library token feature", async () => {
+    setup({
+      worktrees: [createMockWorktree({ id: 7, branch: "feature-branch" })],
+      hasLibraryFeature: false,
+      worktreeHasLibrary: true,
+    });
+    await screen.findByText("feature-branch");
+
+    expect(
+      screen.queryByRole("link", { name: "Library" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a New worktree button", async () => {

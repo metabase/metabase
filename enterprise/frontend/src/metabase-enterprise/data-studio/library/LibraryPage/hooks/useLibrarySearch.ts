@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { skipToken, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useWorktreeId } from "metabase/common/worktrees";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import type { CollectionId } from "metabase-types/api";
@@ -17,6 +18,7 @@ export function useLibrarySearch(
   const debouncedQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
   const isActive = debouncedQuery.trim().length > 0;
   const getIcon = useGetIcon();
+  const worktreeId = useWorktreeId();
 
   const {
     data: searchResponse,
@@ -30,6 +32,7 @@ export function useLibrarySearch(
           collection: libraryCollectionId,
           models: ["table", "metric"],
           context: "library",
+          "worktree-id": worktreeId,
         }
       : skipToken,
   );

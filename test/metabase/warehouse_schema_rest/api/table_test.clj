@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
@@ -1561,3 +1562,40 @@
                             {:ids [t1 t2] :visibility_type nil})
       (is (= [nil nil]
              (map #(t2/select-one-fn :visibility_type :model/Table :id %) [t1 t2]))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so this needs `:model/Worktree` on the classpath. The endpoint it
+;;; covers is OSS.
+
+(deftest query-metadata-worktree-segments-and-measures-test
+  (when config/ee-available?
+    (testing "GET /api/table/:id/query_metadata"
+      (mt/with-temp [:model/Worktree {wt-id :id}     {}
+                     :model/Segment  {main-seg :id}  {:name "main segment" :table_id (mt/id :venues) :definition {}}
+                     :model/Segment  {wt-seg :id}    {:name        "worktree segment"
+                                                      :table_id    (mt/id :venues)
+                                                      :definition  {}
+                                                      :worktree_id wt-id}
+                     :model/Measure  {main-msr :id}  {:name "main measure" :table_id (mt/id :venues)}
+                     :model/Measure  {wt-msr :id}    {:name        "worktree measure"
+                                                      :table_id    (mt/id :venues)
+                                                      :worktree_id wt-id}]
+        (letfn [(ids [response k] (into #{} (map :id) (get response k)))]
+          (testing "the main app is described with its own segments and measures only"
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (format "table/%d/query_metadata" (mt/id :venues)))]
+              (is (contains? (ids response :segments) main-seg))
+              (is (not (contains? (ids response :segments) wt-seg)))
+              (is (contains? (ids response :measures) main-msr))
+              (is (not (contains? (ids response :measures) wt-msr)))))
+          (testing "worktree-id swaps in the ones that worktree checked out"
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (format "table/%d/query_metadata" (mt/id :venues))
+                                                 :worktree-id wt-id)]
+              (is (= #{wt-seg} (ids response :segments)))
+              (is (= #{wt-msr} (ids response :measures)))))
+          (testing "worktree-id is admin-only"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403
+                                         (format "table/%d/query_metadata" (mt/id :venues))
+                                         :worktree-id wt-id)))))))))

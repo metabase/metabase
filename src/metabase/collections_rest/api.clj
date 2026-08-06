@@ -192,6 +192,27 @@
          collection/personal-collections-with-ui-details
          collection/maybe-localize-tenant-collection-names)))
 
+(defn- collections-containing-published-tables
+  "Which of `collection-ids` present published tables. For a worktree's collections that is decided by their main-app
+  counterparts: tables are never checked out into a worktree, so a worktree collection presents the tables sitting in
+  the collection it was copied from."
+  [worktree-id collection-ids]
+  (let [wt->main       (when worktree-id
+                         (collection/worktree-collection-counterpart-ids collection-ids))
+        table-coll-ids (if worktree-id (vals wt->main) collection-ids)
+        with-tables    (into #{}
+                             (map :collection_id)
+                             (when (seq table-coll-ids)
+                               (t2/query {:select-distinct [:collection_id]
+                                          :from            :metabase_table
+                                          :where           [:and
+                                                            [:= :is_published true]
+                                                            [:= :archived_at nil]
+                                                            [:in :collection_id table-coll-ids]]})))]
+    (if worktree-id
+      (into #{} (keep (fn [[wt-id main-id]] (when (contains? with-tables main-id) wt-id))) wt->main)
+      with-tables)))
+
 (defn- prep-collection-for-export
   "Given a collection, tweaks it to be ready for returning to the FE.
 
@@ -302,13 +323,15 @@
                                                                     :where           [:= :archived false]}))
                                        ;; Tables in collections are an EE feature (library)
                                        (when (premium-features/has-feature? :library)
-                                         {:table (->> (t2/query {:select-distinct [:collection_id]
-                                                                 :from :metabase_table
-                                                                 :where [:and
-                                                                         [:= :is_published true]
-                                                                         [:= :archived_at nil]]})
-                                                      (map :collection_id)
-                                                      (into #{}))}))
+                                         {:table (if worktree-id
+                                                   (collections-containing-published-tables worktree-id (map :id collections))
+                                                   (->> (t2/query {:select-distinct [:collection_id]
+                                                                   :from :metabase_table
+                                                                   :where [:and
+                                                                           [:= :is_published true]
+                                                                           [:= :archived_at nil]]})
+                                                        (map :collection_id)
+                                                        (into #{})))}))
             collections-with-details (map prep-collection-for-export collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -841,9 +864,20 @@
   [_ collection options]
   (collection-query collection options))
 
+(defn- published-tables-collection-id
+  "The collection whose published tables `collection` presents. Its own, unless it is a worktree's copy of a
+  collection: tables are never checked out, so those live in the main-app collection it was copied from. `nil` when
+  the worktree collection has no main-app counterpart, i.e. it exists only on the branch."
+  [collection]
+  (if (:worktree_id collection)
+    (get (collection/worktree-collection-counterpart-ids [(:id collection)]) (:id collection))
+    (:id collection)))
+
 (defmethod collection-children-query :table
   [_ collection {:keys [archived? pinned-state]}]
-  (let [user-info {:user-id       api/*current-user-id*
+  (let [worktree-id (:worktree_id collection)
+        table-collection-id (published-tables-collection-id collection)
+        user-info {:user-id       api/*current-user-id*
                    :is-superuser? api/*is-superuser?*}
         published-clause (perms/published-table-visible-clause :t.id user-info)
         queryable-clause (cond-> [:or
@@ -870,9 +904,16 @@
      :where  [:and
               [:= :t.is_published true]
               (poison-when-pinned-clause pinned-state)
-              (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+              ;; the visible-collection CTE holds this worktree's collections, and the tables hang off a main-app
+              ;; one; data permissions still gate them through `queryable-clause`, and a worktree collection is
+              ;; only ever readable by an admin in the first place
+              (if worktree-id
+                always-true-hsql-expr
+                (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids}))
               queryable-clause
-              [:= :t.collection_id (:id collection)]
+              (if (and worktree-id (nil? table-collection-id))
+                always-false-hsql-expr
+                [:= :t.collection_id table-collection-id])
               (if archived?
                 [:!= :t.archived_at nil]
                 [:= :t.archived_at nil])]}))
@@ -906,15 +947,7 @@
         ;; Tables in collections are an EE feature (library)
         collections-containing-tables
         (if (premium-features/has-feature? :library)
-          (->> (when (seq descendant-collection-ids)
-                 (t2/query {:select-distinct [:collection_id]
-                            :from :metabase_table
-                            :where [:and
-                                    [:= :is_published true]
-                                    [:= :archived_at nil]
-                                    [:in :collection_id descendant-collection-ids]]}))
-               (map :collection_id)
-               (into #{}))
+          (collections-containing-published-tables (:worktree_id parent-coll) descendant-collection-ids)
           #{})
 
         collections-containing-transforms
@@ -985,11 +1018,15 @@
             update-personal-collection)))))
 
 (defmethod post-process-collection-children :table
-  [_ {:keys [models]} _collection rows]
+  [_ {:keys [models]} collection rows]
   (let [tables (map #(-> (t2/instance :model/Table %)
                          (update :archived api/bit->boolean)) rows)]
     (if (contains? models :measure)
-      (t2/hydrate tables :measures)
+      ;; a table is shared between the main app and every worktree that refers to it; its measures are not
+      (for [table (t2/hydrate tables :measures)]
+        (update table :measures #(filterv (fn [measure]
+                                            (= (:worktree_id measure) (:worktree_id collection)))
+                                          %)))
       tables)))
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]

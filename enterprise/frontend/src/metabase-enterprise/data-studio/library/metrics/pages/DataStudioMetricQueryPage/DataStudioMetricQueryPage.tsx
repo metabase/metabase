@@ -1,12 +1,13 @@
 import { MetricQueryPage } from "metabase/metrics/pages/MetricQueryPage";
 
 import { DataStudioMetricBreadcrumbs } from "../../components/DataStudioMetricBreadcrumbs";
-import { dataStudioMetricUrls } from "../../urls";
+import { useDataStudioMetricUrls } from "../../urls";
 
 export function DataStudioMetricQueryPage() {
+  const urls = useDataStudioMetricUrls();
   return (
     <MetricQueryPage
-      urls={dataStudioMetricUrls}
+      urls={urls}
       showAppSwitcher
       showDataStudioLink={false}
       renderBreadcrumbs={(card) => <DataStudioMetricBreadcrumbs card={card} />}

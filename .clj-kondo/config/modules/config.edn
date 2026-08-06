@@ -3415,7 +3415,9 @@
    :api  #{metabase-enterprise.library.api}
    :uses #{api
            collections
-           premium-features}
+           premium-features
+           remote-sync
+           util}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
   enterprise/mcp

@@ -1,14 +1,21 @@
 import {
   dataStudio,
+  dataStudioArchivedSnippets,
   dataStudioData,
   dataStudioDataModelSegment,
   dataStudioDataModelSegmentDependencies,
   dataStudioDataModelSegmentRevisions,
   dataStudioLibrary,
+  dataStudioMetric,
+  dataStudioPublishedTableMeasure,
+  dataStudioPublishedTableSegment,
+  dataStudioSnippet,
   dataStudioTable,
   dataStudioTableFields,
   dataStudioTableSegments,
   newDataStudioDataModelSegment,
+  newDataStudioMetric,
+  newDataStudioSnippet,
 } from "./data-studio";
 
 describe("urls > data-studio", () => {
@@ -97,6 +104,62 @@ describe("urls > data-studio", () => {
   describe("dataStudioLibrary", () => {
     it("should return library URL", () => {
       expect(dataStudioLibrary()).toBe("/data-studio/library");
+    });
+
+    it("should return worktree library URL", () => {
+      expect(dataStudioLibrary({ worktreeId: 7 })).toBe(
+        "/data-studio/worktrees/7/library",
+      );
+    });
+
+    it("should keep expandedIds in worktree scope", () => {
+      expect(dataStudioLibrary({ worktreeId: 7, expandedIds: [1, 2] })).toBe(
+        "/data-studio/worktrees/7/library?expandedId=1&expandedId=2",
+      );
+    });
+  });
+
+  describe("worktree-scoped library URLs", () => {
+    it("should build worktree table URLs", () => {
+      expect(dataStudioTable(42, { worktreeId: 7 })).toBe(
+        "/data-studio/worktrees/7/library/tables/42",
+      );
+      expect(dataStudioTableFields(42, 100, { worktreeId: 7 })).toBe(
+        "/data-studio/worktrees/7/library/tables/42/fields/100",
+      );
+      expect(dataStudioPublishedTableSegment(42, 123, { worktreeId: 7 })).toBe(
+        "/data-studio/worktrees/7/library/tables/42/segments/123",
+      );
+      expect(dataStudioPublishedTableMeasure(42, 123, { worktreeId: 7 })).toBe(
+        "/data-studio/worktrees/7/library/tables/42/measures/123",
+      );
+    });
+
+    it("should build worktree metric URLs", () => {
+      expect(dataStudioMetric(5, { worktreeId: 7 })).toBe(
+        "/data-studio/worktrees/7/library/metrics/5",
+      );
+      expect(newDataStudioMetric({ worktreeId: 7, collectionId: 3 })).toBe(
+        "/data-studio/worktrees/7/library/metrics/new?collectionId=3",
+      );
+    });
+
+    it("should build worktree snippet URLs", () => {
+      expect(dataStudioSnippet(9, { worktreeId: 7 })).toBe(
+        "/data-studio/worktrees/7/library/snippets/9",
+      );
+      expect(newDataStudioSnippet({ worktreeId: 7 })).toBe(
+        "/data-studio/worktrees/7/library/snippets/new",
+      );
+      expect(dataStudioArchivedSnippets({ worktreeId: 7 })).toBe(
+        "/data-studio/worktrees/7/library/snippets/archived",
+      );
+    });
+
+    it("should fall back to the main library when worktreeId is null", () => {
+      expect(dataStudioTable(42, { worktreeId: null })).toBe(
+        "/data-studio/library/tables/42",
+      );
     });
   });
 

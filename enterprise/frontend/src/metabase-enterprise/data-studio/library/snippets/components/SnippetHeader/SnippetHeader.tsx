@@ -15,10 +15,11 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import { useToast } from "metabase/common/hooks";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
-import type { NativeQuerySnippet } from "metabase-types/api";
+import type { NativeQuerySnippet, WorktreeId } from "metabase-types/api";
 
 import { SnippetMoreMenu } from "../SnippetMoreMenu";
 
@@ -37,6 +38,7 @@ export function SnippetHeader({
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
+  const worktreeId = useWorktreeId();
 
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: snippet.collection_id,
@@ -62,7 +64,10 @@ export function SnippetHeader({
       {...rest}
       breadcrumbs={
         <DataStudioBreadcrumbs loading={isLoadingPath}>
-          <Link key="snippet-root-collection" to={Urls.dataStudioLibrary()}>
+          <Link
+            key="snippet-root-collection"
+            to={Urls.dataStudioLibrary({ worktreeId })}
+          >
             {t`SQL snippets`}
           </Link>
           {folderPath?.map((collection, i) => (
@@ -70,12 +75,13 @@ export function SnippetHeader({
               key={collection.id}
               to={
                 collection.type === "trash" || collection.archived
-                  ? Urls.dataStudioArchivedSnippets()
+                  ? Urls.dataStudioArchivedSnippets({ worktreeId })
                   : Urls.dataStudioLibrary({
                       expandedIds: [
                         "root",
                         ...folderPath.slice(0, i + 1).map((c) => c.id),
                       ],
+                      worktreeId,
                     })
               }
             >
@@ -134,22 +140,26 @@ type SnippetTabsProps = {
 };
 
 function SnippetTabs({ snippet }: SnippetTabsProps) {
-  const tabs = getTabs(snippet.id);
+  const worktreeId = useWorktreeId();
+  const tabs = getTabs(snippet.id, worktreeId);
   return <PaneHeaderTabs tabs={tabs} />;
 }
 
-function getTabs(snippetId: number): PaneHeaderTab[] {
+function getTabs(
+  snippetId: number,
+  worktreeId: WorktreeId | undefined,
+): PaneHeaderTab[] {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Definition`,
-      to: Urls.dataStudioSnippet(snippetId),
+      to: Urls.dataStudioSnippet(snippetId, { worktreeId }),
     },
   ];
 
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({
       label: t`Dependencies`,
-      to: Urls.dataStudioSnippetDependencies(snippetId),
+      to: Urls.dataStudioSnippetDependencies(snippetId, { worktreeId }),
     });
   }
 

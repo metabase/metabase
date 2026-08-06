@@ -89,7 +89,7 @@ const getDefaultPluginRemoteSync = () => ({
   DataStudioWorktreesSection:
     // the cast keeps the nullable component type instead of narrowing the field to `null`
     null as ComponentType<DataStudioWorktreesSectionProps> | null,
-  getDataStudioWorktreeRoutes: (): ReactNode => null,
+  getDataStudioWorktreeRoutes: (_IsAdmin: ComponentType): ReactNode => null,
   useWorktreeBreadcrumb: (): WorktreeBreadcrumb | null => null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
@@ -121,7 +121,7 @@ export const PLUGIN_REMOTE_SYNC: {
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   CollectionSyncStatusBadge: ComponentType | null;
   DataStudioWorktreesSection: ComponentType<DataStudioWorktreesSectionProps> | null;
-  getDataStudioWorktreeRoutes: () => ReactNode;
+  getDataStudioWorktreeRoutes: (IsAdmin: ComponentType) => ReactNode;
   /** The worktree the current page is scoped to, as a breadcrumb item; null in the main app. */
   useWorktreeBreadcrumb: () => WorktreeBreadcrumb | null;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<string>[] | null;

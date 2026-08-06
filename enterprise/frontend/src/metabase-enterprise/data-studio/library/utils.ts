@@ -8,12 +8,17 @@ import type {
   OmniPickerItem,
 } from "metabase/common/components/Pickers/EntityPicker/types";
 import { allCollectionModels } from "metabase/common/components/Pickers/EntityPicker/utils";
+import { useWorktreeId } from "metabase/common/worktrees";
 import type {
   GetEntityPickerSyntheticLibraryItemFunction,
   LibrarySubCollectionType,
 } from "metabase/plugins/oss/library";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
-import type { CollectionItem, CollectionType } from "metabase-types/api";
+import type {
+  CollectionItem,
+  CollectionType,
+  WorktreeId,
+} from "metabase-types/api";
 
 const isLibrary = (
   collection: CollectionItem | { data: null } | undefined,
@@ -21,12 +26,18 @@ const isLibrary = (
 
 export const useGetLibraryCollection = ({
   skip = false,
-}: { skip?: boolean } = {}) => {
+  worktreeId: explicitWorktreeId,
+}: { skip?: boolean; worktreeId?: WorktreeId } = {}) => {
+  const contextWorktreeId = useWorktreeId();
+  const worktreeId = explicitWorktreeId ?? contextWorktreeId;
   const {
     data,
     isLoading: isLoadingCollection,
     error,
-  } = useGetLibraryCollectionQuery(undefined, { skip });
+  } = useGetLibraryCollectionQuery(
+    worktreeId != null ? { "worktree-id": worktreeId } : undefined,
+    { skip },
+  );
 
   const maybeLibrary = useMemo(
     () => (isLibrary(data) ? data : undefined),

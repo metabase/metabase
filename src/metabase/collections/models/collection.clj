@@ -185,9 +185,37 @@
   (pos-int? (t2/count :model/Collection :is_remote_synced true)))
 
 (defn library-collection
-  "Get the 'library' collection, if it exists."
-  []
-  (t2/select-one :model/Collection :type library-collection-type))
+  "Get the 'library' collection, if it exists. With no argument, the main app's; with a `worktree-id`, the copy that
+  remote-sync worktree checked out. A branch holding a Library can be checked out into any number of worktrees, so
+  the two are only ever unambiguous together."
+  ([]
+   (library-collection nil))
+  ([worktree-id]
+   (t2/select-one :model/Collection :type library-collection-type :worktree_id worktree-id)))
+
+(defn worktree-collection-counterpart-ids
+  "Maps each of `collection-ids` -- collections a remote-sync worktree checked out -- to the id of the main-app
+  collection it is a copy of, resolved through the worktree's entity_id remapping. Collections that exist only on
+  the branch are absent from the result.
+
+  Tables are never checked out into a worktree, so a worktree collection holds no tables of its own; the published
+  tables it presents are the ones sitting in its main-app counterpart.
+
+  Queries the `worktree_remapping` table rather than `:model/WorktreeRemapping`: the model is enterprise-only, while
+  the table exists on both editions."
+  [collection-ids]
+  (let [collection-ids (remove nil? collection-ids)]
+    (when (seq collection-ids)
+      (into {}
+            (map (juxt :worktree_collection_id :main_collection_id))
+            (t2/query {:select [[:wt.id :worktree_collection_id] [:mc.id :main_collection_id]]
+                       :from   [[:collection :wt]]
+                       :join   [[:worktree_remapping :wr] [:= :wr.local_entity_id :wt.entity_id]
+                                [:collection :mc]         [:= :mc.entity_id :wr.source_entity_id]]
+                       :where  [:and
+                                [:= :wr.type "Collection"]
+                                [:= :mc.worktree_id nil]
+                                [:in :wt.id collection-ids]]})))))
 
 (def ^{:arglists '([id])} root-collection-type-by-id
   "Return the `:type` of the top-level (root) collection with the given `id`, or `nil` if no

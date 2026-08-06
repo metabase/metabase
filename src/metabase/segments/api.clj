@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -35,14 +36,19 @@
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
-  "Create a new `Segment`. The Segment's table is derived from its `definition`."
+  "Create a new `Segment`. The Segment's table is derived from its `definition`. Pass `worktree_id` to create it
+  inside a remote-sync worktree, which is admin-only; the table itself is shared with the main app."
   [_route-params
    _query-params
-   {:keys [name description definition], :as body} :- [:map
-                                                       [:name        ms/NonBlankString]
-                                                       [:definition  ms/Map]
-                                                       [:description {:optional true} [:maybe :string]]]]
+   {:keys [name description definition worktree_id], :as body} :- [:map
+                                                                   [:name        ms/NonBlankString]
+                                                                   [:definition  ms/Map]
+                                                                   [:description {:optional true} [:maybe :string]]
+                                                                   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
+  (when worktree_id
+    (api/check-superuser)
+    (remote-sync/check-worktree-exists! worktree_id))
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
     (let [segment (api/check-500
@@ -51,7 +57,8 @@
                                                           :creator_id  api/*current-user-id*
                                                           :name        name
                                                           :description description
-                                                          :definition  definition)))]
+                                                          :definition  definition
+                                                          :worktree_id worktree_id)))]
       (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
       (t2/hydrate segment :creator))))
 

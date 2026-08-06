@@ -13,6 +13,7 @@ import type {
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   Form,
   FormErrorMessage,
@@ -45,6 +46,7 @@ const isCollectionItem = (
 
 export function EditCollectionModal(props: EditCollectionModalProps) {
   const { collection, onClose, onSave } = props;
+  const worktreeId = useWorktreeId();
   const [updateCollection] = useUpdateCollectionMutation();
   const initialValues = useMemo<CollectionFormValues>(() => {
     const parentId = isCollectionItem(collection)
@@ -125,6 +127,7 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
                     ? [collection.namespace]
                     : [],
                   disableRecentLogging: true,
+                  worktreeId,
                 }}
               />
               <Group justify="flex-end">

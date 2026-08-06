@@ -55,7 +55,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           <Route path="transforms" element={<TransformsSectionLayout />}>
             {getDataStudioTransformRoutes()}
           </Route>
-          {PLUGIN_REMOTE_SYNC.getDataStudioWorktreeRoutes()}
+          {PLUGIN_REMOTE_SYNC.getDataStudioWorktreeRoutes(IsAdmin)}
           {getDataStudioGlossaryRoutes()}
           {getDataStudioSettingsRoutes()}
           {PLUGIN_LIBRARY.isEnabled ? (

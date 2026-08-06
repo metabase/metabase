@@ -273,4 +273,8 @@ export type LibraryCollection = CollectionItem & {
   effective_children: LibraryChild[];
 };
 
+export type GetLibraryCollectionRequest = {
+  "worktree-id"?: WorktreeId | null;
+};
+
 export type GetLibraryCollectionResponse = LibraryCollection | { data: null };

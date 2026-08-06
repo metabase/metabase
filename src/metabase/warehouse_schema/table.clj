@@ -41,21 +41,28 @@
 
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
-  `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
-  [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
+  `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings.
+  `worktree-id` picks which remote-sync worktree's segments and measures to describe the table with; nil is the
+  main app's."
+  [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model? worktree-id]}]
   (api/check-404 table)
   (if include-editable-data-model?
     (api/write-check table)
     (api/check-403 (can-access-table-for-query-metadata? table)))
   (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                                 [:segments :definition_description] [:measures :definition_description] :metrics :collection]
-                         (premium-features/any-transforms-enabled?) (conj :transform))]
+                         (premium-features/any-transforms-enabled?) (conj :transform))
+        ;; a table is shared between the main app and every worktree that refers to it, so what hangs off it
+        ;; is not: only the worktree being described gets to see its own segments and measures
+        in-worktree?   (fn [x] (= (:worktree_id x) worktree-id))]
     (-> table
         (update :collection nil-if-unreadable)
         (#(apply t2/hydrate % hydration-keys))
         (m/dissoc-in [:db :details])
         format-fields-for-response
         present-table
+        (update :segments #(filterv in-worktree? %))
+        (update :measures #(filterv in-worktree? %))
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
                                           (case (keyword visibility-type)
                                             :hidden    include-hidden-fields?

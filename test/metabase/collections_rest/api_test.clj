@@ -3689,6 +3689,37 @@
                         :data
                         (into #{} (map (juxt :model :id))))))))))))
 
+(deftest worktree-collection-lists-its-counterpart-published-tables-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:library}
+      (mt/with-temp [:model/Worktree   {wt-id :id}   {}
+                     :model/Collection main-coll     {:name "checked out collection"
+                                                      :type collection/library-data-collection-type}
+                     :model/Collection wt-coll       {:name        "checked out collection"
+                                                      :type        collection/library-data-collection-type
+                                                      :worktree_id wt-id}
+                     :model/Collection branch-coll   {:name        "branch-only collection"
+                                                      :type        collection/library-data-collection-type
+                                                      :worktree_id wt-id}
+                     :model/Table      {tbl-id :id}  {:db_id         (mt/id)
+                                                      :display_name  "Published Table"
+                                                      :collection_id (:id main-coll)
+                                                      :is_published  true}]
+        (t2/insert! :model/WorktreeRemapping {:worktree_id      wt-id
+                                              :type             "Collection"
+                                              :source_entity_id (:entity_id main-coll)
+                                              :local_entity_id  (:entity_id wt-coll)})
+        (letfn [(item-ids [coll-id]
+                  (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items"))
+                       :data
+                       (into #{} (map (juxt :model :id)))))]
+          (testing "a worktree collection lists the published tables of the main-app collection it was checked out from"
+            (is (contains? (item-ids (:id wt-coll)) ["table" tbl-id])))
+          (testing "a worktree collection that exists only on the branch lists no tables"
+            (is (= #{} (item-ids (:id branch-coll)))))
+          (testing "the main-app collection is unaffected"
+            (is (contains? (item-ids (:id main-coll)) ["table" tbl-id]))))))))
+
 (defn- exploration-items-in [coll-id & {:keys [user] :or {user :crowberto}}]
   (->> (:data (mt/user-http-request user :get 200 (str "collection/" coll-id "/items")))
        (filter #(= "exploration" (:model %)))))
