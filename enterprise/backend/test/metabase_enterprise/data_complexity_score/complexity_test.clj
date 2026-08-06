@@ -747,14 +747,20 @@
 (deftest ^:sequential synonym-source-in-process-opts-pin-bundled-minilm-test
   (testing "the in-process synonym provider selects the bundled MiniLM model, not Library retrieval's Arctic model"
     (test-util/with-synonym-source [:provider "in-process"]
-      (let [{:keys [embedder embedding-model-meta text-variant]} (synonym-source/complexity-scores-opts)]
-        (is (= {:provider         "in-process"
-                :model-name       "sentence-transformers/all-MiniLM-L6-v2"
-                :model-dimensions 384}
-               embedding-model-meta))
+      (let [{:keys [embedder embedding-model-meta text-variant]} (synonym-source/complexity-scores-opts)
+            bundled-minilm {:provider         "in-process"
+                            :model-name       "sentence-transformers/all-MiniLM-L6-v2"
+                            :model-dimensions 384}
+            captured       (atom nil)]
+        (is (= bundled-minilm embedding-model-meta))
         (is (= :names-split text-variant))
-        (is (fn? embedder)
-            "synonym-source returns a provider embedder that passes the MiniLM descriptor to the plugin SPI")))))
+        (mt/with-dynamic-fn-redefs [embeddings/get-embeddings-batch
+                                    (fn [model texts & _opts]
+                                      (reset! captured model)
+                                      (repeat (count texts) [1.0]))]
+          (embedder [{:id 1 :name "orders" :kind :table}]))
+        (is (= bundled-minilm @captured)
+            "the embedder asks the provider SPI for the bundled MiniLM model")))))
 
 (deftest ^:sequential provider-embedder-suppresses-token-tracking-test
   (testing "provider-embedder always passes :record-tokens? false to get-embeddings-batch"
