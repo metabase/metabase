@@ -153,11 +153,13 @@
 (defn- schema-names-filter [schema-names multi-level-schema catalog-column schema-column]
   (when schema-names
     (if multi-level-schema
-      [:in [:composite catalog-column schema-column]
-       (map (comp (fn [catalog+schema]
-                    (into [:composite] catalog+schema))
-                  split-catalog+schema)
-            schema-names)]
+      ;; AND-ed equalities rather than a row-constructor `IN` on `(catalog, schema)`: Databricks' planner is
+      ;; orders of magnitude slower on the latter against `system.information_schema` (GHY-4263).
+      (into [:or]
+            (map (fn [schema-name]
+                   (let [[catalog schema] (split-catalog+schema schema-name)]
+                     [:and [:= catalog-column catalog] [:= schema-column schema]])))
+            schema-names)
       [:in schema-column schema-names])))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
