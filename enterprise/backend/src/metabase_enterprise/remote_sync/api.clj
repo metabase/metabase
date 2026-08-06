@@ -94,7 +94,7 @@
    - local_version: Git SHA of last successful import (nil if never imported)
    - cached: true if result was served from cache"
   [_route-params
-   {:keys [force-refresh]} :- [:map [:force-refresh {:optional true} :boolean]]
+   {:keys [force-refresh]} :- [:map {:closed true} [:force-refresh {:optional true} :boolean]]
    _body]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
@@ -164,7 +164,7 @@
 
   Requires superuser permissions."
   [_route
-   {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
+   {:keys [branch]} :- [:map {:closed true} [:branch ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [branch-name (check-branch-matches-setting! branch)

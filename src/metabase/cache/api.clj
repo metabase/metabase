@@ -201,7 +201,7 @@
   touching all nested configurations, or you want your invalidation to trickle down to every card."
   [_route-params
    {:keys [include database dashboard question]}
-   :- [:map
+   :- [:map {:closed true}
        [:include   {:optional true} [:maybe {:description "All cache configuration overrides should invalidate cache too"}
                                      [:= :overrides]]]
        [:database  {:optional true} [:maybe {:description "A list of database ids"}

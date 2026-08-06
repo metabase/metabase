@@ -23,7 +23,7 @@
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
   [_route-params
-   {:keys [model-id]} :- [:map
+   {:keys [model-id]} :- [:map {:closed true}
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
   (letfn [(actions-for [models]
             (if (seq models)

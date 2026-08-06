@@ -138,7 +138,7 @@
 (api.macros/defendpoint :get "/runs" :- [:sequential ::replacement.schema/run]
   "List replacement runs, optionally filtered by is-active."
   [_route-params
-   {:keys [is-active]} :- [:map [:is-active {:optional true} [:maybe :boolean]]]]
+   {:keys [is-active]} :- [:map {:closed true} [:is-active {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (t2/select :model/ReplacementRun
              (cond-> {:order-by [[:start_time :desc]]}
@@ -153,7 +153,7 @@
 
 (api.macros/defendpoint :post "/runs/:id/cancel" :- [:map {:closed true} [:success boolean?]]
   "Cancel a running source replacement."
-  [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
   (let [run (t2/select-one :model/ReplacementRun :id id)]
     (when-not run

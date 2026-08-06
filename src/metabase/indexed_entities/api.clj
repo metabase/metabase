@@ -76,7 +76,7 @@
 (api.macros/defendpoint :get "/"
   "Retrieve list of ModelIndex."
   [_route-params
-   {:keys [model_id]} :- [:map
+   {:keys [model_id]} :- [:map {:closed true}
                           [:model_id ms/PositiveInt]]]
   (let [model (api/read-check :model/Card model_id)]
     (when-not (= (:type model) :model)

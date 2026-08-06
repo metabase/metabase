@@ -173,7 +173,7 @@
   `archived`. See corresponding implementation functions above for the specific behavior of each filter
   option. :card_index:"
   [_route-params
-   {:keys [f], model-id :model_id} :- [:map
+   {:keys [f], model-id :model_id} :- [:map {:closed true}
                                        [:f        {:default :all}  (into [:enum] card-filter-options)]
                                        [:model_id {:optional true} [:maybe ms/PositiveInt]]]]
   (when (contains? #{:database :table :using_model :using_segment} f)

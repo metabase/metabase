@@ -63,7 +63,7 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
   [_route-params
-   {:keys [include], archived? :archived} :- [:map
+   {:keys [include], archived? :archived} :- [:map {:closed true}
                                               [:include  {:optional true} ::include]
                                               [:archived {:default false} ms/BooleanValue]]]
   (let [timelines (->> (list-timelines archived?)
@@ -144,7 +144,7 @@
 (api.macros/defendpoint :get "/collection/root"
   "Fetch the root Collection's timelines."
   [_route-params
-   {:keys [include archived]} :- [:map
+   {:keys [include archived]} :- [:map {:closed true}
                                   [:include  {:optional true} [:maybe [:= "events"]]]
                                   [:archived {:default false} [:maybe :boolean]]]]
   (api/read-check collection/root-collection)

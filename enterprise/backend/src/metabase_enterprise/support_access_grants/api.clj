@@ -47,7 +47,7 @@
   [_route-params
    {:keys [ticket-number
            user-id
-           include-revoked]} :- [:map
+           include-revoked]} :- [:map {:closed true}
                                  [:ticket-number {:optional true} [:maybe :string]]
                                  [:user-id {:optional true} [:maybe ms/PositiveInt]]
                                  [:include-revoked {:optional true} [:maybe :boolean]]]]

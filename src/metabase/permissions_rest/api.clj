@@ -179,7 +179,7 @@
   - `tenancy=internal`: Returns only non-tenant groups (where `is_tenant_group = false`)
   - No `tenancy` parameter: Returns all groups (default behavior)"
   [_route_params
-   {:keys [tenancy]} :- [:map
+   {:keys [tenancy]} :- [:map {:closed true}
                          [:tenancy {:optional true} [:enum "external" "internal"]]]]
   (try
     (perms/check-group-manager)
@@ -234,7 +234,7 @@
   never included. The ids are otherwise unfiltered; system-managed groups like Data Analysts appear when they hold a
   grant, and clients intersect the ids with the groups they display. Superuser-only, like the invite action itself."
   [_route-params
-   {:keys [id] item-type :type} :- [:map
+   {:keys [id] item-type :type} :- [:map {:closed true}
                                     [:type [:enum "dashboard" "question"]]
                                     [:id   ms/PositiveInt]]]
   (api/check-superuser)

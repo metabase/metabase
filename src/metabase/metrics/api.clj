@@ -360,7 +360,7 @@
   "List a metric's curated dimensions, and (when `with-addable=true`) the columns still available to
   add, grouped by source table. Both can be filtered with a `query` name substring."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
-   {:keys [query with-addable include-orphaned]} :- [:map
+   {:keys [query with-addable include-orphaned]} :- [:map {:closed true}
                                                      [:query            {:optional true} [:maybe :string]]
                                                      [:with-addable     {:optional true} [:maybe ms/BooleanValue]]
                                                      [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]

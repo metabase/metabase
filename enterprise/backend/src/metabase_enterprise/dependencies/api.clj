@@ -484,7 +484,7 @@
   The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which
   depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency."
   [_route-params
-   {:keys [id type]} :- [:map
+   {:keys [id type]} :- [:map {:closed true}
                          [:id {:optional true} ms/PositiveInt]
                          [:type {:optional true} ::deps.dependency-types/dependency-types]]]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)

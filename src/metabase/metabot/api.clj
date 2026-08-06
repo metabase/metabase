@@ -649,7 +649,7 @@
   :- metabot-settings-response-schema
   "Return available models for a provider using its configured credentials."
   [_route-params
-   {:keys [provider]} :- [:map
+   {:keys [provider]} :- [:map {:closed true}
                           [:provider {:optional true} metabot-provider-schema]]]
   (perms/check-has-application-permission :setting)
   (settings-response (or provider (current-provider))))

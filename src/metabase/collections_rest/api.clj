@@ -147,7 +147,7 @@
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
   [_route-params
-   {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map
+   {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map {:closed true}
                                                                                  [:archived                       {:default false} [:maybe ms/BooleanValue]]
                                                                                  [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
                                                                                  [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
@@ -248,7 +248,7 @@
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
            namespace namespaces shallow collection-id]}
-   :- [:map
+   :- [:map {:closed true}
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
        [:include-library                {:default false} [:maybe :boolean]]
@@ -1362,7 +1362,7 @@
 (api.macros/defendpoint :get "/root"
   "Return the 'Root' Collection object with standard details added"
   [_route-params
-   {:keys [namespace]} :- [:map
+   {:keys [namespace]} :- [:map {:closed true}
                            [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
   (-> (root-collection namespace)
       (api/read-check)
@@ -1419,7 +1419,7 @@
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query include_library collection_type
-           show_dashboard_questions]} :- [:map
+           show_dashboard_questions]} :- [:map {:closed true}
                                           [:models                      {:optional true} [:maybe Models]]
                                           [:collection_type             {:optional true} CollectionType]
                                           [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
@@ -1545,7 +1545,7 @@
 (api.macros/defendpoint :get "/graph"
   "Fetch a graph of all Collection Permissions."
   [_route-params
-   {:keys [namespace]} :- [:map
+   {:keys [namespace]} :- [:map {:closed true}
                            [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-superuser)
   (perms/graph namespace))

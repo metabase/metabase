@@ -372,7 +372,7 @@
                                                      [:message :any]
                                                      [:run_id [:maybe pos-int?]]]]]
   "Run a transform."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (run-transform! (api/read-check :model/Transform id)))
 
