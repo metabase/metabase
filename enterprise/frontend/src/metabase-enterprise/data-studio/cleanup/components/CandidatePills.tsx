@@ -57,6 +57,7 @@ function CandidatePill({
 }) {
   return (
     <Pill
+      size="sm"
       className={S.pill}
       data-kind={kind}
       title={label}

@@ -47,8 +47,8 @@ databaseChangeLog:
               - column: {name: signature, type: "${text.type}", remarks: Canonical semantic identity, constraints: {nullable: false}}
               - column: {name: definition, type: "${text.type}", remarks: JSON creation-ready MBQL definition, constraints: {nullable: false}}
               - column: {name: semantic_details, type: "${text.type}", remarks: JSON type-specific recommendation details, constraints: {nullable: false}}
-              - column: {name: suggested_name, type: varchar(254), remarks: Deterministically suggested name, constraints: {nullable: false}}
-              - column: {name: display_name, type: varchar(254), remarks: Cluster-aware deterministic display name, constraints: {nullable: false}}
+              - column: {name: suggested_name, type: "${text.type}", remarks: Deterministically suggested name, constraints: {nullable: false}}
+              - column: {name: display_name, type: "${text.type}", remarks: Cluster-aware deterministic display name, constraints: {nullable: false}}
               - column: {name: suggested_description, type: "${text.type}", remarks: Deterministically suggested description, constraints: {nullable: false}}
               - column: {name: modeling_status, type: varchar(32), remarks: Missing partially modeled or modeled, constraints: {nullable: false}}
               - column: {name: verified_source_count, type: int, remarks: Distinct verified source cards, constraints: {nullable: false}}
