@@ -212,9 +212,12 @@
 (defmethod entity-context :collection [_ ids] (collection-context ids))
 
 (defn- collection-breadcrumbs
-  "For a set of collection ids → `{collection-id → {:id :name :effective_ancestors [{:id :name} …]}}`.
+  "For a set of collection ids → `{collection-id → {:id :name :namespace :effective_ancestors [{:id :name} …]}}`.
   Hydrates the permission-filtered `:effective_ancestors` breadcrumb. Selects the full row (the hydrate
-  needs `:location`). No entry for root/nil collections.
+  needs `:location`). No entry for root/nil collections. `:namespace` (the tree's namespace: nil for the
+  default tree, `transforms` / `shared-tenant-collections` for the namespaced trees findings can live in)
+  rides once at the top level - a subtree is namespace-uniform, so it covers the ancestors too - letting
+  the FE build the namespace-specific collection URL.
 
   A breadcrumb can be a collection the primary gate never checked (a `:collection` subject's breadcrumb
   is its **parent**), so caller visibility is re-applied here - an unreadable breadcrumb collection gets
@@ -231,19 +234,22 @@
                    [(:id c)
                     {:id                  (:id c)
                      :name                (:name c)
+                     :namespace           (:namespace c)
                      :effective_ancestors (mapv #(select-keys % [:id :name]) (:effective_ancestors c))}]))
             colls))))
 
 (defn- root-breadcrumb
   "The root-collection sentinel used as a root-resident entity's `collection` breadcrumb, normalized to the
-  `{:id :name :effective_ancestors}` shape the nested-collection breadcrumbs use. `:id` is the literal
-  \"root\" (the app-wide root id - the FE detects root by id, never by the localized name); `:name` is
-  `collection-namespace`'s root label (e.g. \"Transforms\" for the transforms namespace). Root has no
-  ancestors. Mirrors how the rest of the app links root as a breadcrumb
-  (`collection/hydrate-root-collection` / the root head of `:effective_ancestors`)."
+  `{:id :name :namespace :effective_ancestors}` shape the nested-collection breadcrumbs use. `:id` is the
+  literal \"root\" (the app-wide root id - the FE detects root by id, never by the localized name); `:name`
+  is `collection-namespace`'s root label (e.g. \"Transforms\" for the transforms namespace); `:namespace`
+  echoes `collection-namespace`, disambiguating which tree's root this is (nil for the default tree - the
+  sentinel shares `:id` \"root\" across namespaces). Root has no ancestors. Mirrors how the rest of the app
+  links root as a breadcrumb (`collection/hydrate-root-collection` / the root head of
+  `:effective_ancestors`)."
   [collection-namespace]
   (let [root (collection/root-collection-with-ui-details collection-namespace)]
-    {:id (:id root) :name (:name root) :effective_ancestors []}))
+    {:id (:id root) :name (:name root) :namespace (:namespace root) :effective_ancestors []}))
 
 (defn- entity-breadcrumb
   "One finding's `collection` breadcrumb from its hydrated `entity` context row: the parent-collection

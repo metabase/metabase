@@ -615,6 +615,23 @@
                 (is (= [root-b] (get-in (by-entity [:card root-a]) [:details :duplicate_entity_ids])))
                 (is (= [root-a] (get-in (by-entity [:card root-b]) [:details :duplicate_entity_ids])))))))))))
 
+(deftest duplicated-api-transforms-collection-root-breadcrumb-test
+  (testing "GET /duplicated: a top-level transforms-namespace collection subject gets the Transforms root sentinel"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [prefix (scope-prefix)
+              nm     (str prefix " Pipeline")]
+          (mt/with-temp [:model/Collection {xf-a :id} {:name nm :namespace "transforms"}
+                         :model/Collection {xf-b :id} {:name nm :namespace "transforms"}]
+            (scan/scan!)
+            (let [rows  (:data (mt/user-http-request :crowberto :get 200
+                                                     "ee/content-diagnostics/duplicated" :query prefix))
+                  by-id (into {} (map (juxt :entity_id identity)) rows)]
+              (testing "the sentinel names the transforms tree, not the default \"Our analytics\""
+                (doseq [coll-id [xf-a xf-b]]
+                  (is (= {:id "root" :name "Transforms" :namespace "transforms" :effective_ancestors []}
+                         (get-in (by-id coll-id) [:details :collection]))))))))))))
+
 (deftest duplicated-api-collection-peers-hydrate-test
   (testing "GET /duplicated hydrates collection peers gated on the collection's own read visibility (its own :id)"
     (mt/with-premium-features #{:content-diagnostics}

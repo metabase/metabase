@@ -358,13 +358,17 @@
                   rows       (:data (mt/user-http-request :crowberto :get 200
                                                           "ee/content-diagnostics/imbalanced" :query prefix))
                   row-for    (fn [fid] (first (filter #(= fid (:id %)) rows)))]
-              (testing "nested collection → the parent's breadcrumb"
+              (testing "nested collection → the parent's breadcrumb, with a null namespace (default tree)"
                 (let [row (row-for child-fid)]
                   (is (= parent (get-in row [:details :collection :id])))
-                  (is (= "Parent Coll" (get-in row [:details :collection :name])))))
+                  (is (= "Parent Coll" (get-in row [:details :collection :name])))
+                  (is (contains? (get-in row [:details :collection]) :namespace))
+                  (is (nil? (get-in row [:details :collection :namespace])))))
               (testing "root-level collection → the root sentinel (id \"root\", no ancestors), matching how the app links root"
                 (let [breadcrumb (get-in (row-for rooted-fid) [:details :collection])]
                   (is (= "root" (:id breadcrumb)))
+                  (is (contains? breadcrumb :namespace))
+                  (is (nil? (:namespace breadcrumb)))
                   (is (= [] (:effective_ancestors breadcrumb)))))
               (testing "content_count is hoisted top-level, never duplicated inside details"
                 (let [row (row-for child-fid)]
