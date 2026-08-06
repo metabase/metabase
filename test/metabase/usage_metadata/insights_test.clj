@@ -10,11 +10,15 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.usage-metadata.candidate-builders :as candidate-builders]
+   [metabase.usage-metadata.candidate-mining :as candidate-mining]
+   [metabase.usage-metadata.candidate-suggestions :as candidate-suggestions]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.frequent-itemsets :as frequent-itemsets]
    [metabase.usage-metadata.insights :as insights]
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.query-source :as query-source]
+   [metabase.usage-metadata.rollups :as rollups]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -26,52 +30,52 @@
 (def ^:private closed-only                 @#'frequent-itemsets/closed-only)
 (def ^:private itemset-support             @#'frequent-itemsets/itemset-support)
 (def ^:private any-atom-support            frequent-itemsets/any-atom-support)
-(def ^:private rebuild-and-clause          @#'insights/rebuild-and-clause)
+(def ^:private rebuild-and-clause          @#'rollups/rebuild-and-clause)
 (def ^:private relative-support-ok?        frequent-itemsets/relative-support-ok?)
-(def ^:private existing-composite-atomsets @#'insights/existing-composite-atomsets)
-(def ^:private composite-atomsets-memo     @#'insights/existing-segment-facts*-memo)
-(def ^:private candidate-source-cards      @#'insights/candidate-source-cards)
-(def ^:private candidate-lineage-card-index @#'insights/candidate-lineage-card-index)
-(def ^:private candidate-model-index       @#'insights/candidate-model-index)
-(def ^:private mapcat-id-batches           @#'insights/mapcat-id-batches)
-(def ^:private verified-card-ids           @#'insights/verified-card-ids)
-(def ^:private official-collection-ids     @#'insights/official-collection-ids)
-(def ^:private recent-card-view-counts     @#'insights/recent-card-view-counts)
-(def ^:private existing-measure-signatures @#'insights/existing-measure-signatures)
-(def ^:private existing-segment-signatures @#'insights/existing-segment-signatures)
-(def ^:private segment-signature           @#'insights/segment-signature)
-(def ^:private canonical-signature         @#'insights/canonical-signature)
-(def ^:private add-measure-suggestions     @#'insights/add-measure-suggestions)
-(def ^:private add-segment-suggestions     @#'insights/add-segment-suggestions)
-(def ^:private column-predicate-kind       @#'insights/column-predicate-kind)
-(def ^:private predicate-candidates        @#'insights/predicate-candidates)
-(def ^:private merge-candidates            @#'insights/merge-candidates)
-(def ^:private card-table-dependencies     @#'insights/card-table-dependencies)
-(def ^:private eligible-candidate-table?   @#'insights/eligible-candidate-table?)
-(def ^:private merge-metric-candidates     @#'insights/merge-metric-candidates)
-(def ^:private raw-table-candidate-analysis @#'insights/raw-table-candidate-analysis)
-(def ^:private rank-candidate-tables       @#'insights/rank-candidate-tables)
-(def ^:private table-candidate-evidence    @#'insights/table-candidate-evidence)
-(def ^:private usable-table-dependency?    @#'insights/usable-table-dependency?)
-(def ^:private suggestions-or-fallback     @#'insights/suggestions-or-fallback)
+(def ^:private existing-composite-atomsets @#'rollups/existing-composite-atomsets)
+(def ^:private composite-atomsets-memo     @#'rollups/existing-segment-facts*-memo)
+(def ^:private candidate-source-cards      @#'candidate-mining/candidate-source-cards)
+(def ^:private candidate-lineage-card-index @#'candidate-mining/candidate-lineage-card-index)
+(def ^:private candidate-model-index       @#'candidate-mining/candidate-model-index)
+(def ^:private mapcat-id-batches           @#'candidate-mining/mapcat-id-batches)
+(def ^:private verified-card-ids           @#'candidate-mining/verified-card-ids)
+(def ^:private official-collection-ids     @#'candidate-mining/official-collection-ids)
+(def ^:private recent-card-view-counts     @#'candidate-mining/recent-card-view-counts)
+(def ^:private existing-measure-signatures @#'candidate-builders/existing-measure-signatures)
+(def ^:private existing-segment-signatures @#'candidate-builders/existing-segment-signatures)
+(def ^:private segment-signature           @#'candidate-mining/segment-signature)
+(def ^:private canonical-signature         candidate-mining/canonical-signature)
+(def ^:private add-measure-suggestions     candidate-suggestions/add-measure-suggestions)
+(def ^:private add-segment-suggestions     candidate-suggestions/add-segment-suggestions)
+(def ^:private column-predicate-kind       candidate-suggestions/column-predicate-kind)
+(def ^:private predicate-candidates        @#'candidate-mining/predicate-candidates)
+(def ^:private merge-candidates            @#'candidate-builders/merge-candidates)
+(def ^:private card-table-dependencies     @#'candidate-builders/card-table-dependencies)
+(def ^:private eligible-candidate-table?   @#'candidate-builders/eligible-candidate-table?)
+(def ^:private merge-metric-candidates     @#'candidate-builders/merge-metric-candidates)
+(def ^:private raw-table-candidate-analysis @#'candidate-builders/raw-table-candidate-analysis)
+(def ^:private rank-candidate-tables       @#'candidate-builders/rank-candidate-tables)
+(def ^:private table-candidate-evidence    @#'candidate-builders/table-candidate-evidence)
+(def ^:private usable-table-dependency?    @#'candidate-builders/usable-table-dependency?)
+(def ^:private suggestions-or-fallback     candidate-suggestions/suggestions-or-fallback)
 
 (deftest ^:parallel malformed-candidate-naming-falls-back-test
   (let [failure (fn [_] (throw (ex-info "stale field" {})))]
-    (is (= {:aggregation {:type :sum, :base-name "Measure"}
-            :source {:display-name "Orders"}
-            :suggested-name "Measure"
-            :suggested-description "Measure on Orders"}
-           (suggestions-or-fallback {:aggregation {:type :sum}
-                                     :source {:display-name "Orders"}}
-                                    :measure
-                                    failure)))
-    (is (= {:atoms []
-            :source {:display-name "Orders"}
-            :suggested-name "Segment"
-            :suggested-description "Filtered by Segment on Orders"}
-           (suggestions-or-fallback {:source {:display-name "Orders"}}
-                                    :segment
-                                    failure)))))
+    (is (=? {:aggregation {:type :sum, :base-name "Measure"}
+             :source {:display-name "Orders"}
+             :suggested-name "Measure"
+             :suggested-description "Measure on Orders"}
+            (suggestions-or-fallback {:aggregation {:type :sum}
+                                      :source {:display-name "Orders"}}
+                                     :measure
+                                     failure)))
+    (is (=? {:atoms []
+             :source {:display-name "Orders"}
+             :suggested-name "Segment"
+             :suggested-description "Filtered by Segment on Orders"}
+            (suggestions-or-fallback {:source {:display-name "Orders"}}
+                                     :segment
+                                     failure)))))
 
 (deftest ^:parallel itemset-support-counts-containing-baskets-weighted-by-count-test
   (let [baskets [{:atoms #{:a :b :c} :count 3}
@@ -79,13 +83,15 @@
                  {:atoms #{:a :c}     :count 1}
                  {:atoms #{:b}        :count 4}]]
     (testing "support = sum of basket counts for baskets containing ALL atoms in the itemset"
-      (is (= 5 (itemset-support baskets #{:a :b})))
-      (is (= 4 (itemset-support baskets #{:a :c})))
-      (is (= 3 (itemset-support baskets #{:a :b :c})))
-      (is (= 0 (itemset-support baskets #{:z}))))
+      (are [expected itemset] (= expected (itemset-support baskets itemset))
+        5 #{:a :b}
+        4 #{:a :c}
+        3 #{:a :b :c}
+        0 #{:z}))
     (testing "any-atom-support = sum of basket counts for baskets containing ANY atom in the itemset"
-      (is (= 10 (any-atom-support baskets #{:a :b})))
-      (is (= 6  (any-atom-support baskets #{:a}))))
+      (are [expected itemset] (= expected (any-atom-support baskets itemset))
+        10 #{:a :b}
+        6  #{:a}))
     (testing "a basket contributes to an itemset's support exactly once per its own count"
       (doseq [basket baskets]
         (let [contributes? (every? (:atoms basket) #{:a :b})]
@@ -140,9 +146,9 @@
                   (range n)))
           (raw-candidates [label signature atom-count evidence]
             (mapv (fn [source-item]
-                    {:metabase.usage-metadata.insights/signature   signature
-                     :metabase.usage-metadata.insights/table-id    1
-                     :metabase.usage-metadata.insights/source-item source-item
+                    {:metabase.usage-metadata.candidate-mining/signature   signature
+                     :metabase.usage-metadata.candidate-mining/table-id    1
+                     :metabase.usage-metadata.candidate-mining/source-item source-item
                      :label                                        label
                      :atom-count                                   atom-count})
                   (source-items (:distinct-sources evidence) evidence)))]
@@ -158,16 +164,14 @@
           source-index {[:table 1] {:type :table :id 1 :name "Table"}}
           limited      (merge-candidates candidates source-index #{} 6)]
       (is (= [:verified :official :distinct :atoms :views :signature-a]
-             (mapv :label limited)))
-      (is (= 6 (count limited)))
-      (is (not-any? #(= :signature-b (:label %)) limited)))))
+             (mapv :label limited))))))
 
 (deftest existing-segment-predicates-cached-test
   (testing "existing-segment-predicates is TTL-memoized — repeated calls with the same opts hit the DB once"
     (let [segment-selects (atom 0)
           real-select     t2/select
-          existing-fn     @#'insights/existing-segment-predicates
-          memo-var        @#'insights/existing-segment-facts*-memo]
+          existing-fn     @#'rollups/existing-segment-predicates
+          memo-var        @#'rollups/existing-segment-facts*-memo]
       (memoize/memo-clear! memo-var)
       (with-redefs [t2/select (fn [& args]
                                 (when (and (sequential? (first args))
@@ -183,8 +187,8 @@
   (testing "existing-metric-signatures is TTL-memoized"
     (let [card-selects (atom 0)
           real-select  t2/select
-          existing-fn  @#'insights/existing-metric-signatures
-          memo-var     @#'insights/existing-metric-signatures*-memo]
+          existing-fn  @#'rollups/existing-metric-signatures
+          memo-var     @#'rollups/existing-metric-signatures*-memo]
       (memoize/memo-clear! memo-var)
       (with-redefs [t2/select (fn [& args]
                                 (when (and (sequential? (first args))
@@ -699,15 +703,16 @@
           items     (into {} (map (juxt :id identity)) (get-in candidate [:evidence :source-items]))
           path      [{:id outer-model-id :name "candidate table outer model"}
                      {:id base-model-id :name "candidate table base model"}]]
-      (is (= 2 (get-in candidate [:evidence :distinct-source-count])))
-      (is (= 1 (get-in candidate [:evidence :verified-source-count])))
-      (is (= 1 (get-in candidate [:evidence :official-source-count])))
-      (is (true? (:verified? (items verified-id))))
-      (is (true? (:official-collection? (items official-id))))
-      (is (= [{:direct? false, :models path}]
-             (:dependency-paths (items verified-id))))
-      (is (= [{:direct? false, :models path}]
-             (:dependency-paths (items official-id)))))))
+      (is (=? {:evidence {:distinct-source-count 2
+                          :verified-source-count 1
+                          :official-source-count 1}
+               :verified-item {:verified? true
+                               :dependency-paths [{:direct? false, :models path}]}
+               :official-item {:official-collection? true
+                               :dependency-paths [{:direct? false, :models path}]}}
+              {:evidence (:evidence candidate)
+               :verified-item (items verified-id)
+               :official-item (items official-id)})))))
 
 (deftest candidate-table-dependency-traversal-preserves-paths-and-guards-cycles-test
   (let [root   {:id 1
@@ -722,21 +727,25 @@
                 3 {:id 3, :name "Right", :dataset_query {:tables #{99}}}}
         analyze (fn []
                   (card-table-dependencies root models [] #{1}))]
-    (with-redefs-fn {#'insights/wrap-query (fn [_ query] query)
+    (with-redefs-fn {#'candidate-builders/wrap-query (fn [_ query] query)
                      #'lib/any-native-stage? (constantly false)
                      #'lib/all-source-table-ids :tables
                      #'lib/all-implicitly-joined-table-ids (constantly nil)
                      #'lib/all-source-card-ids :models}
       (fn []
-        (is (= #{{:direct? false, :models [{:id 2, :name "Left"}]}
-                 {:direct? false, :models [{:id 3, :name "Right"}]}}
-               (get-in (analyze) [:table-paths 99])))
-        (is (empty? (:unsupported (analyze))))
-        (let [rows     (:table-source-items (raw-table-candidate-analysis [root] models))
+        (let [dependency-result (analyze)
+              rows     (:table-source-items (raw-table-candidate-analysis [root] models))
               evidence (table-candidate-evidence (map :source-item rows))]
-          (is (= 1 (count rows)) "the source/table pair is emitted once despite two model paths")
-          (is (= 1 (:distinct-source-count evidence)))
-          (is (= 2 (count (get-in evidence [:source-items 0 :dependency-paths])))))))))
+          (is (=? {:table-paths {99 #{{:direct? false, :models [{:id 2, :name "Left"}]}
+                                      {:direct? false, :models [{:id 3, :name "Right"}]}}}
+                   :unsupported []}
+                  dependency-result))
+          (is (=? {:source-row-count 1
+                   :distinct-source-count 1
+                   :dependency-path-count 2}
+                  {:source-row-count (count rows)
+                   :distinct-source-count (:distinct-source-count evidence)
+                   :dependency-path-count (count (get-in evidence [:source-items 0 :dependency-paths]))})))))))
 
 (deftest candidate-tables-report-native-and-unreadable-sources-test
   (mt/with-temp [:model/Card {native-id :id} {:name "candidate table native question"
@@ -765,24 +774,20 @@
 (deftest eligible-candidate-table-exclusions-test
   (let [table    {:active true, :visibility_type nil, :data_layer :internal, :is_published false}
         database {:is_audit false, :is_sample false, :router_database_id nil}]
-    (is (true? (usable-table-dependency? table database)))
-    (is (true? (usable-table-dependency? (assoc table :is_published true) database))
-        "published tables remain valid Metric dependencies")
-    (is (true? (eligible-candidate-table? table database))
-        "internal data-layer tables remain eligible")
-    (is (true? (eligible-candidate-table? (assoc table :data_layer :final) database)))
-    (doseq [excluded-table [(assoc table :active false)
-                            (assoc table :visibility_type :technical)
-                            (assoc table :data_layer :hidden)]]
-      (is (false? (usable-table-dependency? excluded-table database)))
-      (is (false? (eligible-candidate-table? excluded-table database))))
-    (is (false? (eligible-candidate-table? (assoc table :is_published true) database)))
-    (doseq [excluded-database [nil
-                               (assoc database :is_audit true)
-                               (assoc database :is_sample true)
-                               (assoc database :router_database_id 123)]]
-      (is (false? (usable-table-dependency? table excluded-database)))
-      (is (false? (eligible-candidate-table? table excluded-database))))))
+    (testing "usable dependencies may be published; publication candidates may not"
+      (are [expected usable? eligible? table database]
+           (= expected [(usable? table database) (eligible? table database)])
+        [true true]   usable-table-dependency? eligible-candidate-table? table database
+        [true false]  usable-table-dependency? eligible-candidate-table? (assoc table :is_published true) database
+        [false false] usable-table-dependency? eligible-candidate-table? (assoc table :active false) database
+        [false false] usable-table-dependency? eligible-candidate-table? (assoc table :visibility_type :technical) database
+        [false false] usable-table-dependency? eligible-candidate-table? (assoc table :data_layer :hidden) database
+        [false false] usable-table-dependency? eligible-candidate-table? table nil
+        [false false] usable-table-dependency? eligible-candidate-table? table (assoc database :is_audit true)
+        [false false] usable-table-dependency? eligible-candidate-table? table (assoc database :is_sample true)
+        [false false] usable-table-dependency? eligible-candidate-table? table (assoc database :router_database_id 123)))
+    (is (true? (eligible-candidate-table? (assoc table :data_layer :final) database))
+        "final data-layer tables remain eligible")))
 
 (deftest candidate-table-ranking-applies-every-tier-before-limit-test
   (let [base-table {:id 100, :database-name "db", :schema "schema", :name "z"
@@ -804,9 +809,7 @@
                     (candidate :verified {:id 20} {:verified-source-count 1})]
         limited    (rank-candidate-tables candidates 8)]
     (is (= [:verified :official :authoritative :final :distinct :popular :total-views :table-views]
-           (mapv :label limited)))
-    (is (= 8 (count limited)))
-    (is (not-any? #(= :tie-loser (:label %)) limited))))
+           (mapv :label limited)))))
 
 (deftest ^:parallel candidate-metric-ranking-applies-every-tier-before-limit-test
   (letfn [(source-items [n {:keys [verified? official? popular? total-views]}]
@@ -824,9 +827,9 @@
                   (range n)))
           (raw-candidates [[label signature evidence]]
             (mapv (fn [source-item]
-                    {:metabase.usage-metadata.insights/signature   signature
-                     :metabase.usage-metadata.insights/source-item source-item
-                     :metabase.usage-metadata.insights/table-ids   #{1}
+                    {:metabase.usage-metadata.candidate-mining/signature   signature
+                     :metabase.usage-metadata.candidate-mining/source-item source-item
+                     :metabase.usage-metadata.candidate-mining/table-ids   #{1}
                      :label                                        label
                      :definition                                   {}
                      :aggregation                                  [:count {}]})
@@ -843,8 +846,6 @@
           limited       (merge-metric-candidates raw-candidates #{} table-index 6)]
       (is (= [:verified :official :distinct :popular :views :signature-a]
              (mapv :label limited)))
-      (is (= 6 (count limited)))
-      (is (not-any? #(= :signature-b (:label %)) limited))
       (is (empty? (merge-metric-candidates raw-candidates #{} {} 6))
           "a candidate is rejected if any required physical table is unavailable"))))
 
@@ -859,15 +860,22 @@
           candidate  (first candidates)
           definition (:definition candidate)
           validated  (lib/query (lib-be/application-database-metadata-provider (mt/id)) definition)]
-      (is (= 1 (count candidates)))
-      (is (lib/can-save? validated :metric))
-      (is (= :sum (first (:aggregation candidate))))
-      (is (= :month (get-in candidate [:temporal-breakout 1 :temporal-unit])))
-      (is (= "Paid revenue" (:suggested-name candidate)))
-      (is (= "Revenue for the selected product" (:suggested-description candidate)))
-      (is (= [(mt/id :orders)] (mapv :id (:required-tables candidate))))
-      (is (false? (get-in candidate [:required-tables 0 :published?])))
-      (is (= [card-id] (mapv :id (get-in candidate [:evidence :source-items]))))
+      (is (=? {:candidate-count 1
+               :can-save? true
+               :aggregation-type :sum
+               :temporal-unit :month
+               :suggested-name "Paid revenue"
+               :suggested-description "Revenue for the selected product"
+               :required-tables [{:id (mt/id :orders), :published? false}]
+               :source-items [{:id card-id}]}
+              {:candidate-count (count candidates)
+               :can-save? (lib/can-save? validated :metric)
+               :aggregation-type (first (:aggregation candidate))
+               :temporal-unit (get-in candidate [:temporal-breakout 1 :temporal-unit])
+               :suggested-name (:suggested-name candidate)
+               :suggested-description (:suggested-description candidate)
+               :required-tables (:required-tables candidate)
+               :source-items (get-in candidate [:evidence :source-items])}))
       (is (= candidates
              (insights/candidate-metrics
               {:query-source (selected-cards-source card-id), :limit 1000}))
@@ -1119,18 +1127,22 @@
       (testing "explicit nil options use defaults"
         (let [candidates (candidates-from-card
                           card-id
-                          (insights/candidate-measures {:min-view-count nil :limit nil}))]
-          (is (= 1 (count candidates)))
-          (is (= {:type :sum
-                  :base-name "Sum of Subtotal"
-                  :field {:id           (mt/id :orders :subtotal)
-                          :name         "SUBTOTAL"
-                          :display-name "Subtotal"}}
-                 (:aggregation (first candidates))))
-          (is (= "Sum of Subtotal" (:suggested-name (first candidates))))
-          (is (= "Sum of Subtotal on Orders" (:suggested-description (first candidates))))
-          (is (= #{:lib/type :database :stages}
-                 (set (keys (:definition (first candidates))))))))
+                          (insights/candidate-measures {:min-view-count nil :limit nil}))
+              candidate  (first candidates)]
+          (is (=? {:candidate-count 1
+                   :aggregation {:type :sum
+                                 :base-name "Sum of Subtotal"
+                                 :field {:id           (mt/id :orders :subtotal)
+                                         :name         "SUBTOTAL"
+                                         :display-name "Subtotal"}}
+                   :suggested-name "Sum of Subtotal"
+                   :suggested-description "Sum of Subtotal on Orders"
+                   :definition-keys #{:lib/type :database :stages}}
+                  {:candidate-count (count candidates)
+                   :aggregation (:aggregation candidate)
+                   :suggested-name (:suggested-name candidate)
+                   :suggested-description (:suggested-description candidate)
+                   :definition-keys (set (keys (:definition candidate)))}))))
       (mt/with-temp [:model/Measure _measure {:name "Existing candidate mining measure"
                                               :creator_id (mt/user->id :crowberto)
                                               :definition (orders-named-measure-query)}]
@@ -1189,7 +1201,7 @@
 
 (deftest qualified-card-ids-bounds-recent-view-log-scan-test
   (let [scanned-card-ids (atom ::not-called)]
-    (with-redefs-fn {#'insights/recent-card-view-counts
+    (with-redefs-fn {#'candidate-mining/recent-card-view-counts
                      (fn [card-ids _window-days]
                        (reset! scanned-card-ids card-ids)
                        {})}
@@ -1240,11 +1252,11 @@
   (let [source-calls  (atom 0)
         lineage-calls (atom 0)
         cards         [{:id 1, :type :question, :dataset_query {}}]]
-    (with-redefs-fn {#'insights/candidate-source-cards*
+    (with-redefs-fn {#'candidate-mining/candidate-source-cards*
                      (fn [_opts]
                        (swap! source-calls inc)
                        cards)
-                     #'insights/candidate-lineage-index
+                     #'candidate-mining/candidate-lineage-index
                      (fn [_cards _allowed-types]
                        (swap! lineage-calls inc)
                        {10 {:id 10, :type :model}
@@ -1292,28 +1304,30 @@
                                              (get-in % [:aggregation :type]))
                                  candidates)
             by-type     (into {} (map (juxt #(get-in % [:aggregation :type]) identity)) conditional)]
-        (is (= #{:count-where :distinct-where :sum-where}
-               (into #{} (map #(get-in % [:aggregation :type])) conditional)))
-        (is (not-any? #(and (= :count (get-in % [:aggregation :type]))
-                            (nil? (get-in % [:aggregation :field])))
-                      candidates))
-        (is (every? #(= 1 (get-in % [:aggregation :condition-atom-count])) conditional))
-        (is (every? #(= [(mt/id :orders :product_id)]
-                        (mapv :id (get-in % [:aggregation :condition-fields])))
-                    conditional))
-        (is (every? #(lib/clause-of-type?
-                      (get-in % [:aggregation :condition])
-                      :=)
-                    conditional))
-        (is (= "Count where Product ID is 987654"
-               (get-in by-type [:count-where :suggested-name])))
-        (is (= "Distinct values of User ID where Product ID is 987654"
-               (get-in by-type [:distinct-where :suggested-name])))
-        (is (= "Sum of Subtotal where Product ID is 987654"
-               (get-in by-type [:sum-where :suggested-name])))
-        (is (= "Sum of Subtotal where Product ID is 987654 on Orders"
-               (get-in by-type [:sum-where :suggested-description])))
-        (is (every? #(= 1 (get-in % [:evidence :verified-source-count])) conditional))))))
+        (is (=? {:types #{:count-where :distinct-where :sum-where}
+                 :contains-bare-count? false
+                 :conditions #{{:atom-count 1
+                                :field-ids [(mt/id :orders :product_id)]
+                                :operator :=
+                                :verified-source-count 1}}
+                 :names {:count-where "Count where Product ID is 987654"
+                         :distinct-where "Distinct values of User ID where Product ID is 987654"
+                         :sum-where "Sum of Subtotal where Product ID is 987654"}
+                 :sum-description "Sum of Subtotal where Product ID is 987654 on Orders"}
+                {:types (set (keys by-type))
+                 :contains-bare-count? (boolean
+                                        (some #(and (= :count (get-in % [:aggregation :type]))
+                                                    (nil? (get-in % [:aggregation :field])))
+                                              candidates))
+                 :conditions (into #{}
+                                   (map (fn [candidate]
+                                          {:atom-count (get-in candidate [:aggregation :condition-atom-count])
+                                           :field-ids (mapv :id (get-in candidate [:aggregation :condition-fields]))
+                                           :operator (first (get-in candidate [:aggregation :condition]))
+                                           :verified-source-count (get-in candidate [:evidence :verified-source-count])}))
+                                   conditional)
+                 :names (update-vals by-type :suggested-name)
+                 :sum-description (get-in by-type [:sum-where :suggested-description])}))))))
 
 (deftest candidate-measures-drop-one-off-popular-conditions-test
   (mt/with-temp [:model/Card {card-id :id} {:name "candidate mining one-off condition"
@@ -1378,16 +1392,22 @@
                           (filter #(and (vector? %) (= :field (first %))))
                           first
                           (#(nth % 2))))]
-      (is (= 1 (count measures)))
-      (is (= 1 (count segments)))
-      (is (= :sum (get-in measure [:aggregation :type])))
-      (is (= (mt/id :orders :subtotal)
-             (field-id (get-in measure [:definition :stages 0 :aggregation 0]))))
-      (is (= (mt/id :orders :product_id)
-             (field-id (:predicate segment))))
-      (is (= [1] (get-in measure [:evidence :source-items 0 :stage-numbers])))
-      (is (= [1] (get-in segment [:evidence :source-items 0 :stage-numbers])))
-      (is (false? (get-in segment [:evidence :source-items 0 :joined?]))))))
+      (is (=? {:measure-count 1
+               :segment-count 1
+               :measure {:type :sum
+                         :field-id (mt/id :orders :subtotal)
+                         :stage-numbers [1]}
+               :segment {:field-id (mt/id :orders :product_id)
+                         :stage-numbers [1]
+                         :joined? false}}
+              {:measure-count (count measures)
+               :segment-count (count segments)
+               :measure {:type (get-in measure [:aggregation :type])
+                         :field-id (field-id (get-in measure [:definition :stages 0 :aggregation 0]))
+                         :stage-numbers (get-in measure [:evidence :source-items 0 :stage-numbers])}
+               :segment {:field-id (field-id (:predicate segment))
+                         :stage-numbers (get-in segment [:evidence :source-items 0 :stage-numbers])
+                         :joined? (get-in segment [:evidence :source-items 0 :joined?])}})))))
 
 (deftest candidate-mining-inspects-stage-zero-before-a-semantic-barrier-test
   (let [query (-> (orders-conditional-measure-query)
@@ -1422,17 +1442,23 @@
                     (insights/candidate-measures {:min-view-count 10 :limit 1000}))
           by-table (group-by #(get-in % [:source :id]) segments)]
       (testing "single-owner filters become Segments on their actual physical owner"
-        (is (= 2 (count segments))
-            "the cross-table filter is not representable as a table-bound Segment")
-        (is (= #{(mt/id :orders) (mt/id :products)} (set (keys by-table))))
-        (is (= #{(mt/id :orders :subtotal)}
-               (into #{} (map :id) (:fields (first (by-table (mt/id :orders)))))))
-        (is (= #{(mt/id :products :category)}
-               (into #{} (map :id) (:fields (first (by-table (mt/id :products)))))))
-        (is (nil? (get-in (first (by-table (mt/id :products)))
-                          [:predicate 2 1 :join-alias])))
-        (is (every? #(true? (get-in % [:evidence :source-items 0 :joined?])) segments))
-        (is (every? #(= [0] (get-in % [:evidence :source-items 0 :stage-numbers])) segments)))
+        (is (=? {:segment-count 2
+                 :table-ids #{(mt/id :orders) (mt/id :products)}
+                 :field-ids-by-table {(mt/id :orders) #{(mt/id :orders :subtotal)}
+                                      (mt/id :products) #{(mt/id :products :category)}}
+                 :product-join-alias nil
+                 :evidence #{{:joined? true, :stage-numbers [0]}}}
+                {:segment-count (count segments)
+                 :table-ids (set (keys by-table))
+                 :field-ids-by-table (update-vals by-table
+                                                  #(into #{} (map :id) (:fields (first %))))
+                 :product-join-alias (get-in (first (by-table (mt/id :products)))
+                                             [:predicate 2 1 :join-alias])
+                 :evidence (into #{}
+                                 (map (fn [candidate]
+                                        {:joined? (get-in candidate [:evidence :source-items 0 :joined?])
+                                         :stage-numbers (get-in candidate [:evidence :source-items 0 :stage-numbers])}))
+                                 segments)})))
       (testing "aggregations from a joined stage remain excluded"
         (is (empty? measures))))))
 
@@ -1472,21 +1498,29 @@
       (testing "a verified two-atom source produces two atomic candidates and its conjunction"
         (let [candidates (candidates-from-card
                           card-id
-                          (insights/candidate-segments {:min-view-count 10 :limit 1000}))]
-          (is (= 3 (count candidates)))
-          (is (= 2 (count (remove :composite? candidates))))
-          (is (every? #(= 1 (:atom-count %)) (remove :composite? candidates)))
-          (is (= [2] (mapv :atom-count (filter :composite? candidates))))
-          (let [filters (lib/filters (:definition (first (filter :composite? candidates))) 0)]
-            (is (= 2 (count filters)))
-            (is (not-any? #(lib/clause-of-type? % :and) filters)))
-          (is (= #{"Product ID is 987654"
-                   "Subtotal is greater than 12345"}
-                 (into #{} (map :suggested-name) (remove :composite? candidates))))
-          (is (= "Product ID is 987654 and Subtotal is greater than 12345"
-                 (:suggested-name (first (filter :composite? candidates)))))
-          (is (= "Filtered by Product ID is 987654 and Subtotal is greater than 12345 on Orders"
-                 (:suggested-description (first (filter :composite? candidates)))))))
+                          (insights/candidate-segments {:min-view-count 10 :limit 1000}))
+              atomic     (remove :composite? candidates)
+              composite  (first (filter :composite? candidates))
+              filters    (lib/filters (:definition composite) 0)]
+          (is (=? {:candidate-count 3
+                   :atomic-count 2
+                   :atomic-atom-counts #{1}
+                   :composite-atom-count 2
+                   :definition-filter-count 2
+                   :definition-has-and? false
+                   :atomic-names #{"Product ID is 987654"
+                                   "Subtotal is greater than 12345"}
+                   :composite-name "Product ID is 987654 and Subtotal is greater than 12345"
+                   :composite-description "Filtered by Product ID is 987654 and Subtotal is greater than 12345 on Orders"}
+                  {:candidate-count (count candidates)
+                   :atomic-count (count atomic)
+                   :atomic-atom-counts (into #{} (map :atom-count) atomic)
+                   :composite-atom-count (:atom-count composite)
+                   :definition-filter-count (count filters)
+                   :definition-has-and? (boolean (some #(lib/clause-of-type? % :and) filters))
+                   :atomic-names (into #{} (map :suggested-name) atomic)
+                   :composite-name (:suggested-name composite)
+                   :composite-description (:suggested-description composite)}))))
       (mt/with-temp [:model/Segment _segment {:name "Existing candidate mining segment"
                                               :creator_id (mt/user->id :crowberto)
                                               :definition query}]
@@ -1498,8 +1532,9 @@
                                     (insights/candidate-segments {:min-view-count 10 :limit 1000}))]
             (is (contains? existing expected-signature)
                 (str "Expected " expected-signature " among existing signatures " existing))
-            (is (= 2 (count candidates)))
-            (is (every? (complement :composite?) candidates))))))))
+            (is (=? {:candidate-count 2, :composite-count 0}
+                    {:candidate-count (count candidates)
+                     :composite-count (count (filter :composite? candidates))}))))))))
 
 (deftest candidate-suggestions-expand-short-multi-value-filters-test
   (let [mp        (lib-be/application-database-metadata-provider (mt/id))
@@ -1508,7 +1543,7 @@
         predicate (lib/in category "Gadget" "Widget")
         definition (lib/query mp products)
         base-candidate {:source {:name "Products"}
-                        :metabase.usage-metadata.insights/metadata-provider mp}]
+                        :metabase.usage-metadata.candidate-suggestions/metadata-provider mp}]
     (testing "segment names include the selected values"
       (is (=? {:suggested-name "Category is one of Gadget or Widget"
                :suggested-description "Filtered by Category is one of Gadget or Widget on Products"
