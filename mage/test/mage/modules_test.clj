@@ -352,7 +352,7 @@
     ;; note in the future, this won't be all dependent modules see
     ;; https://linear.app/metabase/issue/DEV-1487/treat-changed-test-namespaces-as-module-only-changes
     (let [changed-file "enterprise/backend/test/metabase_enterprise/transforms_python/api_test.clj"]
-      (is (= '#{enterprise/transforms-python}
+      (is (= '#{enterprise/transforms.python}
              (mage.modules/updated-files->updated-modules [changed-file])))
       (is (-> [changed-file]
               mage.modules/updated-files->updated-modules
