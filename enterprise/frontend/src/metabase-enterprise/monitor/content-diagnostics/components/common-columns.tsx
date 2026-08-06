@@ -18,11 +18,16 @@ import {
   getUserName,
 } from "./utils";
 
+type CommonColumns<T extends ContentDiagnosticsBaseFinding> = Record<
+  "name" | "entityType" | "collection" | "createdBy" | "createdAt",
+  TreeTableColumnDef<T>
+>;
+
 export function getCommonColumns<
   T extends ContentDiagnosticsBaseFinding,
->(): TreeTableColumnDef<T>[] {
-  return [
-    {
+>(): CommonColumns<T> {
+  return {
+    name: {
       id: "name",
       header: t`Name`,
       enableSorting: true,
@@ -42,7 +47,7 @@ export function getCommonColumns<
         );
       },
     },
-    {
+    entityType: {
       id: "entity-type",
       header: t`Type`,
       enableSorting: true,
@@ -51,7 +56,7 @@ export function getCommonColumns<
       minWidth: 100,
       accessorFn: (finding) => getEntityTypeLabel(finding),
     },
-    {
+    collection: {
       id: "collection",
       header: t`Collection`,
       enableSorting: false,
@@ -73,7 +78,7 @@ export function getCommonColumns<
         );
       },
     },
-    {
+    createdBy: {
       id: "created-by",
       header: t`Created by`,
       enableSorting: true,
@@ -87,7 +92,7 @@ export function getCommonColumns<
         </Ellipsified>
       ),
     },
-    {
+    createdAt: {
       id: "created-at",
       header: t`Created at`,
       enableSorting: true,
@@ -106,5 +111,5 @@ export function getCommonColumns<
         );
       },
     },
-  ];
+  };
 }

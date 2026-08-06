@@ -18,18 +18,20 @@ import type { ContentDiagnosticsBaseFilterOptions } from "../types";
 import { getFilterTypeLabel } from "../utils";
 
 type DiagnosticsFilterPickerProps<
-  T extends ContentDiagnosticsBaseFilterOptions,
+  TType extends ContentDiagnosticsFilterType,
+  TOptions extends ContentDiagnosticsBaseFilterOptions<TType>,
 > = {
-  filterOptions: T;
-  availableTypes: ContentDiagnosticsFilterType[];
+  filterOptions: TOptions;
+  availableTypes: TType[];
   isDisabled?: boolean;
   hasDefaultOptions?: boolean;
   extraFilters?: ReactNode;
-  onFilterOptionsChange: (filterOptions: T) => void;
+  onFilterOptionsChange: (filterOptions: TOptions) => void;
 };
 
 export function DiagnosticsFilterPicker<
-  T extends ContentDiagnosticsBaseFilterOptions,
+  TType extends ContentDiagnosticsFilterType,
+  TOptions extends ContentDiagnosticsBaseFilterOptions<TType>,
 >({
   filterOptions,
   availableTypes,
@@ -37,7 +39,7 @@ export function DiagnosticsFilterPicker<
   hasDefaultOptions = false,
   extraFilters,
   onFilterOptionsChange,
-}: DiagnosticsFilterPickerProps<T>) {
+}: DiagnosticsFilterPickerProps<TType, TOptions>) {
   const [isOpened, { toggle, close }] = useDisclosure();
 
   const handleTypesChange = (newValue: string[]) => {

@@ -1,34 +1,30 @@
 import * as Urls from "metabase/urls";
 import {
-  CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
-  CONTENT_DIAGNOSTICS_SLOW_SORT_COLUMNS,
-  type ContentDiagnosticsSlowUserParams,
+  CONTENT_DIAGNOSTICS_DUPLICATED_SORT_COLUMNS,
+  CONTENT_DIAGNOSTICS_FILTER_TYPES,
+  type ContentDiagnosticsDuplicatedUserParams,
   SORT_DIRECTIONS,
 } from "metabase-types/api";
 
-import { getSlowParamsWithoutDefaults } from "../components/slow-utils";
-
-export function parseSlowUrlParams(
+export function parseDuplicatedUrlParams(
   searchParams: URLSearchParams,
-): Urls.SlowContentParams {
+): Urls.DuplicatedContentParams {
   return {
     page: Urls.parseNumberParam(searchParams.get("page")),
     query: Urls.parseStringParam(searchParams.get("query")),
     entityTypes: Urls.parseListParam(
       searchParams.getAll("entity-types"),
-      (item) =>
-        Urls.parseEnumParam(
-          item,
-          CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
-        ),
+      (item) => Urls.parseEnumParam(item, CONTENT_DIAGNOSTICS_FILTER_TYPES),
     ),
     includePersonalCollections: Urls.parseBooleanParam(
       searchParams.get("include-personal-collections"),
     ),
-    minDurationMs: Urls.parseNumberParam(searchParams.get("min-duration-ms")),
+    minDuplicateCount: Urls.parseNumberParam(
+      searchParams.get("min-duplicate-count"),
+    ),
     sortColumn: Urls.parseEnumParam(
       searchParams.get("sort-column"),
-      CONTENT_DIAGNOSTICS_SLOW_SORT_COLUMNS,
+      CONTENT_DIAGNOSTICS_DUPLICATED_SORT_COLUMNS,
     ),
     sortDirection: Urls.parseEnumParam(
       searchParams.get("sort-direction"),
@@ -37,21 +33,21 @@ export function parseSlowUrlParams(
   };
 }
 
-export function getSlowUserParams(
-  params: Urls.SlowContentParams,
-): ContentDiagnosticsSlowUserParams {
+export function getDuplicatedUserParams(
+  params: Urls.DuplicatedContentParams,
+): ContentDiagnosticsDuplicatedUserParams {
   return {
     entity_types: params.entityTypes,
     include_personal_collections: params.includePersonalCollections,
-    min_duration_ms: params.minDurationMs,
+    min_duplicate_count: params.minDuplicateCount,
     sort_column: params.sortColumn,
     sort_direction: params.sortDirection,
   };
 }
 
-export function parseSlowUserParams(
-  params: ContentDiagnosticsSlowUserParams | undefined | "",
-): Urls.SlowContentParams {
+export function parseDuplicatedUserParams(
+  params: ContentDiagnosticsDuplicatedUserParams | undefined | "",
+): Urls.DuplicatedContentParams {
   if (typeof params !== "object" || params == null) {
     return {};
   }
@@ -59,14 +55,24 @@ export function parseSlowUserParams(
   return {
     entityTypes: params.entity_types,
     includePersonalCollections: params.include_personal_collections,
-    minDurationMs: params.min_duration_ms,
+    minDuplicateCount: params.min_duplicate_count,
     sortColumn: params.sort_column,
     sortDirection: params.sort_direction,
   };
 }
 
-export function isEmptySlowParams(searchParams: URLSearchParams): boolean {
-  return Object.values(
-    getSlowParamsWithoutDefaults(parseSlowUrlParams(searchParams)),
-  ).every((value) => value == null);
+const DUPLICATED_URL_PARAM_KEYS = [
+  "page",
+  "query",
+  "entity-types",
+  "include-personal-collections",
+  "min-duplicate-count",
+  "sort-column",
+  "sort-direction",
+] as const;
+
+export function isEmptyDuplicatedParams(
+  searchParams: URLSearchParams,
+): boolean {
+  return DUPLICATED_URL_PARAM_KEYS.every((key) => !searchParams.has(key));
 }

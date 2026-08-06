@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  ListDuplicatedFindingsResponse,
   ListSlowFindingsResponse,
   ListStaleFindingsResponse,
 } from "metabase-types/api";
@@ -15,4 +16,10 @@ export function setupListSlowFindingsEndpoint(
   response: ListSlowFindingsResponse,
 ) {
   fetchMock.get("path:/api/ee/content-diagnostics/slow", response);
+}
+
+export function setupListDuplicatedFindingsEndpoint(
+  response: ListDuplicatedFindingsResponse,
+) {
+  fetchMock.get("path:/api/ee/content-diagnostics/duplicated", response);
 }

@@ -7,58 +7,62 @@ import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Center, Flex } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import type { Sorting } from "metabase/utils/sorting";
-import { useListStaleFindingsQuery } from "metabase-enterprise/api";
+import { useListDuplicatedFindingsQuery } from "metabase-enterprise/api";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
-import type { ContentDiagnosticsStaleSortColumn } from "metabase-types/api";
+import type { ContentDiagnosticsDuplicatedSortColumn } from "metabase-types/api";
 
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
 import { DiagnosticsScanButton } from "./DiagnosticsScanButton";
-import { StaleContentFilterBar } from "./StaleContentFilterBar";
-import { StaleContentSidebar } from "./StaleContentSidebar";
-import { StaleContentTable } from "./StaleContentTable";
+import { DuplicatedContentFilterBar } from "./DuplicatedContentFilterBar";
+import { DuplicatedContentSidebar } from "./DuplicatedContentSidebar";
+import { DuplicatedContentTable } from "./DuplicatedContentTable";
 import {
-  getStaleEntityTypesParam,
-  getStaleFilterOptions,
-  getStaleFilterParams,
-  getStaleSortOptions,
-} from "./stale-utils";
+  getDuplicatedEntityTypesParam,
+  getDuplicatedFilterOptions,
+  getDuplicatedFilterParams,
+  getDuplicatedSortOptions,
+} from "./duplicated-utils";
 import type {
   ContentDiagnosticsParamsOptions,
-  StaleContentFilterOptions,
+  DuplicatedContentFilterOptions,
 } from "./types";
 
-type StaleContentProps = {
-  params: Urls.StaleContentParams;
+type DuplicatedContentProps = {
+  params: Urls.DuplicatedContentParams;
   isLoadingParams: boolean;
   onParamsChange: (
-    params: Urls.StaleContentParams,
+    params: Urls.DuplicatedContentParams,
     options?: ContentDiagnosticsParamsOptions,
   ) => void;
 };
 
-export function StaleContent({
+export function DuplicatedContent({
   params,
   isLoadingParams,
   onParamsChange,
-}: StaleContentProps) {
+}: DuplicatedContentProps) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedFindingId, setSelectedFindingId] = useState<number>();
 
   const { page = 0, query } = params;
-  const filterOptions = useMemo(() => getStaleFilterOptions(params), [params]);
-  const sortOptions = useMemo(() => getStaleSortOptions(params), [params]);
+  const filterOptions = useMemo(
+    () => getDuplicatedFilterOptions(params),
+    [params],
+  );
+  const sortOptions = useMemo(() => getDuplicatedSortOptions(params), [params]);
 
   const {
     data,
     isFetching: isFetchingFindings,
     isLoading: isLoadingFindings,
     error,
-  } = useListStaleFindingsQuery(
+  } = useListDuplicatedFindingsQuery(
     {
       query,
-      "entity-types": getStaleEntityTypesParam(filterOptions.entityTypes),
+      "entity-types": getDuplicatedEntityTypesParam(filterOptions.entityTypes),
       "include-personal-collections": filterOptions.includePersonalCollections,
+      "min-duplicate-count": filterOptions.minDuplicateCount,
       "sort-column": params.sortColumn,
       "sort-direction": params.sortDirection,
       limit: PAGE_SIZE,
@@ -72,7 +76,7 @@ export function StaleContent({
   const isFetching = isFetchingFindings || isLoadingParams;
   const isLoading = isLoadingFindings || isLoadingParams;
 
-  const findings = data?.data ?? [];
+  const findings = useMemo(() => data?.data ?? [], [data?.data]);
   const totalCount = data?.total ?? 0;
   const selectedFinding = findings.find(
     (finding) => finding.id === selectedFindingId,
@@ -83,12 +87,12 @@ export function StaleContent({
   };
 
   const handleFilterOptionsChange = (
-    newFilterOptions: StaleContentFilterOptions,
+    newFilterOptions: DuplicatedContentFilterOptions,
   ) => {
     onParamsChange(
       {
         ...params,
-        ...getStaleFilterParams(newFilterOptions),
+        ...getDuplicatedFilterParams(newFilterOptions),
         page: undefined,
       },
       { withSetLastUsedParams: true },
@@ -100,7 +104,7 @@ export function StaleContent({
   };
 
   const handleSortOptionsChange = (
-    sortOptions: Sorting<ContentDiagnosticsStaleSortColumn> | undefined,
+    sortOptions: Sorting<ContentDiagnosticsDuplicatedSortColumn> | undefined,
   ) => {
     onParamsChange(
       {
@@ -123,7 +127,7 @@ export function StaleContent({
     <Flex ref={containerRef} h="100%" wrap="nowrap">
       <MonitorMain>
         <DiagnosticsHeader />
-        <StaleContentFilterBar
+        <DuplicatedContentFilterBar
           query={query}
           filterOptions={filterOptions}
           isLoading={isLoading}
@@ -136,7 +140,7 @@ export function StaleContent({
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <StaleContentTable
+          <DuplicatedContentTable
             findings={findings}
             params={params}
             sortOptions={sortOptions}
@@ -157,7 +161,7 @@ export function StaleContent({
       </MonitorMain>
       {selectedFinding != null && (
         <Sidebar containerWidth={containerWidth}>
-          <StaleContentSidebar
+          <DuplicatedContentSidebar
             finding={selectedFinding}
             onClose={() => setSelectedFindingId(undefined)}
           />
