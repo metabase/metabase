@@ -268,7 +268,7 @@
                     [:id ms/PositiveInt]]
    _query
    {:keys [handler_ids]} :- [:map {:closed true}
-                            [:handler_ids {:optional true} [:sequential ms/PositiveInt]]]]
+                             [:handler_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (let [notification (cond-> (get-notification id)
                        (seq handler_ids)
                        (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers))))]
