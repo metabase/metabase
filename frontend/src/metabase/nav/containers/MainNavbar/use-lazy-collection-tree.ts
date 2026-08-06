@@ -22,6 +22,8 @@ type Level = {
   hasMore: boolean;
   nextOffset: number;
   isLoadingMore: boolean;
+  /** Where the second page would start, which is also how many rows a page holds. */
+  pageSize: number;
 };
 
 /**
@@ -202,6 +204,7 @@ export function useLazyCollectionTree({
         hasMore: last.has_more,
         nextOffset: last.next_offset,
         isLoadingMore: loaded.length < pages.length,
+        pageSize: loaded[0].next_offset,
       });
     });
 
@@ -335,6 +338,7 @@ export function useLazyCollectionTree({
     loadMore,
     loadingMoreIds,
     hasMore: levels.get(ROOT_LEVEL)?.hasMore ?? false,
+    pageSize: levels.get(ROOT_LEVEL)?.pageSize,
     isLoading,
     error,
   };

@@ -18,10 +18,13 @@ const PREFETCH_DISTANCE = 300;
 export function TreeLoadMore({
   depth,
   isLoading,
+  pageSize,
   onLoadMore,
 }: {
   depth: number;
   isLoading: boolean;
+  /** How many rows the next page brings, so the placeholder reserves their height. */
+  pageSize?: number;
   onLoadMore: () => void;
 }) {
   const { ref, entry } = useIntersection<HTMLLIElement>({
@@ -47,7 +50,7 @@ export function TreeLoadMore({
         role="presentation"
         data-testid="tree-load-more"
       />
-      {isLoading && <TreeNodeSkeleton depth={depth} />}
+      {isLoading && <TreeNodeSkeleton depth={depth} rows={pageSize} />}
     </>
   );
 }

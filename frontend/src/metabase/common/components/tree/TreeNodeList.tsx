@@ -25,6 +25,8 @@ interface TreeNodeListProps<TData = unknown> extends Omit<
   loadMoreFor?: ITreeNodeItem<TData>["id"] | null;
   onLoadMore?: (parentId: ITreeNodeItem<TData>["id"] | null) => void;
   loadingMoreIds?: Set<ITreeNodeItem<TData>["id"] | null>;
+  /** How many rows a page brings, so a level loading its next one reserves their height. */
+  pageSize?: number;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   TreeNode: TreeNodeComponent<TData>;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
@@ -43,6 +45,7 @@ function BaseTreeNodeList<TData = unknown>({
   loadMoreFor = null,
   onLoadMore,
   loadingMoreIds,
+  pageSize,
   TreeNode,
   rightSection,
   role,
@@ -95,6 +98,7 @@ function BaseTreeNodeList<TData = unknown>({
                   loadMoreFor={item.id}
                   onLoadMore={onLoadMore}
                   loadingMoreIds={loadingMoreIds}
+                  pageSize={pageSize}
                   TreeNode={TreeNode}
                   rightSection={rightSection}
                   wrapNodes={wrapNodes}
@@ -117,6 +121,7 @@ function BaseTreeNodeList<TData = unknown>({
         <TreeLoadMore
           depth={depth}
           isLoading={loadingMoreIds?.has(loadMoreFor) ?? false}
+          pageSize={pageSize}
           onLoadMore={() => onLoadMore(loadMoreFor)}
         />
       )}

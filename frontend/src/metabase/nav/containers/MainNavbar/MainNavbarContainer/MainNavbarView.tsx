@@ -69,6 +69,7 @@ type Props = {
   onCollectionLoadMore: (parentId: string | number | null) => void;
   loadingMoreCollectionIds: Set<string | number | null>;
   collectionsHaveMore: boolean;
+  collectionPageSize?: number;
   selectedItems: SelectedItem[];
   sharedTenantCollections?: Collection[];
   canAccessTenantSpecificCollections: boolean;
@@ -98,6 +99,7 @@ export function MainNavbarView({
   onCollectionLoadMore,
   loadingMoreCollectionIds,
   collectionsHaveMore,
+  collectionPageSize,
   selectedItems,
   hasDataAccess,
   reorderBookmarks,
@@ -323,6 +325,7 @@ export function MainNavbarView({
                     hasMore={collectionsHaveMore}
                     onLoadMore={onCollectionLoadMore}
                     loadingMoreIds={loadingMoreCollectionIds}
+                    pageSize={collectionPageSize}
                   />
                 ) : (
                   <Tree
@@ -332,6 +335,7 @@ export function MainNavbarView({
                     hasMore={collectionsHaveMore}
                     onLoadMore={onCollectionLoadMore}
                     loadingMoreIds={loadingMoreCollectionIds}
+                    pageSize={collectionPageSize}
                     TreeNode={SidebarCollectionLink}
                     role="tree"
                     aria-label="collection-tree"

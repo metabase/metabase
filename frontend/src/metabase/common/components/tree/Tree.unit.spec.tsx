@@ -1,3 +1,4 @@
+import { setupMockIntersectionObserver } from "__support__/intersection-observer";
 import { fireEvent, render, screen } from "__support__/ui";
 import { Tree } from "metabase/common/components/tree";
 
@@ -75,6 +76,8 @@ describe("Tree", () => {
   });
 
   describe("lazily loaded nodes", () => {
+    setupMockIntersectionObserver();
+
     const lazyData = [
       {
         id: 1,
@@ -134,6 +137,26 @@ describe("Tree", () => {
         screen.queryByTestId("tree-node-skeleton"),
       ).not.toBeInTheDocument();
       expect(screen.getByText("Item 2")).toBeInTheDocument();
+    });
+
+    it("should reserve the height of the page it is loading", async () => {
+      const PAGE_SIZE = 5;
+
+      render(
+        <Tree
+          data={data}
+          onSelect={jest.fn()}
+          hasMore
+          onLoadMore={jest.fn()}
+          loadingMoreIds={new Set([null])}
+          pageSize={PAGE_SIZE}
+        />,
+      );
+
+      // One placeholder per incoming row, so the list does not grow under the pointer when the page lands.
+      expect(await screen.findAllByTestId("tree-node-skeleton")).toHaveLength(
+        PAGE_SIZE,
+      );
     });
 
     it("should report expansion to an external controller", () => {

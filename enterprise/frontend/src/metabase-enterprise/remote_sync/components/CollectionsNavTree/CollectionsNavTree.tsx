@@ -19,6 +19,7 @@ interface CollectionsNavTreeProps {
   hasMore?: boolean;
   onLoadMore?: (parentId: number | string | null) => void;
   loadingMoreIds?: Set<number | string | null>;
+  pageSize?: number;
 }
 
 export const CollectionsNavTree = ({
@@ -30,6 +31,7 @@ export const CollectionsNavTree = ({
   hasMore,
   onLoadMore,
   loadingMoreIds,
+  pageSize,
 }: CollectionsNavTreeProps) => {
   // Fetch flat list to check for remote-synced collections
   const { data: collectionsList = [] } = useListCollectionsQuery({
@@ -63,6 +65,7 @@ export const CollectionsNavTree = ({
       hasMore={hasMore}
       onLoadMore={onLoadMore}
       loadingMoreIds={loadingMoreIds}
+      pageSize={pageSize}
       TreeNode={SidebarCollectionLink}
       role="tree"
       aria-label="collection-tree"
