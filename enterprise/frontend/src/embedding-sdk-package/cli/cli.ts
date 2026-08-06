@@ -1,6 +1,8 @@
 import { Command } from "commander";
 
 import { start } from "./actions/start";
+import { syncQueriesAction } from "./actions/sync-queries";
+import { printError } from "./utils/print";
 
 const program = new Command();
 
@@ -13,4 +15,17 @@ program
   .description("downloads and starts a local Metabase instance")
   .action(start);
 
-program.parse();
+const dataAppsCommand = program
+  .command("data-apps")
+  .description("manage Metabase data apps");
+
+dataAppsCommand
+  .command("sync-queries")
+  .description("synchronize data app query definitions as saved questions")
+  .option("--app-root <path>", "data app directory", process.cwd())
+  .action(({ appRoot }: { appRoot: string }) => syncQueriesAction(appRoot));
+
+program.parseAsync().catch((error: unknown) => {
+  printError(error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
+});
