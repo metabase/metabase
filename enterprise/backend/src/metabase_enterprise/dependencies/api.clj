@@ -187,12 +187,6 @@
    :segment   [:id :name :description :created_at :creator_id :table_id]
    :measure   [:id :name :description :created_at :creator_id :table_id]})
 
-(def ^:private worktree-scoped-models
-  "Dependency models whose table carries a `worktree_id`. Tables are shared warehouse metadata and sandboxes are
-  main-app only, so neither is ever checked out into a worktree."
-  #{:model/Card :model/Dashboard :model/Document :model/Measure :model/NativeQuerySnippet :model/Segment
-    :model/Transform})
-
 (defn- worktree-scope-clause
   "Restricts a worktree-scoped table's rows to `worktree-id`. Worktree content is admin-only, so anyone but a
   superuser only ever sees the main app, whatever they asked for."
@@ -360,9 +354,8 @@
   what keeps a worktree's graph admin-only."
   [entity-type id]
   (when id
-    (let [model (deps.dependency-types/dependency-type->model entity-type)]
-      (when (contains? worktree-scoped-models model)
-        (t2/select-one-fn :worktree_id model :id id)))))
+    ;; a model whose table carries no `worktree_id` -- a table, a sandbox -- simply has no such key
+    (:worktree_id (t2/select-one (deps.dependency-types/dependency-type->model entity-type) :id id))))
 
 (defn- readable-graph-dependencies
   ([]
