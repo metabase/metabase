@@ -97,7 +97,7 @@ export const LegacyChoropleth = memo(
       </div>
     );
   },
-  // series and highlightedKey fully determine the map; ignoring other prop changes avoids redrawing every path on hover
+  // FIXME: verify if we really need memoization here
   (prevProps, nextProps) =>
     isSameSeries(prevProps.series, nextProps.series) &&
     prevProps.highlightedKey === nextProps.highlightedKey,

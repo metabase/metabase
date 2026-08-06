@@ -203,10 +203,11 @@ function useGeoJson(geoJsonPath: string | null): ChoroplethMapState {
   return state;
 }
 
-function getMapProjection(region: string | undefined): {
-  projection: Projection;
-  projectionFrame: ProjectionFrame | null;
-} {
+type MapProjection =
+  | { projection: d3.GeoProjection; projectionFrame: ProjectionFrame }
+  | { projection: null; projectionFrame: null };
+
+function getMapProjection(region: string | undefined): MapProjection {
   // special case builtin maps to use legacy choropleth map
   if (region === "us_states") {
     return {
@@ -448,7 +449,7 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
       isDocument={isDocument}
       isMetricsViewer={isMetricsViewer}
     >
-      {projection && projectionFrame && isFeatureCollection(geoJson) ? (
+      {projection && isFeatureCollection(geoJson) ? (
         <LegacyChoropleth
           series={series}
           geoJson={geoJson}
