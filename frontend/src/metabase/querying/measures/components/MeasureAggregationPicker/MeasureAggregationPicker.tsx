@@ -8,11 +8,16 @@ import * as Lib from "metabase-lib";
 
 const STAGE_INDEX = -1;
 
-type MeasureAggregationPickerProps = {
+type MeasureAggregationPickerBaseProps = {
   query: Lib.Query;
-  onChange: (query: Lib.Query) => void;
-  readOnly?: boolean;
 };
+
+type MeasureAggregationPickerProps = MeasureAggregationPickerBaseProps &
+  (
+    | { readOnly: true; onChange?: never }
+    | { readOnly?: false; onChange: (query: Lib.Query) => void }
+    | { readOnly: boolean; onChange: (query: Lib.Query) => void }
+  );
 
 export function MeasureAggregationPicker({
   query,
@@ -40,7 +45,7 @@ export function MeasureAggregationPicker({
 
   const handleQueryChange = useCallback(
     (newQuery: Lib.Query) => {
-      onChange(newQuery);
+      onChange?.(newQuery);
     },
     [onChange],
   );
@@ -56,7 +61,7 @@ export function MeasureAggregationPicker({
         sourceClause,
         targetClause,
       );
-      onChange(nextQuery);
+      onChange?.(nextQuery);
     },
     [query, onChange],
   );
@@ -64,7 +69,7 @@ export function MeasureAggregationPicker({
   const handleRemoveAggregation = useCallback(
     (clause: Lib.AggregationClause) => {
       const nextQuery = Lib.removeClause(query, STAGE_INDEX, clause);
-      onChange(nextQuery);
+      onChange?.(nextQuery);
     },
     [query, onChange],
   );

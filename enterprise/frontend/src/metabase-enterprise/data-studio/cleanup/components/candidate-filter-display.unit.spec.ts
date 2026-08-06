@@ -60,7 +60,7 @@ describe("getDetailedTranslatedFilterDisplayName", () => {
 
     expect(
       getDetailedTranslatedFilterDisplayName(query, 0, filter, tc, "en"),
-    ).toBe("Category is one of Gadget, Widget, Doohickey +2 more");
+    ).toBe("Category is one of Gadget, Widget, Doohickey and 2 more");
   });
 
   it("keeps Lib's display name for a single value", () => {

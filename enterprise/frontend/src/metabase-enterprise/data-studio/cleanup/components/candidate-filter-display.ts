@@ -106,12 +106,6 @@ export function getDetailedTranslatedFilterDisplayName(
     tc,
     locale,
   );
-  const operator =
-    parts.operator === "="
-      ? t`is one of`
-      : parts.operator === "!="
-        ? t`is not one of`
-        : Lib.describeFilterOperator(parts.operator).toLowerCase();
   const visibleValues = parts.values
     .slice(0, MAX_INLINE_FILTER_VALUES)
     .map((value) =>
@@ -120,10 +114,19 @@ export function getDetailedTranslatedFilterDisplayName(
         : String(value),
     );
   const remainingValueCount = parts.values.length - visibleValues.length;
-  const values =
-    remainingValueCount > 0
-      ? `${visibleValues.join(", ")} +${t`${remainingValueCount} more`}`
-      : visibleValues.join(", ");
+  const values = visibleValues.join(", ");
 
-  return `${columnName} ${operator} ${values}`;
+  if (parts.operator === "=") {
+    return remainingValueCount > 0
+      ? t`${columnName} is one of ${values} and ${remainingValueCount} more`
+      : t`${columnName} is one of ${values}`;
+  }
+
+  if (parts.operator === "!=") {
+    return remainingValueCount > 0
+      ? t`${columnName} is not one of ${values} and ${remainingValueCount} more`
+      : t`${columnName} is not one of ${values}`;
+  }
+
+  return getTranslatedFilterDisplayName(query, stageIndex, filter, tc, locale);
 }
