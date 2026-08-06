@@ -200,12 +200,32 @@ export const trackDataStudioCleanupCandidateAction = ({
   candidateType: UsageMetadataCandidateType;
   result: "success" | "failure";
 }) => {
-  trackSimpleEvent({
-    event: `data_studio_cleanup_candidate_${action}`,
+  const properties = {
     target_id: candidateId,
     event_detail: candidateType,
     result,
-  });
+  };
+
+  switch (action) {
+    case "create":
+      trackSimpleEvent({
+        event: "data_studio_cleanup_candidate_create",
+        ...properties,
+      });
+      break;
+    case "dismiss":
+      trackSimpleEvent({
+        event: "data_studio_cleanup_candidate_dismiss",
+        ...properties,
+      });
+      break;
+    case "restore":
+      trackSimpleEvent({
+        event: "data_studio_cleanup_candidate_restore",
+        ...properties,
+      });
+      break;
+  }
 };
 
 export const trackDataStudioCleanupPublicationStarted = (tableId: number) => {
