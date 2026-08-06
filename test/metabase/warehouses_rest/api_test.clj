@@ -525,17 +525,17 @@
             (is (= id (-> audit-entry :model_id)))
             (is (= id (-> audit-entry :details :id)))))))))
 
-(deftest create-db-rejects-caller-supplied-id-test
-  (testing "POST /api/database rejects a caller-supplied :id rather than ignoring it"
+(deftest create-db-ignores-caller-supplied-id-test
+  (testing "POST /api/database ignores a caller-supplied :id rather than honouring it"
     (mt/with-model-cleanup [:model/Database]
       (with-redefs [driver/available?   (constantly true)
                     driver/can-connect? (constantly true)]
-        (is (=? {:errors {:id "disallowed key"}}
-                (mt/user-http-request :crowberto :post 400 "database"
-                                      {:id      19999999
-                                       :name    (mt/random-name)
-                                       :engine  (u/qualified-name ::test-driver)
-                                       :details {:db "my_db"}})))))))
+        (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "database"
+                                                 {:id      19999999
+                                                  :name    (mt/random-name)
+                                                  :engine  (u/qualified-name ::test-driver)
+                                                  :details {:db "my_db"}})]
+          (is (not= 19999999 id)))))))
 
 (deftest disallow-creating-h2-database-test
   (testing "POST /api/database/:id"
@@ -638,25 +638,24 @@
             (let [curr-db (t2/select-one [:model/Database :cache_ttl], :id db-id)]
               (is (= nil (:cache_ttl curr-db))))))))))
 
-(deftest reject-is-stub-in-create-test
-  (testing "POST /api/database rejects :is_stub in the request body (advanced-config only path)"
+(deftest ignore-is-stub-in-create-test
+  (testing "POST /api/database ignores :is_stub in the request body (advanced-config only path)"
     (mt/with-model-cleanup [:model/Database]
       (with-redefs [driver/available?   (constantly true)
                     driver/can-connect? (constantly true)]
-        (is (=? {:errors {:is_stub "disallowed key"}}
-                (mt/user-http-request :crowberto :post 400 "database"
-                                      {:name    (mt/random-name)
-                                       :engine  (u/qualified-name ::test-driver)
-                                       :details {:db "my_db"}
-                                       :is_stub true})))))))
+        (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "database"
+                                                 {:name    (mt/random-name)
+                                                  :engine  (u/qualified-name ::test-driver)
+                                                  :details {:db "my_db"}
+                                                  :is_stub true})]
+          (is (false? (t2/select-one-fn :is_stub :model/Database :id id))))))))
 
-(deftest reject-is-stub-in-update-test
-  (testing "PUT /api/database/:id rejects :is_stub in the request body, whatever its value"
+(deftest ignore-is-stub-in-update-test
+  (testing "PUT /api/database/:id ignores :is_stub in the request body, whatever its value"
     (doseq [is-stub [true false]]
       (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
-        (is (=? {:errors {:is_stub "disallowed key"}}
-                (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                      {:is_stub is-stub})))
+        (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                              {:is_stub is-stub})
         (testing "the row is unchanged"
           (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id))))))))
 
