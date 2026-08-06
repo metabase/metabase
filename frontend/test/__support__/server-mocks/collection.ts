@@ -41,6 +41,12 @@ export interface CollectionEndpoints {
    * is still in flight.
    */
   delayExpandTo?: boolean;
+  /**
+   * Ids whose children the root response carries, cut off at the page size, the way the endpoint delivers every
+   * level between the root and `expand-to`. Their nodes come back with `children` *and* `children_has_more`, which
+   * is a different starting point from a node whose children were never read.
+   */
+  deliverTruncatedChildrenFor?: number[];
 }
 
 /** Mirrors what the tree endpoint does to a node whose children it has not read. */
@@ -79,6 +85,7 @@ export function setupCollectionsEndpoints({
   simulateLargeInstance = false,
   lazyPageSize = 50,
   delayExpandTo = false,
+  deliverTruncatedChildrenFor = [],
 }: CollectionEndpoints) {
   fetchMock.get("path:/api/collection/root", rootCollection, {
     name: "collection-root",
@@ -123,7 +130,21 @@ export function setupCollectionsEndpoints({
     const isLazy = url.searchParams.get("lazy") === "true";
 
     const levelOffset = Number(url.searchParams.get("level-offset") ?? 0);
-    const asLevel = simulateLargeInstance ? withoutChildren : withChildFlags;
+    const withDeliveredChildren = (collection: Collection): Collection => {
+      const children = collection.children ?? [];
+      return {
+        ...withoutChildren(collection),
+        children: children.slice(0, lazyPageSize).map(withoutChildren),
+        children_has_more: children.length > lazyPageSize,
+      };
+    };
+
+    const asLevel = (collection: Collection) =>
+      deliverTruncatedChildrenFor.includes(Number(collection.id))
+        ? withDeliveredChildren(collection)
+        : simulateLargeInstance
+          ? withoutChildren(collection)
+          : withChildFlags(collection);
 
     /** Mirrors the endpoint: a page of the level, plus where the next page starts. */
     const asPage = (level: Collection[]) => ({

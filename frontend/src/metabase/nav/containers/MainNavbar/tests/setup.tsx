@@ -79,6 +79,7 @@ export type SetupOpts = {
   collections?: Collection[];
   lazyPageSize?: number;
   delayExpandTo?: boolean;
+  deliverTruncatedChildrenFor?: number[];
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -125,6 +126,7 @@ export async function setup({
   collections: extraCollections = [],
   lazyPageSize,
   delayExpandTo,
+  deliverTruncatedChildrenFor,
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
     jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
@@ -178,6 +180,7 @@ export async function setup({
     simulateLargeInstance,
     lazyPageSize,
     delayExpandTo,
+    deliverTruncatedChildrenFor,
   });
   setupCollectionByIdEndpoint({
     collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION, NESTED_COLLECTION],

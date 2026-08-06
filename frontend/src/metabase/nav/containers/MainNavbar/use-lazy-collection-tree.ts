@@ -71,10 +71,9 @@ const attachLevels = (
       ? levels.get(collection.id)
       : undefined;
 
-    const awaitsChildren =
-      collection.children == null && collection.has_children === true;
-
-    const children = awaitsChildren ? level?.items : collection.children;
+    // A level we hold beats the children the first response carried: those stop at the page size, and paging past
+    // that point only ever adds to the level we fetched.
+    const children = level?.items ?? collection.children;
 
     return {
       ...collection,
@@ -82,6 +81,29 @@ const attachLevels = (
       children_has_more: level ? level.hasMore : collection.children_has_more,
     };
   });
+
+/**
+ * Ids whose children arrived with the tree but were cut off at the page size.
+ *
+ * Nothing is missing from the screen for these, so they never count as awaiting children. They still have to be read
+ * for themselves before they can be paged: the response says a level was cut short, but not where its next page
+ * starts or how long it is.
+ */
+const collectIdsWithTruncatedChildren = (
+  collections: Collection[],
+  into: Set<RegularCollectionId> = new Set(),
+): Set<RegularCollectionId> => {
+  collections.forEach((collection) => {
+    if (collection.children == null) {
+      return;
+    }
+    if (collection.children_has_more === true && isFetchableId(collection.id)) {
+      into.add(collection.id);
+    }
+    collectIdsWithTruncatedChildren(collection.children, into);
+  });
+  return into;
+};
 
 /**
  * Drives the lazily loaded nav sidebar collection tree.
@@ -248,6 +270,11 @@ export function useLazyCollectionTree({
     [tree],
   );
 
+  const idsWithTruncatedChildren = useMemo(
+    () => collectIdsWithTruncatedChildren(tree),
+    [tree],
+  );
+
   // Levels we hold a subscription for: those still waiting on children, plus those already fetched for themselves.
   // Dropping the second group the moment their data arrived would let RTK collect it and start the fetch over again.
   const subscribedRequests = useMemo(() => {
@@ -261,7 +288,11 @@ export function useLazyCollectionTree({
         const isUnwantedNodeFirstPage =
           offset === FIRST_PAGE_OFFSET &&
           key !== ROOT_LEVEL &&
-          !(idsAwaitingChildren.has(key) || levels.has(key));
+          !(
+            idsAwaitingChildren.has(key) ||
+            idsWithTruncatedChildren.has(key) ||
+            levels.has(key)
+          );
         if (isRootFirstPage || isUnwantedNodeFirstPage) {
           return;
         }
@@ -269,7 +300,14 @@ export function useLazyCollectionTree({
       });
     });
     return requests;
-  }, [levelKeys, idsAwaitingChildren, levels, levelOffsets, pageRequest]);
+  }, [
+    levelKeys,
+    idsAwaitingChildren,
+    idsWithTruncatedChildren,
+    levels,
+    levelOffsets,
+    pageRequest,
+  ]);
 
   useEffect(() => {
     const subscriptions = subscribedRequests.map((request) =>

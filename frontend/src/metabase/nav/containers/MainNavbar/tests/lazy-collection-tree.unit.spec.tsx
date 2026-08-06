@@ -186,6 +186,47 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
       ).toBeInTheDocument();
     });
 
+    it("should page a level whose children the first response already carried", async () => {
+      // The endpoint sends every level between the root and `expand-to`, cut off at the page size. Those nodes
+      // arrive with children *and* more to come, which is a different starting point from never having been read.
+      const parent = createMockCollection({
+        id: 400,
+        name: "Delivered branch",
+        children: Array.from({ length: 5 }, (_, index) =>
+          createMockCollection({
+            id: 410 + index,
+            name: `Delivered child ${index + 1}`,
+            location: "/400/",
+          }),
+        ),
+      });
+
+      await setup({
+        simulateLargeInstance: true,
+        collections: [parent],
+        lazyPageSize: 2,
+        deliverTruncatedChildrenFor: [400],
+      });
+
+      const node = await screen.findByRole("treeitem", {
+        name: /Delivered branch/,
+      });
+      await userEvent.click(within(node).getByRole("button"));
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Delivered child 1/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("treeitem", { name: /Delivered child 3/ }),
+      ).not.toBeInTheDocument();
+
+      scrollToEndOfList();
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Delivered child 3/ }),
+      ).toBeInTheDocument();
+    });
+
     it("should stop watching once the level is exhausted", async () => {
       await setup({
         simulateLargeInstance: true,
