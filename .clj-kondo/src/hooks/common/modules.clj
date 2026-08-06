@@ -105,6 +105,22 @@
    (boolean (some #(= maybe-ancestor %)
                   (ancestor-chain declared-modules maybe-descendant)))))
 
+(defn- descendant-of?
+  "True if `viewer` is a descendant of `viewed` in the module tree (or they
+  are the same module) — i.e. whether `viewer` sits inside the subtree
+  rooted at `viewed`.
+
+  Two things are phrased in terms of this predicate, both deliberately
+  asymmetric. Subtree trust: descendants are allowed to reach into their
+  ancestors' internals past `:api`, but NOT the other way around — the
+  `:api` is the outward-facing contract of a module, and even its parent
+  must respect it when reaching in. And privacy scoping: an unopened
+  nested module is namable exactly from the subtree of the ancestor that
+  keeps it private (see [[visibility-root]])."
+  [declared-modules viewer viewed]
+  (or (= viewer viewed)
+      (ancestor? declared-modules viewed viewer)))
+
 ;;;; -------------------------------------------------------------------------
 ;;;; Visibility rules
 ;;;;
@@ -119,11 +135,20 @@
 ;;;;
 ;;;; The `:module-exports` config key on a module is a SET of direct-child module
 ;;;; symbols that the parent explicitly promotes to externally-referenceable
-;;;; status. An unopened nested child is private to its top-level subtree:
-;;;; only modules sharing the same top-level ancestor may name it in their
-;;;; `:uses`. An opened child may be named by anyone. Either way, the
-;;;; dependency must be declared and the access must respect the target's
-;;;; `:api`.
+;;;; status. An unopened nested child is private to the subtree of the NEAREST
+;;;; ancestor that does not export the module below it on the path: only that
+;;;; ancestor and its descendants may name it in their `:uses`. Each export
+;;;; widens that scope by exactly one level, and a child exported all the way up
+;;;; to a top-level module may be named by anyone. Either way, the dependency
+;;;; must be declared and the access must respect the target's `:api`.
+;;;;
+;;;; That nearest-non-exporting-ancestor scoping is the rule Go's `internal/`
+;;;; directories and Rust's module privacy both settle on: `x.internal.y` is
+;;;; visible to the tree rooted at `x`, wherever `x` sits in the hierarchy —
+;;;; not to the whole top-level tree that happens to contain `x`. At nesting
+;;;; depth 2 the two coincide; at depth 3 or more, scoping to the top-level
+;;;; subtree would let a cousin elsewhere under the same top-level module name
+;;;; a deeply-private one.
 ;;;;
 ;;;; The opened-child-naming rule is enforced in two places. For set-valued
 ;;;; `:uses` it's a property of the config declarations, checked by
@@ -167,39 +192,49 @@
   [config parent child]
   (contains? (open-children config parent) child))
 
+(defn- visibility-root
+  "The module whose subtree `m` is private to, or `nil` if `m` may be named from anywhere.
+
+  Walks up from `m` to the nearest ancestor that does NOT have the module below it on the path
+  in its `:module-exports` set, and returns that ancestor — everything in its subtree may name
+  `m`, everything outside may not. If every ancestor on the way up exports the next module on
+  the path, the chain reaches a top-level module unobstructed, `m` is externally visible, and
+  there is no subtree to scope to, so this returns `nil`.
+
+  This is the `internal/` rule: `x.internal.y` is private to the tree rooted at `x`, wherever
+  `x` sits in the hierarchy — NOT to the top-level tree that contains `x`."
+  [config m]
+  (let [declared (declared-modules config)]
+    (loop [m m]
+      (when-let [p (parent-module declared m)]
+        (if (opens-child? config p m)
+          (recur p)
+          p)))))
+
 (defn- externally-visible?
-  "True if `m` may be named in the `:uses` of a module that is NOT in `m`'s
-  top-level subtree. This is the case iff `m` is top-level, OR `m`'s parent
-  has `m` in its `:module-exports` set AND the parent is itself externally visible.
+  "True if `m` may be named in the `:uses` of any module at all, wherever it sits in the tree.
+  This is the case iff `m` is top-level, OR `m`'s parent has `m` in its `:module-exports` set
+  AND the parent is itself externally visible — i.e. iff `m` has no [[visibility-root]].
 
   Used by the subtree-membership lint to validate `:uses` declarations.
   NOT used at require-lint time — requires are checked strictly against
   the caller's declared `:uses` and the target's `:api`."
   [config m]
-  (let [declared (declared-modules config)]
-    (loop [m m]
-      (if-let [p (parent-module declared m)]
-        (if (opens-child? config p m)
-          (recur p)
-          false)
-        true))))
-
-(defn- top-level-ancestor
-  "The top-level module at the root of `m`'s subtree, or `m` itself if it is top-level."
-  [declared-modules m]
-  (or (last (ancestor-chain declared-modules m)) m))
+  (nil? (visibility-root config m)))
 
 (defn- namable-from?
-  "True if `current-module` may name `required-module` at all under the strict model: the target is
-  externally visible (top-level, or in `:module-exports` of every ancestor up to the root), or the two
-  share a top-level subtree. Mirrors `can-be-named-by?` in `metabase.core.modules-test`, which validates
-  declared `:uses` sets; this require-time version covers modules whose `:uses` is `:any` and therefore
-  declare nothing for that test to check."
+  "True if `current-module` may name `required-module` at all under the strict model: either the
+  target is externally visible (top-level, or in `:module-exports` of every ancestor up to the
+  root), or `current-module` sits inside the subtree of the target's [[visibility-root]] — the
+  nearest ancestor keeping it private. Mirrors `can-be-named-by?` in `metabase.core.modules-test`,
+  which validates declared `:uses` sets; this require-time version covers modules whose `:uses` is
+  `:any` and therefore declare nothing for that test to check."
   [config current-module required-module]
   (let [declared (declared-modules config)]
     (or (externally-visible? config required-module)
-        (= (top-level-ancestor declared current-module)
-           (top-level-ancestor declared required-module)))))
+        (descendant-of? declared
+                        current-module
+                        (visibility-root config required-module)))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; Namespace → module resolution (prefix-map based)
@@ -450,20 +485,6 @@
   [module]
   ((some-fn rest-module? routes-module? core-module?) module))
 
-(defn- descendant-of?
-  "True if `viewer` is a descendant of `viewed` in the module tree (or they
-  are the same module). Used for subtree trust — descendants are allowed
-  to reach into their ancestors' internals past `:api`, but NOT the other
-  way around. The `:api` is the outward-facing contract of a module; even
-  its parent must respect it when reaching in.
-
-  This is asymmetric on purpose: parent → child goes through the child's
-  `:api`, child → parent bypasses `:api` (subject to the normal `:uses`
-  declaration requirement)."
-  [declared-modules viewer viewed]
-  (or (= viewer viewed)
-      (ancestor? declared-modules viewed viewer)))
-
 (defn- allowed-module-namespace?
   "True if `ns-symb` (the namespace being required) is an allowed reference
   from `current-module`.
@@ -540,7 +561,7 @@
         (format "Module %s is nested and not exported by its ancestors; %s may not use it. Add it to its parent's :module-exports chain, or move the caller into the %s subtree. [:metabase/modules %s :module-exports]"
                 required-module
                 current-module
-                (top-level-ancestor (declared-modules config) required-module)
+                (visibility-root config required-module)
                 (parent-module (declared-modules config) required-module))
 
         (not (allowed-module-namespace? config current-module required-namespace))
