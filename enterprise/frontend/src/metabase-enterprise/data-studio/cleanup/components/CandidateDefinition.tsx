@@ -168,7 +168,10 @@ function CandidateMetricDefinition({ query }: { query: Lib.Query }) {
 export function CandidateDefinition({ candidate }: CandidateDefinitionProps) {
   const metadata = useSelector(getMetadata);
   const query = useMemo(() => {
-    if (candidate.candidate_type === "table") {
+    if (
+      candidate.candidate_type === "table" ||
+      !("database" in candidate.definition)
+    ) {
       return undefined;
     }
     const databaseId = candidate.definition.database;

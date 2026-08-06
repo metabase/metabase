@@ -30,12 +30,12 @@ const snapshot: UsageMetadataSnapshot = {
   finished_at: "2026-07-24T10:00:00Z",
   algorithm_version: 1,
   summary: {
-    "candidate-count": 6,
-    "measure-count": 3,
-    "segment-count": 3,
-    "metric-count": 0,
-    "publish-table-count": 0,
-    "table-count": 1,
+    candidate_count: 6,
+    measure_count: 3,
+    segment_count: 3,
+    metric_count: 0,
+    publish_table_count: 0,
+    table_count: 1,
   },
 };
 
@@ -44,7 +44,6 @@ const refreshRun: UsageMetadataRun = {
   status: "succeeded",
   trigger: "manual",
   requested_by: 1,
-  source_config: {},
   error: null,
   created_at: snapshot.finished_at,
   started_at: snapshot.finished_at,
@@ -76,22 +75,22 @@ const tableSummary: UsageMetadataTableSummary = {
   counts: {
     table: {
       missing: 0,
-      "partially-modeled": 0,
+      partially_modeled: 0,
       modeled: 0,
     },
     metric: {
       missing: 0,
-      "partially-modeled": 0,
+      partially_modeled: 0,
       modeled: 0,
     },
     measure: {
       missing: 2,
-      "partially-modeled": 1,
+      partially_modeled: 1,
       modeled: 0,
     },
     segment: {
       missing: 1,
-      "partially-modeled": 0,
+      partially_modeled: 0,
       modeled: 2,
     },
   },

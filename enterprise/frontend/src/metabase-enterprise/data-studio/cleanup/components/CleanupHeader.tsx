@@ -44,7 +44,7 @@ export function CleanupHeader({
           <Group gap="sm">
             {snapshot?.summary && (
               <Text c="text-secondary" size="sm">
-                {t`${snapshot.summary["table-count"]} tables analyzed`}
+                {t`${snapshot.summary.table_count} tables analyzed`}
               </Text>
             )}
             {effectiveFinishedAt && (

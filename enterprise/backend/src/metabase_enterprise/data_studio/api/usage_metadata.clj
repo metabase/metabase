@@ -36,12 +36,12 @@
 
 (mr/def ::snapshot-summary
   [:map
-   [:candidate-count     ms/IntGreaterThanOrEqualToZero]
-   [:measure-count       ms/IntGreaterThanOrEqualToZero]
-   [:segment-count       ms/IntGreaterThanOrEqualToZero]
-   [:metric-count        ms/IntGreaterThanOrEqualToZero]
-   [:publish-table-count ms/IntGreaterThanOrEqualToZero]
-   [:table-count         ms/IntGreaterThanOrEqualToZero]])
+   [:candidate_count     ms/IntGreaterThanOrEqualToZero]
+   [:measure_count       ms/IntGreaterThanOrEqualToZero]
+   [:segment_count       ms/IntGreaterThanOrEqualToZero]
+   [:metric_count        ms/IntGreaterThanOrEqualToZero]
+   [:publish_table_count ms/IntGreaterThanOrEqualToZero]
+   [:table_count         ms/IntGreaterThanOrEqualToZero]])
 
 (mr/def ::snapshot
   [:map
@@ -78,7 +78,7 @@
 (mr/def ::status-counts
   [:map
    [:missing           ms/IntGreaterThanOrEqualToZero]
-   [:partially-modeled ms/IntGreaterThanOrEqualToZero]
+   [:partially_modeled ms/IntGreaterThanOrEqualToZero]
    [:modeled           ms/IntGreaterThanOrEqualToZero]])
 
 (mr/def ::candidate-counts
@@ -103,6 +103,98 @@
 
 (mr/def ::candidate-type [:enum :table :metric :measure :segment])
 (mr/def ::modeling-status [:enum :missing :partially-modeled :modeled])
+(mr/def ::predicate-kind [:enum "boolean" "category" "number" "temporal" "other"])
+
+(mr/def ::presented-predicate
+  [:map
+   [:signature    :string]
+   [:display_name :string]
+   [:kind         ::predicate-kind]])
+
+(mr/def ::candidate-presentation
+  [:map
+   [:aggregation {:optional true}
+    [:map [:display_name :string]]]
+   [:predicates [:sequential ::presented-predicate]]])
+
+(mr/def ::candidate-family
+  [:map
+   [:key      :string]
+   [:position ms/IntGreaterThanOrEqualToZero]
+   [:depth    ms/IntGreaterThanOrEqualToZero]])
+
+(mr/def ::candidate-evidence
+  [:map
+   [:verified_source_count ms/IntGreaterThanOrEqualToZero]
+   [:official_source_count ms/IntGreaterThanOrEqualToZero]
+   [:popular_source_count  ms/IntGreaterThanOrEqualToZero]
+   [:distinct_source_count ms/IntGreaterThanOrEqualToZero]
+   [:total_view_count      ms/IntGreaterThanOrEqualToZero]])
+
+(mr/def ::required-table
+  [:map
+   [:id             ms/PositiveInt]
+   [:database_id    ms/PositiveInt]
+   [:database_name  :string]
+   [:schema         [:maybe :string]]
+   [:name           :string]
+   [:display_name   :string]
+   [:description    [:maybe :string]]
+   [:data_layer     [:maybe :string]]
+   [:data_authority [:maybe :string]]
+   [:view_count     ms/IntGreaterThanOrEqualToZero]
+   [:is_published   :boolean]])
+
+(mr/def ::candidate-clause
+  [:sequential :any])
+
+(mr/def ::candidate-page-clause
+  [:map
+   [:page  ms/PositiveInt]
+   [:items ms/PositiveInt]])
+
+(mr/def ::candidate-pivot-clause
+  [:map
+   [:rows               [:sequential :string]]
+   [:columns            [:sequential :string]]
+   [:show-row-totals    {:optional true} :boolean]
+   [:show-column-totals {:optional true} :boolean]])
+
+(mr/def ::candidate-join
+  [:map
+   [:lib/type   [:= "mbql/join"]]
+   [:stages     [:sequential {:min 1} [:ref ::candidate-stage]]]
+   [:conditions [:sequential {:min 1} ::candidate-clause]]
+   [:alias      ms/NonBlankString]
+   [:fields     {:optional true}
+    [:or [:= "all"] [:= "none"] [:sequential ::candidate-clause]]]
+   [:strategy   {:optional true} :string]])
+
+(mr/def ::candidate-stage
+  [:map
+   [:lib/type    [:= "mbql.stage/mbql"]]
+   [:source-table ms/PositiveInt]
+   [:aggregation {:optional true} [:sequential ::candidate-clause]]
+   [:breakout    {:optional true} [:sequential ::candidate-clause]]
+   [:expressions {:optional true} [:sequential ::candidate-clause]]
+   [:fields      {:optional true} [:sequential ::candidate-clause]]
+   [:filters     {:optional true} [:sequential ::candidate-clause]]
+   [:joins       {:optional true} [:sequential [:ref ::candidate-join]]]
+   [:limit       {:optional true} ms/PositiveInt]
+   [:order-by    {:optional true} [:sequential ::candidate-clause]]
+   [:page        {:optional true} ::candidate-page-clause]
+   [:pivot       {:optional true} ::candidate-pivot-clause]])
+
+(mr/def ::candidate-query
+  [:map
+   [:database ms/PositiveInt]
+   [:lib/type [:= "mbql/query"]]
+   [:stages   [:sequential {:min 1} ::candidate-stage]]])
+
+(mr/def ::candidate-definition
+  [:or
+   ::candidate-query
+   [:map [:table_id ms/PositiveInt]]])
 
 (mr/def ::candidate-summary
   [:map
@@ -112,23 +204,65 @@
    [:display_name          :string]
    [:suggested_name        :string]
    [:suggested_description [:maybe :string]]
-   [:required_tables       [:sequential :map]]
-   [:presentation          :map]
-   [:family                :map]
-   [:definition            :map]
+   [:required_tables       [:sequential ::required-table]]
+   [:presentation          ::candidate-presentation]
+   [:family                ::candidate-family]
+   [:definition            ::candidate-definition]
    [:modeling_status       ::modeling-status]
    [:dismissed             :boolean]
-   [:evidence              :map]
+   [:evidence              ::candidate-evidence]
    [:creation_blockers     [:sequential ::creation-blocker]]])
+
+(mr/def ::model-lineage-item
+  [:map
+   [:id   ms/PositiveInt]
+   [:name :string]])
+
+(mr/def ::dependency-path
+  [:map
+   [:direct :boolean]
+   [:models [:sequential ::model-lineage-item]]])
+
+(mr/def ::candidate-source
+  [:map
+   [:id               ms/PositiveInt]
+   [:candidate_id     ms/PositiveInt]
+   [:card_id          ms/PositiveInt]
+   [:card_name        [:maybe :string]]
+   [:card_type        [:enum :question :model]]
+   [:verified         :boolean]
+   [:official         :boolean]
+   [:popular          :boolean]
+   [:view_count       ms/IntGreaterThanOrEqualToZero]
+   [:joined           :boolean]
+   [:stage_numbers    [:sequential ms/IntGreaterThanOrEqualToZero]]
+   [:model_lineage    [:maybe [:sequential ::model-lineage-item]]]
+   [:dependency_paths {:optional true} [:sequential ::dependency-path]]])
+
+(mr/def ::candidate-match
+  [:map
+   [:relation    [:enum :exact :same-base :subset :superset :overlap]]
+   [:entity_type [:enum :measure :segment]]
+   [:entity      [:map
+                  [:id          ms/PositiveInt]
+                  [:name        :string]
+                  [:description [:maybe :string]]
+                  [:archived    :boolean]]]])
+
+(mr/def ::candidate-dismissal
+  [:map
+   [:id           ms/PositiveInt]
+   [:dismissed_by ms/PositiveInt]
+   [:dismissed_at :any]
+   [:reason       [:maybe :string]]])
 
 (mr/def ::candidate-detail
   [:merge
    ::candidate-summary
    [:map
-    [:semantic_details :map]
-    [:dismissal        [:maybe :map]]
-    [:sources          [:sequential :map]]
-    [:matches          [:sequential :map]]]])
+    [:dismissal [:maybe ::candidate-dismissal]]
+    [:sources   [:sequential ::candidate-source]]
+    [:matches   [:sequential ::candidate-match]]]])
 
 (mr/def ::candidate-page
   [:map
@@ -151,7 +285,7 @@
    [:id          ms/PositiveInt]
    [:name        ms/NonBlankString]
    [:table_id    {:optional true} ms/PositiveInt]
-   [:definition  {:optional true} :map]
+   [:definition  {:optional true} ::candidate-query]
    [:description {:optional true} [:maybe :string]]
    [:archived    {:optional true} :boolean]])
 
@@ -167,7 +301,6 @@
    [:trigger           [:enum :scheduled :manual]]
    [:requested_by      [:maybe ms/PositiveInt]]
    [:algorithm_version ms/IntGreaterThanOrEqualToZero]
-   [:source_config     :map]
    [:summary           [:maybe ::snapshot-summary]]
    [:error             [:maybe :string]]
    [:created_at        :any]
@@ -202,10 +335,37 @@
     (api/check-400 (<= limit max-limit) "limit must not exceed 200")
     {:limit limit, :offset (or (request/offset) 0)}))
 
+(defn- snapshot-summary-response
+  [summary]
+  (when summary
+    {:candidate_count     (:candidate-count summary)
+     :measure_count       (:measure-count summary)
+     :segment_count       (:segment-count summary)
+     :metric_count        (:metric-count summary)
+     :publish_table_count (:publish-table-count summary)
+     :table_count         (:table-count summary)}))
+
 (defn- snapshot-response
   [run]
   (when run
-    (select-keys run [:id :finished_at :algorithm_version :summary])))
+    {:id                (:id run)
+     :finished_at       (:finished_at run)
+     :algorithm_version (:algorithm_version run)
+     :summary           (snapshot-summary-response (:summary run))}))
+
+(defn- run-response
+  [run]
+  (when run
+    {:id                (:id run)
+     :status            (:status run)
+     :trigger           (:trigger run)
+     :requested_by      (:requested_by run)
+     :algorithm_version (:algorithm_version run)
+     :summary           (snapshot-summary-response (:summary run))
+     :error             (:error run)
+     :created_at        (:created_at run)
+     :started_at        (:started_at run)
+     :finished_at       (:finished_at run)}))
 
 (defn- dismissal-key
   [candidate]
@@ -259,11 +419,40 @@
   (when-let [model (candidate-entity-model candidate)]
     (mi/can-create? model {:table table, :table_id (:id table)})))
 
+(defn- table-response
+  [table]
+  {:id             (:id table)
+   :db_id          (:db_id table)
+   :schema         (:schema table)
+   :name           (:name table)
+   :display_name   (:display_name table)
+   :description    (:description table)
+   :data_layer     (:data_layer table)
+   :data_authority (:data_authority table)
+   :view_count     (long (or (:view_count table) 0))
+   :is_published   (boolean (:is_published table))
+   :collection_id  (:collection_id table)
+   :database       (:database table)})
+
 (defn- presented-atom
   [{:keys [signature display-name kind]}]
   {:signature    signature
    :display_name display-name
    :kind         kind})
+
+(defn- required-table-response
+  [table]
+  {:id             (:id table)
+   :database_id    (:database-id table)
+   :database_name  (:database-name table)
+   :schema         (:schema table)
+   :name           (:name table)
+   :display_name   (:display-name table)
+   :description    (:description table)
+   :data_layer     (:data-layer table)
+   :data_authority (:data-authority table)
+   :view_count     (:view-count table)
+   :is_published   (:published? table)})
 
 (defn- candidate-presentation
   [{:keys [candidate_type semantic_details]}]
@@ -272,6 +461,30 @@
       (= candidate_type :measure)
       (assoc :aggregation {:display_name (:base-name semantic_details)}))))
 
+(defn- json-response-value
+  [value]
+  (cond
+    (map? value)     (update-vals value json-response-value)
+    (vector? value)  (mapv json-response-value value)
+    (sequential? value) (mapv json-response-value value)
+    (keyword? value) (u/qualified-name value)
+    :else            value))
+
+(defn- query-definition-response
+  [definition]
+  (json-response-value (dissoc definition :lib/metadata)))
+
+(defn- candidate-definition-response
+  [{:keys [candidate_type definition]}]
+  (if (= candidate_type :table)
+    {:table_id (:table-id definition)}
+    (query-definition-response definition)))
+
+(defn- created-entity-response
+  [entity]
+  (cond-> (select-keys entity [:id :name :table_id :description :archived])
+    (:definition entity) (assoc :definition (query-definition-response (:definition entity)))))
+
 (defn- candidate-summary
   [candidate table dismissals]
   (let [creation-candidate? (contains? #{:measure :segment} (:candidate_type candidate))
@@ -279,19 +492,17 @@
                                  (table-editable-for-candidate? candidate table))]
     {:id                    (:id candidate)
      :candidate_type        (:candidate_type candidate)
-     :table                 (assoc (select-keys table [:id :db_id :schema :name :display_name :description
-                                                       :data_layer :data_authority :view_count :is_published
-                                                       :collection_id])
-                                   :database (:database table))
+     :table                 (table-response table)
      :display_name          (:display_name candidate)
      :suggested_name        (:suggested_name candidate)
      :suggested_description (:suggested_description candidate)
-     :required_tables       (or (:required-tables (:semantic_details candidate)) [])
+     :required_tables       (mapv required-table-response
+                                  (:required-tables (:semantic_details candidate)))
      :presentation          (candidate-presentation candidate)
      :family                {:key      (:family_key candidate)
                              :position (:family_position candidate)
                              :depth    (:family_depth candidate)}
-     :definition            (:definition candidate)
+     :definition            (candidate-definition-response candidate)
      :modeling_status       (:modeling_status candidate)
      :dismissed             (dismissed? dismissals candidate)
      :evidence              {:verified_source_count (:verified_source_count candidate)
@@ -500,18 +711,18 @@
                 table_missing metric_missing
                 measure_missing measure_partially_modeled measure_modeled
                 segment_missing segment_partially_modeled segment_modeled]} row]
-    {:table (dissoc table :collection)
+    {:table (table-response table)
      :counts {:table {:missing (or table_missing 0)
-                      :partially-modeled 0
+                      :partially_modeled 0
                       :modeled 0}
               :metric {:missing (or metric_missing 0)
-                       :partially-modeled 0
+                       :partially_modeled 0
                        :modeled 0}
               :measure {:missing (or measure_missing 0)
-                        :partially-modeled (or measure_partially_modeled 0)
+                        :partially_modeled (or measure_partially_modeled 0)
                         :modeled (or measure_modeled 0)}
               :segment {:missing (or segment_missing 0)
-                        :partially-modeled (or segment_partially_modeled 0)
+                        :partially_modeled (or segment_partially_modeled 0)
                         :modeled (or segment_modeled 0)}}
      :candidate_count (or candidate_count 0)}))
 
@@ -573,14 +784,17 @@
                                (map (juxt :card-id :dependency-paths))
                                (get-in candidate [:semantic_details :source-dependencies]))]
     (assoc (candidate-summary candidate table dismissals)
-           :definition (:definition candidate)
-           :semantic_details (:semantic_details candidate)
            :dismissal (some-> dismissal
                               (select-keys [:id :dismissed_by :dismissed_at :reason]))
            :sources (mapv (fn [source]
-                            (cond-> source
+                            (cond-> (select-keys source [:id :candidate_id :card_id :card_name :card_type
+                                                         :verified :official :popular :view_count :joined
+                                                         :stage_numbers :model_lineage])
                               (contains? dependency-paths (:card_id source))
-                              (assoc :dependency_paths (dependency-paths (:card_id source)))))
+                              (assoc :dependency_paths
+                                     (mapv (fn [{:keys [direct? models]}]
+                                             {:direct direct?, :models models})
+                                           (dependency-paths (:card_id source))))))
                           sources)
            :matches (mapv (fn [{:keys [relation measure_id segment_id entity_name entity_description
                                        entity_archived]}]
@@ -664,13 +878,17 @@
                       (conflict! "Candidate belongs to an obsolete snapshot" :obsolete-snapshot))
           entity    (create-candidate! candidate body)]
       {:candidate (candidate-detail (candidates/candidate id))
-       :entity    entity})))
+       :entity    (created-entity-response entity)})))
 
 (api.macros/defendpoint :get "/refresh" :- ::refresh-status
   "Return candidate refresh and snapshot status."
   []
   (api/check-superuser)
-  (candidates/refresh-status))
+  (let [{:keys [snapshot active failure fresh]} (candidates/refresh-status)]
+    {:snapshot (run-response snapshot)
+     :active   (run-response active)
+     :failure  (run-response failure)
+     :fresh    fresh}))
 
 (api.macros/defendpoint :post "/refresh" :- ::start-refresh-response
   "Queue a candidate refresh."
