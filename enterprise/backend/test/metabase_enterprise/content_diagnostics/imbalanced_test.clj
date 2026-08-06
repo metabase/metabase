@@ -113,18 +113,21 @@
 
 (defn- insert-imbalanced!
   "Insert one imbalanced finding row directly (API tests exercise the read path, not the checker).
-  `:entity-kind` is only needed by fixtures an `entity-types` filter/sort assertion touches."
-  [{:keys [entity-type entity-id entity-kind name finding-type content-count details]
+  `:entity-kind` is only needed by fixtures an `entity-types` filter/sort assertion touches.
+  `:entity-collection-name` is only needed by fixtures a collection_name assertion touches."
+  [{:keys [entity-type entity-id entity-kind name finding-type content-count details
+           entity-collection-name]
     :or   {details {:threshold 5 :unit "items"}}}]
   (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
-                                   {:scan_id       "imb-api"
-                                    :entity_type   entity-type
-                                    :entity_id     entity-id
-                                    :entity_kind   entity-kind
-                                    :entity_name   name
-                                    :finding_type  finding-type
-                                    :content_count content-count
-                                    :details       details})))
+                                   {:scan_id                "imb-api"
+                                    :entity_type             entity-type
+                                    :entity_id               entity-id
+                                    :entity_kind             entity-kind
+                                    :entity_name             name
+                                    :entity_collection_name  entity-collection-name
+                                    :finding_type            finding-type
+                                    :content_count           content-count
+                                    :details                 details})))
 
 (deftest imbalanced-api-finding-types-test
   (testing "GET /imbalanced narrows by finding-types (default all three)"
@@ -402,6 +405,28 @@
                 (is (nil? (get-in (row-for :rasta) [:details :collection]))))
               (testing "an admin still gets the parent breadcrumb"
                 (is (= hidden-parent (get-in (row-for :crowberto) [:details :collection :id])))))))))))
+
+(deftest api-collection-name-permission-gate-test
+  (testing "unreadable parent → collection_name nil, even though the stored column holds the hidden name"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {parent-id :id} {:name "Hidden Parent"}
+                         :model/Collection {child-id :id} {:location (collection/location-path parent-id)}]
+            ;; child readable, parent NOT
+            (perms/grant-collection-read-permissions! (perms/all-users-group) child-id)
+            (let [prefix (scope-prefix)
+                  fid    (insert-imbalanced! {:entity-type :collection :entity-id child-id
+                                              :entity-kind :collection
+                                              :name (str prefix " child") :finding-type :empty
+                                              :content-count 0
+                                              :entity-collection-name "Hidden Parent"})
+                  [finding] (:data (mt/user-http-request :rasta :get 200
+                                                         "ee/content-diagnostics/imbalanced"
+                                                         :query prefix))]
+              (is (= fid (:id finding)))
+              (is (nil? (:collection_name finding)))
+              (is (nil? (get-in finding [:details :collection]))))))))))
 
 (deftest imbalanced-api-as-of-serves-as-a-string-test
   (testing "an evidence-dated empty serves `details.as_of` as an ISO-8601 string"

@@ -786,6 +786,35 @@
               (is (= "card"  (get-in by-id [kind-fid :entity_type])))
               (is (= "model" (get-in by-id [kind-fid :card_type]))))))))))
 
+(deftest api-response-serves-collection-name-test
+  (testing "top-level collection_name = scan-time stored name; nil for pre-migration (NULL-column) rows"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {card-a :id} {:collection_id coll-id}
+                         :model/Card {card-b :id} {:collection_id nil}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [prefix  (scope-prefix)
+                  insert  (fn [row] (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                                     (merge {:scan_id "s" :entity_type :card
+                                                                             :finding_type :stale :details {}}
+                                                                            row))))
+                  in-fid   (insert {:entity_id card-a :entity_name (str prefix " in")
+                                    :entity_collection_name "Scan Time Name"})
+                  ;; pre-migration shape: NULL entity_collection_name on a root-resident row - the
+                  ;; breadcrumb (root sentinel) passes the gate, the nil comes from the column.
+                  ;; Post-migration scans stamp root rows with the root label (Task 2 covers that).
+                  ;; Queried as :crowberto - the root-resident row is excluded from :rasta's response
+                  ;; entirely (root perms are stripped by with-non-admin-groups-no-root-collection-perms),
+                  ;; which would make the nil assertion vacuous rather than exercising the gate.
+                  old-fid  (insert {:entity_id card-b :entity_name (str prefix " root")})
+                  by-id    (m/index-by :id (:data (mt/user-http-request :crowberto :get 200
+                                                                        "ee/content-diagnostics/stale"
+                                                                        :query prefix)))]
+              (is (= "Scan Time Name" (get-in by-id [in-fid :collection_name])))
+              (is (nil? (get-in by-id [old-fid :collection_name]))))))))))
+
 (deftest api-endpoint-is-feature-gated-test
   (testing "GET /stale is gated on the :content-diagnostics premium feature (premium-handler)"
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]

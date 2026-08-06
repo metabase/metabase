@@ -431,31 +431,38 @@
         entities    (hydrate-duplicate-entities findings excluded-personal-ids)
         ctx         {:culprits culprits :entities entities}]
     (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at entity_created_at
-                       entity_name entity_creator_id entity_creator_name card_type entity_kind details] :as row}]
-            (let [entity    (get-in ctx-by-type [entity_type entity_id])
-                  details*  (merge details
-                                   {:collection  (entity-breadcrumb entity_type entity breadcrumbs)
-                                    :description (:description entity)
-                                    ;; only transforms have owner columns; null for the rest.
-                                    :owner       (normalized-owner entity)
-                                    ;; creator denormalized (id + common_name) - no live :creator hydrate.
-                                    :creator     (when entity_creator_id
-                                                   {:id entity_creator_id :name entity_creator_name :type :user})}
-                                   (when-some [view-count (:view_count entity)]
-                                     {:view_count view-count}))
-                  base      (cond-> {:id                  id
-                                     :finding_type        finding_type
-                                     :entity_type         entity_type
-                                     :entity_id           entity_id
-                                     :detected_at         detected_at
-                                     :entity_display_name entity_name
-                                     :created_at          entity_created_at
-                                     :details             details*
-                                     ;; additive flat kind; coalesce pre-migration rows
-                                     :entity_kind         (or entity_kind card_type entity_type)}
-                              ;; keyed on entity type so a card row with NULL card_type still serves
-                              ;; the key, as null
-                              (= entity_type :card) (assoc :card_type card_type))]
+                       entity_name entity_creator_id entity_creator_name card_type entity_kind
+                       entity_collection_name details] :as row}]
+            (let [entity     (get-in ctx-by-type [entity_type entity_id])
+                  breadcrumb (entity-breadcrumb entity_type entity breadcrumbs)
+                  details*   (merge details
+                                    {:collection  breadcrumb
+                                     :description (:description entity)
+                                     ;; only transforms have owner columns; null for the rest.
+                                     :owner       (normalized-owner entity)
+                                     ;; creator denormalized (id + common_name) - no live :creator hydrate.
+                                     :creator     (when entity_creator_id
+                                                    {:id entity_creator_id :name entity_creator_name :type :user})}
+                                    (when-some [view-count (:view_count entity)]
+                                      {:view_count view-count}))
+                  base       (cond-> {:id                  id
+                                      :finding_type        finding_type
+                                      :entity_type         entity_type
+                                      :entity_id           entity_id
+                                      :detected_at         detected_at
+                                      :entity_display_name entity_name
+                                      :created_at          entity_created_at
+                                      :details             details*
+                                      ;; additive flat kind; coalesce pre-migration rows
+                                      :entity_kind         (or entity_kind card_type entity_type)
+                                      ;; scan-time display name for the sortable collection column (root
+                                      ;; rows carry the stored root label), gated on the live breadcrumb so
+                                      ;; a name details.collection suppresses (unreadable parent / deleted
+                                      ;; entity) is never served; nil otherwise only on pre-migration rows
+                                      :collection_name     (when breadcrumb entity_collection_name)}
+                               ;; keyed on entity type so a card row with NULL card_type still serves
+                               ;; the key, as null
+                               (= entity_type :card) (assoc :card_type card_type))]
               (finalize-finding finding_type base row ctx)))
           findings)))
 
