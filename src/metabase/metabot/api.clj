@@ -463,15 +463,21 @@
    [:models [:sequential llm-model-response-schema]]])
 
 (def ^:private provider-credentials-schema
-  "Provider credentials carried by the request body's `:credentials` map.
-  Bedrock sends AWS key material; Azure sends an API key and base URL."
+  "Provider credentials carried by the request body's `:credentials` map."
   [:map
-   [:access-key-id     {:optional true} [:maybe :string]]
-   [:secret-access-key {:optional true} [:maybe :string]]
-   [:region            {:optional true} [:maybe :string]]
-   [:session-token     {:optional true} [:maybe :string]]
-   [:api-key           {:optional true} [:maybe :string]]
-   [:base-url          {:optional true} [:maybe :string]]])
+   ;; bedrock
+   [:access-key-id       {:optional true} [:maybe :string]]
+   [:secret-access-key   {:optional true} [:maybe :string]]
+   [:region              {:optional true} [:maybe :string]]
+   [:session-token       {:optional true} [:maybe :string]]
+   ;; azure
+   [:api-key             {:optional true} [:maybe :string]]
+   [:base-url            {:optional true} [:maybe :string]]
+   ;; google
+   [:project-id          {:optional true} [:maybe :string]]
+   [:location            {:optional true} [:maybe :string]]
+   [:service-account-key {:optional true} [:maybe :string]]
+   [:oauth-access-token  {:optional true} [:maybe :string]]])
 
 (def ^:private metabot-settings-request-schema
   [:map
@@ -686,17 +692,32 @@
    :base-url (or (llm.settings/normalize-llm-base-url base-url)
                  (llm.settings/normalize-llm-base-url (llm.settings/llm-azure-api-base-url)))})
 
+(def ^:private google-credential-fields
+  [:service-account-key :oauth-access-token :project-id :location])
+
+(defn- effective-google-credentials
+  "The Google credentials a settings request resolves to.
+
+  Each field follows the same contract as the top-level `:credentials` key: a field present in the request replaces
+  the saved `llm-google-*` value, while an absent field keeps the saved value. Nil or blank means an explicit clear."
+  [supplied-creds]
+  (reduce (fn [creds field]
+            (cond-> creds
+              (contains? supplied-creds field) (assoc field (non-blank-string (get supplied-creds field)))))
+          (metabot.settings/configured-provider-credentials "google")
+          google-credential-fields))
+
 (defn- request-credentials
   "The credentials override carried by a `PUT /api/metabot/settings` request body as a provider credentials map.
 
   nil when the request does not touch credentials for `provider`.
 
-  An explicitly nil credential field in the body — `:api-key` for API-key providers, `:credentials` for Bedrock and
-  Azure — resolves to a credentials map whose key material is nil: an explicit clear. Fields *inside* the Bedrock
-  credentials map follow that map's presence contract (see [[effective-bedrock-credentials]]); blank fields *inside*
-  the Azure credentials map mean \"keep the saved value\" (see [[effective-azure-credentials]]), so e.g. a key-only
-  rotation can't wipe the base URL. Throws a 400 when non-nil Bedrock/Azure credentials don't resolve to a complete
-  set."
+  An explicitly nil credential field in the body — `:api-key` for API-key providers, `:credentials` for Bedrock,
+  Azure, and Google — resolves to a credentials map whose key material is nil: an explicit clear. Fields *inside* the
+  Bedrock and Google credentials maps follow that map's presence contract (see [[effective-bedrock-credentials]] and
+  [[effective-google-credentials]]); blank fields *inside* the Azure credentials map mean \"keep the saved value\" (see
+  [[effective-azure-credentials]]), so e.g. a key-only rotation can't wipe the base URL. Throws a 400 when non-nil
+  Bedrock/Azure/Google credentials don't resolve to a complete set."
   [provider {:keys [api-key credentials] :as body}]
   (case provider
     "bedrock"
@@ -729,59 +750,71 @@
                                                         [:api-key :base-url]))})))
           creds)))
 
+    "google"
+    (when (contains? body :credentials)
+      (if (nil? credentials)
+        {:service-account-key nil
+         :oauth-access-token  nil
+         :project-id          nil
+         :location            nil}
+        (let [creds (effective-google-credentials credentials)]
+          (when-not (metabot.settings/provider-credentials-complete? provider creds)
+            (throw (ex-info (tru "Google credentials are incomplete.")
+                            {:status-code  400
+                             :api-error    true
+                             :missing-keys (vec (remove #(non-blank-string (get creds %))
+                                                        [:service-account-key :oauth-access-token :project-id]))})))
+          creds)))
+
     (when (contains? body :api-key)
       {:api-key (non-blank-string api-key)})))
 
-(defn- save-bedrock-credentials!
-  "Persist a Bedrock credentials map resolved by [[request-credentials]]; nil key material clears those settings.
-  The region is written only when the map carries it — a nil region resets the setting to its default. A top-level
-  credentials clear (disconnect) carries `:region nil`, so it resets the region too; a field-level edit that omits
-  `:region` leaves the saved value in place."
-  [{:keys [access-key-id secret-access-key session-token] :as credentials}]
-  (setting/set! :llm-bedrock-access-key-id access-key-id)
-  (setting/set! :llm-bedrock-secret-access-key secret-access-key)
-  (setting/set! :llm-bedrock-session-token session-token)
-  (when (contains? credentials :region)
-    (setting/set! :llm-bedrock-region (:region credentials))))
-
 (defn- check-not-env-shadowed!
-  "Throw a 400 when `setting-key` is controlled by an env var. Writes to env-shadowed settings
-  persist to the app DB but the env var wins on every read, so they silently do nothing — reject
-  them up front instead."
-  [setting-key]
-  (when (some? (setting/env-var-value setting-key))
+  "Throw a 400 when writing `value` to `setting-key` would be silently ignored because an env var shadows it."
+  [setting-key value]
+  (when (and (some? (setting/env-var-value setting-key))
+             (some? value)
+             (not= value (setting/get setting-key)))
     (throw (ex-info (tru "This setting is set by the {0} environment variable and cannot be changed via the API."
                          (setting/env-var-name setting-key))
                     {:status-code 400
                      :setting     setting-key}))))
 
-(defn- save-azure-credentials!
-  "Persist an Azure credentials map resolved by [[request-credentials]]; nil values clear those settings."
-  [{:keys [api-key base-url]}]
-  (setting/set! :llm-azure-api-key api-key)
-  (setting/set! :llm-azure-api-base-url base-url))
+(defn- credential-setting-writes
+  "The settings that should be saved to store `credentials` for `provider`.
+  Returns `[setting-key value]` pairs. [[save-credentials!]] applies them.
+  An optional field is written only when actually present in the `credentials` map.
+  A disconnect includes every field explicitly, so it still clears them all."
+  [provider credentials]
+  (let [always   (fn [setting-key field]
+                   [[setting-key (get credentials field)]])
+        optional (fn [setting-key field]
+                   (when (contains? credentials field)
+                     [[setting-key (get credentials field)]]))]
+    (case provider
+      "bedrock" (concat (always :llm-bedrock-access-key-id       :access-key-id)
+                        (always :llm-bedrock-secret-access-key   :secret-access-key)
+                        (always :llm-bedrock-session-token       :session-token)
+                        (optional :llm-bedrock-region            :region))
+      "azure"   (concat (always :llm-azure-api-key               :api-key)
+                        (always :llm-azure-api-base-url          :base-url))
+      "google"  (concat (optional :llm-google-service-account-key :service-account-key)
+                        (optional :llm-google-oauth-access-token  :oauth-access-token)
+                        (optional :llm-google-project-id          :project-id)
+                        (optional :llm-google-location            :location))
+      (always (provider-api-key-setting-key provider) :api-key))))
 
 (defn- save-credentials!
-  "Persist the credentials override resolved by [[request-credentials]]; nil leaves the saved settings untouched."
+  "Persist the credentials override resolved by [[request-credentials]]; nil leaves the saved settings untouched.
+
+  A write that matches what the setting already reads is skipped — the same writes [[check-not-env-shadowed!]]
+  lets through. A field-level edit layers the request over the saved settings, so most of its fields carry the value
+  that is already there; for an env-backed one, writing it would persist an app-DB row that the env var only masks."
   [provider credentials]
   (when credentials
-    (case provider
-      "bedrock" (save-bedrock-credentials! credentials)
-      "azure"   (save-azure-credentials! credentials)
-      (setting/set! (provider-api-key-setting-key provider) (:api-key credentials)))))
-
-(defn- credential-setting-keys
-  "The app-DB settings that persisting `provider`'s resolved `credentials` map would write
-  (mirrors [[save-credentials!]]). Used to reject writes to env-shadowed settings up front: a write
-  to an env-shadowed setting persists a DB row the env var then silently wins over. Bedrock writes
-  `:llm-bedrock-region` only when the credentials carry it (see [[save-bedrock-credentials!]]), so it
-  is guarded only then; the other fields are always written."
-  [provider credentials]
-  (case provider
-    "bedrock" (cond-> [:llm-bedrock-access-key-id :llm-bedrock-secret-access-key :llm-bedrock-session-token]
-                (contains? credentials :region) (conj :llm-bedrock-region))
-    "azure"   [:llm-azure-api-key :llm-azure-api-base-url]
-    [(provider-api-key-setting-key provider)]))
+    (doseq [[setting-key value] (credential-setting-writes provider credentials)
+            :when               (not= value (setting/get setting-key))]
+      (setting/set! setting-key value))))
 
 (api.macros/defendpoint :put "/settings"
   :- metabot-settings-response-schema
@@ -815,16 +848,16 @@
                                                :provider    provider})))
                             (when model
                               (metabot.settings/validate-azure-model! (str provider "/" model) model)))
-        ;; Reject writes to env-shadowed settings before verifying or persisting anything: guard every
-        ;; credential setting a save would touch (see [[credential-setting-keys]]), plus the
-        ;; provider/model setting whenever a provider/model write would happen.
+        ;; Reject writes to env-shadowed settings before verifying or persisting anything.
         _                 (when credentials
-                            (run! check-not-env-shadowed! (credential-setting-keys provider credentials)))
+                            (run! (partial apply check-not-env-shadowed!)
+                                  (credential-setting-writes provider credentials)))
         _                 (when model
-                            (check-not-env-shadowed! :llm-metabot-provider))
-        ;; Azure connect validation needs the candidate model's wire family; credential-only
-        ;; rotations on a connected Azure provider fall back to the saved model.
-        validation-model  (when (= provider "azure")
+                            (check-not-env-shadowed! :llm-metabot-provider (str provider "/" model)))
+        ;; Azure connect validation needs the candidate model's wire family, and the Google connect
+        ;; probe needs it to check the model is served in the configured location; credential-only
+        ;; rotations on a connected provider fall back to the saved model.
+        validation-model  (when (contains? #{"azure" "google"} provider)
                             (or model
                                 (when-not provider-changed?
                                   (provider-util/provider-and-model->model (metabot.settings/llm-metabot-provider)))))
