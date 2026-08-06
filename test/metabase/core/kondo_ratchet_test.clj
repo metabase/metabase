@@ -169,20 +169,29 @@
                "#_{:clj-kondo/ignore [:extra] :reason \"legacy\"}\n"
                "(defn k [] 6)\n"))
     (let [occurrences (sort-by (juxt :file :line) (kondo-ratchet/scan [(.getPath dir)]))]
-      (is (= [{:file (.getPath (io/file dir "a.clj")), :line 2,  :linters [:x :y],        :justified? false}
-              {:file (.getPath (io/file dir "a.clj")), :line 5,  :linters [:all],         :justified? true}
-              {:file (.getPath (io/file dir "a.clj")), :line 8,  :linters [:multi :line], :justified? false}
-              {:file (.getPath (io/file dir "a.clj")), :line 10, :linters [:trailing],    :justified? true}
+      (is (= [{:file (.getPath (io/file dir "a.clj")), :line 2,  :linters [:x :y],               :justified? false}
+              {:file (.getPath (io/file dir "a.clj")), :line 5,  :linters [:all],                :justified? true}
+              {:file (.getPath (io/file dir "a.clj")), :line 8,  :linters [:multi :line],        :justified? false}
+              {:file (.getPath (io/file dir "a.clj")), :line 10, :linters [:trailing],           :justified? true}
               {:file (.getPath (io/file dir "a.clj")), :line 12, :linters [:after-code-comment], :justified? false}
-              {:file (.getPath (io/file dir "a.clj")), :line 16, :linters [:after-blank], :justified? false}
-              {:file (.getPath (io/file dir "a.clj")), :line 20, :linters [:sneaky],      :justified? false}
-              {:file (.getPath (io/file dir "b.clj")), :line 1,  :linters [:attr-map],    :justified? false}
-              {:file (.getPath (io/file dir "b.clj")), :line 2,  :linters [:extra],       :justified? false}]
+              {:file (.getPath (io/file dir "a.clj")), :line 16, :linters [:after-blank],        :justified? false}
+              {:file (.getPath (io/file dir "a.clj")), :line 20, :linters [:sneaky],             :justified? false}
+              {:file (.getPath (io/file dir "b.clj")), :line 1,  :linters [:attr-map],           :justified? false}
+              {:file (.getPath (io/file dir "b.clj")), :line 2,  :linters [:extra],              :justified? false}]
              occurrences)
           "strings and commented-out forms don't count; multi-line vectors, attr-maps, and extra keys do;
            a semicolon inside a trailing string is not a justification")
-      (is (= {:x 1, :y 1, :all 1, :multi 1, :line 1, :trailing 1, :after-code-comment 1,
-              :after-blank 1, :sneaky 1, :attr-map 1, :extra 1}
+      (is (= {:x                  1
+              :y                  1
+              :all                1
+              :multi              1
+              :line               1
+              :trailing           1
+              :after-code-comment 1
+              :after-blank        1
+              :sneaky             1
+              :attr-map           1
+              :extra              1}
              (kondo-ratchet/actual-counts occurrences))))))
 
 (deftest ^:parallel scan-error-identifies-file-test
