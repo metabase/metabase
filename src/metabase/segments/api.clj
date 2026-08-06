@@ -127,7 +127,10 @@
             [:definition              {:optional true} [:maybe [:map {:closed false}]]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
-            [:description             {:optional true} [:maybe :string]]]]
+            [:description             {:optional true} [:maybe :string]]
+            [:caveats                 {:optional true} [:maybe :string]]
+            [:points_of_interest      {:optional true} [:maybe :string]]
+            [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
   (write-check-and-update-segment! id body))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest

@@ -288,12 +288,17 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       ).then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           dashcards: [
-            createMockDashboardCard({
+            {
+              id: -1,
               card_id: ORDERS_QUESTION_ID,
+              row: 0,
+              col: 0,
+              size_x: 1,
+              size_y: 1,
               parameter_mappings: [
                 createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
               ],
-            }),
+            },
           ],
         });
       });
@@ -342,13 +347,18 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       ).then((dashboardId) => {
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           dashcards: [
-            createMockDashboardCard({
+            {
+              id: -1,
               card_id: ORDERS_QUESTION_ID,
+              row: 0,
+              col: 0,
+              size_x: 1,
+              size_y: 1,
               parameter_mappings: [
                 createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
                 createTimeFilterMapping({ card_id: ORDERS_QUESTION_ID }),
               ],
-            }),
+            },
           ],
         });
       });
@@ -665,15 +675,20 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           return cy
             .request("PUT", `/api/dashboard/${dashboardId}`, {
               dashcards: [
-                createMockDashboardCard({
+                {
+                  id: -1,
                   card_id: ORDERS_QUESTION_ID,
+                  row: 0,
+                  col: 0,
+                  size_x: 1,
+                  size_y: 1,
                   parameter_mappings: [
                     createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
                     createTextFilterWithDefaultMapping({
                       card_id: ORDERS_QUESTION_ID,
                     }),
                   ],
-                }),
+                },
               ],
             })
             .then(() => dashboardId);
@@ -744,15 +759,20 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           return cy
             .request("PUT", `/api/dashboard/${dashboardId}`, {
               dashcards: [
-                createMockDashboardCard({
+                {
+                  id: -1,
                   card_id: ORDERS_QUESTION_ID,
+                  row: 0,
+                  col: 0,
+                  size_x: 1,
+                  size_y: 1,
                   parameter_mappings: [
                     createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
                     createTextFilterWithDefaultMapping({
                       card_id: ORDERS_QUESTION_ID,
                     }),
                   ],
-                }),
+                },
               ],
             })
             .then(() => dashboardId);
@@ -2665,12 +2685,17 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     ).then((dashboardId) => {
       cy.request("PUT", `/api/dashboard/${dashboardId}`, {
         dashcards: [
-          createMockDashboardCard({
+          {
+            id: -1,
             card_id: ORDERS_QUESTION_ID,
+            row: 0,
+            col: 0,
+            size_x: 1,
+            size_y: 1,
             parameter_mappings: [
               createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
             ],
-          }),
+          },
         ],
       });
     });

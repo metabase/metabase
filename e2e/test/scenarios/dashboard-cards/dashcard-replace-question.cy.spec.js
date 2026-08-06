@@ -5,11 +5,7 @@ import {
   FIRST_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  createMockDashboardCard,
-  createMockHeadingDashboardCard,
-  createMockParameter,
-} from "metabase-types/api/mocks";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -59,7 +55,7 @@ const NEXT_QUESTION_CREATE_INFO = {
 };
 
 function getDashboardCards(mappedQuestionId) {
-  const mappedQuestionDashcard = createMockDashboardCard({
+  const mappedQuestionDashcard = {
     id: 2,
     card_id: mappedQuestionId,
     parameter_mappings: [
@@ -80,21 +76,22 @@ function getDashboardCards(mappedQuestionId) {
       },
     ],
     row: 1,
+    col: 0,
     size_x: 6,
     size_y: 4,
-  });
+  };
 
-  const targetDashcard = createMockDashboardCard({
+  const targetDashcard = {
     id: 3,
     card_id: ORDERS_COUNT_QUESTION_ID,
     row: 1,
     col: 6,
     size_x: 6,
     size_y: 4,
-  });
+  };
 
   return [
-    createMockHeadingDashboardCard({ id: 1, size_x: 24 }),
+    H.getHeadingCardDetails({ id: 1 }),
     mappedQuestionDashcard,
     targetDashcard,
   ];

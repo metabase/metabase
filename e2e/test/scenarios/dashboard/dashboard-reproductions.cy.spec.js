@@ -1553,7 +1553,12 @@ describe("issue 42165", () => {
           cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
             dashcards: [
               {
-                ...dashcard,
+                id: dashcard.id,
+                card_id: dashcard.card_id,
+                row: dashcard.row,
+                col: dashcard.col,
+                size_x: dashcard.size_x,
+                size_y: dashcard.size_y,
                 parameter_mappings: [
                   {
                     card_id: dashcard.card_id,
@@ -1777,7 +1782,12 @@ describe("issue 54353", () => {
           cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
             dashcards: [
               {
-                ...dashcard,
+                id: dashcard.id,
+                card_id: dashcard.card_id,
+                row: dashcard.row,
+                col: dashcard.col,
+                size_x: dashcard.size_x,
+                size_y: dashcard.size_y,
                 parameter_mappings: [
                   {
                     card_id: dashcard.card_id,
@@ -2111,7 +2121,12 @@ describe("issue 52674", () => {
           cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
             dashcards: [
               {
-                ...dashcard,
+                id: dashcard.id,
+                card_id: dashcard.card_id,
+                row: dashcard.row,
+                col: dashcard.col,
+                size_x: dashcard.size_x,
+                size_y: dashcard.size_y,
                 parameter_mappings: [
                   {
                     card_id: dashcard.card_id,
@@ -2295,7 +2310,12 @@ describe("issue 58556, issue 66277", () => {
           cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
             dashcards: [
               {
-                ...dashcard,
+                id: dashcard.id,
+                card_id: dashcard.card_id,
+                row: dashcard.row,
+                col: dashcard.col,
+                size_x: dashcard.size_x,
+                size_y: dashcard.size_y,
                 parameter_mappings: [
                   {
                     card_id: dashcard.card_id,
