@@ -140,19 +140,31 @@ describe("Tree", () => {
       expect(screen.getByText("Item 2")).toBeInTheDocument();
     });
 
+    const renderInScrollBox = (pageSize: number) =>
+      render(
+        <div style={{ overflowY: "auto", height: 200 }} data-testid="scrollbox">
+          <Tree
+            data={data}
+            onSelect={jest.fn()}
+            hasMore
+            onLoadMore={jest.fn()}
+            loadingMoreIds={new Set()}
+            pageSize={pageSize}
+            remainingByLevel={new Map([[null, 100]])}
+          />
+        </div>,
+      );
+
+    it("should watch the box the tree scrolls in, not the viewport", () => {
+      renderInScrollBox(5);
+
+      // A margin against the viewport buys nothing while a scrolling ancestor clips the sentinel away first.
+      expect(getObserverOptions()?.root).toBe(screen.getByTestId("scrollbox"));
+    });
+
     it("should keep loading after the end of the list has scrolled past", () => {
       const PAGE_SIZE = 5;
-      render(
-        <Tree
-          data={data}
-          onSelect={jest.fn()}
-          hasMore
-          onLoadMore={jest.fn()}
-          loadingMoreIds={new Set()}
-          pageSize={PAGE_SIZE}
-          remainingByLevel={new Map([[null, 100]])}
-        />,
-      );
+      renderInScrollBox(PAGE_SIZE);
 
       // Reaching well above the fold is what lets a list the reader has scrolled past catch up instead of stalling.
       const { rootMargin } = getObserverOptions() ?? {};

@@ -1,5 +1,5 @@
 import { useIntersection } from "@mantine/hooks";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Box } from "metabase/ui";
 
@@ -23,6 +23,28 @@ const ROW_HEIGHT = 32;
 const CATCH_UP_PAGES = 10;
 
 /**
+ * The scrolling box the tree sits in, or `null` when nothing between here and the viewport scrolls.
+ *
+ * An observer has to be told which box to watch. Left to default it watches the viewport, and a margin against the
+ * viewport buys nothing: a scrolling ancestor clips the sentinel out of the picture first, and that clipping is not
+ * widened by the margin. So the sentinel would only ever register while genuinely on screen, which is exactly when
+ * it is too late to load ahead or to catch up.
+ */
+function findScrollingAncestor(element: Element): Element | null {
+  for (
+    let parent = element.parentElement;
+    parent;
+    parent = parent.parentElement
+  ) {
+    const { overflowY } = window.getComputedStyle(parent);
+    if (overflowY === "auto" || overflowY === "scroll") {
+      return parent;
+    }
+  }
+  return null;
+}
+
+/**
  * Marks the end of a level the server cut short, and loads the next page once it is on screen.
  *
  * There is no button: reaching the bottom of the list is the whole gesture. The rows the level still holds are given
@@ -44,14 +66,30 @@ export function TreeLoadMore({
   remaining?: number;
   onLoadMore: () => void;
 }) {
+  const [scrollingAncestor, setScrollingAncestor] = useState<Element | null>(
+    null,
+  );
   const catchUpDistance = pageSize * ROW_HEIGHT * CATCH_UP_PAGES;
   const { ref, entry } = useIntersection<HTMLLIElement>({
+    root: scrollingAncestor,
     // Below the fold: start fetching early, so the next page is usually there by the time the reader arrives.
     // Above it: keep fetching after the reader has gone past, so the list can catch up rather than stall.
     rootMargin: `${catchUpDistance}px 0px ${PREFETCH_DISTANCE}px 0px`,
     threshold: 0,
   });
   const isInView = entry?.isIntersecting ?? false;
+
+  // Resolved from the sentinel itself, which is the only way to know what it hangs under. Setting it re-runs this
+  // callback with the observer rebuilt around the right box.
+  const observeSentinel = useCallback(
+    (element: HTMLLIElement | null) => {
+      if (element) {
+        setScrollingAncestor(findScrollingAncestor(element));
+      }
+      ref(element);
+    },
+    [ref],
+  );
 
   useEffect(() => {
     if (isInView && !isLoading) {
@@ -67,7 +105,7 @@ export function TreeLoadMore({
     <>
       <Box
         component="li"
-        ref={ref}
+        ref={observeSentinel}
         className={S.sentinel}
         role="presentation"
         data-testid="tree-load-more"
