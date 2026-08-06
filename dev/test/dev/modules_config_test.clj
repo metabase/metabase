@@ -4,6 +4,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [dev.deps-graph :as deps-graph]
+   [dev.model-boundary-config :as mbc]
    [dev.modules-config :as mc]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]))
@@ -53,6 +55,23 @@
       (is (= #{:model/Beta :model/Gamma} (get-in desired ['alpha :model-imports]))))
     (testing "a :bypass module drives no imports and its references don't force exports"
       (is (= #{} (get-in desired ['gamma :model-imports]))))))
+
+(deftest compute-desired-scans-with-the-configured-prefixes-test
+  (let [config '{parent       {:team "T"}
+                 parent.child {:ns-prefix metabase.special-child}}
+        expected-prefixes (deps-graph/build-prefix->module config)
+        seen-prefixes (promise)]
+    (with-redefs [deps-graph/kondo-config (constantly config)
+                  deps-graph/dependencies (fn [prefix->module]
+                                            (deliver seen-prefixes prefix->module)
+                                            [])
+                  deps-graph/model-ownership (constantly {})
+                  deps-graph/model-references-by-module (constantly {})
+                  deps-graph/generate-config (constantly {})
+                  mbc/compute-model-boundaries (constantly {})]
+      (mc/compute-desired)
+      (is (= expected-prefixes @seen-prefixes)
+          "the rewrite scan must resolve explicit and nested namespace prefixes like validation does"))))
 
 ;;;; ---------------------------------------------------------------------------
 ;;;; Sorting (must match metabase.core.modules-test)
@@ -104,6 +123,17 @@
                                        :uses #{other}
                                        :model-imports #{:model/X}}}))))))
 
+(deftest ^:parallel nested-module-metadata-is-preserved-test
+  (let [input (str "{:metabase/modules {parent {:team \"T\" :api #{}} "
+                   "parent.child {:ns-prefix metabase.special-child "
+                   ":module-exports #{parent.grandchild} :api #{}}}}")
+        output (rewrite input '{parent       {:api #{}}
+                                parent.child {:api #{metabase.special-child.core}}})
+        modules (parse-modules output)]
+    (is (= "T" (get-in modules ['parent :team])))
+    (is (= 'metabase.special-child (get-in modules ['parent.child :ns-prefix])))
+    (is (= '#{parent.grandchild} (get-in modules ['parent.child :module-exports])))))
+
 (deftest ^:parallel missing-key-is-appended-test
   (let [input  "{:metabase/modules {m {:team \"T\"}}}"
         output (rewrite input '{m {:api #{metabase.m.core}}})]
@@ -137,7 +167,7 @@
 ;;;; ---------------------------------------------------------------------------
 
 (deftest ^:parallel structural-warnings-test
-  (testing "a desired module absent from the file is reported (needs a human-assigned :team)"
+  (testing "a desired module absent from the file is reported for human structural decisions"
     (let [{:keys [warnings]} (mc/rewrite-config "{:metabase/modules {a {:uses #{}}}}"
                                                 '{a {:uses #{}} b {:uses #{}}})]
       (is (some #(str/includes? % "b") warnings))))
