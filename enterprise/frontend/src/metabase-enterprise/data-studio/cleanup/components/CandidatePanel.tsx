@@ -94,6 +94,7 @@ export function CandidatePanel({
       errorMessage: t`The candidate could not be restored`,
       onStale: handleStale,
       onSuccess: () => {
+        onClose();
         if (showToast) {
           sendSuccessToast(t`Candidate restored`);
         }
