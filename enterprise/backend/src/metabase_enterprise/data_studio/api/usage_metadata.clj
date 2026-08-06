@@ -13,7 +13,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.segments.api :as segments.api]
-   [metabase.usage-metadata.candidates :as candidates]
+   [metabase.usage-metadata.candidate-service :as candidate-service]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
@@ -276,7 +276,7 @@
   [run]
   (u.jvm/in-virtual-thread*
    (try
-     (candidates/run-refresh! run)
+     (candidate-service/run-refresh! run)
      (catch Exception e
        (log/error e "Manual usage-metadata candidate refresh failed")
        (throw e)))))
@@ -575,7 +575,7 @@
   [_route
    opts :- list-query-schema]
   (api/check-superuser)
-  (if-let [run (candidates/latest-successful-run)]
+  (if-let [run (candidate-service/latest-successful-run)]
     (let [{:keys [rows total limit offset]} (candidate-page run opts)
           dismissals (dismissal-index rows)
           presented  (mapv #(candidate-summary % dismissals) rows)]
@@ -615,7 +615,7 @@
   [_route
    opts :- list-query-schema]
   (api/check-superuser)
-  (if-let [run (candidates/latest-successful-run)]
+  (if-let [run (candidate-service/latest-successful-run)]
     (let [{:keys [rows total limit offset]} (table-page run opts)
           tables    (table-index (into #{} (map :table_id) rows))
           presented (mapv #(table-summary (tables (:table_id %)) %) rows)]
@@ -629,8 +629,8 @@
 
 (defn- require-current-candidate
   [id]
-  (let [candidate (api/check-404 (candidates/candidate id))]
-    (when-not (candidates/candidate-current? candidate)
+  (let [candidate (api/check-404 (candidate-service/candidate id))]
+    (when-not (candidate-service/candidate-current? candidate)
       (conflict! "Candidate belongs to an obsolete snapshot" :obsolete-snapshot))
     candidate))
 
@@ -686,7 +686,7 @@
                          [:maybe [:string {:max max-dismissal-reason-length}]]]]]
   (api/check-superuser)
   (let [candidate (require-current-candidate id)]
-    (candidates/dismiss! candidate api/*current-user-id* reason)
+    (candidate-service/dismiss! candidate api/*current-user-id* reason)
     (candidate-detail candidate)))
 
 (api.macros/defendpoint :delete "/candidates/:id/dismissal" :- ::candidate-detail
@@ -694,7 +694,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (let [candidate (require-current-candidate id)]
-    (candidates/restore! candidate)
+    (candidate-service/restore! candidate)
     (candidate-detail candidate)))
 
 (defn- create-candidate!
@@ -708,8 +708,8 @@
       (conflict! "Candidate table is not published in the Library" :table-not-published))
     (when-not (table-editable-for-candidate? candidate table)
       (conflict! "Candidate table cannot be edited" :table-uneditable))
-    (if-let [existing (candidates/exact-existing-entity candidate)]
-      (candidates/mark-modeled! candidate existing)
+    (if-let [existing (candidate-service/exact-existing-entity candidate)]
+      (candidate-service/mark-modeled! candidate existing)
       (let [body   {:name        (or name (:suggested_name candidate))
                     :description (if (contains? overrides :description)
                                    description
@@ -724,7 +724,7 @@
             user-id api/*current-user-id*]
         (mdb/do-after-commit
          #(events/publish-event! topic {:object entity :user-id user-id}))
-        (candidates/mark-modeled! candidate entity)))))
+        (candidate-service/mark-modeled! candidate entity)))))
 
 (api.macros/defendpoint :post "/candidates/:id/create" :- ::create-response
   "Create a Measure or Segment from a persisted candidate definition."
@@ -739,17 +739,17 @@
   (t2/with-transaction [_conn]
     (let [candidate (api/check-404
                      (t2/select-one :model/UsageMetadataCandidate :id id {:for :update}))
-          _         (when-not (candidates/candidate-current? candidate)
+          _         (when-not (candidate-service/candidate-current? candidate)
                       (conflict! "Candidate belongs to an obsolete snapshot" :obsolete-snapshot))
           entity    (create-candidate! candidate body)]
-      {:candidate (candidate-detail (candidates/candidate id))
+      {:candidate (candidate-detail (candidate-service/candidate id))
        :entity    (created-entity-response entity)})))
 
 (api.macros/defendpoint :get "/refresh" :- ::refresh-status
   "Return candidate refresh and snapshot status."
   []
   (api/check-superuser)
-  (let [{:keys [snapshot active failure fresh]} (candidates/refresh-status)]
+  (let [{:keys [snapshot active failure fresh]} (candidate-service/refresh-status)]
     {:snapshot (run-response snapshot)
      :active   (run-response active)
      :failure  (run-response failure)
@@ -759,12 +759,12 @@
   "Queue a candidate refresh."
   []
   (api/check-superuser)
-  (if-let [run (candidates/queue-refresh! :manual api/*current-user-id*)]
+  (if-let [run (candidate-service/queue-refresh! :manual api/*current-user-id*)]
     (do
       (run-refresh-async! run)
       (-> (response/response {:run_id (:id run)})
           (response/status 202)))
-    (let [run (candidates/active-run)]
+    (let [run (candidate-service/active-run)]
       (conflict! "A usage-metadata candidate refresh is already running"
                  :refresh-already-active
                  {:run-id (:id run)}))))

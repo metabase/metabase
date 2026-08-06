@@ -9,8 +9,8 @@
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.usage-metadata.candidates :as candidates]
-   [metabase.usage-metadata.insights :as insights]
+   [metabase.usage-metadata.candidate-mining :as candidate-mining]
+   [metabase.usage-metadata.candidate-service :as candidate-service]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -57,7 +57,7 @@
     {:run_id                run-id
      :candidate_type        :segment
      :table_id              (mt/id :orders)
-     :signature_version     candidates/signature-version
+     :signature_version     candidate-service/signature-version
      :signature_hash        (apply str (repeat 64 "b"))
      :signature             "[\"segment-api\"]"
      :definition            {:database (mt/id)
@@ -89,9 +89,9 @@
   (let [run       {:id 42, :status :queued}
         started   (promise)
         completed (promise)]
-    (mt/with-dynamic-fn-redefs [candidates/run-refresh! (fn [submitted-run]
-                                                          (deliver started submitted-run)
-                                                          (deliver completed true))]
+    (mt/with-dynamic-fn-redefs [candidate-service/run-refresh! (fn [submitted-run]
+                                                                 (deliver started submitted-run)
+                                                                 (deliver completed true))]
       (run-refresh-async! run)
       (is (= run (deref started 1000 ::timeout)))
       (is (true? (deref completed 1000 ::timeout))))))
@@ -100,7 +100,7 @@
   (mt/with-premium-features #{:library}
     (let [run     {:id 42, :status :queued}
           started (promise)]
-      (with-redefs-fn {#'candidates/queue-refresh!                 (fn [_trigger _requested-by] run)
+      (with-redefs-fn {#'candidate-service/queue-refresh!                 (fn [_trigger _requested-by] run)
                        #'usage-metadata.api/run-refresh-async! #(deliver started %)}
         (fn []
           (let [response (mt/user-http-request :crowberto :post 202
@@ -113,14 +113,14 @@
   [candidate-type table-id definition]
   (case candidate-type
     :measure
-    (insights/canonical-signature
-     [table-id (insights/canonical-signature (first (lib/aggregations definition 0)))])
+    (candidate-mining/canonical-signature
+     [table-id (candidate-mining/canonical-signature (first (lib/aggregations definition 0)))])
 
     :segment
-    (insights/canonical-signature
+    (candidate-mining/canonical-signature
      [table-id
       (->> (lib/atomic-filters definition 0)
-           (map insights/canonical-signature)
+           (map candidate-mining/canonical-signature)
            sort
            vec)])))
 
@@ -243,7 +243,7 @@
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
                                                          :trigger           :manual
-                                                         :algorithm_version candidates/algorithm-version
+                                                         :algorithm_version candidate-service/algorithm-version
                                                          :source_config     {}
                                                          :finished_at       (mi/now)}
                    :model/UsageMetadataCandidate table-candidate
@@ -367,7 +367,7 @@
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
                                                          :trigger           :manual
-                                                         :algorithm_version candidates/algorithm-version
+                                                         :algorithm_version candidate-service/algorithm-version
                                                          :source_config     {}
                                                          :finished_at       (mi/now)}
                    :model/UsageMetadataCandidate root

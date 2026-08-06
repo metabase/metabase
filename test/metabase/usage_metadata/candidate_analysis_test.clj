@@ -1,4 +1,4 @@
-(ns metabase.usage-metadata.insights-test
+(ns metabase.usage-metadata.candidate-analysis-test
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
@@ -15,7 +15,6 @@
    [metabase.usage-metadata.candidate-suggestions :as candidate-suggestions]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.frequent-itemsets :as frequent-itemsets]
-   [metabase.usage-metadata.insights :as insights]
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.query-source :as query-source]
    [metabase.usage-metadata.rollups :as rollups]
@@ -276,7 +275,7 @@
         opts (composite-opts (mt/id :orders))]
     (try
       (seed-composite-row! fact 3)
-      (let [results (insights/suggested-segments-for-owner opts)]
+      (let [results (rollups/suggested-segments-for-owner opts)]
         (testing "candidate is returned when no saved Segment matches"
           (is (seq results)))
         (testing "top candidate is a valid :and MBQL clause attributed to the right source"
@@ -297,11 +296,11 @@
     (try
       (seed-composite-row! fact 3)
       (testing "precondition: candidate is present without a saved Segment"
-        (is (seq (insights/suggested-segments-for-owner opts))))
+        (is (seq (rollups/suggested-segments-for-owner opts))))
       (memoize/memo-clear! composite-atomsets-memo)
       (mt/with-temp [:model/Segment _seg {:table_id   (mt/id :orders)
                                           :definition (composite-orders-query)}]
-        (let [results (insights/suggested-segments-for-owner opts)]
+        (let [results (rollups/suggested-segments-for-owner opts)]
           (testing "candidate is filtered out when a saved Segment has the same atom-set"
             (is (not-any? (fn [{:keys [source itemset-size]}]
                             (and (= :table (:type source))
@@ -333,7 +332,7 @@
   (cleanup-composite-rows!)
   (memoize/memo-clear! composite-atomsets-memo)
   (try
-    (is (= [] (insights/suggested-segments-for-owner
+    (is (= [] (rollups/suggested-segments-for-owner
                (composite-opts (mt/id :orders)))))
     (finally
       (memoize/memo-clear! composite-atomsets-memo))))
@@ -612,7 +611,7 @@
                                (candidate-source-cards
                                 {:query-source (apply selected-cards-source all-ids)
                                  :min-view-count 10}))
-            qualified-ids (set (insights/qualified-card-ids 1 90))]
+            qualified-ids (set (candidate-mining/qualified-card-ids 1 90))]
         (doseq [ids [default-ids explicit-ids qualified-ids]]
           (is (contains? ids shared-card-id))
           (is (contains? ids root-card-id))
@@ -655,7 +654,7 @@
                                                    :dataset_query (orders-multi-stage-query)
                                                    :view_count 0}]
     (let [opts       {:query-source (selected-cards-source joined-id implicit-id multi-stage-id)}
-          report     (insights/candidate-table-observations (assoc opts :limit 1))
+          report     (candidate-builders/candidate-table-observations (assoc opts :limit 1))
           candidates (into {} (map (juxt #(get-in % [:table :id]) identity)) (:candidates report))
           orders     (candidates (mt/id :orders))
           products   (candidates (mt/id :products))]
@@ -670,9 +669,9 @@
                     (concat (get-in orders [:evidence :source-items])
                             (get-in products [:evidence :source-items])))))
       (is (empty? (:unsupported-source-items report)))
-      (is (= report (insights/candidate-table-observations opts))
+      (is (= report (candidate-builders/candidate-table-observations opts))
           "repeating the same analysis returns byte-for-byte deterministic output")
-      (is (= 1 (count (:candidates (insights/candidate-tables (assoc opts :limit 1)))))
+      (is (= 1 (count (:candidates (candidate-builders/candidate-tables (assoc opts :limit 1)))))
           "the public presentation function applies its limit after observation production"))))
 
 (deftest candidate-tables-preserve-curation-through-model-lineage-test
@@ -698,7 +697,7 @@
                                 :moderated_item_type "card"
                                 :moderator_id (mt/user->id :crowberto)
                                 :status "verified"})
-    (let [report    (insights/candidate-tables
+    (let [report    (candidate-builders/candidate-tables
                      {:query-source (selected-cards-source verified-id official-id)
                       :limit 1000})
           candidate (first (filter #(= (mt/id :orders) (get-in % [:table :id]))
@@ -761,7 +760,7 @@
                                                   :type :question
                                                   :dataset_query {}
                                                   :view_count 0}]
-    (let [report (insights/candidate-tables
+    (let [report (candidate-builders/candidate-tables
                   {:query-source (selected-cards-source native-id unreadable-id)})]
       (is (empty? (:candidates report)))
       (is (= [{:id native-id
@@ -862,10 +861,10 @@
                                               :type :question
                                               :dataset_query (orders-filtered-metric-query 900002)}]
     (let [opts         {:query-source (selected-cards-source first-id second-id), :limit 1}
-          observations (insights/candidate-metric-observations opts)]
+          observations (candidate-builders/candidate-metric-observations opts)]
       (is (= 2 (count observations))
           "the persistence producer ignores presentation limits")
-      (is (= 1 (count (insights/candidate-metrics opts)))
+      (is (= 1 (count (candidate-builders/candidate-metrics opts)))
           "the public presentation function applies the requested limit"))))
 
 (deftest candidate-metrics-return-creation-ready-filtered-and-temporal-definitions-test
@@ -874,7 +873,7 @@
                                             :type :question
                                             :dataset_query (orders-temporal-metric-query)
                                             :view_count 0}]
-    (let [candidates (insights/candidate-metrics
+    (let [candidates (candidate-builders/candidate-metrics
                       {:query-source (selected-cards-source card-id), :limit 1000})
           candidate  (first candidates)
           definition (:definition candidate)
@@ -896,7 +895,7 @@
                :required-tables (:required-tables candidate)
                :source-items (get-in candidate [:evidence :source-items])}))
       (is (= candidates
-             (insights/candidate-metrics
+             (candidate-builders/candidate-metrics
               {:query-source (selected-cards-source card-id), :limit 1000}))
           "the canonical result is deterministic across repeated runs"))))
 
@@ -905,7 +904,7 @@
                                             :type :question
                                             :dataset_query (orders-filtered-count-metric-query)
                                             :view_count 0}]
-    (let [candidate (first (insights/candidate-metrics
+    (let [candidate (first (candidate-builders/candidate-metrics
                             {:query-source (selected-cards-source card-id), :limit 1000}))]
       (is (= :count (first (:aggregation candidate))))
       (is (seq (get-in candidate [:definition :stages 0 :filters])))
@@ -928,7 +927,7 @@
                                 :moderated_item_type "card"
                                 :moderator_id        (mt/user->id :crowberto)
                                 :status              "verified"})
-    (let [candidate (first (insights/candidate-metrics
+    (let [candidate (first (candidate-builders/candidate-metrics
                             {:query-source (selected-cards-source official-id verified-id)
                              :min-view-count 10
                              :limit 1000}))]
@@ -946,7 +945,7 @@
                                             :type :question
                                             :dataset_query (orders-joined-query)
                                             :view_count 0}]
-    (let [candidate (first (insights/candidate-metrics
+    (let [candidate (first (candidate-builders/candidate-metrics
                             {:query-source (selected-cards-source card-id), :limit 1000}))]
       (is (= #{(mt/id :orders) (mt/id :products)}
              (into #{} (map :id) (:required-tables candidate))))
@@ -958,7 +957,7 @@
                                             :type :question
                                             :dataset_query (orders-implicit-join-metric-query)
                                             :view_count 0}]
-    (let [candidate (first (insights/candidate-metrics
+    (let [candidate (first (candidate-builders/candidate-metrics
                             {:query-source (selected-cards-source card-id), :limit 1000}))]
       (is (= #{(mt/id :orders) (mt/id :products)}
              (into #{} (map :id) (:required-tables candidate))))
@@ -969,7 +968,7 @@
                                             :type :question
                                             :dataset_query (orders-expression-metric-query)
                                             :view_count 0}]
-    (let [candidate (first (insights/candidate-metrics
+    (let [candidate (first (candidate-builders/candidate-metrics
                             {:query-source (selected-cards-source card-id), :limit 1000}))]
       (is (some? candidate))
       (is (seq (get-in candidate [:definition :stages 0 :expressions])))
@@ -988,7 +987,7 @@
                                                 :type :question
                                                 :dataset_query (orders-breakout-only-query)
                                                 :view_count 0}]
-    (is (empty? (insights/candidate-metrics
+    (is (empty? (candidate-builders/candidate-metrics
                  {:query-source (selected-cards-source sum-id count-id breakout-id), :limit 1000})))))
 
 (deftest candidate-metrics-rewrite-transparent-card-lineage-test
@@ -1011,7 +1010,7 @@
                                                                  (lib/filter (lib/= product-id 987654))
                                                                  (lib/aggregate (lib/sum subtotal)))
                                               :view_count 0}]
-      (let [candidate (first (insights/candidate-metrics
+      (let [candidate (first (candidate-builders/candidate-metrics
                               {:query-source (selected-cards-source card-id), :limit 1000}))]
         (is (= (mt/id :orders) (get-in candidate [:definition :stages 0 :source-table])))
         (is (nil? (get-in candidate [:definition :stages 0 :source-card])))
@@ -1034,7 +1033,7 @@
                                                                  (lib/filter (lib/= product-id 2))
                                                                  (lib/aggregate (lib/sum subtotal)))
                                               :view_count 0}]
-      (is (empty? (insights/candidate-metrics
+      (is (empty? (candidate-builders/candidate-metrics
                    {:query-source (selected-cards-source card-id), :limit 1000}))))))
 
 (deftest candidate-metrics-protect-against-card-lineage-cycles-test
@@ -1053,7 +1052,7 @@
                   {:dataset_query (-> (model-source-query card-b-id)
                                       (lib/filter (lib/= product-id 1))
                                       (lib/aggregate (lib/sum subtotal)))})
-      (is (empty? (insights/candidate-metrics
+      (is (empty? (candidate-builders/candidate-metrics
                    {:query-source (selected-cards-source card-a-id), :limit 1000}))))))
 
 (deftest candidate-metrics-exclude-unsupported-query-shapes-test
@@ -1096,7 +1095,7 @@
                                                    :type :question
                                                    :dataset_query {}
                                                    :view_count 0}]
-      (is (empty? (insights/candidate-metrics
+      (is (empty? (candidate-builders/candidate-metrics
                    {:query-source (selected-cards-source native-id
                                                          multi-stage-id
                                                          multi-aggregation-id
@@ -1117,13 +1116,13 @@
                                           :type :metric
                                           :dataset_query (orders-filtered-metric-query 1)}]
       (testing "a different filter remains a distinct Metric definition"
-        (is (= 1 (count (insights/candidate-metrics
+        (is (= 1 (count (candidate-builders/candidate-metrics
                          {:query-source (selected-cards-source card-id), :limit 1000})))))
       (mt/with-temp [:model/Card _same {:name "existing identical metric"
                                         :type :metric
                                         :dataset_query candidate-query}]
         (testing "the complete identical definition is excluded"
-          (is (empty? (insights/candidate-metrics
+          (is (empty? (candidate-builders/candidate-metrics
                        {:query-source (selected-cards-source card-id), :limit 1000}))))))))
 
 (deftest candidate-metrics-keep-different-temporal-grains-distinct-test
@@ -1134,7 +1133,7 @@
                  :model/Card _existing {:name "existing yearly metric"
                                         :type :metric
                                         :dataset_query (orders-temporal-metric-query :year)}]
-    (is (= 1 (count (insights/candidate-metrics
+    (is (= 1 (count (candidate-builders/candidate-metrics
                      {:query-source (selected-cards-source card-id), :limit 1000}))))))
 
 (deftest candidate-measures-return-valid-definition-and-skip-existing-test
@@ -1146,7 +1145,7 @@
       (testing "explicit nil options use defaults"
         (let [candidates (candidates-from-card
                           card-id
-                          (insights/candidate-measures {:min-view-count nil :limit nil}))
+                          (candidate-builders/candidate-measures {:min-view-count nil :limit nil}))
               candidate  (first candidates)]
           (is (=? {:candidate-count 1
                    :aggregation {:type :sum
@@ -1168,12 +1167,12 @@
         (testing "an existing Measure with a different display name suppresses the equivalent candidate"
           (is (empty? (candidates-from-card
                        card-id
-                       (insights/candidate-measures {:min-view-count 10 :limit 1000})))))
+                       (candidate-builders/candidate-measures {:min-view-count 10 :limit 1000})))))
         (testing "cleanup materialization retains exact matches so raw usage remains visible"
           (is (= 1
                  (count (candidates-from-card
                          card-id
-                         (:measures (insights/cleanup-candidates)))))))))))
+                         (:measures (candidate-builders/cleanup-candidates)))))))))))
 
 (deftest candidate-measures-omit-bare-count-test
   (mt/with-temp [:model/Card {card-id :id} {:name          "candidate mining bare count"
@@ -1182,7 +1181,7 @@
                                             :view_count    1000000}]
     (is (empty? (candidates-from-card
                  card-id
-                 (insights/candidate-measures {:min-view-count 10 :limit 1000}))))))
+                 (candidate-builders/candidate-measures {:min-view-count 10 :limit 1000}))))))
 
 (deftest candidate-signatures-ignore-clause-presentation-metadata-test
   (is (= (canonical-signature [:count {:lib/uuid "generic-count"}])
@@ -1216,7 +1215,7 @@
 
 (deftest qualified-card-ids-match-default-candidate-population-test
   (is (= (set (map :id (candidate-source-cards {:min-view-count 10, :view-count-window-days 90})))
-         (set (insights/qualified-card-ids 10 90)))))
+         (set (candidate-mining/qualified-card-ids 10 90)))))
 
 (deftest qualified-card-ids-bounds-recent-view-log-scan-test
   (let [scanned-card-ids (atom ::not-called)]
@@ -1224,7 +1223,7 @@
                      (fn [card-ids _window-days]
                        (reset! scanned-card-ids card-ids)
                        {})}
-      #(insights/qualified-card-ids 10 90))
+      #(candidate-mining/qualified-card-ids 10 90))
     (is (set? @scanned-card-ids))))
 
 (deftest ^:parallel candidate-id-queries-are-bounded-test
@@ -1280,7 +1279,7 @@
                        (swap! lineage-calls inc)
                        {10 {:id 10, :type :model}
                         20 {:id 20, :type :question}})}
-      #(insights/with-candidate-batch-cache
+      #(candidate-mining/with-candidate-batch-cache
          (fn []
            (is (= cards (candidate-source-cards {:min-view-count 10})))
            (is (= cards (candidate-source-cards {:min-view-count 10})))
@@ -1297,7 +1296,7 @@
                                               :view_count 1000000}]
       (let [candidates (candidates-from-card
                         card-id
-                        (insights/candidate-measures {:min-view-count 10 :limit 1000}))
+                        (candidate-builders/candidate-measures {:min-view-count 10 :limit 1000}))
             by-type    (into {} (map (juxt #(get-in % [:aggregation :type]) identity)) candidates)]
         (is (= #{:count :median :stddev :var :percentile} (set (keys by-type))))
         (is (= (mt/id :orders :subtotal)
@@ -1318,7 +1317,7 @@
                                   :status              "verified"})
       (let [candidates  (candidates-from-card
                          card-id
-                         (insights/candidate-measures {:min-view-count 10 :limit 1000}))
+                         (candidate-builders/candidate-measures {:min-view-count 10 :limit 1000}))
             conditional (filterv #(contains? #{:count-where :distinct-where :sum-where}
                                              (get-in % [:aggregation :type]))
                                  candidates)
@@ -1355,7 +1354,7 @@
                                             :view_count 1000000}]
     (let [candidates (candidates-from-card
                       card-id
-                      (insights/candidate-measures {:min-view-count 10 :limit 1000}))]
+                      (candidate-builders/candidate-measures {:min-view-count 10 :limit 1000}))]
       (is (not-any? #(contains? #{:count-where :distinct-where :sum-where}
                                 (get-in % [:aggregation :type]))
                     candidates)))))
@@ -1380,11 +1379,11 @@
                                                                  (lib/filter (lib/= product-id 987654))
                                                                  (lib/aggregate (lib/sum subtotal)))
                                               :view_count 1000000}]
-      (let [measure    (->> (insights/candidate-measures {:min-view-count 10 :limit 1000})
+      (let [measure    (->> (candidate-builders/candidate-measures {:min-view-count 10 :limit 1000})
                             (candidates-from-card card-id)
                             (filter #(= :sum (get-in % [:aggregation :type])))
                             first)
-            segment    (->> (insights/candidate-segments {:min-view-count 10 :limit 1000})
+            segment    (->> (candidate-builders/candidate-segments {:min-view-count 10 :limit 1000})
                             (candidates-from-card card-id)
                             first)
             lineage    [{:id base-model-id :name "candidate mining base model"}
@@ -1399,9 +1398,9 @@
                                             :type :question
                                             :dataset_query (orders-multi-stage-query)
                                             :view_count 1000000}]
-    (let [measures (->> (insights/candidate-measures {:min-view-count 10 :limit 1000})
+    (let [measures (->> (candidate-builders/candidate-measures {:min-view-count 10 :limit 1000})
                         (candidates-from-card card-id))
-          segments (->> (insights/candidate-segments {:min-view-count 10 :limit 1000})
+          segments (->> (candidate-builders/candidate-segments {:min-view-count 10 :limit 1000})
                         (candidates-from-card card-id))
           measure  (first measures)
           segment  (first segments)
@@ -1437,10 +1436,10 @@
                                               :view_count 1000000}]
       (let [measures (candidates-from-card
                       card-id
-                      (insights/candidate-measures {:min-view-count 10 :limit 1000}))
+                      (candidate-builders/candidate-measures {:min-view-count 10 :limit 1000}))
             segments (candidates-from-card
                       card-id
-                      (insights/candidate-segments {:min-view-count 10 :limit 1000}))]
+                      (candidate-builders/candidate-segments {:min-view-count 10 :limit 1000}))]
         (is (= #{:distinct :sum}
                (into #{} (map #(get-in % [:aggregation :type])) measures)))
         (is (= 1 (count segments)))
@@ -1455,10 +1454,10 @@
                                             :view_count 1000000}]
     (let [segments (candidates-from-card
                     card-id
-                    (insights/candidate-segments {:min-view-count 10 :limit 1000}))
+                    (candidate-builders/candidate-segments {:min-view-count 10 :limit 1000}))
           measures (candidates-from-card
                     card-id
-                    (insights/candidate-measures {:min-view-count 10 :limit 1000}))
+                    (candidate-builders/candidate-measures {:min-view-count 10 :limit 1000}))
           by-table (group-by #(get-in % [:source :id]) segments)]
       (testing "single-owner filters become Segments on their actual physical owner"
         (is (=? {:segment-count 2
@@ -1499,10 +1498,10 @@
                                               :view_count 1000000}]
       (is (empty? (candidates-from-card
                    card-id
-                   (insights/candidate-measures {:min-view-count 10 :limit 1000}))))
+                   (candidate-builders/candidate-measures {:min-view-count 10 :limit 1000}))))
       (is (empty? (candidates-from-card
                    card-id
-                   (insights/candidate-segments {:min-view-count 10 :limit 1000})))))))
+                   (candidate-builders/candidate-segments {:min-view-count 10 :limit 1000})))))))
 
 (deftest candidate-segments-keep-atoms-when-composite-exists-test
   (let [query (orders-segment-query)]
@@ -1517,7 +1516,7 @@
       (testing "a verified two-atom source produces two atomic candidates and its conjunction"
         (let [candidates (candidates-from-card
                           card-id
-                          (insights/candidate-segments {:min-view-count 10 :limit 1000}))
+                          (candidate-builders/candidate-segments {:min-view-count 10 :limit 1000}))
               atomic     (remove :composite? candidates)
               composite  (first (filter :composite? candidates))
               filters    (lib/filters (:definition composite) 0)]
@@ -1548,7 +1547,7 @@
                 existing           (existing-segment-signatures #{(mt/id :orders)})
                 candidates         (candidates-from-card
                                     card-id
-                                    (insights/candidate-segments {:min-view-count 10 :limit 1000}))]
+                                    (candidate-builders/candidate-segments {:min-view-count 10 :limit 1000}))]
             (is (contains? existing expected-signature)
                 (str "Expected " expected-signature " among existing signatures " existing))
             (is (=? {:candidate-count 2, :composite-count 0}
@@ -1642,7 +1641,7 @@
                                                 :view_count 1000000}]
       (let [candidates (candidates-from-card
                         card-a-id
-                        (insights/candidate-segments {:min-view-count 1000000 :limit 1000}))
+                        (candidate-builders/candidate-segments {:min-view-count 1000000 :limit 1000}))
             composites (filterv :composite? candidates)]
         (testing "only the shared two-atom subset survives; one-off subsets from the popular source do not"
           (is (= 1 (count composites)))
