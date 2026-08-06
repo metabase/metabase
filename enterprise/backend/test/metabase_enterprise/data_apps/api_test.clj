@@ -84,6 +84,52 @@
                (str (mt/user-real-request :crowberto :get 200 "apps/demo/bundle"))
                "BUNDLE")))))))
 
+(deftest superuser-can-resolve-a-query-definition-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (let [response (mt/user-http-request
+                      :crowberto :post 200 "apps/demo/query"
+                      {:stages [{:source {:type "table" :id (mt/id :venues)}
+                                 :limit  5}]})]
+        (is (= (mt/id) (:database_id response)))
+        (is (=? {:dataset_query {:lib/type "mbql/query"
+                                 :database (mt/id)
+                                 :stages [{:lib/type "mbql.stage/mbql"
+                                           :source-table (mt/id :venues)
+                                           :limit 5}]}}
+                response))))))
+
+(deftest non-superuser-cannot-resolve-a-query-definition-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request
+              :rasta :post 403 "apps/demo/query"
+              {:stages [{:source {:type "table" :id (mt/id :venues)}}]}))))))
+
+(deftest superuser-can-prepare-an-unpublished-app-for-query-sync-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [first-response  (mt/user-http-request :crowberto :post 200 "apps/draft-app/query-sync")
+            second-response (mt/user-http-request :crowberto :post 200 "apps/draft-app/query-sync")]
+        (is (=? {:name "draft-app"
+                 :resource_collection_id pos-int?
+                 :permission_group_id pos-int?}
+                first-response))
+        (is (= (select-keys first-response [:resource_collection_id :permission_group_id])
+               (select-keys second-response [:resource_collection_id :permission_group_id])))
+        (is (=? {:bundle nil :query_sync_draft true}
+                (t2/select-one :model/DataApp :name "draft-app")))))))
+
+(deftest non-superuser-cannot-prepare-an-unpublished-app-for-query-sync-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "apps/draft-app/query-sync")))
+      (is (not (t2/exists? :model/DataApp :name "draft-app"))))))
+
 (deftest list-available-apps-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]

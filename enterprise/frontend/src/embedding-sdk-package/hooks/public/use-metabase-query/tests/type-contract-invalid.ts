@@ -6,9 +6,24 @@ import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
 import { breakout, count, filter, sum, useMetabaseQuery } from "..";
+import { defineQuery } from "../../../../data-app";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
+
+const queryWithInvalidSavedQuestionSourceId = {
+  savedQuestionSourceId: "54",
+  source: TEST_SCHEMA.tables.orders,
+} as const;
+
+// @ts-expect-error saved-question source IDs are numeric
+defineQuery(queryWithInvalidSavedQuestionSourceId);
+
+// @ts-expect-error query definitions with breakouts require aggregations
+defineQuery({
+  source: TEST_SCHEMA.tables.orders,
+  breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
+});
 
 // --------
 // Compile-time contracts that must **fail** type-checking.
