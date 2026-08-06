@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -46,10 +47,12 @@
    (let [table-id   (definition-table-id definition)
          definition (lib-be/normalize-query definition)]
      (api/create-check :model/Segment (assoc body :table_id table-id))
-     (let [segment (api/check-500
-                    (segments.db/insert-segment! table-id api/*current-user-id* name description definition))]
+     (let [user-id api/*current-user-id*
+           segment (api/check-500
+                    (segments.db/insert-segment! table-id user-id name description definition))]
        (when publish-event?
-         (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*}))
+         (mdb/do-after-commit
+          #(events/publish-event! :event/segment-create {:object segment :user-id user-id})))
        (t2/hydrate segment :creator)))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}

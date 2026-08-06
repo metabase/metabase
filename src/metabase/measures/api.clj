@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -56,10 +57,12 @@
    (let [definition (lib-be/normalize-query definition)
          table-id   (definition-table-id definition)]
      (api/create-check :model/Measure (assoc body :table_id table-id))
-     (let [measure (api/check-500
-                    (measures.db/insert-measure! api/*current-user-id* name description definition))]
+     (let [user-id api/*current-user-id*
+           measure (api/check-500
+                    (measures.db/insert-measure! user-id name description definition))]
        (when publish-event?
-         (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*}))
+         (mdb/do-after-commit
+          #(events/publish-event! :event/measure-create {:object measure :user-id user-id})))
        (t2/hydrate measure :creator)))))
 
 (api.macros/defendpoint :post "/" :- ::measure

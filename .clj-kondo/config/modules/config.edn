@@ -1399,6 +1399,7 @@
   {:team "Graphy"
    :api  #{metabase.measures.api metabase.measures.schema}
    :uses #{api
+           app-db
            events
            lib
            lib.be
@@ -2456,6 +2457,7 @@
    :api  #{metabase.segments.api
            metabase.segments.schema}
    :uses #{api
+           app-db
            events
            lib
            lib.be
@@ -3677,7 +3679,6 @@
   {:team "UX West"
    :api  #{metabase-enterprise.data-studio.api}
    :uses #{api
-           app-db
            collections
            events
            lib.schema
