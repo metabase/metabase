@@ -36,6 +36,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "SSO entry-point for an SSO user that has not logged in yet"
+  ;; No query-param schema on purpose: the SAML/JWT backends read the raw `:params` of the request (`jwt`,
+  ;; `preferred_method`, `redirect`, `return_to`) and IdP-initiated logins are free to append their own params, so a
+  ;; closed schema here would reject legitimate logins.
   [_route-params _query-params _body request]
   (try
     (sso.i/sso-get request)
@@ -63,6 +66,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Route the SSO backends call with successful login details"
+  ;; No body/query schema on purpose: this is the SAML ACS endpoint, the IdP POSTs a form-encoded `SAMLResponse` +
+  ;; `RelayState` which the backend reads off the raw request `:params`, not off the parsed JSON body.
   [_route-params _query-params _body request]
   (try
     (sso.i/sso-post request)
@@ -122,7 +127,8 @@
   this provides a path for them to do so."
   [_route-params
    _query-params
-   {:keys [jwt]} :- [:map [:jwt ms/NonBlankString]]
+   {:keys [jwt]} :- [:map {:closed true}
+                     [:jwt ms/NonBlankString]]
    request]
   (when-not (sso-settings/jwt-enabled-and-configured)
     (throw (ex-info "JWT authentication is not enabled"
@@ -140,6 +146,8 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/handle_slo"
   "Handles client confirmation of saml logout via slo"
+  ;; No body/query schema on purpose: the IdP POSTs a form-encoded `SAMLRequest`/`SAMLResponse` + `RelayState` that the
+  ;; SAML backend reads off the raw request `:params`.
   [_route-params _query-params _body request]
   (try
     (if (sso-settings/saml-slo-enabled)
@@ -159,7 +167,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key"
   "Initiate OIDC SSO for a specific provider."
-  [{provider-key :key} :- [:map [:key ProviderKey]]
+  ;; No query-param schema on purpose: [[oidc-integration/sso-initiate]] reads `redirect` off the raw request `:params`
+  ;; and callers may append their own params to the login link.
+  [{provider-key :key} :- [:map {:closed true}
+                           [:key ProviderKey]]
    _query-params _body request]
   (try
     (oidc-integration/sso-initiate provider-key request)
@@ -172,7 +183,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key/callback"
   "OIDC callback for a specific provider."
-  [{provider-key :key} :- [:map [:key ProviderKey]]
+  ;; No query-param schema on purpose: the IdP controls this query string (`code`, `state`, plus provider-specific
+  ;; extras like `iss`, `session_state`, `error`, `error_description`) and it is read off the raw request `:params`.
+  [{provider-key :key} :- [:map {:closed true}
+                           [:key ProviderKey]]
    _query-params _body request]
   (try
     (oidc-integration/sso-callback provider-key request)

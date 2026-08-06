@@ -19,7 +19,7 @@
   "Update SAML related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   settings :- [:map
+   settings :- [:map {:closed true}
                 [:saml-identity-provider-issuer      {:optional true} :string]
                 [:saml-identity-provider-uri         {:optional true} :string]
                 [:saml-identity-provider-certificate {:optional true} :string]
@@ -27,7 +27,10 @@
                 [:saml-attribute-email               {:optional true} [:maybe :string]]
                 [:saml-attribute-firstname           {:optional true} [:maybe :string]]
                 [:saml-attribute-group               {:optional true} [:maybe :string]]
-                [:saml-attribute-group-mappings      {:optional true} [:maybe :map]]
+                ;; SAML group name -> Metabase group IDs, mirroring the `GroupMappings` schema that the
+                ;; `saml-group-mappings` setting validates against.
+                [:saml-attribute-group-mappings      {:optional true}
+                 [:maybe [:map-of [:or :keyword :string] [:sequential pos-int?]]]]
                 [:saml-attribute-lastname            {:optional true} [:maybe :string]]
                 [:saml-enabled                       {:optional true} [:maybe :boolean]]
                 [:saml-group-sync                    {:optional true} [:maybe :boolean]]

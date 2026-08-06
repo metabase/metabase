@@ -30,25 +30,39 @@
 (def SCIMUser
   "Malli schema for a SCIM user. This represents both users returned by the service provider (Metabase)
   as well as users sent by the client (i.e. Okta), with fields marked as optional if they may not be present
-  in the latter."
+  in the latter.
+
+  Deliberately left open: RFC 7643 lets a client send core attributes we ignore (`externalId`, `title`,
+  `phoneNumbers`, ...) plus arbitrary extension schemas keyed by URN (e.g.
+  `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`), which can't be enumerated. The complex
+  sub-attributes below *are* closed, listing the full set RFC 7643 defines for them."
   [:map
    [:schemas [:sequential ms/NonBlankString]]
    [:id {:optional true} ms/NonBlankString]
    [:userName ms/NonBlankString]
-   [:name [:map
+   ;; RFC 7643 §4.1.1 `name` sub-attributes
+   [:name [:map {:closed true}
+           [:formatted {:optional true} [:maybe :string]]
            [:givenName string?]
-           [:familyName string?]]]
+           [:familyName string?]
+           [:middleName {:optional true} [:maybe :string]]
+           [:honorificPrefix {:optional true} [:maybe :string]]
+           [:honorificSuffix {:optional true} [:maybe :string]]]]
+   ;; RFC 7643 §2.4 multi-valued attribute sub-attributes
    [:emails [:sequential
-             [:map
+             [:map {:closed true}
               [:value ms/NonBlankString]
+              [:display {:optional true} [:maybe :string]]
               [:type {:optional true} ms/NonBlankString]
-              [:primary {:optional true} boolean?]]]]
+              [:primary {:optional true} boolean?]
+              [:$ref {:optional true} ms/NonBlankString]]]]
    [:groups
     {:optional true}
-    [:sequential [:map
+    [:sequential [:map {:closed true}
                   [:value ms/NonBlankString]
                   [:$ref {:optional true} ms/NonBlankString]
-                  [:display ms/NonBlankString]]]]
+                  [:display ms/NonBlankString]
+                  [:type {:optional true} ms/NonBlankString]]]]
    [:locale {:optional true} [:maybe ms/NonBlankString]]
    [:active {:optional true} boolean?]])
 
@@ -62,27 +76,33 @@
    [:Resources [:sequential SCIMUser]]])
 
 (def UserPatch
-  "Malli schema for a user patch operation"
-  [:map
+  "Malli schema for a user patch operation. Closed: RFC 7644 §3.5.2 bounds `PatchOp` to `schemas`/`Operations`, and
+  each operation to `op`/`path`/`value`."
+  [:map {:closed true}
    [:schemas [:sequential ms/NonBlankString]]
    [:Operations
-    [:sequential [:map
+    [:sequential [:map {:closed true}
                   [:op ms/NonBlankString]
+                  ;; read by [[patch->user-updates]] but previously undeclared; absent for whole-resource patches
+                  [:path {:optional true} [:maybe ms/NonBlankString]]
                   [:value [:or [:map-of [:or :keyword :string]
                                 [:or ms/NonBlankString ms/BooleanValue]]
                            ms/NonBlankString ms/BooleanValue]]]]]])
 
 (def SCIMGroup
-  "Malli schema for a SCIM group."
+  "Malli schema for a SCIM group. Left open for the same reason as [[SCIMUser]] — clients may send `externalId`,
+  `meta` or extension schemas keyed by URN. `members` is closed to the RFC 7643 §2.4 sub-attribute set."
   [:map
    [:schemas [:sequential ms/NonBlankString]]
    [:id {:optional true} ms/NonBlankString]
    [:displayName ms/NonBlankString]
    [:members
     {:optional true}
-    [:sequential [:map
+    [:sequential [:map {:closed true}
                   [:value ms/NonBlankString]
-                  [:$ref {:optional true} ms/NonBlankString]]]]])
+                  [:$ref {:optional true} ms/NonBlankString]
+                  [:display {:optional true} [:maybe :string]]
+                  [:type {:optional true} ms/NonBlankString]]]]])
 
 (def SCIMGroupList
   "Malli schema for a list of SCIM groups"
@@ -208,10 +228,17 @@
 (api.macros/defendpoint :get "/Users"
   "Fetch a list of users."
   [_route-params
-   {start-index :startIndex, c :count, filter-param :filter} :- [:map
-                                                                 [:startIndex {:optional true} [:maybe ms/PositiveInt]]
-                                                                 [:count      {:optional true} [:maybe ms/PositiveInt]]
-                                                                 [:filter     {:optional true} [:maybe ms/NonBlankString]]]]
+   {start-index :startIndex, c :count, filter-param :filter}
+   :- [:map {:closed true}
+       [:startIndex {:optional true} [:maybe ms/PositiveInt]]
+       [:count      {:optional true} [:maybe ms/PositiveInt]]
+       [:filter     {:optional true} [:maybe ms/NonBlankString]]
+       ;; accepted and ignored: RFC 7644 §3.4.2 allows these on any list query and IdPs do send them, so a closed
+       ;; schema has to tolerate them
+       [:attributes         {:optional true} [:maybe ms/NonBlankString]]
+       [:excludedAttributes {:optional true} [:maybe ms/NonBlankString]]
+       [:sortBy             {:optional true} [:maybe ms/NonBlankString]]
+       [:sortOrder          {:optional true} [:maybe ms/NonBlankString]]]]
   (with-prometheus-counters
     (let [limit          (or c default-pagination-limit)
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
@@ -240,7 +267,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get ["/Users/:id" :id #"[^/]+"]
   "Fetch a single user."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-user-by-entity-id id)
@@ -274,7 +301,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Users/:id" :id #"[^/]+"]
   "Update a user."
-  [{:keys [id]}
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/NonBlankString]]
    _query-params
    scim-user :- SCIMUser]
   (with-prometheus-counters
@@ -316,7 +344,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :patch ["/Users/:id" :id #"[^/]+"]
   "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]
    _query-params
    patch-ops :- UserPatch]
@@ -400,10 +428,15 @@
   "Fetch a list of groups."
   [_route-params
    {start-index :startIndex, c :count, filter-param :filter}
-   :- [:map
+   :- [:map {:closed true}
        [:startIndex {:optional true} [:maybe ms/PositiveInt]]
        [:count      {:optional true} [:maybe ms/PositiveInt]]
-       [:filter     {:optional true} [:maybe ms/NonBlankString]]]]
+       [:filter     {:optional true} [:maybe ms/NonBlankString]]
+       ;; accepted and ignored, see `GET /Users`
+       [:attributes         {:optional true} [:maybe ms/NonBlankString]]
+       [:excludedAttributes {:optional true} [:maybe ms/NonBlankString]]
+       [:sortBy             {:optional true} [:maybe ms/NonBlankString]]
+       [:sortOrder          {:optional true} [:maybe ms/NonBlankString]]]]
   (with-prometheus-counters
     (let [limit          (or c default-pagination-limit)
           ;; SCIM start-index is 1-indexed, so we need to decrement it here
@@ -433,7 +466,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get ["/Groups/:id" :id #"[^/]+"]
   "Fetch a single group."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (-> (get-group-by-entity-id id)
@@ -480,7 +513,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Groups/:id" :id #"[^/]+"]
   "Update a group."
-  [{:keys [id]}
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/NonBlankString]]
    _query-params
    scim-group :- SCIMGroup]
   (with-prometheus-counters
@@ -502,7 +536,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete ["/Groups/:id" :id #"[^/]+"]
   "Delete a group."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
