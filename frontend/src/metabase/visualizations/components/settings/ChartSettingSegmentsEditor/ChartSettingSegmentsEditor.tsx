@@ -21,6 +21,7 @@ import type { DatasetData, GoalSegment, GoalValue } from "metabase-types/api";
 import { ChartSettingInput } from "../ChartSettingInput";
 
 import { GoalValueInput, StaticGoalValueInput } from "./GoalValueInput";
+import S from "./GoalValueInput.module.css";
 
 export type ChartSettingSegmentsEditorProps = {
   allowQuestionReference?: boolean;
@@ -63,6 +64,7 @@ export const ChartSettingSegmentsEditor = ({
                 onChange={(label) => onChangeProperty(index, "label", label)}
                 leftSection={
                   <ColorSelector
+                    pillSize="small"
                     value={segment.color}
                     colors={getColorPalette()}
                     onChange={(newColor) =>
@@ -75,8 +77,7 @@ export const ChartSettingSegmentsEditor = ({
                     <Tooltip label={t`Remove range`}>
                       <UnstyledButton
                         aria-label={t`Remove range`}
-                        display="flex"
-                        c="text-secondary"
+                        className={S.iconButton}
                         onClick={() =>
                           onChange(segments.filter((v, i) => i !== index))
                         }

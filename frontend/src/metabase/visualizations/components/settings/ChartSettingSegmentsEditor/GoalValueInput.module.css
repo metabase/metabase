@@ -2,7 +2,7 @@
   position: relative;
 }
 
-.trigger {
+.iconButton {
   align-items: center;
   border-radius: var(--mantine-radius-sm);
   color: var(--mb-color-text-secondary);
@@ -10,12 +10,16 @@
   display: flex;
   height: 24px;
   justify-content: center;
-  visibility: hidden;
   width: 24px;
 
   &:hover {
     background-color: var(--mb-color-background-hover);
   }
+}
+
+.trigger {
+  composes: iconButton;
+  visibility: hidden;
 }
 
 .root:hover .trigger,
@@ -58,6 +62,10 @@
   &:hover {
     background-color: var(--mb-color-background-hover);
   }
+}
+
+.pill svg {
+  flex-shrink: 0;
 }
 
 .pillValue {

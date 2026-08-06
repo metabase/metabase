@@ -3,8 +3,10 @@ import cx from "classnames";
 import {
   type KeyboardEvent,
   type ReactNode,
+  type Ref,
   useCallback,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { t } from "ttag";
@@ -109,6 +111,7 @@ export const GoalValueInput = ({
   const [pickedEntity, setPickedEntity] = useState<PickedEntity | null>(null);
   const [fetchCard] = useLazyGetCardQuery();
   const [fetchMeasure] = useLazyGetMeasureQuery();
+  const numberInputRef = useRef<HTMLInputElement>(null);
 
   const foreignRef = isGoalForeignColumnRef(value) ? value : null;
   const selfColumns: ColumnOption[] = data.cols
@@ -265,6 +268,7 @@ export const GoalValueInput = ({
   const handleShellKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Backspace" || event.key === "Delete") {
       commitValue(null);
+      setTimeout(() => numberInputRef.current?.focus(), 0);
     }
   };
 
@@ -286,7 +290,13 @@ export const GoalValueInput = ({
     <Box className={S.root}>
       <Menu
         opened={isMenuOpen}
-        onChange={(opened) => (opened ? menu.open() : closeMenu())}
+        // opening happens only via the hexagon trigger or the pill; the
+        // target-wide toggle would otherwise open the menu on any input click
+        onChange={(opened) => {
+          if (!opened) {
+            closeMenu();
+          }
+        }}
         position="bottom-end"
         closeOnItemClick={false}
       >
@@ -330,6 +340,7 @@ export const GoalValueInput = ({
             <Box>
               <StaticGoalValueInput
                 id={id}
+                inputRef={numberInputRef}
                 value={value}
                 placeholder={placeholder}
                 ariaLabel={ariaLabel}
@@ -351,12 +362,13 @@ export const GoalValueInput = ({
         <Menu.Dropdown miw={MENU_MIN_WIDTH}>
           {menuLevel === "root" && (
             <>
+              <Menu.Label>{t`Pick a value from`}</Menu.Label>
               {selfColumns.length > 0 && (
                 <Menu.Item
                   rightSection={<Icon name="chevronright" />}
                   onClick={selectSelfOption}
                 >
-                  {t`Value from this question`}
+                  {t`This question`}
                 </Menu.Item>
               )}
               <Menu.Item
@@ -542,6 +554,7 @@ export type StaticGoalValueInputProps = {
   ariaLabel?: string;
   onCommit: (value: number | null) => void;
   rightSection?: ReactNode;
+  inputRef?: Ref<HTMLInputElement>;
 };
 
 export function StaticGoalValueInput({
@@ -551,16 +564,20 @@ export function StaticGoalValueInput({
   ariaLabel,
   onCommit,
   rightSection,
+  inputRef,
 }: StaticGoalValueInputProps) {
   return (
     <NumberInput
       id={id}
+      ref={inputRef}
       aria-label={ariaLabel}
       placeholder={placeholder}
       w="100%"
       value={typeof value === "number" ? value : ""}
       rightSection={rightSection}
       rightSectionPointerEvents="all"
+      // 24px trigger button + 8px gap to each side
+      rightSectionWidth={rightSection != null ? 40 : undefined}
       onBlur={(event) => {
         const rawValue = event.target.value;
         const newValue = rawValue === "" ? null : parseFloat(rawValue);

@@ -1,11 +1,18 @@
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import {
   setupCardEndpoints,
   setupMeasureEndpoint,
 } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
-import type { DatasetData } from "metabase-types/api";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import type { DatasetData, GoalValue } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -72,8 +79,9 @@ describe("GoalValueInput", () => {
 
     await openMenu();
 
+    expect(screen.getByText("Pick a value from")).toBeInTheDocument();
     expect(
-      screen.getByRole("menuitem", { name: /Value from this question/ }),
+      screen.getByRole("menuitem", { name: /This question/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("menuitem", {
@@ -88,7 +96,7 @@ describe("GoalValueInput", () => {
     await openMenu();
 
     expect(
-      screen.queryByRole("menuitem", { name: /Value from this question/ }),
+      screen.queryByRole("menuitem", { name: /This question/ }),
     ).not.toBeInTheDocument();
   });
 
@@ -97,7 +105,7 @@ describe("GoalValueInput", () => {
 
     await openMenu();
     await userEvent.click(
-      screen.getByRole("menuitem", { name: /Value from this question/ }),
+      screen.getByRole("menuitem", { name: /This question/ }),
     );
 
     const item = await screen.findByRole("menuitem", {
@@ -128,7 +136,7 @@ describe("GoalValueInput", () => {
 
     await openMenu();
     await userEvent.click(
-      screen.getByRole("menuitem", { name: /Value from this question/ }),
+      screen.getByRole("menuitem", { name: /This question/ }),
     );
 
     expect(onChange).toHaveBeenCalledWith("count");
@@ -191,6 +199,38 @@ describe("GoalValueInput", () => {
     fireEvent.keyDown(shell, { key: "Backspace" });
 
     expect(onChange).toHaveBeenCalledWith(null);
+  });
+
+  it("moves focus to the static input after deleting the pill with backspace", async () => {
+    const Harness = () => {
+      const [value, setValue] = useState<GoalValue | null>("sum");
+      return (
+        <GoalValueInput
+          id="goal-value"
+          aria-label="Min"
+          value={value}
+          onChange={setValue}
+          data={DATA}
+          allowQuestionReference
+        />
+      );
+    };
+    renderWithProviders(<Harness />);
+
+    const shell = screen.getByRole("button", { name: "Min" });
+    fireEvent.keyDown(shell, { key: "Backspace" });
+
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Min" })).toHaveFocus(),
+    );
+  });
+
+  it("does not open the menu when clicking the static input itself", async () => {
+    setup({ value: 5 });
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Min" }));
+
+    expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
   });
 
   it("opens the column submenu with the current column highlighted when clicking the pill", async () => {
