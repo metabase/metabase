@@ -4,9 +4,9 @@
   display hydration, and the schema/sort fragments every per-finding-type endpoint composes.
 
   All per-caller concerns resolve **live at read time** against each finding's *current* collection (never
-  the scan-time `scope_collection_id`). Display attrs (name/created_at/creator/card_type) are denormalized
-  at scan time; description, the collection breadcrumb, the transform owner, and slow roll-up culprits
-  hydrate live."
+  the scan-time `scope_collection_id`). Display attrs (name/created_at/creator/card_type/entity_kind/
+  collection_name) are denormalized at scan time; description, the collection breadcrumb, the transform
+  owner, and slow roll-up culprits hydrate live."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -486,7 +486,7 @@
   convention (cf. collection items, stale enterprise); lower() also makes ordering deterministic across
   app-db collations.
   Note: collection-name sorts by the scan-time stored parent name even when the viewer cannot read that
-  parent (whose breadcrumb serves as null) — the ordering position is the accepted, marginal information
+  parent (whose breadcrumb serves as null) - the ordering position is the accepted, marginal information
   exposure (OQ3)."
   {:detected-at      :detected_at
    :entity-type      :entity_kind

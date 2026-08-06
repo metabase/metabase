@@ -181,16 +181,30 @@
                          :model/Card {in-b :id} {:collection_id coll-id :name (str prefix " twin")}
                          ;; same name at root → duplicated findings stamped with the root label
                          :model/Card {root-a :id} {:collection_id nil :name (str prefix " rootless")}
-                         :model/Card {root-b :id} {:collection_id nil :name (str prefix " rootless")}]
+                         :model/Card {root-b :id} {:collection_id nil :name (str prefix " rootless")}
+                         ;; two top-level SAME-NAMED collections in the transforms namespace → duplicated
+                         ;; collection subjects at root (GDGT-2921 admits transforms-namespace collections
+                         ;; as duplicated subjects); their root label must be "Transforms", not the default
+                         :model/Collection {xf-a :id} {:name (str prefix " Pipeline") :namespace "transforms"}
+                         :model/Collection {xf-b :id} {:name (str prefix " Pipeline") :namespace "transforms"}]
             (scan/scan!)
-            (let [by-entity (t2/select-fn->fn :entity_id :entity_collection_name
-                                              :model/ContentDiagnosticsFinding
-                                              :finding_type :duplicated
-                                              :entity_id [:in [in-a in-b root-a root-b]])]
+            (let [by-entity  (t2/select-fn->fn :entity_id :entity_collection_name
+                                               :model/ContentDiagnosticsFinding
+                                               :finding_type :duplicated
+                                               :entity_id [:in [in-a in-b root-a root-b]])
+                  ;; queried separately (entity_type-scoped) so a collection id can't collide with a card
+                  ;; id from a different sequence
+                  by-xf-coll (t2/select-fn->fn :entity_id :entity_collection_name
+                                               :model/ContentDiagnosticsFinding
+                                               :finding_type :duplicated
+                                               :entity_type :collection
+                                               :entity_id [:in [xf-a xf-b]])]
               (is (= coll-name (get by-entity in-a)))
               (is (= coll-name (get by-entity in-b)))
               (is (= "Our analytics" (get by-entity root-a)))
-              (is (= "Our analytics" (get by-entity root-b))))))))))
+              (is (= "Our analytics" (get by-entity root-b)))
+              (is (= "Transforms" (get by-xf-coll xf-a)))
+              (is (= "Transforms" (get by-xf-coll xf-b))))))))))
 
 (deftest scan-soft-invalidates-superseded-findings-test
   (testing "a fresh scan supersedes prior findings it no longer produces — via soft invalidation, not delete"
@@ -477,8 +491,11 @@
                                                                     :finding_type :stale
                                                                     :details      {}}
                                                                    row))))
+                  ;; lowercase-first "alpha" (vs capitalized "Beta") pins CASE-INSENSITIVE ordering: a
+                  ;; bytewise sort would put "Beta" (B = 0x42) before "alpha" (a = 0x61), the opposite of
+                  ;; the asserted order
                   a-fid  (insert {:entity_id           card-a
-                                  :entity_name         (str prefix " Alpha")
+                                  :entity_name         (str prefix " alpha")
                                   :entity_created_at   (t/offset-date-time 2025 1 1)
                                   :entity_creator_id   10
                                   :entity_creator_name "Amy"
@@ -492,7 +509,7 @@
                   order  (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
                                                              "ee/content-diagnostics/stale"
                                                              :query prefix kvs))))]
-              (testing "name - Alpha < Beta"
+              (testing "name - alpha < Beta, case-insensitive"
                 (is (= [a-fid b-fid] (order :sort-column "name" :sort-direction "asc")))
                 (is (= [b-fid a-fid] (order :sort-column "name" :sort-direction "desc"))))
               (testing "created-at - Jan before Jun"

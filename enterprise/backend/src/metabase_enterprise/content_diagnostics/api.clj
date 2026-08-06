@@ -4,10 +4,10 @@
   shared read/hydration layer in `api.common` and pins its own param + response schema. The scan runs on a
   Quartz job.
 
-  Response shape: a flat identity (`id, finding_type, entity_type, card_type?, entity_id, detected_at,
-  entity_display_name`) plus a nested typed `details` merging the stored verdict with live-hydrated
-  `collection`, `description`, `owner`, `creator`, and `view_count` (the entity's usage counter, present
-  for card/dashboard/document; not collection or transform)."
+  Response shape: a flat identity (`id, finding_type, entity_type, entity_kind, card_type?, entity_id,
+  detected_at, entity_display_name, collection_name`) plus a nested typed `details` merging the stored
+  verdict with live-hydrated `collection`, `description`, `owner`, `creator`, and `view_count` (the
+  entity's usage counter, present for card/dashboard/document; not collection or transform)."
   (:require
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
@@ -43,10 +43,11 @@
            [:type [:= :user]]]])
 
 (def ^:private FindingBase
-  "The flat identity every finding response shares: stable id/type columns, the per-finding `detected_at`
-  freshness stamp, the display name, and the denormalized `created_at`. Each finding `:merge`s its own
-  top-level column (`last_active_at` / `duration_ms` / `duplicate_count` / `content_count`) and its typed
-  `details` onto this."
+  "The flat identity every finding response shares: stable id/type columns (`entity_type`, the additive
+  flat `entity_kind`), the per-finding `detected_at` freshness stamp, the display name, the denormalized
+  `created_at`, and the scan-time `collection_name`. Each finding `:merge`s its own top-level column
+  (`last_active_at` / `duration_ms` / `duplicate_count` / `content_count`) and its typed `details` onto
+  this."
   [:map
    [:id                  :int]
    [:finding_type        :keyword]
