@@ -173,10 +173,9 @@ export function CandidatePanel({
         ref={panelRef}
         className={S.panel}
         h="100%"
-        miw="36rem"
-        w="40rem"
-        maw="42rem"
-        flex="0 0 40rem"
+        miw={450}
+        maw="100%"
+        flex="4 1 0"
         gap={0}
         bg="background_page-secondary"
         role="complementary"
