@@ -228,19 +228,12 @@
   [config]
   (set (keys config)))
 
-(defn- top-level-ancestor
-  "Return the topmost ancestor of module `m` (or `m` itself if it's already
-  top-level). Used for subtree-membership checks. Honors the `enterprise/X`
+(defn- in-subtree?
+  "True if `m` is `root` or one of its descendants. Honors the `enterprise/X`
   shorthand when `declared` is provided."
-  [declared m]
-  (or (last (dev.deps-graph/module-ancestor-chain declared m)) m))
-
-(defn- same-subtree?
-  "True if `caller` and `target` share a top-level ancestor — i.e., they're
-  both descendants of the same top-level module (or one of them is the
-  top-level ancestor of the other)."
-  [declared caller target]
-  (= (top-level-ancestor declared caller) (top-level-ancestor declared target)))
+  [declared root m]
+  (or (= root m)
+      (boolean (some #(= root %) (dev.deps-graph/module-ancestor-chain declared m)))))
 
 (defn- top-level-oss-module?
   "True if `m` is a top-level OSS module symbol — no namespace part and a
@@ -262,45 +255,59 @@
     (cond-> explicit
       ee-child (conj ee-child))))
 
-(defn- externally-referenceable?
-  "True if `target` may be named in the `:uses` of a module outside its
-  top-level subtree. Equivalent to: every ancestor in the chain from
-  target up to top-level is `:module-exports`ed by its parent (and the top-level
-  ancestor is implicitly externally referenceable). Mirror of the
-  `externally-visible?` helper in the kondo hook."
+(defn- visibility-root
+  "The module whose subtree `target` is private to, or `nil` if `target` may be
+  named from anywhere. Walk up from `target` to the nearest ancestor that does
+  NOT `:module-exports` the module below it on the path; `nil` means the chain
+  reached top-level unobstructed. Mirror of the `visibility-root` helper in the
+  kondo hook."
   [config target]
   (let [declared (declared-modules-set config)]
     (loop [m target]
-      (if-let [p (dev.deps-graph/module-parent declared m)]
+      (when-let [p (dev.deps-graph/module-parent declared m)]
         (if (contains? (open-children* config p) m)
           (recur p)
-          false)
-        true))))
+          p)))))
+
+(defn- externally-referenceable?
+  "True if `target` may be named in the `:uses` of any module at all, wherever
+  it sits in the tree. Equivalent to: every ancestor in the chain from target
+  up to top-level is `:module-exports`ed by its parent (and the top-level
+  ancestor is implicitly externally referenceable) — i.e. `target` has no
+  `visibility-root`. Mirror of the `externally-visible?` helper in the kondo
+  hook."
+  [config target]
+  (nil? (visibility-root config target)))
 
 (defn- can-be-named-by?
   "True if `caller` is permitted to put `target` in its `:uses` declaration
   under the strict module model. Permitted iff:
-    - they share a top-level subtree (anyone in the same subtree can name
-      anyone else in the subtree), OR
-    - `target` is externally referenceable (top-level OR `:module-exports`ed all the
-      way from the root).
+    - `target` is externally referenceable (top-level OR `:module-exports`ed all
+      the way from the root), OR
+    - `caller` is inside the subtree of `target`'s `visibility-root` — the
+      nearest ancestor that keeps `target` private. Note this is the *nearest*
+      such ancestor, not the top-level one: sharing a top-level ancestor is not
+      on its own enough to name a deeply-private module.
 
   Uses the declared-modules set (from the config) so that the `enterprise/X`
   shorthand is honored: `enterprise/X` is treated as a child of the OSS
-  module `X` when `X` is declared."
+  module `X` when `X` is declared.
+
+  Mirror of `namable-from?` in `.clj-kondo/src/hooks/common/modules.clj`; the
+  two are meant to agree."
   [config caller target]
   (let [declared (declared-modules-set config)]
     (or (= caller target)
-        (same-subtree? declared caller target)
-        (externally-referenceable? config target))))
+        (externally-referenceable? config target)
+        (in-subtree? declared (visibility-root config target) caller))))
 
 (deftest ^:parallel uses-references-must-be-namable-test
   (testing (str "Every entry in a module's `:uses` must be a module that the caller is "
-                "allowed to name. Outside-of-subtree callers may only name modules that "
-                "are externally referenceable (top-level OR `:module-exports`ed by every ancestor "
-                "from the root). Same-subtree callers may name any module in the subtree.")
-    (let [config   (dev.deps-graph/kondo-config)
-          declared (declared-modules-set config)]
+                "allowed to name. A nested module is namable from the subtree of the nearest "
+                "ancestor that does not `:module-exports` it; outside that subtree it is namable "
+                "only if it is externally referenceable (top-level OR `:module-exports`ed by "
+                "every ancestor from the root).")
+    (let [config (dev.deps-graph/kondo-config)]
       (doseq [[caller cfg] config
               :let          [uses (:uses cfg)]
               :when         (set? uses)
@@ -314,14 +321,44 @@
           (is (can-be-named-by? config caller target)
               (format
                (str "%s declares :uses #{%s} but cannot name %s under the strict module model. "
-                    "Either: (a) move %s into %s's top-level subtree (currently %s vs %s), or "
-                    "(b) ensure %s is externally referenceable by adding it to its parent's "
-                    ":module-exports set (and recursively up to the top-level).")
+                    "%s is private to the %s subtree, and %s is outside it. Either: (a) move %s "
+                    "into that subtree, or (b) widen %s's visibility by adding it to its parent's "
+                    ":module-exports set (and recursively up, as far as it needs to go).")
                caller target target
-               target caller
-               (top-level-ancestor declared caller)
-               (top-level-ancestor declared target)
-               target)))))))
+               target (visibility-root config target) caller
+               caller target)))))))
+
+(deftest ^:parallel can-be-named-by?-test
+  (testing (str "Naming scope is the subtree of the nearest ancestor that does not export the "
+                "module below it on the path — not the whole top-level subtree. Mirrors "
+                "`namable-from?` in the kondo hook; the two must agree.")
+    (let [config {'outer        {}
+                  'outer.a      {}
+                  'outer.a.leaf {}
+                  'outer.a.sib  {}
+                  'outer.b      {}
+                  'outer.b.deep {}
+                  'unrelated    {}}]
+      (testing "top-level modules are namable from anywhere"
+        (is (true? (can-be-named-by? config 'unrelated 'outer))))
+      (testing "an unopened leaf is namable only from its nearest non-exporting ancestor's subtree"
+        (is (true?  (can-be-named-by? config 'outer.a 'outer.a.leaf)))
+        (is (true?  (can-be-named-by? config 'outer.a.sib 'outer.a.leaf)))
+        (is (false? (can-be-named-by? config 'outer 'outer.a.leaf)))
+        (is (false? (can-be-named-by? config 'outer.b 'outer.a.leaf))
+            "sharing the top-level module `outer` is not enough")
+        (is (false? (can-be-named-by? config 'outer.b.deep 'outer.a.leaf)))
+        (is (false? (can-be-named-by? config 'unrelated 'outer.a.leaf))))
+      (testing "exporting the leaf widens the scope to the whole `outer` subtree, but no further"
+        (let [config (assoc-in config ['outer.a :module-exports] #{'outer.a.leaf})]
+          (is (true?  (can-be-named-by? config 'outer 'outer.a.leaf)))
+          (is (true?  (can-be-named-by? config 'outer.b.deep 'outer.a.leaf)))
+          (is (false? (can-be-named-by? config 'unrelated 'outer.a.leaf)))))
+      (testing "exporting the whole chain makes the leaf namable from anywhere"
+        (let [config (-> config
+                         (assoc-in ['outer.a :module-exports] #{'outer.a.leaf})
+                         (assoc-in ['outer :module-exports] #{'outer.a}))]
+          (is (true? (can-be-named-by? config 'unrelated 'outer.a.leaf))))))))
 
 (deftest ^:parallel ns-prefix-uniqueness-test
   (testing (str "Every module has a unique effective :ns-prefix (explicit via :ns-prefix "
