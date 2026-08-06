@@ -72,7 +72,7 @@ const elements = [
   createElement({ type: "feature", name: "auth" }),
   createElement({ type: "feature", name: "browse" }),
   createElement({ type: "feature", name: "collections" }),
-  createElement({ type: "shared", name: "comments" }),
+  createElement({ type: "shared", name: "comments", enforceSharedTiers: false }),
   ...[
     "frontend/src/metabase/common/metrics/**",
     "frontend/src/metabase/common/metrics-viewer/**",
@@ -187,7 +187,7 @@ const elements = [
   createElement({ type: "shared", name: "monitor" }),
   createElement({ type: "shared", name: "nav", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "new" }),
-  createElement({ type: "shared", name: "notifications" }),
+  createElement({ type: "shared", name: "notifications", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
   createElement({ type: "shared", name: "plugins", enforceSharedTiers: false }),

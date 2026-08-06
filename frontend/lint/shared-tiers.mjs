@@ -118,29 +118,6 @@ const sharedRules = [
   },
   // The level rules exclude a module's own level, so re-allow self-imports explicitly.
   ...TIERED_SHARED.map((type) => ({ from: [type], allow: [type] })),
-  // Transitional clusters: these domain modules still import each other, so both ways are allowed.
-  // Delete each entry once the imports are one-directional.
-  {
-    from: ["shared/visualizations"],
-    allow: [
-      "shared/custom-viz",
-      "shared/data-grid",
-      "shared/static-viz",
-      "shared/visualizer",
-    ],
-  },
-  {
-    from: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
-    allow: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
-  },
-  {
-    from: ["shared/nav", "shared/palette"],
-    allow: ["shared/nav", "shared/palette"],
-  },
-  {
-    from: ["shared/notifications", "shared/pulse"],
-    allow: ["shared/notifications", "shared/pulse"],
-  },
 ];
 
 export { sharedRules };
