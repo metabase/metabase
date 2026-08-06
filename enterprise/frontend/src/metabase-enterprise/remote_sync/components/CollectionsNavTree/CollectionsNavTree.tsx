@@ -1,6 +1,3 @@
-import { useCallback, useMemo } from "react";
-
-import { useListCollectionsQuery } from "metabase/api";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
@@ -35,27 +32,10 @@ export const CollectionsNavTree = ({
   remainingByLevel,
   totalByLevel,
 }: CollectionsNavTreeProps) => {
-  // Fetch flat list to check for remote-synced collections
-  const { data: collectionsList = [] } = useListCollectionsQuery({
-    archived: false,
-  });
-
-  const hasRemoteSyncedCollections = useMemo(
-    () => collectionsList.some((c) => c.is_remote_synced),
-    [collectionsList],
-  );
-
+  // The dirty state is the whole test. It comes from the remote sync changes endpoint, which is bounded to what has
+  // changed and is skipped altogether while git sync is off, so it is already empty when nothing is synced. Reading
+  // every collection to ask the same question again cost a full table scan in the sidebar.
   const { isCollectionDirty } = useRemoteSyncDirtyState();
-
-  const showChangesBadge = useCallback(
-    (itemId?: number | string) => {
-      if (!hasRemoteSyncedCollections) {
-        return false;
-      }
-      return isCollectionDirty(itemId);
-    },
-    [hasRemoteSyncedCollections, isCollectionDirty],
-  );
 
   return (
     <Tree
@@ -73,7 +53,7 @@ export const CollectionsNavTree = ({
       role="tree"
       aria-label="collection-tree"
       rightSection={(item) =>
-        showChangesBadge(item?.id) && <CollectionSyncStatusBadge />
+        isCollectionDirty(item?.id) && <CollectionSyncStatusBadge />
       }
     />
   );
