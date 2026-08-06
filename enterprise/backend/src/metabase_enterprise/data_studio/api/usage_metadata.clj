@@ -305,15 +305,23 @@
     (let [{:keys [limit offset]} (paging)]
       (page-response [] 0 limit offset nil))))
 
-(defn- status-count-expression
-  [candidate-type modeling-status]
+(defn- conditional-count-expression
+  [predicate]
   [:sum
    [:case
-    [:and
-     [:= :candidate.candidate_type (name candidate-type)]
-     [:= :candidate.modeling_status (name modeling-status)]]
+    predicate
     [:inline 1]
     :else [:inline 0]]])
+
+(defn- status-count-expression
+  ([candidate-type modeling-status]
+   (status-count-expression candidate-type modeling-status nil))
+  ([candidate-type modeling-status extra-predicate]
+   (conditional-count-expression
+    (cond-> [:and
+             [:= :candidate.candidate_type (name candidate-type)]
+             [:= :candidate.modeling_status (name modeling-status)]]
+      extra-predicate (conj extra-predicate)))))
 
 (defn- table-page
   ([run opts]
@@ -344,6 +352,31 @@
                             :limit limit
                             :offset offset))]
      {:rows rows, :total total, :limit limit, :offset offset})))
+
+(defn- table-detail-count-row
+  [run-id table-id]
+  (let [suggested? [:and
+                    [:= :dismissal.id nil]
+                    [:!= :candidate.modeling_status "modeled"]]
+        discarded? [:and
+                    [:!= :dismissal.id nil]
+                    [:!= :candidate.modeling_status "modeled"]]
+        select     [[(conditional-count-expression suggested?) :candidate_count]
+                    [(status-count-expression :table :missing suggested?) :table_missing]
+                    [(status-count-expression :metric :missing suggested?) :metric_missing]
+                    [(status-count-expression :measure :missing suggested?) :measure_missing]
+                    [(status-count-expression :measure :partially-modeled suggested?) :measure_partially_modeled]
+                    [(status-count-expression :measure :modeled suggested?) :measure_modeled]
+                    [(status-count-expression :segment :missing suggested?) :segment_missing]
+                    [(status-count-expression :segment :partially-modeled suggested?) :segment_partially_modeled]
+                    [(status-count-expression :segment :modeled suggested?) :segment_modeled]
+                    [(conditional-count-expression discarded?) :dismissed_count]]]
+    (t2/query-one
+     (merge (candidate-joins)
+            {:select select
+             :where [:and
+                     [:= :candidate.run_id run-id]
+                     [:= :candidate.table_id table-id]]}))))
 
 (defn- table-summary
   [table row]
@@ -387,15 +420,9 @@
   (api/check-superuser)
   (let [table         (api/check-404 ((table-index #{id}) id))
         run           (candidates/latest-successful-run)
-        queue-row     (fn [queue]
-                        (when run
-                          (first (:rows (table-page run
-                                                    {:table-id id, :queue queue}
-                                                    {:limit 1, :offset 0})))))
-        suggested-row (queue-row :suggested)
-        discarded-row (queue-row :discarded)
-        summary       (table-summary table suggested-row)
-        editable? (table-editable-for-candidate? {:candidate_type :measure} table)]
+        count-row     (when run (table-detail-count-row (:id run) id))
+        summary       (table-summary table count-row)
+        editable?     (table-editable-for-candidate? {:candidate_type :measure} table)]
     (-> summary
         (assoc :table (assoc (:table summary)
                              :publication_ready (and (:is_published table) editable?)
@@ -403,7 +430,7 @@
                                                   (not (:is_published table)) (conj :table-not-published)
                                                   (not (:active table))       (conj :table-inactive)
                                                   (not editable?)             (conj :table-uneditable)))
-               :dismissed_count (or (:candidate_count discarded-row) 0)
+               :dismissed_count (or (:dismissed_count count-row) 0)
                :snapshot (snapshot-response run)))))
 
 (defn- require-current-candidate
