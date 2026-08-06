@@ -15,8 +15,7 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.performance :as perf]
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
+   [metabase.util.performance :as perf]))
 
 (def ^:const max-specs
   "Maximum number of referenced cards honored per request."
@@ -68,7 +67,7 @@
   "Never throws: any failure becomes `{:status \"failed\" :error ...}`."
   [{:keys [card_id columns]}]
   (try
-    (let [card   (api/read-check (api/check-404 (t2/select-one :model/Card :id card_id)))
+    (let [card   (api/read-check :model/Card card_id)
           ;; a nested run inside the outer streaming response must return an in-memory map,
           ;; not write to the outer stream
           result (binding [qp.pipeline/*result*        qp.pipeline/default-result-handler
