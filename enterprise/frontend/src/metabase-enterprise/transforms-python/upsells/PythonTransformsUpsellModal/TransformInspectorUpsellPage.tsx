@@ -3,9 +3,9 @@ import { DottedBackground } from "metabase/common/components/upsells/components/
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useSelector } from "metabase/redux/hooks";
 import { useParams } from "metabase/router";
-import { getIsHosted } from "metabase/selectors/settings";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { TransformHeader } from "metabase/transforms/components/TransformHeader";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
@@ -20,7 +20,7 @@ export function TransformInspectorUpsellPage() {
   const transformId = Urls.extractEntityId(transformIdParam);
   const { transform, isLoading, error } = useTransformWithPolling(transformId);
   const { readOnly } = useTransformPermissions({ transform });
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const { isStoreUser } = useSelector(getStoreUsers);
   const isAdmin = useSelector(getUserIsAdmin);
   const shouldShowLeftColumn = (isStoreUser || isAdmin) && isHosted;
