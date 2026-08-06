@@ -38,7 +38,7 @@ const setup = async () => {
   setupDatabaseListEndpoint([TEST_DATABASE_WITH_ACTIONS]);
 
   renderWithProviders(
-    <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />,
+    <Route path="/auto/dashboard/*" element={<AutomaticDashboardApp />} />,
     {
       withRouter: true,
       initialRoute: `/auto/dashboard/table/${dashboardId}`,

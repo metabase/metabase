@@ -180,7 +180,7 @@
 
     ;; this should not happen (and cannot happen in CLJ land)
     ;; but it does seem to happen in JS land with broken MLv1 queries
-    (do (log/error "with-join-value should not be called with" (pr-str field-or-join))
+    (do (log/error "with-join-value should not be called with this type of value")
         field-or-join)))
 
 (mu/defn maybe-resolve-join :- [:maybe ::lib.schema.join/join]
@@ -371,10 +371,7 @@
                                                                                                     (with-join-alias field-ref nil))]
                                                (when-not (:metabase.lib.field.resolution/fallback-metadata? resolved)
                                                  resolved))
-                                             (log/debugf "Failed to find matching column in join %s for ref %s, found:\n%s"
-                                                         (pr-str join-alias)
-                                                         (pr-str field-ref)
-                                                         (pr-str (map (juxt :id :lib/join-alias :lib/source-column-alias) cols))))]
+                                             (log/debug "Failed to find matching column in join for ref"))]
 
                         :when     (and match
                                        (not (false? (:active match))))]
@@ -1239,8 +1236,15 @@
                stage-number (lib.util/canonical-stage-index query stage-number)
                available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
                available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
-               sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
-               sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
+               ;; `:default` (the explicit "Don't bin" state) isn't listed in
+               ;; `available-temporal-buckets`, but it should still propagate — a join needs both
+               ;; sides bucketed the same way. Accept it alongside `nil` and the available units.
+               sync-lhs? (or (nil? unit)
+                             (= :default unit)
+                             (contains? (set (map :unit available-lhs)) unit))
+               sync-rhs? (or (nil? unit)
+                             (= :default unit)
+                             (contains? (set (map :unit available-rhs)) unit))]
            (cond-> join-condition
              sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
              sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))))

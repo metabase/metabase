@@ -9,7 +9,7 @@ const PLACEHOLDER_TEXT = "Placeholder text";
 
 function setup({ name, ...opts }: ListItemProps) {
   return renderWithProviders(
-    <Route path="/" component={() => <ListItem name={name} {...opts} />} />,
+    <Route path="/" element={<ListItem name={name} {...opts} />} />,
     { withRouter: true },
   );
 }

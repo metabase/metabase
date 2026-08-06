@@ -1,0 +1,76 @@
+## Include soft-deleted (rewound / regenerated-away) metabot_message rows in the
+## instance analytics views, matching the admin metabot-analytics API, which now
+## surfaces deleted attempts so conversation branches are visible.
+##
+## v_metabot_conversations v4 drops the `deleted_at IS NULL` filters from its
+## message join and profile subqueries, so message_count / assistant_message_count
+## and profile now count every attempt. (Token totals already come from
+## ai_usage_log and were unaffected by the filter.)
+##
+## v_metabot_messages v2 drops the `WHERE m.deleted_at IS NULL` filter so deleted
+## message rows are returned.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-07-13T00:00:00
+      author: sloansparger
+      runOnChange: true
+      comment: Update v_metabot_conversations to include soft-deleted messages
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v4/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v4/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v4/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v3/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v3/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v3/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v64.2026-07-13T00:00:01
+      author: sloansparger
+      runOnChange: true
+      comment: Update v_metabot_messages to include soft-deleted messages
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_messages/v2/postgres-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_messages/v2/mysql-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_messages/v2/h2-metabot_messages.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_messages/v1/postgres-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_messages/v1/mysql-metabot_messages.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_messages/v1/h2-metabot_messages.sql
+            relativeToChangelogFile: true

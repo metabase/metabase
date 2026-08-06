@@ -2,7 +2,7 @@
   "Load a serdes export directory into the shape the complexity scorer expects.
 
   Format: the official Metabase serdes/representation YAML, byte-compatible with what
-  `serdes/store` emits and what `metabase-enterprise.checker` parses.
+  `serdes/store` emits.
 
   Layout (subset that the scorer reads):
 

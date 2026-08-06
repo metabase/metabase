@@ -2,7 +2,6 @@
 import styled from "@emotion/styled";
 
 import { ExternalLink as BaseExternalLink } from "metabase/common/components/ExternalLink";
-import { Input } from "metabase/common/components/Input";
 import { Link } from "metabase/common/components/Link";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 
@@ -76,16 +75,4 @@ export const SearchResultsContainer = styled.div`
 
 export const StyledRecentsList = styled(RecentsList)`
   ${searchResultsStyles}
-`;
-
-export const StyledInput = styled(Input)`
-  pointer-events: all;
-
-  input {
-    max-height: 38px; /* prevents natural height of input from growing beyond the (bordered) card container */
-  }
-
-  * {
-    pointer-events: all;
-  }
 `;

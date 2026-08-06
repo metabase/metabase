@@ -5,6 +5,9 @@ import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
+// brand (#509EE3) in getComputedStyle's normalized color format
+const HIGHLIGHTED_DOT_FILL = "rgb(80, 158, 227)";
+
 describe("scenarios > organization > timelines > question", () => {
   beforeEach(() => {
     H.restore();
@@ -456,6 +459,23 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByText("RC1").should("be.visible");
         cy.findByText("See all").should("not.exist");
       });
+
+      cy.log(
+        "hovering also shows a marker line and highlights the closest data point",
+      );
+      H.timelineEventMarkerLine().should("exist");
+      // the highlighted datum is drawn as a solid brand-filled dot (resting dots are hollow)
+      H.cartesianChartCircleWithFillColor(HIGHLIGHTED_DOT_FILL).should(
+        "have.length",
+        1,
+      );
+
+      cy.log("unhovering removes the marker line and the highlight");
+      cy.findByTestId("qb-header").realHover();
+      H.timelineEventMarkerLine().should("not.exist");
+      H.cartesianChartCircleWithFillColor(HIGHLIGHTED_DOT_FILL).should(
+        "not.exist",
+      );
     });
 
     it("should show the event popover when hovering on a stacked chart #74005", () => {

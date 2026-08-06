@@ -54,10 +54,7 @@ export const setup = ({
   setupBugReportingDetailsEndpoint();
 
   renderWithProviders(
-    <Route
-      component={() => <TransformsUpsellPage />}
-      path="/data-studio/transforms"
-    />,
+    <Route element={<TransformsUpsellPage />} path="/data-studio/transforms" />,
     {
       storeInitialState: state,
       withRouter: true,

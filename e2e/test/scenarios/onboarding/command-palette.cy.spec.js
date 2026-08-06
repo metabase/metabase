@@ -171,7 +171,7 @@ describe("command palette", () => {
     cy.wait(100); // pressing page down too fast does nothing
     H.pressPageDown();
     H.commandPalette()
-      .findByRole("option", { name: "New model" })
+      .findByRole("option", { name: "New collection" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageDown();
@@ -181,7 +181,7 @@ describe("command palette", () => {
 
     H.pressPageUp();
     H.commandPalette()
-      .findByRole("option", { name: "New model" })
+      .findByRole("option", { name: "New collection" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageUp();
@@ -289,7 +289,7 @@ describe("command palette", () => {
         H.commandPaletteAction("Performance").should("not.exist");
         H.commandPaletteInput().clear();
 
-        // Tools
+        // Monitor tools live outside the Admin command-palette links
         H.commandPaletteInput().clear().type("tool");
         H.commandPaletteAction("Tools").should("not.exist");
         H.commandPaletteInput().clear();
@@ -348,9 +348,9 @@ describe("command palette", () => {
           H.commandPaletteAction("Settings - General").should("exist");
           H.commandPaletteInput().clear();
 
-          // Tools
+          // Monitor tools live outside the Admin command-palette links
           H.commandPaletteInput().clear().type("tool");
-          H.commandPaletteAction("Tools").should("exist");
+          H.commandPaletteAction("Tools").should("not.exist");
           H.commandPaletteInput().clear();
 
           //Database and table metadata
@@ -629,7 +629,7 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("5");
     cy.location("pathname").should("contain", "/admin/datamodel");
     cy.realPress("9");
-    cy.location("pathname").should("contain", "/admin/tools");
+    cy.location("pathname").should("contain", "/admin/help");
   });
 
   it("should not navigate to data studio via shortcut for non-admin users", () => {

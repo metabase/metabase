@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
@@ -42,6 +41,7 @@ import type {
   Parameter,
   ParameterId,
   ParameterTarget,
+  ParameterValuesMap,
   TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
@@ -139,7 +139,10 @@ export function duplicateParameters(
   getState: GetState,
   parameterIds: ParameterId[],
 ) {
-  const parameters = getParameters(getState());
+  // getParameters returns UiParameters, which are not serializable
+  // so the duplicated parameter will throw on save. we need dashboard.parameters instead
+  const dashboard = getDashboard(getState());
+  const parameters = dashboard?.parameters ?? [];
 
   const newParameters = parameterIds.map((parameterId) => {
     const parameter = parameters.find((p) => p.id === parameterId);
@@ -1067,7 +1070,7 @@ export const setOrUnsetParameterValues =
   };
 
 export const setParameterValuesFromQueryParams =
-  (queryParams: LocationDescriptorObject["query"] = {}) =>
+  (queryParams: ParameterValuesMap = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
     const parameters = getParameters(getState());
     const parameterValues = getParameterValuesByIdFromQueryParams(

@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  mockTextOverflow,
   renderWithProviders,
   screen,
   getIcon as testGetIcon,
@@ -76,7 +77,7 @@ function setup({ item = defaultItem, collection = defaultCollection } = {}) {
   return renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <PinnedItemCard
           item={item}
           collection={collection}
@@ -85,7 +86,7 @@ function setup({ item = defaultItem, collection = defaultCollection } = {}) {
           createBookmark={jest.fn()}
           deleteBookmark={jest.fn()}
         />
-      )}
+      }
     />,
     { withRouter: true },
   );
@@ -119,24 +120,12 @@ describe("PinnedItemCard", () => {
   });
 
   describe("description", () => {
-    const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
-    const rangeGetBoundingClientRect = Range.prototype.getBoundingClientRect;
-
     beforeAll(() => {
-      // Mock return values so that getIsTruncated can kick in
-      HTMLElement.prototype.getBoundingClientRect = jest
-        .fn()
-        .mockReturnValue({ height: 1, width: 1 });
-      Range.prototype.getBoundingClientRect = jest
-        .fn()
-        .mockReturnValue({ height: 1, width: 2 });
+      mockTextOverflow();
     });
 
     afterAll(() => {
-      HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
-      Range.prototype.getBoundingClientRect = rangeGetBoundingClientRect;
-
-      jest.resetAllMocks();
+      jest.restoreAllMocks();
     });
 
     it("should render description markdown as plain text", () => {

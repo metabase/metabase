@@ -2,6 +2,7 @@
   "/api/ee/semantic-search endpoints"
   (:require
    [clojure.core.memoize :as memoize]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -30,20 +31,22 @@
    :indexed_count <number of indexed items>
    :total_est     <estimated total number of items to index>
 
-  If no index is active, returns an empty map."
+  If no index is active, or no pgvector database is configured, returns an empty map."
   []
   (perms/check-has-application-permission :setting)
-  (let [pgvector       (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)
-        active-index   (when (and pgvector index-metadata)
-                         (semantic.index-metadata/get-active-index-state pgvector index-metadata))]
-    (try
-      (if active-index
-        {:indexed_count (active-index-document-count pgvector active-index)
-         :total_est     (indexible-items-count)}
-        {})
-      (catch Exception e
-        (throw (ex-info "Error fetching semantic search index status" {} e))))))
+  (if-not (semantic.db.datasource/pgvector-configured?)
+    {}
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.env/get-index-metadata)
+          active-index   (when (and pgvector index-metadata)
+                           (semantic.index-metadata/get-active-index-state pgvector index-metadata))]
+      (try
+        (if active-index
+          {:indexed_count (active-index-document-count pgvector active-index)
+           :total_est     (indexible-items-count)}
+          {})
+        (catch Exception e
+          (throw (ex-info "Error fetching semantic search index status" {} e)))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/semantic-search` routes."

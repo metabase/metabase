@@ -5,23 +5,18 @@ import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
 
-import {
-  useMetabotAgent,
-  useMetabotName,
-  useUserMetabotPermissions,
-} from "../../hooks";
+import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
-import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
 const defaultConfig: MetabotConfig = {
@@ -53,14 +48,15 @@ export const MetabotChat = ({
     },
   ] = useDisclosure(false);
   const metabot = useMetabotAgent(config.agentId);
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
+  const supportsReasoning =
+    useSetting("llm-metabot-supports-reasoning?") ?? true;
 
   const hasMessages = metabot.messages.length > 0;
 
-  const { scrollContainerRef, headerRef, fillerRef } =
-    useScrollManager(hasMessages);
+  const { scrollContainerRef, fillerRef } = useScrollManager(hasMessages);
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {
@@ -74,13 +70,33 @@ export const MetabotChat = ({
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
+  const untitledLabel = metabot.forkedFromConversationId
+    ? t`Forked conversation`
+    : t`New conversation`;
+  const title = hasMessages ? metabot.title || untitledLabel : undefined;
+
   const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
+  const shouldShowHeader = headerActions || title;
 
   return (
     <Box className={cx(Styles.container, className)} data-testid="metabot-chat">
-      {headerActions && (
-        <Box ref={headerRef} className={Styles.header}>
-          {headerActions}
+      {shouldShowHeader && (
+        <Box className={Styles.header} data-testid="metabot-chat-header">
+          {title && (
+            <Text
+              className={Styles.headerTitle}
+              c={metabot.title ? "text-primary" : "text-secondary"}
+              fw={metabot.title ? "bold" : "normal"}
+              truncate
+              title={title}
+              data-testid="metabot-conversation-title"
+            >
+              {title}
+            </Text>
+          )}
+          {headerActions && (
+            <Box className={Styles.headerActions}>{headerActions}</Box>
+          )}
         </Box>
       )}
 
@@ -156,19 +172,22 @@ export const MetabotChat = ({
                 onRetryMessage={
                   config.preventRetryMessage ? undefined : metabot.retryMessage
                 }
+                onRefreshConversation={() => {
+                  metabot.setPrompt("");
+                  metabot.loadConversation(metabot.conversationId);
+                }}
                 isDoingScience={metabot.isDoingScience}
+                supportsReasoning={supportsReasoning}
                 debug={metabot.debugMode}
+                agentId={config.agentId}
+                conversationId={metabot.conversationId}
               />
-              {/* loading */}
-              {metabot.isDoingScience && (
-                <MetabotThinking toolCalls={metabot.activeToolCalls} />
-              )}
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
               {/* long convo warning */}
               {metabot.isLongConversation && (
                 <MetabotResetLongChatButton
-                  onResetConversation={metabot.resetConversation}
+                  onResetConversation={metabot.createNewConversation}
                 />
               )}
             </Box>
@@ -198,7 +217,12 @@ export const MetabotChat = ({
               }}
             />
           </Paper>
-          <Text mt="sm" pb="0.5rem" fz="sm" c="text-secondary" ta="center">
+          <Text
+            className={Styles.disclaimer}
+            fz="sm"
+            c="text-secondary"
+            ta="center"
+          >
             {t`${metabotName} isn't perfect. Double-check results.`}
           </Text>
         </Box>

@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 
-import { useListCollectionItemsQuery } from "metabase/api";
+import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import {
   ALL_MODELS,
   COLLECTION_PAGE_SIZE,
@@ -58,7 +58,7 @@ const getDefaultSortingOptions = (
 };
 
 export type CollectionItemsTableProps = {
-  collectionId: CollectionId;
+  collectionId?: CollectionId;
 } & Partial<{
   bookmarks: Bookmark[];
   clear: () => void;
@@ -76,6 +76,7 @@ export type CollectionItemsTableProps = {
   loadingPinnedItems: boolean;
   models: CollectionItemModel[];
   pageSize: number;
+  showDashboardQuestions: boolean;
   selected: CollectionItem[];
   selectOnlyTheseItems: (items: CollectionItem[]) => void;
   toggleItem: (item: CollectionItem) => void;
@@ -111,6 +112,7 @@ export const CollectionItemsTable = ({
   loadingPinnedItems,
   models = ALL_MODELS,
   pageSize = COLLECTION_PAGE_SIZE,
+  showDashboardQuestions = true,
   selected,
   selectOnlyTheseItems,
   toggleItem,
@@ -161,16 +163,20 @@ export const CollectionItemsTable = ({
       selectOnlyTheseItems={selectOnlyTheseItems}
       toggleItem={toggleItem}
       unpinnedItemsSorting={unpinnedItemsSorting}
-      unpinnedQuery={{
-        id: collectionId,
-        models,
-        limit: pageSize,
-        offset: pageSize * page,
-        ...(showAllItems
-          ? { show_dashboard_questions: true }
-          : { pinned_state: "is_not_pinned" }),
-        ...unpinnedItemsSorting,
-      }}
+      unpinnedQuery={
+        collectionId === undefined
+          ? skipToken
+          : {
+              id: collectionId,
+              models,
+              limit: pageSize,
+              offset: pageSize * page,
+              ...(showAllItems
+                ? { show_dashboard_questions: showDashboardQuestions }
+                : { pinned_state: "is_not_pinned" }),
+              ...unpinnedItemsSorting,
+            }
+      }
       visibleColumns={visibleColumns}
       onClick={onClick}
       onNextPage={handleNextPage}
@@ -183,7 +189,7 @@ export const CollectionItemsTable = ({
 type CollectionItemsTableContentProps = CollectionItemsTableProps & {
   page: number;
   unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
-  unpinnedQuery: ListCollectionItemsRequest;
+  unpinnedQuery: ListCollectionItemsRequest | typeof skipToken;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onUnpinnedItemsSortingChange: (

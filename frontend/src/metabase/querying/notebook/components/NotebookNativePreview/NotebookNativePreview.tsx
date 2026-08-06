@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
-import { DelayedLoadingSpinner } from "metabase/common/components/Pickers/EntityPicker/components/LoadingSpinner";
+import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";

@@ -127,9 +127,6 @@ describe("issue 18382", () => {
 
   testCases.forEach((fileType) => {
     it(`should handle the old syntax in downloads for ${fileType} (metabase#18382)`, () => {
-      // TODO: Please remove this line when issue gets fixed
-      cy.skipOn(fileType === "csv");
-
       H.downloadAndAssert({ fileType });
     });
   });

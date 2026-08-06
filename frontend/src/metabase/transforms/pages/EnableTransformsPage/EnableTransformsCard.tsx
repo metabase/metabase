@@ -4,7 +4,7 @@ import { useListDatabasesQuery } from "metabase/api/database";
 import { Link } from "metabase/common/components/Link";
 import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import {
   Alert,
@@ -73,9 +73,10 @@ export function EnableTransformsCard({
                   )}
                   {!hasDbThatSupportsTransforms && (
                     <Alert
+                      size="compact"
                       color="warning"
                       variant="light"
-                      icon={<Icon name="warning" size={16} />}
+                      icon={<Icon name="warning" />}
                       title={t`No compatible database connection`}
                     >
                       {jt`None of your connected databases can be used with transforms. ${(

@@ -60,7 +60,7 @@ export function TreemapChart({
     settings,
   );
   const colors = getTreemapColors(tree, treemapRows);
-  const formatters = getTreemapFormatters(treemapColumns, settings);
+  const formatters = getTreemapFormatters(treemapColumns, settings, tree);
 
   const config: TreemapChartOptionConfig = {
     tree,

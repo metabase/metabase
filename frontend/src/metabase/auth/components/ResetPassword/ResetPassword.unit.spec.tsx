@@ -26,9 +26,9 @@ const setup = ({ isTokenValid = true }: SetupOpts = {}) => {
 
   return renderWithProviders(
     <>
-      <Route path="/" component={TestHome} />
-      <Route path="/another-page" component={AnotherPage} />
-      <Route path="/auth/reset_password/:token" component={ResetPassword} />
+      <Route path="/" element={<TestHome />} />
+      <Route path="/another-page" element={<AnotherPage />} />
+      <Route path="/auth/reset_password/:token" element={<ResetPassword />} />
     </>,
     {
       withRouter: true,
@@ -83,10 +83,12 @@ describe("ResetPassword", () => {
     });
 
     it("should allow a custom redirect to be specified", async () => {
-      const { history } = setup({ isTokenValid: true });
+      const { router } = setup({ isTokenValid: true });
 
       act(() => {
-        history?.replace(`/auth/reset_password/token?redirect=/another-page`);
+        router?.navigate(`/auth/reset_password/token?redirect=/another-page`, {
+          replace: true,
+        });
       });
 
       await fillAndSubmit();

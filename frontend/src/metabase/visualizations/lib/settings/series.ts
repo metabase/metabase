@@ -1,7 +1,6 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
@@ -266,7 +265,7 @@ export function seriesSetting({
         getObjectSettings: (storedSettings, object) =>
           storedSettings[keyForSingleSeries(object)],
         getSettingDefinitionsForObject: () => COMMON_SETTINGS,
-        component: ChartNestedSettingSeries,
+        widget: "nestedSeries",
         readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],
         getWrapperStyle: () => ({
           marginLeft: 0,

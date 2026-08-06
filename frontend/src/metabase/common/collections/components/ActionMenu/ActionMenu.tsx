@@ -36,7 +36,7 @@ import {
 import { useSetCollectionPreview } from "metabase/common/hooks/use-set-collection-preview";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 

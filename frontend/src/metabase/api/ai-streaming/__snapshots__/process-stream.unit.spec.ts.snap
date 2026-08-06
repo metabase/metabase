@@ -12,27 +12,6 @@ exports[`processChatResponse should be able to process a valid stream 1`] = `
     },
   ],
   "finishReason": "stop",
-  "history": [
-    {
-      "content": "You, but don't tell anyone.",
-      "role": "assistant",
-    },
-    {
-      "role": "assistant",
-      "tool_calls": [
-        {
-          "arguments": "{}",
-          "id": "x",
-          "name": "x",
-        },
-      ],
-    },
-    {
-      "content": "",
-      "role": "tool",
-      "tool_call_id": "x",
-    },
-  ],
   "messageMetadata": {
     "usage": {
       "inputTokens": 4916,
@@ -60,12 +39,6 @@ exports[`processChatResponse should resolve with partial response for aborted re
         "testing": 123,
       },
       "type": "data-state",
-    },
-  ],
-  "history": [
-    {
-      "content": "Partial response",
-      "role": "assistant",
     },
   ],
   "toolCalls": [],

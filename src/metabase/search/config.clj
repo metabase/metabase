@@ -78,7 +78,7 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document" "transform" "database"])
+  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document" "exploration" "transform" "database"])
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
@@ -224,8 +224,6 @@
     ;; so the filter is a single indexed boolean. No :required-feature: a signal can only be set while
     ;; its feature is present, so the precomputed flag is already feature-correct.
     :curated                 {:type :single-value, :context-key :curated?, :supported-value? #{true}}
-    :non-temporal-dim-ids    {:type :single-value :engine :appdb}
-    :has-temporal-dim        {:type :single-value :engine :appdb}
     :display-type            {:type :list, :field "display_type"}}))
 
 (def ^:private filter-defaults-by-context
@@ -464,8 +462,6 @@
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]
-   [:non-temporal-dim-ids                {:optional true} ms/NonBlankString]
-   [:has-temporal-dim                    {:optional true} :boolean]
    [:enabled-transform-source-types      [:set ms/NonBlankString]]])
 
 (defmulti column->string

@@ -445,6 +445,10 @@ export function openDashboardMenu(option?: string) {
   }
 }
 
+export function toggleDashboardSubscriptionsSidebar() {
+  dashboardHeader().findByTestId("dashboard-subscriptions-button").click();
+}
+
 export function assertDashboardCardTitle(index: number, title: string) {
   getDashboardCard(index)
     .findByTestId("legend-caption-title")

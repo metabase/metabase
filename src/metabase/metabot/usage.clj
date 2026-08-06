@@ -37,6 +37,13 @@
   [_usage-map :- usage-map-schema]
   nil)
 
+(defenterprise valid-usage-profile-id
+  "Return `profile-id` when usage logging accepts it, otherwise nil.
+  OSS accepts every profile because usage logging is disabled."
+  metabase-enterprise.metabot.usage
+  [profile-id]
+  profile-id)
+
 (defenterprise check-usage-limits!
   "Check all usage limits for the current user. Returns nil if all limits are within bounds,
   or a user-friendly error message string if any limit is exceeded.

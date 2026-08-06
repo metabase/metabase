@@ -31,6 +31,7 @@ const URLS: MetricUrls = {
   about: (id) => `/metric/${id}/about`,
   overview: (id) => `/metric/${id}/overview`,
   query: (id) => `/metric/${id}/query`,
+  dimensions: (id) => `/metric/${id}/dimensions`,
   dependencies: (id) => `/metric/${id}/dependencies`,
   history: (id) => `/metric/${id}/history`,
   database: (id) => `/browse/databases/${id}`,
@@ -103,10 +104,7 @@ function setup({
   setupEnterprisePlugins();
 
   renderWithProviders(
-    <Route
-      path="/"
-      component={() => <DescriptionSection card={card} urls={URLS} />}
-    />,
+    <Route path="/" element={<DescriptionSection card={card} urls={URLS} />} />,
     {
       storeInitialState: state,
       withRouter: true,

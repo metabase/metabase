@@ -79,15 +79,6 @@
           (is (= schema-name
                  (t2/select-one-fn :schema :model/Table :id table-id))))))))
 
-(deftest identity-hash-test
-  (testing "Table hashes are composed of the schema name, table name and the database's identity-hash"
-    (mt/with-temp [:model/Database db    {:name "field-db" :engine :h2}
-                   :model/Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-      (let [db-hash (serdes/identity-hash db)]
-        (is (= "0395fe49"
-               (serdes/raw-hash ["PUBLIC" "widget" db-hash])
-               (serdes/identity-hash table)))))))
-
 (deftest set-new-table-permissions!-test
   (testing "New permissions are set appropriately for a new table, for all groups"
     (mt/with-full-data-perms-for-all-users!

@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   AggregateFieldReference,
   DimensionReference,
@@ -89,7 +88,14 @@ export const getNormalizedDimensionReference = (
     const normalizedOptions = normalizeReferenceOptions(mbql[2]);
     normalizedReference[2] = normalizedOptions;
 
-    return normalize(normalizedReference);
+    // MBQL normalization drops empty options from expression and aggregation
+    // references, while field references keep the options position.
+    if (normalizedOptions == null && !isFieldReference(normalizedReference)) {
+      // slice does not narrow the tuple type
+      return normalizedReference.slice(0, 2) as DimensionReference;
+    }
+
+    return normalizedReference;
   }
 
   return mbql;

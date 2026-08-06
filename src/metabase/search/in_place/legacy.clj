@@ -16,9 +16,7 @@
    [metabase.search.in-place.scoring :as scoring]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -358,6 +356,13 @@
   [:name
    :document])
 
+;; mirrors the appdb spec's :search-terms [:name :description] (see
+;; metabase.explorations.models.exploration)
+(defmethod searchable-columns "exploration"
+  [_ _]
+  [:name
+   :description])
+
 (def ^:private default-columns
   "Columns returned for all models."
   [:id :name :description :archived :created_at :updated_at])
@@ -414,6 +419,10 @@
 (defmethod columns-for-model "document"
   [_]
   [:id :name :archived :created_at :updated_at :collection_id :creator_id :document])
+
+(defmethod columns-for-model "exploration"
+  [_]
+  [:id :name :description :archived :created_at :updated_at :collection_id :creator_id])
 
 (defmethod columns-for-model "transform"
   [_]
@@ -597,6 +606,11 @@
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
       (add-collection-join-and-where-clauses model search-ctx)))
 
+(defmethod search-query-for-model "exploration"
+  [model search-ctx]
+  (-> (base-query-for-model "exploration" search-ctx)
+      (add-collection-join-and-where-clauses model search-ctx)))
+
 (defmethod search-query-for-model "transform"
   [_model search-ctx]
   (base-query-for-model "transform" search-ctx))
@@ -716,9 +730,6 @@
 (defn- results
   [search-ctx]
   (let [search-query (full-search-query search-ctx)]
-    (log/tracef "Searching with query:\n%s\n%s"
-                (u/pprint-to-str search-query)
-                (mdb/format-sql (first (mdb/compile search-query))))
     (mdb/streaming-reducible-query search-query)))
 
 (defmethod search.engine/results

@@ -83,7 +83,7 @@ export function setup({
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <TableSection
           table={tableWithSegments}
           activeTab={activeTab}
@@ -91,7 +91,7 @@ export function setup({
           canPublish
           onUpdate={jest.fn()}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

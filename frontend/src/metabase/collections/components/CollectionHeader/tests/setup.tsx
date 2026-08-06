@@ -80,7 +80,7 @@ export const setup = ({
   }
 
   renderWithProviders(
-    <Route path="/" component={() => <CollectionHeader {...props} />} />,
+    <Route path="/" element={<CollectionHeader {...props} />} />,
     {
       storeInitialState: state,
       initialRoute: "/",

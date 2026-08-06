@@ -3,9 +3,9 @@ import { t } from "ttag";
 import {
   useIsAskPage,
   useMetabotAgent,
-  useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { useSetting } from "metabase/settings";
 import { ActionIcon, type ActionIconProps, Tooltip } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 
@@ -23,7 +23,7 @@ export function MetabotAppBarButton({
 }: MetabotAppBarButtonProps) {
   const { hasMetabotAccess } = useUserMetabotPermissions();
   const metabot = useMetabotAgent("omnibot");
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const isAskPage = useIsAskPage();
 
   if (!hasMetabotAccess) {

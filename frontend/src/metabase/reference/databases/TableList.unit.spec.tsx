@@ -48,9 +48,7 @@ function setup() {
   return renderWithProviders(
     <Route
       path="/"
-      component={() => (
-        <TableList params={{ databaseId: String(databaseId) }} />
-      )}
+      element={<TableList params={{ databaseId: String(databaseId) }} />}
     />,
     { storeInitialState, withRouter: true },
   );

@@ -21,7 +21,6 @@
 
 (def ^{:doc "Indicates whether Dev extensions are available" :added "0.56.0"} dev-available?
   (try
-    #_{:clj-kondo/ignore [:metabase/modules]}
     (require 'dev.dummy-namespace)
     true
     (catch Throwable _

@@ -15,11 +15,10 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useDispatch, useSelector } from "metabase/redux";
-import type { Route, RouteProps } from "metabase/router";
-import { push } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -54,20 +53,23 @@ type TransformQueryPageParams = {
   transformId: string;
 };
 
-type TransformQueryPageProps = {
-  params: TransformQueryPageParams;
-  route: RouteProps;
-};
-
-export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
+export function TransformQueryPage() {
+  const params = useParams<TransformQueryPageParams>();
+  const { pathname } = useLocation();
+  const isEditRoute = pathname.endsWith("/edit");
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
     isLoading: isLoadingTransform,
     error: transformError,
   } = useGetTransformQuery(transformId ?? skipToken);
-  const { readOnly, transformsDatabases, isLoadingDatabases, databasesError } =
-    useTransformPermissions({ transform });
+  const {
+    readOnly,
+    remoteSyncReadOnly,
+    transformsDatabases,
+    isLoadingDatabases,
+    databasesError,
+  } = useTransformPermissions({ transform });
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
@@ -82,11 +84,12 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
   return (
     <TransformQueryPageBody
       // Add key so the ui state gets reset when switching between edit and view
-      key={route.path}
+      key={String(isEditRoute)}
       transform={transform}
       databases={transformsDatabases}
-      route={route}
+      isEditRoute={isEditRoute}
       readOnly={readOnly}
+      remoteSyncReadOnly={remoteSyncReadOnly}
     />
   );
 }
@@ -94,15 +97,17 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
 type TransformQueryPageBodyProps = {
   transform: Transform;
   databases: Database[];
-  route: RouteProps;
+  isEditRoute: boolean;
   readOnly?: boolean;
+  remoteSyncReadOnly?: boolean;
 };
 
 function TransformQueryPageBody({
   transform,
   databases,
-  route,
+  isEditRoute,
   readOnly,
+  remoteSyncReadOnly,
 }: TransformQueryPageBodyProps) {
   const {
     source,
@@ -116,16 +121,13 @@ function TransformQueryPageBody({
     transformId: transform.id,
     initialSource: transform.source,
   });
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const metadata = useSelector(getMetadata);
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const isEditMode = !readOnly && !!route.path?.includes("/edit");
+  const isEditMode = !readOnly && isEditRoute;
   const [
     isTurnOffIncrementalShown,
     { open: openTurnOffIncremental, close: closeTurnOffIncremental },
@@ -162,11 +164,11 @@ function TransformQueryPageBody({
   }, [source.type, isEditMode, setSourceAndRejectProposed, transform.source]);
 
   useEffect(() => {
-    if (isEditMode && isRemoteSyncReadOnly) {
+    if (isEditRoute && remoteSyncReadOnly) {
       // If remote sync is set up to read-only mode, user can't edit transforms
-      dispatch(push(Urls.transform(transform.id)));
+      navigate(Urls.transform(transform.id));
     }
-  }, [isRemoteSyncReadOnly, isEditMode, dispatch, transform.id]);
+  }, [remoteSyncReadOnly, isEditRoute, transform.id, navigate]);
 
   const handleSave = async (request: UpdateTransformRequest) => {
     const { error } = await updateTransform(request);
@@ -181,7 +183,7 @@ function TransformQueryPageBody({
       sendSuccessToast(t`Transform query updated`);
 
       if (isEditMode) {
-        dispatch(push(Urls.transform(transform.id)));
+        navigate(Urls.transform(transform.id));
       }
     }
   };
@@ -215,7 +217,7 @@ function TransformQueryPageBody({
 
   const handleCancel = () => {
     if (isEditMode) {
-      dispatch(push(Urls.transform(transform.id)));
+      navigate(Urls.transform(transform.id));
     }
   };
 
@@ -304,8 +306,6 @@ function TransformQueryPageBody({
         onClose={closeTurnOffIncremental}
       />
       <LeaveRouteConfirmModal
-        // Unjustified type cast. FIXME
-        route={route as Route}
         isEnabled={isDirty && !isSaving}
         onConfirm={rejectProposed}
       />

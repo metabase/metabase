@@ -67,7 +67,7 @@ export async function setup({
   );
 
   renderWithProviders(
-    <Route path="*" component={TestDashboardSettingsSidebar} />,
+    <Route path="*" element={<TestDashboardSettingsSidebar />} />,
 
     { storeInitialState: state, withRouter: true },
   );

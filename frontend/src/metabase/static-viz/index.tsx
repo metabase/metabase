@@ -19,13 +19,13 @@ import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import { createDataSource } from "metabase/visualizer/utils/data-source";
+import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
+import { mergeVisualizerData } from "metabase/visualizer/utils/merge-data";
 import {
-  createDataSource,
-  getVisualizationColumns,
-  mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
-} from "metabase/visualizer/utils";
+} from "metabase/visualizer/utils/split-series";
 import type {
   Card,
   DashCardVisualizationSettings,

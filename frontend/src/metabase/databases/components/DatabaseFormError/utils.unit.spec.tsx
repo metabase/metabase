@@ -25,7 +25,7 @@ describe("getDocsLinkConditionally", () => {
     return renderWithProviders(
       <Route
         path="*"
-        component={() => (
+        element={
           <>
             {getDocsLinkConditionally(
               "My Link Title",
@@ -33,7 +33,7 @@ describe("getDocsLinkConditionally", () => {
               showMetabaseLinks,
             )}
           </>
-        )}
+        }
       />,
       {
         withRouter: true,

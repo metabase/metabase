@@ -55,7 +55,7 @@ export async function setup({
   }
 
   renderWithProviders(
-    <Route path="/" component={EmbedHomepage} />,
+    <Route path="/" element={<EmbedHomepage />} />,
 
     {
       storeInitialState: state,

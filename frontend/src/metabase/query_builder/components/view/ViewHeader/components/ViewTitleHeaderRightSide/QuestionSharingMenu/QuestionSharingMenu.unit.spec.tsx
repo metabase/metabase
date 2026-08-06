@@ -95,6 +95,35 @@ describe("QuestionSharingMenu", () => {
         ).not.toBeInTheDocument();
       });
 
+      // Creating a public link is a write; on a read-only remote-synced question
+      // (can_write=false) the "Create" action is hidden (MB #72752)...
+      it("should hide 'Create a public link' when the question is not writable", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: true,
+          isPublicSharingEnabled: true,
+          hasPublicLink: false,
+          question: { can_write: false },
+        });
+        await openMenu();
+        expect(
+          screen.queryByText("Create a public link"),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText("Public link")).not.toBeInTheDocument();
+      });
+
+      // ...but an existing public link stays visible so it can still be
+      // viewed/copied/revoked, which are reads.
+      it("should keep an existing 'Public link' visible when the question is not writable", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: true,
+          isPublicSharingEnabled: true,
+          hasPublicLink: true,
+          question: { can_write: false },
+        });
+        await openMenu();
+        expect(screen.getByText("Public link")).toBeInTheDocument();
+      });
+
       it("should hide the public link option if public sharing is disabled", async () => {
         await setupQuestionSharingMenu({
           isAdmin: true,
@@ -142,9 +171,8 @@ describe("QuestionSharingMenu", () => {
             "http://localhost:3000/question/1-my-cool-question",
           ),
         );
-        expect(
-          await screen.findByText("Link copied to clipboard"),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("Copied")).toBeInTheDocument();
+        expect(screen.queryByText("Copy link")).not.toBeInTheDocument();
       });
 
       it("should copy the public link from the menu", async () => {
@@ -212,6 +240,31 @@ describe("QuestionSharingMenu", () => {
         expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
     });
+
+    describe("admins", () => {
+      it("should expose the 'Embed' option for a writable question", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: true,
+          isEmbeddingEnabled: true,
+          question: { can_write: true },
+        });
+        await openMenu();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
+      });
+
+      // The Embed option stays available even on a read-only remote-synced
+      // question (can_write=false); the Publish button inside the modal is
+      // disabled instead of hiding the entry point (MB #72752).
+      it("should still show the 'Embed' option when the question is not writable", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: true,
+          isEmbeddingEnabled: true,
+          question: { can_write: false },
+        });
+        await openMenu();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
+      });
+    });
   });
 
   describe("invite to view", () => {
@@ -237,6 +290,7 @@ describe("QuestionSharingMenu", () => {
 
     it("opens the invite modal for the question", async () => {
       fetchMock.get("path:/api/permissions/group", []);
+      fetchMock.get("path:/api/permissions/invite-group-ids", []);
       await setupQuestionSharingMenu({ isAdmin: true });
       await openMenu();
       await userEvent.click(screen.getByText("Invite someone to view this"));

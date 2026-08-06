@@ -470,7 +470,7 @@ result_metadata:
   qp/implicit-field?: true
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: jPrM-oh3r1BR42xSs4Ipj
   label: math_functions

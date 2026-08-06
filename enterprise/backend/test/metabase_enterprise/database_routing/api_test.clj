@@ -1,8 +1,11 @@
 (ns metabase-enterprise.database-routing.api-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.test :as met]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.metabot.tools.resources :as read-resource]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -204,6 +207,33 @@
       (mt/user-http-request :crowberto :get 404 (str "database/" destination-db-id "/syncable_schemas")))
     (testing "GET /database/:id/schemas"
       (mt/user-http-request :crowberto :get 404 (str "database/" destination-db-id "/schemas")))))
+
+(deftest routed-destination-database-names-are-hidden-in-metabot-resources
+  (mt/with-temp [:model/Database {router-id :id} {:name "Postgres Router"}
+                 :model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}
+                 :model/Database {selected-destination-id :id} {:name "customer-a"
+                                                                :router_database_id router-id}
+                 :model/Database {other-destination-id :id} {:name "customer-b"
+                                                             :router_database_id router-id}]
+    (met/with-user-attributes! :rasta {"db_name" "customer-a"}
+      (mt/with-current-user (mt/user->id :rasta)
+        (testing "database list includes the router and hides destination databases"
+          (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://databases"]})]
+            (is (str/includes? output "Postgres Router"))
+            (is (not (str/includes? output "customer-a")))
+            (is (not (str/includes? output "customer-b")))))
+        (testing "a sibling destination cannot be read by URI"
+          (is (some? (-> (read-resource/read-resource
+                          {:uris [(str "metabase://database/" other-destination-id)]})
+                         :resources
+                         first
+                         :error))))
+        (testing "the current user's routed destination cannot be read by URI"
+          (is (some? (-> (read-resource/read-resource
+                          {:uris [(str "metabase://database/" selected-destination-id)]})
+                         :resources
+                         first
+                         :error))))))))
 
 (deftest destination-databases-excluded-from-permissions-graph
   (mt/with-temp [:model/Database {db-id :id} {}

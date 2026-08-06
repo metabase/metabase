@@ -1,7 +1,9 @@
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import { getMapUrl } from "metabase/visualizations/components/ChoroplethMap";
+import { buildFeatureClickObject } from "metabase/visualizations/components/ChoroplethMap.utils";
 import { getLegendTitles } from "metabase/visualizations/lib/choropleth";
 import type { ColumnSettings } from "metabase-types/api";
+import { createMockColumn } from "metabase-types/api/mocks";
 
 const currencyColumnSettings: ColumnSettings = {
   column: { base_type: "type/Float" },
@@ -9,6 +11,58 @@ const currencyColumnSettings: ColumnSettings = {
   currency: "USD",
   currency_style: "symbol",
 };
+
+describe("buildFeatureClickObject", () => {
+  const stateColumn = createMockColumn({
+    name: "STATE",
+    display_name: "State",
+    source: "breakout",
+    semantic_type: "type/State",
+  });
+  const countColumn = createMockColumn({
+    name: "count",
+    display_name: "Count",
+    source: "aggregation",
+  });
+  const clickContext = {
+    cols: [stateColumn, countColumn],
+    dimensionIndex: 0,
+    metricIndex: 1,
+    settings: { "map.region": "us_states" },
+    getFeatureName: () => "California",
+    getFeatureKey: () => "CA",
+    cardId: 42,
+  };
+
+  it("includes cardId and the row dimension for populated regions", () => {
+    expect(
+      buildFeatureClickObject(["CA", 10], null, clickContext),
+    ).toMatchObject({
+      cardId: 42,
+      value: 10,
+      column: countColumn,
+      dimensions: [{ value: "CA", column: stateColumn }],
+    });
+  });
+
+  it("returns an empty-dimension click object for empty regions", () => {
+    expect(
+      buildFeatureClickObject(
+        undefined,
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [0, 0] },
+          properties: null,
+        },
+        clickContext,
+      ),
+    ).toMatchObject({
+      cardId: 42,
+      dimensions: [],
+      data: [{ col: stateColumn, value: "CA" }],
+    });
+  });
+});
 
 describe("getLegendTitles", () => {
   it("should not format short values compactly", () => {

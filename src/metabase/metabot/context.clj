@@ -149,7 +149,7 @@
             (table-utils/used-tables query))
       [])
     (catch Exception e
-      (log/error e "Error getting database tables for context")
+      (log/errorf "Error getting database tables for context: %s" (ex-message e))
       [])))
 
 (defn- python-transform-db-and-table-ids
@@ -169,7 +169,7 @@
     (when (and database-id (seq table-ids))
       (not-empty (mapv table-stub (table-utils/used-tables-from-ids database-id table-ids))))
     (catch Exception e
-      (log/error e "Error getting Python transform tables for context")
+      (log/errorf "Error getting Python transform tables for context: %s" (ex-message e))
       [])))
 
 (defn- mbql-source-table-ids
@@ -207,7 +207,7 @@
                   (map table-stub))
             raw-tables))
     (catch Exception e
-      (log/error e "Error getting MBQL source tables for context")
+      (log/errorf "Error getting MBQL source tables for context: %s" (ex-message e))
       nil)))
 
 (defn- enhance-context-with-schema
@@ -249,7 +249,7 @@
                                :source_type (transforms-base.u/transform-source-type (:source transform))))
                       item)
                     (catch Exception e
-                      (log/error e "Error annotating transform source type for metabot context")
+                      (log/errorf "Error annotating transform source type for metabot context: %s" (ex-message e))
                       item)))
                 user-viewing)]
       (assoc context :user_is_viewing annotated-viewing))
@@ -273,11 +273,14 @@
     (filter (fn [{:keys [model id]}] (contains? curated [(name model) id])) recents)))
 
 (def ^:private profiles-excluding-recent-views
-  "Profiles for which recent views are never injected. The nlq profile discovers data through the curated
-  library tool rather than general instance search, so arbitrary recently-viewed items (which may not be
-  curated) would undermine that guarantee. (A :nlq request served the general-search fallback keeps the
-  external profile-id :nlq, so this is reached via :nlq; :nlq-fallback is listed for a direct request.)"
-  #{:nlq :nlq-fallback})
+  "Profiles for which recent views are never injected.
+
+  The nlq profile discovers data through the curated library tool rather than general instance search, so arbitrary
+  recently-viewed items (which may not be curated) would undermine that guarantee. (A :nlq request served the
+  general-search fallback keeps the external profile-id :nlq, so this is reached via :nlq; :nlq-fallback is listed for
+  a direct request.)  The slackbot and document-generate-content profiles historically did not include recent views,
+  so we preserve that behavior."
+  #{:nlq :nlq-fallback :slackbot :document-generate-content})
 
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.
@@ -314,7 +317,7 @@
                              (assoc :type item-type))))
                      (take 5 recents)))))
     (catch Exception e
-      (log/error e "Error adding recent views to metabot context")
+      (log/errorf "Error adding recent views to metabot context: %s" (ex-message e))
       context)))
 
 (defn- set-user-time

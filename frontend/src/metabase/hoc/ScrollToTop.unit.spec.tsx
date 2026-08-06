@@ -24,7 +24,7 @@ function RouteContent() {
 }
 
 function setup(initialRoute = "/first") {
-  return renderWithProviders(<Route path="*" component={RouteContent} />, {
+  return renderWithProviders(<Route path="*" element={<RouteContent />} />, {
     withRouter: true,
     initialRoute,
   });

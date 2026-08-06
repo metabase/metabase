@@ -448,6 +448,42 @@
                                                  :dependent-types "card")]
               (is (empty? response)))))))))
 
+(deftest ^:sequential dependents-inactive-table-test
+  (testing "inactive tables are always included as dependents and in node counts"
+    (mt/with-premium-features #{:dependencies :transforms-basic :hosting}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id)
+                                                    :schema "PUBLIC"
+                                                    :name "inactive_transform_table"
+                                                    :active false}
+                       :model/Transform {transform-id :id} {:name "Transform - inactivetabletest"
+                                                            :source {:type :query
+                                                                     :query (lib/query mp products)}
+                                                            :target {:schema "PUBLIC"
+                                                                     :name "inactive_transform_table"}}]
+          ;; Simulate the transform having been run: link it to its (now inactive) target table
+          (t2/update! :model/Transform transform-id {:target_table_id table-id})
+          (events/publish-event! :event/transform-run-complete
+                                 {:object {:db-id (mt/id)
+                                           :output-schema "PUBLIC"
+                                           :output-table "inactive_transform_table"
+                                           :transform-id transform-id}})
+          (deps.test/synchronously-run-backfill!)
+          (testing "GET /graph/dependents returns the inactive table as a child"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                 :id transform-id
+                                                 :type "transform")]
+              (is (contains? (set (map :id response)) table-id))))
+          (testing "GET /graph counts the inactive table in the transform's dependents_count"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                                 :id transform-id
+                                                 :type "transform")
+                  transform-node (m/find-first #(and (= (:type %) "transform")
+                                                     (= (:id %) transform-id))
+                                               (:nodes response))]
+              (is (= 1 (get-in transform-node [:dependents_count :table]))))))))))
+
 (deftest ^:sequential dependents-broken-parameter-test
   (testing "GET /api/ee/dependencies/graph/dependents?broken=true - only returns entities that are broken"
     (mt/with-premium-features #{:dependencies}
@@ -963,14 +999,12 @@
                 ;; Create measure A (base measure) via API
                 {measure-a-id :id} (mt/user-http-request :crowberto :post 200 "measure"
                                                          {:name "Measure A"
-                                                          :table_id products-id
                                                           :definition (-> (lib/query mp products)
                                                                           (lib/aggregate (lib/sum price)))})
                 mp' (mt/metadata-provider)
                 ;; Create measure B that depends on measure A
                 {measure-b-id :id} (mt/user-http-request :crowberto :post 200 "measure"
                                                          {:name "Measure B"
-                                                          :table_id products-id
                                                           :definition (-> (lib/query mp' products)
                                                                           (lib/aggregate (lib/* (lib.metadata/measure mp' measure-a-id)
                                                                                                 2)))})
@@ -978,7 +1012,6 @@
                 ;; Create measure C that depends on measure B
                 {measure-c-id :id} (mt/user-http-request :crowberto :post 200 "measure"
                                                          {:name "Measure C"
-                                                          :table_id products-id
                                                           :definition (-> (lib/query mp'' products)
                                                                           (lib/aggregate (lib/+ (lib.metadata/measure mp'' measure-b-id)
                                                                                                 100)))})]
@@ -1118,7 +1151,7 @@
                                                                        :target {:schema "PUBLIC"
                                                                                 :name "referenced_transform_table"}}]
           ;; Simulate the referenced transform having been run: link it to its target table
-          ;; so the table→transform dep is visible in the dependency graph (which filters active=true).
+          ;; so the table→transform dep is visible in the dependency graph.
           (t2/update! :model/Transform referenced-transform-id {:target_table_id referenced-table-id})
           (events/publish-event! :event/transform-run-complete
                                  {:object {:db-id (mt/id)
@@ -1382,7 +1415,7 @@
             (is (not (contains? segment-ids archived-segment-id)))))))))
 
 (deftest ^:sequential unreferenced-archived-table-test
-  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for tables"
+  (testing "GET /api/ee/dependencies/graph/unreferenced includes inactive and hidden tables"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Table {active-table-id :id} {:name "Active Unreferenced Table - archivedtest"
                                                          :db_id (mt/id)
@@ -1398,8 +1431,10 @@
         (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=archivedtest")
               table-ids (set (map :id (:data response)))]
           (is (contains? table-ids active-table-id))
-          (is (not (contains? table-ids inactive-table-id)))
-          (is (not (contains? table-ids hidden-table-id))))))))
+          (testing "inactive tables are always included"
+            (is (contains? table-ids inactive-table-id)))
+          (testing "hidden tables are always included"
+            (is (contains? table-ids hidden-table-id))))))))
 
 (deftest ^:sequential unreferenced-pagination-test
   (testing "GET /api/ee/dependencies/unreferenced - should paginate results"

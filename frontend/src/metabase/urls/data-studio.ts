@@ -264,6 +264,10 @@ export function dataStudioMetricQuery(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/query`;
 }
 
+export function dataStudioMetricDimensions(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/dimensions`;
+}
+
 export function dataStudioMetricDependencies(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/dependencies`;
 }
@@ -335,10 +339,6 @@ export function newDataStudioSnippet() {
 
 export function dataStudioArchivedSnippets() {
   return `${dataStudioLibrary()}/snippets/archived`;
-}
-
-export function dataStudioSegment(segmentId: SegmentId) {
-  return `${dataStudioLibrary()}/segments/${segmentId}`;
 }
 
 export function dataStudioSettings() {

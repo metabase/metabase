@@ -10,11 +10,11 @@ const setup = (database: IDatabase) => {
   renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <ImpersonationWarning
           database={new Database({ ...database, tables: [] })}
         />
-      )}
+      }
     />,
     {
       withRouter: true,

@@ -168,7 +168,7 @@
     ;; metabase.search.init loads the engine implementations, and supported-engine? throws on unknown engines.
     (distinct (filter supported-engine? (filter known-engine? potential-engines)))))
 
-(defn- additional-engines
+(defn additional-engines
   "The supported engines force-enabled by [[settings/additional-search-engines]]."
   []
   (->> (settings/additional-search-engines)

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { Anchor, FixedSizeIcon, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Card, IconName } from "metabase-types/api";

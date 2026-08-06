@@ -50,7 +50,7 @@ function setup({
     }),
   });
 
-  renderWithProviders(<Route path="*" component={SecurityCenterBanner} />, {
+  renderWithProviders(<Route path="*" element={<SecurityCenterBanner />} />, {
     initialRoute: "/",
     storeInitialState: state,
     withRouter: true,

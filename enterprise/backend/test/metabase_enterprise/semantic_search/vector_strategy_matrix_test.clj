@@ -482,7 +482,7 @@
 (def ^:private packed-index
   "The index for [[graph-approximation-test]]'s 32-d packed dataset."
   (semantic.index/default-index {:provider "mock" :model-name "packed" :vector-dimensions 32}
-                                :table-name "index_table_packed_test"))
+                                :table-name "index_mock_packed_32"))
 
 (defn- make-packed-dataset
   "`n` filler cards packed at near-identical distances from the probe, so the true top-20 differ from any

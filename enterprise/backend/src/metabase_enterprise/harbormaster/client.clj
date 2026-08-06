@@ -69,15 +69,14 @@
                     (str store-api-url (+slash-prefix url))
                     request)
                    (catch Exception e
-                     (log/errorf e "Error making request to %s" url)
+                     (log/errorf "Error making request to %s: %s" url (ex-message e))
                      {:ex-data (ex-data e)
                       :request request
                       :url     url}))]
     (log/info "Harbormaster API call:"
               {:method   (m.util/upper-case-en (last (str/split (-> request-method-fn class .getSimpleName) #"\$")))
                :url      url
-               :request-body  (:body request)
-               :response (select-keys response [:status :body])})
+               :status   (:status response)})
     response))
 
 (defn- decode-response [unparsed-response url request]
@@ -86,7 +85,7 @@
     (try
       (m/update-existing unparsed-response :body json/decode+kw)
       (catch Exception e
-        (log/errorf e "Error decoding response from %s, is it json?" url)
+        (log/errorf "Error decoding response from %s, is it json? %s" url (ex-message e))
         {:ex-data           (ex-data e)
          :unparsed-response unparsed-response
          :request           request
@@ -96,7 +95,7 @@
   (try
     (get-safe-status response)
     (catch Exception e
-      (log/errorf e "Error decoding response from %s, is it json?" url)
+      (log/errorf "Error decoding response from %s, is it json? %s" url (ex-message e))
       {:response response
        :request  request
        :url      url
@@ -184,7 +183,7 @@
     (catch Exception e
       (let [resp-body (some-> e ex-data :body maybe-decode m.util/deep-kebab-keys)
             msg (format "Error on Harbormaster operation call %s" operation-id)]
-        (log/error msg (or resp-body e))
+        (log/error msg (ex-message e))
         (throw (ex-info msg (if (map? resp-body) resp-body {})))))))
 
 (defn request

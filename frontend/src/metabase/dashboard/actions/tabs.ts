@@ -21,18 +21,21 @@ import { getPositionForNewDashCard } from "metabase/utils/dashboard_grid";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   DashCardId,
+  Dashboard,
   DashboardId,
   DashboardTabId,
+  ParameterId,
 } from "metabase-types/api";
 
 import { trackCardMoved } from "../analytics";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
-import { getDashCardById } from "../selectors";
+import { getDashCardById, getDashcards } from "../selectors";
 import {
   calculateDashCardRowAfterUndo,
   generateTemporaryDashcardId,
 } from "../utils";
 
+import { duplicateParameters } from "./parameters";
 import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
 
 type CreateNewTabPayload = {
@@ -41,6 +44,7 @@ type CreateNewTabPayload = {
 type DuplicateTabPayload = {
   sourceTabId: DashboardTabId | null;
   newTabId: DashboardTabId;
+  sourceToNewParameterIdMap: Record<ParameterId, ParameterId>;
 };
 type DeleteTabPayload = {
   tabId: DashboardTabId | null;
@@ -138,13 +142,35 @@ export function createNewTab() {
 
 const duplicateTabAction = createAction<DuplicateTabPayload>(DUPLICATE_TAB);
 
-export function duplicateTab(sourceTabId: DashboardTabId | null) {
-  // Decrement by 2 to leave space for two new tabs if dash doesn't have tabs already
-  const newTabId = tempTabId;
-  tempTabId -= 2;
+export const duplicateTab =
+  (sourceTabId: DashboardTabId | null) =>
+  (dispatch: Dispatch, getState: GetState) => {
+    // Decrement by 2 to leave space for two new tabs if dash doesn't have tabs already
+    const newTabId = tempTabId;
+    tempTabId -= 2;
 
-  return duplicateTabAction({ sourceTabId, newTabId });
-}
+    const sourceTabDashCards = Object.values(getDashcards(getState())).filter(
+      (dashcard) => dashcard.dashboard_tab_id === sourceTabId,
+    );
+    const sourceParameters = sourceTabDashCards.flatMap((dashcard) =>
+      "inline_parameters" in dashcard ? (dashcard.inline_parameters ?? []) : [],
+    );
+    const newParameters = duplicateParameters(
+      dispatch,
+      getState,
+      sourceParameters,
+    );
+    const sourceToNewParameterIdMap = Object.fromEntries(
+      sourceParameters.map((parameter, index) => [
+        parameter,
+        newParameters[index].id,
+      ]),
+    );
+
+    dispatch(
+      duplicateTabAction({ sourceTabId, newTabId, sourceToNewParameterIdMap }),
+    );
+  };
 
 function _selectTab({
   state,
@@ -302,7 +328,10 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase<typeof duplicateTabAction>(
       duplicateTabAction,
-      (state, { type, payload: { sourceTabId, newTabId } }) => {
+      (
+        state,
+        { type, payload: { sourceTabId, newTabId, sourceToNewParameterIdMap } },
+      ) => {
         const { dashId, prevDash, prevTabs } = getPrevDashAndTabs({ state });
         if (!dashId || !prevDash) {
           throw new Error(
@@ -353,12 +382,48 @@ export const tabsReducer = createReducer<DashboardState>(
 
           prevDash.dashcards.push(newDashCardId);
 
-          state.dashcards[newDashCardId] = {
+          const newDashCard = {
             ...sourceDashCard,
             id: newDashCardId,
             dashboard_tab_id: newTabId,
             isDirty: true,
           };
+
+          if (
+            "inline_parameters" in newDashCard &&
+            newDashCard.inline_parameters
+          ) {
+            newDashCard.inline_parameters = newDashCard.inline_parameters.map(
+              (parameterId) => {
+                const newParameterId = sourceToNewParameterIdMap[parameterId];
+                if (newParameterId == null) {
+                  // Should never happen: the thunk builds this map from the same
+                  // source tab's inline parameters. Fall back rather than abort
+                  // the whole tab duplication.
+                  console.warn(
+                    `Missing mapping for inline parameter ${parameterId} when duplicating tab; keeping original id`,
+                  );
+                  return parameterId;
+                }
+                return newParameterId;
+              },
+            );
+          }
+
+          if (newDashCard.parameter_mappings) {
+            newDashCard.parameter_mappings = newDashCard.parameter_mappings.map(
+              (mapping) => ({
+                ...mapping,
+                parameter_id:
+                  // sourceToNewParameterIdMap has inline parameters only
+                  // so we need to fallback to the original mapping for dashboard level parameters
+                  sourceToNewParameterIdMap[mapping.parameter_id] ??
+                  mapping.parameter_id,
+              }),
+            );
+          }
+
+          state.dashcards[newDashCardId] = newDashCard;
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
           if (isVirtualDashCard(sourceDashCard as StoreDashcard)) {
@@ -576,7 +641,13 @@ export const tabsReducer = createReducer<DashboardState>(
       state.selectedTabId = tabId;
     });
 
-    builder.addMatcher(updateDashboard.matchFulfilled, (state, { payload }) => {
+    // Seperate handler to avoid TS2589 error when the global API type graph grows
+    const updateDashboardFulfilled: (action: {
+      type: string;
+    }) => action is { type: string; payload: Dashboard } =
+      updateDashboard.matchFulfilled;
+
+    builder.addMatcher(updateDashboardFulfilled, (state, { payload }) => {
       if (payload.id !== state.dashboardId) {
         // Only react to saves for the dashboard that is currently loaded — otherwise
         // updating an unrelated dashboard (e.g. moving/pinning from a collection) would

@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
@@ -15,10 +15,6 @@ import { listTag } from "metabase/api/tags";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { useSetArchive } from "metabase/archive/hooks";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
-import {
-  type CollectionContentTableColumn,
-  DEFAULT_VISIBLE_COLUMNS_LIST,
-} from "metabase/collections/components/CollectionContent/constants";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
 import { trackCollectionBookmarked } from "metabase/common/collections/analytics";
@@ -34,14 +30,13 @@ import {
   isRootTrashCollection,
   isTrashedCollection,
 } from "metabase/common/collections/utils";
-import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
 import { useSetCollection, useToast } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -55,6 +50,7 @@ import UploadOverlay from "../UploadOverlay";
 
 import { CollectionMain, CollectionRoot } from "./CollectionContent.styled";
 import { CollectionItemsTable } from "./CollectionItemsTable";
+import { useCollectionChartPaste } from "./use-collection-chart-paste";
 
 const itemKeyFn = (item: CollectionItem) => `${item.id}:${item.model}`;
 
@@ -69,7 +65,6 @@ export const CollectionContentView = ({
   uploadFile,
   uploadsEnabled,
   canCreateUploadInDb,
-  visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
 }: {
   databases?: Database[];
   bookmarks?: Bookmark[];
@@ -81,10 +76,12 @@ export const CollectionContentView = ({
   uploadFile: UploadFile;
   uploadsEnabled: boolean;
   canCreateUploadInDb: boolean;
-  visibleColumns?: CollectionContentTableColumn[];
 }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [deleteCollection] = useDeleteCollectionMutation();
+
+  useCollectionChartPaste(collection);
 
   const { data: pinnedItemsData, isLoading: loading } =
     useListCollectionItemsQuery({
@@ -150,11 +147,6 @@ export const CollectionContentView = ({
   const archive = useSetArchive();
   const setCollection = useSetCollection();
   const [sendToast] = useToast();
-
-  const visibleColumnsMap = useMemo(
-    () => getVisibleColumnsMap(visibleColumns),
-    [visibleColumns],
-  );
 
   const handleFileRejections = useCallback(
     (rejected: FileRejection[]) => {
@@ -275,7 +267,7 @@ export const CollectionContentView = ({
           onDeletePermanently={async () => {
             try {
               await deleteCollection({ id: collectionId }).unwrap();
-              dispatch(push("/trash"));
+              navigate("/trash");
               dispatch(
                 addUndo({
                   message: t`This item has been permanently deleted.`,
@@ -347,12 +339,7 @@ export const CollectionContentView = ({
           />
         </ErrorBoundary>
       </CollectionMain>
-      <ItemsDragLayer
-        selectedItems={selected}
-        pinnedItems={pinnedItems}
-        collection={collection}
-        visibleColumnsMap={visibleColumnsMap}
-      />
+      <ItemsDragLayer />
     </CollectionRoot>
   );
 };

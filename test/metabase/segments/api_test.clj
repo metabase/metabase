@@ -60,26 +60,26 @@
   (testing "POST /api/segment"
     (testing "Test security. Requires superuser perms."
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "segment" {:name       "abc"
-                                                               :table_id   (mt/id :users)
-                                                               :definition {}}))))))
+             (mt/user-http-request :rasta :post 403 "segment"
+                                   {:name       "abc"
+                                    :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :id) 20)}))))))
 
 (deftest create-segment-input-validation-test
   (testing "POST /api/segment"
     (is (=? {:errors {:name "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :post 400 "segment" {})))
-    (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
-            (mt/user-http-request :crowberto :post 400 "segment" {:name "abc"})))
-    (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
-            (mt/user-http-request :crowberto :post 400 "segment" {:name     "abc"
-                                                                  :table_id "foobar"})))
     (is (=? {:errors {:definition "Value must be a map."}}
-            (mt/user-http-request :crowberto :post 400 "segment" {:name     "abc"
-                                                                  :table_id 123})))
+            (mt/user-http-request :crowberto :post 400 "segment" {:name "abc"})))
     (is (=? {:errors {:definition "Value must be a map."}}
             (mt/user-http-request :crowberto :post 400 "segment" {:name       "abc"
-                                                                  :table_id   123
-                                                                  :definition "foobar"})))))
+                                                                  :definition "foobar"})))
+    (testing "definition must specify a source table"
+      (is (= "Segment definition must specify a source table."
+             (mt/user-http-request :crowberto :post 400 "segment" {:name       "abc"
+                                                                   :definition {}})))
+      (is (= "Segment definition must specify a source table."
+             (mt/user-http-request :crowberto :post 400 "segment" {:name       "abc"
+                                                                   :definition {:filter [:> [:field (mt/id :users :id) nil] 0]}}))))))
 
 (deftest create-segment-test
   (doseq [[format-name definition-fn] {"MBQL4" (partial mbql4-segment-definition (mt/id :users))
@@ -103,9 +103,18 @@
                                         :show_in_getting_started false
                                         :caveats                 nil
                                         :points_of_interest      nil
-                                        :table_id                (mt/id :users)
                                         :definition              (definition-fn (mt/id :users :id) 20)})
                  segment-response))))))
+
+(deftest create-segment-derives-table-id-test
+  (testing "POST /api/segment derives table_id from the definition"
+    (doseq [[format-name definition-fn] {"MBQL4" (partial mbql4-segment-definition (mt/id :users))
+                                         "MBQL5" (partial mbql5-segment-definition (mt/id :users))}]
+      (testing format-name
+        (is (=? {:table_id (mt/id :users)}
+                (mt/user-http-request :crowberto :post 200 "segment"
+                                      {:name       "A Segment"
+                                       :definition (definition-fn (mt/id :users :id) 20)})))))))
 
 ;; ## PUT /api/segment
 
@@ -132,6 +141,24 @@
             (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
                                                                    :revision_message "123"
                                                                    :definition       "foobar"})))))
+
+(deftest update-definition-table-test
+  (testing "PUT /api/segment/:id"
+    (testing "an updated definition must still specify a source table"
+      (mt/with-temp [:model/Segment {:keys [id]} {:table_id   (mt/id :users)
+                                                  :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
+        (is (= "Segment definition must specify a source table."
+               (mt/user-http-request :crowberto :put 400 (str "segment/" id)
+                                     {:revision_message "no more source table"
+                                      :definition       {}})))))
+    (testing "a definition that moves the Segment to another table keeps table_id in sync"
+      (mt/with-temp [:model/Segment {:keys [id]} {:table_id   (mt/id :users)
+                                                  :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
+        (mt/user-http-request :crowberto :put 200 (str "segment/" id)
+                              {:revision_message "move to venues"
+                               :definition       (mbql4-segment-definition (mt/id :venues) (mt/id :venues :name) "cans")})
+        (is (= (mt/id :venues)
+               (t2/select-one-fn :table_id :model/Segment :id id)))))))
 
 (deftest update-test
   (testing "PUT /api/segment/:id"
@@ -160,7 +187,6 @@
                        :show_in_getting_started false
                        :caveats                 nil
                        :points_of_interest      nil
-                       :table_id                (mt/id :users)
                        :revision_message        "I got me some revisions"
                        :definition              (eq-fn (mt/id :users :name) "cans")})
                      segment-response))))))))
@@ -172,8 +198,7 @@
         ;; just make sure API call doesn't barf
         (is (some? (mt/user-http-request :crowberto :put 200 (str "segment/" (u/the-id segment))
                                          {:name             "Cool name"
-                                          :revision_message "WOW HOW COOL"
-                                          :definition       {}})))))))
+                                          :revision_message "WOW HOW COOL"})))))))
 
 (deftest update-with-full-legacy-query-test
   (testing "PUT /api/segment/:id"

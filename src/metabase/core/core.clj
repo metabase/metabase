@@ -20,6 +20,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
+   [metabase.metrics.core :as metrics]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
@@ -104,6 +105,7 @@
   []
   (log/info "Metabase Shutting Down ...")
   (queue/stop-listeners!)
+  (startup/run-shutdown-logic!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (tracing/shutdown!)
@@ -133,7 +135,7 @@
         (try
           (.handle original-handler sig)
           (catch Exception e
-            (log/errorf e "Error calling original signal handler for SIG%s" signal-name)))))))
+            (log/errorf "Error calling original signal handler for SIG%s: %s" signal-name (ex-message e))))))))
 
 (defn- init-signal-logging!
   "Set up signal handlers to log system signals like SIGTERM, SIGINT, etc."
@@ -154,13 +156,13 @@
         (catch IllegalArgumentException e
           (log/debugf "Ignoring invalid signal SIG%s: %s" signal-name (.getMessage e)))
         (catch Exception e
-          (log/warnf e "Failed to register signal handler for SIG%s" signal-name))))))
+          (log/warnf "Failed to register signal handler for SIG%s: %s" signal-name (ex-message e)))))))
 
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
-  (log/infof "System info:\n %s" (u/pprint-to-str (u.system-info/system-info)))
+  (log/infof "System info:\n %s" (pr-str (u.system-info/system-info)))
   (perf/maybe-enable-monitoring!)
   (init-signal-logging!)
   (init-status/set-progress! 0.1)
@@ -221,6 +223,13 @@
       ;; sample database must be cleaned up and replaced regardless of whether sample content is
       ;; currently enabled. Otherwise just refresh its connection details.
       (sample-data/update-sample-database-if-needed!))
+    ;; Sample-content metrics are inserted via raw SQL and so never trigger Card after-insert hooks.
+    ;; Not critical to startup: log and carry on if it fails rather than aborting initialization.
+    (when-let [sample-db-id (sample-data/sample-database-id)]
+      (try
+        (metrics/sync-metric-dimensions-for-database! sample-db-id)
+        (catch Throwable e
+          (log/error e "Error syncing metric dimensions for the Sample Database"))))
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
   (notification/seed-notification!)
@@ -270,7 +279,7 @@
     (when (config/config-bool :mb-jetty-join)
       (.join (server/instance)))
     (catch Throwable e
-      (log/error e "Metabase Initialization FAILED")
+      (log/errorf "Metabase Initialization FAILED: %s" (ex-message e))
       (System/exit 1))))
 
 (defn- run-cmd [cmd init-fn args]

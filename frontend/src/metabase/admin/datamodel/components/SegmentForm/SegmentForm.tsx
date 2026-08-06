@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { t } from "ttag";
 
 import { FieldSet } from "metabase/common/components/FieldSet";
+import { Link } from "metabase/common/components/Link";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
 import {
@@ -11,7 +12,6 @@ import {
   getSegmentQueryDefinition,
 } from "metabase/querying/segments/utils";
 import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Alert, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -67,12 +67,11 @@ export const SegmentForm = ({
       <FormBody>
         {isReadOnly && (
           <Alert
+            size="compact"
             color="warning"
             display="inline-flex"
             mb="md"
-            p="0.75rem"
             title={t`This segment can't be edited because this table is published and Remote Sync is in read-only mode.`}
-            variant="outline"
             w="auto"
           />
         )}

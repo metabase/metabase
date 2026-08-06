@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { SetByEnvVarWrapper } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
-import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyButton } from "metabase/common/components/CopyButton";
+import { useAdminSetting } from "metabase/settings";
 import { Box, Button, Flex, TextInputBlurChange } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";

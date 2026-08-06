@@ -169,8 +169,8 @@ async function setup({
   );
   setupCollectionsEndpoints({ collections });
 
-  const { history } = renderWithProviders(
-    <Route path="*" component={() => <ModelUsageDetails model={model} />} />,
+  const { router } = renderWithProviders(
+    <Route path="*" element={<ModelUsageDetails model={model} />} />,
     {
       withRouter: true,
       storeInitialState,
@@ -178,7 +178,7 @@ async function setup({
   );
   await waitForLoaderToBeRemoved();
 
-  return { model, history, metadata, usedByQuestions };
+  return { model, router, metadata, usedByQuestions };
 }
 
 describe("ModelUsageDetails", () => {

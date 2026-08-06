@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { DelayedSkeleton } from "metabase/common/components/DelayedLoading";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -46,10 +47,18 @@ export const SearchResults = ({
   const selectedItem = path?.[path.length - 1];
   const getEntityPickerIcon = useGetEntityPickerIcon();
 
-  if (isLoading || error) {
+  if (error) {
     return (
       <Box h="100%" w="40rem">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
+      </Box>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Box h="100%" w="40rem" p="md">
+        <DelayedSkeleton />
       </Box>
     );
   }

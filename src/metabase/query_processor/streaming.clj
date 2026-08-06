@@ -219,9 +219,13 @@
   "Get a status code for the supplied error object."
   [err]
   (cond
+    ;; A raw exception thrown outside the QP's exception-formatting (e.g. during setup) arrives here as
+    ;; a Throwable, not a formatted map, so the keyword lookups below can't read its declared status
+    ;; code off it. Pull it from ex-data.
+    (and (instance? Throwable err) (:status-code (ex-data err)))
+    (:status-code (ex-data err))
     ;; If the error is setting its own status code use that
     (:status-code err) (:status-code err)
-    ;; If the error is setting its own status code use that
     (-> err :ex-data :status-code) (-> err :ex-data :status-code)
     ;; If the connection pool is saturated (checkout timed out, or the checkout queue is full) return 503 so clients
     ;; retry/back off

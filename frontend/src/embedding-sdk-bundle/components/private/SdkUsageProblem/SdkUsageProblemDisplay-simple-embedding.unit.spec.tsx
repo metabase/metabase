@@ -22,7 +22,9 @@ import {
 
 const TEST_USER = createMockUser();
 
-jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
+jest.mock("metabase/visualizations/register", () => ({
+  registerVisualizations: jest.fn(),
+}));
 
 jest.mock("metabase/embedding-sdk/config", () => ({
   ...jest.requireActual("metabase/embedding-sdk/config"),

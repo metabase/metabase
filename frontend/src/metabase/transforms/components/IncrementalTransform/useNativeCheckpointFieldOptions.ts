@@ -2,11 +2,11 @@ import { useMemo } from "react";
 
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { SelectOption } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isConcreteTableId } from "metabase-types/api/table";
 
 import { getSourceFieldOptions } from "./KeysetColumnSelect/KeysetColumnSelect";
+import type { CheckpointFieldOption } from "./useClearUnsupportedLookback";
 import { useTableQueryMetadataResults } from "./useTableQueryMetadataResults";
 
 export function useNativeCheckpointFieldOptions(query: Lib.Query | null) {
@@ -30,13 +30,13 @@ export function useNativeCheckpointFieldOptions(query: Lib.Query | null) {
   const { tables, isLoading, hasError } =
     useTableQueryMetadataResults(tableIds);
 
-  const fieldOptions = useMemo((): Array<SelectOption> => {
+  const fieldOptions = useMemo((): Array<CheckpointFieldOption> => {
     if (tables.length === 0) {
       return [];
     }
 
     try {
-      const allOptions: Array<SelectOption> = [];
+      const allOptions: Array<CheckpointFieldOption> = [];
       const seenFieldIds = new Set<number>();
       const showTablePrefix = tables.length > 1;
 

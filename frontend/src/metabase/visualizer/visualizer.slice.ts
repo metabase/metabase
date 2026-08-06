@@ -714,7 +714,13 @@ export const reducer = undoable(visualizerSlice.reducer, {
       addDataSource.fulfilled.type,
     ]),
     (action, nextState, { present }) => {
-      if (action.payload.forget === true) {
+      const payload = action.payload;
+      if (
+        payload != null &&
+        typeof payload === "object" &&
+        "forget" in payload &&
+        payload.forget === true
+      ) {
         return false;
       }
       if (action.type !== _handleDrop.type) {

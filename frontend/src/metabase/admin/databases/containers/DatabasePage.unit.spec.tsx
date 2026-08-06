@@ -15,7 +15,7 @@ jest.mock(
 );
 
 const setup = () => {
-  renderWithProviders(<Route path="/" component={DatabasePage} />, {
+  renderWithProviders(<Route path="/" element={<DatabasePage />} />, {
     withRouter: true,
     storeInitialState: createMockState({
       settings: mockSettings({

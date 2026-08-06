@@ -19,7 +19,6 @@ import {
 import { getVisualizationRaw } from "metabase/visualizations";
 import {
   isDisabledForVisualizer,
-  isVisualizerDashboardCard,
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
 import type Question from "metabase-lib/v1/Question";
@@ -29,6 +28,7 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import { canEditQuestion } from "../DashCardMenu/utils";
 
@@ -335,9 +335,6 @@ function DashCardActionsPanelInner({
         },
         className,
       )}
-      pos="absolute"
-      top={0}
-      right="20px"
       data-testid="dashboardcard-actions-panel"
       data-dontdrag // allows to interact with the actions panel while in the edit mode
       onMouseDown={onMouseDown}

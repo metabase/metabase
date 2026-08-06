@@ -1,4 +1,3 @@
-import type { LocationDescriptor } from "history";
 import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -23,6 +22,7 @@ import { connect, useDispatch, useSelector } from "metabase/redux";
 import { logout } from "metabase/redux/auth";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
+import type { To } from "metabase/router";
 import {
   getIsTenantUser,
   getUser,
@@ -54,7 +54,7 @@ interface Props extends MainNavbarProps {
   currentUser: User | null;
   selectedItems: SelectedItem[];
   logout: () => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
+  onChangeLocation: (location: To) => void;
 }
 
 function MainNavbarContainer({

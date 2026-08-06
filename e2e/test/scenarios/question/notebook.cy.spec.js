@@ -510,29 +510,15 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should properly render previews (metabase#28726, metabase#29959, metabase#40608)", () => {
+  it("should properly render previews (metabase#28726, metabase#29959)", () => {
     H.startNewQuestion();
-
-    cy.log(
-      "Preview should not be possible without the source data (metabase#40608)",
-    );
-    H.getNotebookStep("data")
-      .as("dataStep")
-      .within(() => {
-        cy.findByPlaceholderText("Search for tables and more...").should(
-          "exist",
-        );
-        cy.icon("play").should("not.be.visible");
-      });
 
     H.miniPicker().within(() => {
       cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
-    cy.get("@dataStep").icon("play").should("be.visible");
-    H.getNotebookStep("filter").icon("play").should("not.be.visible");
-    H.getNotebookStep("summarize").icon("play").should("not.be.visible");
+    H.getNotebookStep("data").as("dataStep");
 
     cy.get("@dataStep").within(() => {
       cy.icon("play").click();
