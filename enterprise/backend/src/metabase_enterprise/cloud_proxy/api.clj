@@ -16,6 +16,13 @@
     "mb-plan-change-plan"
     "mb-plan-change-plan-preview"})
 
+(def ^:private OperationParams
+  "Malli schema for the POST body: the parameter map of the Harbormaster Store operation named by
+  `:operation-id`, forwarded verbatim. Keys are that operation's kebab-case parameter names (the FE
+  sends e.g. `new-plan-alias`, `force-end-trial`, `plan-alias`); values are whatever the operation's
+  OpenAPI spec declares, so only the key shape is fixed here."
+  [:map-of :keyword :any])
+
 (def ^:private non-superuser-operation-allowlist
   #{"list-plans"
     "get-plan"
@@ -27,9 +34,10 @@
    This endpoint is used only for hosted instances, and calls Harbormaster Store using a OpenAPI client.
    :operation-id is the operation-id of the Harbormaster Store endpoint.
    All parameters for the operation are taken in the POST body."
-  [{:keys [operation-id]} :- [:map [:operation-id ms/NonBlankString]]
+  [{:keys [operation-id]} :- [:map {:closed true}
+                              [:operation-id ms/NonBlankString]]
    _query-params
-   body :- [:maybe :map]]
+   body :- [:maybe OperationParams]]
   (when-not (premium-features/is-hosted?)
     (throw (ex-info "This endpoint is only available for hosted instances" {:status-code 400})))
   (when-not (contains? (into non-superuser-operation-allowlist superuser-operation-allowlist) operation-id)

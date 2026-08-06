@@ -7,6 +7,8 @@
 
 ;; GET /auth/sso/slack-connect
 ;;
+;; No param schemas: this is a browser-navigation OIDC endpoint — the handler reads `:params` off
+;; the raw request rather than the destructured route/query/body params.
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Initiate Slack Connect SSO flow."
@@ -19,6 +21,8 @@
 
 ;; GET /auth/sso/slack-connect/callback
 ;;
+;; No param schemas: Slack controls the callback query string (it may add params beyond
+;; `code`/`state`, e.g. `error`), and the handler reads `:params` off the raw request.
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/callback"
   "Slack Connect OIDC callback."

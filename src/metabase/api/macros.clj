@@ -381,7 +381,10 @@
                                (when (seq path)
                                  (or (malli.util/get-in schema path)
                                      (recur (pop path)))))]
-           (assoc-in m error-path (umd/describe nested-schema))))))
+           ;; a `:malli.core/extra-key` error against a `{:closed true}` map has no schema at its path to describe.
+           (assoc-in m error-path (if nested-schema
+                                    (umd/describe nested-schema)
+                                    "disallowed key"))))))
    {}
    (:errors explanation)))
 

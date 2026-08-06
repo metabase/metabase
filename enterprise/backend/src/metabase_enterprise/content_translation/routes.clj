@@ -69,12 +69,15 @@
   [_route_params
    _query-params
    _body
+   ;; the raw Ring request and its multipart maps carry keys we don't own, so they stay open;
+   ;; `:size` is declared because the handler reads it to enforce the dictionary size limit.
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
                                                  [:map
                                                   ["file"
                                                    [:map
                                                     [:filename :string]
+                                                    [:size     :int]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (api/check-superuser)
   (let [file (get-in multipart-params ["file" :tempfile])]
@@ -92,9 +95,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dictionary/:token"
   "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
-  [{:keys [token]} :- [:map
+  [{:keys [token]} :- [:map {:closed true}
                        [:token ms/NonBlankString]]
-   {:keys [locale]}]
+   ;; `:locale` stays optional so the handler can keep returning its own "Locale is required." 400.
+   {:keys [locale]} :- [:map {:closed true}
+                        [:locale {:optional true} [:maybe :string]]]]
   ;; this will error if bad
   (embedding.jwt/unsign token)
   (if locale
@@ -104,7 +109,8 @@
 (api.macros/defendpoint :get "/dictionary" :- DictionaryResponse
   "Fetch the content translation dictionary for authenticated users (auth-based embedding flows)."
   [_route-params
-   {:keys [locale]} :- [:map [:locale :string]]]
+   {:keys [locale]} :- [:map {:closed true}
+                        [:locale :string]]]
   (api/check api/*current-user-id* 401 "Unauthenticated")
   {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))})
 
