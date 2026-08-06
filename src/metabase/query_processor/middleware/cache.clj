@@ -127,7 +127,7 @@
                              (m/dissoc-in result [:data :rows])
                              {}))
      (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
-           min-duration-ms (:min-duration-ms strategy 0)
+           min-duration-ms (:min_duration_ms strategy 0)
            ;; cache any query that ran long enough -- including ones that returned no rows, so a slow empty result
            ;; doesn't get re-run at full cost on every request
            eligible?       (> duration-ms min-duration-ms)]
