@@ -5,7 +5,7 @@ import { Input, Select } from "metabase/ui";
 import { DiagnosticsFilterPicker } from "../DiagnosticsFilterPicker";
 import { getDurationFilterOptions } from "../slow-utils";
 import type { SlowContentFilterOptions } from "../types";
-import { ALL_FILTER_TYPES } from "../utils";
+import { ALL_NON_COLLECTION_FILTER_TYPES } from "../utils";
 
 type SlowContentFilterPickerProps = {
   filterOptions: SlowContentFilterOptions;
@@ -32,7 +32,7 @@ export function SlowContentFilterPicker({
   return (
     <DiagnosticsFilterPicker
       filterOptions={filterOptions}
-      availableTypes={ALL_FILTER_TYPES}
+      availableTypes={ALL_NON_COLLECTION_FILTER_TYPES}
       isDisabled={isDisabled}
       hasDefaultOptions={hasDefaultOptions}
       onFilterOptionsChange={onFilterOptionsChange}

@@ -14,11 +14,10 @@ import {
   type IconName,
 } from "metabase-types/api";
 
-export const ALL_FILTER_TYPES: ContentDiagnosticsNonCollectionFilterType[] = [
-  ...CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
-];
+export const ALL_NON_COLLECTION_FILTER_TYPES: ContentDiagnosticsNonCollectionFilterType[] =
+  [...CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES];
 
-export const ALL_DUPLICATED_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
+export const ALL_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
   ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
 ];
 

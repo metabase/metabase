@@ -3,12 +3,15 @@ import type {
   ContentDiagnosticsDuplicateEntity,
   ContentDiagnosticsDuplicatedFinding,
   ContentDiagnosticsDuplicatedFindingDetails,
+  ContentDiagnosticsImbalancedFinding,
+  ContentDiagnosticsImbalancedFindingDetails,
   ContentDiagnosticsSlowFinding,
   ContentDiagnosticsSlowFindingDetails,
   ContentDiagnosticsStaleFinding,
   ContentDiagnosticsStaleFindingDetails,
   ContentDiagnosticsUser,
   ListDuplicatedFindingsResponse,
+  ListImbalancedFindingsResponse,
   ListSlowFindingsResponse,
   ListStaleFindingsResponse,
 } from "metabase-types/api";
@@ -161,6 +164,47 @@ export function createMockListDuplicatedFindingsResponse(
 ): ListDuplicatedFindingsResponse {
   return {
     data: [createMockContentDiagnosticsDuplicatedFinding()],
+    total: 1,
+    limit: 25,
+    offset: 0,
+    last_scan_at: "2026-06-01T00:00:00Z",
+    ...opts,
+  };
+}
+
+export function createMockContentDiagnosticsImbalancedFinding(
+  opts?: Partial<Omit<ContentDiagnosticsImbalancedFinding, "details">> & {
+    details?: Partial<ContentDiagnosticsImbalancedFindingDetails>;
+  },
+): ContentDiagnosticsImbalancedFinding {
+  return {
+    id: 1,
+    finding_type: "crowded",
+    entity_type: "collection",
+    entity_id: 10,
+    detected_at: "2026-06-01T00:00:00Z",
+    entity_display_name: "Crowded collection",
+    created_at: "2026-01-01T00:00:00Z",
+    content_count: 101,
+    ...opts,
+    details: {
+      collection: createMockContentDiagnosticsCollection(),
+      description: null,
+      owner: null,
+      creator: createMockContentDiagnosticsUser(),
+      view_count: 0,
+      threshold: 100,
+      unit: "items",
+      ...opts?.details,
+    },
+  };
+}
+
+export function createMockListImbalancedFindingsResponse(
+  opts?: Partial<ListImbalancedFindingsResponse>,
+): ListImbalancedFindingsResponse {
+  return {
+    data: [createMockContentDiagnosticsImbalancedFinding()],
     total: 1,
     limit: 25,
     offset: 0,

@@ -26,6 +26,21 @@ export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
       to: Urls.slowContent(),
       icon: "gauge",
     },
+    {
+      label: t`Empty`,
+      to: Urls.imbalancedContent("empty"),
+      icon: "document",
+    },
+    {
+      label: t`Sparse`,
+      to: Urls.imbalancedContent("sparse"),
+      icon: "list",
+    },
+    {
+      label: t`Crowded`,
+      to: Urls.imbalancedContent("crowded"),
+      icon: "grid",
+    },
   ];
 
   return (

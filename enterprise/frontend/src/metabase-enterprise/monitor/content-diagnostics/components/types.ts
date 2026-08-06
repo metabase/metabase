@@ -22,6 +22,9 @@ export type DuplicatedContentFilterOptions =
     minDuplicateCount?: number;
   };
 
+export type ImbalancedContentFilterOptions =
+  ContentDiagnosticsBaseFilterOptions<ContentDiagnosticsFilterType>;
+
 export type ContentDiagnosticsParamsOptions = {
   withSetLastUsedParams?: boolean;
 };

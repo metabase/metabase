@@ -5,7 +5,7 @@ import { Input, Select } from "metabase/ui";
 import { DiagnosticsFilterPicker } from "../DiagnosticsFilterPicker";
 import { getDuplicateCountFilterOptions } from "../duplicated-utils";
 import type { DuplicatedContentFilterOptions } from "../types";
-import { ALL_DUPLICATED_FILTER_TYPES } from "../utils";
+import { ALL_FILTER_TYPES } from "../utils";
 
 type DuplicatedContentFilterPickerProps = {
   filterOptions: DuplicatedContentFilterOptions;
@@ -34,7 +34,7 @@ export function DuplicatedContentFilterPicker({
   return (
     <DiagnosticsFilterPicker
       filterOptions={filterOptions}
-      availableTypes={ALL_DUPLICATED_FILTER_TYPES}
+      availableTypes={ALL_FILTER_TYPES}
       isDisabled={isDisabled}
       hasDefaultOptions={hasDefaultOptions}
       onFilterOptionsChange={onFilterOptionsChange}

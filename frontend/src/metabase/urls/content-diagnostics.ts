@@ -1,6 +1,8 @@
 import type {
   ContentDiagnosticsDuplicatedSortColumn,
   ContentDiagnosticsFilterType,
+  ContentDiagnosticsImbalancedFindingType,
+  ContentDiagnosticsImbalancedSortColumn,
   ContentDiagnosticsNonCollectionFilterType,
   ContentDiagnosticsSlowSortColumn,
   ContentDiagnosticsStaleSortColumn,
@@ -174,4 +176,60 @@ function duplicatedContentQueryString({
 
 export function duplicatedContent(params?: DuplicatedContentParams) {
   return `${contentDiagnostics()}/duplicated${duplicatedContentQueryString(params)}`;
+}
+
+export type ImbalancedContentParams = {
+  page?: number;
+  query?: string;
+  entityTypes?: ContentDiagnosticsFilterType[];
+  includePersonalCollections?: boolean;
+  sortColumn?: ContentDiagnosticsImbalancedSortColumn;
+  sortDirection?: SortDirection;
+};
+
+function imbalancedContentQueryString({
+  page,
+  query,
+  entityTypes,
+  includePersonalCollections,
+  sortColumn,
+  sortDirection,
+}: ImbalancedContentParams = {}) {
+  const searchParams = new URLSearchParams();
+
+  if (page != null) {
+    searchParams.set("page", String(page));
+  }
+  if (query != null) {
+    searchParams.set("query", query);
+  }
+  if (entityTypes != null) {
+    entityTypes.forEach((entityType) => {
+      searchParams.append("entity-types", entityType);
+    });
+  }
+  if (includePersonalCollections != null) {
+    searchParams.set(
+      "include-personal-collections",
+      String(includePersonalCollections),
+    );
+  }
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
+  }
+
+  const queryString = searchParams.toString();
+  return queryString.length > 0 ? `?${queryString}` : "";
+}
+
+// The problem type (empty/sparse/crowded) is the route segment, so it doubles as the
+// tab identity and the pinned `finding-types` value.
+export function imbalancedContent(
+  mode: ContentDiagnosticsImbalancedFindingType,
+  params?: ImbalancedContentParams,
+) {
+  return `${contentDiagnostics()}/${mode}${imbalancedContentQueryString(params)}`;
 }
