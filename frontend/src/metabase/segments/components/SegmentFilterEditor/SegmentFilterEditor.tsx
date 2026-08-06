@@ -84,7 +84,6 @@ export function SegmentFilterEditor({
               filterIndex={index}
               onSelect={(newFilter) => handleSelectFilter(filter, newFilter)}
               onClose={onClose}
-              readOnly={readOnly}
             />
           )
         }

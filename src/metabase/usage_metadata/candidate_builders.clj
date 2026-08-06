@@ -96,21 +96,6 @@
                                 (sort-by dependency-path-sort-key)
                                 vec)}))
 
-(defn- table-candidate-evidence
-  [source-items]
-  (let [items (->> source-items
-                   (group-by :id)
-                   vals
-                   (map table-source-item-evidence)
-                   (sort-by :id)
-                   vec)]
-    {:source-items          items
-     :distinct-source-count (count items)
-     :verified-source-count (count (filter :verified? items))
-     :official-source-count (count (filter :official-collection? items))
-     :popular-source-count  (count (filter :popular? items))
-     :total-view-count      (reduce + 0 (map :view-count items))}))
-
 (defn- raw-table-candidate-analysis
   [cards model-index]
   (reduce
@@ -232,7 +217,9 @@
                          (keep (fn [[table-id rows]]
                                  (when-let [table (table-index table-id)]
                                    {:table    table
-                                    :evidence (table-candidate-evidence (map :source-item rows))}))
+                                    :evidence (candidate-mining/aggregate-candidate-evidence
+                                               (map :source-item rows)
+                                               table-source-item-evidence)}))
                                by-table)
                          nil)
            unsupported  (->> (:unsupported analysis)
@@ -654,24 +641,14 @@
         cards))
 
 (defn- eligible-segment-candidate?
-  [{:keys [composite? evidence]}]
-  (or (not composite?)
-      (pos? (:verified-source-count evidence))
-      (pos? (:official-source-count evidence))
-      (>= (:distinct-source-count evidence) 2)))
+  [candidate]
+  (candidate-mining/semantically-eligible-candidate?
+   (assoc candidate :candidate-type :segment)))
 
 (defn- eligible-measure-candidate?
-  [{:keys [aggregation evidence]}]
-  (and
-   ;; A bare count(*) is useful evidence that a table is commonly counted, but it does not carry enough
-   ;; reusable semantics to justify a standalone Measure candidate. Keep count(field) and the conditional
-   ;; count-where synthesized from this raw aggregation.
-   (not (and (= :count (:type aggregation))
-             (nil? (:field aggregation))))
-   (or (not (contains? candidate-mining/conditional-aggregation-operators (:type aggregation)))
-       (pos? (:verified-source-count evidence))
-       (pos? (:official-source-count evidence))
-       (>= (:distinct-source-count evidence) 2))))
+  [candidate]
+  (candidate-mining/semantically-eligible-candidate?
+   (assoc candidate :candidate-type :measure)))
 
 (defn cleanup-candidates
   "Return reconciliation-ready Measure and Segment observations for persistence.

@@ -9,6 +9,8 @@
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.usage-metadata.candidate-builders :as candidate-builders]
+   [metabase.usage-metadata.candidate-mining :as candidate-mining]
    [metabase.usage-metadata.candidates :as candidates]
    [metabase.usage-metadata.insights :as insights]
    [metabase.usage-metadata.query-source :as query-source]
@@ -312,11 +314,11 @@
                                                            :source_config     {}
                                                            :finished_at       (mi/now)}
                  :model/UsageMetadataCandidate old-candidate (candidate-row (:id old-run) (mt/id :orders))]
-    (mt/with-dynamic-fn-redefs [insights/qualified-card-ids (constantly [])
-                                insights/cleanup-candidates (constantly {:measures [], :segments []})
-                                insights/candidate-table-observations (constantly {:candidates []
-                                                                                   :unsupported-source-items []})
-                                insights/candidate-metric-observations (constantly [])]
+    (mt/with-dynamic-fn-redefs [candidate-mining/qualified-card-ids (constantly [])
+                                candidate-builders/cleanup-candidates (constantly {:measures [], :segments []})
+                                candidate-builders/candidate-table-observations (constantly {:candidates []
+                                                                                             :unsupported-source-items []})
+                                candidate-builders/candidate-metric-observations (constantly [])]
       (let [run (candidates/queue-refresh! :manual (mt/user->id :crowberto))]
         (is (= :succeeded (:status (candidates/run-refresh! run))))
         (is (= (:id run) (:id (candidates/latest-successful-run))))
@@ -330,7 +332,7 @@
                                                            :source_config     {}
                                                            :finished_at       (mi/now)}
                  :model/UsageMetadataCandidate old-candidate (candidate-row (:id old-run) (mt/id :orders))]
-    (mt/with-dynamic-fn-redefs [insights/qualified-card-ids (constantly [])]
+    (mt/with-dynamic-fn-redefs [candidate-mining/qualified-card-ids (constantly [])]
       (let [run (candidates/queue-refresh! :manual (mt/user->id :crowberto))]
         (with-redefs-fn {#'candidates/prune-old-snapshots!
                          (fn [_current-run-id]
@@ -349,19 +351,19 @@
         table-opts   (atom nil)
         metric-opts  (atom nil)]
     (mt/with-dynamic-fn-redefs
-      [insights/qualified-card-ids (fn [minimum-view-count window-days]
-                                     (is (= 10 minimum-view-count))
-                                     (is (= 90 window-days))
-                                     [1])
-       insights/cleanup-candidates (fn [opts]
-                                     (reset! cleanup-opts opts)
-                                     {:measures [], :segments []})
-       insights/candidate-table-observations (fn [opts]
-                                               (reset! table-opts opts)
-                                               {:candidates [], :unsupported-source-items []})
-       insights/candidate-metric-observations (fn [opts]
-                                                (reset! metric-opts opts)
-                                                [])]
+      [candidate-mining/qualified-card-ids (fn [minimum-view-count window-days]
+                                             (is (= 10 minimum-view-count))
+                                             (is (= 90 window-days))
+                                             [1])
+       candidate-builders/cleanup-candidates (fn [opts]
+                                               (reset! cleanup-opts opts)
+                                               {:measures [], :segments []})
+       candidate-builders/candidate-table-observations (fn [opts]
+                                                         (reset! table-opts opts)
+                                                         {:candidates [], :unsupported-source-items []})
+       candidate-builders/candidate-metric-observations (fn [opts]
+                                                          (reset! metric-opts opts)
+                                                          [])]
       (let [run (candidates/queue-refresh! :manual (mt/user->id :crowberto))]
         (is (= :succeeded (:status (candidates/run-refresh! run))))
         (is (= {:kind                      "qualified-cards"
@@ -398,9 +400,9 @@
                          :popular? true
                          :view-count 20}]
         (mt/with-dynamic-fn-redefs
-          [insights/qualified-card-ids (constantly [(:id card)])
-           insights/cleanup-candidates (constantly {:measures [], :segments []})
-           insights/candidate-table-observations
+          [candidate-mining/qualified-card-ids (constantly [(:id card)])
+           candidate-builders/cleanup-candidates (constantly {:measures [], :segments []})
+           candidate-builders/candidate-table-observations
            (constantly {:candidates
                         [{:table {:id table-id
                                   :database-id (mt/id)
@@ -421,7 +423,7 @@
                                      :popular-source-count 1
                                      :total-view-count 20}}]
                         :unsupported-source-items []})
-           insights/candidate-metric-observations
+           candidate-builders/candidate-metric-observations
            (constantly [{:definition definition
                          :suggested-name "Large order count"
                          :suggested-description "Count large orders"

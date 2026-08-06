@@ -116,20 +116,7 @@
    [:view_count     ms/IntGreaterThanOrEqualToZero]
    [:is_published   :boolean]])
 
-(mr/def ::candidate-clause
-  [:sequential :any])
-
-(mr/def ::candidate-page-clause
-  [:map
-   [:page  ms/PositiveInt]
-   [:items ms/PositiveInt]])
-
-(mr/def ::candidate-pivot-clause
-  [:map
-   [:rows               [:sequential :string]]
-   [:columns            [:sequential :string]]
-   [:show-row-totals    {:optional true} :boolean]
-   [:show-column-totals {:optional true} :boolean]])
+(mr/def ::candidate-clause [:sequential :any])
 
 (mr/def ::candidate-join
   [:map
@@ -143,18 +130,13 @@
 
 (mr/def ::candidate-stage
   [:map
-   [:lib/type    [:= "mbql.stage/mbql"]]
+   [:lib/type     [:= "mbql.stage/mbql"]]
    [:source-table ms/PositiveInt]
-   [:aggregation {:optional true} [:sequential ::candidate-clause]]
-   [:breakout    {:optional true} [:sequential ::candidate-clause]]
-   [:expressions {:optional true} [:sequential ::candidate-clause]]
-   [:fields      {:optional true} [:sequential ::candidate-clause]]
-   [:filters     {:optional true} [:sequential ::candidate-clause]]
-   [:joins       {:optional true} [:sequential [:ref ::candidate-join]]]
-   [:limit       {:optional true} ms/PositiveInt]
-   [:order-by    {:optional true} [:sequential ::candidate-clause]]
-   [:page        {:optional true} ::candidate-page-clause]
-   [:pivot       {:optional true} ::candidate-pivot-clause]])
+   [:aggregation  {:optional true} [:sequential ::candidate-clause]]
+   [:breakout     {:optional true} [:sequential ::candidate-clause]]
+   [:expressions  {:optional true} [:map-of :string ::candidate-clause]]
+   [:filters      {:optional true} [:sequential ::candidate-clause]]
+   [:joins        {:optional true} [:sequential [:ref ::candidate-join]]]])
 
 (mr/def ::candidate-query
   [:map
@@ -434,11 +416,11 @@
 (defn- json-response-value
   [value]
   (cond
-    (map? value)     (update-vals value json-response-value)
-    (vector? value)  (mapv json-response-value value)
+    (map? value)        (update-vals value json-response-value)
+    (vector? value)     (mapv json-response-value value)
     (sequential? value) (mapv json-response-value value)
-    (keyword? value) (u/qualified-name value)
-    :else            value))
+    (keyword? value)    (u/qualified-name value)
+    :else               value))
 
 (defn- query-definition-response
   [definition]
@@ -549,17 +531,9 @@
 
 (defn- candidate-order
   []
-  ;; `family_order` and `family_position` are materialized by the miner. They keep related
-  ;; recommendations adjacent and deterministic; the remaining columns break ties between families.
+  ;; Mining materializes a globally unique, deterministic family position for every candidate in a run.
   [[:candidate.family_order :asc]
-   [:candidate.family_position :asc]
-   [[:case [:> :candidate.verified_source_count 0] [:inline 0] :else [:inline 1]] :asc]
-   [[:case [:> :candidate.official_source_count 0] [:inline 0] :else [:inline 1]] :asc]
-   [:candidate.distinct_source_count :desc]
-   [:candidate.complexity :asc]
-   [:candidate.total_view_count :desc]
-   [:candidate.signature :asc]
-   [:candidate.id :asc]])
+   [:candidate.family_position :asc]])
 
 (defn- candidate-page
   [run opts]
