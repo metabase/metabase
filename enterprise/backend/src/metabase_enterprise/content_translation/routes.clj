@@ -3,6 +3,7 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase.api.common :as api]
@@ -69,16 +70,22 @@
   [_route_params
    _query-params
    _body
-   ;; the raw Ring request and its multipart maps carry keys we don't own, so they stay open;
-   ;; `:size` is declared because the handler reads it to enforce the dictionary size limit.
+   ;; The multipart maps are typed exhaustively via `::mc/default`, which types the keys we don't
+   ;; enumerate instead of waving them through: `multipart-params` is keyed by Ring form-field name
+   ;; (a string), and a part map is keyed by Ring's own part keywords. `:size` is declared because
+   ;; the handler reads it to enforce the dictionary size limit. Part values stay `:any` because
+   ;; Ring renders a part as a string, a part map, or a vector of either for a repeated field name.
    {:keys [multipart-params], :as _request} :- [:map
                                                 [:multipart-params
                                                  [:map
                                                   ["file"
                                                    [:map
-                                                    [:filename :string]
-                                                    [:size     :int]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+                                                    [:filename     :string]
+                                                    [:size         :int]
+                                                    [:tempfile     (ms/InstanceOfClass java.io.File)]
+                                                    [:content-type {:optional true} [:maybe :string]]
+                                                    [::mc/default  [:map-of :keyword :any]]]]
+                                                  [::mc/default [:map-of :string :any]]]]]]
   (api/check-superuser)
   (let [file (get-in multipart-params ["file" :tempfile])]
     (when (> (get-in multipart-params ["file" :size]) max-content-translation-dictionary-size-bytes)
