@@ -100,10 +100,12 @@ function setup({
   status = refreshStatus,
   tables = [tableSummary],
   deferredQueue,
+  secondPageTotal,
 }: {
   status?: UsageMetadataRefreshStatus;
   tables?: UsageMetadataTableSummary[];
   deferredQueue?: "used-raw" | "discarded";
+  secondPageTotal?: number;
 } = {}) {
   let resolveDeferredResponse: (() => void) | undefined;
   mockGetBoundingClientRect({ width: 1200, height: 700 });
@@ -116,7 +118,8 @@ function setup({
     const offset = Number(url.searchParams.get("offset"));
     const response = {
       data: tables.slice(offset, offset + limit),
-      total: tables.length,
+      total:
+        offset > 0 && secondPageTotal != null ? secondPageTotal : tables.length,
       limit,
       offset,
       snapshot: status.snapshot
@@ -215,6 +218,35 @@ describe("CleanupPage", () => {
           .calls("path:/api/ee/data-studio/usage-metadata/tables")
           .map((call) => new URL(call.url).searchParams.get("offset")),
       ).toEqual(["0", "200"]);
+    });
+  });
+
+  it("restarts pagination when a candidate mutation changes the total", async () => {
+    const tables = Array.from({ length: 201 }, (_, index) => ({
+      ...tableSummary,
+      table: {
+        ...tableSummary.table,
+        id: index + 1,
+        display_name: `Table ${index + 1}`,
+      },
+    }));
+    setup({ tables, secondPageTotal: 200 });
+
+    expect(await screen.findByText("Table 1")).toBeInTheDocument();
+    const scrollContainer = screen.getByTestId("tree-table-scroll-container");
+    Object.defineProperties(scrollContainer, {
+      clientHeight: { configurable: true, value: 500 },
+      scrollHeight: { configurable: true, value: 1_500 },
+      scrollTop: { configurable: true, value: 800, writable: true },
+    });
+    fireEvent.scroll(scrollContainer);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory
+          .calls("path:/api/ee/data-studio/usage-metadata/tables")
+          .map((call) => new URL(call.url).searchParams.get("offset")),
+      ).toEqual(["0", "200", "0"]);
     });
   });
 
