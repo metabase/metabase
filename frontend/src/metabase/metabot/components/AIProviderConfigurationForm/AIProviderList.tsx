@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { ReactNode } from "react";
 import { Fragment, useId, useState } from "react";
 import { t } from "ttag";
 
@@ -46,7 +47,7 @@ const WARNING_ICON_SIZE = 12;
 // divided the same way, then the button that follows them
 export function ProviderListSkeleton() {
   return (
-    <Stack gap="sm" data-testid="provider-list-skeleton">
+    <Stack gap="xs" data-testid="provider-list-skeleton">
       <Stack gap={0}>
         <ProviderRowSkeleton />
         <Divider />
@@ -128,7 +129,7 @@ export function AIProviderList() {
 
   return (
     <Stack gap="md">
-      <Stack gap="sm">
+      <Stack gap="xs">
         {hasConnections && (
           <Stack gap={0}>
             {connections.map((connection, index) => (
@@ -178,6 +179,14 @@ export function AIProviderList() {
         onConfirm={handleConfirmDelete}
       />
     </Stack>
+  );
+}
+
+function RowActions({ children }: { children: ReactNode }) {
+  return (
+    <Group gap="xs" wrap="nowrap" h={PROVIDER_ICON_SIZE} align="center">
+      {children}
+    </Group>
   );
 }
 
@@ -245,7 +254,7 @@ function ProviderConnectionRow({
 
   return (
     <Stack gap={0} data-testid={`provider-${connection.key}`}>
-      <Group justify="space-between" wrap="nowrap" py="xs">
+      <Group justify="space-between" wrap="nowrap" align="flex-start" py="xs">
         {hasUsageDetails ? (
           <UnstyledButton
             flex={1}
@@ -254,19 +263,21 @@ function ProviderConnectionRow({
             aria-controls={detailsId}
             onClick={toggleDetails}
           >
-            <Group justify="space-between" wrap="nowrap">
+            <Group justify="space-between" wrap="nowrap" align="flex-start">
               {summary}
-              <Icon
-                name={isShowingDetails ? "chevronup" : "chevrondown"}
-                size={12}
-              />
+              <RowActions>
+                <Icon
+                  name={isShowingDetails ? "chevronup" : "chevrondown"}
+                  size={12}
+                />
+              </RowActions>
             </Group>
           </UnstyledButton>
         ) : (
           summary
         )}
 
-        <Group gap="xs" wrap="nowrap">
+        <RowActions>
           {!isEnvManaged && (
             <Menu position="bottom-end">
               <Menu.Target>
@@ -296,7 +307,7 @@ function ProviderConnectionRow({
               </Menu.Dropdown>
             </Menu>
           )}
-        </Group>
+        </RowActions>
       </Group>
 
       {isEnvManaged &&
