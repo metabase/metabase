@@ -131,6 +131,7 @@ export type IconName =
   | "google"
   | "google_drive"
   | "google_sheet"
+  | "hexagon"
   | "history"
   | "home"
   | "horizontal_bar"
