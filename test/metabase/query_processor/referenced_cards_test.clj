@@ -1,6 +1,5 @@
 (ns metabase.query-processor.referenced-cards-test
-  "Tests for the dynamic-goals engine: running referenced queries and adding their values under
-  `data.referenced_cards`."
+  "Tests for running referenced queries and adding their values under `data.referenced_cards`."
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here since this tests the REST API which doesn't use
                        ;; metadata providers. Same exception as [[metabase.query-processor.card-test]].
@@ -37,7 +36,7 @@
 
 (deftest dataset-endpoint-column-projection-test
   (testing "only the requested columns are returned for a referenced card"
-    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:limit 1})}]
       (let [response (mt/user-http-request
                       :crowberto :post 202 "dataset"
                       (assoc (mt/mbql-query venues {:aggregation [[:count]]})
@@ -45,8 +44,21 @@
             goal     (get (ref-cards response) goal-id)]
         (is (= "completed" (:status goal)))
         (is (= ["NAME" "PRICE"] (map :name (get-in goal [:data :cols]))))
-        (testing "capped to a single row"
-          (is (= 1 (count (get-in goal [:data :rows])))))))))
+        (is (= 1 (count (get-in goal [:data :rows]))))))))
+
+(deftest dataset-endpoint-multi-row-referenced-card-test
+  (testing "a referenced card returning more than one row fails softly instead of being truncated"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (let [response (mt/user-http-request
+                      :crowberto :post 202 "dataset"
+                      (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                             :referenced_cards [{:card_id goal-id :columns ["NAME"]}]))
+            goal     (get (ref-cards response) goal-id)]
+        (testing "main query still succeeds"
+          (is (= "completed" (:status response)))
+          (is (= [[100]] (get-in response [:data :rows]))))
+        (is (= "failed" (:status goal)))
+        (is (re-find #"more than one row" (:error goal)))))))
 
 (deftest dataset-endpoint-error-handling-test
   (testing "a referenced card that cannot be resolved fails softly without failing the main query"
