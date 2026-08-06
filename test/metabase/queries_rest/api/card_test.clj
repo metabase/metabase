@@ -3253,7 +3253,13 @@
       (mt/with-temp [:model/Card _ {:enable_embedding true}]
         (is (= [{:name true, :id true}]
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
-                 (m/map-vals boolean (select-keys card [:name :id])))))))))
+                 (m/map-vals boolean (select-keys card [:name :id])))))))
+    (testing "and that we can still see them once guest embeds are turned off"
+      (mt/with-temporary-setting-values [enable-embedding-static false]
+        (mt/with-temp [:model/Card _ {:enable_embedding true}]
+          (is (= [{:name true, :id true}]
+                 (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
+                   (m/map-vals boolean (select-keys card [:name :id]))))))))))
 
 (deftest ^:parallel pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
