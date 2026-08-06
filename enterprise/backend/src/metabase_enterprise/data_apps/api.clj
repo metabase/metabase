@@ -13,6 +13,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
   (:import
@@ -60,6 +62,8 @@
    [:bundle_path     ms/NonBlankString]
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
+   [:resource_collection_id [:maybe ms/PositiveInt]]
+   [:permission_group_id     [:maybe ms/PositiveInt]]
    [:bundle_hash     [:maybe :string]]
    [:last_synced_sha [:maybe :string]]
    [:last_synced_at  [:maybe :any]]
@@ -76,6 +80,15 @@
   [:map
    [:configured :boolean]
    [:url [:maybe :string]]])
+
+(def ^:private QueryDefinition
+  [:map
+   [:stages [:sequential {:min 1} ms/Map]]])
+
+(def ^:private QueryResolutionResponse
+  [:map
+   [:database_id ms/PositiveInt]
+   [:dataset_query ms/Map]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -165,6 +178,30 @@
   ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
+
+(api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- QueryResolutionResponse
+  "Resolve an authored data-app query definition into a serializable Metabase query."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   query-definition :- QueryDefinition]
+  (api/check-superuser)
+  (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
+  (let [{source-type :type, table-id :id} (get-in query-definition [:stages 0 :source])
+        _           (api/check-400 (= (keyword source-type) :table)
+                                   "Data app query definitions must use a table source.")
+        database-id (api/check-404 (t2/select-one-fn :db_id :model/Table :id table-id))
+        query        (-> (lib-be/application-database-metadata-provider database-id)
+                         (lib/test-query query-definition)
+                         lib/prepare-for-serialization)]
+    {:database_id database-id
+     :dataset_query query}))
+
+(api.macros/defendpoint :post ["/:slug/query-sync" :slug slug-regex] :- DataAppResponse
+  "Prepare a data app for query synchronization before its first repository import."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
+  (api/check-superuser)
+  (data-app.sync/prepare-query-sync! slug)
+  (data-apps.db/non-blob-data-app-by-slug slug))
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."

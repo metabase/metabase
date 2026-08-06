@@ -7,6 +7,7 @@
 (def ^:private non-blob-columns
   "Columns to select for normal data-app metadata reads, excluding the raw bundle blob."
   [:model/DataApp :id :name :display_name :description :bundle_path :enabled :allowed_hosts
+   :resource_collection_id :permission_group_id :query_sync_draft
    :bundle_hash :last_synced_sha :last_synced_at :sync_error
    :created_at :updated_at])
 
@@ -70,11 +71,11 @@
   (t2/delete! :model/DataApp :name slug))
 
 (defn delete-data-apps-not-named!
-  "Delete the DataApps whose name is not one of `slugs`, returning the number deleted."
+  "Delete non-draft DataApps whose name is not one of `slugs`, returning the number deleted."
   [slugs]
-  (t2/delete! :model/DataApp :name [:not-in slugs]))
+  (t2/delete! :model/DataApp :name [:not-in slugs] :query_sync_draft false))
 
 (defn delete-all-data-apps!
-  "Delete every DataApp, returning the number deleted."
+  "Delete every non-draft DataApp, returning the number deleted."
   []
-  (t2/delete! :model/DataApp))
+  (t2/delete! :model/DataApp :query_sync_draft false))

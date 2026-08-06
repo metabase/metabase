@@ -212,3 +212,75 @@ databaseChangeLog:
             dbms: h2
             path: ../instance_analytics_views/view_log/v4/h2-view_log.sql
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: v64.data-app7
+      author: poom
+      comment: Bind each data app to its generated resource collection
+      changes:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: resource_collection_id
+                  type: int
+                  remarks: Server-owned collection containing the data app's generated saved questions
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.data-app8
+      author: poom
+      comment: Bind each data app to its generated permission group
+      changes:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: permission_group_id
+                  type: int
+                  remarks: Server-owned read-only permissions group for the data app's users
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.data-app9
+      author: poom
+      comment: Add the data app resource collection foreign key
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: data_app
+            baseColumnNames: resource_collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_data_app_resource_collection_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.data-app10
+      author: poom
+      comment: Add the data app permission group foreign key
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: data_app
+            baseColumnNames: permission_group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_data_app_permission_group_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.data-app11
+      author: poom
+      comment: Distinguish query-sync drafts from repository-materialized data apps
+      changes:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: query_sync_draft
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether query synchronization provisioned this row before its first repository import
+                  constraints:
+                    nullable: false

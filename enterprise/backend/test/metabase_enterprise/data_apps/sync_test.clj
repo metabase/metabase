@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -29,6 +30,39 @@
    (str (format "name: %s\npath: %s\n" name path)
         (when description (format "description: %s\n" description)))
    (format "data_apps/%s/%s" dir path) bundle})
+
+(deftest sync-creates-stable-permission-resources-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
+      (data-app.sync/import-from-snapshot! (snapshot files))
+      (let [{app-id :id, :keys [resource_collection_id permission_group_id]}
+            (t2/select-one :model/DataApp :name "sales")]
+        (testing "the first sync creates a dedicated group and collection"
+          (is (pos-int? resource_collection_id))
+          (is (pos-int? permission_group_id))
+          (is (= (format "Data app sales resources (%s)" app-id)
+                 (t2/select-one-fn :name :model/Collection :id resource_collection_id)))
+          (is (= (format "Data app sales users (%s)" app-id)
+                 (t2/select-one-fn :name :model/PermissionsGroup :id permission_group_id)))
+          (is (t2/exists? :model/Permissions
+                          :group_id permission_group_id
+                          :object (perms/collection-read-path resource_collection_id)))
+          (is (not (t2/exists? :model/Permissions
+                               :group_id permission_group_id
+                               :object (perms/collection-readwrite-path resource_collection_id))))
+          (is (every? #(= :no %)
+                      (t2/select-fn-vec :perm_value :model/DataPermissions
+                                        :group_id permission_group_id
+                                        :perm_type "perms/create-queries"))))
+        (testing "later syncs reuse the same resources"
+          (data-app.sync/import-from-snapshot! (snapshot files))
+          (is (=? {:resource_collection_id resource_collection_id
+                   :permission_group_id     permission_group_id}
+                  (t2/select-one :model/DataApp :name "sales"))))
+        (testing "removing the app deletes its resources"
+          (data-app.sync/import-from-snapshot! (snapshot {}))
+          (is (not (t2/exists? :model/Collection :id resource_collection_id)))
+          (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))))))))
 
 (deftest changed-count-tracks-content-not-sha-bumps-test
   (mt/with-model-cleanup [:model/DataApp]
@@ -115,6 +149,28 @@
       (is (=? {:synced 0 :removed 1}
               (data-app.sync/import-from-snapshot! (snapshot {}))))
       (is (empty? (t2/select-fn-set :name :model/DataApp))))))
+
+(deftest remote-sync-preserves-unpublished-query-sync-drafts-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (data-app.sync/prepare-query-sync! "draft-app")
+    (is (=? {:removed 0}
+            (data-app.sync/import-from-snapshot! (snapshot {}))))
+    (is (true? (t2/select-one-fn :query_sync_draft :model/DataApp :name "draft-app")))
+    (data-app.sync/import-from-snapshot!
+     (snapshot (app-files "draft-app" {:name "Draft" :path "index.js" :bundle "BUNDLE"})))
+    (is (false? (t2/select-one-fn :query_sync_draft :model/DataApp :name "draft-app")))
+    (is (=? {:removed 1}
+            (data-app.sync/import-from-snapshot! (snapshot {}))))
+    (is (not (t2/exists? :model/DataApp :name "draft-app")))))
+
+(deftest remote-sync-prunes-never-successful-repository-apps-test
+  (mt/with-model-cleanup [:model/DataApp]
+    (data-app.sync/import-from-snapshot!
+     (snapshot {"data_apps/broken/data_app.yaml" "name: Broken\npath: missing.js\n"}))
+    (is (false? (t2/select-one-fn :query_sync_draft :model/DataApp :name "broken")))
+    (is (=? {:removed 1}
+            (data-app.sync/import-from-snapshot! (snapshot {}))))
+    (is (not (t2/exists? :model/DataApp :name "broken")))))
 
 (deftest a-broken-config-does-not-prune-the-existing-app-test
   (testing "a directory that still exists but whose data_app.yaml is now broken keeps the app (as a sync_error), it is not pruned"

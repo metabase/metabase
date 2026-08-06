@@ -16,9 +16,19 @@ import {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "..";
+import { defineQuery } from "../../../../data-app";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
+
+const revenueQuery = defineQuery({
+  savedQuestionSourceId: 54,
+  source: TEST_SCHEMA.tables.orders,
+  limit: 10,
+});
+
+const _savedQuestionSourceId: 54 = revenueQuery.savedQuestionSourceId;
+const _queryLimit: 10 = revenueQuery.limit;
 
 // --------
 // Compile-time contracts that must pass type-checking.

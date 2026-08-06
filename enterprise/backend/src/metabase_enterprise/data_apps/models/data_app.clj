@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-apps.models.data-app
   (:require
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -54,6 +55,10 @@
 (defmethod mi/can-create? :model/DataApp
   [_model _instance]
   api/*is-superuser?*)
+
+(t2/define-before-delete :model/DataApp
+  [app]
+  (data-app.resources/delete-resources! app))
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."

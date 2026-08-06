@@ -8,6 +8,8 @@ import {
   loadEnv,
 } from "vite";
 
+import { checkQuerySync } from "../query-sync/sync";
+
 import { dataAppBuildPlugins, dataAppLibBuild } from "./config/build-config";
 import { getDataAppDefine } from "./config/define";
 import { buildDevCsp } from "./config/dev-connect-src";
@@ -36,6 +38,13 @@ function dataAppVitePlugin(): PluginOption[] {
     react(),
     ...dataAppBuildPlugins(),
     dataAppSandboxDevPlugin(appSlug, allowedHosts),
+    {
+      name: "metabase-data-app-query-sync-check",
+      apply: "build",
+      buildStart: async () => {
+        await checkQuerySync(appRoot);
+      },
+    },
     {
       name: "metabase-data-app",
       // Merged over the user's config, so these win — the bundle Metabase loads
