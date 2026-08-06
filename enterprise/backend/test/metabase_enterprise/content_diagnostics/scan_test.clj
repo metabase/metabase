@@ -169,6 +169,29 @@
                   (is (some? row))
                   (is (nil? (:card_type row))))))))))))
 
+(deftest scan-denormalizes-collection-name-test
+  (testing "scan stamps entity_collection_name from scope_collection_id (nil at root)"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [prefix    (scope-prefix)
+              coll-name (str prefix " Container")]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name coll-name}
+                         ;; same name in one collection → duplicated findings with a collection parent
+                         :model/Card {in-a :id} {:collection_id coll-id :name (str prefix " twin")}
+                         :model/Card {in-b :id} {:collection_id coll-id :name (str prefix " twin")}
+                         ;; same name at root → duplicated findings with nil collection
+                         :model/Card {root-a :id} {:collection_id nil :name (str prefix " rootless")}
+                         :model/Card {root-b :id} {:collection_id nil :name (str prefix " rootless")}]
+            (scan/scan!)
+            (let [by-entity (t2/select-fn->fn :entity_id :entity_collection_name
+                                              :model/ContentDiagnosticsFinding
+                                              :finding_type :duplicated
+                                              :entity_id [:in [in-a in-b root-a root-b]])]
+              (is (= coll-name (get by-entity in-a)))
+              (is (= coll-name (get by-entity in-b)))
+              (is (nil? (get by-entity root-a)))
+              (is (nil? (get by-entity root-b))))))))))
+
 (deftest scan-soft-invalidates-superseded-findings-test
   (testing "a fresh scan supersedes prior findings it no longer produces — via soft invalidation, not delete"
     (mt/with-premium-features #{:content-diagnostics}

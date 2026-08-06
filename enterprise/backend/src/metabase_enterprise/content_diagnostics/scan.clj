@@ -80,9 +80,18 @@
   (let [lookup (scope-collection-id-lookup findings)]
     (mapv #(assoc % :scope-collection-id (get lookup [(:entity-type %) (:entity-id %)])) findings)))
 
+(defn- attach-collection-names
+  "Stamp each finding with `:entity-collection-name` - the scan-time name of its `:scope-collection-id`
+  collection; nil for root-resident entities."
+  [findings]
+  (let [ids      (into #{} (keep :scope-collection-id) findings)
+        id->name (when (seq ids)
+                   (t2/select-pk->fn :name [:model/Collection :id :name] :id [:in ids]))]
+    (mapv #(assoc % :entity-collection-name (get id->name (:scope-collection-id %))) findings)))
+
 (def ^:private insert-batch-size
-  "Rows per INSERT. Postgres caps a prepared statement at 65,535 bind parameters; at ~11 columns/row a
-  single all-rows insert overflows past ~6k findings. 1000 keeps us well under (mirrors
+  "Rows per INSERT. Postgres caps a prepared statement at 65,535 bind parameters; at ~16 columns/row a
+  single all-rows insert overflows past ~4k findings. 1000 keeps us well under (mirrors
   `mark-stale-batch-size` in the deps module)."
   1000)
 
@@ -96,7 +105,7 @@
       (t2/insert! :model/ContentDiagnosticsFinding
                   (for [{:keys [entity-type entity-id finding-type details scope-collection-id last-active-at
                                 duration-ms content-count duplicate-count entity-name entity-created-at
-                                entity-creator-id entity-creator-name card-type]} chunk]
+                                entity-creator-id entity-creator-name card-type entity-collection-name]} chunk]
                     {:scan_id             scan-id
                      :entity_type         entity-type
                      :entity_id           entity-id
@@ -111,6 +120,7 @@
                      :entity_creator_id   entity-creator-id
                      :entity_creator_name entity-creator-name
                      :card_type           card-type
+                     :entity_collection_name entity-collection-name
                      :details             details})))))
 
 (defn scan!
@@ -120,7 +130,7 @@
   []
   (let [timer    (u/start-timer)
         scan-id  (str (random-uuid))
-        findings (attach-scope-collection-ids (detect))]
+        findings (attach-collection-names (attach-scope-collection-ids (detect)))]
     (insert-findings! scan-id findings)
     ;; write-side resolution: supersede prior-scan findings the new batch didn't re-emit. Only runs on
     ;; success - a failed scan never invalidates prior findings, though already-committed chunks of the
