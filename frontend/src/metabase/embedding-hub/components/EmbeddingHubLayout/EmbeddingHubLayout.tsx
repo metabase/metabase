@@ -37,6 +37,7 @@ export function EmbeddingHubLayout() {
 
   const { pathname } = useLocation();
   const hasSsoJwt = useHasTokenFeature("sso_jwt");
+  const hasTenants = useHasTokenFeature("tenants");
 
   useEnsureDefaultEmbeddingThemes();
 
@@ -55,6 +56,12 @@ export function EmbeddingHubLayout() {
       isGated: !hasSsoJwt,
     },
     { label: t`Permissions`, icon: "key", to: Urls.embeddingHubPermissions() },
+    {
+      label: t`Tenancy`,
+      icon: "group",
+      to: Urls.embeddingHubTenancy(),
+      isGated: !hasTenants,
+    },
   ];
 
   const upperNav = (
