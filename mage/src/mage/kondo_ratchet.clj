@@ -244,8 +244,9 @@
 (defn- remove-ignores-at
   "The inline ignore forms that start on the 1-based `rows` of `text`, removed.
   Forms that name any clojure-lsp/* linter survive ([[names-lsp?]]): the verify pass could never restore
-  that half of the suppression. Prefixless maps and forms whose matched span has unbalanced braces
-  (nested maps the regex can't span) are skipped and reported under `:skipped` rather than corrupted.
+  that half of the suppression. Prefixless maps, forms preceded by a `#` (legacy `#^` metadata vs a gensym's `#` -- telling
+  them apart needs a reader), and forms whose matched span has unbalanced braces (nested maps the
+  regex can't span) are skipped and reported under `:skipped` rather than corrupted.
   A line left whitespace-only by a removal is deleted; an inline removal also swallows the spaces
   separating it from the following form when the preceding text already ends in a space.
   Returns `{:text _, :sites [{:row _, :linters _, :original _} ...], :skipped [rows...]}`.
@@ -254,17 +255,26 @@
   [text rows]
   (let [rowset (set rows)
         masked (kondo-ratchet/mask-strings-and-comments text)
+        ;; A `#` right before the match is ambiguous without a reader: in `#^{...}` it is legacy
+        ;; metadata and removal must take it too, in `x#^{...}` it closes a syntax-quote gensym and
+        ;; removal must leave it. Both are rare; skip them rather than grow a partial reader here.
+        hash-caret? (fn [{:keys [start]}]
+                      (and (pos? start)
+                           (= \^ (.charAt ^String masked start))
+                           (= \# (.charAt ^String masked (dec start)))))
         prefixed? (fn [{:keys [start]}]
                     (contains? #{\# \^} (.charAt ^String masked start)))
         balanced? (fn [{:keys [start end]}]
                     (let [span (subs masked start end)]
                       (= (count (filter #{\{} span))
                          (count (filter #{\}} span)))))
-        {prefixed true, prefixless false}
-        (group-by prefixed?
+        {hash-caret true, plain false}
+        (group-by hash-caret?
                   (->> (kondo-ratchet/ignore-matches text)
                        (filter (comp rowset :line))
                        (remove (comp names-lsp? :linters))))
+        {prefixed true, prefixless false}
+        (group-by prefixed? plain)
         {removable true, unbalanced false}
         (group-by balanced? prefixed)
         result (reduce (fn [{:keys [text] :as acc} {:keys [start end line linters]}]
@@ -312,7 +322,7 @@
                  :linters      linters
                  :original     original})
      ;; adjusted like :sites, so warnings point at the rewritten file
-     :skipped (map (comp post-removal-row :line) (concat prefixless unbalanced))}))
+     :skipped (map (comp post-removal-row :line) (concat hash-caret prefixless unbalanced))}))
 
 (defn redundant-ignores
   "Report inline ignores kondo flags as redundant, dropping its two known false-positive classes:
@@ -370,7 +380,7 @@
                                        (remove-ignores-at (slurp file) (map :row file-candidates))]
                                    (spit file text)
                                    (doseq [row skipped]
-                                     (println (format "WARNING: %s:%d skipped -- can't be excised safely (prefixless map or unbalanced braces); remove it by hand"
+                                     (println (format "WARNING: %s:%d skipped -- can't be excised safely (prefixless map, a `#` before the form, or unbalanced braces); remove it by hand"
                                                       file row)))
                                    ;; whether the removed site carried a marker decides where its marker
                                    ;; goes on restore ([[site-restore-plan]]) -- record it, don't infer it
@@ -478,8 +488,12 @@
                            (count (distinct (map (juxt :filename :row) findings)))
                            (count by-file)
                            linter))
-          ;; the inserted ignores carry no justification comments, so the justification ratchet
-          ;; fails unless the linter is grandfathered
+          ;; Inserted ignores carry no justification comment of their own, so the justification ratchet
+          ;; fails unless the linter is grandfathered -- but an insert lands under whatever comment was
+          ;; already above the flagged form, which justifies it. Advising an exemption none of the sites
+          ;; need would just fail no-stale-exemptions-test instead, so ask the scanner first.
           (when-not (contains? (:comment-exempt (kondo-ratchet/read-ratchets)) linter)
-            (println (format "Also add %s to :comment-exempt in %s -- the inserted ignores have no comments."
-                             linter kondo-ratchet/ratchets-file)))))))
+            (when (seq (kondo-ratchet/unjustified #{} (filter #(some #{linter} (:linters %))
+                                                              (kondo-ratchet/scan roots))))
+              (println (format "Also add %s to :comment-exempt in %s -- the inserted ignores have no comments."
+                               linter kondo-ratchet/ratchets-file))))))))
