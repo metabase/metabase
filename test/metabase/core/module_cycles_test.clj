@@ -32,14 +32,16 @@
                 "  added a model reference: no new require, but the module still cannot be loaded\n"
                 "  without the model's module now.\n"
                 "\n"
-                "Within a graph:\n"
-                ":escaped-modules -- a module joined an SCC, two SCCs merged, or a new SCC appeared.\n"
-                "  Break the cycle. If it genuinely has to exist, `./bin/mage fix-module-cycles --seed`\n"
-                "  and defend the widening in your PR.\n"
-                ":edges -- new dependencies between modules already in a cycle together.\n"
-                "  Cheaper to fix than it looks: usually one require or one model reference.\n"
-                ":newly-unconstrained -- a module started declaring `:uses :any` or\n"
-                "  `:model-imports :bypass`, hiding its dependencies from this check entirely.\n"
+                "Each entry is keyed by an SCC's name -- a meaningless random label, so a failure can\n"
+                "say what changed instead of printing a hundred module names -- and tells you:\n"
+                "  :modules-added   -- modules that just joined it. Usually what you want to look at.\n"
+                "  :modules-removed -- modules that left, for context.\n"
+                "  :edges-recorded / :edges-actual -- dependencies between its members, then and now.\n"
+                "  :new-cycle?      -- there was no such SCC before at all.\n"
+                "\n"
+                "Break the cycle, or accept it with `./bin/mage fix-module-cycles --seed` and defend\n"
+                "the widening in your PR. If the widening came from master rather than your branch,\n"
+                "say so -- otherwise a reviewer sees the baseline grow and reasonably objects.\n"
                 "\n"
                 "Drift in the other direction (a cycle you broke) means `fix!` is broken, since the\n"
                 "test fixture just ran it — unless you are in CI, where it does not run.")
@@ -52,6 +54,16 @@
                 " writes it.\nAfter a hand edit, run `./bin/mage fix-module-cycles` to normalize the formatting.")
     (is (= (module-cycles/render (module-cycles/read-cycles))
            (slurp module-cycles/cycles-file)))))
+
+(deftest ^:parallel every-recorded-scc-is-named-test
+  (testing (str "\nEvery recorded SCC needs a name for failures to be readable. A missing one means a\n"
+                "hand edit; run `./bin/mage fix-module-cycles` to mint it.")
+    (let [recorded (module-cycles/read-cycles)
+          names    (for [k module-cycles/graph-keys
+                         scc (get-in recorded [k :sccs])]
+                     (:name scc))]
+      (is (every? string? names))
+      (is (apply distinct? "sentinel" names) "names are unique"))))
 
 (deftest ^:parallel model-imports-are-measured-test
   (testing (str "\nThe `:uses+model-imports` graph is a superset of `:uses`, so every module in a\n"
@@ -120,12 +132,6 @@
     ;; two independent cycles stay separate
     '#{#{a b} #{c d}} '{a #{b}, b #{a}, c #{d}, d #{c}}))
 
-(deftest ^:parallel scc-label-test
-  (are [expected modules] (= expected (module-cycles/scc-label modules))
-    "2-module SCC (a, b)"         '#{b a}
-    "3-module SCC (a, b, c)"      '#{c a b}
-    "4-module SCC (a, b, c, ...)" '#{d c b a}))
-
 (deftest ^:parallel edges-within-test
   (let [graph '{a #{b c}, b #{a}, c #{}}]
     (is (= 3 (module-cycles/edges-within graph '#{a b c})))
@@ -138,12 +144,65 @@
       "only cyclic components are reported, and only edges between their own members are counted"))
 
 ;;;; ---------------------------------------------------------------------------
+;;;; Naming
+;;;; ---------------------------------------------------------------------------
+
+(deftest ^:parallel generate-name-test
+  (is (re-matches #"[a-z]+-[a-z]+" (module-cycles/generate-name #{})))
+  (testing "never collides with a name already in use"
+    (let [taken (set (repeatedly 300 #(module-cycles/generate-name #{})))]
+      (is (not (contains? taken (module-cycles/generate-name taken)))))))
+
+(def ^:private four-scc
+  '{:name "old-name", :modules #{a b c d}, :edges 4})
+
+(deftest ^:parallel incumbent-test
+  (testing "a majority of the recorded modules staying together is what inherits"
+    (are [expected modules] (= expected (:name (module-cycles/incumbent #{four-scc} modules)))
+      "old-name" '#{a b c d}       ; unchanged
+      "old-name" '#{a b c d e}     ; grew
+      "old-name" '#{a b c}         ; shrank, still a majority
+      nil        '#{a b}           ; exactly half is not a majority
+      nil        '#{a}             ; below half
+      nil        '#{x y}))         ; unrelated
+  (testing "an even split leaves both halves unnamed, so there is no tie to break"
+    (is (nil? (module-cycles/incumbent #{four-scc} '#{a b})))
+    (is (nil? (module-cycles/incumbent #{four-scc} '#{c d}))))
+  (testing "a merge is the one case with several candidates; the largest wins"
+    (let [recorded '#{{:name "big", :modules #{a b c}, :edges 3}
+                      {:name "small", :modules #{d e}, :edges 2}}]
+      (is (= "big" (:name (module-cycles/incumbent recorded '#{a b c d e})))))))
+
+(deftest ^:parallel named-sccs-test
+  (testing "a surviving SCC keeps its name"
+    (is (= #{"old-name"}
+           (into #{} (map :name) (module-cycles/named-sccs #{four-scc} '#{{:modules #{a b c}, :edges 3}})))))
+  (testing "a split gives the majority piece the old name and the minority a fresh one"
+    (let [named (module-cycles/named-sccs #{four-scc}
+                                          '#{{:modules #{a b c}, :edges 3}
+                                             {:modules #{d e}, :edges 2}})
+          by-modules (into {} (map (juxt :modules :name)) named)]
+      (is (= "old-name" (get by-modules '#{a b c})))
+      (is (not= "old-name" (get by-modules '#{d e})))
+      (is (string? (get by-modules '#{d e})))))
+  (testing "an even split gives both halves fresh names, since neither holds a majority"
+    (let [names (map :name (module-cycles/named-sccs #{four-scc}
+                                                     '#{{:modules #{a b}, :edges 2}
+                                                        {:modules #{c d}, :edges 2}}))]
+      (is (not-any? #{"old-name"} names))
+      (is (apply distinct? names) "minted names are still distinct from each other")))
+  (testing "a fresh name never reuses a recorded one, so it cannot look like a rename"
+    (let [recorded '#{{:name "gone", :modules #{q r s t}, :edges 4}}
+          named    (module-cycles/named-sccs recorded '#{{:modules #{x y}, :edges 2}})]
+      (is (not= "gone" (:name (first named)))))))
+
+;;;; ---------------------------------------------------------------------------
 ;;;; Ratchet bookkeeping
 ;;;; ---------------------------------------------------------------------------
 
 (def ^:private recorded
-  '{:uses                  {:sccs #{{:modules #{a b c}, :edges 4}}}
-    :uses+model-imports    {:sccs #{{:modules #{a b c}, :edges 4}}}
+  '{:uses                  {:sccs #{{:name "quiet-vale", :modules #{a b c}, :edges 4}}}
+    :uses+model-imports    {:sccs #{{:name "tidal-grove", :modules #{a b c}, :edges 4}}}
     :unconstrained-modules {:uses #{z}, :model-imports #{}}})
 
 (defn- state
@@ -162,23 +221,31 @@
     ;; the SCC is gone entirely
     '{a #{b}, b #{c}, c #{}, z #{}})
   (testing "an SCC that split into two smaller ones"
-    (let [recorded '{:uses                  {:sccs #{{:modules #{a b c d}, :edges 4}}}
-                     :uses+model-imports    {:sccs #{{:modules #{a b c d}, :edges 4}}}
+    (let [recorded '{:uses                  {:sccs #{{:name "n", :modules #{a b c d}, :edges 4}}}
+                     :uses+model-imports    {:sccs #{{:name "m", :modules #{a b c d}, :edges 4}}}
                      :unconstrained-modules {:uses #{z}, :model-imports #{}}}]
       (is (= {} (module-cycles/drift recorded (state '{a #{b}, b #{a}, c #{d}, d #{c}})))))))
 
-(deftest ^:parallel drift-rejects-regressions-test
-  (testing "a module joining a recorded SCC"
-    (is (= '{:uses               {:escaped-modules #{a b c d}}
-             :uses+model-imports {:escaped-modules #{a b c d}}}
+(deftest ^:parallel drift-names-what-changed-test
+  (testing "a module joining a recorded SCC is reported by name, with the modules and edge delta"
+    (is (= {:uses               {"quiet-vale"  {:edges-recorded 4, :edges-actual 4
+                                                :modules-added '#{d}}}
+            :uses+model-imports {"tidal-grove" {:edges-recorded 4, :edges-actual 4
+                                                :modules-added '#{d}}}}
            (module-cycles/drift recorded (state '{a #{b}, b #{c}, c #{d}, d #{a}, z #{}})))))
-  (testing "a brand new SCC between modules that were not in one"
-    (is (= '{:uses               {:escaped-modules #{x y}}
-             :uses+model-imports {:escaped-modules #{x y}}}
-           (module-cycles/drift recorded (state '{a #{b}, b #{c}, c #{a}, x #{y}, y #{x}, z #{}})))))
-  (testing "new dependencies between modules already in the same SCC"
-    (is (= {:uses               {:edges {"3-module SCC (a, b, c)" {:recorded 4, :actual 6}}}
-            :uses+model-imports {:edges {"3-module SCC (a, b, c)" {:recorded 4, :actual 6}}}}
+  (testing "modules that left are reported too, for context"
+    (is (= '#{d} (get-in (module-cycles/drift recorded (state '{a #{b}, b #{d}, d #{a}, c #{}, z #{}}))
+                         [:uses "quiet-vale" :modules-added])))
+    (is (= '#{c} (get-in (module-cycles/drift recorded (state '{a #{b}, b #{d}, d #{a}, c #{}, z #{}}))
+                         [:uses "quiet-vale" :modules-removed]))))
+  (testing "a brand new SCC is flagged as such, since there is no incumbent to diff against"
+    (let [d (:uses (module-cycles/drift recorded (state '{a #{b}, b #{c}, c #{a}, x #{y}, y #{x}, z #{}})))]
+      (is (= 1 (count d)))
+      (is (= {:edges-recorded 0, :edges-actual 2, :modules-added '#{x y}, :new-cycle? true}
+             (val (first d))))))
+  (testing "more edges between modules already in the SCC"
+    (is (= {:uses               {"quiet-vale"  {:edges-recorded 4, :edges-actual 6}}
+            :uses+model-imports {"tidal-grove" {:edges-recorded 4, :edges-actual 6}}}
            (module-cycles/drift recorded (state '{a #{b c}, b #{a c}, c #{a b}, z #{}})))))
   (testing "a module newly hiding its dependencies behind `:model-imports :bypass`"
     (is (= '{:newly-unconstrained {:model-imports #{q}}}
@@ -189,44 +256,54 @@
 
 (deftest ^:parallel drift-reports-graphs-independently-test
   (testing "a new model reference regresses only the graph that can see it"
-    (is (= '{:uses+model-imports {:escaped-modules #{a b c d}}}
+    (is (= {:uses+model-imports {"tidal-grove" {:edges-recorded 4, :edges-actual 4
+                                                :modules-added '#{d}}}}
            (module-cycles/drift recorded
                                 (state '{a #{b}, b #{c}, c #{a}, d #{}, z #{}}
                                        '{a #{b}, b #{c}, c #{d}, d #{a}, z #{}})))
         "this is exactly the regression a require-only ratchet waves through")))
 
 (deftest ^:parallel tightened-only-narrows-test
-  (testing "an SCC that shrank is re-recorded at its new size and edge count, in both graphs"
-    (is (= '{:uses                  {:sccs #{{:modules #{a b}, :edges 2}}}
-             :uses+model-imports    {:sccs #{{:modules #{a b}, :edges 2}}}
-             :unconstrained-modules {:uses #{z}, :model-imports #{}}}
-           (module-cycles/tightened recorded (state '{a #{b}, b #{a}, c #{a}, z #{}})))))
+  (testing "an SCC that shrank keeps its name and is re-recorded smaller"
+    (is (= '#{{:name "quiet-vale", :modules #{a b}, :edges 2}}
+           (get-in (module-cycles/tightened recorded (state '{a #{b}, b #{a}, c #{a}, z #{}}))
+                   [:uses :sccs]))))
   (testing "an SCC that split is recorded as its pieces, each capped at the budget it came from"
-    (let [recorded '{:uses                  {:sccs #{{:modules #{a b c d}, :edges 1}}}
-                     :uses+model-imports {:sccs #{{:modules #{a b c d}, :edges 1}}}}]
-      (is (= '#{{:modules #{a b}, :edges 1} {:modules #{c d}, :edges 1}}
-             (get-in (module-cycles/tightened recorded (state '{a #{b}, b #{a}, c #{d}, d #{c}}))
-                     [:uses :sccs])))))
+    (let [recorded '{:uses {:sccs #{{:name "n", :modules #{a b c d}, :edges 1}}}}
+          sccs     (get-in (module-cycles/tightened recorded (state '{a #{b}, b #{a}, c #{d}, d #{c}}))
+                           [:uses :sccs])]
+      (is (= '#{#{a b} #{c d}} (into #{} (map :modules) sccs)))
+      (is (every? #(= 1 (:edges %)) sccs))
+      (is (not-any? #{"n"} (map :name sccs))
+          "an even split is nobody's continuation, so both halves are renamed")))
+  (testing "a lopsided split lets the majority piece keep the name"
+    (let [recorded '{:uses {:sccs #{{:name "n", :modules #{a b c d}, :edges 4}}}}
+          sccs     (get-in (module-cycles/tightened
+                            recorded
+                            (state '{a #{b}, b #{c}, c #{a}, d #{}}))
+                           [:uses :sccs])]
+      (is (= '#{#{a b c}} (into #{} (map :modules) sccs)))
+      (is (= #{"n"} (into #{} (map :name) sccs)))))
   (testing "an SCC that is gone is dropped"
     (is (= #{} (get-in (module-cycles/tightened recorded (state '{a #{b}, b #{}, c #{}, z #{}}))
                        [:uses :sccs]))))
   (testing "a regression is left alone, so the ratchet still fails on it"
-    (is (= '#{{:modules #{a b c}, :edges 4}}
+    (is (= '#{{:name "quiet-vale", :modules #{a b c}, :edges 4}}
            (get-in (module-cycles/tightened recorded (state '{a #{b}, b #{c}, c #{d}, d #{a}, z #{}}))
                    [:uses :sccs]))
         "the grown SCC is not a subset of the recorded one, so nothing is re-recorded")))
 
 (deftest ^:parallel seeded-widens-test
-  (is (= '{:uses                  {:sccs #{{:modules #{a b c d}, :edges 4}}}
-           :uses+model-imports    {:sccs #{{:modules #{a b c d}, :edges 4}}}
-           :unconstrained-modules {:uses #{z}, :model-imports #{}}}
-         (module-cycles/seeded (state '{a #{b}, b #{c}, c #{d}, d #{a}})))
-      "--seed records whatever is there, which is the only way to widen"))
+  (let [seeded (module-cycles/seeded recorded (state '{a #{b}, b #{c}, c #{d}, d #{a}}))]
+    (is (= '#{#{a b c d}} (into #{} (map :modules) (get-in seeded [:uses :sccs])))
+        "--seed records whatever is there, which is the only way to widen")
+    (is (= #{"quiet-vale"} (into #{} (map :name) (get-in seeded [:uses :sccs])))
+        "and the grown SCC keeps its name, so the diff reads as a change rather than a replacement")))
 
 (deftest ^:parallel render-test
   (testing "the text round-trips losslessly and re-renders identically"
-    (let [cycles '{:uses                  {:sccs #{{:modules #{b a}, :edges 3}}}
-                   :uses+model-imports    {:sccs #{{:modules #{c b a}, :edges 5}}}
+    (let [cycles '{:uses                  {:sccs #{{:name "one", :modules #{b a}, :edges 3}}}
+                   :uses+model-imports    {:sccs #{{:name "two", :modules #{c b a}, :edges 5}}}
                    :unconstrained-modules {:uses #{q p}, :model-imports #{r}}}
           text   (module-cycles/render cycles)]
       (is (= cycles (edn/read-string text)))

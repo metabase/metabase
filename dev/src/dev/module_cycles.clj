@@ -165,62 +165,141 @@
         (cyclic-components graph)))
 
 ;;;; ---------------------------------------------------------------------------
+;;;; Naming SCCs
+;;;;
+;;;; Names exist so that a failure can say "amber-harbor gained 3 modules" instead of printing a
+;;;; hundred module names. They are minted at seed time and inherited across runs by module
+;;;; overlap, so an SCC keeps its name while it grows, shrinks, or sheds a piece.
+;;;;
+;;;; Naming is presentation only. Whether the tree has regressed is decided by whether a component
+;;;; is still wholly inside a recorded SCC, never by which name it ended up with.
+;;;; ---------------------------------------------------------------------------
+
+(def ^:private name-adjectives
+  ["amber" "brisk" "candid" "dusky" "eager" "fabled" "gilded" "hollow" "ivory" "jaunty"
+   "keen" "lucid" "mellow" "nimble" "opal" "placid" "quiet" "rustic" "somber" "tidal"
+   "umber" "vivid" "windy" "zesty"])
+
+(def ^:private name-nouns
+  ["anchor" "basin" "canyon" "delta" "ember" "fjord" "grove" "harbor" "isthmus" "junction"
+   "kelp" "lagoon" "meadow" "narrows" "orchard" "prairie" "quarry" "ridge" "summit" "thicket"
+   "upland" "vale" "willow" "yardarm"])
+
+(defn generate-name
+  "A random `adjective-noun` name not already in `taken`.
+  Random on purpose: a name must carry no meaning, so that nobody reads significance into an SCC
+  keeping or losing one. Only ever called when a genuinely new SCC appears, and then persisted."
+  [taken]
+  (or (first (remove taken
+                     (repeatedly 200 #(str (rand-nth name-adjectives) "-" (rand-nth name-nouns)))))
+      ;; 576 combinations against a handful of SCCs, so this is unreachable in practice
+      (first (remove taken (map #(str "scc-" %) (range))))))
+
+(defn incumbent
+  "The recorded SCC that `modules` is the continuation of, or nil.
+
+  A recorded SCC hands its name on when *more* than half of its modules are still together in the
+  new one -- so an SCC that grows or shrinks keeps its name, and when one splits, only a piece
+  holding a majority of the original inherits. Strictly more than half is what makes that
+  unambiguous: two disjoint components cannot both hold a majority of the same recorded SCC, so an
+  even split leaves both halves unnamed rather than needing a tie broken.
+
+  A merge is the one case with several candidates, since the merged component holds all of each
+  SCC it absorbed. It takes the name of the largest, by module count then alphabetically, so the
+  failure reads as that SCC having grown."
+  [recorded-sccs modules]
+  (->> recorded-sccs
+       (keep (fn [{recorded-modules :modules :as scc}]
+               (let [shared (count (filter modules recorded-modules))]
+                 (when (> (* 2 shared) (count recorded-modules))
+                   [shared scc]))))
+       (sort-by (fn [[shared scc]] [(- shared) (vec (sort (:modules scc)))]))
+       first
+       second))
+
+(defn named-sccs
+  "`actual` with a `:name` on each: inherited from its [[incumbent]], or newly minted.
+  Minting is deterministic in which SCCs get a fresh name, random only in what that name is."
+  [recorded-sccs actual]
+  ;; No two components can inherit the same name -- see [[incumbent]] -- so the only bookkeeping
+  ;; here is keeping minted names distinct. A fresh name also avoids every recorded name, so it can
+  ;; never look like a rename of an SCC that is actually gone.
+  (let [reserved (into #{} (keep :name) recorded-sccs)]
+    (first
+     (reduce (fn [[named taken] scc]
+               (let [scc-name (or (:name (incumbent recorded-sccs (:modules scc)))
+                                  (generate-name (into reserved taken)))]
+                 [(conj named (assoc scc :name scc-name)) (conj taken scc-name)]))
+             [#{} #{}]
+             actual))))
+
+;;;; ---------------------------------------------------------------------------
 ;;;; Comparing actual against recorded
 ;;;; ---------------------------------------------------------------------------
 
 (defn- containing-scc
-  "The recorded SCC that `modules` fits inside, or nil when it fits none."
+  "The recorded SCC that `modules` sits wholly inside, or nil.
+
+  The correctness rule. Growth, merges and brand-new SCCs have no container; shrinking and
+  splitting produce subsets and do. Deliberately independent of [[incumbent]]: a minority piece of
+  a split inherits no name, but it is still a subset and still fine -- and its edge budget still
+  belongs to the SCC it broke off from."
   [recorded-sccs modules]
   (first (filter #(every? (:modules %) modules) recorded-sccs)))
 
 (defn- pieces-of
-  "The actual SCCs that fit inside `recorded-scc` -- itself, or the components it has split into."
-  [actual recorded-scc]
-  (filter #(every? (:modules recorded-scc) (:modules %)) actual))
+  "Every actual SCC that `recorded-scc`'s edge budget has to cover.
 
-(defn escaped-modules
-  "Modules that are in a cycle but in no recorded SCC that covers their whole component.
-
-  This is the assertion that catches every way the cycles can get worse: a module joining an
-  existing SCC, two recorded SCCs merging, and a brand new SCC forming between modules that were
-  previously acyclic. Shrinking and splitting produce subsets, which are fine."
-  [recorded-sccs actual]
-  (into (sorted-set)
-        (comp (remove #(containing-scc recorded-sccs (:modules %)))
-              (mapcat :modules))
-        actual))
+  That is the components it split into (subsets of it) *and* the one that inherited its name,
+  which after growth is not a subset. Counting both means a split cannot let each half spend the
+  full budget, and growth is still measured against it rather than reading as zero."
+  [recorded-sccs actual recorded-scc]
+  (filter (fn [{:keys [modules]}]
+            (or (every? (:modules recorded-scc) modules)
+                (= recorded-scc (incumbent recorded-sccs modules))))
+          actual))
 
 (defn scc-label
-  "Short name for an SCC, for failure messages. The full membership is in [[cycles-file]]; printing
-  a hundred module names as a map key makes the assertion output unreadable."
+  "Fallback name for an SCC that has no incumbent to inherit from, so that a failure about a brand
+  new cycle still has something readable to key on."
   [modules]
   (format "%d-module SCC (%s)"
           (count modules)
           (str/join ", " (cond-> (vec (take 3 (sort modules)))
                            (> (count modules) 3) (conj "...")))))
 
-(defn edge-drift
-  "Recorded SCCs whose edge budget the tree now exceeds, keyed by [[scc-label]].
-
-  Actual SCCs are grouped by the recorded SCC that contains them, so a recorded SCC that has since
-  split is still measured as a whole and its halves cannot each spend the original budget.
-  Returns `{label {:recorded _, :actual _}}`."
-  [recorded-sccs actual]
-  (into (sorted-map)
-        (keep (fn [{:keys [modules edges] :as recorded-scc}]
-                (let [n (reduce + 0 (map :edges (pieces-of actual recorded-scc)))]
-                  (when (> n edges)
-                    [(scc-label modules) {:recorded edges, :actual n}]))))
-        recorded-sccs))
-
 (defn graph-drift
-  "What one graph has regressed on, or an empty map when it is within its recorded SCCs."
+  "What one graph has regressed on, keyed by SCC name, or an empty map when it is within budget.
+
+  Each entry carries the whole story for that SCC -- which modules it gained and lost against its
+  incumbent, and what its edge count was and is -- so a reader never has to diff two hundred-module
+  sets by eye. An entry appears only when something got worse: modules appearing in a cycle that no
+  recorded SCC covers, or more edges than the recorded budget."
   [recorded-sccs actual]
-  (let [escaped (escaped-modules recorded-sccs actual)
-        edges   (edge-drift recorded-sccs actual)]
-    (cond-> {}
-      (seq escaped) (assoc :escaped-modules escaped)
-      (seq edges)   (assoc :edges edges))))
+  (let [named (named-sccs recorded-sccs actual)]
+    (into (sorted-map)
+          (keep (fn [{:keys [modules edges] :as scc}]
+                  ;; Which recorded SCC this one is answerable to: the one it inherited its name
+                  ;; from, or -- for a piece that split off without a majority, so inherited no
+                  ;; name -- the one it broke off from. Only a component that is neither is new.
+                  (let [prev            (or (incumbent recorded-sccs modules)
+                                            (containing-scc recorded-sccs modules))
+                        ;; an SCC that split shares its parent's budget, so measure every piece
+                        ;; together rather than letting each spend the whole thing again
+                        edges-actual    (if prev
+                                          (reduce + 0 (map :edges (pieces-of recorded-sccs actual prev)))
+                                          edges)
+                        edges-recorded  (:edges prev 0)
+                        modules-added   (into (sorted-set) (remove (:modules prev #{})) modules)
+                        modules-removed (into (sorted-set) (remove modules) (:modules prev #{}))]
+                    (when (or (seq modules-added) (> edges-actual edges-recorded))
+                      [(or (:name scc) (scc-label modules))
+                       (cond-> {:edges-recorded edges-recorded
+                                :edges-actual   edges-actual}
+                         (seq modules-added)   (assoc :modules-added modules-added)
+                         (seq modules-removed) (assoc :modules-removed modules-removed)
+                         (not prev)            (assoc :new-cycle? true))]))))
+          named)))
 
 (defn drift
   "Everything the ratchet objects to, or an empty map when the tree is within its recorded state.
@@ -257,7 +336,7 @@
 (defn tightened-sccs
   "`recorded-sccs` narrowed to match `actual`. Never widens: an SCC that grew or merged keeps its
   recorded shape so the test still fails; one that split becomes its pieces, each capped at the
-  budget it came from; one that is gone is dropped."
+  budget it came from; one that is gone is dropped. Surviving SCCs keep their names."
   [recorded-sccs actual]
   (let [;; A recorded SCC that grew or merged has no pieces, but so does one that is simply gone.
         ;; Only the second is an improvement, so tell them apart by whether any of its modules is
@@ -266,15 +345,17 @@
                      (some (fn [{actual-modules :modules}]
                              (and (some modules actual-modules)
                                   (not (every? modules actual-modules))))
-                           actual))]
-    (into #{}
-          (mapcat (fn [{:keys [edges] :as recorded-scc}]
-                    (if (regressed? recorded-scc)
-                      [recorded-scc]
-                      (for [piece (pieces-of actual recorded-scc)]
-                        {:modules (:modules piece)
-                         :edges   (min edges (:edges piece))}))))
-          recorded-sccs)))
+                           actual))
+        kept       (into #{}
+                         (mapcat (fn [{:keys [edges] :as recorded-scc}]
+                                   (if (regressed? recorded-scc)
+                                     [recorded-scc]
+                                     (for [piece (pieces-of recorded-sccs actual recorded-scc)]
+                                       {:modules (:modules piece)
+                                        :edges   (min edges (:edges piece))}))))
+                         recorded-sccs)]
+    ;; re-name against the *old* record, so a surviving piece inherits and a split-off one is minted
+    (named-sccs recorded-sccs kept)))
 
 (defn tightened
   "`recorded` narrowed to match the tree, in every graph. Never widens."
@@ -291,11 +372,14 @@
         graph-keys))
 
 (defn seeded
-  "The tree's cycles recorded verbatim. Widens, so it is the explicit escape hatch: initial adoption,
-  or accepting a cycle you have argued for in your PR."
-  [{:keys [graphs unconstrained]}]
+  "The tree's cycles recorded verbatim, names and all. Widens, so it is the explicit escape hatch:
+  initial adoption, or accepting a cycle you have argued for in your PR. SCCs that survive from the
+  previous record keep their names."
+  [recorded {:keys [graphs unconstrained]}]
   (into {:unconstrained-modules unconstrained}
-        (map (fn [graph-key] [graph-key {:sccs (actual-sccs (get graphs graph-key))}]))
+        (map (fn [graph-key]
+               [graph-key {:sccs (named-sccs (get-in recorded [graph-key :sccs])
+                                             (actual-sccs (get graphs graph-key)))}]))
         graph-keys))
 
 (def ^:private header
@@ -316,6 +400,11 @@
        ";; A module may not join an SCC, two SCCs may not merge, and a new SCC may not appear.\n"
        ";; Splitting an SCC or dropping out of one is the whole point and always passes.\n"
        ";;\n"
+       ";; :name is a meaningless random label, so that failures can say \"amber-harbor gained 3\n"
+       ";; modules\" rather than printing a hundred module names. An SCC keeps its name as long as\n"
+       ";; half its modules stay together; a piece that splits off with less than half gets a new\n"
+       ";; one. Do not read anything into a name.\n"
+       ";;\n"
        ";; :unconstrained-modules -- modules whose dependencies the config does not record:\n"
        ";; `:uses :any` hides requires, `:model-imports :bypass` hides model references. Cycles\n"
        ";; routed through them are invisible here, so neither set may grow.\n"))
@@ -328,8 +417,9 @@
 
 (defn- render-scc
   "An SCC entry, laid out to sit at column 4 inside the `  #{` that opens a graph's `:sccs`."
-  [{:keys [modules edges]}]
-  (str "{:edges   " edges "\n"
+  [{:keys [modules edges] scc-name :name}]
+  (str "{:name    " (pr-str scc-name) "\n"
+       "     :edges   " edges "\n"
        "     :modules " (render-modules 16 modules) "}"))
 
 (defn- render-graph
@@ -340,7 +430,7 @@
        (if (empty? sccs)
          "  #{}}"
          (str "  #{"
-              (str/join "\n\n    " (map render-scc (sort-by (comp vec sort :modules) sccs)))
+              (str/join "\n\n    " (map render-scc (sort-by :name sccs)))
               "}}"))))
 
 (defn render
@@ -359,37 +449,61 @@
                                    (render-modules (+ 5 (count (str kind))) modules)))))
        "}}\n"))
 
+(defn- module-list
+  "`modules` as a comma-separated string, truncated -- the count is the useful part once a list runs
+  past a screenful, and the full membership is in the file."
+  [modules]
+  (let [shown (sort modules)]
+    (str (str/join ", " (take 10 shown))
+         (when (> (count shown) 10)
+           (format " ... and %d more" (- (count shown) 10))))))
+
 (defn change-report
   "The lines [[fix!]] prints."
   [recorded actual]
   (let [after (tightened recorded actual)
-        {:keys [newly-unconstrained]} (drift recorded actual)]
+        d     (drift recorded actual)]
     (concat
      (for [graph-key graph-keys
-           :let      [before-sccs (into {} (map (juxt :modules :edges)) (get-in recorded [graph-key :sccs]))
-                      after-sccs  (into {} (map (juxt :modules :edges)) (get-in after [graph-key :sccs]))]
-           [modules edges] (sort-by (comp vec sort key) before-sccs)
-           :let      [now (get after-sccs modules)]
-           :when     (not= edges now)]
+           :let      [before-sccs (into {} (map (juxt :name identity)) (get-in recorded [graph-key :sccs]))
+                      after-sccs  (into {} (map (juxt :name identity)) (get-in after [graph-key :sccs]))]
+           scc-name  (sort (keys before-sccs))
+           :let      [before (get before-sccs scc-name)
+                      now    (get after-sccs scc-name)]
+           :when     (not= (:edges before) (:edges now))]
        (if (nil? now)
-         (format "%s: dropped an SCC of %d module(s): %s" graph-key (count modules) (str/join ", " (sort modules)))
-         (format "%s: lowered edges for the %s: %d -> %d" graph-key (scc-label modules) edges now)))
+         (format "%s: dropped %s, an SCC of %d module(s)" graph-key scc-name (count (:modules before)))
+         (format "%s: %s lost %d module(s) and %d edge(s)"
+                 graph-key scc-name
+                 (- (count (:modules before)) (count (:modules now)))
+                 (- (:edges before) (:edges now)))))
      (for [graph-key graph-keys
-           :let      [{:keys [escaped-modules edges]} (get (drift recorded actual) graph-key)]
-           line      (concat
-                      (when (seq escaped-modules)
-                        [(format "WARNING: %s: %d module(s) are in a cycle no recorded SCC covers: %s"
-                                 graph-key
-                                 (count escaped-modules)
-                                 (str (str/join ", " (take 10 escaped-modules))
-                                      (when (> (count escaped-modules) 10)
-                                        (format " ... and %d more" (- (count escaped-modules) 10)))))
-                         "         Break the new cycle, or accept it with `./bin/mage fix-module-cycles --seed` and defend it in your PR."])
-                      (for [[label {:keys [recorded actual]}] edges]
-                        (format "WARNING: %s: the %s is over budget (%d edges recorded, %d actual) -- remove a dependency between its members"
-                                graph-key label recorded actual)))]
+           [scc-name {:keys [modules-added modules-removed edges-recorded edges-actual new-cycle?]}]
+           (get d graph-key)
+           line (cond-> []
+                  new-cycle?
+                  (conj (format "WARNING: %s: new cycle %s (%d edges): %s"
+                                graph-key scc-name edges-actual
+                                (module-list modules-added)))
+
+                  (and (not new-cycle?) (seq modules-added))
+                  (conj (format "WARNING: %s: %s gained %d module(s): %s"
+                                graph-key scc-name (count modules-added)
+                                (module-list modules-added)))
+
+                  (seq modules-removed)
+                  (conj (format "         %s: %s also lost %d module(s): %s"
+                                graph-key scc-name (count modules-removed)
+                                (module-list modules-removed)))
+
+                  (> edges-actual edges-recorded)
+                  (conj (format "WARNING: %s: %s is over budget by %d edge(s) (%d recorded, %d actual)"
+                                graph-key scc-name (- edges-actual edges-recorded)
+                                edges-recorded edges-actual)))]
        line)
-     (for [[kind modules] newly-unconstrained]
+     (when (seq d)
+       ["         Break the new cycle, or accept it with `./bin/mage fix-module-cycles --seed` and defend it in your PR."])
+     (for [[kind modules] (:newly-unconstrained d)]
        (format "WARNING: module(s) newly hiding dependencies via %s: %s -- this hides their cycles from this check"
                (case kind :uses "`:uses :any`" :model-imports "`:model-imports :bypass`")
                (str/join ", " modules))))))
@@ -403,7 +517,7 @@
   ([{:keys [seed]}]
    (let [recorded (read-cycles)
          actual   (read-module-graphs)
-         text     (render (if seed (seeded actual) (tightened recorded actual)))
+         text     (render (if seed (seeded recorded actual) (tightened recorded actual)))
          file     (io/file cycles-file)
          old      (when (.exists file) (slurp file))]
      (run! println (change-report recorded actual))

@@ -15,16 +15,23 @@
 ;; A module may not join an SCC, two SCCs may not merge, and a new SCC may not appear.
 ;; Splitting an SCC or dropping out of one is the whole point and always passes.
 ;;
+;; :name is a meaningless random label, so that failures can say "amber-harbor gained 3
+;; modules" rather than printing a hundred module names. An SCC keeps its name as long as
+;; half its modules stay together; a piece that splits off with less than half gets a new
+;; one. Do not read anything into a name.
+;;
 ;; :unconstrained-modules -- modules whose dependencies the config does not record:
 ;; `:uses :any` hides requires, `:model-imports :bypass` hides model references. Cycles
 ;; routed through them are invisible here, so neither set may grow.
 {:uses
  {:sccs
-  #{{:edges   2
+  #{{:name    "amber-prairie"
+     :edges   2
      :modules #{segments
                 xrays}}
 
-    {:edges   986
+    {:name    "somber-harbor"
+     :edges   986
      :modules #{actions
                 activity-feed
                 agent-api
@@ -131,7 +138,8 @@
 
  :uses+model-imports
  {:sccs
-  #{{:edges   1404
+  #{{:name    "ivory-orchard"
+     :edges   1404
      :modules #{actions
                 activity-feed
                 agent-api
