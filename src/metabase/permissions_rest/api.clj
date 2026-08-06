@@ -90,11 +90,11 @@
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]
                                   [:force      {:default false} [:maybe ms/BooleanValue]]]
    body :- [:map
-            [:groups                          :map]
+            [:groups                          ms/Map]
             [:revision       {:optional true} [:maybe ms/Int]]
             [:force          {:optional true} [:maybe :boolean]]
-            [:sandboxes      {:optional true} [:maybe [:sequential :map]]]
-            [:impersonations {:optional true} [:maybe [:sequential :map]]]]]
+            [:sandboxes      {:optional true} [:maybe [:sequential ms/Map]]]
+            [:impersonations {:optional true} [:maybe [:sequential ms/Map]]]]]
   (api/check-superuser)
   (let [new-graph (mc/decode ::permissions-rest.schema/strict-api-permissions-graph
                              body
@@ -363,9 +363,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [is_group_manager]} :- [:map
-                                  [:is_group_manager                  :boolean]
-                                  [:group_id         {:optional true} :any]
-                                  [:user_id          {:optional true} :any]]]
+                                  [:is_group_manager :boolean]]]
   ;; currently this API is only used to update the `is_group_manager` flag and it requires advanced-permissions
   (perms/check-advanced-permissions-enabled :group-manager)
   ;; Make sure only Super user or Group Managers can call this
