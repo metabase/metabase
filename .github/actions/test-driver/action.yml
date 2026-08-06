@@ -72,25 +72,30 @@ runs:
     # Workflow expressions have no arithmetic, so the shell computes it.
     #
     # run-tests.yml calls app-db.yml, backend.yml, drivers.yml and semantic-search.yml
-    # into ONE run, so all four share an artifact namespace. Neither `github.job`
-    # (`be-tests-postgres` exists in app-db.yml and drivers.yml) nor `junit-name`
-    # (both derive `be-tests-postgres-ee`) is unique there on its own; together with
-    # `artifact-suffix` they are.
+    # as part of ONE run, so all four share an artifact namespace. `junit-name` alone is not
+    # unique there — app-db.yml and drivers.yml both derive `be-tests-postgres-ee` — so
+    # `artifact-suffix` carries the rest of the discriminator.
     - name: Resolve rerun artifact names
       if: ${{ inputs.granular-rerun == 'true' }}
       shell: bash
       env:
-        RERUN_ARTIFACT_BASE: ${{ format('failed-tests-{0}-{1}{2}', github.job, inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
+        RERUN_ARTIFACT_BASE: ${{ format('failed-tests-{0}{1}', inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
       run: |
         echo "RERUN_ARTIFACT=$RERUN_ARTIFACT_BASE-attempt-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
         echo "RERUN_PREV_ARTIFACT=$RERUN_ARTIFACT_BASE-attempt-$((GITHUB_RUN_ATTEMPT - 1))" >> "$GITHUB_ENV"
 
+    # `pattern` (not `name`) because the artifact is legitimately absent whenever the
+    # previous attempt recorded nothing: `name` treats that as an error, `pattern`
+    # downloads nothing and moves on. The value is a literal — no glob metacharacters —
+    # so it matches exactly one artifact, which lands at `target/failed-tests`. A pattern
+    # that ever matched two would nest them under their artifact names instead, leaving
+    # the file absent and falling back to the full suite.
     - name: Restore previously-failed tests
       if: ${{ inputs.granular-rerun == 'true' && github.run_attempt != '1' }}
       continue-on-error: true
       uses: actions/download-artifact@v8
       with:
-        name: ${{ env.RERUN_PREV_ARTIFACT }}
+        pattern: ${{ env.RERUN_PREV_ARTIFACT }}
         path: target
 
     - name: Test database driver
