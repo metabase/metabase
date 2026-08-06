@@ -1,3 +1,4 @@
+import { getRoutes as getAdminPermissionsRoutes } from "metabase/admin/permissions/routes";
 import { Navigate, Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 
@@ -25,6 +26,11 @@ const embeddingHubSecurityPage = () =>
 const embeddingHubAuthenticationPage = () =>
   import("./pages").then(({ EmbeddingHubAuthenticationPage }) => ({
     Component: EmbeddingHubAuthenticationPage,
+  }));
+
+const embeddingHubPermissionsPage = () =>
+  import("./pages").then(({ EmbeddingHubPermissionsPage }) => ({
+    Component: EmbeddingHubPermissionsPage,
   }));
 
 const setupPermissionsAndTenantsPage = () =>
@@ -68,6 +74,10 @@ export function getEmbeddingHubRoutes() {
         <Route path="security" lazy={embeddingHubSecurityPage} />
 
         <Route path="authentication" lazy={embeddingHubAuthenticationPage} />
+
+        <Route path="permissions" lazy={embeddingHubPermissionsPage}>
+          {getAdminPermissionsRoutes()}
+        </Route>
       </Route>
     </Route>
   );
