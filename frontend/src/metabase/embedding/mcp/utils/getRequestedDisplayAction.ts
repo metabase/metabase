@@ -14,8 +14,8 @@ export type RequestedDisplayAction =
  * The tool's `display` is a one-shot request, not a binding. It is honored once
  * per query, and only after that query's own results have landed — applying it
  * earlier would lock a display against the previous query's data. Once honored
- * the query is marked settled even when no change was needed, so the user
- * picking a different chart type afterwards is never overridden.
+ * the query is marked settled, so the user picking a different chart type
+ * afterwards is never overridden.
  */
 export function getRequestedDisplayAction({
   requestedDisplay,
@@ -23,6 +23,7 @@ export function getRequestedDisplayAction({
   defaultDisplay,
   queryKey,
   settledQueryKey,
+  isDisplayLocked,
 }: {
   requestedDisplay: CardDisplayType | null;
   currentDisplay: CardDisplayType | null;
@@ -31,6 +32,8 @@ export function getRequestedDisplayAction({
   queryKey: string | null;
   /** The query whose request was already honored, if any. */
   settledQueryKey: string | null;
+  /** Whether the current display is pinned against data-shape resets. */
+  isDisplayLocked: boolean;
 }): RequestedDisplayAction {
   if (!requestedDisplay || settledQueryKey === queryKey) {
     return "settle";
@@ -40,5 +43,12 @@ export function getRequestedDisplayAction({
     return "wait";
   }
 
-  return currentDisplay === requestedDisplay ? "settle" : "apply";
+  // A requested type can coincide with the display the SDK picked on its own,
+  // which leaves it unlocked and free to be reset when the data shape changes.
+  // Applying anyway is what pins it, so "already showing it" is only settled
+  // once it is also locked.
+  const isAlreadyHonored =
+    currentDisplay === requestedDisplay && isDisplayLocked;
+
+  return isAlreadyHonored ? "settle" : "apply";
 }

@@ -107,15 +107,24 @@ export function useMcpVisualizationSelector({
       defaultDisplay: defaultDisplayState.defaultDisplay,
       queryKey,
       settledQueryKey: settledDisplayQueryKeyRef.current,
+      isDisplayLocked: question?.displayIsLocked() ?? false,
     });
 
     if (action === "wait") {
       return;
     }
 
+    // Only a request that was actually handled settles the query. `requestedDisplay`
+    // and `question` are props that can arrive a render later than this query's
+    // results; settling without them would mark the query done and drop a request
+    // that had not been made yet.
+    if (!requestedDisplay || !question) {
+      return;
+    }
+
     settledDisplayQueryKeyRef.current = queryKey;
 
-    if (action === "apply" && question && requestedDisplay) {
+    if (action === "apply") {
       updateQuestion(question.setDisplay(requestedDisplay).lockDisplay(), {
         run: false,
       });

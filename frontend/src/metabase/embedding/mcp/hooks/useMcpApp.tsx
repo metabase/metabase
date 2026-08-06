@@ -6,7 +6,7 @@ import {
   applyHostStyleVariables,
   useApp,
 } from "@modelcontextprotocol/ext-apps/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { type CardDisplayType, isCardDisplayType } from "metabase-types/api";
 
@@ -84,6 +84,9 @@ export function useMcpApp(): McpAppState {
   const [queryError, setQueryError] = useState<string | null>(null);
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
 
+  /** The handle whose resolution is still wanted; older ones are discarded. */
+  const pendingQueryHandleRef = useRef<string | null>(null);
+
   const applyPayload = useCallback(
     async ({
       query,
@@ -102,7 +105,15 @@ export function useMcpApp(): McpAppState {
       // so an unrecognized value falls back to the inferred display.
       setDisplay(isCardDisplayType(display) ? display : null);
 
+      // Cleared for either shape: the retry the host sends on `ontoolresult` may
+      // carry the query inline rather than as a handle, and a stale failure left
+      // standing would render over a query that has since loaded.
+      setQueryError(null);
+
       if (query) {
+        // A newer payload supersedes any handle still in flight, so its
+        // resolution must not overwrite this query when it lands.
+        pendingQueryHandleRef.current = null;
         setQuery(query);
         setPrompt(prompt ?? null);
         return;
@@ -112,9 +123,7 @@ export function useMcpApp(): McpAppState {
         return;
       }
 
-      // Cleared up front so the retry the host sends on `ontoolresult` can
-      // recover from a failed `ontoolinput` resolution.
-      setQueryError(null);
+      pendingQueryHandleRef.current = queryHandle;
 
       const { instanceUrl, uiCredential, mcpSessionId } =
         // Unjustified type cast. FIXME
@@ -133,9 +142,20 @@ export function useMcpApp(): McpAppState {
           queryHandle,
         });
 
+        // `applyPayload` runs on both `ontoolinput` and `ontoolresult`, so two
+        // resolutions can be in flight at once. Drop this one if a newer payload
+        // has arrived, rather than overwriting it with older results.
+        if (pendingQueryHandleRef.current !== queryHandle) {
+          return;
+        }
+
         setQuery(resolved.query);
         setPrompt(resolved.prompt ?? prompt ?? null);
       } catch (error) {
+        if (pendingQueryHandleRef.current !== queryHandle) {
+          return;
+        }
+
         console.error("Error resolving MCP query handle", error);
         setQueryError(
           getMcpQueryFetchErrorMessage(getMcpQueryFetchErrorType(error)),

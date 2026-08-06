@@ -6,6 +6,7 @@ const base = {
   defaultDisplay: "table",
   queryKey: "query-1",
   settledQueryKey: null,
+  isDisplayLocked: false,
 } as const;
 
 describe("getRequestedDisplayAction (GHY-4157)", () => {
@@ -27,10 +28,27 @@ describe("getRequestedDisplayAction (GHY-4157)", () => {
     );
   });
 
-  it("settles without applying when the display already matches", () => {
-    expect(getRequestedDisplayAction({ ...base, currentDisplay: "bar" })).toBe(
-      "settle",
-    );
+  it("applies a matching display that is not yet locked, so a later reset cannot drop it", () => {
+    // The requested type can coincide with the SDK's own pick while the display
+    // is still unlocked. Settling here would skip `lockDisplay()`, leaving a
+    // later data-shape reset free to override what the tool asked for.
+    expect(
+      getRequestedDisplayAction({
+        ...base,
+        currentDisplay: "bar",
+        isDisplayLocked: false,
+      }),
+    ).toBe("apply");
+  });
+
+  it("settles when the matching display is already locked", () => {
+    expect(
+      getRequestedDisplayAction({
+        ...base,
+        currentDisplay: "bar",
+        isDisplayLocked: true,
+      }),
+    ).toBe("settle");
   });
 
   it("never overrides the user's own pick after the request was honored", () => {

@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import { getMcpQueryFetchErrorMessage } from "../utils/getMcpQueryFetchError";
@@ -68,6 +68,70 @@ describe("useMcpApp", () => {
   });
 
   describe("v2 handle payloads (GHY-4157)", () => {
+    it("clears a handle-resolution error when an inline query arrives instead", async () => {
+      // The host retries on `ontoolresult`, and that retry may carry the query
+      // inline rather than as a handle. Only the handle path cleared the error,
+      // so the route kept rendering the failure over a query that had loaded.
+      fetchMock.get("path:/api/embed-mcp/queries/handle-1", 500);
+
+      const { result, handlers } = setup();
+
+      handlers.ontoolinput?.({ arguments: { query_handle: "handle-1" } });
+
+      await waitFor(() => {
+        expect(result.current.queryError).toBe(
+          getMcpQueryFetchErrorMessage("network"),
+        );
+      });
+
+      handlers.ontoolresult?.({ structuredContent: { query: ENCODED_QUERY } });
+
+      await waitFor(() => {
+        expect(result.current.query).toBe(ENCODED_QUERY);
+      });
+      expect(result.current.queryError).toBeNull();
+    });
+
+    it("ignores a stale handle resolution that lands after a newer one", async () => {
+      // `applyPayload` is async and runs on both `ontoolinput` and
+      // `ontoolresult`. If the first request settles last, its query would
+      // overwrite the newer one and the iframe would render the wrong results.
+      let releaseFirst: (() => void) | undefined;
+      const firstSettled = new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+
+      fetchMock.get("path:/api/embed-mcp/queries/handle-1", async () => {
+        await firstSettled;
+        return { query: ENCODED_QUERY, prompt: "stale" };
+      });
+      fetchMock.get("path:/api/embed-mcp/queries/handle-2", {
+        query: DRILLED_QUERY,
+        prompt: "fresh",
+      });
+
+      const { result, handlers } = setup();
+
+      handlers.ontoolinput?.({ arguments: { query_handle: "handle-1" } });
+      handlers.ontoolresult?.({
+        structuredContent: { query_handle: "handle-2" },
+      });
+
+      await waitFor(() => {
+        expect(result.current.query).toBe(DRILLED_QUERY);
+      });
+
+      releaseFirst?.();
+      // Let the superseded request settle; it must be discarded rather than
+      // overwrite the newer query.
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(result.current.query).toBe(DRILLED_QUERY);
+      expect(result.current.prompt).toBe("fresh");
+    });
+
     it("exchanges a query_handle for the query so the model never carries it", async () => {
       fetchMock.get("path:/api/embed-mcp/queries/handle-1", {
         query: ENCODED_QUERY,
