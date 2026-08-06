@@ -4,7 +4,7 @@
 ;; automatically. Raising a budget, or adding one for a new linter (`--seed`), is a hand edit
 ;; to defend in your PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
-{:ignore-counts {:aliased-namespace-symbol                                            6
+{:ignore-counts {:aliased-namespace-symbol                                            5
                  :case-symbol-test                                                    1
                  :clojure-lsp/unused-public-var                                       9
                  :consistent-alias                                                    2

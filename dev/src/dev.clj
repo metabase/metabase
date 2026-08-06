@@ -365,11 +365,9 @@
   []
   (binding [t2.connection/*current-connectable* nil]
     (or (t2/select-one :model/Database :name "Application Database")
-        ;; var-quoting a private var needs the fully-qualified namespace; the alias will not resolve here
-        #_{:clj-kondo/ignore [:aliased-namespace-symbol]}
-        (let [details (#'metabase.app-db.env/broken-out-details
+        (let [details (#'mdb.env/broken-out-details
                        (mdb/db-type)
-                       @#'metabase.app-db.env/env)
+                       @#'mdb.env/env)
               app-db  (first (t2/insert-returning-instances! :model/Database
                                                              {:name    "Application Database"
                                                               :engine  (mdb/db-type)
@@ -398,7 +396,7 @@
   "#tap, but to use in pipelines like `(-> 1 inc dev/tap prn inc)`."
   [form]
   (u/prog1 form
-    (tap> <>)))
+           (tap> <>)))
 
 (defn- tests-in-var-ns [test-var]
   (->> test-var meta :ns ns-interns vals
