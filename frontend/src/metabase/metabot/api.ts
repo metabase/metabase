@@ -29,6 +29,9 @@ import type { MetabotConversationDetail } from "./utils/normalize-fetched-chat-m
 const touchesCredentials = (body: UpdateMetabotSettingsRequest) =>
   "credentials" in body || "api-key" in body;
 
+const touchesCredentials = (body: UpdateMetabotSettingsRequest) =>
+  "credentials" in body || "api-key" in body;
+
 export const metabotApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listMetabots: builder.query<{ items: MetabotInfo[] }, void>({
