@@ -8,6 +8,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]))
 

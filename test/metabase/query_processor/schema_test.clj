@@ -9,7 +9,8 @@
    ;; that namespace is loaded -- without this require the schema below fails to resolve
    [metabase.lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
-   [metabase.query-processor.schema :as qp.schema]))
+   [metabase.query-processor.schema :as qp.schema]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -45,7 +46,7 @@
 
 (deftest ^:parallel api-query-test
   (testing "closes against the keys `::any-query` names, without loosening the constraints it carries"
-    (are [valid? query] (= valid? (mc/validate ::qp.schema/api-query query))
+    (are [valid? query] (= valid? (mr/validate ::qp.schema/api-query query))
       true  {:database 1, :type "query", :query {:source-table 1}}
       true  {:database 1, :lib/type "mbql/query", :stages []}
       ;; an internal query names no database and runs a named function instead
@@ -54,7 +55,7 @@
       ;; the `[:fn ...]` branches still apply
       false {:database 1, :query {}}))
   (testing "`::any-query` stays open, for a query carrying keys that cannot be set over HTTP"
-    (is (mc/validate ::qp.schema/any-query {:database 1, :type :query, :query {}, :sneaky 1}))))
+    (is (mr/validate ::qp.schema/any-query {:database 1, :type :query, :query {}, :sneaky 1}))))
 
 (deftest ^:parallel api-query-does-not-coerce-test
   (testing (str "A schema used for an API param is decoded, not just validated, and a query may not be normalized "

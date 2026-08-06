@@ -8,7 +8,8 @@
    ;; loading the route namespaces is what populates the audit -- an endpoint in a namespace nothing has required
    ;; yet is not recorded, so this test only sees as much of the API as the test run has loaded
    [metabase.api-routes.core]
-   [metabase.api.macros.params-audit :as params-audit]))
+   [metabase.api.macros.params-audit :as params-audit]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -48,7 +49,7 @@
    "\n"
    (for [[{:keys [ns method route]} findings] (sort-by (comp str :ns key) own)
          :let [file (ns-file ns)]]
-     (str (format "  %-6s %-44s %s" (str/upper-case (name method)) route
+     (str (format "  %-6s %-44s %s" (u/upper-case-en (name method)) route
                   (at file (line-of file [(format "defendpoint %s %s" method (pr-str route))
                                           (format "defendpoint %s [%s" method (pr-str route))])))
           (str/join (for [[param-type ms] findings
