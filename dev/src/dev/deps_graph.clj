@@ -956,25 +956,24 @@
       (symbol (str prefix ".core"))
       (symbol (str prefix ".init"))}))
 
-(defn- module-top-level-ancestor
-  [declared-modules module]
-  (or (last (module-ancestor-chain declared-modules module)) module))
-
-(defn- externally-referenceable-module?
+(defn- module-visibility-root
+  "The module whose subtree `module` is private to, or `nil` if it may be named from anywhere.
+  Mirror of `hooks.common.modules/visibility-root` — see that function for the semantics."
   [config module]
   (let [declared-modules (set (keys config))]
     (loop [module module]
-      (if-let [parent (module-parent declared-modules module)]
-        (and (contains? (expanded-module-exports config parent) module)
-             (recur parent))
-        true))))
+      (when-let [parent (module-parent declared-modules module)]
+        (if (contains? (expanded-module-exports config parent) module)
+          (recur parent)
+          parent)))))
 
 (defn- module-namable-from?
   [config caller target]
-  (let [declared-modules (set (keys config))]
-    (or (= (module-top-level-ancestor declared-modules caller)
-           (module-top-level-ancestor declared-modules target))
-        (externally-referenceable-module? config target))))
+  (let [declared-modules (set (keys config))
+        root             (module-visibility-root config target)]
+    (or (nil? root)
+        (= root caller)
+        (boolean (some #(= root %) (module-ancestor-chain declared-modules caller))))))
 
 (defn- expanded-module-uses
   [config module]

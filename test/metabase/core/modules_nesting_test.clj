@@ -260,6 +260,29 @@
           (is (false? (externally-visible? bad-mid  'outer.middle.deepest)))
           (is (false? (externally-visible? bad-deep 'outer.middle.deepest))))))))
 
+(deftest ^:parallel visibility-root-test
+  (testing "`visibility-root` is the nearest ancestor that does not export the module below it"
+    (let [visibility-root (hook-fn 'visibility-root)]
+      (testing "top-level modules are visible everywhere, so they have no root"
+        (is (nil? (visibility-root {} 'lib)))
+        (is (nil? (visibility-root {:metabase/modules {'lib {}}} 'lib))))
+      (testing "an unopened child is scoped to its direct parent"
+        (let [config {:metabase/modules {'lib {:module-exports #{}}}}]
+          (is (= 'lib (visibility-root config 'lib.schema)))))
+      (testing "a fully-exported chain reaches top-level, so there is no root"
+        (let [config {:metabase/modules {'lib {:module-exports #{'lib.schema}}}}]
+          (is (nil? (visibility-root config 'lib.schema)))))
+      (testing "each export widens the scope by exactly one level"
+        (let [none  {:metabase/modules {'outer   {:module-exports #{}}
+                                        'outer.a {:module-exports #{}}}}
+              inner {:metabase/modules {'outer   {:module-exports #{}}
+                                        'outer.a {:module-exports #{'outer.a.leaf}}}}
+              both  {:metabase/modules {'outer   {:module-exports #{'outer.a}}
+                                        'outer.a {:module-exports #{'outer.a.leaf}}}}]
+          (is (= 'outer.a (visibility-root none  'outer.a.leaf)))
+          (is (= 'outer   (visibility-root inner 'outer.a.leaf)))
+          (is (nil?       (visibility-root both  'outer.a.leaf))))))))
+
 ;;;; -------------------------------------------------------------------------
 ;;;; STRICT MODEL: every cross-module access is an explicit :uses + :api
 ;;;; check. There is no implicit visibility of any kind. Same-module access
@@ -501,6 +524,45 @@
         (is (nil? (usage-error (assoc-in config [:metabase/modules 'lib.other] {:uses :any, :api :any})
                                'lib.other
                                'metabase.lib.schema.foo)))))))
+
+(deftest ^:parallel usage-error-privacy-scoped-to-nearest-non-opening-ancestor-test
+  (testing (str "An unopened nested child is private to the subtree of the nearest ancestor that "
+                "does NOT export it — not to its whole top-level subtree. `outer.a` keeps "
+                "`outer.a.leaf` private, so only the `outer.a` subtree may name it; a cousin "
+                "under the same top-level `outer` may not.")
+    (let [config {:metabase/modules {'outer        {:module-exports #{}
+                                                    :uses           :any
+                                                    :api            :any}
+                                     'outer.a      {:module-exports #{}
+                                                    :uses           :any
+                                                    :api            :any}
+                                     'outer.a.leaf {:uses :any
+                                                    :api  :any}
+                                     'outer.a.sib  {:uses :any
+                                                    :api  :any}
+                                     'outer.b      {:module-exports #{}
+                                                    :uses           :any
+                                                    :api            :any}
+                                     'outer.b.deep {:uses :any
+                                                    :api  :any}}}]
+      (testing "the nearest non-opening ancestor and its descendants may name it"
+        (is (nil? (usage-error config 'outer.a 'metabase.outer.a.leaf.foo)))
+        (is (nil? (usage-error config 'outer.a.sib 'metabase.outer.a.leaf.foo))))
+      (testing "a cousin sharing only the top-level ancestor may NOT name it"
+        (is (some? (usage-error config 'outer.b 'metabase.outer.a.leaf.foo))
+            (str "outer.b is outside outer.a's subtree; sharing the top-level module `outer` "
+                 "is not enough to see a module outer.a keeps private."))
+        (is (some? (usage-error config 'outer.b.deep 'metabase.outer.a.leaf.foo))))
+      (testing "an ancestor above the nearest non-opening ancestor may NOT name it either"
+        (is (some? (usage-error config 'outer 'metabase.outer.a.leaf.foo))))
+      (testing "exporting the leaf one level up widens the scope to the whole `outer` subtree"
+        (let [config (assoc-in config [:metabase/modules 'outer.a :module-exports] #{'outer.a.leaf})]
+          (is (nil? (usage-error config 'outer 'metabase.outer.a.leaf.foo)))
+          (is (nil? (usage-error config 'outer.b 'metabase.outer.a.leaf.foo)))
+          (is (nil? (usage-error config 'outer.b.deep 'metabase.outer.a.leaf.foo)))
+          (testing "but not to a module outside the `outer` subtree"
+            (let [config (assoc-in config [:metabase/modules 'unrelated] {:uses :any, :api :any})]
+              (is (some? (usage-error config 'unrelated 'metabase.outer.a.leaf.foo))))))))))
 
 (deftest ^:parallel usage-error-uses-any-rest-module-test
   (testing "`:uses :any` does not allow domain modules to depend on REST modules"
