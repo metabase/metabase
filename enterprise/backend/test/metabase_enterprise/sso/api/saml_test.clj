@@ -50,7 +50,8 @@
                                            saml-application-name          nil
                                            saml-keystore-path             nil
                                            saml-keystore-password         nil
-                                           saml-keystore-alias            nil]
+                                           saml-keystore-alias            nil
+                                           saml-group-mappings            {}]
           (mt/user-http-request :crowberto :put 200 "saml/settings"
                                 {:saml-enabled                    true
                                  :saml-identity-provider-uri      "https://example.test"
@@ -63,9 +64,11 @@
                                  :saml-group-sync                 true
                                  :saml-user-provisioning-enabled? true
                                  :saml-application-name           "Metabase"
+                                 :saml-group-mappings             {"admins" [1]}
                                  :saml-keystore-path              nil
                                  :saml-keystore-password          nil
                                  :saml-keystore-alias             nil})
           (testing "and persists them rather than dropping them"
             (is (= "tenant" (sso-settings/saml-attribute-tenant)))
-            (is (= "group" (sso-settings/saml-attribute-group)))))))))
+            (is (= "group" (sso-settings/saml-attribute-group)))
+            (is (= {:admins [1]} (sso-settings/saml-group-mappings)))))))))
