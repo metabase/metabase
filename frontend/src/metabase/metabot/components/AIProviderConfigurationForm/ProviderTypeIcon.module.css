@@ -4,3 +4,7 @@
   background-color: var(--mb-color-background-secondary);
   border-radius: var(--mantine-radius-md);
 }
+
+.mark {
+  color: var(--mb-color-text-primary);
+}
