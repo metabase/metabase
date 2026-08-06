@@ -1,17 +1,18 @@
 ---
-title: Metabase logs
+title: Application logs
 redirect_from:
   - /docs/latest/operations-guide/log-configuration
+  - /docs/latest/configuring-metabase/log-configuration
 summary: Configure how much information Metabase displays in its logs.
 ---
 
-# Metabase logs
+# Application logs
 
 Metabase logs quite a bit of information by default. Metabase uses [Log4j 2](https://logging.apache.org/log4j/2.x/) under the hood, so you can configure how much information Metabase logs.
 
 ## View and download Metabase logs
 
-You can find Metabase logs in **Admin** > **Tools** > **Logs**. You can filter the logs by keywords (for example, "sync") and download them as a text file.
+You can find Metabase logs in **Monitor** > **Application logs**. You can filter the logs by keywords (for example, "sync") and download them as a text file.
 
 If you're running self-hosted Metabase, you'll also be able to see the logs in the terminal.
 
@@ -19,17 +20,19 @@ If you're running self-hosted Metabase, you'll also be able to see the logs in t
 
 See [How to read logs](../troubleshooting-guide/server-logs.md).
 
-## Configuring logging Level
+## Configuring logging level
 
 Metabase uses [Log4j](https://logging.apache.org/log4j/2.x/) for logging configuration. Here is Metabase's [default logging configuration](https://github.com/metabase/metabase/blob/master/resources/log4j2.xml). Some troubleshooting tasks might require you to override this logging configuration (for example, to see more details about errors). See Log4j's docs for info on [log levels](https://logging.apache.org/log4j/2.x/manual/customloglevels.html).
 
-### Temporary override logging configuration
+### Temporarily override logging configuration
 
-_Admin > Tools > Logs_.
+_Monitor > Application logs_.
+
+Only admins can customize log levels.
 
 To temporarily adjust the logging configuration:
 
-1. Go to **Admin** > **Tools** > **Logs**.
+1. Go to **Monitor** > **Application logs**.
 2. Click on **Customize log levels** above the logs.
 
    You can select from log-level presets for common troubleshooting tasks (for example, troubleshooting sync issues), or provide your own configuration as JSON. For example, here's an override configuration that increases logging for troubleshooting linked filters:
@@ -41,7 +44,7 @@ To temporarily adjust the logging configuration:
    }
    ```
 
-The override from Admin settings will be temporary. You can select for how long the override should be in place (e.g., 60 minutes). When the override times out, the logging configuration will revert to the default logging configuration (or a custom configuration if you're using a [custom log file](#use-a-custom-log-configuration-file)).
+This override will be temporary. You can select for how long the override should be in place (e.g., 60 minutes). When the override times out, the logging configuration will revert to the default logging configuration (or a custom configuration if you're using a [custom log file](#use-a-custom-log-configuration-file)).
 
 ### Use a custom log configuration file
 
@@ -114,4 +117,4 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 
 ### Turn off colorized logs
 
-By default, Metabase will use color when displaying logs (both in the Admin **Logs** and in the terminal). You can disable colorized logs using the [`MB_COLORIZE_LOGS` environment variable](../configuring-metabase/environment-variables.md#mb_colorize_logs).
+By default, Metabase will use color when displaying logs (both in **Monitor** > **Application logs** and in the terminal). You can disable colorized logs using the [`MB_COLORIZE_LOGS` environment variable](../configuring-metabase/environment-variables.md#mb_colorize_logs).
