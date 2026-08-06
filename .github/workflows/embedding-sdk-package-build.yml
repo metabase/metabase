@@ -16,8 +16,6 @@ jobs:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
       - name: Build Embedding SDK package
         run: |
           # Remove the matchers to not report false positives on every PR
