@@ -37,24 +37,35 @@
 (deftest saml-settings-accepts-admin-form-payload-test
   (testing "PUT /api/saml/settings accepts every setting the admin SAML form submits (SAMLFormSettings)"
     (mt/with-premium-features #{:sso-saml}
-      (mt/with-temporary-setting-values [saml-attribute-tenant nil
-                                         saml-attribute-group  nil
-                                         saml-application-name nil]
-        (mt/user-http-request :crowberto :put 200 "saml/settings"
-                              {:saml-enabled                       true
-                               :saml-identity-provider-uri         "https://example.test"
-                               :saml-identity-provider-issuer      "https://example.test/issuer"
-                               :saml-attribute-email               "email"
-                               :saml-attribute-firstname           "first"
-                               :saml-attribute-lastname            "last"
-                               :saml-attribute-group               "group"
-                               :saml-attribute-tenant              "tenant"
-                               :saml-group-sync                    true
-                               :saml-user-provisioning-enabled?    true
-                               :saml-application-name              "Metabase"
-                               :saml-keystore-path                 nil
-                               :saml-keystore-password             nil
-                               :saml-keystore-alias                nil})
-        (testing "and persists them rather than dropping them"
-          (is (= "tenant" (sso-settings/saml-attribute-tenant)))
-          (is (= "group" (sso-settings/saml-attribute-group))))))))
+      (mt/with-temporary-raw-setting-values [saml-enabled                    nil
+                                             saml-user-provisioning-enabled? nil]
+        (mt/with-temporary-setting-values [saml-identity-provider-uri     nil
+                                           saml-identity-provider-issuer  nil
+                                           saml-attribute-email           nil
+                                           saml-attribute-firstname       nil
+                                           saml-attribute-lastname        nil
+                                           saml-attribute-group           nil
+                                           saml-attribute-tenant          nil
+                                           saml-group-sync                nil
+                                           saml-application-name          nil
+                                           saml-keystore-path             nil
+                                           saml-keystore-password         nil
+                                           saml-keystore-alias            nil]
+          (mt/user-http-request :crowberto :put 200 "saml/settings"
+                                {:saml-enabled                    true
+                                 :saml-identity-provider-uri      "https://example.test"
+                                 :saml-identity-provider-issuer   "https://example.test/issuer"
+                                 :saml-attribute-email            "email"
+                                 :saml-attribute-firstname        "first"
+                                 :saml-attribute-lastname         "last"
+                                 :saml-attribute-group            "group"
+                                 :saml-attribute-tenant           "tenant"
+                                 :saml-group-sync                 true
+                                 :saml-user-provisioning-enabled? true
+                                 :saml-application-name           "Metabase"
+                                 :saml-keystore-path              nil
+                                 :saml-keystore-password          nil
+                                 :saml-keystore-alias             nil})
+          (testing "and persists them rather than dropping them"
+            (is (= "tenant" (sso-settings/saml-attribute-tenant)))
+            (is (= "group" (sso-settings/saml-attribute-group)))))))))
