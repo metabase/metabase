@@ -4,13 +4,18 @@ import {
   type KeyboardEvent,
   type ReactNode,
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetCardQuery, useGetMeasureQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetMeasureQuery,
+  useLazyGetCardQuery,
+  useLazyGetMeasureQuery,
+} from "metabase/api";
 import {
   EntityPickerModal,
   MiniPicker,
@@ -102,7 +107,8 @@ export const GoalValueInput = ({
   const [isEntityPickerOpen, entityPicker] = useDisclosure(false);
   const [isBrowseModalOpen, browseModal] = useDisclosure(false);
   const [pickedEntity, setPickedEntity] = useState<PickedEntity | null>(null);
-  const [isAutoSelectPending, setIsAutoSelectPending] = useState(false);
+  const [fetchCard] = useLazyGetCardQuery();
+  const [fetchMeasure] = useLazyGetMeasureQuery();
 
   const foreignRef = isGoalForeignColumnRef(value) ? value : null;
   const selfColumns: ColumnOption[] = data.cols
@@ -173,7 +179,6 @@ export const GoalValueInput = ({
       onChange(newValue);
       closeMenu();
       setPickedEntity(null);
-      setIsAutoSelectPending(false);
     },
     [onChange, closeMenu],
   );
@@ -186,31 +191,6 @@ export const GoalValueInput = ({
     },
     [entity, commitValue],
   );
-
-  // Skip column selection when the picked entity has only one column
-  useEffect(() => {
-    if (!isAutoSelectPending || pickedEntity == null) {
-      return;
-    }
-    if (isEntityMetadataLoading) {
-      return;
-    }
-    if (entityColumns.length === 1) {
-      commitValue({
-        type: pickedEntity.type,
-        id: pickedEntity.id,
-        column: entityColumns[0].name,
-      });
-    } else {
-      setIsAutoSelectPending(false);
-    }
-  }, [
-    isAutoSelectPending,
-    pickedEntity,
-    isEntityMetadataLoading,
-    entityColumns,
-    commitValue,
-  ]);
 
   const openMenuFromTrigger = () => {
     setMenuLevel("root");
@@ -240,7 +220,10 @@ export const GoalValueInput = ({
     entityPicker.open();
   };
 
-  const handleEntityPicked = (item: {
+  // Commits from here run after an await, i.e. in a fresh React batch. Doing
+  // this in an effect instead makes the whole settings-change dispatch chain a
+  // nested update and overflows React's nested-update limit (metabase#gauge).
+  const handleEntityPicked = async (item: {
     id: number | string;
     model: string;
     name: string;
@@ -253,9 +236,30 @@ export const GoalValueInput = ({
     entityPicker.close();
     browseModal.close();
     setPickedEntity({ type, id: item.id, name: item.name });
-    setIsAutoSelectPending(true);
     setMenuLevel("entity");
     menu.open();
+
+    // Skip column selection when the picked entity has only one column
+    try {
+      if (type === "measure") {
+        const measure = await fetchMeasure(item.id, true).unwrap();
+        if (measure.result_column_name) {
+          commitValue({
+            type,
+            id: item.id,
+            column: measure.result_column_name,
+          });
+        }
+      } else {
+        const card = await fetchCard({ id: item.id }, true).unwrap();
+        const numericColumns = (card.result_metadata ?? []).filter(isNumeric);
+        if (numericColumns.length === 1) {
+          commitValue({ type, id: item.id, column: numericColumns[0].name });
+        }
+      }
+    } catch {
+      // metadata failed to load - leave the menu open on the entity level
+    }
   };
 
   const handleShellKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
