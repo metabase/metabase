@@ -314,8 +314,15 @@ export function useLazyCollectionTree({
         return;
       }
       setExtraOffsets((previous) => {
+        const offsets = previous.get(key) ?? [];
+        // Anything watching the end of a level can ask for the next page, and more than one of them can ask in the
+        // same commit, each reading the same `nextOffset` from the level it rendered with. Asking once is what keeps
+        // a burst of those from turning into a burst of pages, and the same rows from arriving twice.
+        if (offsets.includes(level.nextOffset)) {
+          return previous;
+        }
         const next = new Map(previous);
-        next.set(key, [...(previous.get(key) ?? []), level.nextOffset]);
+        next.set(key, [...offsets, level.nextOffset]);
         return next;
       });
     },
