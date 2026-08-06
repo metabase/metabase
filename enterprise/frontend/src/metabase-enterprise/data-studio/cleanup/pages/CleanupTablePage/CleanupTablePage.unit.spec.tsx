@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupDatabaseListEndpoint,
   setupDismissUsageMetadataCandidateEndpoint,
+  setupRestoreUsageMetadataCandidateEndpoint,
   setupTableQueryMetadataEndpoint,
   setupUsageMetadataCandidateEndpoint,
   setupUsageMetadataCandidatesEndpoint,
@@ -392,6 +393,52 @@ describe("CleanupTablePage", () => {
     expect(
       screen.getByRole("textbox", { name: "Reason (optional)" }),
     ).toHaveValue("");
+  });
+
+  it("closes restored candidate details after it leaves the discarded queue", async () => {
+    const dismissedCandidate: UsageMetadataCandidateDetail = {
+      ...candidate,
+      dismissed: true,
+      dismissal: {
+        id: 1,
+        dismissed_by: 1,
+        dismissed_at: "2026-07-27T10:00:00Z",
+        reason: null,
+      },
+    };
+    setupUsageMetadataCandidateEndpoint(candidate.id, dismissedCandidate);
+    setupRestoreUsageMetadataCandidateEndpoint(candidate.id, {
+      ...candidate,
+      dismissed: false,
+      dismissal: null,
+    });
+    setup(dismissedCandidate, "/data-studio/cleanup/tables/1?queue=discarded");
+
+    await userEvent.click(
+      await screen.findByRole("row", { name: "Total revenue" }),
+    );
+    const panel = await screen.findByRole("complementary", {
+      name: "Candidate report",
+    });
+
+    await userEvent.click(
+      await within(panel).findByRole("button", { name: "Restore candidate" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          `path:/api/ee/data-studio/usage-metadata/candidates/${candidate.id}/dismissal`,
+          { method: "DELETE" },
+        ),
+      ).toBe(true);
+      expect(
+        screen.queryByRole("complementary", { name: "Candidate report" }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByTestId(`cleanup-candidate-${candidate.id}`),
+    ).not.toHaveAttribute("data-selected");
   });
 
   it("keeps loaded candidate details visible during background refetches", async () => {
