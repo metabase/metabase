@@ -61,10 +61,12 @@ export function DiagnosticsSidebar<T extends ContentDiagnosticsBaseFinding>({
       aria-label={t`Details for ${entityName}`}
       data-testid="content-diagnostics-sidebar"
     >
-      <SidebarHeader finding={finding} onClose={onClose} />
-      <LocationSection finding={finding} />
-      <InfoSection finding={finding} extraInfo={extraInfo} />
-      {children}
+      <Stack gap="lg" flex="0 0 auto">
+        <SidebarHeader finding={finding} onClose={onClose} />
+        <LocationSection finding={finding} />
+        <InfoSection finding={finding} extraInfo={extraInfo} />
+        {children}
+      </Stack>
     </Stack>
   );
 }

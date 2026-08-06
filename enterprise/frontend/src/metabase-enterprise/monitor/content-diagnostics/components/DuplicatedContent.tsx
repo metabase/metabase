@@ -1,24 +1,19 @@
 import { useElementSize } from "@mantine/hooks";
 import { useLayoutEffect, useMemo, useState } from "react";
-import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
-import { useDispatch } from "metabase/redux";
-import { addUndo } from "metabase/redux/undo";
-import { Button, Center, Flex, Icon } from "metabase/ui";
+import { Center, Flex } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import type { Sorting } from "metabase/utils/sorting";
-import {
-  useListDuplicatedFindingsQuery,
-  useRunContentDiagnosticsScanMutation,
-} from "metabase-enterprise/api";
+import { useListDuplicatedFindingsQuery } from "metabase-enterprise/api";
 import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type { ContentDiagnosticsDuplicatedSortColumn } from "metabase-types/api";
 
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
+import { DiagnosticsScanButton } from "./DiagnosticsScanButton";
 import { DuplicatedContentFilterBar } from "./DuplicatedContentFilterBar";
 import { DuplicatedContentSidebar } from "./DuplicatedContentSidebar";
 import { DuplicatedContentTable } from "./DuplicatedContentTable";
@@ -47,7 +42,6 @@ export function DuplicatedContent({
   isLoadingParams,
   onParamsChange,
 }: DuplicatedContentProps) {
-  const dispatch = useDispatch();
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [selectedFindingId, setSelectedFindingId] = useState<number>();
 
@@ -81,22 +75,6 @@ export function DuplicatedContent({
 
   const isFetching = isFetchingFindings || isLoadingParams;
   const isLoading = isLoadingFindings || isLoadingParams;
-
-  const [runScan, { isLoading: isScanning }] =
-    useRunContentDiagnosticsScanMutation();
-
-  const handleScan = async () => {
-    try {
-      const result = await runScan().unwrap();
-      dispatch(
-        addUndo({
-          message: t`Scan complete — ${result.finding_count} findings`,
-        }),
-      );
-    } catch {
-      dispatch(addUndo({ message: t`Scan failed`, icon: "warning" }));
-    }
-  };
 
   const findings = useMemo(() => data?.data ?? [], [data?.data]);
   const totalCount = data?.total ?? 0;
@@ -155,17 +133,7 @@ export function DuplicatedContent({
           isLoading={isLoading}
           onQueryChange={handleQueryChange}
           onFilterOptionsChange={handleFilterOptionsChange}
-          actions={
-            <Button
-              variant="default"
-              leftSection={<Icon name="refresh" />}
-              loading={isScanning}
-              data-testid="content-diagnostics-scan-button"
-              onClick={handleScan}
-            >
-              {t`Rescan`}
-            </Button>
-          }
+          actions={<DiagnosticsScanButton />}
         />
         {error != null ? (
           <Center flex={1}>

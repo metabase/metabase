@@ -6,7 +6,8 @@ import type { ContentDiagnosticsDuplicatedFinding } from "metabase-types/api";
 import { getCommonColumns } from "../common-columns";
 
 export function getColumns(): TreeTableColumnDef<ContentDiagnosticsDuplicatedFinding>[] {
-  const commonColumns = getCommonColumns<ContentDiagnosticsDuplicatedFinding>();
+  const { name, entityType, collection, createdBy, createdAt } =
+    getCommonColumns<ContentDiagnosticsDuplicatedFinding>();
   const duplicateCountColumn: TreeTableColumnDef<ContentDiagnosticsDuplicatedFinding> =
     {
       id: "duplicate-count",
@@ -23,13 +24,13 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsDuplicatedFin
       ),
     };
 
-  const collectionIndex = commonColumns.findIndex(
-    (column) => column.id === "collection",
-  );
   return [
-    ...commonColumns.slice(0, collectionIndex + 1),
+    name,
+    entityType,
+    collection,
     duplicateCountColumn,
-    ...commonColumns.slice(collectionIndex + 1),
+    createdBy,
+    createdAt,
   ];
 }
 
