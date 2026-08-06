@@ -1,7 +1,6 @@
 (ns metabase.measures.api
   "/api/measure endpoints."
   (:require
-   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
@@ -69,12 +68,10 @@
   "Create a new `Measure`. The Measure's table is derived from its `definition`."
   [_route-params
    _query-params
-   {:keys [name description definition], :as body}
-   :- [:map {:closed true}
-       [:name ms/NonBlankString]
-       ;; open: an MBQL fragment, checked against the MBQL schema rather than here
-       [:definition  (mut/update-properties ms/Map assoc :closed false)]
-       [:description {:optional true} [:maybe :string]]]]
+   {:keys [name description definition], :as body} :- [:map
+                                                       [:name        ms/NonBlankString]
+                                                       [:definition  ms/Map]
+                                                       [:description {:optional true} [:maybe :string]]]]
   (let [normalized-definition (normalize-input-definition definition)
         table-id (definition-table-id normalized-definition)]
     (api/create-check :model/Measure (assoc body :table_id table-id))
@@ -106,9 +103,9 @@
 
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include-orphaned]} :- [:map {:closed true}
+   {:keys [include-orphaned]} :- [:map
                                   [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
   (let [measure (hydrated-measure id (boolean include-orphaned))]
     (-> measure
@@ -156,13 +153,12 @@
 
 (api.macros/defendpoint :put "/:id" :- ::measure
   "Update a `Measure` with ID."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
-            ;; open: an MBQL fragment, checked against the MBQL schema rather than here
-            [:definition              {:optional true} [:maybe [:map {:closed false}]]]
+            [:definition              {:optional true} [:maybe :map]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]
@@ -187,7 +183,7 @@
    - values: list of [value] or [value, display-name] tuples
    - field_id: the underlying field ID
    - has_more_values: boolean indicating if there are more values"
-  [{:keys [id dimension-key]} :- [:map {:closed true}
+  [{:keys [id dimension-key]} :- [:map
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]]
   (let [measure (hydrated-measure id false)]
@@ -201,13 +197,10 @@
   "Search for values of a dimension that contain the query string.
 
    Returns field values matching the search query in the same format as the field values API."
-  [{:keys [id dimension-key]} :- [:map {:closed true}
+  [{:keys [id dimension-key]} :- [:map
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
-   {:keys [query]}            :- [:map {:closed true}
-                                  [:query ms/NonBlankString]
-                                  ;; sent by the FilterValuePicker in the FE; the search itself is not paginated yet
-                                  [:limit {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [query]}            :- [:map [:query ms/NonBlankString]]]
   (let [measure (hydrated-measure id false)]
     (metrics/dimension-search-values
      (:dimensions measure)
@@ -220,11 +213,10 @@
   "Fetch remapped value for a specific dimension value.
 
    Returns a pair [value, display-name] if remapping exists, or [value] otherwise."
-  [{:keys [id dimension-key]} :- [:map {:closed true}
+  [{:keys [id dimension-key]} :- [:map
                                   [:id            ms/PositiveInt]
                                   [:dimension-key ms/UUIDString]]
-   {:keys [value]}             :- [:map {:closed true}
-                                   [:value :string]]]
+   {:keys [value]}             :- [:map [:value :string]]]
   (let [measure (hydrated-measure id false)]
     (metrics/dimension-remapped-value
      (:dimensions measure)

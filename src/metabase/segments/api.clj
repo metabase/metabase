@@ -1,7 +1,6 @@
 (ns metabase.segments.api
   "/api/segment endpoints."
   (:require
-   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
@@ -39,12 +38,11 @@
   "Create a new `Segment`. The Segment's table is derived from its `definition`."
   [_route-params
    _query-params
-   {:keys [name description definition], :as body}
-   :- [:map {:closed true}
-       [:name ms/NonBlankString]
-       ;; open: an MBQL fragment, checked against the MBQL schema rather than here
-       [:definition  (mut/update-properties ms/Map assoc :closed false)]
-       [:description {:optional true} [:maybe :string]]]]
+   {:keys [name description definition], :as body} :- [:map
+                                                       [:name        ms/NonBlankString]
+                                                       [:definition  ms/Map]
+                                                       [:description {:optional true} [:maybe :string]]]]
+  ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (let [table-id (definition-table-id definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
     (let [segment (api/check-500
@@ -67,7 +65,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch `Segment` with ID."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (hydrated-segment id))
 
@@ -118,17 +116,16 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Segment` with ID."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map {:closed true}
+   body :- [:map
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
-            ;; open: an MBQL fragment, checked against the MBQL schema rather than here
-            [:definition              {:optional true} [:maybe [:map {:closed false}]]]
+            [:definition              {:optional true} [:maybe :map]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
-            [:description             {:optional true} [:maybe :string]]
             [:caveats                 {:optional true} [:maybe :string]]
+            [:description             {:optional true} [:maybe :string]]
             [:points_of_interest      {:optional true} [:maybe :string]]
             [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
   (write-check-and-update-segment! id body))
@@ -143,9 +140,9 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [revision_message]} :- [:map {:closed true}
+   {:keys [revision_message]} :- [:map
                                   [:revision_message ms/NonBlankString]]]
   (log/warn "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id.")
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
@@ -157,6 +154,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [{:keys [id]} :- [:map {:closed true}
+  [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (-> (t2/select-one :model/Segment :id id) api/read-check xrays/related))
