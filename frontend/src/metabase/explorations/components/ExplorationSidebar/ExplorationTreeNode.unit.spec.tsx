@@ -178,17 +178,15 @@ describe("ExplorationTreeNode", () => {
       );
     });
 
-    it("does not offer Hide for the first thread group", async () => {
+    it("offers Hide for thread and metric-group headings", async () => {
       setup({ queries: [revenueQuery], blocks: [revenueBlock] });
 
-      // the first thread ("Initial investigation") is not hideable...
       await openGroupMenu(/Initial investigation/);
       expect(
-        screen.queryByRole("menuitem", { name: /Hide/ }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("menuitem", { name: /Hide/ }),
+      ).toBeInTheDocument();
       await userEvent.keyboard("{Escape}");
 
-      // ...but metric sub-groups are
       await openGroupMenu(/Revenue/);
       expect(
         screen.getByRole("menuitem", { name: /Hide/ }),
@@ -802,6 +800,7 @@ describe("ExplorationTreeNode", () => {
               onToggleShowHidden={jest.fn()}
               sortOrder={DEFAULT_SORT_ORDER}
               onChangeSortOrder={jest.fn()}
+              contentMode="tree"
             />
           }
         />,
