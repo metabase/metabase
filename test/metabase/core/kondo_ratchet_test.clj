@@ -295,7 +295,7 @@
 
 (deftest ^:parallel config-suppressions-test
   (is (= {:redundant-ignore    1
-          :unresolved-symbol   4
+          :unresolved-symbol   5
           :missing-docstring   2
           :discouraged-var     1
           :unused-referred-var 4
@@ -310,10 +310,11 @@
             :config-in-comment {:linters {:unresolved-symbol {:level :off}}}
             :config-in-ns      {tests {:linters {:missing-docstring {:level :off}
                                                  :discouraged-var   {clojure.core/println {:level :off}}}}
-                                lib   {:linters {:missing-docstring {:level :off}}}}}))
+                                lib   {:linters {:missing-docstring {:level :off}}}}
+            :config-in-call    {some.ns/with-thing {:linters {:unresolved-symbol {:level :off}}}}}))
       "an :off is 1, :exclude items count each (map values count their elements; a scoping map is one
-       var), per-var re-allows count, discouragements and enablements count nothing; groups and
-       :config-in-comment sum per linter"))
+       var), per-var re-allows count, discouragements and enablements count nothing; groups,
+       :config-in-comment and :config-in-call sum per linter"))
 
 (deftest ^:parallel config-drift-test
   (is (= {:gone {:recorded 2, :actual 0}
