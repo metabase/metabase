@@ -99,7 +99,10 @@
   (when predicate
     (try
       (vec (lib/all-field-ids predicate))
-      (catch Throwable e
+      (catch InterruptedException e
+        (.interrupt (Thread/currentThread))
+        (throw e))
+      (catch Exception e
         (log/debugf "usage-metadata: predicate-field-ids failed: %s" (ex-message e))
         []))))
 
@@ -221,7 +224,10 @@
   (when (and (pos-int? database-id) (seq query-map))
     (try
       (lib/query (lib-be/application-database-metadata-provider database-id) query-map)
-      (catch Throwable e
+      (catch InterruptedException e
+        (.interrupt (Thread/currentThread))
+        (throw e))
+      (catch Exception e
         (log/debugf "Failed to wrap query for usage-metadata insights: %s" (ex-message e))
         nil))))
 
@@ -230,7 +236,10 @@
   (when-let [q (wrap-query database-id query-map)]
     (try
       (usage-metadata.extract/extract-usage-facts q)
-      (catch Throwable e
+      (catch InterruptedException e
+        (.interrupt (Thread/currentThread))
+        (throw e))
+      (catch Exception e
         (log/debugf "Failed to extract usage facts for usage-metadata insights: %s" (ex-message e))
         nil))))
 
@@ -501,7 +510,7 @@
                              :id [:in batch]
                              :archived false
                              :type [:in allowed-types])))
-        (partition-all 200 ids)))
+        (partition-all candidate-query-batch-size ids)))
 
 (defn- candidate-lineage-index
   [cards allowed-types]
