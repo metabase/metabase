@@ -70,11 +70,8 @@ export function useCleanupRefresh() {
 
   return {
     status,
-    error: statusQuery.error,
-    isLoading: statusQuery.isLoading,
     isStarting: startResult.isLoading,
     isRefreshing: status?.active != null || startResult.isLoading,
     start,
-    refetch: statusQuery.refetch,
   };
 }

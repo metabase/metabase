@@ -40,7 +40,6 @@ const candidate: UsageMetadataCandidateDetail = {
     aggregation: { display_name: "Sum of Total" },
     predicates: [],
   },
-  family: { key: "family", position: 0, depth: 0 },
   definition: createMockStructuredDatasetQuery({
     query: {
       "source-table": 1,

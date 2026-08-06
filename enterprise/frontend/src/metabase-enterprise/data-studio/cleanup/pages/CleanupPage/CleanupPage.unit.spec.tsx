@@ -72,28 +72,6 @@ const tableSummary: UsageMetadataTableSummary = {
     database: { id: 1, name: "Sample Database" },
   },
   candidate_count: 6,
-  counts: {
-    table: {
-      missing: 0,
-      partially_modeled: 0,
-      modeled: 0,
-    },
-    metric: {
-      missing: 0,
-      partially_modeled: 0,
-      modeled: 0,
-    },
-    measure: {
-      missing: 2,
-      partially_modeled: 1,
-      modeled: 0,
-    },
-    segment: {
-      missing: 1,
-      partially_modeled: 0,
-      modeled: 2,
-    },
-  },
 };
 
 function setup({
