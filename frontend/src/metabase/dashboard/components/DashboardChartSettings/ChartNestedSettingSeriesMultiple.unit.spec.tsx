@@ -6,13 +6,18 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { createMockCard } from "metabase-types/api/mocks";
+import type { CardDisplayType } from "metabase-types/api";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 
 import { DashboardChartSettings } from "./DashboardChartSettings";
 
 registerVisualizations();
 
-function getSeries(display, index, changeSeriesName) {
+function getSeries(
+  display: CardDisplayType,
+  index: number,
+  changeSeriesName: boolean,
+) {
   return {
     card: createMockCard({
       display,
@@ -25,34 +30,36 @@ function getSeries(display, index, changeSeriesName) {
         : {},
       name: `Test ${index}`,
     }),
-    data: {
-      rows: [
-        ["a", 1],
-        ["b", 2],
-      ],
-      cols: [
-        { name: "foo", display_name: "Foo", source: "breakout" },
-        {
-          name: `Test ${index}`,
-          display_name: `Test ${index}`,
-          source: "aggregation",
-        },
-      ],
-    },
+    ...createMockDataset({
+      data: {
+        rows: [
+          ["a", 1],
+          ["b", 2],
+        ],
+        cols: [
+          { name: "foo", display_name: "Foo", source: "breakout" },
+          {
+            name: `Test ${index}`,
+            display_name: `Test ${index}`,
+            source: "aggregation",
+          },
+        ],
+      },
+    }),
   };
 }
 
-const setup = (seriesDisplay, numberOfSeries = 1, changeSeriesName = false) => {
-  const series = new Array(numberOfSeries)
-    .fill(1)
-    .map((s, index) => getSeries(seriesDisplay, index, changeSeriesName));
+const setup = (
+  seriesDisplay: CardDisplayType,
+  numberOfSeries = 1,
+  changeSeriesName = false,
+) => {
+  const series = Array.from({ length: numberOfSeries }, (_, index) =>
+    getSeries(seriesDisplay, index, changeSeriesName),
+  );
   return renderWithProviders(
     <MockDashboardContext>
-      <DashboardChartSettings
-        series={series}
-        initial={{ section: "Display" }}
-        isDashboard={true}
-      />
+      <DashboardChartSettings series={series} isDashboard={true} />
     </MockDashboardContext>,
   );
 };

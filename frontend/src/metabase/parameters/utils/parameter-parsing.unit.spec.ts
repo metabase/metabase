@@ -1,24 +1,41 @@
-import { createMockParameter } from "metabase-types/api/mocks";
+import Field from "metabase-lib/v1/metadata/Field";
+import type { FieldFilterUiParameter } from "metabase-lib/v1/parameters/types";
+import type {
+  Parameter,
+  ParameterValueOrArray,
+  ParameterValuesMap,
+} from "metabase-types/api";
+import {
+  createMockNormalizedField,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 import {
   getParameterValueFromQueryParams,
   getParameterValuesByIdFromQueryParams,
 } from "./parameter-parsing";
 
+function createMockField(mocks: Partial<Field>): Field {
+  return Object.assign(new Field(createMockNormalizedField({})), mocks);
+}
+
+// bypasses the strict signature to pin the runtime `|| {}` guard
+const UNDEFINED_QUERY_PARAMS = undefined as unknown as ParameterValuesMap;
+
 describe("parameters/utils/parameter-values", () => {
-  let field1;
-  let field2;
-  let field3;
-  let field4;
-  let parameter1;
-  let parameter2;
-  let parameter3;
-  let parameter4;
-  let parameters;
-  let queryParams;
+  let field1: Field;
+  let field2: Field;
+  let field3: Field;
+  let field4: Field;
+  let parameter1: FieldFilterUiParameter;
+  let parameter2: FieldFilterUiParameter;
+  let parameter3: FieldFilterUiParameter;
+  let parameter4: Parameter;
+  let parameters: Parameter[];
+  let queryParams: ParameterValuesMap;
 
   beforeEach(() => {
-    field1 = {
+    field1 = createMockField({
       id: 1,
       table_id: 1,
       isString: () => false,
@@ -26,8 +43,8 @@ describe("parameters/utils/parameter-values", () => {
       isNumeric: () => false,
       isDate: () => false,
       isBoolean: () => false,
-    };
-    field2 = {
+    });
+    field2 = createMockField({
       id: 2,
       table_id: 1,
       isString: () => false,
@@ -35,8 +52,8 @@ describe("parameters/utils/parameter-values", () => {
       isNumeric: () => false,
       isDate: () => false,
       isBoolean: () => false,
-    };
-    field3 = {
+    });
+    field3 = createMockField({
       id: 3,
       table_id: 1,
       isString: () => false,
@@ -44,8 +61,8 @@ describe("parameters/utils/parameter-values", () => {
       isNumeric: () => false,
       isDate: () => false,
       isBoolean: () => false,
-    };
-    field4 = {
+    });
+    field4 = createMockField({
       id: 4,
       table_id: 1,
       isString: () => false,
@@ -53,33 +70,39 @@ describe("parameters/utils/parameter-values", () => {
       isNumeric: () => false,
       isDate: () => false,
       isBoolean: () => false,
-    };
+    });
 
     // found in queryParams and not defaulted
     parameter1 = {
-      id: 111,
-      slug: "foo",
+      ...createMockParameter({
+        id: "111",
+        slug: "foo",
+      }),
       fields: [field1, field4],
     };
     // found in queryParams and defaulted
     parameter2 = {
-      id: 222,
-      slug: "bar",
-      default: "parameter2 default value",
+      ...createMockParameter({
+        id: "222",
+        slug: "bar",
+        default: "parameter2 default value",
+      }),
       fields: [field2],
     };
     // not found in queryParams and defaulted
     parameter3 = {
-      id: 333,
-      slug: "baz",
-      default: "parameter3 default value",
+      ...createMockParameter({
+        id: "333",
+        slug: "baz",
+        default: "parameter3 default value",
+      }),
       fields: [field3],
     };
     // not found in queryParams and not defaulted
-    parameter4 = {
-      id: 444,
+    parameter4 = createMockParameter({
+      id: "444",
       slug: "qux",
-    };
+    });
     parameters = [parameter1, parameter2, parameter3, parameter4];
     queryParams = {
       foo: "parameter1 queryParam value",
@@ -90,15 +113,15 @@ describe("parameters/utils/parameter-values", () => {
 
   describe("getParameterValueFromQueryParams", () => {
     it("should return null when given an undefined queryParams arg", () => {
-      expect(getParameterValueFromQueryParams(parameter1, undefined)).toBe(
-        null,
-      );
+      expect(
+        getParameterValueFromQueryParams(parameter1, UNDEFINED_QUERY_PARAMS),
+      ).toBe(null);
     });
 
     it("should return the parameter's default value when given an undefined queryParams arg", () => {
-      expect(getParameterValueFromQueryParams(parameter2, undefined)).toBe(
-        "parameter2 default value",
-      );
+      expect(
+        getParameterValueFromQueryParams(parameter2, UNDEFINED_QUERY_PARAMS),
+      ).toBe("parameter2 default value");
     });
 
     it("should return the parameter's default value when the parameter value is not found in queryParams", () => {
@@ -299,6 +322,21 @@ describe("parameters/utils/parameter-values", () => {
       ).toEqual(["true"]);
     });
 
+    it("should handle legacy parameters without a type", () => {
+      // legacy saved parameters may lack `type`, which Parameter requires
+      const typelessParameter = {
+        id: "555",
+        slug: "legacy",
+        fields: [field1, field4],
+      } as unknown as FieldFilterUiParameter;
+
+      expect(
+        getParameterValueFromQueryParams(typelessParameter, {
+          [typelessParameter.slug]: "foo",
+        }),
+      ).toEqual(["foo"]);
+    });
+
     it("should not try to parse default values", () => {
       field2.isNumeric = () => true;
       field2.isDate = () => false;
@@ -374,13 +412,15 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     describe("for number filter type", () => {
-      const numberParameter = {
-        id: 111,
+      const numberParameter = createMockParameter({
+        id: "111",
         slug: "numberParameter",
         type: "number/=",
-      };
+      });
 
-      const runGetParameterValueFromQueryParams = (value) =>
+      const runGetParameterValueFromQueryParams = (
+        value: ParameterValueOrArray,
+      ) =>
         getParameterValueFromQueryParams(numberParameter, {
           [numberParameter.slug]: value,
         });
@@ -431,7 +471,10 @@ describe("parameters/utils/parameter-values", () => {
 
     it("should handle an undefined queryParams", () => {
       expect(
-        getParameterValuesByIdFromQueryParams(parameters, undefined),
+        getParameterValuesByIdFromQueryParams(
+          parameters,
+          UNDEFINED_QUERY_PARAMS,
+        ),
       ).toEqual({
         [parameter1.id]: null,
         [parameter2.id]: "parameter2 default value",
