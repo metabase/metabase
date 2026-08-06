@@ -12,17 +12,26 @@
    [metabase.metrics.transforms :as metrics.transforms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.namespaces :as shared.ns]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.namespaces :as shared.ns]
+   [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- Re-exports --------------------------------
 
 (shared.ns/import-fns
  [metrics.dimension
+  annotate-dimensions-with-field-data
   dimension-values
   dimension-search-values
-  dimension-remapped-value]
+  dimension-remapped-value
+  ->api-dimension
+  ->api-dimensions
+  ->api-dimension-mapping
+  ->api-dimension-mappings]
  [metrics.perms
   filter-dimensions-for-user
+  filter-dimensions-for-user-batch
   sandbox-restricted-fields]
  [metrics.transforms
   normalize-dimension
@@ -36,19 +45,44 @@
   import-dimension-mappings
   dimension-mappings-deps])
 
+;;; ------------------------------------------------- Re-exported schemas -------------------------------------------
+
+;;; The wire-annotated dimension schemas, re-exported so other modules can reference them without
+;;; reaching past this module's `:api` namespaces into `metabase.metrics.dimension`. Referencing
+;;; these by keyword is what makes `defendpoint` apply the snake_case/kebab-case conversion at the
+;;; edge, so a consumer must `require` this namespace to guarantee the definitions are registered.
+
+(mr/def ::dimension
+  "A metric dimension in its internal kebab-case shape, annotated with the rules that convert it to
+   and from the snake_case wire shape. See [[metabase.metrics.dimension/dimension]]."
+  ::metrics.dimension/dimension)
+
+(mr/def ::dimension-mapping
+  "A dimension mapping in its internal kebab-case shape, annotated with the rules that convert it to
+   and from the snake_case wire shape. See [[metabase.metrics.dimension/dimension-mapping]]."
+  ::metrics.dimension/dimension-mapping)
+
 ;;; ------------------------------------------------- Query Utilities -------------------------------------------------
+
+(defn query-aggregation-column-name
+  "Extract the result column name for the first aggregation in an already-built Lib `query`.
+   Prefer this over [[aggregation-column-name]] when the caller already holds the query —
+   normalizing a `dataset_query` into a Lib query is the expensive half."
+  [query]
+  (try
+    (->> (lib/returned-columns query)
+         (filter lib/aggregation-sourced?)
+         first
+         :name)
+    (catch Exception _ nil)))
 
 (defn aggregation-column-name
   "Extract the result column name for the first aggregation in a query.
    `database-id` is the ID of the database, `query-map` is the dataset_query or definition."
   [database-id query-map]
   (try
-    (let [mp    (lib-be/application-database-metadata-provider database-id)
-          query (lib/query mp query-map)
-          agg   (->> (lib/returned-columns query)
-                     (filter #(= (:lib/source %) :source/aggregations))
-                     first)]
-      (:name agg))
+    (query-aggregation-column-name
+     (lib/query (lib-be/application-database-metadata-provider database-id) query-map))
     (catch Exception _ nil)))
 
 ;;; ------------------------------------------------- Persistence Multimethod -------------------------------------------------
@@ -116,16 +150,22 @@
 
 (defn- seed-metric-dimensions!
   "First initialization of a v2 metric: seed dimensions from the entity's own columns and explicit
-   query joins, leaving implicitly-joinable FK columns out."
+   query joins, leaving implicitly-joinable FK columns out.
+
+   When nothing could be computed (e.g. the metric's source model has no `result_metadata` yet),
+   persists nothing and leaves `:dimensions` NULL so a later read retries — writing an empty vector
+   would mark the metric initialized and permanently freeze it at zero dimensions."
   [entity computed-pairs]
-  (let [seed-pairs (filterv #(or (lib-metric/main-group? %)
-                                 (= :source/joins (get-in % [:dimension :lib/source])))
-                            computed-pairs)
-        {:keys [dimensions dimension-mappings]}
-        (lib-metric/reconcile-dimensions-and-mappings seed-pairs nil nil)]
-    (save-dimensions! entity
-                      (lib-metric/extract-persisted-dimensions dimensions)
-                      dimension-mappings)))
+  (when (seq computed-pairs)
+    (let [seed-pairs (filterv #(or (lib-metric/main-group? %)
+                                   (= :source/joins (get-in % [:dimension :lib/source])))
+                              computed-pairs)
+          {:keys [dimensions dimension-mappings]}
+          (lib-metric/reconcile-dimensions-and-mappings seed-pairs nil nil)]
+      (save-dimensions! entity
+                        (lib-metric/extract-persisted-dimensions
+                         dimensions)
+                        dimension-mappings))))
 
 (defn- refresh-metric-dimensions!
   "A v2 metric that already has curated dimensions: the stored dimensions/mappings are authoritative
@@ -168,6 +208,18 @@
               (save-dimensions! entity
                                 (lib-metric/extract-persisted-dimensions persisted-dims)
                                 persisted-mappings))))))))
+
+(defn sync-metric-dimensions-for-database!
+  "Compute and persist dimensions for every metric Card in `database-id` that doesn't have any yet."
+  [database-id]
+  (doseq [{:keys [id dimensions]} (t2/select [:model/Card :id :dimensions]
+                                             :type "metric"
+                                             :database_id database-id)
+          :when (empty? dimensions)]
+    (try
+      (sync-dimensions! :metadata/metric id)
+      (catch Throwable e
+        (log/warnf e "Failed to sync dimensions for metric card %d" id)))))
 
 (defn without-orphaned-dimensions
   "Remove orphaned dimensions and their mappings from an API response without changing persistence."

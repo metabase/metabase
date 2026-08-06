@@ -1,7 +1,12 @@
 import { Extension } from "@tiptap/core";
 import { Link } from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import { type Editor, EditorContent, useEditor } from "@tiptap/react";
+import {
+  type Editor,
+  EditorContent,
+  type UseEditorOptions,
+  useEditor,
+} from "@tiptap/react";
 import cx from "classnames";
 import { type KeyboardEventHandler, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -36,7 +41,8 @@ const ALLOWED_FORMATTING: FormattingOptions = {
 
 interface Props {
   active?: boolean;
-  autoFocus?: boolean;
+  autoFocus?: UseEditorOptions["autofocus"];
+  className?: string;
   "data-testid"?: string;
   initialContent?: DocumentContent | null;
   placeholder?: string;
@@ -50,6 +56,7 @@ interface Props {
 export const CommentEditor = ({
   active = true,
   autoFocus = false,
+  className,
   "data-testid": dataTestId,
   initialContent,
   placeholder = t`Reply…`,
@@ -184,7 +191,7 @@ export const CommentEditor = ({
   return (
     <Flex
       align="center"
-      className={cx(S.container, {
+      className={cx(S.container, className, {
         [S.readonly]: readonly,
         [S.active]: active,
       })}

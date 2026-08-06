@@ -240,6 +240,7 @@ const getMultipleMetricSeries = (
       seriesKey,
       seriesName: customName ?? defaultName,
       yAccessor: (datum: GroupedDatum) =>
+        datum.dimensionValue !== null &&
         typeof datum.dimensionValue === "object"
           ? JSON.stringify(datum.dimensionValue)
           : datum.dimensionValue,

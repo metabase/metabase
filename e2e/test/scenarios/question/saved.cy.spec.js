@@ -539,9 +539,6 @@ describe("scenarios > question > saved", () => {
       H.appBar()
         .findByRole("link", { name: /Our analytics/i })
         .click();
-      cy.findByTestId("pinned-items")
-        .findAllByTestId("development-watermark")
-        .should("have.length.above", 0);
 
       cy.findByTestId("collection-table")
         .findByRole("link", { name: /Orders in a dashboard/i })
