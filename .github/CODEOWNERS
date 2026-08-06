@@ -72,7 +72,7 @@ frontend/test/__support__/custom-viz-fixtures @metabase/core-frontend-gadget
 # and the module is not :suppress-codeowners; otherwise it is commented out, ready to enable.
 #
 
-# action-v2 (Gadget, no :assignee in team.json)
+# actions (Gadget, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/action_v2
 # enterprise/backend/test/metabase_enterprise/action_v2
 
@@ -80,9 +80,13 @@ frontend/test/__support__/custom-viz-fixtures @metabase/core-frontend-gadget
 # enterprise/backend/src/metabase_enterprise/advanced_config
 # enterprise/backend/test/metabase_enterprise/advanced_config
 
-# advanced-permissions (UX West, no :assignee in team.json)
+# permissions (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/advanced_permissions
 # enterprise/backend/test/metabase_enterprise/advanced_permissions
+
+# metabot.agent-api (Metabot, no :assignee in team.json)
+# enterprise/backend/src/metabase_enterprise/agent_api
+# enterprise/backend/test/metabase_enterprise/agent_api
 
 # analytics (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/analytics
@@ -99,7 +103,7 @@ frontend/test/__support__/custom-viz-fixtures @metabase/core-frontend-gadget
 # enterprise/backend/src/metabase_enterprise/audit_app
 # enterprise/backend/test/metabase_enterprise/audit_app
 
-# auth-identity (UX West, no :assignee in team.json)
+# sso.auth-identity (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/auth_identity
 # enterprise/backend/test/metabase_enterprise/auth_identity
 
@@ -115,15 +119,11 @@ frontend/test/__support__/custom-viz-fixtures @metabase/core-frontend-gadget
 # enterprise/backend/src/metabase_enterprise/cache
 # enterprise/backend/test/metabase_enterprise/cache
 
-# checker (Graphy, suppressed via :suppress-codeowners)
-# enterprise/backend/src/metabase_enterprise/checker @metabase/graphy
-# enterprise/backend/test/metabase_enterprise/checker @metabase/graphy
-
-# cloud-add-ons (Cloud, no :assignee in team.json)
+# cloud.add-ons (Cloud, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/cloud_add_ons
 # enterprise/backend/test/metabase_enterprise/cloud_add_ons
 
-# cloud-proxy (Cloud, no :assignee in team.json)
+# cloud.proxy (Cloud, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/cloud_proxy
 # enterprise/backend/test/metabase_enterprise/cloud_proxy
 
@@ -145,11 +145,15 @@ frontend/test/__support__/custom-viz-fixtures @metabase/core-frontend-gadget
 # enterprise/backend/src/metabase_enterprise/custom_viz_plugin
 # enterprise/backend/test/metabase_enterprise/custom_viz_plugin
 
-# dashboard-subscription-filters (Graphy, suppressed via :suppress-codeowners)
-# enterprise/backend/src/metabase_enterprise/dashboard_subscription_filters @metabase/graphy
-# enterprise/backend/test/metabase_enterprise/dashboard_subscription_filters @metabase/graphy
+# pulse (Graphy)
+enterprise/backend/src/metabase_enterprise/dashboard_subscription_filters @metabase/graphy
+enterprise/backend/test/metabase_enterprise/dashboard_subscription_filters @metabase/graphy
 
-# data-complexity-score (Metabot, no :assignee in team.json)
+# data-apps (Gadget, no :assignee in team.json)
+# enterprise/backend/src/metabase_enterprise/data_apps
+# enterprise/backend/test/metabase_enterprise/data_apps
+
+# metabot.data-complexity-score (Metabot, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/data_complexity_score
 # enterprise/backend/test/metabase_enterprise/data_complexity_score
 
@@ -157,7 +161,7 @@ frontend/test/__support__/custom-viz-fixtures @metabase/core-frontend-gadget
 # enterprise/backend/src/metabase_enterprise/data_studio
 # enterprise/backend/test/metabase_enterprise/data_studio
 
-# database-replication (Cloud, no :assignee in team.json)
+# cloud.database-replication (Cloud, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/database_replication
 # enterprise/backend/test/metabase_enterprise/database_replication
 
@@ -173,34 +177,34 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # enterprise/backend/src/metabase_enterprise/email
 # enterprise/backend/test/metabase_enterprise/email
 
-# embedding-hub (Embedding, no :assignee in team.json)
+# embedding (Embedding, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/embedding_hub
 # enterprise/backend/test/metabase_enterprise/embedding_hub
 
-# embeddings (Metabot, no :assignee in team.json)
+# search.embeddings (Metabot, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/embeddings
 
-# entity-retrieval (Metabot, no :assignee in team.json)
+# search.entity-retrieval (Metabot, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/entity_retrieval
 # enterprise/backend/test/metabase_enterprise/entity_retrieval
 
-# erd (Gadget, no :assignee in team.json)
+# warehouses (Gadget, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/erd
 # enterprise/backend/test/metabase_enterprise/erd
 
-# gsheets (Cloud, no :assignee in team.json)
+# cloud.gsheets (Cloud, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/gsheets
 # enterprise/backend/test/metabase_enterprise/gsheets
 
-# harbormaster (Cloud, no :assignee in team.json)
+# cloud (Cloud, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/harbormaster
 # enterprise/backend/test/metabase_enterprise/harbormaster
 
-# impersonation (Graphy, suppressed via :suppress-codeowners)
+# permissions.impersonation (Graphy, suppressed via :suppress-codeowners)
 # enterprise/backend/src/metabase_enterprise/impersonation @metabase/graphy
 # enterprise/backend/test/metabase_enterprise/impersonation @metabase/graphy
 
-# internal-stats (UX West, no :assignee in team.json)
+# analytics.internal-stats (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/internal_stats
 # enterprise/backend/test/metabase_enterprise/internal_stats
 
@@ -220,11 +224,15 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # enterprise/backend/src/metabase_enterprise/metabot
 # enterprise/backend/test/metabase_enterprise/metabot
 
-# metabot-analytics (Metabot, no :assignee in team.json)
+# metabot.analytics (Metabot, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/metabot_analytics
 # enterprise/backend/test/metabase_enterprise/metabot_analytics
 
-# permission-debug (UX West, no :assignee in team.json)
+# mfa (Graphy)
+enterprise/backend/src/metabase_enterprise/mfa @metabase/graphy
+enterprise/backend/test/metabase_enterprise/mfa @metabase/graphy
+
+# permissions.debug (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/permission_debug
 # enterprise/backend/test/metabase_enterprise/permission_debug
 
@@ -236,15 +244,15 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # enterprise/backend/src/metabase_enterprise/remote_sync
 # enterprise/backend/test/metabase_enterprise/remote_sync
 
-# replacement (Graphy, suppressed via :suppress-codeowners)
+# dependencies.replacement (Graphy, suppressed via :suppress-codeowners)
 # enterprise/backend/src/metabase_enterprise/replacement @metabase/graphy
 # enterprise/backend/test/metabase_enterprise/replacement @metabase/graphy
 
-# sandbox (UX West, no :assignee in team.json)
+# permissions.sandbox (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/sandbox
 # enterprise/backend/test/metabase_enterprise/sandbox
 
-# scim (UX West, no :assignee in team.json)
+# sso.scim (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/scim
 # enterprise/backend/test/metabase_enterprise/scim
 
@@ -256,7 +264,7 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # enterprise/backend/src/metabase_enterprise/security_center
 # enterprise/backend/test/metabase_enterprise/security_center
 
-# semantic-search (Metabot, no :assignee in team.json)
+# search.semantic (Metabot, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/semantic_search
 # enterprise/backend/test/metabase_enterprise/semantic_search
 
@@ -264,15 +272,15 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # enterprise/backend/src/metabase_enterprise/serialization @metabase/graphy
 # enterprise/backend/test/metabase_enterprise/serialization @metabase/graphy
 
-# snippet-collections (Graphy, suppressed via :suppress-codeowners)
-# enterprise/backend/src/metabase_enterprise/snippet_collections @metabase/graphy
-# enterprise/backend/test/metabase_enterprise/snippet_collections @metabase/graphy
+# native-query-snippets (Graphy)
+enterprise/backend/src/metabase_enterprise/snippet_collections @metabase/graphy
+enterprise/backend/test/metabase_enterprise/snippet_collections @metabase/graphy
 
 # sso (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/sso
 # enterprise/backend/test/metabase_enterprise/sso
 
-# stale (UX West, no :assignee in team.json)
+# staleness (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/stale
 # enterprise/backend/test/metabase_enterprise/stale
 
@@ -288,27 +296,23 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # enterprise/backend/src/metabase_enterprise/transforms @metabase/graphy
 # enterprise/backend/test/metabase_enterprise/transforms @metabase/graphy
 
-# transforms-inspector (Gadget, no :assignee in team.json)
+# transforms.inspector (Gadget, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/transforms_inspector
 # enterprise/backend/test/metabase_enterprise/transforms_inspector
 
-# transforms-python (Graphy, suppressed via :suppress-codeowners)
+# transforms.python (Graphy, suppressed via :suppress-codeowners)
 # enterprise/backend/src/metabase_enterprise/transforms_python @metabase/graphy
 # enterprise/backend/test/metabase_enterprise/transforms_python @metabase/graphy
 
-# upload-management (UX West, no :assignee in team.json)
+# upload (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/upload_management
 # enterprise/backend/test/metabase_enterprise/upload_management
-
-# workspaces (Graphy, suppressed via :suppress-codeowners)
-# enterprise/backend/src/metabase_enterprise/workspaces @metabase/graphy
-# enterprise/backend/test/metabase_enterprise/workspaces @metabase/graphy
 
 # actions (Gadget, no :assignee in team.json)
 # src/metabase/actions
 # test/metabase/actions
 
-# actions-rest (Gadget, no :assignee in team.json)
+# actions.rest (Gadget, no :assignee in team.json)
 # src/metabase/actions_rest
 # test/metabase/actions_rest
 
@@ -316,23 +320,27 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # src/metabase/activity_feed
 # test/metabase/activity_feed
 
-# agent-api (Metabot, no :assignee in team.json)
+# metabot.agent-api (Metabot, no :assignee in team.json)
 # src/metabase/agent_api
 # test/metabase/agent_api
 
-# agent-lib (Metabot, no :assignee in team.json)
+# lib.agent-lib (Metabot, no :assignee in team.json)
 # src/metabase/agent_lib
 # test/metabase/agent_lib
+
+# ai-tracing (Metabot, no :assignee in team.json)
+# src/metabase/ai_tracing
+# test/metabase/ai_tracing
 
 # analytics (UX West, no :assignee in team.json)
 # src/metabase/analytics
 # test/metabase/analytics
 
-# analytics-interface (Querying Platform, suppressed via :suppress-codeowners)
+# analytics.interface (Querying Platform, suppressed via :suppress-codeowners)
 # src/metabase/analytics_interface @metabase/core-backend-querying-platform
 # test/metabase/analytics_interface @metabase/core-backend-querying-platform
 
-# analyze (Graphy, suppressed via :suppress-codeowners)
+# sync.analyze (Graphy, suppressed via :suppress-codeowners)
 # src/metabase/analyze @metabase/graphy
 # test/metabase/analyze @metabase/graphy
 
@@ -363,7 +371,7 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # src/metabase/audit_app
 # test/metabase/audit_app
 
-# auth-identity (UX West, no :assignee in team.json)
+# sso.auth-identity (UX West, no :assignee in team.json)
 # src/metabase/auth_identity
 # test/metabase/auth_identity
 
@@ -391,7 +399,7 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # src/metabase/channel
 # test/metabase/channel
 
-# classloader (DevEx, no :assignee in team.json)
+# util.classloader (DevEx, no :assignee in team.json)
 # src/metabase/classloader
 # test/metabase/classloader
 
@@ -399,7 +407,7 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # src/metabase/cloud_migration
 # test/metabase/cloud_migration
 
-# cmd (UX West, no :assignee in team.json)
+# core.cmd (UX West, no :assignee in team.json)
 # src/metabase/cmd
 # test/metabase/cmd
 
@@ -407,7 +415,7 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # src/metabase/collections
 # test/metabase/collections
 
-# collections-rest (UX West, no :assignee in team.json)
+# collections.rest (UX West, no :assignee in team.json)
 # src/metabase/collections_rest
 # test/metabase/collections_rest
 
@@ -415,7 +423,7 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # src/metabase/comments
 # test/metabase/comments
 
-# config (DevEx, no :assignee in team.json)
+# util.config (DevEx, no :assignee in team.json)
 # src/metabase/config
 
 # content-translation (UX West, no :assignee in team.json)
@@ -426,6 +434,10 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # src/metabase/content_verification
 # test/metabase/content_verification
 
+# contextual-interestingness (UX West, no :assignee in team.json)
+# src/metabase/contextual_interestingness
+# test/metabase/contextual_interestingness
+
 # core (UX West, no :assignee in team.json)
 # src/metabase/core
 # test/metabase/core
@@ -434,7 +446,7 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # src/metabase/dashboards
 # test/metabase/dashboards
 
-# dashboards-rest (UX West, no :assignee in team.json)
+# dashboards.rest (UX West, no :assignee in team.json)
 # src/metabase/dashboards_rest
 # test/metabase/dashboards_rest
 
@@ -453,11 +465,11 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # src/metabase/driver @metabase/core-backend-querying-platform
 # test/metabase/driver @metabase/core-backend-querying-platform
 
-# driver-api (Querying Platform, suppressed via :suppress-codeowners)
+# query-processor.driver-api (Querying Platform, suppressed via :suppress-codeowners)
 # src/metabase/driver_api @metabase/core-backend-querying-platform
 # test/metabase/driver_api @metabase/core-backend-querying-platform
 
-# eid-translation (UX West, no :assignee in team.json)
+# api.eid-translation (UX West, no :assignee in team.json)
 # src/metabase/eid_translation
 # test/metabase/eid_translation
 
@@ -465,17 +477,21 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # src/metabase/embedding
 # test/metabase/embedding
 
-# embedding-rest (Embedding, no :assignee in team.json)
+# embedding.rest (Embedding, no :assignee in team.json)
 # src/metabase/embedding_rest
 # test/metabase/embedding_rest
 
-# entity-retrieval (Metabot, no :assignee in team.json)
+# search.entity-retrieval (Metabot, no :assignee in team.json)
 # src/metabase/entity_retrieval
 # test/metabase/entity_retrieval
 
 # events (DevEx, no :assignee in team.json)
 # src/metabase/events
 # test/metabase/events
+
+# explorations (UX West, no :assignee in team.json)
+# src/metabase/explorations
+# test/metabase/explorations
 
 # formatter (UX West, no :assignee in team.json)
 # src/metabase/formatter
@@ -493,7 +509,7 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 # src/metabase/glossary
 # test/metabase/glossary
 
-# graph (Graphy)
+# util.graph (Graphy)
 src/metabase/graph @metabase/graphy
 test/metabase/graph @metabase/graphy
 
@@ -505,26 +521,26 @@ test/metabase/graph @metabase/graphy
 # src/metabase/indexed_entities
 # test/metabase/indexed_entities
 
-# indexes (Gadget, no :assignee in team.json)
+# transforms.indexes (Gadget, no :assignee in team.json)
 # src/metabase/indexes
 # test/metabase/indexes
 
-# indexes-rest (Gadget, no :assignee in team.json)
+# transforms.indexes.rest (Gadget, no :assignee in team.json)
 # src/metabase/indexes_rest
 # test/metabase/indexes_rest
 
-# initialization-status (UX West, no :assignee in team.json)
+# core.initialization-status (UX West, no :assignee in team.json)
 # src/metabase/initialization_status
 
 # interestingness (UX West, no :assignee in team.json)
 # src/metabase/interestingness
 # test/metabase/interestingness
 
-# internal-stats (UX West, no :assignee in team.json)
+# analytics.internal-stats (UX West, no :assignee in team.json)
 # src/metabase/internal_stats
 # test/metabase/internal_stats
 
-# legacy-mbql (Querying Platform, suppressed via :suppress-codeowners)
+# lib.legacy-mbql (Querying Platform, suppressed via :suppress-codeowners)
 # src/metabase/legacy_mbql @metabase/core-backend-querying-platform
 # test/metabase/legacy_mbql @metabase/core-backend-querying-platform
 
@@ -532,15 +548,23 @@ test/metabase/graph @metabase/graphy
 src/metabase/lib @metabase/core-backend-querying-platform
 test/metabase/lib @metabase/core-backend-querying-platform
 
-# lib-be (Querying Platform)
+# lib.metadata (Querying Platform)
+src/metabase/lib/metadata @metabase/core-backend-querying-platform
+test/metabase/lib/metadata @metabase/core-backend-querying-platform
+
+# lib.schema (Querying Platform)
+src/metabase/lib/schema @metabase/core-backend-querying-platform
+test/metabase/lib/schema @metabase/core-backend-querying-platform
+
+# lib.be (Querying Platform)
 src/metabase/lib_be @metabase/core-backend-querying-platform
 test/metabase/lib_be @metabase/core-backend-querying-platform
 
-# lib-metric (UX West, no :assignee in team.json)
+# lib.metric (UX West, no :assignee in team.json)
 # src/metabase/lib_metric
 # test/metabase/lib_metric
 
-# llm (Metabot, no :assignee in team.json)
+# metabot.llm (Metabot, no :assignee in team.json)
 # src/metabase/llm
 # test/metabase/llm
 
@@ -548,7 +572,7 @@ test/metabase/lib_be @metabase/core-backend-querying-platform
 # src/metabase/logger
 # test/metabase/logger
 
-# login-history (UX West, no :assignee in team.json)
+# session.login-history (UX West, no :assignee in team.json)
 # src/metabase/login_history
 # test/metabase/login_history
 
@@ -576,6 +600,10 @@ test/metabase/lib_be @metabase/core-backend-querying-platform
 # src/metabase/models
 # test/metabase/models
 
+# mq (UX West, no :assignee in team.json)
+# src/metabase/mq
+# test/metabase/mq
+
 # native-query-snippets (Graphy, suppressed via :suppress-codeowners)
 # src/metabase/native_query_snippets @metabase/graphy
 # test/metabase/native_query_snippets @metabase/graphy
@@ -584,7 +612,7 @@ test/metabase/lib_be @metabase/core-backend-querying-platform
 # src/metabase/notification
 # test/metabase/notification
 
-# oauth-server (UX West, no :assignee in team.json)
+# mcp.oauth-server (UX West, no :assignee in team.json)
 # src/metabase/oauth_server
 # test/metabase/oauth_server
 
@@ -600,11 +628,11 @@ test/metabase/lib_be @metabase/core-backend-querying-platform
 # src/metabase/permissions
 # test/metabase/permissions
 
-# permissions-rest (UX West, no :assignee in team.json)
+# permissions.rest (UX West, no :assignee in team.json)
 # src/metabase/permissions_rest
 # test/metabase/permissions_rest
 
-# pivot (UX West, no :assignee in team.json)
+# query-processor.pivot (UX West, no :assignee in team.json)
 # src/metabase/pivot
 # test/metabase/pivot
 
@@ -623,7 +651,7 @@ test/metabase/lib_be @metabase/core-backend-querying-platform
 # public-sharing (UX West, no :assignee in team.json)
 # src/metabase/public_sharing
 
-# public-sharing-rest (UX West, no :assignee in team.json)
+# public-sharing.rest (UX West, no :assignee in team.json)
 # src/metabase/public_sharing_rest
 # test/metabase/public_sharing_rest
 
@@ -635,7 +663,7 @@ test/metabase/lib_be @metabase/core-backend-querying-platform
 # src/metabase/queries @metabase/graphy
 # test/metabase/queries @metabase/graphy
 
-# queries-rest (Querying Platform, suppressed via :suppress-codeowners)
+# queries.rest (Querying Platform, suppressed via :suppress-codeowners)
 # src/metabase/queries_rest @metabase/core-backend-querying-platform
 # test/metabase/queries_rest @metabase/core-backend-querying-platform
 
@@ -646,6 +674,10 @@ test/metabase/lib_be @metabase/core-backend-querying-platform
 # query-processor (Querying Platform)
 src/metabase/query_processor @metabase/core-backend-querying-platform
 test/metabase/query_processor @metabase/core-backend-querying-platform
+
+# query-processor.cache-backend (Querying Platform)
+src/metabase/query_processor/middleware/cache_backend @metabase/core-backend-querying-platform
+test/metabase/query_processor/middleware/cache_backend @metabase/core-backend-querying-platform
 
 # remote-sync (UX West, no :assignee in team.json)
 # src/metabase/remote_sync
@@ -671,7 +703,7 @@ test/metabase/query_processor @metabase/core-backend-querying-platform
 # src/metabase/search
 # test/metabase/search
 
-# secrets (Graphy, suppressed via :suppress-codeowners)
+# warehouses.secrets (Graphy, suppressed via :suppress-codeowners)
 # src/metabase/secrets @metabase/graphy
 # test/metabase/secrets @metabase/graphy
 
@@ -691,7 +723,7 @@ test/metabase/query_processor @metabase/core-backend-querying-platform
 # src/metabase/settings
 # test/metabase/settings
 
-# settings-rest (DevEx, no :assignee in team.json)
+# settings.rest (DevEx, no :assignee in team.json)
 # src/metabase/settings_rest
 # test/metabase/settings_rest
 
@@ -699,19 +731,19 @@ test/metabase/query_processor @metabase/core-backend-querying-platform
 # src/metabase/setup
 # test/metabase/setup
 
-# setup-rest (UX West, no :assignee in team.json)
+# setup.rest (UX West, no :assignee in team.json)
 # src/metabase/setup_rest
 # test/metabase/setup_rest
 
-# slackbot (Metabot, no :assignee in team.json)
+# metabot.slackbot (Metabot, no :assignee in team.json)
 # src/metabase/slackbot
 # test/metabase/slackbot
 
-# source-swap (Graphy, suppressed via :suppress-codeowners)
+# lib.source-swap (Graphy, suppressed via :suppress-codeowners)
 # src/metabase/source_swap @metabase/graphy
 # test/metabase/source_swap @metabase/graphy
 
-# sql-parsing (DevEx, no :assignee in team.json)
+# sql-tools.parsing (DevEx, no :assignee in team.json)
 # src/metabase/sql_parsing
 # test/metabase/sql_parsing
 
@@ -729,6 +761,7 @@ test/metabase/query_processor @metabase/core-backend-querying-platform
 
 # startup (DevEx, no :assignee in team.json)
 # src/metabase/startup
+# test/metabase/startup
 
 # store-api (Cloud, no :assignee in team.json)
 # src/metabase/store_api
@@ -745,11 +778,11 @@ test/metabase/query_processor @metabase/core-backend-querying-platform
 # src/metabase/task
 # test/metabase/task
 
-# task-history (UX West, no :assignee in team.json)
+# task.history (UX West, no :assignee in team.json)
 # src/metabase/task_history
 # test/metabase/task_history
 
-# tenants (Admin Webapp, no :assignee in team.json)
+# users.tenants (Admin Webapp, no :assignee in team.json)
 # src/metabase/tenants
 # test/metabase/tenants
 
@@ -773,19 +806,27 @@ test/metabase/query_processor @metabase/core-backend-querying-platform
 # src/metabase/transforms @metabase/graphy
 # test/metabase/transforms @metabase/graphy
 
-# transforms-base (Graphy, suppressed via :suppress-codeowners)
+# transforms.base (Graphy, suppressed via :suppress-codeowners)
 # src/metabase/transforms_base @metabase/graphy
 # test/metabase/transforms_base @metabase/graphy
 
-# transforms-inspector (Gadget, no :assignee in team.json)
+# transforms.inspector (Gadget, no :assignee in team.json)
 # src/metabase/transforms_inspector
 # test/metabase/transforms_inspector
 
-# transforms-rest (Gadget, no :assignee in team.json)
+# transforms.rest (Gadget, no :assignee in team.json)
 # src/metabase/transforms_rest
 # test/metabase/transforms_rest
 
-# types (Querying Platform, suppressed via :suppress-codeowners)
+# typed-schemas (Embedding, no :assignee in team.json)
+# src/metabase/typed_schemas
+# test/metabase/typed_schemas
+
+# typed-schemas.rest (Embedding, no :assignee in team.json)
+# src/metabase/typed_schemas_rest
+# test/metabase/typed_schemas_rest
+
+# lib.types (Querying Platform, suppressed via :suppress-codeowners)
 # src/metabase/types @metabase/core-backend-querying-platform
 # test/metabase/types @metabase/core-backend-querying-platform
 
@@ -805,7 +846,7 @@ test/metabase/query_processor @metabase/core-backend-querying-platform
 # src/metabase/users
 # test/metabase/users
 
-# users-rest (UX West, no :assignee in team.json)
+# users.rest (UX West, no :assignee in team.json)
 # src/metabase/users_rest
 # test/metabase/users_rest
 
@@ -813,19 +854,19 @@ test/metabase/query_processor @metabase/core-backend-querying-platform
 # src/metabase/util
 # test/metabase/util
 
-# version (UX West, no :assignee in team.json)
+# core.version (UX West, no :assignee in team.json)
 # src/metabase/version
 # test/metabase/version
 
-# view-log (UX West, no :assignee in team.json)
+# audit-app.view-log (UX West, no :assignee in team.json)
 # src/metabase/view_log
 # test/metabase/view_log
 
-# warehouse-schema (UX West, no :assignee in team.json)
+# warehouses.schema (UX West, no :assignee in team.json)
 # src/metabase/warehouse_schema
 # test/metabase/warehouse_schema
 
-# warehouse-schema-rest (UX West, no :assignee in team.json)
+# warehouses.schema.rest (UX West, no :assignee in team.json)
 # src/metabase/warehouse_schema_rest
 # test/metabase/warehouse_schema_rest
 
@@ -833,12 +874,9 @@ test/metabase/query_processor @metabase/core-backend-querying-platform
 # src/metabase/warehouses
 # test/metabase/warehouses
 
-# warehouses-rest (UX West, no :assignee in team.json)
+# warehouses.rest (UX West, no :assignee in team.json)
 # src/metabase/warehouses_rest
 # test/metabase/warehouses_rest
-
-# workspaces (Graphy, suppressed via :suppress-codeowners)
-# src/metabase/workspaces @metabase/graphy
 
 # xrays (Graphy, suppressed via :suppress-codeowners)
 # src/metabase/xrays @metabase/graphy
