@@ -1,11 +1,21 @@
 # In-process embedding plugin
 
-This module builds `metabase-embedder-plugin.jar`, an optional runtime plugin containing one pinned model:
-`Snowflake/snowflake-arctic-embed-l-v2.0` (1024 dimensions).
+This module builds `metabase-embedder-plugin.jar`, an optional runtime plugin containing two pinned models:
 
-Build it with `./bin/build-embedder-plugin.sh`, then place the jar in Metabase's plugin directory and set
-`MB_EE_EMBEDDING_PROVIDER=in-process`. The plugin is discovered from the jar manifest at startup, while the DJL
-runtime and model are loaded lazily on first inference.
+- `Snowflake/snowflake-arctic-embed-l-v2.0` (1024 dimensions) — semantic search and Library retrieval
+- `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions) — the data complexity score's synonym axis
+
+Build it with `./bin/build-embedder-plugin.sh`, then place the jar in Metabase's plugin directory. The plugin is
+discovered from the jar manifest at startup; each model's DJL runtime is loaded lazily on first inference, and only
+the models a consumer actually asks for are ever loaded.
+
+Consumers select the provider through their own settings:
+
+- semantic search and Library retrieval: `MB_EE_EMBEDDING_PROVIDER=in-process`
+- data complexity score: `MB_DATA_COMPLEXITY_SCORING_SYNONYM_EMBEDDING_PROVIDER=in-process`
+
+Each consumer's model setting picks which bundled model it gets, and a model the plugin does not bundle fails
+readiness rather than falling back to another one.
 
 The artifact contains pinned ARM64 and x86-64/AVX2 ONNX exports. The supported runtime combinations are glibc 2.34
 or newer on Linux, on either architecture, and Apple Silicon macOS. Intel macOS is unsupported because the tokenizer
@@ -17,4 +27,5 @@ The exact embedding-space identity includes the architecture-specific export dig
 semantic-search or library-retrieval indexes must use the same architecture. Mixed ARM64/x86-64 clusters fail closed
 rather than querying vectors produced by a different export.
 
-Custom model sources and additional models are intentionally not supported in this first version.
+Custom model sources are intentionally not supported in this first version: the bundled catalog is the only place a
+model can come from.
