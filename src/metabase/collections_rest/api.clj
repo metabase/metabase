@@ -1166,6 +1166,17 @@
          ;; whatever
          [[:id :asc]]]))
 
+(defn- total-count
+  "The size of the whole result set `rows` is a page of, read off the `total_count` window column.
+
+  A page past the end of the result set comes back empty and so carries no window column; in that case read the count
+  off the first row of the same query without its pagination."
+  [rows rows-query offset]
+  (or (some-> rows first :total_count)
+      (when (pos? (or offset 0))
+        (some-> (mdb/query (assoc rows-query :limit 1)) first :total_count))
+      0))
+
 (defn- collection-children*
   [collection models {:keys [sort-info archived? search-text] :as options}]
   (let [sql-order     (children-sort-clause sort-info (mdb/db-type))
@@ -1190,36 +1201,32 @@
                                :from     [[{:union-all queries} :dummy_alias]]
                                :order-by sql-order}
                         search-clause
-                        (assoc :where search-clause))
-        limit       (request/limit)
-        offset      (request/offset)
+                        (sql.helpers/where search-clause))
+        limit         (request/limit)
+        offset        (request/offset)
         ;; We didn't implement collection pagination for snippets namespace for root/items
         ;; Rip out the limit for now and put it back in when we want it
-        limit-query (if (or
-                         (nil? limit)
-                         (nil? offset)
-                         (= (:collection-namespace options) "snippets"))
-                      rows-query
-                      (assoc rows-query
-                             ;; If limit is 0, we still execute the query with a limit of 1 so that we fetch a
-                             ;; :total_count
-                             :limit  (if (zero? limit) 1 limit)
-                             :offset offset))
-        rows        (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
-                      (mdb/query limit-query))
-        total       (or (some-> rows first :total_count)
-                        (when (pos? (or offset 0))
-                          (some-> (mdb/query (assoc rows-query :limit 1)) first :total_count))
-                        0)
-        res         {:total  total
-                     :data   (if (= limit 0)
-                               []
-                               (tracing/with-span :db-app "db-app.collection-items-post-process" {:collection/id (:id collection)}
-                                 (post-process-rows options collection rows)))
-                     :models models}
-        limit-res   (assoc res
-                           :limit  (request/limit)
-                           :offset (request/offset))]
+        limit-query   (if (or
+                           (nil? limit)
+                           (nil? offset)
+                           (= (:collection-namespace options) "snippets"))
+                        rows-query
+                        (assoc rows-query
+                               ;; If limit is 0, we still execute the query with a limit of 1 so that we fetch a
+                               ;; :total_count
+                               :limit  (if (zero? limit) 1 limit)
+                               :offset offset))
+        rows          (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
+                        (mdb/query limit-query))
+        res           {:total  (total-count rows rows-query offset)
+                       :data   (if (= limit 0)
+                                 []
+                                 (tracing/with-span :db-app "db-app.collection-items-post-process" {:collection/id (:id collection)}
+                                   (post-process-rows options collection rows)))
+                       :models models}
+        limit-res     (assoc res
+                             :limit  (request/limit)
+                             :offset (request/offset))]
     (if (= (:collection-namespace options) "snippets")
       res
       limit-res)))
@@ -1255,9 +1262,11 @@
   "Return the models that have at least one visible item in `collection`. Respect the requested scope and visibility,
   but ignore model and search filters. When present, `restrict-models` limits the candidate models. Snippets are never
   reported: they are not a filterable type."
-  [collection restrict-models {:keys [archived?] :as options}]
+  [collection                      :- collection/CollectionWithLocationAndIDOrRoot
+   restrict-models                 :- [:maybe [:set :keyword]]
+   {:keys [archived?] :as options} :- CollectionChildrenOptions]
   (let [candidates (cond->> (remove #{:snippet} (valid-collection-models (:namespace collection)))
-                     (seq restrict-models) (filter (set restrict-models)))
+                     (seq restrict-models) (filter restrict-models))
         options    (-> options
                        (dissoc :models :search-text)
                        (assoc :collection-namespace (:namespace collection)))]
@@ -1521,11 +1530,10 @@
                                                        :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
                                                        ;; default to sorting official collections first, but provide the option not to
                                                        :official-collections-first? (or (nil? official_collections_first)
-                                                                                        (boolean official_collections_first))}}
-        children        (cond-> (collection-children root-collection options)
-                          include_available_models
-                          (merge (collection-filter-metadata root-collection restrict-models options)))]
-    children))
+                                                                                        (boolean official_collections_first))}}]
+    (cond-> (collection-children root-collection options)
+      include_available_models
+      (merge (collection-filter-metadata root-collection restrict-models options)))))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
