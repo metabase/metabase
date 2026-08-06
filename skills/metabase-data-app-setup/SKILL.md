@@ -257,8 +257,7 @@ Triage by `kind` (always read `hint` — it names the exact fix; never soften a
 | `error` | a real bug; `detail` has the stack |
 
 Text is truncated and the buffer holds the last 200 events. `curl -X DELETE
-.../__data-app/diagnostics` clears it for every reader — the toolbar's Clear
-button, not a step you need before reading.
+.../__data-app/diagnostics` clears it for every reader.
 
 ## Source conventions
 
