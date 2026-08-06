@@ -4,6 +4,8 @@
    [metabase.search.spec :as search.spec]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel test-qualify-column
   (is (= [:table.column :column] (#'search.spec/qualify-column :table :column)))
   (is (= :qualified.column (#'search.spec/qualify-column :table :qualified.column)))
