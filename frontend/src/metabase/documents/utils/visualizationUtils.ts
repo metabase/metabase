@@ -8,9 +8,11 @@ import {
 } from "metabase/viz-core";
 import type {
   Dataset,
+  Document,
   IconName,
   VisualizationDisplay,
 } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 export interface VisualizationItem {
   value: VisualizationDisplay;
@@ -75,4 +77,16 @@ export function useVisualizationOptions(
     nonsensibleItems,
     selectedElem,
   };
+}
+
+/**
+ * A public document's page silently degrades to a table for custom
+ * visualizations, so switching to one is blocked once the document is
+ * publicly shared.
+ */
+export function isVizOptionBlockedForPublicDocument(
+  document: Document | null,
+  display: VisualizationDisplay,
+): boolean {
+  return Boolean(document?.public_uuid) && isCustomVizDisplay(display);
 }
