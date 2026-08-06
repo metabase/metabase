@@ -20,6 +20,7 @@ import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import type {
   BedrockCredentials,
+  GoogleCredentials,
   MetabotCredentials,
   MetabotProvider,
   MetabotSettingsResponse,
@@ -72,6 +73,11 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
   azure: {
     // Azure has no model dropdown — deployment names are free text.
     value: "azure/anthropic/claude-sonnet-4-5",
+    models: [],
+  },
+  google: {
+    // Google has no model dropdown. Model IDs are free text, validated at connect time.
+    value: "google/google/gemini-3.5-flash",
     models: [],
   },
   bedrock: {
@@ -134,11 +140,18 @@ type MetabotSettingsApiResponse =
   | MetabotSettingsResponse
   | (() => Promise<MetabotSettingsResponse>);
 
+type GoogleSettingKey =
+  | "llm-google-service-account-key"
+  | "llm-google-oauth-access-token"
+  | "llm-google-project-id"
+  | "llm-google-location";
+
 type MetabotSettingKey =
   | "llm-metabot-provider"
   | "llm-anthropic-api-key"
   | "llm-azure-api-key"
   | "llm-azure-api-base-url"
+  | GoogleSettingKey
   | "llm-mistral-api-key"
   | "llm-moonshot-api-key"
   | "llm-openai-api-key"
@@ -190,6 +203,11 @@ type SetupOptions = {
   deferPurchaseCloudAddOnResponse?: boolean;
   removeCloudAddOnResponse?: number | { status: number; body: unknown };
   apiKeyValues?: Partial<Record<MetabotProvider, string | null>>;
+  googleProjectIdValue?: string | null;
+  googleServiceAccountValue?: string | null;
+  googleOauthTokenValue?: string | null;
+  googleLocationValue?: string | null;
+  googleEnvSettings?: Partial<Record<GoogleSettingKey, string>>;
   pauseUpdateResponse?: boolean;
   deferMetabotSettingsUpdateResponse?: boolean;
   settingUpdateResponse?: number | { status: number; body?: unknown };
@@ -199,6 +217,53 @@ type SetupOptions = {
   renderAsModal?: boolean;
   onClose?: jest.Mock;
 };
+
+type GoogleSettingValues = Pick<
+  SetupOptions,
+  | "googleProjectIdValue"
+  | "googleServiceAccountValue"
+  | "googleOauthTokenValue"
+  | "googleLocationValue"
+  | "googleEnvSettings"
+>;
+
+function createGoogleSettingDefinitions({
+  googleProjectIdValue = "my-project",
+  googleServiceAccountValue = null,
+  googleOauthTokenValue = null,
+  googleLocationValue = null,
+  googleEnvSettings = {},
+}: GoogleSettingValues): Record<GoogleSettingKey, MetabotSettingDefinition> {
+  const createGoogleSetting = (key: GoogleSettingKey, value: string | null) => {
+    const envName = googleEnvSettings[key];
+    return createMockSettingDefinition({
+      key,
+      value: value ?? undefined,
+      is_env_setting: Boolean(envName),
+      env_name: envName,
+    });
+  };
+
+  return {
+    "llm-google-service-account-key": createGoogleSetting(
+      "llm-google-service-account-key",
+      googleServiceAccountValue,
+    ),
+    "llm-google-oauth-access-token": createGoogleSetting(
+      "llm-google-oauth-access-token",
+      googleOauthTokenValue,
+    ),
+    // The project ID is saved with an OAuth token. A service account key includes its own.
+    "llm-google-project-id": createGoogleSetting(
+      "llm-google-project-id",
+      googleOauthTokenValue ? (googleProjectIdValue ?? null) : null,
+    ),
+    "llm-google-location": createGoogleSetting(
+      "llm-google-location",
+      googleLocationValue,
+    ),
+  };
+}
 
 async function setup({
   isHosted = false,
@@ -221,6 +286,11 @@ async function setup({
   deferPurchaseCloudAddOnResponse = false,
   removeCloudAddOnResponse = 200,
   apiKeyValues,
+  googleProjectIdValue,
+  googleServiceAccountValue,
+  googleOauthTokenValue,
+  googleLocationValue,
+  googleEnvSettings,
   pauseUpdateResponse = false,
   deferMetabotSettingsUpdateResponse = false,
   settingUpdateResponse = 204,
@@ -304,6 +374,13 @@ async function setup({
       value: mergedApiKeyValues.azure
         ? "https://my-resource.services.ai.azure.com/anthropic"
         : undefined,
+    }),
+    ...createGoogleSettingDefinitions({
+      googleProjectIdValue,
+      googleServiceAccountValue,
+      googleOauthTokenValue,
+      googleLocationValue,
+      googleEnvSettings,
     }),
     "llm-mistral-api-key": createMockSettingDefinition({
       key: "llm-mistral-api-key",
@@ -466,6 +543,43 @@ async function setup({
         "secret-access-key",
       );
       updateBedrockSetting("llm-bedrock-session-token", "session-token");
+    }
+
+    if (body.provider === "google" && "credentials" in body) {
+      const mask = (value: string | null | undefined) =>
+        value ? `**********${String(value).slice(-2)}` : undefined;
+
+      // Same rules as Bedrock. `credentials: null` clears everything. In the map, an absent
+      // field keeps the saved value, and a null field clears it.
+      const requestCredentials = body.credentials ?? null;
+      const updateGoogleSetting = (
+        settingKey: GoogleSettingKey,
+        field: keyof GoogleCredentials,
+        masked: boolean,
+      ) => {
+        if (requestCredentials !== null && !(field in requestCredentials)) {
+          return;
+        }
+        const nextValue = requestCredentials?.[field];
+        settingsDefinitions[settingKey] = createMockSettingDefinition({
+          ...settingsDefinitions[settingKey],
+          key: settingKey,
+          value: masked ? mask(nextValue) : (nextValue ?? undefined),
+        });
+      };
+
+      updateGoogleSetting(
+        "llm-google-service-account-key",
+        "service-account-key",
+        true,
+      );
+      updateGoogleSetting(
+        "llm-google-oauth-access-token",
+        "oauth-access-token",
+        true,
+      );
+      updateGoogleSetting("llm-google-project-id", "project-id", false);
+      updateGoogleSetting("llm-google-location", "location", false);
     }
 
     if ("model" in body) {
@@ -648,6 +762,7 @@ describe("AIProviderSettingsSection", () => {
       /Z\.AI/,
       /Microsoft Azure/,
       /Amazon Bedrock/,
+      /Gemini Enterprise Agent Platform/,
     ]) {
       const option = await screen.findByRole("option", { name });
       expect(option).toBeInTheDocument();
@@ -2279,6 +2394,581 @@ describe("AIProviderSettingsSection", () => {
       expect(
         await screen.findByText("Connect to an AI provider"),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("Gemini Enterprise Agent Platform", () => {
+    // The "OAuth token" label on the auth toggle is the same as the label on the OAuth token
+    // input. Thus the queries for credential inputs also give the element type.
+    const CREDENTIAL_INPUT = { selector: "input[type='password']" };
+
+    it("shows the project ID, location, model, and auth type toggle with the service account key picker when selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+
+      expect(await screen.findByLabelText("Project ID")).toBeInTheDocument();
+      expect(screen.getByLabelText("Location")).toBeInTheDocument();
+      expect(screen.getByLabelText("Model")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Authentication method"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Service account key file")).toBeInTheDocument();
+      // Only the credential input for the selected auth type is shown.
+      expect(
+        screen.queryByLabelText("OAuth token", CREDENTIAL_INPUT),
+      ).not.toBeInTheDocument();
+    });
+
+    it("explains that model availability varies by location and links to the location docs", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Model");
+
+      expect(
+        screen.getByText(/Model availability varies by location/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", {
+          name: "See which Gemini models are available in each location.",
+        }),
+      ).toHaveAttribute(
+        "href",
+        "https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations#google-models",
+      );
+    });
+
+    const typeModel = async (model: string) => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await userEvent.type(await screen.findByLabelText("Model"), model);
+    };
+
+    const ANY_MODEL_WARNING =
+      /may be degraded|This appears to be|Only Gemini models/;
+
+    it("shows no advisory warning for a standard Gemini model", async () => {
+      await typeModel("gemini-3.5-flash");
+
+      expect(screen.queryByText(ANY_MODEL_WARNING)).not.toBeInTheDocument();
+    });
+
+    it("warns that the Gemini 2.5 family may degrade Metabot performance", async () => {
+      await typeModel("gemini-2.5-flash");
+
+      expect(
+        screen.getByText(
+          "Metabot performance may be degraded with the Gemini 2.5 family of models. gemini-3.5-flash or stronger is recommended.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("warns that 'lite' models may degrade Metabot performance", async () => {
+      await typeModel("gemini-3.5-flash-lite");
+
+      expect(
+        screen.getByText(
+          "Metabot performance may be degraded with 'lite' models. gemini-3.5-flash or stronger is recommended.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("warns when the model looks like an image model", async () => {
+      await typeModel("gemini-3.5-flash-image");
+
+      expect(
+        screen.getByText(
+          "This appears to be an image model. Use a standard model like gemini-3.5-flash or newer.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("warns when the model looks like an audio model", async () => {
+      await typeModel("gemini-3.6-native-audio");
+
+      expect(
+        screen.getByText(
+          "This appears to be an audio model. Use a standard model like gemini-3.5-flash or newer.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("warns when the model looks like a TTS model", async () => {
+      await typeModel("gemini-3.6-tts");
+
+      expect(
+        screen.getByText(
+          "This appears to be a TTS model. Use a standard model like gemini-3.5-flash or newer.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("warns when the model is not a Gemini model", async () => {
+      await typeModel("claude-sonnet-4-6");
+
+      expect(
+        screen.getByText(
+          "Only Gemini models are currently supported, e.g. gemini-3.5-flash",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("warns about the modality rather than 'lite' when a model is both", async () => {
+      await typeModel("gemini-3.1-flash-lite-image");
+
+      expect(
+        screen.getByText(/This appears to be an image model/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/'lite' models/)).not.toBeInTheDocument();
+    });
+
+    it("advisory warnings do not block connect", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "google/google/gemini-2.5-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.test-token",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-2.5-flash");
+
+      expect(screen.getByText(ANY_MODEL_WARNING)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-2.5-flash",
+            credentials: {
+              "oauth-access-token": "ya29.test-token",
+              "project-id": "my-project",
+            },
+          },
+        ]);
+      });
+    });
+
+    it("shows a single credential input matching the selected auth type", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.click(screen.getByText("OAuth token"));
+      expect(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Service account key file"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Service account key"));
+      expect(screen.getByText("Service account key file")).toBeInTheDocument();
+      expect(screen.getByText("Click to select a file")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Service account key file input"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("OAuth token", CREDENTIAL_INPUT),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps Connect disabled until the OAuth token, project ID, and model are filled in", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.test-token",
+      );
+      expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-3.5-flash");
+      expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+    });
+
+    it("connects with a service account key file alone and sends its contents as credentials", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "google/google/gemini-3.5-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+
+      expect(
+        await screen.findByRole("button", { name: "Connect" }),
+      ).toBeDisabled();
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-3.5-flash");
+      await userEvent.upload(
+        screen.getByLabelText("Service account key file input"),
+        new File(['{"type": "service_account"}'], "service-account.json", {
+          type: "application/json",
+        }),
+      );
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-3.5-flash",
+            credentials: {
+              "service-account-key": '{"type": "service_account"}',
+            },
+          },
+        ]);
+      });
+    });
+
+    it("clears a selected service account file with the clear button", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-3.5-flash");
+      await userEvent.upload(
+        screen.getByLabelText("Service account key file input"),
+        new File(['{"type": "service_account"}'], "service-account.json", {
+          type: "application/json",
+        }),
+      );
+      expect(
+        await screen.findByText("service-account.json"),
+      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Clear the selected file" }),
+      );
+      expect(
+        screen.queryByText("service-account.json"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+    });
+
+    it("connects by sending the qualified model and the credentials object in one request", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "google/google/gemini-3.5-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.test-token",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      // A bare Gemini model ID gets the `google/` publisher prefix.
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-3.5-flash");
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      // The location field did not change, thus it is not sent. Only changed fields are sent.
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-3.5-flash",
+            credentials: {
+              "oauth-access-token": "ya29.test-token",
+              "project-id": "my-project",
+            },
+          },
+        ]);
+      });
+    });
+
+    it("keeps an explicitly publisher-qualified model ID unchanged", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "google/google/gemini-3.6-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.test-token",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      await userEvent.type(
+        screen.getByLabelText("Model"),
+        "google/gemini-3.6-flash",
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-3.6-flash",
+            credentials: {
+              "oauth-access-token": "ya29.test-token",
+              "project-id": "my-project",
+            },
+          },
+        ]);
+      });
+    });
+
+    it("indicates a saved service account key without echoing it and shows the saved model", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleServiceAccountValue: "**********\n}",
+      });
+
+      // The auth toggle defaults to the saved credential type.
+      expect(
+        await screen.findByText("Service account key file"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("A service account key is saved."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("OAuth token", CREDENTIAL_INPUT),
+      ).not.toBeInTheDocument();
+      // The saved model is shown as the bare Gemini ID, without the `google/` publisher prefix.
+      expect(await screen.findByLabelText("Model")).toHaveValue(
+        "gemini-3.5-flash",
+      );
+    });
+
+    it("clears a saved service account key when connecting with an OAuth token instead", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleServiceAccountValue: "**********\n}",
+        updateResponse: {
+          value: "google/google/gemini-3.5-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      // The toggle starts on the saved service account. Change to the OAuth token auth type.
+      await screen.findByText("Service account key file");
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.new-token",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      // The service account field goes as null. The backend prefers the service account key to
+      // the OAuth token, thus the old key must not stay active.
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-3.5-flash",
+            credentials: {
+              "oauth-access-token": "ya29.new-token",
+              "project-id": "my-project",
+              "service-account-key": null,
+            },
+          },
+        ]);
+      });
+    });
+
+    it("opens on the service account key when both credentials are saved, matching the backend's precedence", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleServiceAccountValue: "**********\n}",
+        googleOauthTokenValue: "**********en",
+      });
+
+      expect(
+        await screen.findByText("Service account key file"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("OAuth token", CREDENTIAL_INPUT),
+      ).not.toBeInTheDocument();
+    });
+
+    it("leaves an env-backed service account key alone when connecting with an OAuth token", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleServiceAccountValue: "**********\n}",
+        googleEnvSettings: {
+          "llm-google-service-account-key": "MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY",
+        },
+        updateResponse: {
+          value: "google/google/gemini-3.5-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      await screen.findByLabelText("Project ID");
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.new-token",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      // An env-set key cannot be cleared, so the request leaves it out.
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-3.5-flash",
+            credentials: {
+              "oauth-access-token": "ya29.new-token",
+              "project-id": "my-project",
+            },
+          },
+        ]);
+      });
+    });
+
+    it("shows the saved credentials and model for a connected provider", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleOauthTokenValue: "**********en",
+      });
+
+      expect(
+        await screen.findByLabelText("OAuth token", CREDENTIAL_INPUT),
+      ).toHaveValue("**********en");
+      expect(screen.getByLabelText("Project ID")).toHaveValue("my-project");
+      expect(screen.getByLabelText("Model")).toHaveValue("gemini-3.5-flash");
+      expect(
+        screen.getByRole("button", { name: "Disconnect" }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows Connect instead of Disconnect when the connected model is edited", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleOauthTokenValue: "**********en",
+        updateResponse: {
+          value: "google/google/gemini-3.6-flash",
+          models: DEFAULT_RESPONSES.google.models,
+        },
+      });
+
+      expect(await screen.findByLabelText("Model")).toHaveValue(
+        "gemini-3.5-flash",
+      );
+      expect(
+        screen.getByRole("button", { name: "Disconnect" }),
+      ).toBeInTheDocument();
+
+      await userEvent.clear(screen.getByLabelText("Model"));
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-3.6-flash");
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(async () => {
+        expect(await findMetabotSettingsUpdates()).toEqual([
+          {
+            provider: "google",
+            model: "google/gemini-3.6-flash",
+            credentials: {},
+          },
+        ]);
+      });
+    });
+
+    it("shows the connect error when validating the model fails", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        metabotSettingsUpdateResponse: {
+          status: 400,
+          body: {
+            message:
+              "Google API endpoint is unavailable or the model was not found.",
+          },
+        },
+      });
+
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Project ID");
+
+      await userEvent.click(screen.getByText("OAuth token"));
+      await userEvent.type(
+        screen.getByLabelText("OAuth token", CREDENTIAL_INPUT),
+        "ya29.test-token",
+      );
+      await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+      await userEvent.type(screen.getByLabelText("Model"), "gemini-9000");
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      expect(
+        await screen.findByText(
+          "Google API endpoint is unavailable or the model was not found.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("disconnects by clearing the credentials before the provider setting", async () => {
+      await setup({
+        savedProviderValue: "google/google/gemini-3.5-flash",
+        googleOauthTokenValue: "**********en",
+      });
+
+      await screen.findByLabelText("Project ID");
+      await confirmDisconnectProvider();
+
+      // The credentials must be cleared before the provider setting.
+      await waitFor(async () => {
+        expect(await findPutRequests()).toEqual([
+          {
+            path: METABOT_SETTINGS_PATH,
+            body: { provider: "google", credentials: null },
+          },
+          {
+            path: SETTING_PATH,
+            body: { "llm-metabot-provider": null },
+          },
+        ]);
+      });
     });
   });
 
