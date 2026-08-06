@@ -170,7 +170,8 @@
             [:document.name :name]
             ;; last_viewed_at is NOT NULL (default current_timestamp), so it's storage noise for a
             ;; never-viewed doc — null the anchor when view_count = 0 to keep "never used" distinguishable.
-            [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]]
+            [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
+            :document.collection_id]
    :from :document
    :left-join [:collection [:= :collection.id :document.collection_id]]
    :where [:and

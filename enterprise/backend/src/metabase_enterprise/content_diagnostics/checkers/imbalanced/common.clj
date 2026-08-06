@@ -1,15 +1,17 @@
 (ns metabase-enterprise.content-diagnostics.checkers.imbalanced.common
   "Shared helpers for the three imbalanced checkers (`empty`/`sparse`/`crowded`, one per sibling
   namespace): the finding constructor and the app-db count/row helpers more than one of them needs -
-  notably `eligible-collections`, the single definition of what a collection subject is, so the checkers
-  never scan different collection sets. Each checker re-runs only the helpers it needs; these are cheap
-  app-db aggregates, so we favor independence over threading shared results.
+  notably `eligible-collections`, the checkers' view over the module-wide collection-subject definition
+  (`common/eligible-collection-where`), so the checkers never scan different collection sets. Each
+  checker re-runs only the helpers it needs; these are cheap app-db aggregates, so we favor independence
+  over threading shared results.
 
-  A collection's direct items are its non-archived child collections plus its cards, dashboards, and
-  documents (a card inside a dashboard or document lives in that container, not the collection).
-  Checker-specific probes - the card-run window, document parsing, per-tab dashcard grouping - live in
-  the checker namespaces."
+  A collection's direct items are exactly its non-archived child collections plus its cards, dashboards,
+  documents, and transforms (a card inside a dashboard or document lives in that container, not the
+  collection). Checker-specific probes - the card-run window, document parsing, per-tab dashcard
+  grouping - live in the checker namespaces."
   (:require
+   [metabase-enterprise.content-diagnostics.common :as common]
    [metabase.collections.models.collection :as collection]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -27,35 +29,54 @@
    :details       details})
 
 (defn collection-item-cards
-  "Non-archived cards that count as direct collection items, as `{:id :collection_id}` rows -
-  dashboard/document-internal cards live inside their container, not the collection."
+  "Non-archived cards in eligible containers that count as direct collection items, as
+  `{:id :collection_id}` rows - dashboard/document-internal cards live inside their container, not the
+  collection."
   []
   (t2/query {:select [:id :collection_id]
              :from   [:report_card]
              :where  [:and
                       [:= :archived false]
                       [:= :dashboard_id nil]
-                      [:= :document_id nil]]}))
+                      [:= :document_id nil]
+                      (common/eligible-container-clause :collection_id)]}))
 
 (defn active-dashboards
-  "Non-archived dashboards as `{:id :collection_id}` rows."
+  "Non-archived dashboards in eligible containers as `{:id :collection_id}` rows."
   []
   (t2/query {:select [:id :collection_id]
              :from   [:report_dashboard]
-             :where  [:= :archived false]}))
+             :where  [:and
+                      [:= :archived false]
+                      (common/eligible-container-clause :collection_id)]}))
 
 (defn document-items
-  "Non-archived documents as `{:id :collection_id}` rows - the light form for collection counting
-  (no AST fetch)."
+  "Non-archived documents in eligible containers as `{:id :collection_id}` rows - the light form for
+  collection counting (no AST fetch)."
   []
   (t2/query {:select [:id :collection_id]
              :from   [(t2/table-name :model/Document)]
-             :where  [:= :archived false]}))
+             :where  [:and
+                      [:= :archived false]
+                      (common/eligible-container-clause :collection_id)]}))
 
 (defn active-documents
-  "Non-archived documents with their AST - for the document verdicts, which parse `:document`."
+  "Non-archived documents in eligible containers with their AST - for the document verdicts, which parse
+  `:document`."
   []
-  (t2/select [:model/Document :id :collection_id :document :content_type] :archived false))
+  (t2/select [:model/Document :id :collection_id :document :content_type]
+             {:where [:and
+                      [:= :archived false]
+                      (common/eligible-container-clause :collection_id)]}))
+
+(defn transform-items
+  "Transforms as `{:id :collection_id}` rows - transforms are hard-deleted (no archived column), so every
+  row counts."
+  []
+  ;; no container clause: a transform's only possible containers are transforms-namespace collections
+  ;; (`allowed-namespaces :model/Transform`), and both consumers ignore ineligible collections' counts
+  (t2/query {:select [:id :collection_id]
+             :from   [:transform]}))
 
 (defn dashboard-dashcard-totals
   "`{dashboard-id -> primary dashcard count across all tabs}`; no row = 0. Counts primary dashcards
@@ -67,25 +88,18 @@
                          :group-by [:dashboard_id]})))
 
 (defn eligible-collections
-  "The collections that count as subjects (and the substrate for the recursion): non-archived,
-  default-namespace only (snippet and analytics collections are internal), never the Trash or
-  instance-analytics collections. Personal collections are included here - the scan is
-  permission-agnostic, and serve-time filtering handles their exclusion."
+  "The collections the imbalanced checkers scan (and the substrate for the recursion): the shared
+  collection-subject set (`common/eligible-collection-where`)."
   []
-  (t2/select [:model/Collection :id :location]
-             {:where [:and
-                      [:= :archived false]
-                      [:= :namespace nil]
-                      [:or
-                       [:= :type nil]
-                       [:not-in :type [collection/trash-collection-type
-                                       collection/instance-analytics-collection-type]]]]}))
+  (t2/select [:model/Collection :id :location] {:where common/eligible-collection-where}))
 
 (defn direct-item-counts
   "`{collection-id -> raw direct item count}` over `collections`: child collections plus the
-  card/dashboard/document items. Empty items still count - only the `empty` cascade looks deeper."
+  card/dashboard/document/transform items. Empty items still count - only the `empty` cascade looks
+  deeper."
   [collections]
   (merge-with +
               (frequencies (keep (comp collection/location-path->parent-id :location) collections))
               (frequencies (keep :collection_id
-                                 (concat (collection-item-cards) (active-dashboards) (document-items))))))
+                                 (concat (collection-item-cards) (active-dashboards) (document-items)
+                                         (transform-items))))))

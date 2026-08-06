@@ -1603,7 +1603,8 @@
   {:select [:report_card.id
             [(h2x/literal "Card") :model]
             [:report_card.name :name]
-            :last_used_at]
+            :last_used_at
+            :report_card.collection_id]
    :from :report_card
    :left-join [:moderation_review [:and
                                    [:= :moderation_review.moderated_item_id :report_card.id]

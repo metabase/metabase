@@ -597,7 +597,8 @@
     {:select    [:transform.id
                  [[:inline "Transform"] :model]
                  [:transform.name :name]
-                 [:latest_run.last_start :last_used_at]]
+                 [:latest_run.last_start :last_used_at]
+                 :transform.collection_id]
      :from      :transform
      :left-join [[(transform-run/latest-run-start-times-query) :latest_run]
                  [:= :latest_run.transform_id :transform.id]]

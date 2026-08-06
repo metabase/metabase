@@ -28,9 +28,10 @@
 
 (defmulti ^:private candidate-rows
   "Lightweight non-archived `(id, name)` rows for one entity type, for name clustering. card/dashboard/document
-  (`::collection-item`) filter on their `archived` column and add any `common/candidate-cols` (card carries
-  `:card_schema`, required by its after-select hook); transform has no `archived` column (hard-deleted), so
-  every row counts; collection narrows to the shared collection-subject set. Scan-time and instance-wide -
+  (`::collection-item`) filter on their `archived` column, keep only rows in eligible containers
+  (`common/eligible-container-clause`), and add any `common/candidate-cols` (card carries `:card_schema`,
+  required by its after-select hook); transform has no `archived` column (hard-deleted), so every row
+  counts; collection narrows to the shared collection-subject set. Scan-time and instance-wide -
   deliberately un-permissioned, unlike the serve layer's `read-entity-rows`."
   {:arglists '([entity-type])}
   identity
@@ -40,7 +41,9 @@
   [entity-type]
   ;; :card_schema (a candidate-col for cards) is required on any Card select - its after-select hook reads it.
   (t2/select (into [(common/entity-type->model entity-type) :id :name] (common/candidate-cols entity-type))
-             :archived false))
+             {:where [:and
+                      [:= :archived false]
+                      (common/eligible-container-clause :collection_id)]}))
 
 (defmethod candidate-rows :transform
   [_]

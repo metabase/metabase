@@ -28,8 +28,10 @@
 (def eligible-collection-where
   "The WHERE defining a collection *subject* - the finalized content-diagnostics eligibility set, stated
   directly (not via `mi/exclude-internal-content-hsql`) so the scope is visible here and stable against
-  platform changes to \"internal content\". Included: the default (nil), transforms, and tenant namespaces.
-  Excluded: the snippet and analytics namespaces, the Trash and instance-analytics types, archived
+  platform changes to \"internal content\". Content-diagnostics analyzes real user content only, so a
+  collection tree that structurally cannot hold it is out. Included: the default (nil), transforms, and
+  tenant namespaces, library-metrics trees, and tenant-specific root collections. Excluded: the snippet
+  and analytics namespaces, the Trash, instance-analytics, library, and library-data types, archived
   collections, and sample content. Personal collections ARE included (the scan is permission-agnostic;
   serve-time filters handle exclusion). The single definition of what a collection subject is, so no two
   checkers can ever scan divergent collection sets."
@@ -41,10 +43,26 @@
    [:or [:= :namespace nil]
     [:not-in :namespace [(name collection/snippets-ns) "analytics"]]]
    ;; type denylist: Trash lives in the default namespace, so only this arm drops it; instance-analytics is
-   ;; already dropped by the analytics-namespace arm, listed here too to mirror the spec.
+   ;; already dropped by the analytics-namespace arm, listed here too to mirror the spec. The library root
+   ;; holds nothing but the two sub-roots and library-data is a Tables-only tree; library-metrics stays in.
    [:or [:= :type nil]
     [:not-in :type [collection/trash-collection-type
-                    collection/instance-analytics-collection-type]]]])
+                    collection/instance-analytics-collection-type
+                    collection/library-collection-type
+                    collection/library-data-collection-type]]]])
+
+(defn eligible-container-clause
+  "WHERE fragment keeping rows whose `collection-id-col` is an eligible *container*: the root (NULL) or a
+  collection satisfying [[eligible-collection-where]]. Content inside an ineligible container (audit,
+  sample) produces no item findings. Container-gating covers the kinds whose lifecycle follows their
+  container's (card/dashboard/document - archiving a folder archives them); transforms run regardless of
+  their folder's state, so transform findings are never container-gated."
+  [collection-id-col]
+  [:or
+   [:= collection-id-col nil]
+   [:in collection-id-col {:select [:id]
+                           :from   [(t2/table-name :model/Collection)]
+                           :where  eligible-collection-where}]])
 
 ;;; ----------------------------- entity-type multimethod dispatch (shared) -----------------------------
 ;;; What the serve/scan multimethods dispatch on: a module-local `hierarchy` (keeping bare entity-type
@@ -55,9 +73,9 @@
   "Dispatch hierarchy for the module's per-entity-type multimethods (module-local, mirroring
   `metabase.driver.impl/hierarchy`). card/dashboard/document derive `::collection-item` and share one method
   each (collection-gated read, no owner, column-resident display fields, archivable); transform and
-  collection diverge and carry explicit methods (transform has an owner and no collection_id column;
-  collection is not *in* a collection but *is* one). Add a type by deriving it here or giving it its own
-  methods - an unregistered type throws at dispatch."
+  collection diverge and carry explicit methods (transform has an owner, a non-collection-based read gate,
+  and no archived column; collection is not *in* a collection but *is* one). Add a type by deriving it
+  here or giving it its own methods - an unregistered type throws at dispatch."
   (-> (make-hierarchy)
       (derive :card      ::collection-item)
       (derive :dashboard ::collection-item)

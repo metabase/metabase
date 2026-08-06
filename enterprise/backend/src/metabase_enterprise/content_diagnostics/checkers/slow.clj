@@ -40,9 +40,9 @@
 ;;; -------------------------------------------------- cards --------------------------------------------------
 
 (defn- slow-card-id->median-ms
-  "`{card-id → median running_time (ms, rounded)}` for every **non-archived** card whose median over its
-  last [[lookback-days]] days of non-cache-hit executions exceeds `threshold-ms`. One grouped query, no
-  per-card loop."
+  "`{card-id → median running_time (ms, rounded)}` for every **non-archived** card in an eligible
+  container whose median over its last [[lookback-days]] days of non-cache-hit executions exceeds
+  `threshold-ms`. One grouped query, no per-card loop."
   [threshold-ms]
   ;; The app dbs share no median/percentile aggregate (H2 has MEDIAN, Postgres percentile_cont, MySQL
   ;; neither), so compute it portably with window functions: rank each card's executions by
@@ -62,7 +62,8 @@
                                          [:not= :qe.running_time nil]
                                          [:not= :qe.cache_hit true]
                                          [:= :c.archived false]
-                                         [:>= :qe.started_at (lookback-cutoff)]]}
+                                         [:>= :qe.started_at (lookback-cutoff)]
+                                         (common/eligible-container-clause :c.collection_id)]}
                                :ranked]]
                    :where    [:and
                               [:>= :rn [:/ :cnt 2.0]]
@@ -103,8 +104,9 @@
    :details      {:slow_entity_ids culprit-ids}})
 
 (defn- dashboard-culprit-pairs
-  "`{:dashboard_id … :card_id …}` rows for every way a **non-archived** dashboard runs a card in
-  `slow-card-ids` **when it renders**: a dashcard's primary card, and a combined-**series** card (extra
+  "`{:dashboard_id … :card_id …}` rows for every way a **non-archived** dashboard in an eligible
+  container runs a card in `slow-card-ids` **when it renders**: a dashcard's primary card, and a
+  combined-**series** card (extra
   cards layered onto one dashcard's visualization). Both execute the card's real query on dashboard load.
 
   We deliberately exclude the third dashboard→card reference dependency tracking counts — a filter's **card
@@ -113,19 +115,23 @@
   opened), are **cached**, and run a *different, limited distinct-values query* (see
   `parameters.custom-values/values-from-card-query`), not the card's chart query that `duration_ms` measures."
   [slow-card-ids]
-  (let [non-archived [:= :d.archived false]]
+  (let [eligible [:and
+                  [:= :d.archived false]
+                  ;; the container clause is re-applied to the dashboard itself - a slow (eligible) card
+                  ;; can be embedded by a dashboard living in an ineligible container
+                  (common/eligible-container-clause :d.collection_id)]]
     (concat
      ;; primary dashcard cards (a card can appear on several tabs — deduped by the caller)
      (t2/query {:select [[:dc.dashboard_id :dashboard_id] [:dc.card_id :card_id]]
                 :from   [[:report_dashboardcard :dc]]
                 :join   [[:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
-                :where  [:and non-archived [:in :dc.card_id slow-card-ids]]})
+                :where  [:and eligible [:in :dc.card_id slow-card-ids]]})
      ;; combined-series cards (extra cards layered onto one dashcard's visualization)
      (t2/query {:select [[:dc.dashboard_id :dashboard_id] [:s.card_id :card_id]]
                 :from   [[:dashboardcard_series :s]]
                 :join   [[:report_dashboardcard :dc] [:= :dc.id :s.dashboardcard_id]
                          [:report_dashboard :d]      [:= :d.id :dc.dashboard_id]]
-                :where  [:and non-archived [:in :s.card_id slow-card-ids]]}))))
+                :where  [:and eligible [:in :s.card_id slow-card-ids]]}))))
 
 (defn- dashboard-findings
   "Container findings for **non-archived** dashboards that render ≥1 of `slow-card-ids`. `slow_entity_ids`
@@ -138,15 +144,20 @@
       (container-finding :dashboard dash-id card->median-ms culprit-ids))))
 
 (defn- document-findings
-  "Container findings for **non-archived** prose-mirror documents embedding ≥1 of `slow-card-ids`.
+  "Container findings for **non-archived** prose-mirror documents in eligible containers embedding ≥1
+  of `slow-card-ids`.
   Card ids are parsed from each document's prose-mirror body (`prose-mirror/card-ids`); only documents
   with the prose-mirror content type are scanned (others would assert-throw and embed no cards anyway)."
   [card->median-ms slow-card-ids]
   (when (seq slow-card-ids)
     (let [slow? (set slow-card-ids)]
       (for [doc   (t2/select [:model/Document :id :document :content_type]
-                             :archived false
-                             :content_type prose-mirror/prose-mirror-content-type)
+                             {:where [:and
+                                      [:= :archived false]
+                                      [:= :content_type prose-mirror/prose-mirror-content-type]
+                                      ;; re-applied to the document itself - a slow (eligible) card can
+                                      ;; be embedded by a document living in an ineligible container
+                                      (common/eligible-container-clause :collection_id)]})
             :let  [culprits (filterv slow? (distinct (prose-mirror/card-ids doc)))]
             :when (seq culprits)]
         (container-finding :document (:id doc) card->median-ms culprits)))))

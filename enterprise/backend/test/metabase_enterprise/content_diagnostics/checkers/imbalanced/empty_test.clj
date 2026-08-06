@@ -92,6 +92,31 @@
               (testing (str label " collection produces no finding")
                 (is (nil? (by-entity [:collection coll-id])))))))))))
 
+(deftest empty-item-container-scoping-test
+  (testing "empty items inside ineligible containers produce no item findings; root-resident ones still do"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [now (t/offset-date-time)]
+          (mt/with-temp
+            [:model/Collection {sample-coll :id} {:is_sample true}
+             :model/Collection {ia-coll :id}     {:namespace "analytics"
+                                                  :type      collection/instance-analytics-collection-type}
+             ;; dashcard-less dashboards - empty on their own merits, but in ineligible containers
+             :model/Dashboard {sample-dash :id} {:collection_id sample-coll}
+             :model/Dashboard {ia-dash :id}     {:collection_id ia-coll}
+             ;; a sample-resident card whose latest clean run returned 0 rows - the card probe must skip it
+             :model/Card {sample-card :id} {:collection_id sample-coll}
+             :model/QueryExecution _ {:card_id sample-card :started_at now
+                                      :parameterized false :cache_hit false :result_rows 0}
+             ;; root-resident empty dashboard: the root is always an eligible container
+             :model/Dashboard {root-dash :id} {}]
+            (let [by-entity (empty-by-entity!)]
+              (doseq [[label entity-key] {"sample-resident dashboard" [:dashboard sample-dash]
+                                          "audit-resident dashboard"  [:dashboard ia-dash]
+                                          "sample-resident card"      [:card sample-card]}]
+                (is (nil? (by-entity entity-key)) label))
+              (is (some? (by-entity [:dashboard root-dash]))))))))))
+
 ;;; ------------------------------------------------------- cards --------------------------------------------
 
 (deftest empty-card-test
@@ -244,6 +269,39 @@
               (is (nil? (by-entity [:document link-doc]))))))))))
 
 ;;; ----------------------------------------------------- transforms -----------------------------------------
+
+(deftest empty-transform-folder-cascade-test
+  (testing "transform folders count their transforms - only an all-empty one reads empty"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (mt/with-temp
+          [;; a folder whose only transform has never run (nil estimate) - non-empty, like a never-run card
+           :model/Collection {live-folder :id} {:namespace "transforms"}
+           :model/Transform _ {:collection_id live-folder}
+           ;; a folder holding only an estimate-0 transform - empty via the cascade
+           :model/Collection {dead-folder :id} {:namespace "transforms"}
+           :model/Table {zero-table :id} {:estimated_row_count 0}
+           :model/Transform {dead-transform :id} {:collection_id dead-folder
+                                                  :target_table_id zero-table}
+           ;; a transforms folder with nothing in it at all - empty
+           :model/Collection {bare-folder :id} {:namespace "transforms"}
+           ;; an ARCHIVED folder holding an estimate-0 transform - the folder is no subject, but the
+           ;; transform still executes regardless of its folder's state, so its own finding survives
+           :model/Collection {archived-folder :id} {:namespace "transforms" :archived true}
+           :model/Table {zero-table-2 :id} {:estimated_row_count 0}
+           :model/Transform {shelved-transform :id} {:collection_id archived-folder
+                                                     :target_table_id zero-table-2}]
+          (let [by-entity (empty-by-entity!)]
+            (testing "a folder holding a never-run transform is not empty"
+              (is (nil? (by-entity [:collection live-folder]))))
+            (testing "a folder of only empty transforms is empty, and the transform leaf is flagged too"
+              (is (some? (by-entity [:collection dead-folder])))
+              (is (some? (by-entity [:transform dead-transform]))))
+            (testing "an item-less transforms folder is empty"
+              (is (some? (by-entity [:collection bare-folder]))))
+            (testing "an archived folder is no subject, but its transform's own finding survives"
+              (is (nil? (by-entity [:collection archived-folder])))
+              (is (some? (by-entity [:transform shelved-transform]))))))))))
 
 (deftest empty-transform-test
   (testing "transform empty rides the target table's synced estimate: 0 flags, nil (unknown) and missing/inactive targets skip"
