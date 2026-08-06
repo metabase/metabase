@@ -36,8 +36,8 @@
       [:data   [:sequential :map]]]
   "List OAuth dynamic client registration events (registered, approved, or denied), newest first.
    Joins client info and, for decision events, the deciding user. Superuser only."
-  [_route-params
-   {:keys [client-id event-type]} :- [:map
+  [_route-params :- [:map {:closed true}]
+   {:keys [client-id event-type]} :- [:map {:closed true}
                                       [:client-id  {:optional true} [:maybe ms/NonBlankString]]
                                       [:event-type {:optional true} [:maybe [:enum "registered" "approved" "denied"]]]]]
   (api/check-superuser)

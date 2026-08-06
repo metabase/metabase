@@ -49,7 +49,7 @@
    All parameters for the operation are taken in the POST body."
   [{:keys [operation-id]} :- [:map {:closed true}
                               [:operation-id ms/NonBlankString]]
-   _query-params
+   _query-params :- [:map {:closed true}]
    body :- [:maybe OperationParams]]
   (when-not (premium-features/is-hosted?)
     (throw (ex-info "This endpoint is only available for hosted instances" {:status-code 400})))

@@ -150,10 +150,11 @@
 ;;
 (api.macros/defendpoint :post "/echo"
   "Simple echo handler. Fails when you POST with `?fail=true`."
-  [_route-params
+  [_route-params :- [:map {:closed true}]
    {:keys [fail]} :- [:map {:closed true}
                       [:fail {:default false} ms/BooleanValue]]
-   body]
+   ;; the body is echoed back verbatim, so any JSON payload is accepted.
+   body :- :any]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
@@ -165,8 +166,8 @@
 ;;
 (api.macros/defendpoint :post "/set-time"
   "Make java-time see world at exact time."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [time add-ms]} :- [:map {:closed true}
                              [:time   {:optional true} [:maybe ms/TemporalString]]
                              [:add-ms {:optional true} [:maybe ms/Int]]]]
@@ -185,7 +186,7 @@
 ;;
 (api.macros/defendpoint :get "/echo"
   "Simple echo handler. Fails when you GET with `?fail=true`."
-  [_route-params
+  [_route-params :- [:map {:closed true}]
    {:keys [fail body]} :- [:map {:closed true}
                            [:fail {:default false} ms/BooleanValue]
                            [:body ms/JSONString]]]
@@ -200,8 +201,8 @@
 ;;
 (api.macros/defendpoint :post "/mark-stale"
   "Mark the card or dashboard as stale"
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [id model date-str]} :- [:map {:closed true}
                                    [:id       ms/PositiveInt]
                                    [:model    :string]
@@ -282,8 +283,8 @@
    [:description       ms/NonBlankString]
    [:advisory_url      {:optional true} [:maybe ms/NonBlankString]]
    [:remediation       ms/NonBlankString]
-   [:affected_versions [:sequential [:map [:min :string] [:fixed :string]]]]
-   [:download_jar_urls {:optional true} [:maybe [:sequential [:map [:version :string] [:url :string]]]]]
+   [:affected_versions [:sequential [:map {:closed true} [:min :string] [:fixed :string]]]]
+   [:download_jar_urls {:optional true} [:maybe [:sequential [:map {:closed true} [:version :string] [:url :string]]]]]
    [:matching_query    {:optional true} [:maybe [:map-of :keyword :string]]]
    [:match_status      [:enum "unknown" "active" "resolved" "not_affected" "error"]]
    [:published_at      :any]
@@ -291,8 +292,8 @@
 
 (api.macros/defendpoint :post "/security-advisories"
   "Nuke all existing security advisories and insert the provided ones."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [advisories]} :- [:map {:closed true}
                             [:advisories [:sequential TestAdvisory]]]]
   (t2/delete! :model/SecurityAdvisory)
@@ -526,8 +527,8 @@
   :- [:map [:inserted :int]]
   "Insert `count` rows into `ai_usage_log` for the given `user_id`, then clear the metabot limit
   cache so limit checks re-evaluate immediately.  Intended only for E2E tests."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [user_id count]} :- [:map {:closed true}
                                [:user_id ms/PositiveInt]
                                [:count   ms/PositiveInt]]]
@@ -546,8 +547,8 @@
   :- [:map [:deleted :int]]
   "Delete all `ai_usage_log` rows inserted by the seeding endpoint for the given `user_id`, then
   clear the metabot limit cache.  Intended only for E2E tests."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [user_id]} :- [:map {:closed true}
                          [:user_id ms/PositiveInt]]]
   (let [deleted (t2/delete! :model/AiUsageLog :user_id user_id :source e2e-usage-source)]
@@ -559,8 +560,8 @@
       [:inserted :int]
       [:date ms/NonBlankString]]
   "Seed deterministic Metabot conversation, message, and token usage rows for the usage auditing E2E charts."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [user_id second_user_id tenant_id second_tenant_id]} :- [:map {:closed true}
                                                                    [:user_id ms/PositiveInt]
                                                                    [:second_user_id ms/PositiveInt]
@@ -576,8 +577,8 @@
   visible tool-call row. Routes through the production `metabase.mcp.usage` recording helpers
   (rather than hand-rolled inserts) so the seeded rows can't drift from real MCP writes.
   Intended only for E2E tests."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [user_id tool_name client_name client_version status error_code error_message duration_ms]}
    :- [:map {:closed true}
        [:user_id        ms/PositiveInt]

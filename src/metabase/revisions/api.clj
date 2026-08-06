@@ -36,7 +36,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get revisions of an object."
-  [_route-params
+  [_route-params :- [:map {:closed true}]
    {:keys [entity id]} :- [:map {:closed true}
                            [:id     ms/PositiveInt]
                            [:entity Entity]]]
@@ -50,8 +50,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/revert"
   "Revert an object to a prior revision."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [entity id], revision-id :revision_id} :- [:map {:closed true}
                                                      [:id          ms/PositiveInt]
                                                      [:entity      Entity]
@@ -79,7 +79,8 @@
   "Fetch `Revisions` for an object with ID."
   [{:keys [id entity]} :- [:map {:closed true}
                            [:entity Entity]
-                           [:id     ms/PositiveInt]]]
+                           [:id     ms/PositiveInt]]
+   _query-params :- [:map {:closed true}]]
   (let [model (entity->model entity)]
     (assert (keyword? model))
     ;; Ensure the model namespace is loaded before using it

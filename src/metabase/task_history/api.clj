@@ -22,7 +22,12 @@
 (api.macros/defendpoint :get "/"
   "Fetch a list of recent tasks stored as Task History"
   [_
-   params :- [:maybe [:merge task-history/FilterParams task-history/SortParams]]]
+   params :- [:maybe [:merge
+                      task-history/FilterParams
+                      task-history/SortParams
+                      ;; the empty closed map contributes only `{:closed true}` to the merged result;
+                      ;; `limit`/`offset` never reach here, the offset-paging middleware strips them
+                      [:map {:closed true}]]]]
   (perms/check-has-application-permission :monitoring)
   {:total  (task-history/total params)
    :limit  (request/limit)
@@ -35,7 +40,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get `TaskHistory` entry with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-404 (api/read-check :model/TaskHistory id)))
 
@@ -45,7 +50,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
-  []
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]]
   (perms/check-has-application-permission :monitoring)
   (task/scheduler-info))
 
@@ -60,7 +66,8 @@
   "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique
   tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should
   reflect that."
-  [] :- [:vector string?]
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]] :- [:vector string?]
   (perms/check-has-application-permission :monitoring)
   (task-history/unique-tasks))
 
@@ -238,7 +245,11 @@
 (api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
   "List task runs with optional filters. Returns runs with hydrated entity names and task counts."
   [_
-   params :- [:maybe [:merge ::RunFilterParams ::RunSortParams]]]
+   params :- [:maybe [:merge
+                      ::RunFilterParams
+                      ::RunSortParams
+                      ;; see `GET /` above: closes the merged map; `limit`/`offset` are stripped upstream
+                      [:map {:closed true}]]]]
   (perms/check-has-application-permission :monitoring)
   (let [where-clause (build-run-where-clause params)
         limit        (request/limit)
@@ -254,7 +265,7 @@
 
 (api.macros/defendpoint :get "/runs/:id" :- ::TaskRunWithTasks
   "Get a single task run with all its child tasks."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
   (let [run   (api/check-404 (t2/select-one :model/TaskRun :id id))
         tasks (t2/select :model/TaskHistory :run_id id {:order-by [[:started_at :asc]]})]
@@ -267,7 +278,7 @@
 (api.macros/defendpoint :get "/runs/entities" :- [:sequential ::RunEntity]
   "Get distinct entities that have task runs for a given run type. Used for populating entity filter picker."
   [_
-   params :- [:map
+   params :- [:map {:closed true}
               [:run-type   (into [:enum] (map name task-run/run-types))]
               [:started-at ms/NonBlankString]]]
   (perms/check-has-application-permission :monitoring)

@@ -117,10 +117,18 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; `search_engine` keeps its snake_case name because [[+engine-cookie]] injects it under that key, matching the
+;; `?search_engine=` param the search endpoints already accept
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema
+                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :post "/re-init"
   "This will blow away any search indexes, re-create, and re-populate them."
-  []
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}
+                     ;; [[+engine-cookie]] wraps every route in this namespace and injects the engine cookie's
+                     ;; value into `:query-params`, so it can show up here even though nothing sends it
+                     [:search_engine {:optional true} [:maybe :string]]]
+   _body :- [:map {:closed true}]]
   (api/check-superuser)
   (if (search/supports-index?)
     {:message (search/init-index! {:force-reset? true})}
@@ -129,10 +137,16 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; see `POST /re-init` above for why `search_engine` stays snake_case
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema
+                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :post "/force-reindex"
   "This will trigger an immediate reindexing, if we are using search index."
-  []
+  [_route-params :- [:map {:closed true}]
+   ;; see `POST /re-init`: `search_engine` can be injected by [[+engine-cookie]]
+   _query-params :- [:map {:closed true}
+                     [:search_engine {:optional true} [:maybe :string]]]
+   _body :- [:map {:closed true}]]
   (api/check-superuser)
   (if (search/supports-index?)
     ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
@@ -171,8 +185,12 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"
-  [_route-params
-   {:keys [context]} :- [:map [:context {:default :default} :keyword]]]
+  [_route-params :- [:map {:closed true}]
+   ;; deliberately open: `metabase.search.api-test/weights-test-2` GETs this with ranker weights in the query
+   ;; string (e.g. `?recency=5`) to assert a GET never mutates them, and [[+engine-cookie]] can inject
+   ;; `search_engine` here too
+   {:keys [context]} :- [:map {:closed false}
+                         [:context {:default :default} :keyword]]]
   ;; normalize so the reported weights match what search actually applies for this context
   (search.config/weights {:context (search.config/normalized-context context)}))
 
@@ -186,8 +204,10 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/weights"
   "Update the current weights being used to rank the search results"
-  [_route-params
-   {:keys [context], :as overrides} :- [:map
+  [_route-params :- [:map {:closed true}]
+   ;; deliberately open: every key other than `:context`/`:search_engine` is a ranker name whose value is the
+   ;; new weight (e.g. `?recency=4&model/dataset=10`), so the key set is the ranker registry, not a fixed list
+   {:keys [context], :as overrides} :- [:map {:closed false}
                                         [:context {:default :default} :keyword]
                                         [:search_engine {:optional true} :any]]]
   ;; remove cookie
@@ -206,7 +226,7 @@
 ;;
 (def ^:private search-request-schema
   "Query-parameter schema shared by `GET /api/search` and `GET /api/search/debug`."
-  [:map
+  [:map {:closed true}
    [:q                                   {:optional true} [:maybe :string]]
    ;; no `:optional true`: default-value-transformer skips defaults for absent optional keys, so it's
    ;; what makes `:default :api` actually apply when the param is omitted
@@ -332,7 +352,7 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
-  [_route-params
+  [_route-params :- [:map {:closed true}]
    query-params :- search-request-schema]
   (api/check-valid-page-params (request/limit) (request/offset))
   ;; tuning/diagnostic knobs are admin-only: explain re-executes the vector scan and counts the whole index
@@ -363,7 +383,7 @@
     as that user, so a `not-permitted` result means *they* can't see the item.
 
   Not supported for `indexed-entity` (its id is compound)."
-  [_route-params
+  [_route-params :- [:map {:closed true}]
    {expected-result-type :expected_result_type
     expected-result-id   :expected_result_id
     for-user-id          :for_user_id

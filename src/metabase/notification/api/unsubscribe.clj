@@ -38,14 +38,19 @@
       :notification/dashboard (->> notification :payload :dashboard_id (t2/select-one-fn :name :model/Dashboard))
       (name (:payload_type notification)))))
 
+;; The bodies of both endpoints below are deliberately left open. This flow starts from a link in an already-delivered
+;; email (see [[metabase.channel.urls/unsubscribe-url]]), so the params are whatever the Metabase version that sent
+;; that email put in the link -- they can't be enumerated from today's frontend, and rejecting a stray one would be a
+;; user-visible failure rather than a caught bug.
+;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Allow non-users to unsubscribe from notifications, with the hash given through email."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [email hash notification-handler-id]} :- [:map {:closed true}
                                                     [:notification-handler-id ms/PositiveInt]
                                                     [:email                   ms/NonBlankString]
@@ -70,8 +75,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/undo"
   "Allow non-users to undo an unsubscribe from notifications, with the hash given through email."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [email hash notification-handler-id]} :- [:map {:closed true}
                                                     [:notification-handler-id ms/PositiveInt]
                                                     [:email                   ms/NonBlankString]

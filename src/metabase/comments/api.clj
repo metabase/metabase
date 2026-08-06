@@ -121,11 +121,11 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get comments for an entity"
-  [_route-params
+  [_route-params :- [:map {:closed true}]
    {:keys [target_type target_id]} :- [:map {:closed true}
                                        [:target_type TargetType]
                                        [:target_id ms/PositiveInt]]
-   _body
+   _body :- [:map {:closed true}]
    req]
   (if (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))
     {:disabled true
@@ -187,8 +187,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new comment"
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [target_type target_id child_target_id context parent_comment_id content]} :- CreateComment]
   (let [entity     (-> (api/read-check (type->model target_type) target_id)
                        (u/prog1 (api/check-400 (not (entity-archived? <>))
@@ -225,7 +225,7 @@
 (api.macros/defendpoint :put "/:comment-id"
   "Update a comment"
   [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
-   _query-params
+   _query-params :- [:map {:closed true}]
    {:keys [content is_resolved]} :- UpdateComment]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))
         entity  (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
@@ -259,7 +259,7 @@
 (api.macros/defendpoint :delete "/:comment-id"
   "Soft delete a comment"
   [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
-   _query-params]
+   _query-params :- [:map {:closed true}]]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
         (u/prog1 (api/check-400 (not (entity-archived? <>))
@@ -283,7 +283,7 @@
 (api.macros/defendpoint :post "/:comment-id/reaction"
   "Toggle a reaction on a comment"
   [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
-   _query-params
+   _query-params :- [:map {:closed true}]
    {:keys [emoji]} :- [:map {:closed true} [:emoji [:string {:min 1 :max 10}]]]]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
     (api/check-400 (not (:deleted_at comment))
@@ -299,13 +299,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/mentions"
   "Get a list of entities suitable for mentions. NOTE: only users for now."
-  [_route
-   ;; Not closed: paging params are read off the request by the paging middleware ([[request/limit]] /
-   ;; [[request/offset]]), not from this map; they are declared here for documentation only.
-   _query :- [:map {:closed false}
+  [_route :- [:map {:closed true}]
+   _query :- [:map {:closed true}
               [:limit  {:optional true} [:maybe ms/PositiveInt]]
               [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]
-   _body req]
+   _body :- [:map {:closed true}]
+   req]
   ;; no access in embedding context
   (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
   (let [clauses (user/filter-clauses {:limit  (request/limit)

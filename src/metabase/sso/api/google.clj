@@ -13,10 +13,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/settings"
   "Update Google Sign-In related settings. You must be a superuser to do this."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [google-auth-client-id google-auth-enabled google-auth-auto-create-accounts-domain]}
-   :- [:map
+   :- [:map {:closed true}
        [:google-auth-client-id                   {:optional true} [:maybe :string]]
        [:google-auth-enabled                     {:optional true} [:maybe :boolean]]
        [:google-auth-auto-create-accounts-domain {:optional true} [:maybe :string]]]]

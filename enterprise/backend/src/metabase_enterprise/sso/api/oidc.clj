@@ -87,7 +87,8 @@
 ;; GET /api/ee/sso/oidc
 (api.macros/defendpoint :get "/" :- [:sequential oidc-provider-response-schema]
   "List all OIDC providers (with client secrets masked)."
-  []
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (mapv sanitize-response (sso-settings/oidc-providers)))
 
@@ -95,7 +96,8 @@
 (api.macros/defendpoint :get "/:key" :- oidc-provider-response-schema
   "Get a single OIDC provider by key (with client secret masked)."
   [{provider-key :key} :- [:map {:closed true}
-                           [:key :string]]]
+                           [:key :string]]
+   _query-params :- [:map {:closed true}]]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [provider (sso-settings/get-oidc-provider provider-key)]
     (api/check-404 provider)
@@ -104,8 +106,8 @@
 ;; POST /api/ee/sso/oidc
 (api.macros/defendpoint :post "/" :- oidc-provider-response-schema
   "Create a new OIDC provider."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    body :- oidc-provider-create-schema]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [provider-key (:key body)]
@@ -124,7 +126,7 @@
   "Update an existing OIDC provider."
   [{provider-key :key} :- [:map {:closed true}
                            [:key :string]]
-   _query-params
+   _query-params :- [:map {:closed true}]
    body :- oidc-provider-update-schema]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [providers (sso-settings/oidc-providers)
@@ -167,8 +169,8 @@
 
 (api.macros/defendpoint :post "/check" :- oidc-check-response-schema
   "Check an OIDC provider configuration by probing its discovery document and testing client credentials."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    body :- oidc-check-request-schema]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [issuer-uri    (:issuer-uri body)
@@ -185,7 +187,8 @@
 (api.macros/defendpoint :delete "/:key"  :- :nil
   "Delete an OIDC provider."
   [{provider-key :key} :- [:map {:closed true}
-                           [:key :string]]]
+                           [:key :string]]
+   _query-params :- [:map {:closed true}]]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [providers (sso-settings/oidc-providers)
         filtered  (vec (remove #(= (:key %) provider-key) providers))]

@@ -226,7 +226,8 @@
 
 (api.macros/defendpoint :post "/connection" :- :gsheets/response
   "Hook up a new google drive folder or sheet that will be watched and have its content ETL'd into Metabase."
-  [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
+  [{} {} {:keys [url]} :- [:map {:closed true}
+                           [:url ms/NonBlankString]]]
   (let [attached-dwh (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
     (when-not (some? attached-dwh)
       (analytics.event/track-event! :snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
@@ -338,7 +339,7 @@
   stop showing the setup widget.
 
   Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
-  [] :- :gsheets/response
+  []
   (handle-get-connection))
 
 (mu/defn- hm-sync-conn! :- :hm-client/http-reply

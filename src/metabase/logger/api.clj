@@ -24,7 +24,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/logs"
   "Logs."
-  []
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]]
   (perms/check-has-application-permission :monitoring)
   (logger/messages))
 
@@ -86,7 +87,8 @@
                                              [:display_name :string]
                                              [:loggers [:sequential [:map [:name :string] [:level ::log-level]]]]]]
   "Get all known presets."
-  []
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]]
   (api/check-superuser)
   (presets))
 
@@ -195,11 +197,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/adjustment"
   "Temporarily adjust the log levels."
-  [_route-params
-   _query-params
-   {:keys [duration duration_unit log_levels]} :- [:map
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
+   {:keys [duration duration_unit log_levels]} :- [:map {:closed true}
                                                    [:duration :int]
                                                    [:duration_unit ::time-unit]
+                                                   ;; validated by hand below so we can return a friendly error message
                                                    [:log_levels :any]]]
   (api/check-superuser)
   (when-not (map? log_levels)
@@ -238,7 +241,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/adjustment"
   "Undo any log level adjustments."
-  []
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]]
   (api/check-superuser)
   (when-let [task @log-adjustment]
     (analytics/track-event! :snowplow/simple_event {:event "log_adjustments_reset"})

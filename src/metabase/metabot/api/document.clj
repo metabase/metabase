@@ -13,9 +13,11 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private generate-content-body-schema
-  [:map
+  "Closed: the body is built by the FE `metabotGenerateContent` query, whose
+  `MetabotGenerateContentRequest` type carries exactly these two keys."
+  [:map {:closed true}
    [:instructions ms/NonBlankString]
-   [:references {:optional true} ms/Map]])
+   [:references {:optional true} [:maybe ms/Map]]])
 
 (def ^:private generate-content-response-schema
   [:map
@@ -87,8 +89,8 @@
 
 (api.macros/defendpoint :post "/generate-content" :- generate-content-response-schema
   "Create a new piece of content to insert into the document. Kept for backwards compatibility; now uses the native Clojure agent."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [instructions references]} :- generate-content-body-schema]
   (let [metabot-id (metabot.config/resolve-dynamic-metabot-id nil)]
     (metabot.config/check-metabot-enabled! metabot-id)

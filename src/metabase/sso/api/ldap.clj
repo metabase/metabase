@@ -25,8 +25,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/settings"
   "Update LDAP related settings. You must be a superuser to do this."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    settings :- [:map {:closed true}
                 [:ldap-port                          {:optional true} [:maybe
                                                                        ;; treat empty string as nil

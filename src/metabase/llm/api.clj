@@ -93,8 +93,8 @@
   "List available LLM models from the configured provider.
 
    Requires LLM to be configured for the selected provider in admin settings."
-  [_route-params
-   _query-params]
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]]
   (when-not (metabot.settings/llm-metabot-configured?)
     (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
                     {:status-code 403})))

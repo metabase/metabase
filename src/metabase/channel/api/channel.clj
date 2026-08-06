@@ -28,8 +28,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get all channels"
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    ;; NOTE: `include_inactive` is read out of the JSON *body* of this GET, not out of the query string -- that is how
    ;; the only callers (our own tests) send it. Closed: nothing sends anything else here.
    {:keys [include_inactive]} :- [:map {:closed true}
@@ -52,8 +52,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a channel"
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {channel-name :name, :as body} :- [:map {:closed true}
                                       [:name        ms/NonBlankString]
                                       [:description {:optional true} [:maybe ms/NonBlankString]]
@@ -85,7 +85,7 @@
   "Update a channel"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params
+   _query-params :- [:map {:closed true}]
    ;; not closed: callers round-trip the whole Channel object they just fetched (`id`, `created_at`, `updated_at`, ...)
    ;; back into this endpoint, so extra keys have to keep being tolerated.
    body :- [:map {:closed false}
@@ -122,8 +122,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/test"
   "Test a channel connection"
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    ;; not closed: callers post a whole channel object here (`name`, `description`, `active`, ...) to test it before
    ;; saving; only `type` and `details` are used.
    {:keys [type details]} :- [:map {:closed false}

@@ -95,9 +95,10 @@
   "Start TOTP enrollment for the current user. Requires the account password (LDAP users re-bind
   against the directory) and the `:multi-factor-auth` feature. Returns the Base32 `secret` and an
   `otpauth_uri` for QR display; enrollment is not active until confirmed with a live code."
-  [_route-params
-   _query-params
-   {:keys [password]} :- [:map [:password ms/NonBlankString]]]
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
+   {:keys [password]} :- [:map {:closed true}
+                          [:password ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
   (when-not (mfa.settings/mfa-enabled?)
     (throw (ex-info (tru "Two-factor authentication is not enabled on this instance.")
@@ -123,9 +124,10 @@
                                                     [:recovery_codes [:sequential ms/NonBlankString]]]
   "Confirm TOTP enrollment by verifying a code from the authenticator app. Activates the second
   factor and returns the single-use recovery codes — the only time they exist in plaintext."
-  [_route-params
-   _query-params
-   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
+   {:keys [code]} :- [:map {:closed true}
+                      [:code ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
   (let [codes (throttled :enroll
                          (fn []
@@ -139,9 +141,10 @@
 (api.macros/defendpoint :post "/disable" :- nil
   "Disable two-factor authentication for the current user. Re-auth is a fresh second factor — a
   TOTP code or an unused recovery code — never just the password."
-  [_route-params
-   _query-params
-   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
+   {:keys [code]} :- [:map {:closed true}
+                      [:code ms/NonBlankString]]]
   (throttled :disable
              (fn []
                ;; one transaction so a consumed recovery code and the enrollment removal land together
@@ -161,7 +164,9 @@
                                            [:method                   [:maybe :string]]
                                            [:recovery_codes_remaining :int]]
   "The current user's MFA status, for the account-settings UI."
-  []
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
+   _body         :- [:map {:closed true}]]
   (let [user-id api/*current-user-id*
         method  (enrollment/enrolled-method user-id)]
     {:mfa_enabled              (mfa.settings/mfa-enabled?)
@@ -183,9 +188,10 @@
   and the admin UI never collects a code. Self-removal goes through the normal Security page, which
   re-auths with a fresh factor via `/disable`. Without this guard a hijacked admin session could
   strip its own 2FA with only a cookie, turning transient access into a permanent password bypass."
-  [_route-params
-   _query-params
-   {user-id :user_id} :- [:map [:user_id ms/PositiveInt]]]
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
+   {user-id :user_id} :- [:map {:closed true}
+                          [:user_id ms/PositiveInt]]]
   (api/check-superuser)
   (when (= user-id api/*current-user-id*)
     (throw (ex-info (tru "You cannot administratively remove your own two-factor authentication. Please use the normal removal method in your account settings.")
@@ -226,7 +232,9 @@
                                                    [:unenrolled_count   :int]]
   "Admin: enrollment overview — how many users have (and haven't) set up a second factor, and
   whether the instance encrypts secrets at rest."
-  []
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
+   _body         :- [:map {:closed true}]]
   (api/check-superuser)
   {:encryption_key_set (encryption/default-encryption-enabled?)
    :enrolled_count     (t2/count :model/AuthIdentity :provider "totp" :confirmed_at [:not= nil])
@@ -308,18 +316,16 @@
 (def ^:private UnenrolledUsersResponse
   (paged-schema (into [:map {:closed true}] admin-mfa-user-entries)))
 
-;; `limit`/`offset` are deliberately absent from the query-param schemas below:
-;; [[metabase.server.middleware.offset-paging]] strips them from :params and exposes them through
-;; `request/limit` and `request/offset` instead.
-
 (api.macros/defendpoint :get "/admin/enrolled-users" :- EnrolledUsersResponse
   "Admin: users who have a confirmed second factor. Never feature-gated, for the same reason
   `/admin/remove` isn't — after a licence lapse an admin must still be able to find and unlock a
   locked-out user.
 
   Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email."
-  [_route-params
-   {:keys [query]} :- [:map [:query {:optional true} [:maybe :string]]]]
+  [_route-params :- [:map {:closed true}]
+   {:keys [query]} :- [:map {:closed true}
+                       [:query {:optional true} [:maybe :string]]]
+   _body :- [:map {:closed true}]]
   (api/check-superuser)
   (user-list-response enrolled-user-where enrolled-at-select query))
 
@@ -329,8 +335,10 @@
   challenges them — their identity provider owns MFA. Never feature-gated, as above.
 
   Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email."
-  [_route-params
-   {:keys [query]} :- [:map [:query {:optional true} [:maybe :string]]]]
+  [_route-params :- [:map {:closed true}]
+   {:keys [query]} :- [:map {:closed true}
+                       [:query {:optional true} [:maybe :string]]]
+   _body :- [:map {:closed true}]]
   (api/check-superuser)
   (user-list-response unenrolled-user-where nil query))
 
@@ -340,9 +348,10 @@
   "Regenerate the current user's recovery codes, invalidating the entire previous set. Re-auth is a
   fresh second factor — a TOTP code or an unused recovery code — so a stolen password alone can
   never rotate the codes. The plaintext codes are returned exactly once; only hashes are stored."
-  [_route-params
-   _query-params
-   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
+   {:keys [code]} :- [:map {:closed true}
+                      [:code ms/NonBlankString]]]
   (throttled :regenerate
              (fn []
                (t2/with-transaction [_conn]

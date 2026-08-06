@@ -541,10 +541,12 @@
   tab). `creatorless=false` selects the inverse.
 
   `channel` accepts a single string or a repeated query param for multi-select (OR logic)."
-  [_route
+  [_route :- [:map {:closed true}]
    {:keys [active creator_id creator_active creatorless card_id recipient_email channel last_send_status
            last_check_status query sort_column sort_direction]} :-
-   [:map
+   ;; closed: `limit`/`offset` are stripped from the query params by the offset-paging middleware
+   ;; before validation, so the admin UI's full param set is exactly what is listed here.
+   [:map {:closed true}
     [:active            {:optional true} [:maybe ms/BooleanValue]]
     [:creator_id        {:optional true} ms/PositiveInt]
     [:creator_active    {:optional true} [:maybe ms/BooleanValue]]
@@ -673,7 +675,7 @@
   "Get a single card-type notification with last_check, last_send, check_history (up to 10
   most-recent terminal alert-type TaskRuns) and send_history (up to 10 most-recent channel-send
   delivery attempts). 404 if the notification doesn't exist or isn't a card-type notification."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (get-notification-detail id)))
@@ -715,9 +717,10 @@
   triggers. Recipient emails and `:event/notification-update` audit events are
   published via the shared [[notification-api/publish-notification-update!]] helper so this
   endpoint's side-effect contract can't drift from `PUT /api/notification/:id`."
-  [_route _query
+  [_route :- [:map {:closed true}]
+   _query :- [:map {:closed true}]
    {:keys [notification_ids action creator_id]} :-
-   [:map
+   [:map {:closed true}
     [:notification_ids [:sequential {:min 1} ms/PositiveInt]]
     [:action           [:enum "archive" "change-creator"]]
     [:creator_id       {:optional true} ms/PositiveInt]]]

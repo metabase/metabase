@@ -16,8 +16,8 @@
 (api.macros/defendpoint :post "/analyze-chart"
   "Analyze a chart image using an AI vision model. This function sends the image data to a separate external AI service
   for analysis."
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    ;; Closed: the whole payload is built by the FE `analyzeChart` mutation, which sends exactly these keys
    ;; (and timeline events shaped like `TimelineEventInfo`).
    {:keys [image_base64 name description timeline_events]}

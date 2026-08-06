@@ -122,7 +122,11 @@
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
   "Health check endpoint for the Agent API."
   {:scope :unchecked}
-  []
+  [_route-params :- [:map {:closed true}]
+   ;; Left open: this is the unauthenticated-shaped connectivity probe external agent/MCP clients
+   ;; hit directly, and a cache-busting or client-appended query param must not turn a health check
+   ;; into a 400. Nothing here is read.
+   _query-params :- [:map {:closed false}]]
   {:message "pong"})
 
 (defn- coerce-query-list
@@ -157,11 +161,15 @@
                              "Use term_queries for keyword search or semantic_queries for natural language search. "
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}
+                     [:limit  {:optional true} [:maybe ms/PositiveInt]]
+                     [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
-   :- [:map
+   ;; Closed: the body is the MCP `search` tool's argument map, which the client builds from the
+   ;; published input schema — an undeclared key is a hallucination and is better rejected than ignored.
+   :- [:map {:closed true}
        [:term_queries {:optional true
                        :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
         [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
@@ -716,8 +724,9 @@
 ;;; -------------------------------------------------- Read Resource -------------------------------------------------
 
 (mr/def ::read-resource-request
-  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs."
-  [:map
+  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs.
+  Closed: `:uris` is the only argument the MCP `read_resource` tool publishes."
+  [:map {:closed true}
    [:uris [:sequential ms/NonBlankString]]])
 
 (mr/def ::read-resource-item
@@ -747,8 +756,8 @@
                              "metabase://collection/{id}/items, metabase://question/{id}, "
                              "metabase://dashboard/{id}/items, metabase://table/{id}/fields. "
                              "Up to 5 URIs per call. List endpoints cap at 25 items.")}}
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    body :- ::read-resource-request]
   (try
     (metabot-resources/read-resource body)
@@ -1023,8 +1032,8 @@
                              "If you omit collection_id it's saved to the user's personal collection; "
                              "pass an explicit null to save it to the root collection. "
                              "Report the saved location from the response `collection_path`.")}}
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    body :- ::create-metric-request]
   (create-card-from-agent! body {:card-type        :metric
                                  :default-display  "scalar"
@@ -1077,8 +1086,8 @@
                              "(a query_handle from construct_query) - it must still have exactly one "
                              "aggregation and at most one date/datetime grouping. The target must be a "
                              "metric; use update_question for regular questions.")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query-params :- [:map {:closed true}]
    body :- ::update-metric-request]
   (let [card-before-update (api/write-check :model/Card id)]
     ;; This is the metric endpoint: refuse to touch questions/models so an LLM can't silently force a
@@ -1199,7 +1208,9 @@
     (autoplace/get-position-for-new-dashcard placed display)))
 
 (mr/def ::create-dashboard-request
-  [:map
+  "Request shape for `create_dashboard`. Closed: these are the only arguments the MCP tool
+  publishes, so an undeclared key means the caller invented one."
+  [:map {:closed true}
    [:name          ms/NonBlankString]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1247,8 +1258,8 @@
                              "update_dashboard. "
                              "Report the saved location from the response `collection_path`. "
                              "Returns the dashboard URL.")}}
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [description question_ids]
     dashboard-name :name
     :as body}
@@ -1340,8 +1351,10 @@
 
 (mr/def ::update-dashboard-request
   "Patch shape for `update_dashboard`. Metadata fields and an optional `dashcards` list of
-   add/add_heading/add_text/update_text/remove/move mutations applied in order."
-  [:map
+   add/add_heading/add_text/update_text/remove/move mutations applied in order.
+   Closed, like the `::dashcard-mutation` branches: an undeclared top-level key would otherwise be
+   silently dropped instead of telling the caller it changed nothing."
+  [:map {:closed true}
    [:name          {:optional true} [:maybe ms/NonBlankString]]
    [:description   {:optional true} [:maybe :string]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -1560,8 +1573,8 @@
                              "The response dashcard_ids lists all dashcards in row/col order; "
                              "metabase://dashboard/{id}/items (via read_resource) shows each "
                              "dashcard with its dashcard_id.")}}
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query-params :- [:map {:closed true}]
    body :- ::update-dashboard-request]
   (let [current-dash (api/write-check :model/Dashboard id)
         updates      (cond-> {}
@@ -1636,8 +1649,9 @@
 (mr/def ::create-collection-request
   "Request shape for `create_collection`. `:parent_collection_id` is named separately from
   the internal `:parent_id` field to make the LLM-facing API less ambiguous (the caller is
-  saying \"put it under this parent\", not echoing back a server-set field)."
-  [:map
+  saying \"put it under this parent\", not echoing back a server-set field).
+  Closed: `:parent_id` and other internal collection fields are deliberately not accepted here."
+  [:map {:closed true}
    [:name                 ms/NonBlankString]
    [:description          {:optional true} [:maybe :string]]
    [:parent_collection_id {:optional true} [:maybe ms/PositiveInt]]])
@@ -1662,8 +1676,8 @@
            :description (str "Create a new collection in Metabase. "
                              "Set parent_collection_id to nest under another collection; "
                              "omit it for a root-level collection.")}}
-  [_route-params
-   _query-params
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]
    {:keys [description parent_collection_id]
     collection-name :name}
    :- ::create-collection-request]

@@ -12,6 +12,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;; TODO: Eventually this should be paged but since we are just going to hardcode two models for now
@@ -23,7 +24,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "List configured metabot instances"
-  []
+  [_route-params :- [:map {:closed true}]
+   _query-params :- [:map {:closed true}]]
   (api/check-superuser)
   {:items (t2/select :model/Metabot {:order-by [[:name :asc]]})})
 
@@ -33,7 +35,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Retrieve one metabot instance"
-  [{:keys [id]} :- [:map [:id pos-int?]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query-params :- [:map {:closed true}]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/Metabot :id id)))
 
@@ -43,11 +46,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a metabot instance"
-  [{:keys [id]} :- [:map [:id pos-int?]]
-   _query-params
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query-params :- [:map {:closed true}]
    metabot-updates :- [:map {:closed true}
                        [:use_verified_content {:optional true} :boolean]
-                       [:collection_id {:optional true} [:maybe pos-int?]]]]
+                       [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
   (let [old-metabot (t2/select-one :model/Metabot :id id)]
@@ -76,7 +79,11 @@
    `:no-library-content` when the Metabot has no models or metrics to summarize, or
    `:ai-produced-no-prompts` when generation produced nothing.
    Returns a 402 if the instance has reached its managed-AI usage limit."
-  [{:keys [id]} :- [:map [:id pos-int?]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query-params :- [:map {:closed true}]
+   ;; The FE mutation posts no body; an absent body decodes to `{}`, so a closed empty map both
+   ;; accepts that and rejects anything a caller invents.
+   _body :- [:map {:closed true}]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
     (api/check-404 (t2/exists? :model/Metabot :id id))
@@ -94,11 +101,14 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/prompt-suggestions"
   "Return the prompt suggestions for the metabot instance with `id`."
-  [{:keys [id]} :- [:map [:id pos-int?]]
-   {:keys [sample model model_id]} :- [:map
-                                       [:sample {:optional true} :boolean]
-                                       [:model {:optional true} [:enum "metric" "model"]]
-                                       [:model_id {:optional true} pos-int?]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   ;; `model_id` stays snake_case: renaming it would break `getSuggestedMetabotPrompts`.
+   {:keys [sample model model_id]} :- [:map {:closed true}
+                                       [:sample   {:optional true} [:maybe ms/BooleanValue]]
+                                       [:model    {:optional true} [:maybe [:enum "metric" "model"]]]
+                                       [:model_id {:optional true} [:maybe ms/PositiveInt]]
+                                       [:limit    {:optional true} [:maybe ms/PositiveInt]]
+                                       [:offset   {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
   (let [offset (when-not sample (request/offset))
         rand-fn (case (mdb/db-type)
                   :postgres :random
@@ -141,7 +151,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/prompt-suggestions"
   "Delete all prompt suggestions for the metabot instance with `id`."
-  [{:keys [id]} :- [:map [:id pos-int?]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query-params :- [:map {:closed true}]]
   (api/check-superuser)
   (metabot.suggested-prompts/delete-all-metabot-prompts id)
   api/generic-204-no-content)
@@ -152,9 +163,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/prompt-suggestions/:prompt-id"
   "Delete the prompt suggestion with ID `prompt-id` for the metabot instance with `id`."
-  [{:keys [id prompt-id]} :- [:map
-                              [:id pos-int?]
-                              [:prompt-id pos-int?]]]
+  [{:keys [id prompt-id]} :- [:map {:closed true}
+                              [:id        ms/PositiveInt]
+                              [:prompt-id ms/PositiveInt]]
+   _query-params :- [:map {:closed true}]]
   (api/check-superuser)
   (t2/delete! :model/MetabotPrompt {:where [:and
                                             [:= :id prompt-id]
