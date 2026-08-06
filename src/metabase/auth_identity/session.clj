@@ -14,7 +14,7 @@
 
 (mu/defn create-session-with-auth-tracking!
   "Create a new Session for a User and update the last_used_at timestamp on the corresponding AuthIdentity."
-  ([user device-info provider mfa-auth-identity]
+  ([user device-info provider mfa-auth-identity-id]
    (let [user-id          (u/the-id user)
          auth-identity    (t2/select-one [:model/AuthIdentity :id :expires_at]
                                          :user_id user-id
@@ -30,7 +30,7 @@
                                                          :auth_identity_id auth-identity-id
                                                          :session_key session-key
                                                          :expires_at (:expires_at auth-identity)
-                                                         :mfa_auth_identity_id (:id mfa-auth-identity))]
+                                                         :mfa_auth_identity_id mfa-auth-identity-id)]
      (when provider
        (log/debugf "Updating last_used_at for user %s with provider %s" user-id provider)
        (t2/update! :model/AuthIdentity auth-identity-id {:last_used_at :%now}))

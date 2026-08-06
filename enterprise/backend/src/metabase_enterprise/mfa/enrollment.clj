@@ -100,7 +100,8 @@
                                                 (verification/consume-jti jti)
                                                 (assoc :last_used_step step
                                                        :recovery_codes (mapv u.password/hash-bcrypt codes)))})
-                 codes)))))))))
+                 {:recovery-codes       codes
+                  :mfa-auth-identity-id (:id auth-identity)})))))))))
 
 (defn disable!
   "Remove `user-id`'s TOTP enrollment entirely (re-auth is the caller's responsibility). True when

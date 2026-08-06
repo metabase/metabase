@@ -17,7 +17,6 @@
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
@@ -123,14 +122,14 @@
    _query-params
    {:keys [code]} :- [:map [:code ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
-  (let [codes (throttled :enroll
-                         (fn []
-                           (or (enrollment/confirm-enrollment! api/*current-user-id* code)
-                               (throw (invalid-code-ex)))))
+  (let [{:keys [recovery-codes]} (throttled :enroll
+                                            (fn []
+                                              (or (enrollment/confirm-enrollment! api/*current-user-id* code)
+                                                  (throw (invalid-code-ex)))))
         user  (t2/select-one :model/User :id api/*current-user-id*)]
     (messages/send-mfa-enabled-email! (:email user))
     (events/publish-event! :event/mfa-enrolled {:object user})
-    {:recovery_codes codes}))
+    {:recovery_codes recovery-codes}))
 
 (api.macros/defendpoint :post "/disable" :- nil
   "Disable two-factor authentication for the current user. Re-auth is a fresh second factor — a

@@ -560,7 +560,7 @@
       (when-not (:is_active user)
         (throw (ex-info (tru "Authentication session expired. Please log in again.")
                         {:status-code 401})))
-      (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor mfa-auth-identity)
+      (session-response (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor (:id mfa-auth-identity))
                         request))))
 
 ;; No response schema: the success path returns a full ring response (session cookies must be set),
@@ -602,22 +602,23 @@
         first-factor   (auth-identity/provider-string->keyword (:provider claims))
         ;; Throttle only failed attempts — counting successes would lock out a legitimately busy user.
         ;; The inner fn throws on failure so call-with-failure-throttling records the attempt.
-        recovery-codes (call-with-failure-throttling
-                        [[(verify-throttlers :ip-address) (request/ip-address request)]
-                         [(verify-throttlers :user-id) user-id]]
-                        (fn []
-                          (if-let [recovery-codes (confirm-enrollment! user-id code jti)]
-                            recovery-codes
-                            (do (events/publish-event! :event/mfa-required-enrollment-failed
-                                                       {:object (t2/select-one :model/User :id user-id)})
-                                (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))
+        {:keys [recovery-codes
+                mfa-auth-identity-id]} (call-with-failure-throttling
+                                        [[(verify-throttlers :ip-address) (request/ip-address request)]
+                                         [(verify-throttlers :user-id) user-id]]
+                                        (fn []
+                                          (or
+                                           (confirm-enrollment! user-id code jti)
+                                           (do (events/publish-event! :event/mfa-required-enrollment-failed
+                                                                      {:object (t2/select-one :model/User :id user-id)})
+                                               (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))
         user           (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)]
     ;; the account can be deactivated (or deleted) between the password step and here; an
     ;; enrollment token must not outlive the account. Same 401 as a bad token — no oracle.
     (when-not (:is_active user)
       (throw (ex-info (tru "Authentication session expired. Please log in again.")
                       {:status-code 401})))
-    (-> (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor)
+    (-> (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor mfa-auth-identity-id)
         (session-response request)
         (assoc-in [:body :recovery_codes] recovery-codes))))
 

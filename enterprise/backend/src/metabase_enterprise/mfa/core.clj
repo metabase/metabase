@@ -68,7 +68,8 @@
   On success, marks the enrollment as confirmed, consumes the OTP's time step (so it can't be reused), generates the
   recovery codes, and consumes the `jti` so it can't be reused either.
 
-  Returns the plaintext recovery codes, or nil if any conditions fail.
+  Returns a map containing the plaintext recovery codes + the id of the AuthIdentity record which was confirmed,
+  or nil if any conditions fail.
 
   Note that this actually requires the `:multi-factor-auth` feature. [[verify-second-factor!]] above will still verify
   existing OTPs after a downgrade, but we won't allow new enrollments. The OSS counterpart always returns nil."
