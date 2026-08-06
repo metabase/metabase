@@ -224,15 +224,8 @@ describe("scenarios > metrics > editing", () => {
       H.MetricPage.header().findByText("Our analytics").click();
 
       cy.findByTestId("pinned-items").within(() => {
-        cy.findByRole("heading", { name: "Metrics" }).should("be.visible");
-        cy.findByText("Pinned metric")
-          .closest("a")
-          .within(() => {
-            cy.findByTestId("visualization-root")
-              .should("be.visible")
-              .and("have.attr", "data-viz-ui-name", "Line");
-            H.echartsContainer().should("be.visible");
-          });
+        cy.findByText("Pinned metric").should("be.visible");
+        cy.findByText("A metric").should("be.visible");
       });
     });
 

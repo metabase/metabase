@@ -15,7 +15,7 @@ import { listTag } from "metabase/api/tags";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { useSetArchive } from "metabase/archive/hooks";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
-import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
+import { PinnedItemsGrid } from "metabase/collections/components/PinnedItemsGrid";
 import Header from "metabase/collections/containers/CollectionHeader";
 import { trackCollectionBookmarked } from "metabase/common/collections/analytics";
 import { getComposedDragProps } from "metabase/common/collections/dropzone";
@@ -299,7 +299,7 @@ export const CollectionContentView = ({
         </ErrorBoundary>
 
         <ErrorBoundary>
-          <PinnedItemOverview
+          <PinnedItemsGrid
             databases={databases}
             bookmarks={bookmarks}
             createBookmark={createBookmark}
