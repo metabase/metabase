@@ -960,6 +960,29 @@
          {:select :id :from cte-name}
          (visible-collection-query visibility-config user-scope))]])))
 
+(mu/defn visible-collection-content-select
+  "Ids of `table-name`'s rows the current user can see, for a model whose read permission is its collection's:
+  the collection is visible, the archived state matches `:include-archived-items`, and the row is in
+  `:worktree-id`'s scope. Worktree content is admin-only, so anyone but a superuser only ever sees the main app.
+
+  Assumes `table-name` has `collection_id`, `archived` and `worktree_id` columns, which every collection-based
+  content model does. Backs those models' [[metabase.models.interface/visible-filter-clause]]."
+  [table-name :- :keyword
+   {:keys [user-id is-superuser?]} :- perms/UserInfo
+   {:keys [include-archived-items worktree-id] :or {include-archived-items :exclude}}]
+  {:select [:id]
+   :from   [table-name]
+   :where  [:and
+            (visible-collection-filter-clause (u/qualified-key table-name :collection_id)
+                                              {:include-archived-items include-archived-items}
+                                              {:current-user-id user-id
+                                               :is-superuser?   is-superuser?})
+            (case include-archived-items
+              :exclude [:= (u/qualified-key table-name :archived) false]
+              :only    [:= (u/qualified-key table-name :archived) true]
+              :all     nil)
+            [:= (u/qualified-key table-name :worktree_id) (when is-superuser? worktree-id)]]})
+
 (defn- effective-child-of-filter-clause
   [parent-coll collection-table-alias visibility-config]
   (let [->col (fn [col-name]

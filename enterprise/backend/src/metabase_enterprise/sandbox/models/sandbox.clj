@@ -36,6 +36,12 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
+(defmethod mi/visible-filter-clause :model/Sandbox
+  [_model column-or-exp {:keys [is-superuser?]} _perm-type->perm-level & _opts]
+  {:clause (if is-superuser?
+             [:in column-or-exp {:select [:id] :from [:sandboxes]}]
+             [:= [:inline 0] [:inline 1]])})
+
 (t2/deftransforms :model/Sandbox
   {:attribute_remappings sandbox.schema/attribute-remappings-transform})
 

@@ -83,6 +83,30 @@
    (when-let [measure (t2/select-one model pk)]
      (mi/can-write? measure))))
 
+(defmethod mi/visible-filter-clause :model/Measure
+  [_model column-or-exp {:keys [is-superuser?] :as user-info} _perm-type->perm-level
+   & [{:keys [include-archived-items worktree-id] :or {include-archived-items :exclude}}]]
+  {:clause [:in column-or-exp
+            {:select [:id]
+             :from   [:measure]
+             :where  [:and
+                      ;; the user has to be able to see the table this hangs off
+                      ;; TODO (ed 2025-12-16): support using CTEs in filters in the dependency graph, so this can
+                      ;; use `perms/visible-table-filter-with-cte` instead of wrapping a plain select
+                      [:in :measure.table_id
+                       {:select [:metabase_table.id]
+                        :from   [:metabase_table]
+                        :where  [:in :metabase_table.id
+                                 (perms/visible-table-filter-select
+                                  :id user-info
+                                  {:perms/view-data      :unrestricted
+                                   :perms/create-queries :query-builder})]}]
+                      (case include-archived-items
+                        :exclude [:= :measure.archived false]
+                        :only    [:= :measure.archived true]
+                        :all     nil)
+                      [:= :measure.worktree_id (when is-superuser? worktree-id)]]}]})
+
 ;; Measures can be created by superusers, but only if the parent table is editable
 ;; (not in a remote-synced collection in read-only mode).
 (defmethod mi/can-create? :model/Measure

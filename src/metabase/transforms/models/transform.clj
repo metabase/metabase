@@ -78,6 +78,29 @@
    (when-let [transform (t2/select-one :model/Transform :id pk)]
      (mi/can-write? transform))))
 
+(defmethod mi/visible-filter-clause :model/Transform
+  [_model column-or-exp {:keys [is-superuser? is-data-analyst?] :as user-info} _perm-type->perm-level & [{:keys [worktree-id]}]]
+  {:clause (cond
+             ;; a superuser sees the scope they asked for; worktree content is admin-only, so an analyst is
+             ;; pinned to the main app and everyone else sees nothing
+             is-superuser?
+             [:in column-or-exp {:select [:id]
+                                 :from   [:transform]
+                                 :where  [:= :transform.worktree_id worktree-id]}]
+
+             is-data-analyst?
+             [:in column-or-exp {:select [:id]
+                                 :from   [:transform]
+                                 :where  [:and
+                                          [:= :transform.worktree_id nil]
+                                          [:in :transform.source_database_id
+                                           (perms/visible-database-filter-select
+                                            user-info
+                                            {:perms/create-queries :query-builder})]]}]
+
+             :else
+             [:= [:inline 0] [:inline 1]])})
+
 ;; Users who can read the transform can also query it. This is a duplicate, but keeps things explicit.
 (defmethod mi/can-query? :model/Transform
   ([instance]

@@ -155,6 +155,10 @@
 
 (perms/define-collection-based-visibility! :model/Card)
 
+(defmethod mi/visible-filter-clause :model/Card
+  [_model column-or-exp user-info _perm-type->perm-level & [opts]]
+  {:clause [:in column-or-exp (collection/visible-collection-content-select :report_card user-info opts)]})
+
 (defn model?
   "Returns true if `card` is a model."
   [card]

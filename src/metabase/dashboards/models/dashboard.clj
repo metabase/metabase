@@ -66,6 +66,10 @@
 
 (perms/define-collection-based-visibility! :model/Dashboard)
 
+(defmethod mi/visible-filter-clause :model/Dashboard
+  [_model column-or-exp user-info _perm-type->perm-level & [opts]]
+  {:clause [:in column-or-exp (collection/visible-collection-content-select :report_dashboard user-info opts)]})
+
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})
 

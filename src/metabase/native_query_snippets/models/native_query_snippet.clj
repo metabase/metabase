@@ -144,6 +144,13 @@
   (and (remote-sync/worktree-accessible? snippet)
        (snippet.perms/can-update? snippet changes)))
 
+(defmethod mi/visible-filter-clause :model/NativeQuerySnippet
+  [_model column-or-exp user-info _perm-type->perm-level & [opts]]
+  ;; a sandboxed user, or one who cannot write native queries at all, sees no snippets whatever their collections say
+  {:clause (if (snippet.perms/has-any-native-permissions?)
+             [:in column-or-exp (collection/visible-collection-content-select :native_query_snippet user-info opts)]
+             [:= [:inline 0] [:inline 1]])})
+
 (methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_write]
   [_model k snippets]
   (let [non-nil-snippets (remove nil? snippets)

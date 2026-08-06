@@ -52,6 +52,10 @@
    (when-let [document (t2/select-one :model/Document :id pk)]
      (mi/can-write? document))))
 
+(defmethod mi/visible-filter-clause :model/Document
+  [_model column-or-exp user-info _perm-type->perm-level & [opts]]
+  {:clause [:in column-or-exp (collection/visible-collection-content-select :document user-info opts)]})
+
 (def DocumentName
   "Validations for the name of a document"
   (mu/with-api-error-message

@@ -104,6 +104,30 @@
    (when-let [segment (t2/select-one model pk)]
      (mi/can-write? segment))))
 
+(defmethod mi/visible-filter-clause :model/Segment
+  [_model column-or-exp {:keys [is-superuser?] :as user-info} _perm-type->perm-level
+   & [{:keys [include-archived-items worktree-id] :or {include-archived-items :exclude}}]]
+  {:clause [:in column-or-exp
+            {:select [:id]
+             :from   [:segment]
+             :where  [:and
+                      ;; the user has to be able to see the table this hangs off
+                      ;; TODO (ed 2025-12-16): support using CTEs in filters in the dependency graph, so this can
+                      ;; use `perms/visible-table-filter-with-cte` instead of wrapping a plain select
+                      [:in :segment.table_id
+                       {:select [:metabase_table.id]
+                        :from   [:metabase_table]
+                        :where  [:in :metabase_table.id
+                                 (perms/visible-table-filter-select
+                                  :id user-info
+                                  {:perms/view-data      :unrestricted
+                                   :perms/create-queries :query-builder})]}]
+                      (case include-archived-items
+                        :exclude [:= :segment.archived false]
+                        :only    [:= :segment.archived true]
+                        :all     nil)
+                      [:= :segment.worktree_id (when is-superuser? worktree-id)]]}]})
+
 ;; Segments can be created by
 ;; a) superusers
 ;; b) OR data analysts with unrestricted view-data permissions
