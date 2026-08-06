@@ -2,7 +2,6 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
-import { useSetting } from "metabase/common/hooks";
 import {
   getIsDashCardsRunning,
   getSelectedTabId,
@@ -21,6 +20,7 @@ import { useSharingModal } from "metabase/embedding/hooks/use-sharing-modal";
 import { trackPublicLinkCopied } from "metabase/embedding/lib/analytics";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { Box, Flex } from "metabase/ui";
 import {
   dashboard as getDashboardUrl,

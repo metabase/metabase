@@ -24,14 +24,14 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Link } from "metabase/common/components/Link";
 import type { IconModel, ObjectWithModel } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import {
-  METABSE_PROTOCOL_MD_LINK,
-  parseMetabaseProtocolMarkdownLink,
-} from "metabase/metabot/utils/links";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Icon } from "metabase/ui";
+import {
+  METABSE_PROTOCOL_MD_LINK,
+  parseMetabaseProtocolMarkdownLink,
+} from "metabase/urls";
 import { modelToUrl } from "metabase/urls/modelToUrl";
 import { extractEntityId } from "metabase/urls/utils";
 import type {
@@ -428,6 +428,7 @@ export const useEntityData = (
     }
     case "indexed-entity":
     case "measure":
+    case "exploration":
     case null:
       return { entity: null, isLoading: false, error: null };
     default:

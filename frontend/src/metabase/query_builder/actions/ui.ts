@@ -1,4 +1,3 @@
-import { settingsApi } from "metabase/api";
 import { getOriginalCard } from "metabase/query_builder/selectors";
 import {
   CANCEL_QUERY,
@@ -11,6 +10,7 @@ import type {
   GetState,
   QueryBuilderMode,
 } from "metabase/redux/store";
+import { settingsApi } from "metabase/settings";
 import type { Card } from "metabase-types/api";
 
 import { trackFirstNonTableChartGenerated } from "../analytics";

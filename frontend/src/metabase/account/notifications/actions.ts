@@ -1,5 +1,4 @@
 import type { NotificationListItem } from "metabase/notifications/types";
-import { push } from "metabase/router";
 
 const PREFIX = `/account/notifications`;
 
@@ -10,22 +9,16 @@ const TYPE_MAP: Record<ListItemType, string> = {
   pulse: "pulse",
 };
 
-export const navigateToUnsubscribe = (
-  item: { id: number },
-  type: ListItemType,
-) => {
-  return push(`${PREFIX}/${TYPE_MAP[type]}/${item.id}/unsubscribe`);
-};
+export const getUnsubscribeUrl = (item: { id: number }, type: ListItemType) =>
+  `${PREFIX}/${TYPE_MAP[type]}/${item.id}/unsubscribe`;
 
-export const navigateToArchive = (
+export const getArchiveUrl = (
   item: { id: number },
   type: ListItemType,
   hasUnsubscribed?: boolean,
 ) => {
   const query = hasUnsubscribed ? "?unsubscribed=true" : "";
-  return push(`${PREFIX}/${TYPE_MAP[type]}/${item.id}/archive${query}`);
+  return `${PREFIX}/${TYPE_MAP[type]}/${item.id}/archive${query}`;
 };
 
-export const navigateToHelp = () => {
-  return push(`${PREFIX}/help`);
-};
+export const getHelpUrl = () => `${PREFIX}/help`;

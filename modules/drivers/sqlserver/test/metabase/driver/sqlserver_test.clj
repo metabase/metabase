@@ -660,12 +660,11 @@
 (deftest ^:parallel top-level-boolean-expressions-test
   (mt/test-driver :sqlserver
     (testing "BIT values like 0 and 1 get converted to equivalent boolean expressions"
-      (let [opts {:base-type :type/Boolean :effective-type :type/Boolean}
-            bool-val  (fn [b] (sql.qp/mbql-clause-with-opts :sqlserver :value opts b))]
+      (let [opts {:base-type :type/Boolean :effective-type :type/Boolean}]
         (letfn [(expression-ref [expression-name]
-                  (sql.qp/mbql-clause :sqlserver :expression expression-name))
+                  [:expression {} expression-name])
                 (orders-query [{:keys [expressions fields filters]
-                                :or {expressions [["MyTrue" (bool-val true)] ["MyFalse" (bool-val false)]]
+                                :or {expressions [["MyTrue" [:value opts true]] ["MyFalse" [:value opts false]]]
                                      fields ["MyTrue"]}}]
                   (let [returned-expression? (fn [[expr-name _]] ((set fields) expr-name))
                         returned-exprs (filter returned-expression? expressions)
@@ -673,19 +672,19 @@
                         mp    (mt/metadata-provider)
                         query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         query (reduce (fn [query [expression-name expression]]
-                                        (lib/expression query expression-name expression))
+                                        (lib/expression query expression-name (lib/normalize expression)))
                                       query
                                       returned-exprs)
                         query (lib/with-fields query (mapv #(lib/expression-ref query %) fields))
                         query (reduce (fn [query [expr-name expr]]
-                                        (lib.expression/expression query -1 expr-name expr {:add-to-fields? false}))
+                                        (lib.expression/expression query -1 expr-name (lib/normalize expr) {:add-to-fields? false}))
                                       query
                                       hidden-exprs)]
-                    (-> (reduce lib/filter query filters) (lib/limit 1))))]
+                    (-> (reduce #(lib/filter %1 (lib/normalize %2)) query filters) (lib/limit 1))))]
           (doseq [{:keys [desc query expected-sql expected-types expected-rows]}
                   [{:desc "true filter"
                     :query
-                    (orders-query {:filters [(bool-val true)]})
+                    (orders-query {:filters [[:value opts true]]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -697,7 +696,7 @@
                     :expected-rows  [[true]]}
                    {:desc "false filter"
                     :query
-                    (orders-query {:filters [(bool-val false)]})
+                    (orders-query {:filters [[:value opts false]]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -709,7 +708,7 @@
                     :expected-rows  []}
                    {:desc "not filter"
                     :query
-                    (orders-query {:filters [(sql.qp/mbql-clause :sqlserver :not (bool-val false))]})
+                    (orders-query {:filters [[:not {} [:value opts false]]]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -721,13 +720,9 @@
                     :expected-rows  [[true]]}
                    {:desc "nested logical operators"
                     :query
-                    (orders-query {:filters [(sql.qp/mbql-clause
-                                              :sqlserver :and
-                                              (sql.qp/mbql-clause :sqlserver :not (bool-val false))
-                                              (sql.qp/mbql-clause
-                                               :sqlserver :or
-                                               (expression-ref "MyFalse")
-                                               (expression-ref "MyTrue")))]})
+                    (orders-query {:filters [[:and {}
+                                              [:not {} [:value opts false]]
+                                              [:or {} (expression-ref "MyFalse") (expression-ref "MyTrue")]]]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -743,12 +738,11 @@
                     :expected-rows  [[true]]}
                    {:desc "case expression"
                     :query (orders-query
-                            {:expressions [["MyTrue" (bool-val true)]
-                                           ["MyFalse" (bool-val false)]
-                                           ["MyCase" (sql.qp/mbql-clause
-                                                      :sqlserver :case
-                                                      [[(expression-ref "MyFalse") (bool-val false)]
-                                                       [(expression-ref "MyTrue") (bool-val true)]])]]
+                            {:expressions [["MyTrue" [:value opts true]]
+                                           ["MyFalse" [:value opts false]]
+                                           ["MyCase" [:case {}
+                                                      [[(expression-ref "MyFalse") [:value opts false]]
+                                                       [(expression-ref "MyTrue") [:value opts true]]]]]]
                              :fields      ["MyCase" "MyTrue" "MyFalse"]})
                     :expected-sql
                     ["SELECT"
@@ -766,7 +760,7 @@
                    ;; to (1 = 1) = (1 = 1)
                    {:desc "non-top-level booleans"
                     :query
-                    (orders-query {:filters [(sql.qp/mbql-clause :sqlserver := (bool-val true) (bool-val true))]})
+                    (orders-query {:filters [[:= {} [:value opts true] [:value opts true]]]})
                     :expected-sql
                     ["SELECT"
                      "  TOP(1) CAST(1 AS bit) AS MyTrue"
@@ -915,10 +909,9 @@
                                           :from   [:attempts]
                                           :where  (sql.qp/->honeysql
                                                    :sqlserver
-                                                   (sql.qp/mbql-clause
-                                                    :sqlserver :=
-                                                    (sql.qp/mbql-clause :sqlserver :field (mt/id :attempts :datetime))
-                                                    (sql.qp/compiled [:raw "?"])))})))]
+                                                   [:= {}
+                                                    [:field {} (mt/id :attempts :datetime)]
+                                                    (sql.qp/compiled [:raw "?"])])})))]
           (doseq [param [datetime-string datetime-localdatetime]
                   :let  [query [base-query param]]]
             (testing (pr-str query)
@@ -957,22 +950,22 @@
   (driver/with-driver :sqlserver
     (qp.store/with-metadata-provider (mt/id)
       (binding [sql.qp/*inner-query* {:expressions
-                                      [(sql.qp/mbql-clause-with-opts
-                                        :sqlserver := {:lib/expression-name "NameEquals"}
-                                        (sql.qp/mbql-clause-with-opts
-                                         :sqlserver :field
+                                      [[:= {:lib/expression-name "NameEquals"
+                                            :lib/uuid            "00000000-0000-0000-0000-000000000000"}
+                                        [:field
                                          {:base-type                      :type/Text
                                           :join-alias                     "JoinedCategories"
+                                          :lib/uuid                       "00000000-0000-0000-0000-000000000001"
                                           driver-api/qp.add.source-table  "JoinedCategories"
                                           driver-api/qp.add.source-alias  "LiteralString"
                                           driver-api/qp.add.desired-alias "JoinedCategories__LiteralString"}
-                                         "LiteralString")
-                                        (sql.qp/mbql-clause-with-opts
-                                         :sqlserver :field
-                                         {driver-api/qp.add.source-table  (mt/id :venues)
+                                         "LiteralString"]
+                                        [:field
+                                         {:lib/uuid                       "00000000-0000-0000-0000-000000000002"
+                                          driver-api/qp.add.source-table  (mt/id :venues)
                                           driver-api/qp.add.source-alias  "name"
                                           driver-api/qp.add.desired-alias "name"}
-                                         (mt/id :venues :name)))]}]
+                                         (mt/id :venues :name)]]]}]
         (is (= {:where
                 [:=
                  [::h2x/identifier :field ["JoinedCategories" "LiteralString"]]
@@ -983,12 +976,11 @@
                 :sqlserver
                 :filters
                 {}
-                {:filters [(sql.qp/mbql-clause-with-opts
-                            :sqlserver :expression
+                {:filters [[:expression
                             {:base-type :type/Boolean
                              driver-api/qp.add.source-table  driver-api/qp.add.none
                              driver-api/qp.add.desired-alias nil}
-                            "NameEquals")]})))))))
+                            "NameEquals"]]})))))))
 
 (mt/defdataset ^:private bigint-identity-data
   [["bigint_identity_test"

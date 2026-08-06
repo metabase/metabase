@@ -46,7 +46,7 @@
   (or (not (transforms-base.u/native-query-transform? instance))
       (and source-db-id
            (= :query-builder-and-native
-              (perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries source-db-id)))))
+              (perms/full-database-permission-for-user api/*current-user-id* :perms/create-queries source-db-id)))))
 
 (defn- transform-writable?
   "Whether the current user can write `instance`. Any extra `args` (an optional `models-cache`) are

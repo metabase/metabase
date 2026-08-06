@@ -10,6 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { DocumentEditorHostProvider } from "metabase/documents/components/Editor/DocumentEditorHost";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { MetabotNode } from "metabase/metabot/components/editor-extensions/MetabotEmbed";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -18,13 +19,12 @@ import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbe
 import { ExternalCardDataProvider } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/ExternalCardDataContext";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { FlexContainer } from "metabase/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
-import { MetabotNode } from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed";
 import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { useLocation, useParams } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
 import type { Document } from "metabase-types/api";

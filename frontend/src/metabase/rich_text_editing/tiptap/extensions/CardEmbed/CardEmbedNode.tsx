@@ -24,7 +24,7 @@ import {
   MAX_GROUP_SIZE,
 } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
@@ -36,7 +36,6 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
@@ -57,6 +56,7 @@ import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
 import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
+import { DocumentMode } from "./DocumentMode";
 import { useExternalCardData } from "./ExternalCardDataContext";
 import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
@@ -152,8 +152,8 @@ export const CardEmbedComponent = memo(
     getPos,
     deleteNode,
   }: NodeViewProps) => {
+    const { _id, id, name } = node.attrs;
     const host = useEditorHost();
-    const { _id } = node.attrs;
     const {
       ref: viewportRef,
       isInViewport,
@@ -172,11 +172,11 @@ export const CardEmbedComponent = memo(
     const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
-    const commentsPath = document
-      ? `/document/${document.id}/comments/${_id}`
-      : "";
-    const { id, name } = node.attrs;
+    const commentsPath = host.useCommentUrl({
+      childTargetId: _id,
+    });
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const canWrite = editor.options.editable;
 
     const {
@@ -189,7 +189,6 @@ export const CardEmbedComponent = memo(
 
     const embedIndex = getEmbedIndex(editor, getPos);
 
-    // Use external hook when viewing an externally-rendered document (e.g. public), otherwise use regular hook
     const isExternalDocument = externalCardData != null;
     const regularCardData = host.useCardData({ id, skip: !shouldLoadData });
     const externalCardDataResult = host.useExternalCardDataLoader(id, {
@@ -575,7 +574,7 @@ export const CardEmbedComponent = memo(
                           variant={isOpen ? "filled" : "default"}
                           unresolvedCommentsCount={unresolvedCommentsCount}
                           onClick={() => {
-                            dispatch(push(commentsPath));
+                            navigate(commentsPath);
                           }}
                         />
                       </Box>
@@ -628,7 +627,6 @@ export const CardEmbedComponent = memo(
                             handleRemoveNode={handleRemoveNode}
                             commentsPath={commentsPath}
                             hasUnsavedChanges={hasUnsavedChanges}
-                            unresolvedCommentsCount={unresolvedCommentsCount}
                           />
                         </Menu.Dropdown>
                       </Menu>

@@ -26,7 +26,6 @@ export const getSdkStore = () =>
   // Unjustified type cast. FIXME
   getStore(
     sdkReducers,
-    null,
     {
       embed: {
         options: {

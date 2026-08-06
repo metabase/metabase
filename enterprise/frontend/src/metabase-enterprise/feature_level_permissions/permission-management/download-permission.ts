@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Messages } from "metabase/admin/permissions/constants/messages";
+import { navigateToGranularPermissions } from "metabase/admin/permissions/permissions";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -15,8 +16,6 @@ import {
   getSchemasPermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
-import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import { push } from "metabase/router";
 import {
   DataPermission,
   DataPermissionValue,
@@ -205,8 +204,7 @@ export const buildDownloadPermission = (
     ],
     postActions: hasChildEntities
       ? {
-          controlled: () =>
-            push(getGroupFocusPermissionsUrl(groupId, entityId)),
+          controlled: () => navigateToGranularPermissions(groupId, entityId),
         }
       : undefined,
   };

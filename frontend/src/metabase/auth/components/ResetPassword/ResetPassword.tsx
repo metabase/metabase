@@ -7,7 +7,7 @@ import { useValidatePassword } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
 import { resetPassword } from "metabase/redux/auth";
-import { replace, useParams, useSearchParams } from "metabase/router";
+import { useNavigate, useParams, useSearchParams } from "metabase/router";
 import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -28,6 +28,7 @@ export const ResetPassword = (): JSX.Element | null => {
   const redirectUrl = searchParams.get("redirect") ?? undefined;
   const email = searchParams.get("email") ?? undefined;
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [sendToast] = useToast();
   const validatePassword = useValidatePassword();
   const { data: status, isLoading } =
@@ -38,12 +39,12 @@ export const ResetPassword = (): JSX.Element | null => {
       const { sessionCreated } = await dispatch(
         resetPassword({ token, password }),
       ).unwrap();
-      dispatch(
-        replace(sessionCreated ? redirectUrl || "/" : Urls.login(redirectUrl)),
-      );
+      navigate(sessionCreated ? redirectUrl || "/" : Urls.login(redirectUrl), {
+        replace: true,
+      });
       sendToast({ message: t`You've updated your password.` });
     },
-    [token, dispatch, redirectUrl, sendToast],
+    [token, dispatch, redirectUrl, sendToast, navigate],
   );
 
   if (isLoading) {

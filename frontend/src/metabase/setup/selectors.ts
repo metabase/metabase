@@ -8,10 +8,8 @@ import type {
   State,
   UserInfo,
 } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
-import type { DatabaseData, LocaleData } from "metabase-types/api";
-
-const DEFAULT_LOCALES: LocaleData[] = [];
+import { getSetting } from "metabase/settings";
+import type { DatabaseData } from "metabase-types/api";
 
 export const getStep = (state: State): SetupStep => {
   return state.setup.step;
@@ -71,18 +69,6 @@ export const getIsSetupCompleted = (state: State): boolean => {
 
 export const getDatabaseEngine = (state: State): string | undefined => {
   return getDatabase(state)?.engine || state.setup.databaseEngine;
-};
-
-export const getSetupToken = (state: State) => {
-  return getSetting(state, "setup-token");
-};
-
-export const getAvailableLocales = (state: State): LocaleData[] => {
-  return getSetting(state, "available-locales") ?? DEFAULT_LOCALES;
-};
-
-export const getIsEmailConfigured = (state: State): boolean => {
-  return getSetting(state, "email-configured?");
 };
 
 export const getIsAiConfigRequested = (state: State): boolean => {

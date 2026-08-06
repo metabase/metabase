@@ -16539,6 +16539,31 @@
         "tags" : [ "/api/apps" ]
       }
     },
+    "/api/apps/sandbox-host" : {
+      "get" : {
+        "operationId" : "get-api-apps-sandbox-host",
+        "summary" : "GET /api/apps/sandbox-host",
+        "description" : "Serve the document used as the `src` of the Near-Membrane realm iframe, carrying a\n   per-document CSP that confines `'unsafe-eval'` to that realm. See [[sandbox-host-csp]].",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      }
+    },
     "/api/apps/{slug}" : {
       "put" : {
         "operationId" : "put-api-apps-slug",
@@ -26295,6 +26320,18 @@
                         "type" : "null"
                       } ]
                     },
+                    "warnings" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "type" ]
+                      }
+                    },
                     "dev_bundle_url" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -26317,7 +26354,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "warnings", "created_at", "updated_at" ]
                 }
               }
             }
@@ -26412,6 +26449,18 @@
                           "type" : "null"
                         } ]
                       },
+                      "warnings" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "type" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "type" ]
+                        }
+                      },
                       "dev_bundle_url" : {
                         "oneOf" : [ {
                           "type" : "string"
@@ -26434,7 +26483,7 @@
                         } ]
                       }
                     },
-                    "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                    "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "warnings", "created_at", "updated_at" ]
                   }
                 }
               }
@@ -26508,6 +26557,18 @@
                         "type" : "null"
                       } ]
                     },
+                    "warnings" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "type" ]
+                      }
+                    },
                     "dev_bundle_url" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -26530,7 +26591,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "warnings", "created_at", "updated_at" ]
                 }
               }
             }
@@ -26573,7 +26634,7 @@
       "get" : {
         "operationId" : "get-api-ee-custom-viz-plugin-list",
         "summary" : "GET /api/ee/custom-viz-plugin/list",
-        "description" : "List active and enabled custom visualization plugins. Available to any authenticated user.\n   Plugins with incompatible Metabase version requirements are excluded.\n   Dev-only plugins are excluded when dev mode is disabled.",
+        "description" : "List active and enabled custom visualization plugins. Available to any authenticated user.\n   Plugins with version mismatches are included, with soft `warnings` attached.\n   Dev-only plugins are excluded when dev mode is disabled.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -26585,34 +26646,9 @@
                   "items" : {
                     "type" : "object",
                     "properties" : {
-                      "bundle_hash" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      },
                       "bundle_url" : {
                         "type" : "string",
                         "minLength" : 1
-                      },
-                      "dev_bundle_url" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      },
-                      "display_name" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      },
-                      "icon" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
                       },
                       "id" : {
                         "description" : "value must be an integer greater than zero.",
@@ -26623,13 +26659,50 @@
                         "type" : "string",
                         "minLength" : 1
                       },
+                      "display_name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "bundle_hash" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "manifest" : {
                         "oneOf" : [ { }, {
                           "type" : "null"
                         } ]
+                      },
+                      "warnings" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "type" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "type" ]
+                        }
+                      },
+                      "dev_bundle_url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "icon" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
                       }
                     },
-                    "required" : [ "id", "identifier", "display_name", "bundle_url" ]
+                    "required" : [ "id", "identifier", "display_name", "bundle_url", "warnings" ]
                   }
                 }
               }
@@ -26649,7 +26722,7 @@
       "get" : {
         "operationId" : "get-api-ee-custom-viz-plugin-sandbox-host",
         "summary" : "GET /api/ee/custom-viz-plugin/sandbox-host",
-        "description" : "Serve a minimal HTML document used as the iframe `src` for the near-membrane custom-viz\n   sandbox. The response carries a per-document `Content-Security-Policy` that permits\n   `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict\n   nonce-based CSP.",
+        "description" : "Serve a minimal HTML document used as the iframe `src` for the near-membrane custom-viz\n   sandbox. The response carries a per-document `Content-Security-Policy` that permits\n   `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict\n   nonce-based CSP. 404s unless the custom-viz kill switch is on and the request passes the\n   fetch-metadata gate (see [[donor-load-allowed?]]).",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -26771,6 +26844,18 @@
                         "type" : "null"
                       } ]
                     },
+                    "warnings" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "type" ]
+                      }
+                    },
                     "dev_bundle_url" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -26793,7 +26878,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "warnings", "created_at", "updated_at" ]
                 }
               }
             }
@@ -26935,6 +27020,18 @@
                         "type" : "null"
                       } ]
                     },
+                    "warnings" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "type" ]
+                      }
+                    },
                     "dev_bundle_url" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -26957,7 +27054,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "warnings", "created_at", "updated_at" ]
                 }
               }
             }
@@ -27192,6 +27289,18 @@
                         "type" : "null"
                       } ]
                     },
+                    "warnings" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "type" ]
+                      }
+                    },
                     "dev_bundle_url" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -27214,7 +27323,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "warnings", "created_at", "updated_at" ]
                 }
               }
             }
@@ -28586,7 +28695,7 @@
           "schema" : {
             "oneOf" : [ {
               "type" : "string",
-              "enum" : [ "created_at", "message_count", "total_tokens", "cache_read_tokens", "user", "profile_id", "ip_address" ]
+              "enum" : [ "created_at", "title", "message_count", "total_tokens", "cache_read_tokens", "user", "profile_id", "ip_address" ]
             }, {
               "type" : "null"
             } ]
@@ -38216,7 +38325,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "anthropic", "openai", "azure", "bedrock", "metabase", "openrouter" ]
+            "enum" : [ "anthropic", "openai", "mistral", "azure", "bedrock", "zai", "metabase", "openrouter" ]
           }
         } ],
         "responses" : {
@@ -38413,7 +38522,7 @@
                   },
                   "provider" : {
                     "type" : "string",
-                    "enum" : [ "anthropic", "openai", "azure", "bedrock", "metabase", "openrouter" ]
+                    "enum" : [ "anthropic", "openai", "mistral", "azure", "bedrock", "zai", "metabase", "openrouter" ]
                   }
                 },
                 "required" : [ "provider" ]
@@ -39132,7 +39241,7 @@
       "post" : {
         "operationId" : "post-api-metric-id-dimension-set-default",
         "summary" : "POST /api/metric/{id}/dimension/set-default",
-        "description" : "Mark exactly one dimension as the metric's default, clearing any previous default. Returns the\n  updated list of added dimensions. (It is legal for a metric to have no default; this always leaves\n  exactly one.)",
+        "description" : "Mark exactly one dimension as the metric's default, clearing any previous default. A null\n  `dimension_id` clears the default without setting a new one, so the metric renders as a scalar.\n  Returns the updated list of added dimensions.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -39172,8 +39281,12 @@
                 "type" : "object",
                 "properties" : {
                   "dimension_id" : {
-                    "type" : "string",
-                    "minLength" : 1
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "dimension_id" ]
@@ -53713,31 +53826,8 @@
             }, {
               "type" : "null"
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "database-name",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "library",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
+          },
+          "description" : "Scopes the schema to a database by numeric id or name."
         }, {
           "in" : "query",
           "name" : "library-collections",
@@ -53749,19 +53839,8 @@
             }, {
               "type" : "null"
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "collections",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
+          },
+          "description" : "Comma-separated library collection ids or entity ids. Limits tables and metrics to those library collections."
         }, {
           "in" : "query",
           "name" : "question-collections",
@@ -53773,7 +53852,8 @@
             }, {
               "type" : "null"
             } ]
-          }
+          },
+          "description" : "Comma-separated collection ids or entity ids. Includes saved questions from those collections."
         }, {
           "in" : "query",
           "name" : "include-data-library",
@@ -53784,7 +53864,8 @@
             }, {
               "type" : "null"
             } ]
-          }
+          },
+          "description" : "Whether to include the entire data library."
         }, {
           "in" : "query",
           "name" : "include-metric-library",
@@ -53795,7 +53876,8 @@
             }, {
               "type" : "null"
             } ]
-          }
+          },
+          "description" : "Whether to include the entire metric library."
         }, {
           "in" : "query",
           "name" : "include-models",
@@ -53806,18 +53888,8 @@
             }, {
               "type" : "null"
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "questions",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
+          },
+          "description" : "Whether to include all readable models with executable actions. Database scope applies when provided."
         } ],
         "responses" : {
           "2XX" : {
