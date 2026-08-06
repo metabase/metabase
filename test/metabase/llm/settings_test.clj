@@ -167,6 +167,36 @@
   (is (nil? (llm.settings/normalize-llm-base-url nil)))
   (is (nil? (llm.settings/normalize-llm-base-url "///"))))
 
+;;; ------------------------------------------- Chat Completions base-URL Setter Tests -------------------------------------------
+
+;;; Adapters build request URLs as `(str base-url path)`, so a pasted trailing slash would produce `//models`.
+
+(deftest llm-zai-api-base-url-setter-test
+  (testing "trims whitespace and trailing slashes"
+    (mt/with-temp-env-var-value! [mb-llm-zai-api-base-url nil]
+      (mt/discard-setting-changes [llm-zai-api-base-url]
+        (llm.settings/llm-zai-api-base-url! "  https://api.z.ai/api/paas/v4/  ")
+        (is (= "https://api.z.ai/api/paas/v4" (llm.settings/llm-zai-api-base-url))))))
+  (testing "blank restores the default"
+    (mt/with-temp-env-var-value! [mb-llm-zai-api-base-url nil]
+      (mt/discard-setting-changes [llm-zai-api-base-url]
+        (llm.settings/llm-zai-api-base-url! "https://self-hosted.example/v4")
+        (llm.settings/llm-zai-api-base-url! "   ")
+        (is (= "https://api.z.ai/api/paas/v4" (llm.settings/llm-zai-api-base-url)))))))
+
+(deftest llm-mistral-api-base-url-setter-test
+  (testing "trims whitespace and trailing slashes"
+    (mt/with-temp-env-var-value! [mb-llm-mistral-api-base-url nil]
+      (mt/discard-setting-changes [llm-mistral-api-base-url]
+        (llm.settings/llm-mistral-api-base-url! "  https://api.mistral.ai/v1/  ")
+        (is (= "https://api.mistral.ai/v1" (llm.settings/llm-mistral-api-base-url))))))
+  (testing "blank restores the default"
+    (mt/with-temp-env-var-value! [mb-llm-mistral-api-base-url nil]
+      (mt/discard-setting-changes [llm-mistral-api-base-url]
+        (llm.settings/llm-mistral-api-base-url! "https://self-hosted.example/v1")
+        (llm.settings/llm-mistral-api-base-url! "   ")
+        (is (= "https://api.mistral.ai/v1" (llm.settings/llm-mistral-api-base-url)))))))
+
 ;;; ------------------------------------------- llm-proxy-base-url Feature Guard Tests -------------------------------------------
 
 (deftest llm-proxy-base-url-feature-guard-test

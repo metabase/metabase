@@ -50,7 +50,9 @@
 
   The endpoint is OpenAI-compatible but undocumented; it doubles as the credential
   round-trip behind the admin Connect button (auth is checked before routing, so a 2xx
-  proves the key and base URL reach an authenticated surface).
+  proves the key and base URL reach an authenticated surface). A 2xx whose body isn't a
+  recognizable catalog throws rather than yielding an empty picker — see
+  [[chat-completions/models-catalog]].
   `:ai-proxy?` is not supported for Z.AI and throws when true."
   [{:keys [credentials ai-proxy?]}]
   (when ai-proxy?
@@ -66,7 +68,7 @@
                                    :url     "/models"
                                    :as      :json
                                    :headers {"Content-Type" "application/json"}})]
-      (get-in res [:body :data]))
+      (chat-completions/models-catalog "Z.AI" res))
     (catch Exception e
       (core/rethrow-api-error! "zai" zai-error-msg e))))
 
