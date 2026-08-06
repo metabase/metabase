@@ -6,7 +6,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.usage-metadata.batch :as usage-metadata.batch]
-   [metabase.usage-metadata.candidates :as usage-metadata.candidates]
+   [metabase.usage-metadata.candidate-service :as candidate-service]
    [metabase.usage-metadata.settings :as usage-metadata.settings]
    [metabase.util.log :as log])
   (:import
@@ -55,8 +55,8 @@
            (fn []
              ;; `queue-refresh!` also recovers runs interrupted by a previous process, so every
              ;; scheduled tick must go through it rather than short-circuiting on `active-run`.
-             (when-let [run (usage-metadata.candidates/queue-refresh! :scheduled nil)]
-               (usage-metadata.candidates/run-refresh! run)))))]
+             (when-let [run (candidate-service/queue-refresh! :scheduled nil)]
+               (candidate-service/run-refresh! run)))))]
     (when-let [error (or batch-error candidate-error)]
       (throw error))))
 

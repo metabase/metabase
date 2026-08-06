@@ -12,7 +12,6 @@
    [metabase.usage-metadata.candidate-builders :as candidate-builders]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
    [metabase.usage-metadata.candidates :as candidates]
-   [metabase.usage-metadata.insights :as insights]
    [metabase.usage-metadata.query-source :as query-source]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -176,7 +175,7 @@
                                               :type :question
                                               :dataset_query query
                                               :view_count 100}]
-      (let [mined (-> (insights/cleanup-candidates
+      (let [mined (-> (candidate-builders/cleanup-candidates
                        {:query-source (query-source/card-id-set [card-id])
                         :include-ineligible? true})
                       :measures
