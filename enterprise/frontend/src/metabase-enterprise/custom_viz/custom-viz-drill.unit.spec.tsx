@@ -1,12 +1,13 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 import { setup } from "metabase/query_builder/containers/test-utils";
 import { getCard } from "metabase/query_builder/selectors";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualization } from "metabase/visualizations";
-import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import type { CustomVizDisplayType } from "metabase-types/api";
 import {
   createMockCard,
@@ -20,6 +21,8 @@ import {
   ORDERS_ID,
   SAMPLE_DB_ID,
   createOrdersCreatedAtDatasetColumn,
+  createOrdersIdDatasetColumn,
+  createOrdersTotalDatasetColumn,
 } from "metabase-types/api/mocks/presets";
 
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
@@ -47,6 +50,13 @@ const DATASET = createMockDataset({
       ["2026-01-01T00:00:00Z", 10],
       ["2026-02-01T00:00:00Z", 20],
     ],
+  }),
+});
+
+const UNDERLYING_RECORDS_DATASET = createMockDataset({
+  data: createMockDatasetData({
+    cols: [createOrdersIdDatasetColumn(), createOrdersTotalDatasetColumn()],
+    rows: [[1, 100]],
   }),
 });
 
@@ -94,8 +104,8 @@ function DemoVisualization({ onVisualizationClick }: VisualizationProps) {
   );
 }
 
-registerVisualizations();
-// registered the way a loaded plugin bundle would be, minus the sandbox
+registerVisualization(Table);
+
 registerVisualization(
   applyDefaultVisualizationProps(
     DemoVisualization,
@@ -144,6 +154,10 @@ describe("query builder > custom visualization drill-through", () => {
 
   it("should still switch to a table for the underlying records drill", async () => {
     const { store } = await setup({ card: CARD, dataset: DATASET });
+
+    fetchMock.modifyRoute("dataset-post", {
+      response: UNDERLYING_RECORDS_DATASET,
+    });
 
     await drillFromCustomViz(/See these Orders/);
 

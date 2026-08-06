@@ -20,10 +20,6 @@ export const getNameForCard = (card: Card) => {
   return card?.name || "";
 };
 
-/**
- * Settings are computed for the display the cards carry, so asking about a
- * different display means handing the series that display first.
- */
 export const getSeriesWithDisplay = (
   rawSeries: RawSeries,
   display: VisualizationDisplay,

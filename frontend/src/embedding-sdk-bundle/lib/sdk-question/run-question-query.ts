@@ -128,8 +128,6 @@ export async function runQuestionQuerySdk(
       // lock it so the data shape doesn't auto-reset it.
       question = question.setDisplay(initialDisplay).lockDisplay();
     } else {
-      // A custom viz whose bundle didn't load isn't registered, so it can't
-      // report itself sensible here.
       question = question.maybeResetDisplay(
         datasetData,
         getSensibleDisplays([{ card: question.card(), data: datasetData }]),

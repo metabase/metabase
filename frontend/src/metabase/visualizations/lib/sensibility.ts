@@ -47,18 +47,12 @@ function isRenderable(
 }
 
 /**
- * Displays that `Question.maybeResetDisplay` may keep for this data.
- *
- * A visualization that declares `isSensible` answers for itself. One that
- * doesn't — every custom viz — is judged by whether it can render the data at
- * all, so the user keeps their chart when it works and gets a default one
- * instead of an error card when it doesn't.
+ * Built-in visualizations decide via their own `isSensible`. Custom
+ * visualizations have no `isSensible`, so they count as sensible when they can
+ * render the data without throwing.
  */
 export function getSensibleDisplays(rawSeries: RawSeries) {
   const [{ data }] = rawSeries;
-  // An empty result — or the placeholder a guest embed gets instead of query
-  // results — gives `checkRenderable` nothing to judge by, and it would reject
-  // most visualizations. Keep them all so the card keeps its own display.
   const hasNothingToJudgeBy = data.rows.length === 0;
 
   return Array.from(visualizations)
