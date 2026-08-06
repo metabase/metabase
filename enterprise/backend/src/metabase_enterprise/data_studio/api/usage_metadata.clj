@@ -313,14 +313,9 @@
   [:map
    [:table-id        {:optional true} [:maybe ms/PositiveInt]]
    [:database-id     {:optional true} [:maybe ms/PositiveInt]]
-   [:schema          {:optional true} [:maybe :string]]
    [:candidate-type  {:optional true} [:maybe [:enum :table :metric :measure :segment]]]
-   [:modeling-status {:optional true} [:maybe [:enum :missing :partially-modeled :modeled]]]
-   [:signal          {:optional true} [:maybe [:enum :verified :official :popular]]]
    [:queue           {:default :suggested} [:enum :suggested :used-raw :discarded]]
-   [:search          {:optional true} [:maybe [:string {:max max-search-length}]]]
-   [:sort            {:default :priority} [:enum :priority :name :source-count :view-count]]
-   [:direction       {:default :asc} [:enum :asc :desc]]])
+   [:search          {:optional true} [:maybe [:string {:max max-search-length}]]]])
 
 (defn- candidate-joins
   []
@@ -337,7 +332,7 @@
                  [:= :candidate.signature_hash :dismissal.signature_hash]]]})
 
 (defn- candidate-where
-  [run-id {:keys [table-id database-id schema candidate-type modeling-status signal queue search]}]
+  [run-id {:keys [table-id database-id candidate-type queue search]}]
   (cond-> [:and [:= :candidate.run_id run-id]]
     table-id
     (conj [:= :candidate.table_id table-id])
@@ -345,21 +340,8 @@
     database-id
     (conj [:= :table.db_id database-id])
 
-    schema
-    (conj [:= :table.schema schema])
-
     candidate-type
     (conj [:= :candidate.candidate_type (name candidate-type)])
-
-    modeling-status
-    (conj [:= :candidate.modeling_status (name modeling-status)])
-
-    signal
-    (conj [:> (case signal
-                :verified :candidate.verified_source_count
-                :official :candidate.official_source_count
-                :popular  :candidate.popular_source_count)
-           0])
 
     (= queue :suggested)
     (conj [:= :dismissal.id nil]
@@ -383,40 +365,19 @@
              [:like [:lower :table.schema] pattern]
              [:like [:lower :database.name] pattern]]))))
 
-(defn- reverse-direction
-  [direction]
-  (if (= direction :asc) :desc :asc))
-
 (defn- candidate-order
-  [sort-column direction]
-  (let [ordered (case sort-column
-                  :name
-                  [[[:lower :candidate.display_name] :asc]]
-
-                  :source-count
-                  [[:candidate.distinct_source_count :desc]]
-
-                  :view-count
-                  [[:candidate.total_view_count :desc]]
-
-                  ;; Preserve the miner's ordering exactly: presence of verified
-                  ;; and official evidence is binary; source count then breaks ties.
-                  ;; Recommendation families inherit the priority of their strongest member,
-                  ;; then use a deterministic parent-first traversal inside the family.
-                  [[:candidate.family_order :asc]
-                   [:candidate.family_position :asc]
-                   [[:case [:> :candidate.verified_source_count 0] [:inline 0] :else [:inline 1]] :asc]
-                   [[:case [:> :candidate.official_source_count 0] [:inline 0] :else [:inline 1]] :asc]
-                   [:candidate.distinct_source_count :desc]
-                   [:candidate.complexity :asc]
-                   [:candidate.total_view_count :desc]
-                   [:candidate.signature :asc]])
-        ordered (if (= direction :desc)
-                  (mapv (fn [[column column-direction]]
-                          [column (reverse-direction column-direction)])
-                        ordered)
-                  ordered)]
-    (conj ordered [:candidate.id (if (= direction :desc) :desc :asc)])))
+  []
+  ;; `family_order` and `family_position` are materialized by the miner. They keep related
+  ;; recommendations adjacent and deterministic; the remaining columns break ties between families.
+  [[:candidate.family_order :asc]
+   [:candidate.family_position :asc]
+   [[:case [:> :candidate.verified_source_count 0] [:inline 0] :else [:inline 1]] :asc]
+   [[:case [:> :candidate.official_source_count 0] [:inline 0] :else [:inline 1]] :asc]
+   [:candidate.distinct_source_count :desc]
+   [:candidate.complexity :asc]
+   [:candidate.total_view_count :desc]
+   [:candidate.signature :asc]
+   [:candidate.id :asc]])
 
 (defn- candidate-page
   [run opts]
@@ -429,7 +390,7 @@
                          (t2/query
                           (assoc base-query
                                  :select [[:candidate.id :id]]
-                                 :order-by (candidate-order (:sort opts) (:direction opts))
+                                 :order-by (candidate-order)
                                  :limit limit
                                  :offset offset)))
         candidates (if (seq ids)
@@ -449,10 +410,10 @@
 (api.macros/defendpoint :get "/candidates" :- ::candidate-page
   "List mined Library cleanup candidates."
   [_route
-   {:keys [sort direction] :as opts} :- list-query-schema]
+   opts :- list-query-schema]
   (api/check-superuser)
   (if-let [run (candidates/latest-successful-run)]
-    (let [{:keys [rows total limit offset]} (candidate-page run (assoc opts :sort sort :direction direction))
+    (let [{:keys [rows total limit offset]} (candidate-page run opts)
           tables     (table-index (into #{} (map :table_id) rows))
           dismissals (dismissal-index rows)
           presented  (mapv #(candidate-summary % (tables (:table_id %)) dismissals) rows)]

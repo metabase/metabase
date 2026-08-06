@@ -11,7 +11,7 @@ type DismissCandidateModalProps = {
   candidate: UsageMetadataCandidateDetail;
   opened: boolean;
   onClose: () => void;
-  onDismissed: () => void;
+  onDismissSuccess: () => void;
   onStale: () => void;
 };
 
@@ -19,7 +19,7 @@ export function DismissCandidateModal({
   candidate,
   opened,
   onClose,
-  onDismissed,
+  onDismissSuccess,
   onStale,
 }: DismissCandidateModalProps) {
   const [reason, setReason] = useState("");
@@ -38,7 +38,7 @@ export function DismissCandidateModal({
         }).unwrap(),
       errorMessage: t`The candidate could not be dismissed`,
       onStale,
-      onSuccess: onDismissed,
+      onSuccess: onDismissSuccess,
     });
   };
 

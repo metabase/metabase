@@ -87,8 +87,6 @@ export function CleanupTablePage() {
       "candidate-type": params.candidateType,
       queue: params.queue,
       search: params.search,
-      sort: "priority",
-      direction: "asc",
     },
     { skip: tableId == null },
   );
@@ -144,7 +142,9 @@ export function CleanupTablePage() {
     });
   };
 
-  const handleDismiss = async (candidate: UsageMetadataCandidateSummary) => {
+  const dismissSuggestion = async (
+    candidate: UsageMetadataCandidateSummary,
+  ) => {
     await runCandidateAction({
       action: "dismiss",
       candidate,
@@ -353,7 +353,7 @@ export function CleanupTablePage() {
                       candidateId: candidate.id,
                     });
                   }}
-                  onDismiss={handleDismiss}
+                  onDismiss={dismissSuggestion}
                 />
               </Card>
             )}

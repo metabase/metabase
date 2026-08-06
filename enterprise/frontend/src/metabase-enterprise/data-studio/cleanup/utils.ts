@@ -2,13 +2,36 @@ import { t } from "ttag";
 
 import * as Urls from "metabase/urls";
 import type {
+  UsageMetadataCandidateSummary,
+  UsageMetadataCandidateType,
   UsageMetadataCreationBlocker,
   UsageMetadataMatchRelation,
   UsageMetadataModelingStatus,
 } from "metabase-types/api";
 
+export type UsageMetadataCreationCandidateType = Extract<
+  UsageMetadataCandidateType,
+  "measure" | "segment"
+>;
+
+export type UsageMetadataCreationCandidate = UsageMetadataCandidateSummary & {
+  candidate_type: UsageMetadataCreationCandidateType;
+};
+
 const CANDIDATE_TYPES = ["table", "metric", "measure", "segment"] as const;
 const QUEUES = ["suggested", "used-raw", "discarded"] as const;
+
+export function isCreationCandidateType(
+  candidateType: UsageMetadataCandidateType,
+): candidateType is UsageMetadataCreationCandidateType {
+  return candidateType === "measure" || candidateType === "segment";
+}
+
+export function isCreationCandidate(
+  candidate: UsageMetadataCandidateSummary,
+): candidate is UsageMetadataCreationCandidate {
+  return isCreationCandidateType(candidate.candidate_type);
+}
 
 export function getErrorStatus(error: unknown) {
   return typeof error === "object" && error != null && "status" in error

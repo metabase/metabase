@@ -163,7 +163,7 @@
                 (mt/user-http-request :crowberto :delete 200
                                       (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/dismissal"))))))))
 
-(deftest candidate-list-filtering-and-database-pagination-test
+(deftest candidate-list-filtering-and-priority-pagination-test
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
                                                          :trigger           :manual
@@ -184,13 +184,13 @@
                                                                     :signature "[\"zulu\"]"
                                                                     :verified_source_count 0
                                                                     :popular_source_count 0})]
-      (testing "limit and offset are applied after deterministic database ordering"
+      (testing "limit and offset are applied after deterministic priority ordering"
         (is (=? {:total 2
                  :limit 1
                  :offset 1
                  :data [{:id (:id second-candidate), :suggested_name "Zulu"}]}
                 (mt/user-http-request :crowberto :get 200
-                                      "ee/data-studio/usage-metadata/candidates?sort=name&limit=1&offset=1"))))
+                                      "ee/data-studio/usage-metadata/candidates?limit=1&offset=1"))))
       (testing "candidate type and search filters are applied before pagination"
         (is (=? {:total 1
                  :data [{:id (:id second-candidate), :candidate_type "measure"}]}
