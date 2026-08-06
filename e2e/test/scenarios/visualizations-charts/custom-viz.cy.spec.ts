@@ -1157,7 +1157,7 @@ describe("admin > custom visualizations", () => {
     });
   });
 
-  describe("static rendering — subscriptions", { tags: "@external" }, () => {
+  describe("static rendering", { tags: "@external" }, () => {
     const { admin } = USERS;
 
     const subscriptionQuestionDetails: StructuredQuestionDetails = {
@@ -1245,6 +1245,34 @@ describe("admin > custom visualizations", () => {
         );
         expect(html).to.include("Count");
         expect(html).to.include(AGGREGATED_VALUE_FORMATTED);
+      });
+    });
+
+    it("renders the custom viz server-side in an alert email for an individual question", () => {
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
+      H.createQuestion(
+        { ...subscriptionQuestionDetails, name: "Custom Viz Alert Question" },
+        { visitQuestion: true },
+      );
+
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
+
+      H.sendAlertAndAssert((email: MaildevEmail) => {
+        const { html } = email;
+        expect(html).to.include("Custom Viz Alert Question");
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+
+        // check whether it's not default fallback
+        expect(html).not.to.include(AGGREGATED_VALUE_FORMATTED);
+
+        const imageAttachments = (email.attachments ?? []).filter(
+          (attachment) => attachment.contentType === "image/png",
+        );
+
+        expect(imageAttachments).to.have.length(2);
       });
     });
   });

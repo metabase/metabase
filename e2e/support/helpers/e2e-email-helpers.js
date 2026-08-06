@@ -134,13 +134,25 @@ export function sendEmailAndVisitIt() {
   });
 }
 
-export function sendAlertAndVisitIt() {
+function clickAlertSendNow() {
   cy.intercept("POST", "/api/notification/send").as("testAlert");
   cy.findByLabelText("New alert")
     .should("be.visible")
     .findByText("Send now")
     .click();
   cy.wait("@testAlert");
+}
+
+export function sendAlertAndAssert(callback) {
+  clickAlertSendNow();
+
+  cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(({ body }) => {
+    callback(body[0]);
+  });
+}
+
+export function sendAlertAndVisitIt() {
+  clickAlertSendNow();
 
   const emailUrl = `http://localhost:${WEB_PORT}/email`;
   return cy.request("GET", emailUrl).then(({ body }) => {
