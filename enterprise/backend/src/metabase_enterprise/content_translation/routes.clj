@@ -99,14 +99,11 @@
   "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
   [{:keys [token]} :- [:map {:closed true}
                        [:token ms/NonBlankString]]
-   ;; `:locale` stays optional so the handler can keep returning its own "Locale is required." 400.
    {:keys [locale]} :- [:map {:closed true}
-                        [:locale {:optional true} [:maybe :string]]]]
+                        [:locale ms/NonBlankString]]]
   ;; this will error if bad
   (embedding.jwt/unsign token)
-  (if locale
-    {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))}
-    (throw (ex-info (str (tru "Locale is required.")) {:status-code 400}))))
+  {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))})
 
 (api.macros/defendpoint :get "/dictionary" :- DictionaryResponse
   "Fetch the content translation dictionary for authenticated users (auth-based embedding flows)."

@@ -527,9 +527,10 @@
 
 (def ^:private CardCreateSchema
   "Schema for creating a new card"
-  [:map
+  [:map {:closed true}
    [:name                   ms/NonBlankString]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
+   ;; TODO: `dataset_query` is an MBQL query typed loosely as a map; give it a real schema.
    [:dataset_query          ms/Map]
    ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
@@ -646,10 +647,11 @@
 
 ;;; TODO -- merge this into `:metabase.queries.schema/card`
 (def ^:private CardUpdateSchema
-  [:map
+  [:map {:closed true}
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
+   ;; TODO: `dataset_query` is an MBQL query typed loosely as a map; give it a real schema.
    [:dataset_query          {:optional true} [:maybe ms/Map]]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]
@@ -767,10 +769,10 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Card`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {delete-old-dashcards? :delete_old_dashcards} :- [:map
-                                                     [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
+   {delete-old-dashcards? :delete_old_dashcards} :- [:map {:closed true}
+                                                     [:delete_old_dashcards {:optional true} [:maybe ms/BooleanValue]]]
    body :- CardUpdateSchema]
   (update-card! id body (boolean delete-old-dashcards?)))
 
@@ -884,13 +886,19 @@
   `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
   [_route-params
    _query-params
-   {:keys [card_ids collection_id]} :- [:map
+   {:keys [card_ids collection_id]} :- [:map {:closed true}
                                         [:card_ids      [:sequential ms/PositiveInt]]
                                         [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
+
+(def ^:private ParameterValues
+  "Parameter values submitted alongside a Card query."
+  ;; TODO: `parameters` is a parameter list typed loosely; give it a real schema.
+  ;; [[::parameters.schema/parameter]] is used for other endpoints in this namespace but it breaks existing tests.
+  [:sequential [:map-of :keyword :any]])
 
 (defn- metric-card-without-query-breakouts
   [card]
@@ -910,11 +918,12 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card."
-  [{:keys [card-id]} :- [:map
+  [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id collection_preview]}
-   :- [:map
+   :- [:map {:closed true}
+       [:parameters         {:optional true} [:maybe ParameterValues]]
        [:ignore_cache       {:default false} :boolean]
        [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
@@ -948,7 +957,7 @@
   `csv_include_bom`, `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
   or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use
   HTML `form` actions)."
-  [{:keys [card-id export-format]} :- [:map
+  [{:keys [card-id export-format]} :- [:map {:closed true}
                                        [:card-id       ms/PositiveInt]
                                        [:export-format ::qp.schema/export-format]]
    _query-params
@@ -957,7 +966,7 @@
     format-rows?    :format_rows
     csv-include-bom? :csv_include_bom
     :as             _body}
-   :- [:map
+   :- [:map {:closed true}
        [:parameters    {:optional true} [:maybe
                                          ;; support JSON-encoded parameters for backwards compatibility when with this
                                          ;; was still submitted with a `<form>`... see
@@ -965,10 +974,7 @@
                                          {:decode/api (fn [x]
                                                         (cond-> x
                                                           (string? x) json/decode+kw))}
-                                         ;; TODO -- figure out what the actual schema for parameters is supposed to be
-                                         ;; here... [[::parameters.schema/parameter]] is used for other endpoints in this namespace but
-                                         ;; it breaks existing tests
-                                         [:sequential [:map-of :keyword :any]]]]
+                                         ParameterValues]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]
        [:csv_include_bom {:default false} ms/BooleanValue]]]
@@ -1042,13 +1048,17 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:card-id/query"
   "Run the query associated with a Card."
-  [{:keys [card-id]} :- [:map
+  [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id]
-    :or   {ignore_cache false}} :- [:map
+    :or   {ignore_cache false}} :- [:map {:closed true}
+                                    [:parameters   {:optional true} [:maybe ParameterValues]]
                                     [:ignore_cache {:optional true} [:maybe :boolean]]
-                                    [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]]]
+                                    [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]
+                                    ;; ignored here, but the frontend sends one card-query body shape to both
+                                    ;; this route and `/api/card/:card-id/query`
+                                    [:collection_preview {:optional true} [:maybe :boolean]]]]
   (let [card (api/check-404 (t2/select-one :model/Card card-id))]
     (when dashboard_id
       (api/read-check :model/Dashboard dashboard_id))

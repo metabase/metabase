@@ -129,7 +129,12 @@ const EditSandboxingModal = ({
   const [{ error }, savePolicy] = useAsyncFn(async () => {
     const shouldValidate = normalizedPolicy.card_id != null;
     if (shouldValidate) {
-      await validatePolicy(normalizedPolicy).unwrap();
+      await validatePolicy({
+        table_id: normalizedPolicy.table_id,
+        group_id: normalizedPolicy.group_id,
+        card_id: normalizedPolicy.card_id,
+        attribute_remappings: normalizedPolicy.attribute_remappings,
+      }).unwrap();
     }
     onSave(normalizedPolicy);
   }, [normalizedPolicy, validatePolicy]);

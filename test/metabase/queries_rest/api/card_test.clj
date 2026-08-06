@@ -115,6 +115,13 @@
          query             (lib/query metadata-provider venues)]
      (lib/aggregate query (lib/count)))))
 
+(defn- card-request-defaults
+  "[[mt/with-temp-defaults]] for a Card minus the DB-owned columns (`creator_id`, `database_id`, `created_at`,
+  `updated_at`, `entity_id`); the card API request schemas are closed and do not accept them."
+  []
+  (dissoc (mt/with-temp-defaults :model/Card)
+          :creator_id :database_id :created_at :updated_at :entity_id))
+
 (defn card-with-name-and-query
   ([]
    (card-with-name-and-query (mt/random-name)))
@@ -929,9 +936,8 @@
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :post 400 "card"
                                      (merge
-                                      (mt/with-temp-defaults :model/Card)
+                                      (card-request-defaults)
                                       {:type          :model
-                                       :query_type    "native"
                                        :dataset_query (:dataset_query card)})))))
       (testing "You can create a card with a saved question CTE as a model"
         (mt/with-model-cleanup [:model/Card]
@@ -947,7 +953,7 @@
                 {card-id :id
                  :as     created} (mt/user-http-request :rasta :post 200 "card"
                                                         (merge
-                                                         (mt/with-temp-defaults :model/Card)
+                                                         (card-request-defaults)
                                                          dataset-query))
                 retrieved     (mt/user-http-request :rasta :get 200 (str "card/" card-id))]
             (is (pos-int? card-id))
@@ -980,55 +986,68 @@
           (testing "Can create a card defining a metric"
             (let [{card-id :id} (mt/user-http-request :rasta :post 200 "card"
                                                       (merge
-                                                       (mt/with-temp-defaults :model/Card)
+                                                       (card-request-defaults)
                                                        card))]
               (is (pos-int? card-id))
               (testing "Can update a card defining a metric"
                 (mt/user-http-request :rasta :put 200 (str "card/" card-id)
                                       (merge
-                                       (mt/with-temp-defaults :model/Card)
+                                       (card-request-defaults)
                                        updated-card)))
               (testing "Update fails if there are multiple aggregations"
                 (let [response (mt/user-http-request :rasta :put 400 (str "card/" card-id)
                                                      (merge
-                                                      (mt/with-temp-defaults :model/Card)
+                                                      (card-request-defaults)
                                                       invalid-card))]
                   (is (= "Card of type metric is invalid, cannot be saved." response))))))
           (testing "Creation fails if there are multiple aggregations"
             (let [response (mt/user-http-request :rasta :post 400 "card"
                                                  (merge
-                                                  (mt/with-temp-defaults :model/Card)
+                                                  (card-request-defaults)
                                                   invalid-card))]
               (is (= "Card of type metric is invalid, cannot be saved." response)))))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
-    (testing "Ignore values of `enable_embedding` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
-      ;; should be ignored regardless of the value of the `enable-embedding` Setting.
+    (testing "`enable_embedding` is rejected while creating a Card (this must be done via `PUT /api/card/:id` instead)"
+      ;; should be rejected regardless of the value of the `enable-embedding` Setting.
       (doseq [enable-embedding? [true false]]
         (mt/with-temporary-setting-values [enable-embedding-static enable-embedding?]
           (mt/with-model-cleanup [:model/Card]
-            (is (=? {:enable_embedding false}
-                    (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
+            (is (=? {:errors {:enable_embedding "disallowed key"}}
+                    (mt/user-http-request :crowberto :post 400 "card" {:name                   "My Card"
                                                                        :display                :table
                                                                        :dataset_query          (mt/mbql-query venues)
                                                                        :visualization_settings {}
-                                                                       :enable_embedding       true})))))))))
+                                                                       :enable_embedding       true})))
+            (testing "and a Card created without it is not embeddable"
+              (is (=? {:enable_embedding false}
+                      (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
+                                                                         :display                :table
+                                                                         :dataset_query          (mt/mbql-query venues)
+                                                                         :visualization_settings {}}))))))))))
 
 (deftest create-card-disallow-setting-embedding-type-test
   (testing "POST /api/card"
-    (testing "Ignore values of `embedding_type` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
-      ;; should be ignored regardless of the value of the `embedding-type` Setting.
+    (testing "`embedding_type` is rejected while creating a Card (this must be done via `PUT /api/card/:id` instead)"
+      ;; should be rejected regardless of the value of the `embedding-type` Setting.
       (doseq [embedding-type [true false]]
         (mt/with-temporary-setting-values [enable-embedding-static embedding-type]
           (mt/with-model-cleanup [:model/Card]
-            (is (=? {:embedding_type nil}
-                    (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
+            (is (=? {:errors {:enable_embedding "disallowed key"
+                              :embedding_type   "disallowed key"}}
+                    (mt/user-http-request :crowberto :post 400 "card" {:name                   "My Card"
                                                                        :display                :table
                                                                        :dataset_query          (mt/mbql-query venues)
                                                                        :visualization_settings {}
                                                                        :enable_embedding       true
-                                                                       :embedding_type       "static-legacy"})))))))))
+                                                                       :embedding_type       "static-legacy"})))
+            (testing "and a Card created without it has no embedding type"
+              (is (=? {:embedding_type nil}
+                      (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
+                                                                         :display                :table
+                                                                         :dataset_query          (mt/mbql-query venues)
+                                                                         :visualization_settings {}}))))))))))
 
 (deftest save-empty-card-test
   (testing "POST /api/card"
@@ -1043,10 +1062,10 @@
             (testing "without result metadata"
               (is (=? {:id pos-int?}
                       (mt/user-http-request :crowberto :post 200 "card"
-                                            (merge (mt/with-temp-defaults :model/Card)
+                                            (merge (card-request-defaults)
                                                    {:dataset_query query})))))
             (let [card     (mt/card-with-metadata
-                            (merge (mt/with-temp-defaults :model/Card)
+                            (merge (card-request-defaults)
                                    {:dataset_query query}))
                   metadata (:result_metadata card)]
               (testing (format "with result metadata\n%s" (u/pprint-to-str metadata))
@@ -1137,15 +1156,16 @@
         (testing (str "For: " query-type)
           (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata
-                   card-id  :id :as card} (mt/user-http-request
-                                           :crowberto :post 200
-                                           "card"
-                                           (card-with-name-and-query "card-name"
-                                                                     query))
+                   card-id  :id} (mt/user-http-request
+                                  :crowberto :post 200
+                                  "card"
+                                  (card-with-name-and-query "card-name"
+                                                            query))
                   ;; simulate a user changing the query without rerunning the query
                   updated   (mt/user-http-request
                              :crowberto :put 200 (str "card/" card-id)
-                             (assoc card :dataset_query modified-query))
+                             {:dataset_query   modified-query
+                              :result_metadata metadata})
                   retrieved (mt/user-http-request :crowberto :get 200 (str "card/" card-id))]
               (is (= ["ID" "NAME"] (map norm metadata)))
               (is (= ["ID" "NAME" "PRICE"]
@@ -1177,12 +1197,14 @@
                       card))
               (mt/user-http-request
                :crowberto :put 200 (str "card/" (u/the-id card))
-               (assoc card
-                      :description "a change that doesn't change the query"
-                      :name "compelling title"
-                      :cache_ttl 20000
-                      :display "table"
-                      :collection_position 1))
+               ;; the query and metadata are re-sent unchanged, which is what must not trigger a recompute
+               {:dataset_query       (:dataset_query card)
+                :result_metadata     (:result_metadata card)
+                :description         "a change that doesn't change the query"
+                :name                "compelling title"
+                :cache_ttl           20000
+                :display             "table"
+                :collection_position 1})
               (is (= 1
                      @called)))))))))
 
@@ -1465,7 +1487,7 @@
               create-card! (fn [test-user expected-status-code]
                              (mt/with-model-cleanup [:model/Card]
                                (mt/user-http-request test-user :post expected-status-code "card"
-                                                     (merge (mt/with-temp-defaults :model/Card) {:dataset_query query}))))]
+                                                     (merge (card-request-defaults) {:dataset_query query}))))]
           (testing "admin should be able to save a Card if All Users doesn't have ad-hoc data perms"
             (is (some? (create-card! :crowberto 200))))
           (testing "non-admin should get an error"
@@ -1561,7 +1583,8 @@
         (is (=? {:type            "model"
                  :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
-                                      (assoc card :type "model"))))
+                                      (assoc (select-keys card [:dataset_query :result_metadata])
+                                             :type "model"))))
         (is (=? {:type            "question"
                  :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"})))))))
@@ -1589,7 +1612,6 @@
               (mt/user-http-request :rasta :post 403 "card" {:name "DUPLICATE"
                                                              :display "table"
                                                              :visualization_settings {}
-                                                             :database_id (mt/id)
                                                              :dataset_query {:query    {:source-table (format "card__%s" (u/the-id card))}
                                                                              :type     :query
                                                                              :database (mt/id)}
@@ -2958,13 +2980,15 @@
                          :moderated_item_id (u/the-id card)
                          {:order-by [[:id :desc]]}))
             (update-card [card diff]
-              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) (merge card diff)))]
+              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) diff))]
       (testing "Changing core attributes un-verifies the card"
         (with-card :verified
           (is (verified? card))
           (is (=? {:dataset_query {:stages [{:source-table pos-int?}]}}
                   card))
-          (update-card card (assoc-in card [:dataset_query :stages 0 :source-table] (mt/id :checkins)))
+          (update-card card {:dataset_query (assoc-in (:dataset_query card)
+                                                      [:stages 0 :source-table]
+                                                      (mt/id :checkins))})
           (is (not (verified? card)))
           (testing "The unverification edit has explanatory text"
             (is (= "Unverified due to edit"
@@ -2981,10 +3005,14 @@
           (testing "pinning"
             (remains-verified
              (update-card card {:collection_position 1})))
-          (testing "making public"
-            (remains-verified
-             (update-card card {:made_public_by_id (mt/user->id :rasta)
-                                :public_uuid (random-uuid)})))
+          (testing "making public is not something PUT /api/card/:id accepts at all"
+            (with-card :verified
+              (is (=? {:errors {:made_public_by_id "disallowed key"
+                                :public_uuid       "disallowed key"}}
+                      (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card))
+                                            {:made_public_by_id (mt/user->id :rasta)
+                                             :public_uuid       (str (random-uuid))})))
+              (is (verified? card) "Not verified after action")))
           (testing "Changing description"
             (remains-verified
              (update-card card {:description "foo"})))
@@ -3275,7 +3303,7 @@
                                      :dataset_query (mbql-count-query)}]
       (is (=? {:display "table" :type "model"}
               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                    (assoc card :type :model)))))))
+                                    {:type :model}))))))
 
 ;;; See also:
 ;;;
@@ -3364,9 +3392,9 @@
     (let [query          (mt/mbql-query venues {:fields [$id $name]})
           modified-query (mt/mbql-query venues {:fields [$id $name $price]})
           norm           (comp u/upper-case-en :name)
-          update-card!   (fn [card]
+          update-card!   (fn [card body]
                            (mt/user-http-request :crowberto :put 200
-                                                 (str "card/" (u/the-id card)) card))]
+                                                 (str "card/" (u/the-id card)) body))]
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
                                                  ["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
@@ -3382,14 +3410,14 @@
               (is (=? {:result_metadata [{:display_name "EDITED DISPLAY"}
                                          {:display_name "EDITED DISPLAY"}]}
                       (update-card!
-                       (assoc card
-                              :result_metadata (map #(assoc % :display_name "EDITED DISPLAY") metadata)))))
+                       card
+                       {:result_metadata (map #(assoc % :display_name "EDITED DISPLAY") metadata)})))
               ;; simulate a user changing the query without rerunning the query
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
-                     (->> (update-card! (assoc card
-                                               :dataset_query modified-query
-                                               :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
-                                                                     metadata)))
+                     (->> (update-card! card
+                                        {:dataset_query   modified-query
+                                         :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
+                                                               metadata)})
                           :result_metadata
                           (map (comp u/upper-case-en :display_name)))))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
@@ -3397,18 +3425,18 @@
                           (t2/select-one-fn :result_metadata :model/Card :id card-id))))
               (testing "Even if you only send the new query and not existing metadata"
                 (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
-                       (->> (update-card! {:id (u/the-id card) :dataset_query query}) :result_metadata (map :display_name)))))
+                       (->> (update-card! card {:dataset_query query}) :result_metadata (map :display_name)))))
               (testing "Descriptions can be cleared (#20517)"
                 (is (= ["foo" "foo"]
-                       (->> (update-card! (update card
-                                                  :result_metadata (fn [m]
-                                                                     (map #(assoc % :description "foo") m))))
+                       (->> (update-card! card
+                                        {:result_metadata (map #(assoc % :description "foo")
+                                                               (:result_metadata card))})
                             :result_metadata
                             (map :description))))
                 (is (= ["" ""]
-                       (->> (update-card! (update card
-                                                  :result_metadata (fn [m]
-                                                                     (map #(assoc % :description "") m))))
+                       (->> (update-card! card
+                                        {:result_metadata (map #(assoc % :description "")
+                                                               (:result_metadata card))})
                             :result_metadata
                             (map :description))))))))))))
 
@@ -3422,7 +3450,7 @@
                                  (assoc-in [1 :visibility_type]
                                            :details-only))
             response         (mt/user-http-request :crowberto :put 200 (format "card/%d" (u/the-id model))
-                                                   (assoc model :result_metadata updated-metadata))]
+                                                   {:result_metadata updated-metadata})]
         ;; check they come back from saving the question
         (is (= "details-only" (-> response :result_metadata last :visibility_type))
             "saving metadata lacks visibility type")
@@ -3906,8 +3934,7 @@
   (testing "POST /api/card"
     (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"
       (let [bird-counts-db-id (mt/dataset daily-bird-counts (mt/id))
-            card-data         {:database_id            bird-counts-db-id
-                               :dataset_query          {:database bird-counts-db-id
+            card-data         {:dataset_query          {:database bird-counts-db-id
                                                         :type     :native
                                                         :native   {:query         "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}"
                                                                    :template-tags {"FILTER" {:id           "_FILTER_"

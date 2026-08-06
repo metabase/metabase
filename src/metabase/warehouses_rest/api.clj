@@ -915,11 +915,12 @@
   "Add a new `Database`."
   [_route-params
    _query-params
-   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source provider_name]
-    :as   body}
-   :- [:map
+   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source provider_name]}
+   :- [:map {:closed true}
        [:name              ms/NonBlankString]
        [:engine            DBEngineString]
+       ;; TODO: `details` is the driver-defined connection property set -- every driver declares its own
+       ;; connection properties -- so it stays an open map.
        [:details           ms/Map]
        [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
        [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
@@ -929,9 +930,6 @@
        [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]
        [:provider_name     {:optional true}  [:maybe :string]]]]
   (api/check-superuser)
-  (when (true? (:is_stub body))
-    (throw (ex-info (tru "is_stub may not be set via the API")
-                    {:status-code 400})))
   (when cache_ttl
     (api/check (premium-features/enable-cache-granular-controls?)
                [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
@@ -981,9 +979,12 @@
   ;; TODO - why do we pass the DB in under the key `details`?
   [_route-params
    _query-params
-   {{:keys [engine details]} :details} :- [:map
-                                           [:details [:map
+   {{:keys [engine details]} :details} :- [:map {:closed true}
+                                           [:details [:map {:closed true}
                                                       [:engine  DBEngineString]
+                                                      ;; TODO: `details` is the driver-defined connection property
+                                                      ;; set -- every driver declares its own connection properties --
+                                                      ;; so it stays an open map.
                                                       [:details :map]]]]]
   (api/check-superuser)
   (let [details-or-error (warehouses/test-connection-details engine details)]
@@ -1070,18 +1071,22 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a `Database`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [name engine details write_data_details is_full_sync is_on_demand description caveats
            points_of_interest schedules auto_run_queries refingerprint cache_ttl settings provider_name]
     :as   body}
-   :- [:map
+   :- [:map {:closed true}
        [:name               {:optional true} [:maybe ms/NonBlankString]]
        [:engine             {:optional true} [:maybe DBEngineString]]
        [:refingerprint      {:optional true} [:maybe :boolean]]
+       ;; TODO: `details` and `write_data_details` are the driver-defined connection property set --
+       ;; every driver declares its own connection properties -- so they stay open maps.
        [:details            {:optional true} [:maybe ms/Map]]
        [:write_data_details {:optional true} [:maybe ms/Map]]
+       [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
+       [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:description        {:optional true} [:maybe :string]]
        [:caveats            {:optional true} [:maybe :string]]
@@ -1089,10 +1094,8 @@
        [:auto_run_queries   {:optional true} [:maybe :boolean]]
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
        [:provider_name      {:optional true} [:maybe :string]]
+       ;; TODO: `settings` is keyed by Database-local setting name, typed loosely; give it a real schema.
        [:settings           {:optional true} [:maybe ms/Map]]]]
-  (when (true? (:is_stub body))
-    (throw (ex-info (tru "is_stub may not be set via the API")
-                    {:status-code 400})))
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (when (some? write_data_details)
     (premium-features/assert-has-feature :writable-connection (tru "Writable Connection")))

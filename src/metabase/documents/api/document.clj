@@ -24,20 +24,27 @@
 
 (def ^:private CardCreateSchema
   "Schema for creating a new card - simplified version to avoid circular dependencies"
-  [:map
+  [:map {:closed true}
    [:name ms/NonBlankString]
+   ;; TODO: `dataset_query` is an MBQL query typed loosely; give it a real schema.
    [:dataset_query ms/Map]
    [:entity_id {:optional true} [:maybe ms/NonBlankString]]
+   ;; TODO: `parameters` is a parameter list typed loosely; give it a real schema.
    [:parameters {:optional true} [:maybe [:sequential ms/Map]]]
+   ;; TODO: `parameter_mappings` is a parameter-mapping list typed loosely; give it a real schema.
    [:parameter_mappings {:optional true} [:maybe [:sequential ms/Map]]]
    [:description {:optional true} [:maybe ms/NonBlankString]]
    [:display ms/NonBlankString]
    [:visualization_settings ms/Map]
    [:result_metadata {:optional true} [:maybe [:sequential ms/Map]]]
-   [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
+   [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+   ;; accepted but normalized away: a document card is always a `:question` and never belongs to a dashboard.
+   [:type {:optional true} [:maybe :keyword]]
+   [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private DocumentCreateOptions
-  [:map
+  [:map {:closed true}
    [:name m.document/DocumentName]
    [:document :any]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -45,7 +52,7 @@
    [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]])
 
 (def ^:private DocumentUpdateOptions
-  [:map
+  [:map {:closed true}
    [:name {:optional true} m.document/DocumentName]
    [:document {:optional true} :any]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
@@ -227,7 +234,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:document-id"
   "Updates an existing `Document`."
-  [{:keys [document-id]} :- [:map
+  [{:keys [document-id]} :- [:map {:closed true}
                              [:document-id ms/PositiveInt]]
    _query-params
    {:keys [name document collection_id collection_position cards] :as body} :- DocumentUpdateOptions]
@@ -460,7 +467,7 @@
   - parameters: Optional query parameters (array of maps or JSON string)
   - format_rows: Whether to apply formatting to results (boolean, default false)
   - pivot_results: Whether to pivot results (boolean, default false)"
-  [{:keys [document-id card-id export-format]} :- [:map
+  [{:keys [document-id card-id export-format]} :- [:map {:closed true}
                                                    [:document-id   ms/PositiveInt]
                                                    [:card-id       ms/PositiveInt]
                                                    [:export-format :keyword]]
@@ -469,7 +476,10 @@
     pivot-results? :pivot_results
     format-rows?   :format_rows
     :as            _body}
-   :- [:map
+   ;; not closed: the download widget posts the same body it posts to the other `/query/:export-format` endpoints,
+   ;; which includes `csv_include_bom` -- a flag this endpoint does not (yet) honour.
+   :- [:map {:closed false}
+       ;; TODO: `parameters` is a parameter list typed loosely; give it a real schema.
        [:parameters    {:optional true} [:maybe [:or
                                                  [:sequential ms/Map]
                                                  ms/JSONString]]]

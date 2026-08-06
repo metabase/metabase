@@ -413,13 +413,13 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
-  "Create a new `User`, return a 400 if the email address is already taken"
+  "Create a new `User`, return a 400 if the email address is already taken.
+
+  `is_superuser` is not accepted here -- to create an admin, put the Administrators group in
+  `user_group_memberships`."
   [_route-params
    _query-params
-   ;; deliberately open: this endpoint's contract is that unknown keys are silently dropped rather than
-   ;; rejected -- `metabase.users-rest.api-test/create-user-add-to-admin-group-test-2` POSTs `:is_superuser`
-   ;; and asserts a 200 with the flag ignored.
-   body :- [:map {:closed false}
+   body :- [:map {:closed true}
             [:first_name             {:optional true} [:maybe ms/NonBlankString]]
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
@@ -484,11 +484,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [email first_name last_name user_group_memberships is_superuser is_data_analyst] :as body}
-   ;; deliberately open: the handler picks the keys it updates out of the body with `u/select-keys-when`, and
-   ;; read-modify-write of a whole `GET /api/user/:id` payload is a supported (and used) way to call this --
-   ;; e.g. `e2e/test/scenarios/permissions/sandboxing/helpers/e2e-sandboxing-helpers.ts` PUTs the fetched user
-   ;; back with an extra `login_attributes`. Closing this would 400 every such caller.
-   :- [:map {:closed false}
+   :- [:map {:closed true}
        [:email                  {:optional true} [:maybe ms/Email]]
        [:first_name             {:optional true} [:maybe ms/NonBlankString]]
        [:last_name              {:optional true} [:maybe ms/NonBlankString]]
@@ -575,10 +571,7 @@
   "Reactivate user at `:id`"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   _query-params
-   ;; deliberately open: the endpoint reads nothing from the body, but
-   ;; `metabase.users-rest.api-test/reactivate-user-test` PUTs a user payload here and expects it ignored.
-   _body :- [:map {:closed false}]]
+   _query-params]
   (api/check-superuser)
   (check-not-internal-user id)
   (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source :tenant_id]

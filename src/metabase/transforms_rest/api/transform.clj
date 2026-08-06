@@ -168,9 +168,10 @@
   "Create a new transform."
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:name :string]
             [:description {:optional true} [:maybe :string]]
+            ;; TODO: `source` carries an MBQL/native query typed loosely; give it a real schema.
             [:source ::transforms.schema/transform-source]
             [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
@@ -291,12 +292,13 @@
 
 (api.macros/defendpoint :put "/:id" :- TransformResponse
   "Update a transform."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
+            ;; TODO: `source` carries an MBQL/native query typed loosely; give it a real schema.
             [:source {:optional true} ::transforms.schema/transform-source]
             [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
@@ -387,9 +389,9 @@
   `direction` selects which transforms are included:
   - `upstream`   — the seed transform plus all transforms it depends on
   - `downstream` — the seed transform plus all transforms that depend on it"
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [direction]} :- [:map
+   {:keys [direction]} :- [:map {:closed true}
                            [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
   (check-feature-and-lock! (api/write-check :model/Transform id))
   (transforms-rest.api.u/async-run-response

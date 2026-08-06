@@ -110,7 +110,7 @@
   [_route-params
    ;; closed: only ever called by our own frontend, which sends no params and no body.
    _query-params
-   _body :- [:maybe [:map {:closed true}]]
+   _body
    {cookies :cookies, :as _request}]
   (let [metabase-session-key (get-in cookies [request/metabase-session-cookie :value])
         metabase-session-key-hashed (session/hash-session-key metabase-session-key)

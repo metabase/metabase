@@ -334,15 +334,16 @@
   ;; Mapping objects are decoded from the snake_case wire shape to the internal kebab-case shape
   ;; at the `defendpoint` edge by the wire-annotated schema (see [[metabase.metrics.core]]);
   ;; the envelope `:dimension_mappings` key itself stays snake_case, matching storage.
-  [:map
+  [:map {:closed true}
    [:card_id ms/PositiveInt]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::metrics/dimension-mapping]]]])
 
 (def ^:private DimensionSelection
   ;; The FE sends snake_case dimension snapshots; the `:decode/api` rule kebab-cases them at the
   ;; `defendpoint` edge, so entries here are declared in the internal kebab-case shape the
-  ;; handler receives and persists. Open map: snapshot keys beyond these pass through kebab-cased.
-  [:map {:decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
+  ;; handler receives and persists.
+  [:map {:closed    true
+         :decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe :string]]
@@ -354,7 +355,7 @@
    `ExplorationBlock` row; the planners cross this block's metrics with this block's
    dimensions only. The sidebar heading is computed read-side (the `:name` of an
    `ExplorationBlockNode`), not supplied here."
-  [:map
+  [:map {:closed true}
    ;; Whether the block is anchored on its metric or its dimension. The read side
    ;; uses this to build the sidebar heading + sub-item names.
    [:type       {:optional true} [:maybe [:enum "metric" "dimension"]]]
@@ -517,7 +518,7 @@
    The FE sends one entry per Research-plan block (`:blocks` — each a metric/dimension
    area), each persisted verbatim. `:timeline_ids` is thread-scoped (timelines aren't part of
    any metric×dimension cross-product) and lives at the top level, not inside a block."
-  [:map
+  [:map {:closed true}
    [:name          expl.model/ExplorationName]
    [:description   {:optional true} [:maybe :string]]
    [:prompt        {:optional true} [:maybe :string]]
@@ -527,7 +528,9 @@
 
 (def ^:private ExploreFilterSpec
   "One segment filter stamped onto a block metric selection's `:explore_filters` vector."
-  [:map
+  [:map {:closed true}
+   ;; TODO: `field_ref` is an MBQL field reference typed loosely as a sequence of anything; give it
+   ;; a real schema.
    [:field_ref     [:sequential :any]]
    [:value         :any]
    [:display_value {:optional true} [:maybe :string]]
@@ -538,7 +541,7 @@
   page — its block (metric selection + dimensions) is copied verbatim so the new thread re-runs
   the same charts. `explore_filters` is appended to each copied metric selection's existing
   `:explore_filters`."
-  [:map
+  [:map {:closed true}
    [:page_id         ms/PositiveInt]
    [:explore_filters [:sequential {:min 1} ExploreFilterSpec]]])
 
@@ -547,7 +550,7 @@
   actually includes are forwarded to the underlying `t2/update!`. `collection_id` may be `nil`
   to move the exploration to the root collection (\"Our Analytics\"). `collection_position` may
   be `nil` to unpin the exploration."
-  [:map
+  [:map {:closed true}
    [:name                {:optional true} expl.model/ExplorationName]
    [:description         {:optional true} [:maybe :string]]
    [:archived            {:optional true} :boolean]
@@ -555,12 +558,12 @@
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private updatable-columns
-  "Columns a client may set through `PUT /api/exploration/:id`. `UpdateExploration` is an open map,
-  so extra body keys survive decoding; the request is `select-keys`'d to this set before
-  `t2/update!` to prevent mass-assignment of protected columns (`creator_id`, `entity_id`,
-  timestamps, ...). `:archived_directly` is intentionally excluded — it is derived server-side by
-  `updates-with-archived-directly`, never accepted from the client. Keep in sync with
-  `UpdateExploration`."
+  "Columns a client may set through `PUT /api/exploration/:id`. `UpdateExploration` rejects any
+  other body key, and the request is still `select-keys`'d to this set before `t2/update!` so
+  mass-assignment of protected columns (`creator_id`, `entity_id`, timestamps, ...) can't come
+  back if the schema is ever widened. `:archived_directly` is intentionally excluded — it is
+  derived server-side by `updates-with-archived-directly`, never accepted from the client. Keep in
+  sync with `UpdateExploration`."
   #{:name :description :archived :collection_id :collection_position})
 
 ;;; ----------------------------------------- /dimensions schemas + helpers -----------------------------------------
@@ -671,7 +674,7 @@
   keeps the earlier scope (see
   `metabase.explorations.query-plan.context/build-row-context`). Returns immediately with the new
   thread stamped `started_at`; clients poll `GET /:id` for the queries to land, exactly like create."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [page_id explore_filters]} :- ExploreFurther]
   (let [exploration (get-exploration-or-404 id)]
@@ -823,7 +826,7 @@
   When `collection_id` changes, the caller must have write perms on the destination collection
   (or the root collection when `collection_id` is nil). Source perms are enforced by
   `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
   (let [existing (get-exploration-or-404 id)
@@ -985,9 +988,9 @@
 
 (api.macros/defendpoint :put "/page/:id/starred" :- :nil
   "Set whether an exploration page is starred."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [starred]} :- [:map [:starred :boolean]]]
+   {:keys [starred]} :- [:map {:closed true} [:starred :boolean]]]
   (let [page (get-exploration-page-or-404 id)]
     (api/write-check page)
     (t2/update! :model/ExplorationPage id {:starred starred}))
@@ -998,7 +1001,7 @@
   page passes a one-element `page_ids`; hiding a whole group passes all its page ids."
   [_route-params
    _query-params
-   {:keys [page_ids hidden]} :- [:map
+   {:keys [page_ids hidden]} :- [:map {:closed true}
                                  [:page_ids [:sequential ms/PositiveInt]]
                                  [:hidden :boolean]]]
   (doseq [id page_ids]

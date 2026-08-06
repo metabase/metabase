@@ -27,7 +27,8 @@
    [:type [:enum :nocache :ttl :duration :schedule]]])
 
 (mr/def ::cache-strategy.nocache
-  [:map ; not closed due to a way it's used in tests for clarity
+  ;; open: callers tag a nocache config with extra keys (e.g. `:name`) and `cache-config/store!` round-trips them.
+  [:map
    [:type [:= :nocache]]])
 
 (mr/def ::cache-strategy.ttl
@@ -171,7 +172,7 @@
   "Store cache configuration."
   [_route-params
    _query-params
-   {:keys [model model_id] :as config} :- [:map
+   {:keys [model model_id] :as config} :- [:map {:closed true}
                                            [:model    cache-config/CachingModel]
                                            [:model_id ms/IntGreaterThanOrEqualToZero]
                                            [:strategy ::cache-strategy]]]
@@ -183,7 +184,7 @@
   "Delete cache configurations."
   [_route-params
    _query-params
-   {:keys [model model_id]} :- [:map
+   {:keys [model model_id]} :- [:map {:closed true}
                                 [:model    cache-config/CachingModel]
                                 [:model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))

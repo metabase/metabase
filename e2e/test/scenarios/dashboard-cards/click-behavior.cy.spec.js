@@ -2973,7 +2973,6 @@ const createDashboardWithTabsLocal = ({
       cy.wrap(dashboard.id).as(options.idAlias ?? "dashboardId");
     }
     cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-      ...dashboard,
       dashcards,
       tabs,
     }).then(({ body: dashboard }) => {

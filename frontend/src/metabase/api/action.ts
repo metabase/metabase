@@ -164,20 +164,20 @@ export const actionApi = Api.injectEndpoints({
       ActionExecutionResult,
       ExecuteDashcardActionRequest
     >({
-      query: ({ dashboardId, dashcardId, modelId, parameters }) => ({
+      query: ({ dashboardId, dashcardId, ...body }) => ({
         method: "POST",
         url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/execute`,
-        body: { modelId, parameters },
+        body,
       }),
     }),
     prefetchDashcardValues: builder.query<
       ParametersForActionExecution,
       PrefetchDashcardValuesRequest
     >({
-      query: ({ dashboardId, dashcardId, parameters }) => ({
+      query: ({ dashboardId, dashcardId, ...body }) => ({
         method: "POST",
         url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/execute/values`,
-        body: { parameters },
+        body,
       }),
       // Prefetch is an imperative fetch-and-discard with per-dashcard params
       // that rarely repeat, so there's nothing to gain from caching entries.

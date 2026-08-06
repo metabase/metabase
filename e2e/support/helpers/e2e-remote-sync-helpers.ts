@@ -61,7 +61,6 @@ export function configureGit(
     "remote-sync-branch": "main",
     "remote-sync-type": syncType,
     "remote-sync-url": syncUrl,
-    "remote-sync-enabled": true,
     ...(collections && { collections }),
   });
 }

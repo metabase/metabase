@@ -14,10 +14,11 @@
 
 (def ^:private generate-content-body-schema
   "Closed: the body is built by the FE `metabotGenerateContent` query, whose
-  `MetabotGenerateContentRequest` type carries exactly these two keys."
+  `MetabotGenerateContentRequest` type carries exactly these two keys. `references` maps a
+  mention's `\"<model>:<entity-id>\"` key to the mentioned entity's display name."
   [:map {:closed true}
    [:instructions ms/NonBlankString]
-   [:references {:optional true} [:maybe ms/Map]]])
+   [:references {:optional true} [:maybe [:map-of :string :string]]]])
 
 (def ^:private generate-content-response-schema
   [:map

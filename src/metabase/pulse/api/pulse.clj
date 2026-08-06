@@ -158,9 +158,7 @@
     collection-id       :collection_id
     collection-position :collection_position
     dashboard-id        :dashboard_id}
-   ;; open: the FE posts the whole `editingPulse` object, which also carries read-only fields it got back from
-   ;; the server (`can_write`, `creator`, `creator_id`, `entity_id`, `disable_links`, `created_at`, `updated_at`).
-   :- [:map {:closed false}
+   :- [:map {:closed true}
        [:name                ms/NonBlankString]
        [:cards               [:+ models.pulse/CoercibleToCardRef]]
        [:channels            [:+ :map]]
@@ -232,9 +230,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   ;; open: the FE PUTs the whole `editingPulse` object back, including read-only fields it got from the server
-   ;; (`can_write`, `creator`, `creator_id`, `entity_id`, `disable_links`, `created_at`, `updated_at`).
-   {:keys [cards], :as pulse-updates} :- [:map {:closed false}
+   {:keys [cards], :as pulse-updates} :- [:map {:closed true}
                                           [:name          {:optional true} [:maybe ms/NonBlankString]]
                                           [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
                                           [:channels      {:optional true} [:maybe [:+ :map]]]
@@ -326,17 +322,20 @@
   "Test send an unsaved pulse."
   [_route-params
    _query-params
-   ;; open: the FE sends the whole in-progress `editingPulse` object, which also carries the read-only fields it
-   ;; got back from the server (`can_write`, `creator`, `creator_id`, `entity_id`, `created_at`, `updated_at`).
-   {:keys [cards channels] :as body} :- [:map {:closed false}
+   {:keys [cards channels] :as body} :- [:map {:closed true}
+                                         [:id                  {:optional true} [:maybe ms/PositiveInt]]
                                          [:name                ms/NonBlankString]
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
                                          [:channels            [:+ :map]]
                                          [:skip_if_empty       {:default false} [:maybe :boolean]]
-                                         [:disable_links       {:default false} [:maybe :boolean]]
                                          [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]]
+                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
+                                         [:parameters          {:optional true} [:maybe [:sequential :map]]]
+                                         ;; legacy alert fields, read when this is an alert rather than a subscription
+                                         [:alert_condition     {:optional true} [:maybe models.pulse/AlertConditions]]
+                                         [:alert_above_goal    {:optional true} [:maybe :boolean]]
+                                         [:alert_first_only    {:optional true} [:maybe :boolean]]]
    request]
   ;; Check permissions on cards that exist. Placeholders and iframes don't matter.
   (check-card-read-permissions

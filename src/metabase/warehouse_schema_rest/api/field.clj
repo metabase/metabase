@@ -140,14 +140,10 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   ;; Not closed: the handler picks the keys it updates with `select-keys-when`, and callers routinely PUT back a
-   ;; whole Field they just read -- our own e2e suite sends read-only attributes (`table_id`, `name`, `base_type`)
-   ;; and the pre-0.39 `special_type` alias this way. Rejecting them would break existing API clients, and there is
-   ;; no bounded list of Field attributes to give slots to.
    {display-name      :display_name
     coercion-strategy :coercion_strategy
     json-unfolding    :json_unfolding
-    :as body} :- [:map {:closed false}
+    :as body} :- [:map {:closed true}
                   [:caveats            {:optional true} [:maybe ms/NonBlankString]]
                   [:description        {:optional true} [:maybe ms/NonBlankString]]
                   [:display_name       {:optional true} [:maybe ms/NonBlankString]]
@@ -248,10 +244,7 @@
    :- [:map {:closed true}
        [:type                    [:enum "internal" "external"]]
        [:name                    ms/NonBlankString]
-       [:human_readable_field_id {:optional true} [:maybe ms/PositiveInt]]
-       ;; ignored -- the field is identified by the route param. It gets a slot because callers repeat it in the
-       ;; body (e.g. the `remapDisplayValueToFK` e2e helper) rather than because anything reads it.
-       [:field_id                {:optional true} ms/PositiveInt]]]
+       [:human_readable_field_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/write-check :model/Field id)
   (api/check (or (= dimension-type "internal")
                  (and (= dimension-type "external")
@@ -298,6 +291,13 @@
   (let [field (api/query-check (t2/select-one :model/Field :id id))]
     (parameters.field/field->values field)))
 
+(def ^:private RawFieldValue
+  "A single distinct value of a Field, as it round-trips through the JSON-encoded `values` column of FieldValues.
+  Only Fields that [[field-values/field-should-have-field-values?]] accepts can get here, which rules out
+  `:type/Temporal` and `:type/Collection`/`:type/Structured` (both `:type/field-values-unsupported`), leaving text,
+  numeric and boolean columns. `nil` is included because NULL is a legitimate distinct value and can be remapped."
+  [:maybe [:or :string number? :boolean]])
+
 (defn- validate-human-readable-pairs
   "Human readable values are optional, but if present they must be present for each field value. Throws if invalid,
   returns a boolean indicating whether human readable values were found."
@@ -320,12 +320,9 @@
                     [:id ms/PositiveInt]]
    _query-params
    {value-pairs :values} :- [:map {:closed true}
-                             [:values [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]]
-                             ;; ignored: callers edit and POST back the whole `GET /api/field/:id/values` response,
-                             ;; which carries these two alongside `values`. Typed `:any` because whatever that
-                             ;; response held comes back verbatim.
-                             [:field_id        {:optional true} :any]
-                             [:has_more_values {:optional true} :any]]]
+                             [:values [:sequential [:or
+                                                    [:tuple RawFieldValue]
+                                                    [:tuple RawFieldValue ms/NonBlankString]]]]]]
   (let [field (api/write-check :model/Field id)]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "

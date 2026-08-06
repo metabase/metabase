@@ -53,6 +53,7 @@
   "Update multiple `Settings` values. If called by a non-superuser, only user-local settings can be updated."
   [_route-params
    _query-params
+   ;; keyed by Setting name; each value has its own per-Setting shape.
    settings :- [:map-of kebab-cased-keyword :any]]
   (with-setting-access-control
     (setting/set-many! settings))
@@ -64,7 +65,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key"
   "Fetch a single `Setting`."
-  [{:keys [key]} :- [:map
+  [{:keys [key]} :- [:map {:closed true}
                      [:key kebab-cased-keyword]]]
   (with-setting-access-control
     (setting/user-facing-value key)))
@@ -76,10 +77,11 @@
 (api.macros/defendpoint :put "/:key"
   "Create/update a `Setting`. If called by a non-admin, only user-local settings can be updated.
    This endpoint can also be used to delete Settings by passing `nil` for `:value`."
-  [{:keys [key]} :- [:map
+  [{:keys [key]} :- [:map {:closed true}
                      [:key kebab-cased-keyword]]
    _query-params
-   {:keys [value]} :- [:map [:value :any]]]
+   ;; open: a Setting's value is arbitrary, so there is nothing to enumerate beyond `:value`.
+   {:keys [value]} :- [:map {:closed false} [:value :any]]]
   (with-setting-access-control
     (setting/set! key value))
   (add-settings-last-updated-cookie api/generic-204-no-content))

@@ -15,8 +15,6 @@
 ;;; OAuth/MCP clients, and a cache-buster or other stray query param must not turn discovery into a 400.
 (def ^:private no-route-params [:map {:closed true}])
 (def ^:private open-query-params [:map {:closed false}])
-(def ^:private no-body [:map {:closed true}])
-
 (defn- discovery-response
   "Build the OAuth discovery document response, or nil if the provider is unavailable."
   []
@@ -42,8 +40,7 @@
        [:body [:map [:error [:= "not_found"]]]]]]
   "Returns the OAuth Authorization Server Metadata (RFC 8414)."
   [_route-params :- no-route-params
-   _query-params :- open-query-params
-   _body :- no-body]
+   _query-params :- open-query-params]
   (or (discovery-response)
       {:status 404 :body {:error "not_found"}}))
 
@@ -74,16 +71,14 @@
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
   [_route-params :- no-route-params
-   _query-params :- open-query-params
-   _body :- no-body]
+   _query-params :- open-query-params]
   (protected-resource-metadata "/api/metabase-mcp"))
 
 (api.macros/defendpoint :get "/oauth-protected-resource/api/mcp"
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the legacy `/api/mcp` MCP alias."
   [_route-params :- no-route-params
-   _query-params :- open-query-params
-   _body :- no-body]
+   _query-params :- open-query-params]
   (protected-resource-metadata "/api/mcp"))
 
 ;; Some clients probe the bare resource path instead of the resource-specific one; serve metadata here so the
@@ -93,6 +88,5 @@
   :- resource-metadata-response-schema
   "Returns OAuth Protected Resource Metadata (RFC 9728) for the MCP endpoint."
   [_route-params :- no-route-params
-   _query-params :- open-query-params
-   _body :- no-body]
+   _query-params :- open-query-params]
   (protected-resource-metadata "/api/metabase-mcp"))

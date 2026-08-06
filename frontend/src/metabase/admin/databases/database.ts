@@ -8,7 +8,11 @@ import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
 import { navigate } from "metabase/router";
 import { DatabaseSchema } from "metabase/schema";
-import type { DatabaseData, DatabaseId } from "metabase-types/api";
+import type {
+  DatabaseData,
+  DatabaseId,
+  UpdateDatabaseRequest,
+} from "metabase-types/api";
 
 const DELETE_DATABASE = createAction<{ databaseId: DatabaseId }>(
   "metabase/admin/databases/DELETE_DATABASE",
@@ -21,10 +25,27 @@ const DELETE_DATABASE_FAILED = createAction<{
   error: unknown;
 }>("metabase/admin/databases/DELETE_DATABASE_FAILED");
 
-export const updateDatabase = function (database: DatabaseData) {
+export const updateDatabase = function (
+  database: { id: DatabaseId } & Partial<DatabaseData>,
+) {
   return async function (dispatch: Dispatch) {
+    const request: UpdateDatabaseRequest = {
+      id: database.id,
+      name: database.name,
+      engine: database.engine,
+      refingerprint: database.refingerprint,
+      details: database.details,
+      write_data_details: database.write_data_details,
+      is_full_sync: database.is_full_sync,
+      is_on_demand: database.is_on_demand,
+      schedules: database.schedules,
+      auto_run_queries: database.auto_run_queries ?? undefined,
+      cache_ttl: database.cache_ttl,
+      provider_name: database.provider_name,
+      settings: database.settings,
+    };
     const result = await runRtkEndpoint(
-      database,
+      request,
       dispatch,
       databaseApi.endpoints.updateDatabase,
     );
@@ -35,11 +56,11 @@ export const updateDatabase = function (database: DatabaseData) {
 
 export const saveDatabase = function (database: DatabaseData) {
   return async function (dispatch: Dispatch) {
-    const isUnsavedDatabase = !database.id;
-    if (isUnsavedDatabase) {
+    const id = database.id;
+    if (id == null) {
       return await dispatch(createDatabase(database));
     } else {
-      return await dispatch(updateDatabase(database));
+      return await dispatch(updateDatabase({ ...database, id }));
     }
   };
 };

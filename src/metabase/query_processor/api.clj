@@ -97,7 +97,8 @@
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
-   query :- [:map
+   ;; TODO: the body is an MBQL query typed loosely as a map; give it a real schema.
+   query :- [:map {:closed false}
              [:database {:optional true} [:maybe :int]]]]
   (run-streaming-query
    (-> query
@@ -127,7 +128,7 @@
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and download the result data as a file in the specified format."
-  [{:keys [export-format]} :- [:map
+  [{:keys [export-format]} :- [:map {:closed true}
                                [:export-format ::qp.schema/export-format]]
    _query-params
    {{:keys [was-pivot] :as query} :query
@@ -137,13 +138,16 @@
     visualization-settings        :visualization_settings}
    ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
-   :- [:map
+   :- [:map {:closed true}
+       ;; TODO: `query` is an MBQL query typed loosely as a map; give it a real schema.
        [:query                  [:map
-                                 {:decode/api (fn [x]
+                                 {:closed     false
+                                  :decode/api (fn [x]
                                                 (cond-> x
                                                   (string? x) json/decode+kw))}]]
        [:visualization_settings {:default {}} [:map
-                                               {:decode/api (fn [x]
+                                               {:closed     false
+                                                :decode/api (fn [x]
                                                               (cond-> x
                                                                 (string? x) (json/decode viz-setting-key-fn)))}]]
        [:format_rows            {:default false} ms/BooleanValue]
@@ -184,9 +188,10 @@
   visibility_type :sensitive in the response."
   [_route-params
    _query-params
-   query :- [:map
+   ;; TODO: the body is an MBQL query typed loosely as a map; give it a real schema.
+   query :- [:map {:closed false}
              [:database ms/PositiveInt]
-             [:settings {:optional true} [:maybe [:map
+             [:settings {:optional true} [:maybe [:map {:closed false}
                                                   [:include_sensitive_fields {:optional true} :boolean]]]]]]
   (queries/batch-fetch-query-metadata
    [query]
@@ -201,7 +206,8 @@
   "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
-   {:keys [database pretty] :as query} :- [:map
+   ;; TODO: the body is an MBQL query typed loosely as a map; give it a real schema.
+   {:keys [database pretty] :as query} :- [:map {:closed false}
                                            [:database ms/PositiveInt]
                                            [:pretty   {:default true} [:maybe :boolean]]]]
   (model-persistence/with-persisted-substituion-disabled
@@ -217,7 +223,9 @@
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
-   {:keys [database] :as query} :- [:map
+   ;; Open because the frontend also sends `pivot_rows`, `pivot_cols`, `show_row_totals`, `show_column_totals`.
+   ;; TODO: the body is an MBQL query typed loosely as a map; give it a real schema.
+   {:keys [database] :as query} :- [:map {:closed false}
                                     [:database ms/PositiveInt]]]
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
@@ -262,7 +270,7 @@
   [_route-params
    _query-params
    {:keys     [parameter]
-    field-ids :field_ids} :- [:map
+    field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids nil))
@@ -273,11 +281,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
-  [{:keys [query]} :- [:map
+  [{:keys [query]} :- [:map {:closed true}
                        [:query ms/NonBlankString]]
    _query-params
    {:keys     [parameter]
-    field-ids :field_ids} :- [:map
+    field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (parameter-values parameter field-ids query))
@@ -304,8 +312,9 @@
   "Return the remapped parameter values for cards or dashboards that are being edited."
   [_route-params
    _query-params
-   {:keys [parameter value field_ids]} :- [:map
+   {:keys [parameter value field_ids]} :- [:map {:closed true}
                                            [:parameter ::parameters.schema/parameter]
+                                           ;; TODO: `value` is a parameter value typed loosely; give it a real schema.
                                            [:value :any]
                                            [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (param-remapped-value field_ids parameter value))

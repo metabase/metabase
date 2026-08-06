@@ -33,7 +33,17 @@ function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
   const [updateTimelineEvent] = useUpdateTimelineEventMutation();
 
   const onSubmit = async (event: TimelineEvent, timeline?: Timeline) => {
-    await updateTimelineEvent(event).unwrap();
+    await updateTimelineEvent({
+      id: event.id,
+      name: event.name,
+      description: event.description,
+      timestamp: event.timestamp,
+      time_matters: event.time_matters,
+      timezone: event.timezone,
+      icon: event.icon,
+      timeline_id: event.timeline_id,
+      archived: event.archived,
+    }).unwrap();
     if (timeline) {
       navigate(Urls.timelineInCollection(timeline));
     }

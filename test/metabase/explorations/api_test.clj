@@ -1083,10 +1083,13 @@
                                  {:dimension_id (duid "b") :table_id 1 :target ["field" {} 2]}]}]
                   :dimensions [{:dimension_id (duid "a") :display_name "Created At"}
                                {:dimension_id (duid "b") :display_name "Created At"}]}
-            queries (-> (mt/user-http-request u :post 200 "exploration" body)
+            queries (-> (create-exploration! u body)
                         :threads first :queries)]
-        (is (every? #(= "Revenue by Created At" (:name %)) queries)
-            "falls back to plain display_name when no :group is available")))))
+        (is (seq queries) "the planner produced queries to name")
+        (is (every? #(str/starts-with? (:name %) "Revenue by Created At") queries)
+            "falls back to plain display_name when no :group is available")
+        (is (not-any? #(str/includes? (:name %) " → ") queries)
+            "no dim has a known :group, so no name is source-qualified")))))
 
 (deftest exploration-get-attaches-dimension-name-test
   (testing "hydrate-exploration assoc's :dimension_name onto each query using the dim's display_name"
@@ -1571,8 +1574,7 @@
       (let [resp (mt/user-http-request u :post 200 "exploration"
                                        {:name         "cascade"
                                         :timeline_ids [(:id tl)]
-                                        :blocks       [{:name       "Group"
-                                                        :metrics    [{:card_id (:id metric)
+                                        :blocks       [{:metrics    [{:card_id (:id metric)
                                                                       :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
                                                         :dimensions [{:dimension_id (duid "d1")}]}]})
             eid  (:id resp)
@@ -1588,20 +1590,22 @@
     (mt/with-temp [:model/User u {:email "http-delete@example.com"}
                    :model/Card metric (valid-metric-card (:id u))]
       (let [resp (mt/user-http-request u :post 200 "exploration"
-                                       {:name "http-delete"
-                                        :metrics [{:card_id (:id metric)
-                                                   :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
-                                        :dimensions [{:dimension_id (duid "d1")}]})
+                                       (->blocks-body
+                                        {:name "http-delete"
+                                         :metrics [{:card_id (:id metric)
+                                                    :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                         :dimensions [{:dimension_id (duid "d1")}]}))
             eid  (:id resp)]
         ;; Live exploration: delete via HTTP.
         (mt/user-http-request u :delete 204 (format "exploration/%d" eid))
         (is (false? (t2/exists? :model/Exploration :id eid))))
       (testing "archived (trashed) exploration deletes via HTTP DELETE with the same status — the trash → permanently-delete path the user reported as 400"
         (let [resp2 (mt/user-http-request u :post 200 "exploration"
-                                          {:name "trash-then-delete"
-                                           :metrics [{:card_id (:id metric)
-                                                      :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
-                                           :dimensions [{:dimension_id (duid "d1")}]})
+                                          (->blocks-body
+                                           {:name "trash-then-delete"
+                                            :metrics [{:card_id (:id metric)
+                                                       :dimension_mappings [{:dimension_id (duid "d1") :table_id 1 :target ["field" {} 1]}]}]
+                                            :dimensions [{:dimension_id (duid "d1")}]}))
               eid2  (:id resp2)]
           (mt/user-http-request u :put 200 (format "exploration/%d" eid2) {:archived true})
           (mt/user-http-request u :delete 204 (format "exploration/%d" eid2))
@@ -1837,21 +1841,23 @@
         (is (= "new" (:name resp)))
         (is (= "yo"  (:description resp)))))))
 
-(deftest exploration-put-ignores-unlisted-columns-test
-  (testing "PUT /:id strips request-body keys outside the update schema before `t2/update!`. The
-            schema is an open map, so without an allow-list a caller with write access could
-            mass-assign protected columns — reassigning `creator_id` (ownership / \"My explorations\"
-            attribution) is the sharpest case."
+(deftest exploration-put-rejects-unlisted-columns-test
+  (testing "PUT /:id rejects request-body keys outside the update schema. Protected columns —
+            `creator_id` (ownership / \"My explorations\" attribution) is the sharpest case — are
+            not mass-assignable, and the caller is told so rather than getting a 200 for a write
+            that silently did nothing."
     (mt/with-temp [:model/User owner {:email "owner@example.com"}
                    :model/User thief {:email "thief@example.com"}
                    :model/Exploration e {:name "old" :creator_id (:id owner)}]
       (let [before (t2/select-one :model/Exploration :id (:id e))]
-        (mt/user-http-request owner :put 200 (format "exploration/%d" (:id e))
-                              {:name       "new"
-                               :creator_id (:id thief)
-                               :entity_id  "smuggled_entity_id_00"})
+        (is (=? {:errors {:creator_id "disallowed key"
+                          :entity_id  "disallowed key"}}
+                (mt/user-http-request owner :put 400 (format "exploration/%d" (:id e))
+                                      {:name       "new"
+                                       :creator_id (:id thief)
+                                       :entity_id  "smuggled_entity_id_00"})))
         (let [after (t2/select-one :model/Exploration :id (:id e))]
-          (is (= "new" (:name after)) "the allow-listed field is still updated")
+          (is (= "old" (:name after)) "the rejected request updated nothing at all")
           (is (= (:id owner) (:creator_id after))
               "creator_id must not be reassignable through the request body")
           (is (= (:entity_id before) (:entity_id after))

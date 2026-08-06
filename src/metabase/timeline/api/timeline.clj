@@ -28,7 +28,7 @@
   "Create a new [[Timeline]]."
   [_route-params
    _query-params
-   {:keys [icon], collection-id :collection_id, :as body} :- [:map
+   {:keys [icon], collection-id :collection_id, :as body} :- [:map {:closed true}
                                                               [:name          ms/NonBlankString]
                                                               [:default       {:optional true} [:maybe :boolean]]
                                                               [:description   {:optional true} [:maybe :string]]
@@ -75,7 +75,7 @@
 (api.macros/defendpoint :get "/:id" :- ::Timeline
   "Fetch the `Timeline` with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."
-  [{:keys [id]}                         :- [:map
+  [{:keys [id]}                         :- [:map {:closed true}
                                             [:id ms/PositiveInt]]
    {:keys [include archived start end]} :- [:map
                                             [:include  {:optional true}  ::include]
@@ -102,10 +102,10 @@
 (api.macros/defendpoint :put "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [archived] :as timeline-updates} :- [:map
+   {:keys [archived] :as timeline-updates} :- [:map {:closed true}
                                                [:name          {:optional true} [:maybe ms/NonBlankString]]
                                                [:default       {:optional true} [:maybe :boolean]]
                                                [:description   {:optional true} [:maybe :string]]
@@ -130,7 +130,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [timeline (api/write-check :model/Timeline id)]
     (t2/delete! :model/Timeline :id id)
@@ -157,7 +157,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/collection/:id"
   "Fetch a specific Collection's timelines."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include archived]} :- [:map
                                   [:include  {:optional true} [:maybe [:= "events"]]]

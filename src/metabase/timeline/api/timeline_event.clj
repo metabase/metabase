@@ -22,7 +22,7 @@
   [_route-params
    _query-params
    {:keys [timestamp time_matters icon timeline_id source question_id] :as body}
-   :- [:map
+   :- [:map {:closed true}
        [:name         ms/NonBlankString]
        [:description  {:optional true} [:maybe :string]]
        [:timestamp    ms/TemporalString]
@@ -63,7 +63,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/read-check :model/TimelineEvent id))
 
@@ -73,11 +73,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a [[TimelineEvent]]."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [timestamp]
-    :as   timeline-event-updates} :- [:map
+    :as   timeline-event-updates} :- [:map {:closed true}
                                       [:name         {:optional true} [:maybe ms/NonBlankString]]
                                       [:description  {:optional true} [:maybe :string]]
                                       [:timestamp    {:optional true} [:maybe ms/TemporalString]]
@@ -104,7 +104,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[TimelineEvent]]."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/TimelineEvent id)
   (let [timeline-event (api/write-check :model/TimelineEvent id)]

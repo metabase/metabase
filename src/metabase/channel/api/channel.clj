@@ -86,9 +86,8 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   ;; not closed: callers round-trip the whole Channel object they just fetched (`id`, `created_at`, `updated_at`, ...)
-   ;; back into this endpoint, so extra keys have to keep being tolerated.
-   body :- [:map {:closed false}
+   ;; `details` stays open: its shape is connection-specific and validated by the channel implementation
+   body :- [:map {:closed true}
             [:name        {:optional true} [:maybe ms/NonBlankString]]
             [:description {:optional true} [:maybe ms/NonBlankString]]
             [:type        {:optional true} [:maybe ChannelType]]
@@ -124,9 +123,8 @@
   "Test a channel connection"
   [_route-params
    _query-params
-   ;; not closed: callers post a whole channel object here (`name`, `description`, `active`, ...) to test it before
-   ;; saving; only `type` and `details` are used.
-   {:keys [type details]} :- [:map {:closed false}
+   ;; `details` stays open: its shape is connection-specific and validated by the channel implementation
+   {:keys [type details]} :- [:map {:closed true}
                               [:type    ChannelType]
                               [:details :map]]]
   (perms/check-has-application-permission :setting)

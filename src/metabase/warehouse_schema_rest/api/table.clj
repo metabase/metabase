@@ -271,11 +271,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   ;; Not closed: `update-table!*` picks the columns it writes with `select-keys-when`, and tolerating a redundant
-   ;; read-only column alongside a real change is part of this endpoint's contract -- see
-   ;; [[metabase.warehouse-schema-rest.api.table-test/update-data-authority-test]], which PUTs `:active` back. There
-   ;; is no bounded list of Table columns a caller might echo from a GET, so there is nothing to give slots to.
-   body :- [:map {:closed false}
+   body :- [:map {:closed true}
             [:display_name            {:optional true} [:maybe ms/NonBlankString]]
             [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
             [:visibility_type         {:optional true} [:maybe TableVisibilityType]]

@@ -10,6 +10,7 @@ import type {
   Dashboard,
   DashboardCardSize,
   DashboardId,
+  DashboardParameterMapping,
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
@@ -82,6 +83,8 @@ export interface Card<
   metabot_chart_id?: string | null;
   dashboard_count: number | null;
   parameter_usage_count?: number | null;
+
+  parameter_mappings?: DashboardParameterMapping[] | null;
 
   result_metadata: Field[] | null;
   param_fields?: Record<ParameterId, Field[]>;

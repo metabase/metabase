@@ -51,9 +51,7 @@
   "Create a new GTAP."
   [_route-params
    _query-params
-   ;; not closed: the handler deliberately `select-keys`es what it needs, and API clients commonly
-   ;; POST back a whole sandbox row they previously read (`id`, `permission_id`, timestamps, ...).
-   body :- [:map {:closed false}
+   body :- [:map {:closed true}
             [:table_id             ms/PositiveInt]
             [:card_id              {:optional true} [:maybe ms/PositiveInt]]
             [:group_id             ms/PositiveInt]
@@ -73,9 +71,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   ;; not closed: `select-keys-when` picks out the two updatable keys on purpose, so callers may
-   ;; (and do) PUT back a whole sandbox row including `table_id`/`group_id`/`id`.
-   body :- [:map {:closed false}
+   body :- [:map {:closed true}
             [:card_id              {:optional true} [:maybe ms/PositiveInt]]
             [:attribute_remappings {:optional true} ::sandbox.schema/attribute-remappings]]]
   (api/check-404 (t2/select-one :model/Sandbox :id id))
@@ -96,11 +92,13 @@
   sandbox is saved, but doesn't actually save the sandbox."
   [_route-params
    _query-params
-   ;; not closed: `EditSandboxingModal` posts the whole in-progress policy here (spreading the row it
-   ;; read back, so `id`/`permission_id` and any future sandbox column ride along).
-   {:keys [table_id card_id]} :- [:map {:closed false}
-                                  [:table_id ms/PositiveInt]
-                                  [:card_id  {:optional true} [:maybe ms/PositiveInt]]]]
+   ;; `group_id`/`attribute_remappings` ride along from the sandbox being edited; only the table/card
+   ;; pair is validated here.
+   {:keys [table_id card_id]} :- [:map {:closed true}
+                                  [:table_id                              ms/PositiveInt]
+                                  [:card_id              {:optional true} [:maybe ms/PositiveInt]]
+                                  [:group_id             {:optional true} :any]
+                                  [:attribute_remappings {:optional true} :any]]]
   (when card_id
     (let [db (t2/select-one :model/Database
                             :id {:select [:t.db_id]

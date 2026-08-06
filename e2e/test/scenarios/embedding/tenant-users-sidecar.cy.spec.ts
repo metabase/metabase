@@ -155,7 +155,6 @@ describe("scenarios > sidecar > tenant users", () => {
           "remote-sync-branch": "main",
           "remote-sync-type": "read-write",
           "remote-sync-url": H.LOCAL_GIT_PATH + "/.git",
-          "remote-sync-enabled": true,
         });
       });
     });

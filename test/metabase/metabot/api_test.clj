@@ -57,8 +57,7 @@
                 (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                                      {:message         (:content question)
                                                       :context         {}
-                                                      :conversation_id conversation-id
-                                                      :state           {}})
+                                                      :conversation_id conversation-id})
                       lines    (->> (str/split-lines response)
                                     (filter #(str/starts-with? % "data: ")))
                       events   (->> lines
@@ -274,8 +273,7 @@
                                                          :decompress-body false}}
                                       {:message         "Test closure"
                                        :context         {}
-                                       :conversation_id conversation-id
-                                       :state           {}})]
+                                       :conversation_id conversation-id})]
                         (.read ^java.io.InputStream (:body response)) ;; start the handler
                         ;; Close the underlying client, not the body stream: closing the body would
                         ;; make clj-http drain the (now chunked) response to completion, which looks
@@ -322,8 +320,7 @@
               (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                                    {:message         "go"
                                                     :context         {}
-                                                    :conversation_id (str (random-uuid))
-                                                    :state           {}})]
+                                                    :conversation_id (str (random-uuid))})]
                 (u/poll {:thunk       #(deref stored-kwargs)
                          :done?       some?
                          :interval-ms 10
@@ -888,8 +885,7 @@
              (mt/client :post 401 "metabot/agent-streaming"
                         {:message "Test"
                          :context {}
-                         :conversation_id (str (random-uuid))
-                         :state {}}))))
+                         :conversation_id (str (random-uuid))}))))
     (testing "/feedback"
       (is (= "Unauthenticated"
              (mt/client :post 401 "metabot/feedback"
@@ -942,8 +938,7 @@
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
       (let [base-request {:message         "Test"
                           :context         {}
-                          :conversation_id (str (random-uuid))
-                          :state           {}}]
+                          :conversation_id (str (random-uuid))}]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
                                                              [{:type :start :id "msg-1"}
@@ -1047,21 +1042,18 @@
               first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                                     {:message         "first"
                                                      :context         {}
-                                                     :conversation_id conversation-id
-                                                     :state           {}})
+                                                     :conversation_id conversation-id})
               stale-id        (streamed-message-id first-response)]
           (is (string? stale-id))
           (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                 {:message            "second"
                                  :context            {}
                                  :conversation_id    conversation-id
-                                 :state              {}
                                  :parent_message_id  stale-id})
           (mt/user-http-request :rasta :post 409 "metabot/agent-streaming"
                                 {:message            "third"
                                  :context            {}
                                  :conversation_id    conversation-id
-                                 :state              {}
                                  :parent_message_id  stale-id}))))))
 
 (deftest agent-streaming-rejects-missing-parent-message-id-for-existing-conversation-test
@@ -1072,20 +1064,17 @@
           (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                 {:message         "first"
                                  :context         {}
-                                 :conversation_id conversation-id
-                                 :state           {}})
+                                 :conversation_id conversation-id})
           (mt/user-http-request :rasta :post 409 "metabot/agent-streaming"
                                 {:message         "second"
                                  :context         {}
-                                 :conversation_id conversation-id
-                                 :state           {}}))))))
+                                 :conversation_id conversation-id}))))))
 
 (defn- agent-request
   [conversation-id message & {:as extra}]
   (merge {:message         message
           :context         {}
-          :conversation_id conversation-id
-          :state           {}}
+          :conversation_id conversation-id}
          extra))
 
 (defn- conversation-rows
@@ -1808,8 +1797,7 @@
                                           {:request-options {:headers {"x-metabase-embed-referrer" embed-referrer}}}
                                           {:message         "hello"
                                            :context         {}
-                                           :conversation_id conversation-id
-                                           :state           {}})
+                                           :conversation_id conversation-id})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (= "customer.example.com" (:embedding_hostname convo)))
                       (is (= "/dashboard"           (:embedding_path     convo)))))))
@@ -1821,8 +1809,7 @@
                                           {:request-options {:headers {"x-metabase-embed-referrer" embed-referrer}}}
                                           {:message         "hello"
                                            :context         {}
-                                           :conversation_id conversation-id
-                                           :state           {}})
+                                           :conversation_id conversation-id})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (= "customer.example.com" (:embedding_hostname convo)))
                       (is (nil?                     (:embedding_path     convo)))))))
@@ -1833,8 +1820,7 @@
                                           {:request-options {:headers {"referer" "https://customer.example.com/dashboard"}}}
                                           {:message         "hello"
                                            :context         {}
-                                           :conversation_id conversation-id
-                                           :state           {}})
+                                           :conversation_id conversation-id})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (nil? (:embedding_hostname convo)))
                       (is (nil? (:embedding_path     convo)))))))
@@ -1845,8 +1831,7 @@
                                           {:request-options {:headers {"user-agent" "Mozilla/5.0 (TestAgent)"}}}
                                           {:message         "hello"
                                            :context         {}
-                                           :conversation_id conversation-id
-                                           :state           {}})
+                                           :conversation_id conversation-id})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (= "Mozilla/5.0 (TestAgent)" (:user_agent convo)))
                       (is (some? (:sanitized_user_agent convo))))))
@@ -1856,8 +1841,7 @@
                                           {:request-options {:headers {"user-agent" "Mozilla/5.0 (TestAgent)"}}}
                                           {:message         "hello"
                                            :context         {}
-                                           :conversation_id conversation-id
-                                           :state           {}})
+                                           :conversation_id conversation-id})
                     (let [convo (t2/select-one :model/MetabotConversation :id conversation-id)]
                       (is (nil? (:user_agent           convo)))
                       (is (nil? (:sanitized_user_agent convo))))))))))))))
@@ -1875,8 +1859,7 @@
       (mt/user-http-request :rasta :post 402 "metabot/agent-streaming"
                             {:message         "test message"
                              :context         {}
-                             :conversation_id (str (random-uuid))
-                             :state           {}}))))
+                             :conversation_id (str (random-uuid))}))))
 
 ;;; ------------------------------------------------ Bedrock settings ------------------------------------------------
 

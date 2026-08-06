@@ -55,7 +55,9 @@
                                           (when-not (= collection-id "root")
                                             collection-id))}
                            pos-int?]]
-         ["file" [:map
+         ;; not closed: Ring's multipart middleware builds this part map and attaches `:content-type`/`:size`
+         ;; alongside the two keys we read.
+         ["file" [:map {:closed false}
                   [:filename :string]
                   [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway

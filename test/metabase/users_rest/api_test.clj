@@ -896,16 +896,18 @@
 
 (deftest create-user-add-to-admin-group-test-2
   (testing "POST /api/user"
-    (testing (str "for whatever reason we don't let you set is_superuser in the POST endpoint so if someone tries to "
-                  "pass that it should get ignored")
+    (testing (str "we don't let you set is_superuser in the POST endpoint -- the request is rejected, so use "
+                  "user_group_memberships with the Admin group instead")
       (with-temp-user-email! [email]
-        (mt/user-http-request :crowberto :post 200 "user"
-                              {:first_name "Cam"
-                               :last_name "Era"
-                               :email email
-                               :is_superuser true})
-        (is (= {:is-superuser? false, :pgm-exists? false}
-               (superuser-and-admin-pgm-info email)))))))
+        (is (=? {:errors {:is_superuser "disallowed key"}}
+                (mt/user-http-request :crowberto :post 400 "user"
+                                      {:first_name "Cam"
+                                       :last_name "Era"
+                                       :email email
+                                       :is_superuser true})))
+        (is (= {:is-superuser? nil, :pgm-exists? false}
+               (superuser-and-admin-pgm-info email))
+            "the user should not have been created at all")))))
 
 (deftest create-user-must-assign-to-all-users-group
   (testing "POST /api/user"
@@ -1244,7 +1246,10 @@
                 (t2/select-one [:model/User :first_name :last_name :is_superuser :email], :id (mt/user->id :rasta)))]
         (let [before (fetch-rasta)]
           (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
-                                (assoc (fetch-rasta) :is_superuser true))
+                                (-> (fetch-rasta)
+                                    ;; `common_name` is derived, and PUT doesn't accept it
+                                    (select-keys [:first_name :last_name :email])
+                                    (assoc :is_superuser true)))
           (is (= before
                  (fetch-rasta))))))))
 
@@ -1541,11 +1546,8 @@
   (testing "PUT /api/user/:id/reactivate"
     (testing "Test that reactivating a disabled account works"
       (mt/with-temp [:model/User user {:is_active false}]
-        ;; now try creating the same user again, should re-activiate the original
-        (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user))
-                              {:first_name (:first_name user)
-                               :last_name "whatever"
-                               :email (:email user)})
+        ;; the endpoint takes no body -- it only flips `is_active`
+        (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
         (is (true?
              (t2/select-one-fn :is_active :model/User :id (:id user)))
             "the user should now be active")))

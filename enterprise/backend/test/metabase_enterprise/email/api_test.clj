@@ -84,7 +84,7 @@
               (testing "If we don't change the password we don't see the password"
                 (let [payload (-> (email-override-settings)
                                   ;; user changes one property
-                                  (assoc :email-smtp-port 999)
+                                  (assoc :email-smtp-username-override "someone-else")
                                   ;; the FE will have an obfuscated value
                                   (update :email-smtp-password-override setting/obfuscate-value))
                       response (mt/user-http-request :crowberto :put 200 "ee/email/override" payload)]

@@ -575,7 +575,6 @@
                                :collection_id tenant-collection-id
                                :visualization_settings {}
                                :display "table"
-                               :database_id (mt/id)
                                :dataset_query (mt/mbql-query venues)}
                     response (mt/user-http-request tenant-user-id :post 200 "card" card-data)]
                 ;; TODO look into why this is failing
