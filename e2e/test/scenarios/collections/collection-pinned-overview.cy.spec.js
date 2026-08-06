@@ -6,7 +6,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
@@ -48,25 +48,6 @@ const SQL_QUESTION_DETAILS_REQUIRED_PARAMETER = {
   },
 };
 
-const SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE = {
-  name: "SQL with parameters",
-  display: "scalar",
-  native: {
-    "template-tags": {
-      filter: {
-        type: "dimension",
-        name: "filter",
-        id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
-        "display-name": "date",
-        default: "1999-02-26~2024-02-26",
-        dimension: ["field", PEOPLE.BIRTH_DATE, null],
-        "widget-type": "date/range",
-      },
-    },
-    query: "select count(*) from people where {{filter}}",
-  },
-};
-
 describe("scenarios > collection pinned items overview", () => {
   beforeEach(() => {
     H.restore();
@@ -90,17 +71,19 @@ describe("scenarios > collection pinned items overview", () => {
     });
   });
 
-  it("should be able to pin a question", () => {
+  it("should be able to pin a question without rendering its visualization", () => {
     openRootCollection();
     H.openUnpinnedItemMenu(QUESTION_NAME);
     H.popover().findByText("Pin this").click();
-    cy.wait(["@getPinnedItems", "@getCardQuery"]);
+    cy.wait("@getPinnedItems");
 
     H.getPinnedSection().within(() => {
-      cy.findByText("18,760").should("be.visible");
+      cy.findByText("A question").should("be.visible");
       cy.findByText(QUESTION_NAME).click();
       cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
     });
+
+    cy.get("@getCardQuery.all").should("have.length", 0);
   });
 
   it("should be able to pin a pivot table", () => {
@@ -109,12 +92,10 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     openRootCollection();
-    cy.wait("@getCardQuery");
 
     H.getPinnedSection().within(() => {
       cy.findByText(PIVOT_QUESTION_DETAILS.name).should("be.visible");
-      cy.findByText("Created At: Month").should("be.visible");
-      cy.findByText("Count").should("be.visible");
+      cy.findByText("A question").should("be.visible");
     });
   });
 
@@ -190,81 +171,43 @@ describe("scenarios > collection pinned items overview", () => {
     cy.findByText(DASHBOARD_NAME).should("not.exist");
   });
 
-  it("should be able to hide the visualization for a pinned question", () => {
-    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
-      collection_position: 1,
-    });
+  it("should render pinned native questions as static cards", () => {
+    H.createNativeQuestion(SQL_QUESTION_DETAILS_REQUIRED_PARAMETER).then(
+      ({ body: { id } }) => {
+        cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+      },
+    );
 
     openRootCollection();
-    cy.log("wait for data to be loaded and displayed");
-    H.getPinnedSection().should("contain", "18,760");
-    H.openPinnedItemMenu(QUESTION_NAME);
-    H.popover().findByText("Don’t show visualization").click();
-    cy.wait("@getPinnedItems");
-
     H.getPinnedSection().within(() => {
-      cy.findByText("18,760").should("not.exist");
+      cy.findByText(SQL_QUESTION_DETAILS_REQUIRED_PARAMETER.name).should(
+        "be.visible",
+      );
       cy.findByText("A question").should("be.visible");
-      cy.findByText(QUESTION_NAME).click();
-      cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
     });
   });
 
-  it("should be able to show the visualization for a pinned question", () => {
-    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+  it("should render all pinned items in a single section without type headings", () => {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       collection_position: 1,
-      collection_preview: false,
+    });
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      collection_position: 2,
     });
 
     openRootCollection();
-    H.openPinnedItemMenu(QUESTION_NAME);
-    H.popover().findByText("Show visualization").click();
-    cy.wait(["@getPinnedItems", "@getCardQuery"]);
 
     H.getPinnedSection().within(() => {
+      cy.findByText(DASHBOARD_NAME).should("be.visible");
       cy.findByText(QUESTION_NAME).should("be.visible");
-      cy.findByText("18,760").should("be.visible");
-    });
-  });
-
-  describe("native questions", () => {
-    it("should automatically hide the visualization for pinned native questions with missing required parameters", () => {
-      H.createNativeQuestion(SQL_QUESTION_DETAILS_REQUIRED_PARAMETER).then(
-        ({ body: { id } }) => {
-          cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
-        },
-      );
-
-      openRootCollection();
-      H.getPinnedSection().within(() => {
-        cy.findByText(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE.name).should(
-          "be.visible",
-        );
-        cy.findByText("A question").should("be.visible");
-      });
-    });
-
-    it("should apply default value of variable for pinned native questions (metabase#37831)", () => {
-      H.createNativeQuestion(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE).then(
-        ({ body: { id } }) => {
-          cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
-        },
-      );
-
-      openRootCollection();
-      H.getPinnedSection().within(() => {
-        cy.findByText(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE.name).should(
-          "be.visible",
-        );
-        cy.findByTestId("scalar-value").should("have.text", "68");
-      });
+      cy.findByText("Dashboards").should("not.exist");
+      cy.findByText("Pinned questions").should("not.exist");
     });
   });
 
   it("should be able to pin a visualization by dragging it up", () => {
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       collection_position: 1,
-      collection_preview: false,
     });
     openRootCollection();
 

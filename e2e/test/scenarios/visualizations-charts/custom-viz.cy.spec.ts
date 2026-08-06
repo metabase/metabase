@@ -805,7 +805,7 @@ describe("admin > custom visualizations", () => {
 
       H.getPinnedSection().within(() => {
         cy.findByText("Custom Viz Question Test").should("be.visible");
-        cy.findByText("Custom viz rendered successfully").should("be.visible");
+        cy.findByText("A question").should("be.visible");
       });
     });
 
@@ -1239,9 +1239,9 @@ describe("admin > custom visualizations", () => {
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
-      // Main question: pinned with preview hidden so the pinned card shows
-      // the plugin icon instead of the rendered viz. Also bookmarked, queried
-      // (for recents), and embedded in a document below.
+      // Main question: pinned, so the static pinned card shows the plugin
+      // icon. Also bookmarked, queried (for recents), and embedded in a
+      // document below.
       H.createQuestion(
         {
           name: ICON_QUESTION_NAME,
@@ -1257,7 +1257,6 @@ describe("admin > custom visualizations", () => {
       cy.get<CardId>("@questionId").then((cardId) => {
         cy.request("PUT", `/api/card/${cardId}`, {
           collection_position: 1,
-          collection_preview: false,
         });
         cy.request("POST", `/api/card/${cardId}/query`);
         cy.request("POST", `/api/bookmark/card/${cardId}`);
@@ -1323,7 +1322,7 @@ describe("admin > custom visualizations", () => {
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
 
-      cy.log("Pinned section (collection_preview: false → icon, not viz)");
+      cy.log("Pinned section shows the plugin icon on the static card");
       H.getPinnedSection().find(PLUGIN_ICON_SELECTOR).should("exist");
 
       cy.log("Navigate → question editor by clicking the pinned card title");
