@@ -29,18 +29,12 @@ export type UsageMetadataMatchRelation =
   | "overlap";
 
 export type UsageMetadataSnapshotSummary = {
-  candidate_count: number;
-  measure_count: number;
-  segment_count: number;
-  metric_count: number;
-  publish_table_count: number;
   table_count: number;
 };
 
 export type UsageMetadataSnapshot = {
   id: number;
   finished_at: string;
-  algorithm_version: number;
   summary: UsageMetadataSnapshotSummary | null;
 };
 
@@ -63,6 +57,11 @@ export type UsageMetadataTable = {
   collection_id: number | null;
   database: UsageMetadataDatabase;
 };
+
+export type UsageMetadataTableReference = Pick<
+  UsageMetadataTable,
+  "id" | "schema" | "display_name" | "is_published" | "database"
+>;
 
 export type UsageMetadataTableSummary = {
   table: UsageMetadataTable;
@@ -93,20 +92,6 @@ export type UsageMetadataCandidatePresentation = {
     display_name: string;
     kind: UsageMetadataPredicateKind;
   }[];
-};
-
-export type UsageMetadataRequiredTable = {
-  id: TableId;
-  database_id: DatabaseId;
-  database_name: string;
-  schema: string | null;
-  name: string;
-  display_name: string;
-  description: string | null;
-  data_layer: TableDataLayer | null;
-  data_authority: string | null;
-  view_count: number;
-  is_published: boolean;
 };
 
 export type UsageMetadataCandidateDefinition =
@@ -172,7 +157,7 @@ export type UsageMetadataCandidateDetail = UsageMetadataCandidateSummary & {
   table: UsageMetadataTable;
   suggested_name: string;
   suggested_description: string | null;
-  required_tables: UsageMetadataRequiredTable[];
+  required_tables: UsageMetadataTableReference[];
   definition: UsageMetadataCandidateDefinition;
   creation_blockers: UsageMetadataCreationBlocker[];
   dismissal: UsageMetadataCandidateDismissal | null;
@@ -216,30 +201,15 @@ export type CreateUsageMetadataCandidateResponse = {
   };
 };
 
-export type UsageMetadataRunStatus =
-  | "queued"
-  | "running"
-  | "succeeded"
-  | "failed";
-
-export type UsageMetadataRun = {
+export type UsageMetadataRunState = {
   id: number;
-  status: UsageMetadataRunStatus;
-  trigger: "scheduled" | "manual";
-  requested_by: UserId | null;
-  algorithm_version: number;
-  summary: UsageMetadataSnapshotSummary | null;
-  error: string | null;
-  created_at: string;
-  started_at: string | null;
-  finished_at: string | null;
+  status: "queued" | "running" | "failed";
 };
 
 export type UsageMetadataRefreshStatus = {
-  snapshot: UsageMetadataRun | null;
-  active: UsageMetadataRun | null;
-  failure: UsageMetadataRun | null;
-  fresh: boolean;
+  snapshot: UsageMetadataSnapshot | null;
+  active: UsageMetadataRunState | null;
+  failure: UsageMetadataRunState | null;
 };
 
 export type StartUsageMetadataRefreshResponse = {

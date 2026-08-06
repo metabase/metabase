@@ -281,13 +281,9 @@
               (mt/user-http-request :crowberto :get 200
                                     "ee/data-studio/usage-metadata/candidates?candidate-type=metric")))
       (is (=? {:required_tables [{:id (mt/id :orders)
-                                  :database_id (mt/id)
-                                  :database_name "Test Database"
-                                  :name "orders"
                                   :display_name "Orders"
-                                  :data_layer "entity"
-                                  :data_authority "computed"
-                                  :view_count 42
+                                  :database {:id (mt/id)
+                                             :name "Test Database"}
                                   :is_published false}]
                :creation_blockers []}
               (mt/user-http-request :crowberto :get 200
@@ -337,29 +333,22 @@
 
 (deftest refresh-status-normalizes-snapshot-summary-test
   (mt/with-premium-features #{:library}
-    (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
-                                                         :trigger           :manual
-                                                         :algorithm_version 1
-                                                         :source_config     {:kind :qualified-cards}
-                                                         :summary           {:candidate-count 6
-                                                                             :measure-count 1
-                                                                             :segment-count 2
-                                                                             :metric-count 1
-                                                                             :publish-table-count 2
-                                                                             :table-count 3}
-                                                         :finished_at       (mi/now)}]
+    (mt/with-temp [:model/UsageMetadataCandidateRun _run {:status            :succeeded
+                                                          :trigger           :manual
+                                                          :algorithm_version 1
+                                                          :source_config     {:kind :qualified-cards}
+                                                          :summary           {:candidate-count 6
+                                                                              :measure-count 1
+                                                                              :segment-count 2
+                                                                              :metric-count 1
+                                                                              :publish-table-count 2
+                                                                              :table-count 3}
+                                                          :finished_at       (mi/now)}]
       (let [response (mt/user-http-request :crowberto :get 200
                                            "ee/data-studio/usage-metadata/refresh")]
-        (is (=? {:snapshot {:id (:id run)
-                            :summary {:candidate_count 6
-                                      :measure_count 1
-                                      :segment_count 2
-                                      :metric_count 1
-                                      :publish_table_count 2
-                                      :table_count 3}}}
-                response))
-        (is (not (contains? (:snapshot response) :source_config)))
-        (is (not (contains? (:summary (:snapshot response)) :candidate-count)))))))
+        (is (= #{:snapshot :active :failure} (set (keys response))))
+        (is (= #{:id :finished_at :summary} (set (keys (:snapshot response)))))
+        (is (= {:table_count 3} (:summary (:snapshot response))))))))
 
 (deftest candidate-priority-order-keeps-recommendation-families-together-test
   (mt/with-premium-features #{:library}

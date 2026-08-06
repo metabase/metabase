@@ -22,7 +22,6 @@ function page(
     snapshot: {
       id: snapshotId,
       finished_at: "2026-08-06T12:00:00Z",
-      algorithm_version: 1,
       summary: null,
     },
   };
