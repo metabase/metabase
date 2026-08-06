@@ -186,13 +186,26 @@ export function CleanupTablePage() {
     );
   }
 
-  if (tableQuery.isFetching || tableQuery.error || !tableQuery.data) {
+  if (tableQuery.isFetching && tableQuery.data == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper
-          loading={tableQuery.isFetching}
-          error={tableQuery.error}
-        />
+        <LoadingAndErrorWrapper loading />
+      </Center>
+    );
+  }
+
+  if (tableQuery.error && tableQuery.data == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper error={tableQuery.error} />
+      </Center>
+    );
+  }
+
+  if (tableQuery.data == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading />
       </Center>
     );
   }

@@ -12,6 +12,7 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -19,6 +20,7 @@ import {
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
+import { usageMetadataApi } from "metabase-enterprise/api";
 import type {
   UsageMetadataCandidateDetail,
   UsageMetadataRefreshStatus,
@@ -165,7 +167,7 @@ function setup(
   setupUsageMetadataRefreshEndpoint(refreshStatus);
   setupUserMetabotPermissionsEndpoint();
 
-  renderWithProviders(
+  return renderWithProviders(
     <Route
       path="/data-studio/cleanup/tables/:tableId"
       element={<CleanupTablePage />}
@@ -385,6 +387,66 @@ describe("CleanupTablePage", () => {
     expect(
       screen.getByRole("row", { name: "Total revenue" }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps loaded table and candidate details visible during background refetches", async () => {
+    setupUsageMetadataCandidateEndpoint(candidate.id, candidate);
+    const { store } = setup();
+
+    await userEvent.click(
+      await screen.findByRole("row", { name: "Total revenue" }),
+    );
+    const panel = await screen.findByRole("complementary", {
+      name: "Candidate report",
+    });
+    expect(
+      await within(panel).findByText("Read-only definition"),
+    ).toBeVisible();
+
+    let resolveTableRefetch: (value: UsageMetadataTableDetail) => void;
+    let resolveCandidateRefetch: (value: UsageMetadataCandidateDetail) => void;
+    const tableRefetch = new Promise<UsageMetadataTableDetail>((resolve) => {
+      resolveTableRefetch = resolve;
+    });
+    const candidateRefetch = new Promise<UsageMetadataCandidateDetail>(
+      (resolve) => {
+        resolveCandidateRefetch = resolve;
+      },
+    );
+    fetchMock.modifyRoute(`usage-metadata-table-${table.id}`, {
+      response: () => tableRefetch,
+    });
+    fetchMock.modifyRoute(`usage-metadata-candidate-${candidate.id}`, {
+      response: () => candidateRefetch,
+    });
+
+    await act(async () => {
+      store.dispatch(
+        usageMetadataApi.util.invalidateTags([
+          { type: "usage-metadata-candidate", id: `table-${table.id}` },
+          { type: "usage-metadata-candidate", id: candidate.id },
+        ]),
+      );
+    });
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls(`usage-metadata-table-${table.id}`),
+      ).toHaveLength(2);
+      expect(
+        fetchMock.callHistory.calls(`usage-metadata-candidate-${candidate.id}`),
+      ).toHaveLength(2);
+    });
+
+    expect(screen.getByTestId("cleanup-table-page")).toBeVisible();
+    expect(screen.getByRole("row", { name: "Total revenue" })).toBeVisible();
+    expect(panel).toBeVisible();
+    expect(within(panel).getByText("Read-only definition")).toBeVisible();
+
+    await act(async () => {
+      resolveTableRefetch!(tableDetail);
+      resolveCandidateRefetch!(candidate);
+      await Promise.all([tableRefetch, candidateRefetch]);
+    });
   });
 
   it("clearly explains a partially modeled candidate in the report panel", async () => {
