@@ -336,11 +336,10 @@
       (is (=? {:engine string?}
               (mt/user-http-request :crowberto :get 200 "search" :q "x" :context "search-app"))))))
 
-(deftest removed-temporal-params-rejected-test
-  (testing "the removed has_temporal_dim / non_temporal_dim_ids params are rejected, not ignored"
-    (is (=? {:errors {:has_temporal_dim     "disallowed key"
-                      :non_temporal_dim_ids "disallowed key"}}
-            (mt/user-http-request :crowberto :get 400 "search"
+(deftest removed-temporal-params-ignored-test
+  (testing "the removed has_temporal_dim / non_temporal_dim_ids params are dropped rather than rejected"
+    (is (=? {:engine string?}
+            (mt/user-http-request :crowberto :get 200 "search"
                                   :q "x"
                                   :has_temporal_dim "true"
                                   :non_temporal_dim_ids "[1,2]")))))

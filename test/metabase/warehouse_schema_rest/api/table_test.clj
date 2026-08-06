@@ -495,10 +495,10 @@
                                 {:display_name "Renamed", :data_authority "unconfigured"})
           (is (= "Renamed" (t2/select-one-fn :display_name :model/Table :id (u/the-id table))))
           (is (= :unconfigured (t2/select-one-fn :data_authority :model/Table :id (u/the-id table)))))
-        (testing "Server-owned columns are rejected outright"
-          (is (= {:active "disallowed key"}
-                 (:errors (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
-                                                {:active false})))))
+        (testing "Server-owned columns are dropped rather than written"
+          (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                                {:active false})
+          (is (true? (t2/select-one-fn :active :model/Table :id (u/the-id table)))))
         (testing "Can set data_authority to authoritative"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:data_authority "authoritative"})

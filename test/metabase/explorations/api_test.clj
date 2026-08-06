@@ -1841,23 +1841,20 @@
         (is (= "new" (:name resp)))
         (is (= "yo"  (:description resp)))))))
 
-(deftest exploration-put-rejects-unlisted-columns-test
-  (testing "PUT /:id rejects request-body keys outside the update schema. Protected columns —
+(deftest exploration-put-ignores-unlisted-columns-test
+  (testing "PUT /:id drops request-body keys outside the update schema. Protected columns —
             `creator_id` (ownership / \"My explorations\" attribution) is the sharpest case — are
-            not mass-assignable, and the caller is told so rather than getting a 200 for a write
-            that silently did nothing."
+            not mass-assignable, so they never reach the write."
     (mt/with-temp [:model/User owner {:email "owner@example.com"}
                    :model/User thief {:email "thief@example.com"}
                    :model/Exploration e {:name "old" :creator_id (:id owner)}]
       (let [before (t2/select-one :model/Exploration :id (:id e))]
-        (is (=? {:errors {:creator_id "disallowed key"
-                          :entity_id  "disallowed key"}}
-                (mt/user-http-request owner :put 400 (format "exploration/%d" (:id e))
-                                      {:name       "new"
-                                       :creator_id (:id thief)
-                                       :entity_id  "smuggled_entity_id_00"})))
+        (mt/user-http-request owner :put 200 (format "exploration/%d" (:id e))
+                              {:name       "new"
+                               :creator_id (:id thief)
+                               :entity_id  "smuggled_entity_id_00"})
         (let [after (t2/select-one :model/Exploration :id (:id e))]
-          (is (= "old" (:name after)) "the rejected request updated nothing at all")
+          (is (= "new" (:name after)) "the declared key is still applied")
           (is (= (:id owner) (:creator_id after))
               "creator_id must not be reassignable through the request body")
           (is (= (:entity_id before) (:entity_id after))

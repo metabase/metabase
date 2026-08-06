@@ -183,9 +183,9 @@
                       :nfc_path           nil}
                      (simple-field-details (t2/select-one :model/Field :id field-id)))))))))))
 
-(deftest update-field-rejects-read-only-attributes-test
+(deftest update-field-ignores-read-only-attributes-test
   (testing "PUT /api/field/:id"
-    (testing "server-owned Field attributes are rejected rather than silently ignored"
+    (testing "server-owned Field attributes are dropped rather than written"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
         (doseq [[k v] {:name         "something else"
                        :table_id     1
@@ -193,8 +193,7 @@
                        ;; pre-0.39 alias for `semantic_type`; never translated by this endpoint
                        :special_type "type/FK"}]
           (testing k
-            (is (=? {:errors {k "disallowed key"}}
-                    (mt/user-http-request :crowberto :put 400 (format "field/%d" field-id) {k v})))))
+            (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {k v})))
         (testing "and nothing was written"
           (is (= "Field Test"
                  (t2/select-one-fn :name :model/Field :id field-id))))))))

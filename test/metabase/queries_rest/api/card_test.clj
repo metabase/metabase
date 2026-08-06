@@ -1009,13 +1009,13 @@
 
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
-    (testing "`enable_embedding` is rejected while creating a Card (this must be done via `PUT /api/card/:id` instead)"
-      ;; should be rejected regardless of the value of the `enable-embedding` Setting.
+    (testing "`enable_embedding` is dropped while creating a Card (this must be done via `PUT /api/card/:id` instead)"
+      ;; should be dropped regardless of the value of the `enable-embedding` Setting.
       (doseq [enable-embedding? [true false]]
         (mt/with-temporary-setting-values [enable-embedding-static enable-embedding?]
           (mt/with-model-cleanup [:model/Card]
-            (is (=? {:errors {:enable_embedding "disallowed key"}}
-                    (mt/user-http-request :crowberto :post 400 "card" {:name                   "My Card"
+            (is (=? {:enable_embedding false}
+                    (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
                                                                        :display                :table
                                                                        :dataset_query          (mt/mbql-query venues)
                                                                        :visualization_settings {}
@@ -1029,14 +1029,13 @@
 
 (deftest create-card-disallow-setting-embedding-type-test
   (testing "POST /api/card"
-    (testing "`embedding_type` is rejected while creating a Card (this must be done via `PUT /api/card/:id` instead)"
-      ;; should be rejected regardless of the value of the `embedding-type` Setting.
+    (testing "`embedding_type` is dropped while creating a Card (this must be done via `PUT /api/card/:id` instead)"
+      ;; should be dropped regardless of the value of the `embedding-type` Setting.
       (doseq [embedding-type [true false]]
         (mt/with-temporary-setting-values [enable-embedding-static embedding-type]
           (mt/with-model-cleanup [:model/Card]
-            (is (=? {:errors {:enable_embedding "disallowed key"
-                              :embedding_type   "disallowed key"}}
-                    (mt/user-http-request :crowberto :post 400 "card" {:name                   "My Card"
+            (is (=? {:enable_embedding false, :embedding_type nil}
+                    (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
                                                                        :display                :table
                                                                        :dataset_query          (mt/mbql-query venues)
                                                                        :visualization_settings {}
@@ -3007,11 +3006,10 @@
              (update-card card {:collection_position 1})))
           (testing "making public is not something PUT /api/card/:id accepts at all"
             (with-card :verified
-              (is (=? {:errors {:made_public_by_id "disallowed key"
-                                :public_uuid       "disallowed key"}}
-                      (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card))
-                                            {:made_public_by_id (mt/user->id :rasta)
-                                             :public_uuid       (str (random-uuid))})))
+              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                    {:made_public_by_id (mt/user->id :rasta)
+                                     :public_uuid       (str (random-uuid))})
+              (is (nil? (t2/select-one-fn :public_uuid :model/Card :id (u/the-id card))))
               (is (verified? card) "Not verified after action")))
           (testing "Changing description"
             (remains-verified

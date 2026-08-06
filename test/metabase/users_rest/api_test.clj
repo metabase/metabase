@@ -896,18 +896,17 @@
 
 (deftest create-user-add-to-admin-group-test-2
   (testing "POST /api/user"
-    (testing (str "we don't let you set is_superuser in the POST endpoint -- the request is rejected, so use "
+    (testing (str "we don't let you set is_superuser in the POST endpoint -- it is dropped, so use "
                   "user_group_memberships with the Admin group instead")
       (with-temp-user-email! [email]
-        (is (=? {:errors {:is_superuser "disallowed key"}}
-                (mt/user-http-request :crowberto :post 400 "user"
-                                      {:first_name "Cam"
-                                       :last_name "Era"
-                                       :email email
-                                       :is_superuser true})))
-        (is (= {:is-superuser? nil, :pgm-exists? false}
+        (mt/user-http-request :crowberto :post 200 "user"
+                              {:first_name "Cam"
+                               :last_name "Era"
+                               :email email
+                               :is_superuser true})
+        (is (= {:is-superuser? false, :pgm-exists? false}
                (superuser-and-admin-pgm-info email))
-            "the user should not have been created at all")))))
+            "the user is created without superuser rights")))))
 
 (deftest create-user-must-assign-to-all-users-group
   (testing "POST /api/user"

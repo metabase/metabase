@@ -304,15 +304,16 @@
 
 (def ^:private decode-transformer
   (mtx/transformer
-   ;; A param map drops keys it doesn't declare rather than rejecting them, so that a client sending a field the
-   ;; endpoint has no use for is still served. A map that passes its extras on to something else says
-   ;; `{:closed false}`, which also exempts it from stripping.
-   (mtx/strip-extra-keys-transformer)
    (mtx/string-transformer)
    (mtx/json-transformer)
    (mtx/default-value-transformer)
    {:name :api}
-   {:name :normalize}))
+   {:name :normalize}
+   ;; A param map drops keys it doesn't declare rather than rejecting them, so that a client sending a field the
+   ;; endpoint has no use for is still served. A map that passes its extras on to something else says
+   ;; `{:closed false}`, which also exempts it from stripping. Runs last: `:normalize` renames keys into the ones the
+   ;; schema declares, so stripping any earlier would drop them before they are recognized.
+   (mtx/strip-extra-keys-transformer)))
 
 (def ^:private encode-transformer
   (mtx/transformer

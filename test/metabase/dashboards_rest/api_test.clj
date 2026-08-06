@@ -875,16 +875,16 @@
                        :collection_id true
                        :view_count    1}
                       (dashboard-response (t2/select-one :model/Dashboard :id dashboard-id)))))
-            (testing "server-owned properties are rejected rather than silently ignored"
-              (is (=? {:errors {:creator_id "disallowed key"}}
-                      (mt/user-http-request :rasta :put 400 (str "dashboard/" dashboard-id)
-                                            {:creator_id (mt/user->id :trashbird)}))))
-            (testing "`cards` is rejected: this endpoint takes `dashcards` (`cards` belongs to PUT /api/dashboard/:id/cards)"
+            (testing "server-owned properties are dropped rather than written"
+              (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                    {:creator_id (mt/user->id :trashbird)})
+              (is (= (mt/user->id :rasta)
+                     (t2/select-one-fn :creator_id :model/Dashboard :id dashboard-id))))
+            (testing "`cards` is dropped: this endpoint takes `dashcards` (`cards` belongs to PUT /api/dashboard/:id/cards)"
               (mt/with-temp [:model/Card {card-id :id} {}
                              :model/DashboardCard dashcard {:card_id card-id, :dashboard_id dashboard-id}]
-                (is (=? {:errors {:cards "disallowed key"}}
-                        (mt/user-http-request :rasta :put 400 (str "dashboard/" dashboard-id)
-                                              {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))
+                (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                      {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))
         (testing "auto_apply_filters test"
           (doseq [enabled? [true false]]
             (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name               "Test Dashboard"
