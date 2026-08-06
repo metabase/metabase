@@ -71,7 +71,7 @@ export function sanitizedSetterDistortion(
   };
 }
 
-const BLOCKED_TAGS = new Set([
+export const BLOCKED_TAGS = new Set([
   "script",
   "iframe",
   "object",
@@ -109,6 +109,14 @@ export function createElementDistortion(errorPrefix: string) {
   };
 }
 
+/**
+ * Strip an XML namespace prefix from a qualified name (`svg:rect` -> `rect`).
+ * `indexOf` is -1 when there's no prefix, so `slice` returns the whole name.
+ */
+export function getXmlElementLocalName(qualifiedName: string): string {
+  return qualifiedName.slice(qualifiedName.indexOf(":") + 1);
+}
+
 export function createElementNSDistortion(errorPrefix: string) {
   return function createElementNS(
     this: Document,
@@ -116,10 +124,7 @@ export function createElementNSDistortion(errorPrefix: string) {
     qualifiedName: string,
     options?: ElementCreationOptions,
   ) {
-    const localName = qualifiedName.includes(":")
-      ? qualifiedName.slice(qualifiedName.indexOf(":") + 1)
-      : qualifiedName;
-    if (BLOCKED_TAGS.has(localName.toLowerCase())) {
+    if (BLOCKED_TAGS.has(getXmlElementLocalName(qualifiedName).toLowerCase())) {
       throw new Error(
         `[${errorPrefix}] blocked createElementNS: ${qualifiedName}`,
       );

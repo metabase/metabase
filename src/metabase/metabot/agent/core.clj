@@ -17,7 +17,6 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
-   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -152,7 +151,7 @@
 
 (mr/def ::profile-id
   "Profile identifier keyword."
-  [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document-generate-content :slackbot])
+  [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document-generate-content :slackbot :explorations])
 
 (mr/def ::tracking-opts
   "Options for snowplow and prometheus analytics tracking."
@@ -412,6 +411,26 @@
 
 ;;; Main loop
 
+(def ^:private profile-id->required-permission
+  "Map from profile-id to the metabot permission that must be `:yes` for a user
+  to use that profile. Profiles not listed here have no profile-level permission gate."
+  {:sql                       :permission/metabot-sql-generation
+   :nlq                       :permission/metabot-nlq
+   :transforms_codegen        :permission/metabot-sql-generation
+   :document-generate-content :permission/metabot-other-tools
+   :explorations              :permission/metabot-nlq})
+
+(defn- check-metabot-access!
+  "Throw a 403 if the user's metabot permissions do not grant access to the
+  requested profile. The base + profile-specific gating policy lives in
+  [[scope/missing-permission]], shared with [[metabase.metabot.self]]."
+  [profile-id perms]
+  (when-let [missing (scope/missing-permission perms (profile-id->required-permission profile-id))]
+    (api/check false
+               [403 (if (= missing :permission/metabot)
+                      "You do not have permission to use the AI assistant."
+                      (format "You do not have permission to use the %s assistant." (name profile-id)))])))
+
 (defn- init-agent
   "Initialize agent state."
   [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id]
@@ -439,10 +458,12 @@
      :tools         tools
      :context       context
      :memory-atom   memory-atom
-     :tracking-opts (merge {:profile-id profile-id
-                            :request-id (str (random-uuid))
-                            :source     "metabot_agent"
-                            :tag        "agent"}
+     :tracking-opts (merge {:profile-id          profile-id
+                            :request-id          (str (random-uuid))
+                            :source              "metabot_agent"
+                            :tag                 "agent"
+                            :required-permission (or (profile-id->required-permission profile-id)
+                                                     :permission/metabot)}
                            tracking-opts)}))
 
 (defn- initial-loop-state
@@ -566,7 +587,7 @@
         (.write w (json/encode debug-log {:pretty true})))
       (log/debug "Wrote debug log to" debug-log-file)
       (catch Exception e
-        (log/warn e "Failed to write debug log file")))))
+        (log/warnf "Failed to write debug log file: %s" (ex-message e))))))
 
 (defn- debug-log-part
   "Create a data part containing the complete debug log.
@@ -588,27 +609,6 @@
    :data-type "eval_session"
    :version   1
    :data      {:session-id session-id}})
-
-(def ^:private profile-id->required-permission
-  "Map from profile-id to the metabot permission that must be `:yes` for a user
-  to use that profile. Profiles not listed here have no profile-level permission gate."
-  {:sql                       :permission/metabot-sql-generation
-   :nlq                       :permission/metabot-nlq
-   :transforms_codegen        :permission/metabot-sql-generation
-   :document-generate-content :permission/metabot-other-tools})
-
-(defn- check-metabot-access!
-  "Throw a 403 if the user's metabot permissions do not grant access to the
-  requested profile. First checks the base metabot on/off permission, then
-  the profile-specific permission."
-  [profile-id perms]
-  ;; Base metabot on/off check — blocks ALL profiles when metabot is disabled
-  (api/check (= :yes (:permission/metabot perms))
-             [403 "You do not have permission to use the AI assistant."])
-  ;; Profile-specific permission check
-  (when-let [required-perm (profile-id->required-permission profile-id)]
-    (api/check (= :yes (get perms required-perm))
-               [403 (format "You do not have permission to use the %s assistant." (name profile-id))])))
 
 (mu/defn run-agent-loop
   "Run agent loop, returning a reducible of parts.
@@ -709,23 +709,23 @@
                     turn-result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)
-                  (let [{:keys [api-error status provider body]} (ex-data e)
+                  (let [{:keys [api-error status provider]} (ex-data e)
                         msg (ex-message e)]
                     (cond
                       (and api-error status)
-                      (log/errorf e "Agent loop API error: %s status=%s provider=%s body=%s"
-                                  msg status provider (self.core/body-for-log body))
+                      (log/errorf "Agent loop API error: %s status=%s provider=%s"
+                                  msg status provider)
 
                       api-error
-                      (log/errorf e "Agent loop API error: %s provider=%s" msg provider)
+                      (log/errorf "Agent loop API error: %s provider=%s" msg provider)
 
                       ;; ex-message can be nil/blank for exceptions thrown without a message
                       ;; (e.g. (NullPointerException.)) — skip the colon when there's nothing to say.
                       (str/blank? msg)
-                      (log/error e "Agent loop error")
+                      (log/error "Agent loop error")
 
                       :else
-                      (log/errorf e "Agent loop error: %s" msg)))
+                      (log/errorf "Agent loop error: %s" msg)))
                   (rf init (error-part e)))
                 (finally
                   (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))

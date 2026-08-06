@@ -18,7 +18,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -206,25 +207,38 @@
   "Reducible of the raw `data_permissions` rows for the given `opts`. Using a reducible (rather than realizing the full
   result set) keeps the row data out of memory -- we reduce each row into the graph as it streams from the app DB.
   Ordered by `(group_id, db_id)` so that all rows for a given (group, db) arrive contiguously, which lets
-  [[reduce-into-graph]] finalize and compact each (group, db) perm-map without buffering the whole graph."
+  [[reduce-into-graph]] finalize and compact each (group, db) perm-map without buffering the whole graph.
+
+  Rows are fetched with a raw query rather than a model select, and realized one at a time: key access on unrealized
+  result-set rows goes through toucan2's deferred-row machinery on every lookup, which benchmarked ~15x slower than
+  realizing each row once and reading plain map keys. The raw query skips the model transforms, so `:type` and
+  `:value` arrive as strings and are keywordized here."
   [{:keys [group-id group-ids db-id perm-type audit?]}]
-  (t2/reducible-select [:model/DataPermissions
-                        [:perm_type :type]
-                        [:group_id :group-id]
-                        [:perm_value :value]
-                        [:db_id :db-id]
-                        [:schema_name :schema]
-                        [:table_id :table-id]]
-                       {:where    [:and
-                                   (when perm-type [:= :perm_type (u/qualified-name perm-type)])
-                                   (when db-id [:= :db_id db-id])
-                                   (when group-id [:= :group_id group-id])
-                                   (when group-ids [:in :group_id group-ids])
-                                   (when-not audit? [:not= :db_id audit/audit-db-id])
-                                   [:not-in :db_id {:select [:id]
-                                                    :from   [:metabase_database]
-                                                    :where  [:not= :router_database_id nil]}]]
-                        :order-by [:group_id :db_id]}))
+  (eduction
+   (map (fn [row]
+          (-> (t2.realize/realize row)
+              (update :type keyword)
+              (update :value keyword))))
+   (t2/reducible-query
+    {:select   [[:perm_type :type]
+                [:group_id :group-id]
+                [:perm_value :value]
+                [:db_id :db-id]
+                [:schema_name :schema]
+                [:table_id :table-id]]
+     :from     [(t2/table-name :model/DataPermissions)]
+     :where    [:and
+                (when perm-type [:= :perm_type (u/qualified-name perm-type)])
+                (when db-id [:= :db_id db-id])
+                (when group-id [:= :group_id group-id])
+                (when group-ids [:in :group_id group-ids])
+                (when-not audit? [:not= :db_id audit/audit-db-id])
+                [:not [:exists {:select [1]
+                                :from   [[(t2/table-name :model/Database) :router_db]]
+                                :where  [:and
+                                         [:not= :router_db.router_database_id nil]
+                                         [:= :router_db.id :db_id]]}]]]
+     :order-by [:group_id :db_id]})))
 
 (defn- add-perm
   "Reducing step that accumulates one `data_permissions` row's value into its (group, db) `perm-map`, at either a
@@ -241,8 +255,8 @@
 
   `reducible` MUST be ordered by `(group_id, db_id)` so each (group, db)'s rows arrive contiguously: we accumulate one
   raw perm-map at a time and commit it as soon as its group ends, so the full raw table-level graph -- which can be on
-  the order of a gigabyte -- is never materialized. (The rows are transient, cursor-backed instances, so they can't be
-  buffered and grouped after the fact, e.g. via `partition-by`.)"
+  the order of a gigabyte -- is never materialized. (Buffering and grouping after the fact, e.g. via `partition-by`,
+  would materialize the whole result set.)"
   [reducible finalize]
   (let [commit (fn [graph path perm-map]
                  (if (nil? path)

@@ -35,7 +35,6 @@
 (mr/def ::transform
   "A transform map as expected by execute-base! implementations."
   [:map
-   ;; The :id is only present for Global transforms, and missing for Workspace transforms.
    [:id {:optional true} pos-int?]
    [:source [:map [:type [:or :string :keyword]]]]
    [:target ::transform-target]

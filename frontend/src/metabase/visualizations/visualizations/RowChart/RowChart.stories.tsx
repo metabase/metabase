@@ -19,7 +19,6 @@ export default {
   component: RowChart,
 };
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(RowChart);
 
 // Unjustified type cast. FIXME

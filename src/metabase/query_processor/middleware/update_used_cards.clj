@@ -38,7 +38,7 @@
                                                         card-id->timestamp))
                             :updated_at :updated_at}}))
       (catch Throwable e
-        (log/error e "Error updating used cards")))))
+        (log/errorf "Error updating used cards: %s" (ex-message e))))))
 
 (defonce ^:private update-used-cards-queue
   (delay

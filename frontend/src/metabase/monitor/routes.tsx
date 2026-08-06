@@ -9,15 +9,19 @@ import { JobInfoApp } from "metabase/monitor/tools/components/JobInfoApp";
 import { LogLevelsModal } from "metabase/monitor/tools/components/LogLevelsModal";
 import { Logs } from "metabase/monitor/tools/components/Logs";
 import {
-  ModelCachePage,
-  ModelCacheRefreshJobModal,
-} from "metabase/monitor/tools/components/ModelCacheRefreshJobs";
+  ModelPersistenceLogJobModal,
+  ModelPersistenceLogPage,
+} from "metabase/monitor/tools/components/ModelPersistenceLogJobs";
 import { MonitorUpsell } from "metabase/monitor/tools/components/MonitorUpsell";
 import {
   getNotificationsRoutes,
   getTasksRoutes,
 } from "metabase/monitor/tools/routes";
-import { PLUGIN_MONITOR, PLUGIN_MONITOR_TOOLS } from "metabase/plugins";
+import {
+  PLUGIN_AUDIT,
+  PLUGIN_MONITOR,
+  PLUGIN_MONITOR_TOOLS,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Navigate, Route, redirect } from "metabase/router";
@@ -25,6 +29,7 @@ import * as Urls from "metabase/urls";
 
 import { MonitorLayout } from "./components/MonitorLayout";
 import {
+  CanAccessAiAuditing,
   CanAccessAlertsManagement,
   CanAccessMonitor,
   CanAccessMonitorDiagnostics,
@@ -72,13 +77,24 @@ export function getMonitorRoutes() {
               PLUGIN_MONITOR_TOOLS.COMPONENT || MonitorUpsell,
             )}
           />
-          <Route path="model-caching" element={<ModelCachePage />}>
-            {modalRoute(":jobId", ModelCacheRefreshJobModal)}
+          <Route
+            path="model-persistence-log"
+            element={<ModelPersistenceLogPage />}
+          >
+            {modalRoute(":jobId", ModelPersistenceLogJobModal)}
           </Route>
         </Route>
 
         <Route element={<CanAccessAlertsManagement />}>
           <Route path="notifications">{getNotificationsRoutes()}</Route>
+        </Route>
+
+        <Route element={<CanAccessAiAuditing />}>
+          {PLUGIN_AUDIT.isAiAuditingEnabled && (
+            <Route path="ai-auditing">
+              {PLUGIN_AUDIT.getAiAuditingRoutes()}
+            </Route>
+          )}
         </Route>
 
         <Route path="*" element={<NotFound />} />
@@ -96,9 +112,10 @@ function getMonitorIndexPath(state: State) {
 }
 
 /**
- * Legacy redirects for Admin Tools pages that moved into the Monitor area:
+ * Legacy redirects for pages that moved into the Monitor area:
  *   - /admin/tools → /monitor
  *   - /admin/tools/help → /admin/help
+ *   - /admin/metabot/usage-auditing → /monitor/ai-auditing/usage
  *
  * The Data Studio → Monitor redirect for Dependency Diagnostics lives in
  * data-studio/routes.tsx instead: it must be declared inside the Data Studio
@@ -137,11 +154,11 @@ export function getMonitorRedirects() {
       />
       <Route
         path="/admin/tools/model-caching"
-        element={redirect(Urls.monitorModelCaching())}
+        element={redirect(Urls.monitorModelPersistenceLog())}
       />
       <Route
         path="/admin/tools/model-caching/*"
-        element={redirect(`${Urls.monitorModelCaching()}/*`)}
+        element={redirect(`${Urls.monitorModelPersistenceLog()}/*`)}
       />
       <Route
         path="/admin/tools/notifications"
@@ -150,6 +167,26 @@ export function getMonitorRedirects() {
       <Route
         path="/admin/tools/notifications/*"
         element={redirect(`${Urls.monitorNotifications()}/*`)}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing"
+        element={redirect(Urls.monitorAiAuditingUsage())}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing/conversations"
+        element={redirect(Urls.monitorAiAuditingConversations())}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing/conversations/*"
+        element={redirect(`${Urls.monitorAiAuditingConversations()}/*`)}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing/mcp"
+        element={redirect(Urls.monitorAiAuditingMcp())}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing/cli"
+        element={redirect(Urls.monitorAiAuditingCli())}
       />
       <Route path="/admin/tools" element={redirect(Urls.monitor())} />
     </>

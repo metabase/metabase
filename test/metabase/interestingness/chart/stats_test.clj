@@ -24,6 +24,22 @@
    :series (into {} (for [i (range series-count)]
                       [(str "series_" i) (make-series n)]))})
 
+;;; ------------------------------------------- Trend-direction schema regression ----------------------------------
+
+(deftest ^:parallel deep-stats-accepts-no-clear-trend-test
+  (testing "compute-chart-stats (deep) validates a :no-clear-trend series without throwing"
+    ;; reconcile-direction emits :no-clear-trend on a pathologically noisy series (CV ≥ 1);
+    ;; the ::trend-direction output schema must allow it or deep-stats throws on real data.
+    (let [config {:display_type "line"
+                  :title        "Noisy"
+                  :series       {"Noisy" {:x {:name "Date" :type "datetime"}
+                                          :y {:name "Value" :type "number"}
+                                          :display_name "Noisy"
+                                          :x_values ["2020-01-01" "2020-01-02" "2020-01-03" "2020-01-04" "2020-01-05"]
+                                          :y_values [10.0 1000.0 5.0 900.0 8.0]}}}
+          stats  (stats.core/compute-chart-stats config {:deep? true})]
+      (is (= :no-clear-trend (get-in stats [:series "Noisy" :trend :direction]))))))
+
 ;;; ------------------------------------------- Downsampling Tests -------------------------------------------------
 
 (defn- approx=max-data-points-per-series?

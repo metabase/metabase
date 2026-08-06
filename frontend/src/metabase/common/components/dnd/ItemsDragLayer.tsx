@@ -1,61 +1,58 @@
 import { Component } from "react";
 import { DragLayer, type XYCoord } from "react-dnd";
-import _ from "underscore";
+import { msgid, ngettext } from "ttag";
 
-import type { CollectionContentTableColumnsMap } from "metabase/common/collections/columns";
-import PinnedItemCard from "metabase/common/collections/components/PinnedItemCard";
-import { BaseItemsTable } from "metabase/common/components/ItemsTable/BaseItemsTable";
-import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
-import { Box, Portal } from "metabase/ui";
-import type { Collection, CollectionItem } from "metabase-types/api";
+import { Box, Paper, Portal, Text } from "metabase/ui";
+
+import S from "./ItemsDragLayer.module.css";
+
+import { isItemDragPayload } from ".";
 
 interface ItemsDragLayerInnerProps {
   isDragging: boolean;
   currentOffset: XYCoord | null;
-  selectedItems: CollectionItem[];
-  pinnedItems: CollectionItem[];
-  item: { item: CollectionItem } | null;
-  collection: Collection;
-  visibleColumnsMap: CollectionContentTableColumnsMap;
+  payload: unknown;
 }
 
-class ItemsDragLayerInner extends Component<ItemsDragLayerInnerProps> {
+export function MoveItemsDragPreview({ count }: { count: number }) {
+  return (
+    <Paper
+      bg="background_surface-brand-subtle"
+      className={S.preview}
+      data-testid="items-drag-preview"
+      px="md"
+      py="sm"
+      radius="sm"
+      shadow="md"
+      withBorder
+    >
+      <Text fw={700}>
+        {ngettext(msgid`Move ${count} item`, `Move ${count} items`, count)}
+      </Text>
+    </Paper>
+  );
+}
+
+export class ItemsDragLayerInner extends Component<ItemsDragLayerInnerProps> {
   render() {
-    const {
-      isDragging,
-      currentOffset,
-      selectedItems,
-      pinnedItems,
-      item,
-      collection,
-      visibleColumnsMap,
-    } = this.props;
-    if (!isDragging || !currentOffset) {
+    const { isDragging, currentOffset, payload } = this.props;
+
+    if (!isDragging || !currentOffset || !isItemDragPayload(payload)) {
       return null;
     }
-    const items = selectedItems.length > 0 ? selectedItems : [item!.item];
-    const x = currentOffset.x + window.scrollX;
-    const y = currentOffset.y + window.scrollY;
+
     return (
       <Portal>
         <Box
-          pos="absolute"
-          left={0}
-          top={0}
-          opacity={0.65}
+          aria-hidden
+          className={S.dragLayer}
           style={{
-            transform: `translate(${x}px, ${y}px)`,
-            pointerEvents: "none",
-            zIndex: 999,
+            transform: `translate3d(${currentOffset.x + 12}px, ${
+              currentOffset.y + 12
+            }px, 0)`,
           }}
         >
-          <DraggedItems
-            items={items}
-            draggedItem={item!.item}
-            pinnedItems={pinnedItems}
-            collection={collection}
-            visibleColumnsMap={visibleColumnsMap}
-          />
+          <MoveItemsDragPreview count={payload.items.length} />
         </Box>
       </Portal>
     );
@@ -63,89 +60,8 @@ class ItemsDragLayerInner extends Component<ItemsDragLayerInnerProps> {
 }
 
 export const ItemsDragLayer = DragLayer((monitor) => ({
-  item: monitor.getItem(),
-  // itemType: monitor.getItemType(),
-  initialOffset: monitor.getInitialSourceClientOffset(),
-  currentOffset: monitor.getSourceClientOffset(),
+  payload: monitor.getItem(),
+  currentOffset: monitor.getClientOffset(),
   isDragging: monitor.isDragging(),
-  // react-dnd v7 HOC types can't express the own/collected props split
+  // react-dnd v4 HOC types can't express the own/collected props split
 }))(ItemsDragLayerInner as any);
-
-interface DraggedItemsProps {
-  items: CollectionItem[];
-  draggedItem: CollectionItem;
-  pinnedItems: CollectionItem[];
-  collection: Collection;
-  visibleColumnsMap: CollectionContentTableColumnsMap;
-}
-
-class DraggedItems extends Component<DraggedItemsProps> {
-  shouldComponentUpdate(nextProps: DraggedItemsProps) {
-    // necessary for decent drag performance
-    return (
-      nextProps.items.length !== this.props.items.length ||
-      nextProps.pinnedItems.length !== this.props.pinnedItems.length ||
-      nextProps.draggedItem !== this.props.draggedItem
-    );
-  }
-
-  checkIsPinned = (item: CollectionItem) => {
-    const { pinnedItems } = this.props;
-    const index = pinnedItems.findIndex(
-      (i) => i.model === item.model && i.id === item.id,
-    );
-    return index >= 0;
-  };
-
-  renderItem = ({ item, ...itemProps }: ItemRendererProps) => {
-    const isPinned = this.checkIsPinned(item);
-    const key = `${item.model}-${item.id}`;
-
-    if (isPinned) {
-      return (
-        <td style={{ padding: 0 }}>
-          <PinnedItemCard
-            key={key}
-            item={item}
-            collection={this.props.collection}
-            onCopy={_.noop}
-            onMove={_.noop}
-          />
-        </td>
-      );
-    }
-    return (
-      <BaseItemsTable.Item
-        key={key}
-        {...itemProps}
-        item={item}
-        isPinned={false}
-        draggable={false}
-      />
-    );
-  };
-
-  render() {
-    const { items, draggedItem, visibleColumnsMap } = this.props;
-    const index = _.findIndex(items, draggedItem);
-    const allPinned = items.every((item) => this.checkIsPinned(item));
-    return (
-      <div
-        style={{
-          position: "absolute",
-          transform: index > 0 ? `translate(0px, ${-index * 72}px)` : undefined,
-        }}
-      >
-        <BaseItemsTable
-          items={items}
-          ItemComponent={(props) => this.renderItem(props)}
-          headless
-          isInDragLayer
-          style={{ width: allPinned ? 400 : undefined }}
-          includeColGroup={!allPinned}
-          visibleColumnsMap={visibleColumnsMap}
-        />
-      </div>
-    );
-  }
-}

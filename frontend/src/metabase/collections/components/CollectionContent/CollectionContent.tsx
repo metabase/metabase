@@ -13,8 +13,8 @@ import { useDispatch, useSelector } from "metabase/redux";
 import type { UploadFileProps } from "metabase/redux/uploads";
 import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
 import type {
   BookmarkId,
   BookmarkType,

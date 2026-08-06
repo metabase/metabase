@@ -78,9 +78,6 @@
             :can_access_transforms   (or api/*is-superuser?* (and api/*is-data-analyst?*
                                                                   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms
                                                                                                      :exclude-db-ids [audit/audit-db-id])))
-            :can_access_workspaces   (or api/*is-superuser?* (and api/*is-data-analyst?*
-                                                                  (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/view-data
-                                                                                                     :exclude-db-ids [audit/audit-db-id])))
             :is_data_analyst         api/*is-data-analyst?*
             :is_group_manager        api/*is-group-manager?*)))
 
@@ -109,15 +106,17 @@
     (empty tables)
 
     :else
-    (filter
-     (fn [{table-id :id db-id :db_id}]
-       (perms/user-has-permission-for-table?
-        api/*current-user-id*
-        :perms/manage-table-metadata
-        :yes
-        db-id
-        table-id))
-     tables)))
+    (do
+      (perms/prime-table-perms-cache {:db-ids (into #{} (map :db_id) tables)})
+      (filter
+       (fn [{table-id :id db-id :db_id}]
+         (perms/user-has-permission-for-table?
+          api/*current-user-id*
+          :perms/manage-table-metadata
+          :yes
+          db-id
+          table-id))
+       tables))))
 
 (defn filter-schema-by-data-model-perms
   "Given a list of schema, remove the ones for which `*current-user*` does not have data model editing permissions."

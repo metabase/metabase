@@ -55,7 +55,8 @@ export const LegendLayout = ({
   onToggleSeriesVisibility,
   isReversed,
 }: LegendLayoutProps) => {
-  const hasDimensions = isNotNull(width) && isNotNull(height);
+  const hasDimensions =
+    isNotNull(width) && isNotNull(height) && width > 0 && height > 0;
   const itemHeight = !isFullscreen ? MIN_ITEM_HEIGHT : MIN_ITEM_HEIGHT_LARGE;
   const maxXItems = Math.floor(width / MIN_ITEM_WIDTH);
   const maxYItems = Math.floor(height / itemHeight);
@@ -67,7 +68,7 @@ export const LegendLayout = ({
   const isVertical = maxXItems < items.length;
   const isHorizontal = !isVertical;
 
-  const isVisible = hasLegend && !(isVertical && isNarrow);
+  const isVisible = hasDimensions && hasLegend && !(isVertical && isNarrow);
   const visibleLength = isVertical ? minYLabels : items.length;
 
   const legend = (

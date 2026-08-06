@@ -19,8 +19,10 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { useGetCurrentUserQuery } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { PLUGIN_HOMEPAGE_SETTING } from "metabase/plugins";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -115,11 +117,19 @@ const setup = ({
     ? { label: "Custom URL", Control: FakeUrlControl }
     : null;
 
+  // Mount a subscriber here to test invalidation
+  const UserSubscriber = () => {
+    useGetCurrentUserQuery();
+    return null;
+  };
+
   return renderWithProviders(
     <div>
+      <UserSubscriber />
       <HomepageSetting />
       <UndoListing />
     </div>,
+    { storeInitialState: { settings: createMockSettingsState(settings) } },
   );
 };
 

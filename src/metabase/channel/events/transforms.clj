@@ -1,5 +1,7 @@
-(ns metabase.channel.events.transforms)
+(ns metabase.channel.events.transforms
+  (:require
+   [metabase.events.core :as events]))
 
-(derive ::event :metabase/event)
-(derive :event/transform-failed ::event)
-(derive :event/transform-failure-digest ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/transform-failed ::event)
+(events/derive! :event/transform-failure-digest ::event)

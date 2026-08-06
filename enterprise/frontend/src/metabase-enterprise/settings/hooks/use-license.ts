@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { premiumFeaturesApi, useUpdateSettingMutation } from "metabase/api";
+import { premiumFeaturesApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { useDispatch } from "metabase/redux";
+import { useUpdateSettingMutation } from "metabase/settings";
 import { reload } from "metabase/utils/dom";
 import type { TokenStatus } from "metabase-types/api";
 

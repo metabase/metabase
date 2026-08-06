@@ -7,6 +7,7 @@ import {
   setupEnterprisePlugins,
 } from "__support__/enterprise";
 import {
+  setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -18,13 +19,14 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import type {
-  SettingDefinition,
+  EnterpriseSettings,
   TokenFeatures,
   UsageReason,
 } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { Setup } from "../components/Setup";
@@ -33,13 +35,13 @@ export interface SetupOpts {
   step?: SetupStep;
   tokenFeatures?: TokenFeatures;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
-  settingOverrides?: SettingDefinition[];
+  settings?: Partial<EnterpriseSettings>;
 }
 
 export async function setup({
   tokenFeatures = createMockTokenFeatures(),
   enterprisePlugins,
-  settingOverrides = [],
+  settings = {},
 }: SetupOpts = {}) {
   localStorage.clear();
   jest.clearAllMocks();
@@ -50,6 +52,7 @@ export async function setup({
     }),
     settings: mockSettings(
       createMockSettings({
+        ...settings,
         "token-features": tokenFeatures,
         "available-locales": [["en", "English"]],
       }),
@@ -66,11 +69,12 @@ export async function setup({
 
   fetchMock.post("path:/api/session/password-check", { valid: true });
   fetchMock.post("path:/api/setup", {});
+  setupCurrentUserEndpoint(createMockUser({ is_superuser: true }));
   fetchMock.put("path:/api/setting/anon-tracking-enabled", 200);
   setupPropertiesEndpoints(
-    createMockSettings({ "token-features": tokenFeatures }),
+    createMockSettings({ ...settings, "token-features": tokenFeatures }),
   );
-  setupSettingsEndpoints(settingOverrides);
+  setupSettingsEndpoints([]);
   fetchMock.put("path:/api/setting", 200);
 
   renderWithProviders(<Setup />, { storeInitialState: state });
@@ -168,3 +172,11 @@ export const getLastSettingsPutPayload = async () => {
 
 export const skipTokenStep = async (name = "Skip") =>
   await userEvent.click(screen.getByRole("button", { name }));
+
+export const startAiConfigStep = async () =>
+  await userEvent.click(screen.getByRole("button", { name: "Set up AI" }));
+
+export const skipAiConfigStep = async () =>
+  await userEvent.click(
+    screen.getByRole("button", { name: "I'll set this up later" }),
+  );

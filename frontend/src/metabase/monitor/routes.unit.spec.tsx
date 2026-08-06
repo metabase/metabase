@@ -1,8 +1,9 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { renderWithProviders, screen } from "__support__/ui";
-import { reinitialize } from "metabase/plugins";
+import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { getMonitorRedirects, getMonitorRoutes } from "./routes";
@@ -11,7 +12,8 @@ type MonitorGuard =
   | "CanAccessMonitor"
   | "CanAccessMonitorDiagnostics"
   | "CanAccessMonitoringTools"
-  | "CanAccessAlertsManagement";
+  | "CanAccessAlertsManagement"
+  | "CanAccessAiAuditing";
 
 /**
  * These specs assert route-tree structure, not access policy, so the guards are
@@ -37,6 +39,7 @@ jest.mock("./route-guards", () => {
     CanAccessMonitorDiagnostics: stubGuard("CanAccessMonitorDiagnostics"),
     CanAccessMonitoringTools: stubGuard("CanAccessMonitoringTools"),
     CanAccessAlertsManagement: stubGuard("CanAccessAlertsManagement"),
+    CanAccessAiAuditing: stubGuard("CanAccessAiAuditing"),
   };
 });
 
@@ -81,11 +84,13 @@ jest.mock("metabase/monitor/tools/components/Logs", () => {
 jest.mock("metabase/monitor/tools/components/JobInfoApp", () => ({
   JobInfoApp: () => <div data-testid="jobs-page">{"Jobs"}</div>,
 }));
-jest.mock("metabase/monitor/tools/components/ModelCacheRefreshJobs", () => ({
-  ModelCachePage: () => (
-    <div data-testid="model-caching-page">{"Model caching log"}</div>
+jest.mock("metabase/monitor/tools/components/ModelPersistenceLogJobs", () => ({
+  ModelPersistenceLogPage: () => (
+    <div data-testid="model-persistence-log-page">
+      {"Model persistence log"}
+    </div>
   ),
-  ModelCacheRefreshJobModal: () => null,
+  ModelPersistenceLogJobModal: () => null,
 }));
 jest.mock("metabase/monitor/tools/components/LogLevelsModal", () => ({
   LogLevelsModal: () => null,
@@ -148,6 +153,16 @@ const setup = ({
       initialRoute,
       storeInitialState: createMockState({ currentUser: user }),
     },
+  );
+};
+
+const enableAiAuditingRoutes = () => {
+  PLUGIN_AUDIT.isAiAuditingEnabled = true;
+  PLUGIN_AUDIT.getAiAuditingRoutes = () => (
+    <Route
+      path="usage"
+      element={<div data-testid="ai-auditing-page">AI Auditing</div>}
+    />
   );
 };
 
@@ -258,6 +273,22 @@ describe("monitor routes", () => {
         ).not.toBeInTheDocument();
       });
 
+      it("blocks the AI Auditing route when its own guard denies", async () => {
+        enableAiAuditingRoutes();
+
+        setup({
+          initialRoute: Urls.monitorAiAuditingUsage(),
+          deny: ["CanAccessAiAuditing"],
+        });
+
+        expect(
+          await screen.findByTestId("unauthorized-marker"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("ai-auditing-page"),
+        ).not.toBeInTheDocument();
+      });
+
       it("renders NotFound for unknown paths even when both section guards deny (catch-all sits outside the guards)", async () => {
         setup({
           initialRoute: "/monitor/does-not-exist",
@@ -273,25 +304,37 @@ describe("monitor routes", () => {
   });
 
   describe("Tools sections (migrated from /admin/tools)", () => {
-    it("renders the Logs section at /monitor/logs", async () => {
-      setup({ initialRoute: "/monitor/logs" });
+    it.each([["/monitor/logs"], ["/monitor/logs/levels"]])(
+      "renders the Logs section at %s",
+      async (initialRoute) => {
+        setup({ initialRoute });
 
-      expect(await screen.findByTestId("logs-page")).toBeInTheDocument();
-    });
+        expect(await screen.findByTestId("logs-page")).toBeInTheDocument();
+      },
+    );
 
-    it("renders the Jobs section at /monitor/jobs", async () => {
-      setup({ initialRoute: "/monitor/jobs" });
+    it.each([["/monitor/jobs"], ["/monitor/jobs/sync"]])(
+      "renders the Jobs section at %s",
+      async (initialRoute) => {
+        setup({ initialRoute });
 
-      expect(await screen.findByTestId("jobs-page")).toBeInTheDocument();
-    });
+        expect(await screen.findByTestId("jobs-page")).toBeInTheDocument();
+      },
+    );
 
-    it("renders the Model caching log section at /monitor/model-caching", async () => {
-      setup({ initialRoute: "/monitor/model-caching" });
+    it.each([
+      ["/monitor/model-persistence-log"],
+      ["/monitor/model-persistence-log/9"],
+    ])(
+      "renders the Model persistence log section at %s",
+      async (initialRoute) => {
+        setup({ initialRoute });
 
-      expect(
-        await screen.findByTestId("model-caching-page"),
-      ).toBeInTheDocument();
-    });
+        expect(
+          await screen.findByTestId("model-persistence-log-page"),
+        ).toBeInTheDocument();
+      },
+    );
 
     it("renders the Erroring questions upsell at /monitor/errors without the audit_app feature", async () => {
       setup({ initialRoute: "/monitor/errors" });
@@ -339,8 +382,8 @@ describe("monitor routes", () => {
       ["/admin/tools/logs", "logs-page"],
       ["/admin/tools/logs/levels", "logs-page"],
       ["/admin/tools/errors", "errors-upsell"],
-      ["/admin/tools/model-caching", "model-caching-page"],
-      ["/admin/tools/model-caching/9", "model-caching-page"],
+      ["/admin/tools/model-caching", "model-persistence-log-page"],
+      ["/admin/tools/model-caching/9", "model-persistence-log-page"],
       ["/admin/tools/notifications", "notifications-page"],
       ["/admin/tools/notifications/13", "notifications-page"],
     ])("redirects %s into the Monitor space", async (route, testId) => {

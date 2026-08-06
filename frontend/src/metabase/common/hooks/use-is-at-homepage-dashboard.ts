@@ -2,8 +2,7 @@ import { useLocation } from "react-use";
 
 import { useSelector } from "metabase/redux";
 import { getCustomHomePageDashboardId } from "metabase/selectors/app";
-
-import { useSetting } from "./use-setting";
+import { useSetting } from "metabase/settings";
 
 export const useIsAtHomepageDashboard = () => {
   const dashboardId = useSelector(getCustomHomePageDashboardId);

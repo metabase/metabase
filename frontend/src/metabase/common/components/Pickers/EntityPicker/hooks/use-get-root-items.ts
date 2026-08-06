@@ -11,11 +11,11 @@ import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import {
   useGetPersonalCollection,
   useHasTokenFeature,
-  useSetting,
 } from "metabase/common/hooks";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
 import { type DispatchFn, useDispatch, useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import type {
   Collection,
   CollectionNamespace,
