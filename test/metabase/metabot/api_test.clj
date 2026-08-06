@@ -892,6 +892,21 @@
         (is (= "sk-new" (llm.settings/llm-openai-api-key))
             "rotating the key for an env-set provider does not require a provider write and so is allowed")))))
 
+(deftest settings-put-env-shadowed-provider-no-op-write-not-persisted-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider "openai/gpt-5.1"
+                                mb-llm-openai-api-key   nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-old"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                             {:models [{:id "gpt-5.1" :display_name "GPT-5.1"}]})]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (t2/delete! :model/Setting :key "llm-metabot-provider")
+          (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                {:provider "openai"
+                                 :model    "gpt-5.1"
+                                 :api-key  "sk-new"})
+          (testing "a provider/model write that echoes the env var is allowed but persists nothing"
+            (is (nil? (t2/select-one :model/Setting :key "llm-metabot-provider")))))))))
+
 (deftest settings-permissions-test
   (mt/user-http-request :rasta :get 403 "metabot/settings" :provider "anthropic")
   (mt/user-http-request :rasta :put 403 "metabot/settings"

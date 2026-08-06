@@ -773,6 +773,8 @@
   "Throw a 400 when writing `value` to `setting-key` would be silently ignored because an env var shadows it."
   [setting-key value]
   (when (and (some? (setting/env-var-value setting-key))
+             ;; We only complain as an early warning if caller appears to be trying to change the value.
+             ;; set-setting-unless-env-shadowed! will in any case skip the shadowed write.
              (some? value)
              (not= value (setting/get setting-key)))
     (throw (ex-info (tru "This setting is set by the {0} environment variable and cannot be changed via the API."
@@ -804,17 +806,18 @@
                         (optional :llm-google-location            :location))
       (always (provider-api-key-setting-key provider) :api-key))))
 
-(defn- save-credentials!
-  "Persist the credentials override resolved by [[request-credentials]]; nil leaves the saved settings untouched.
+(defn- set-setting-unless-env-shadowed!
+  "Write `value` to `setting-key`, unless an env var supplies the setting and would mask the write."
+  [setting-key value]
+  (when-not (setting/env-var-value setting-key)
+    (setting/set! setting-key value)))
 
-  A write that matches what the setting already reads is skipped — the same writes [[check-not-env-shadowed!]]
-  lets through. A field-level edit layers the request over the saved settings, so most of its fields carry the value
-  that is already there; for an env-backed one, writing it would persist an app-DB row that the env var only masks."
+(defn- save-credentials!
+  "Persist the credentials override resolved by [[request-credentials]]; nil leaves the saved settings untouched."
   [provider credentials]
   (when credentials
-    (doseq [[setting-key value] (credential-setting-writes provider credentials)
-            :when               (not= value (setting/get setting-key))]
-      (setting/set! setting-key value))))
+    (doseq [[setting-key value] (credential-setting-writes provider credentials)]
+      (set-setting-unless-env-shadowed! setting-key value))))
 
 (api.macros/defendpoint :put "/settings"
   :- metabot-settings-response-schema
@@ -868,7 +871,7 @@
     (when credentials
       (save-credentials! provider credentials))
     (when model
-      (setting/set! :llm-metabot-provider (str provider "/" model)))
+      (set-setting-unless-env-shadowed! :llm-metabot-provider (str provider "/" model)))
     (assoc response :value (metabot.settings/llm-metabot-provider))))
 
 (def ^{:arglists '([request respond raise])} routes
