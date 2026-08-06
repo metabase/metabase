@@ -5,6 +5,7 @@ import type {
   Collection,
   IconName,
   RemoteSyncEntityStatus,
+  SettingDefinition,
 } from "metabase-types/api";
 
 import type { CollectionPathSegment } from "./displayGroups";
@@ -37,6 +38,21 @@ type ParsedError = {
   hasBranchMismatch: boolean;
   /** The branch the instance is actually on, when hasBranchMismatch is true. */
   currentBranch: string | null;
+};
+
+// TODO: Should merge with getExtraFormFieldProps from admin/settings/utils.ts
+export const getEnvSettingProps = <T>(
+  setting?: SettingDefinition,
+  extras?: T,
+) => {
+  if (setting?.is_env_setting) {
+    return {
+      description: t`Using ${setting.env_name}`,
+      readOnly: true,
+      ...extras,
+    };
+  }
+  return {};
 };
 
 export const getSyncStatusIcon = (status: RemoteSyncEntityStatus): IconName => {

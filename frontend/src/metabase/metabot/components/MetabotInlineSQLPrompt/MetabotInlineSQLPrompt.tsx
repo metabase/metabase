@@ -53,7 +53,8 @@ export const MetabotInlineSQLPrompt = ({
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
-  const { canUseSqlGeneration } = useUserMetabotPermissions();
+  const { canUseSqlGeneration, hasSqlGenerationAccess } =
+    useUserMetabotPermissions();
   const metabotName = useMetabotName();
 
   const isSubmitDisabled = !canUseSqlGeneration || !value.trim() || isLoading;
@@ -96,6 +97,7 @@ export const MetabotInlineSQLPrompt = ({
           fz="sm"
           p="0.25rem 0.125rem"
           ff="var(--mb-default-font-family)"
+          hasFeatureAccess={hasSqlGenerationAccess}
           onConfigureAi={openAiProviderConfigurationModal}
         />
       ) : (

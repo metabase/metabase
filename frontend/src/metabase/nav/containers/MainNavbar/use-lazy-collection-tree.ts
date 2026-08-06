@@ -272,7 +272,7 @@ export function useLazyCollectionTree({
     [dispatch, firstPageRequest, idsAwaitingChildren],
   );
 
-  const toggleExpand = useCallback((id: NodeId) => {
+  const handleToggleExpand = useCallback((id: NodeId) => {
     setExpandedIds((previous) => {
       const next = new Set(previous);
       if (next.has(id)) {
@@ -280,6 +280,14 @@ export function useLazyCollectionTree({
       } else {
         next.add(id);
       }
+      return next;
+    });
+  }, []);
+
+  const collapse = useCallback((id: NodeId) => {
+    setExpandedIds((previous) => {
+      const next = new Set(previous);
+      next.delete(id);
       return next;
     });
   }, []);
@@ -314,7 +322,9 @@ export function useLazyCollectionTree({
   return {
     collections: tree,
     expandedIds,
-    toggleExpand,
+    setExpandedIds,
+    handleToggleExpand,
+    collapse,
     prefetchChildren,
     loadMore,
     loadingMoreIds,

@@ -264,13 +264,51 @@
         (let [response   (mt/user-http-request :rasta :get 200 (format "measure/%d" id))
               dimensions (:dimensions response)]
           (is (seq dimensions) "should have dimensions")
-          (testing "at least some dimensions have has-field-values"
-            (let [dims-with-hfv (filter :has-field-values dimensions)]
+          (testing "at least some dimensions have has_field_values"
+            (let [dims-with-hfv (filter :has_field_values dimensions)]
               (is (seq dims-with-hfv)
-                  "at least some dimensions should have has-field-values")
+                  "at least some dimensions should have has_field_values")
               (doseq [dim dims-with-hfv]
-                (is (#{"list" "search" "none"} (:has-field-values dim))
-                    (str "dimension " (:name dim) " has-field-values should be list, search, or none"))))))))))
+                (is (#{"list" "search" "none"} (:has_field_values dim))
+                    (str "dimension " (:name dim) " has_field_values should be list, search, or none"))))))))))
+
+(deftest fetch-measure-dimension-wire-format-test
+  (testing "GET /api/measure/:id and GET /api/measure/ serve dimensions and mappings with snake_case keys"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [check-wire (fn [dimensions mappings]
+                           (doseq [dim dimensions]
+                             (is (string? (:display_name dim)))
+                             (is (string? (:effective_type dim)))
+                             (is (not (contains? dim :display-name))
+                                 (str "kebab-case :display-name leaked onto the wire: " (pr-str (keys dim))))
+                             (when (contains? dim :has_field_values)
+                               (is (string? (:has_field_values dim))))
+                             (when-let [group (:group dim)]
+                               (is (string? (:display_name group))
+                                   (str "group keys should be snake_case: " (pr-str (keys group)))))
+                             (doseq [source (:sources dim)]
+                               (is (contains? source :field-id)
+                                   (str "sources entries keep the kebab-case :field-id key: " (pr-str (keys source))))))
+                           (doseq [mapping mappings]
+                             (is (string? (:dimension_id mapping)))
+                             (is (int? (:table_id mapping)))
+                             (is (sequential? (:target mapping)))
+                             (is (not (contains? mapping :dimension-id))
+                                 (str "kebab-case :dimension-id leaked onto the wire: " (pr-str (keys mapping))))))]
+          (testing "GET /:id"
+            (let [{:keys [dimensions dimension_mappings]}
+                  (mt/user-http-request :rasta :get 200 (format "measure/%d" id))]
+              (is (seq dimensions))
+              (is (seq dimension_mappings))
+              (check-wire dimensions dimension_mappings)))
+          (testing "GET / list"
+            (let [listed (mt/user-http-request :rasta :get 200 "measure/")
+                  mine   (first (filter #(= id (:id %)) listed))]
+              (is (some? mine))
+              (check-wire (:dimensions mine) (:dimension_mappings mine)))))))))
 
 (deftest list-test
   (testing "GET /api/measure/"

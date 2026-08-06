@@ -4,7 +4,7 @@ import type { Editor, NodeViewProps } from "@tiptap/core";
 import { useEffect, useState } from "react";
 
 import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
-import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
+import { useUnresolvedDocumentCommentsCount } from "metabase/documents/hooks/use-unresolved-document-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
@@ -41,7 +41,7 @@ export function useBlockMenus({
 
   const { ref: viewportRef, isInViewport } = useNodeInViewport();
 
-  const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+  const unresolvedCommentsCount = useUnresolvedDocumentCommentsCount(_id, {
     skip: !isInViewport,
   });
 

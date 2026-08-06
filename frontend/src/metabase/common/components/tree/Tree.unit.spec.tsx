@@ -21,6 +21,21 @@ const data = [
   },
 ];
 
+const nestedData = [
+  {
+    id: "A",
+    name: "A",
+    icon: "group" as const,
+    children: [{ id: "A1", name: "A1", icon: "group" as const }],
+  },
+  {
+    id: "B",
+    name: "B",
+    icon: "group" as const,
+    children: [{ id: "B1", name: "B1", icon: "group" as const }],
+  },
+];
+
 describe("Tree", () => {
   it("should render collapsed items when selectedId is not specified", () => {
     render(<Tree data={data} onSelect={jest.fn()} />);
@@ -121,24 +136,48 @@ describe("Tree", () => {
       expect(screen.getByText("Item 2")).toBeInTheDocument();
     });
 
-    it("should report expansion to the owner when controlled", () => {
-      const onToggleExpand = jest.fn();
+    it("should report expansion to an external controller", () => {
+      const handleToggleExpand = jest.fn();
       render(
         <Tree
-          data={lazyData}
           onSelect={jest.fn()}
-          expandedIds={new Set()}
-          onToggleExpand={onToggleExpand}
+          tree={{
+            data: lazyData,
+            selectedId: undefined,
+            expandedIds: new Set(),
+            setExpandedIds: jest.fn(),
+            handleToggleExpand,
+            collapse: jest.fn(),
+          }}
         />,
       );
 
       fireEvent.click(screen.getByRole("button"));
 
-      expect(onToggleExpand).toHaveBeenCalledWith(1);
-      // Expansion is the owner's to grant, so nothing expands until they say so.
+      expect(handleToggleExpand).toHaveBeenCalledWith(1);
+      // Expansion is the controller's to grant, so nothing expands until it says so.
       expect(
         screen.queryByTestId("tree-node-skeleton"),
       ).not.toBeInTheDocument();
     });
+  it("expands ancestors when selecting a child whose parent was collapsed", () => {
+    const { rerender } = render(
+      <Tree data={nestedData} onSelect={jest.fn()} selectedId="A1" />,
+    );
+
+    expect(screen.getByText("A1")).toBeInTheDocument();
+
+    // Collapse A by clicking its expand button
+    const expandButtons = screen.getAllByRole("button");
+    fireEvent.click(expandButtons[0]);
+    expect(screen.queryByText("A1")).not.toBeInTheDocument();
+
+    // Change selection to B1
+    rerender(<Tree data={nestedData} onSelect={jest.fn()} selectedId="B1" />);
+    expect(screen.getByText("B1")).toBeInTheDocument();
+
+    // Change selection back to A1 — A should re-expand
+    rerender(<Tree data={nestedData} onSelect={jest.fn()} selectedId="A1" />);
+    expect(screen.getByText("A1")).toBeInTheDocument();
   });
 });

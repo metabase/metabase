@@ -29,7 +29,7 @@ function Guard() {
 }
 
 const setup = (initialRoute = "/a") => {
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route path="/">
       <Route path="a" element={<Guard />} />
       <Route path="b" element={<span>page b</span>} />
@@ -37,7 +37,7 @@ const setup = (initialRoute = "/a") => {
     { withRouter: true, initialRoute },
   );
 
-  return { history: checkNotNull(history) };
+  return { router: checkNotNull(router) };
 };
 
 describe("useRouteLeaveBlocker", () => {
@@ -47,36 +47,36 @@ describe("useRouteLeaveBlocker", () => {
 
   it("parks a push while it blocks", () => {
     shouldBlock.mockReturnValue(true);
-    const { history } = setup();
+    const { router } = setup();
 
-    act(() => history.push("/b"));
+    act(() => router.navigate("/b"));
 
-    expect(history.getCurrentLocation().pathname).toBe("/a");
+    expect(router.location.pathname).toBe("/a");
     expect(screen.getByTestId("blocker-state")).toHaveTextContent("blocked");
   });
 
   it("lets a push through when it does not block", () => {
-    const { history } = setup();
+    const { router } = setup();
 
-    act(() => history.push("/b"));
+    act(() => router.navigate("/b"));
 
-    expect(history.getCurrentLocation().pathname).toBe("/b");
+    expect(router.location.pathname).toBe("/b");
   });
 
   it("parks a replace while it blocks", () => {
     shouldBlock.mockReturnValue(true);
-    const { history } = setup();
+    const { router } = setup();
 
-    act(() => history.replace("/b"));
+    act(() => router.navigate("/b", { replace: true }));
 
-    expect(history.getCurrentLocation().pathname).toBe("/a");
+    expect(router.location.pathname).toBe("/a");
   });
 
   it("hands the attempted destination and the navigation type to the caller", () => {
     shouldBlock.mockReturnValue(true);
-    const { history } = setup();
+    const { router } = setup();
 
-    act(() => history.push("/b?x=1"));
+    act(() => router.navigate("/b?x=1"));
 
     expect(shouldBlock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -92,45 +92,45 @@ describe("useRouteLeaveBlocker", () => {
 
   it("resumes the parked navigation on proceed", async () => {
     shouldBlock.mockReturnValue(true);
-    const { history } = setup();
-    act(() => history.push("/b"));
+    const { router } = setup();
+    act(() => router.navigate("/b"));
 
     await userEvent.click(screen.getByRole("button", { name: "proceed" }));
 
-    expect(history.getCurrentLocation().pathname).toBe("/b");
+    expect(router.location.pathname).toBe("/b");
     expect(screen.getByText("page b")).toBeInTheDocument();
   });
 
   it("drops the parked navigation on reset", async () => {
     shouldBlock.mockReturnValue(true);
-    const { history } = setup();
-    act(() => history.push("/b"));
+    const { router } = setup();
+    act(() => router.navigate("/b"));
 
     await userEvent.click(screen.getByRole("button", { name: "reset" }));
 
-    expect(history.getCurrentLocation().pathname).toBe("/a");
+    expect(router.location.pathname).toBe("/a");
     expect(screen.getByTestId("blocker-state")).toHaveTextContent("unblocked");
   });
 
   it("cancels the browser back button while it blocks", () => {
-    const { history } = setup();
-    act(() => history.push("/b"));
-    act(() => history.push("/a"));
+    const { router } = setup();
+    act(() => router.navigate("/b"));
+    act(() => router.navigate("/a"));
     shouldBlock.mockReturnValue(true);
 
-    act(() => history.goBack());
+    act(() => router.back());
 
-    expect(history.getCurrentLocation().pathname).toBe("/a");
+    expect(router.location.pathname).toBe("/a");
   });
 
   it("lets the browser back button through when it does not block", () => {
-    const { history } = setup();
-    act(() => history.push("/b"));
-    act(() => history.push("/a"));
+    const { router } = setup();
+    act(() => router.navigate("/b"));
+    act(() => router.navigate("/a"));
 
-    act(() => history.goBack());
+    act(() => router.back());
 
-    expect(history.getCurrentLocation().pathname).toBe("/b");
+    expect(router.location.pathname).toBe("/b");
   });
 });
 
@@ -149,7 +149,7 @@ function OuterGuard({ children }: PropsWithChildren) {
 }
 
 const setupNestedGuards = () => {
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route path="/">
       <Route
         path="a"
@@ -164,7 +164,7 @@ const setupNestedGuards = () => {
     { withRouter: true, initialRoute: "/a" },
   );
 
-  return { history: checkNotNull(history) };
+  return { router: checkNotNull(router) };
 };
 
 // react-router holds one blocker per router. The app fans that one out, so a
@@ -179,22 +179,22 @@ describe("useRouteLeaveBlocker with several guards mounted", () => {
 
   it("blocks when only the inner guard says so", () => {
     shouldBlock.mockReturnValue(true);
-    const { history } = setupNestedGuards();
+    const { router } = setupNestedGuards();
 
-    act(() => history.push("/b"));
+    act(() => router.navigate("/b"));
 
-    expect(history.getCurrentLocation().pathname).toBe("/a");
+    expect(router.location.pathname).toBe("/a");
     expect(screen.getByTestId("blocker-state")).toHaveTextContent("blocked");
     expect(screen.getByTestId("outer-state")).toHaveTextContent("unblocked");
   });
 
   it("blocks when only the outer guard says so", () => {
     outerShouldBlock.mockReturnValue(true);
-    const { history } = setupNestedGuards();
+    const { router } = setupNestedGuards();
 
-    act(() => history.push("/b"));
+    act(() => router.navigate("/b"));
 
-    expect(history.getCurrentLocation().pathname).toBe("/a");
+    expect(router.location.pathname).toBe("/a");
     expect(screen.getByTestId("outer-state")).toHaveTextContent("blocked");
     expect(screen.getByTestId("blocker-state")).toHaveTextContent("unblocked");
   });
@@ -202,11 +202,11 @@ describe("useRouteLeaveBlocker with several guards mounted", () => {
   it("gives the prompt to the inner guard when both say so", () => {
     outerShouldBlock.mockReturnValue(true);
     shouldBlock.mockReturnValue(true);
-    const { history } = setupNestedGuards();
+    const { router } = setupNestedGuards();
 
-    act(() => history.push("/b"));
+    act(() => router.navigate("/b"));
 
-    expect(history.getCurrentLocation().pathname).toBe("/a");
+    expect(router.location.pathname).toBe("/a");
     expect(screen.getByTestId("blocker-state")).toHaveTextContent("blocked");
     expect(screen.getByTestId("outer-state")).toHaveTextContent("unblocked");
   });
@@ -214,8 +214,8 @@ describe("useRouteLeaveBlocker with several guards mounted", () => {
   it("asks the outer guard once the inner one is let through", async () => {
     outerShouldBlock.mockReturnValue(true);
     shouldBlock.mockReturnValue(true);
-    const { history } = setupNestedGuards();
-    act(() => history.push("/b"));
+    const { router } = setupNestedGuards();
+    act(() => router.navigate("/b"));
 
     await userEvent.click(screen.getByRole("button", { name: "proceed" }));
 
@@ -223,14 +223,14 @@ describe("useRouteLeaveBlocker with several guards mounted", () => {
     // than releasing the navigation, so a second dirty form still gets a say.
     expect(screen.getByTestId("outer-state")).toHaveTextContent("blocked");
     expect(screen.getByTestId("blocker-state")).toHaveTextContent("unblocked");
-    expect(history.getCurrentLocation().pathname).toBe("/a");
+    expect(router.location.pathname).toBe("/a");
   });
 
   it("resumes the navigation once every guard has been asked", async () => {
     outerShouldBlock.mockReturnValue(true);
     shouldBlock.mockReturnValue(true);
-    const { history } = setupNestedGuards();
-    act(() => history.push("/b"));
+    const { router } = setupNestedGuards();
+    act(() => router.navigate("/b"));
 
     await userEvent.click(screen.getByRole("button", { name: "proceed" }));
     await userEvent.click(
@@ -238,28 +238,28 @@ describe("useRouteLeaveBlocker with several guards mounted", () => {
     );
 
     expect(await screen.findByText("page b")).toBeInTheDocument();
-    expect(history.getCurrentLocation().pathname).toBe("/b");
+    expect(router.location.pathname).toBe("/b");
   });
 
   it("drops the navigation when any guard in the chain resets", async () => {
     outerShouldBlock.mockReturnValue(true);
     shouldBlock.mockReturnValue(true);
-    const { history } = setupNestedGuards();
-    act(() => history.push("/b"));
+    const { router } = setupNestedGuards();
+    act(() => router.navigate("/b"));
 
     await userEvent.click(screen.getByRole("button", { name: "reset" }));
 
-    expect(history.getCurrentLocation().pathname).toBe("/a");
+    expect(router.location.pathname).toBe("/a");
     expect(screen.getByTestId("blocker-state")).toHaveTextContent("unblocked");
     expect(screen.getByTestId("outer-state")).toHaveTextContent("unblocked");
   });
 
   it("lets a navigation through when neither says so", () => {
-    const { history } = setupNestedGuards();
+    const { router } = setupNestedGuards();
 
-    act(() => history.push("/b"));
+    act(() => router.navigate("/b"));
 
-    expect(history.getCurrentLocation().pathname).toBe("/b");
+    expect(router.location.pathname).toBe("/b");
   });
 });
 

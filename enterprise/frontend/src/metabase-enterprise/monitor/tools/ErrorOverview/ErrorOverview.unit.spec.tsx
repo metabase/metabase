@@ -238,7 +238,7 @@ describe("ErrorOverview", () => {
   });
 
   it("passes filter values to the query and resets to the first page", async () => {
-    const { history } = await setup({
+    const { router } = await setup({
       cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
         id: index + 1,
       })),
@@ -269,7 +269,7 @@ describe("ErrorOverview", () => {
       expect(query.offset).toBe(0);
     });
     await waitFor(() => {
-      expect(history?.getCurrentLocation().search).toBe("");
+      expect(router?.location.search).toBe("");
     });
     expect(screen.queryByText("1 question selected")).not.toBeInTheDocument();
   });
@@ -548,7 +548,7 @@ describe("ErrorOverview", () => {
   });
 
   it("paginates showing the total count and syncs the page to the URL", async () => {
-    const { history } = await setup({
+    const { router } = await setup({
       cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
         id: index + 1,
       })),
@@ -575,7 +575,7 @@ describe("ErrorOverview", () => {
       expect(query.offset).toBe(PAGE_SIZE);
     });
     await waitFor(() => {
-      expect(history?.getCurrentLocation().search).toBe("?page=1");
+      expect(router?.location.search).toBe("?page=1");
     });
   });
 
@@ -597,7 +597,7 @@ describe("ErrorOverview", () => {
   it("waits for the empty response before recovering from a stranded page", async () => {
     jest.useFakeTimers({ advanceTimers: true });
     try {
-      const { history, resolveResponse } = await setup({
+      const { router, resolveResponse } = await setup({
         cards: [],
         total: 0,
         initialRoute: "/?page=2",
@@ -608,7 +608,7 @@ describe("ErrorOverview", () => {
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY + 50);
       });
-      expect(history?.getCurrentLocation().search).toBe("?page=2");
+      expect(router?.location.search).toBe("?page=2");
 
       act(() => {
         resolveResponse();
@@ -619,7 +619,7 @@ describe("ErrorOverview", () => {
         expect(query.offset).toBe(0);
       });
       await waitFor(() => {
-        expect(history?.getCurrentLocation().search).toBe("");
+        expect(router?.location.search).toBe("");
       });
     } finally {
       jest.useRealTimers();
@@ -627,7 +627,7 @@ describe("ErrorOverview", () => {
   });
 
   it("links each row to the question and navigates there on click", async () => {
-    const { history } = await setup({ cards: [{ id: 42 }] });
+    const { router } = await setup({ cards: [{ id: 42 }] });
 
     await screen.findByTestId("erroring-question");
     const link = screen.getByRole("link");
@@ -635,32 +635,32 @@ describe("ErrorOverview", () => {
 
     await userEvent.click(link);
     await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe("/question/42");
+      expect(router?.location.pathname).toBe("/question/42");
     });
   });
 
   it("does not navigate in the current tab on cmd/shift-click, leaving it to the native link", async () => {
-    const { history } = await setup({ cards: [{ id: 42 }] });
+    const { router } = await setup({ cards: [{ id: 42 }] });
 
     await screen.findByTestId("erroring-question");
     const link = screen.getByRole("link");
-    const startingPathname = history?.getCurrentLocation().pathname;
+    const startingPathname = router?.location.pathname;
 
     fireEvent.click(link, { metaKey: true });
     fireEvent.click(link, { shiftKey: true });
 
-    expect(history?.getCurrentLocation().pathname).toBe(startingPathname);
+    expect(router?.location.pathname).toBe(startingPathname);
   });
 
   it("navigates to the question when activated from the keyboard", async () => {
-    const { history } = await setup({ cards: [{ id: 42 }] });
+    const { router } = await setup({ cards: [{ id: 42 }] });
 
     await screen.findByTestId("erroring-question");
     screen.getByRole("treegrid", { name: "Erroring questions" }).focus();
     await userEvent.keyboard("{ArrowDown}{Enter}");
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe("/question/42");
+      expect(router?.location.pathname).toBe("/question/42");
     });
   });
 

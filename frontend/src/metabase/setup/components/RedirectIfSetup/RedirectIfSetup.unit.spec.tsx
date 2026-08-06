@@ -34,15 +34,13 @@ describe("RedirectIfSetup", () => {
   });
 
   it("redirects to the home page once the instance is set up", async () => {
-    const { history } = setup(true);
-    await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe("/"),
-    );
+    const { router } = setup(true);
+    await waitFor(() => expect(router?.location.pathname).toBe("/"));
     expect(screen.queryByText("setup page")).not.toBeInTheDocument();
   });
 
   it("stays on setup when has-user-setup flips to true mid-wizard", async () => {
-    const { history, store } = setup(false);
+    const { router, store } = setup(false);
     expect(screen.getByText("setup page")).toBeInTheDocument();
 
     // The wizard's user step calls /api/setup, then reloads settings via
@@ -63,7 +61,7 @@ describe("RedirectIfSetup", () => {
     // Guards against the setting not actually flipping and voiding this test.
     expect(getSetting(store.getState(), "has-user-setup")).toBe(true);
 
-    expect(history?.getCurrentLocation().pathname).toBe("/setup");
+    expect(router?.location.pathname).toBe("/setup");
     expect(screen.getByText("setup page")).toBeInTheDocument();
   });
 });

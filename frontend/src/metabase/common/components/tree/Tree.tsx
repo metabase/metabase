@@ -1,25 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
-import { usePrevious } from "react-use";
-import _ from "underscore";
-
 import type { BoxProps } from "metabase/ui";
 
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { TreeNodeList } from "./TreeNodeList";
 import type { ITreeNodeItem } from "./types";
-import { getInitialExpandedIds } from "./utils";
+import type { TreeController } from "./useTree";
+import { useTree } from "./useTree";
 
-interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
-  data: ITreeNodeItem<TData>[];
+export interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
+  data?: ITreeNodeItem<TData>[];
   selectedId?: ITreeNodeItem<TData>["id"];
   emptyState?: React.ReactNode;
   initialExpandedIds?: ITreeNodeItem<TData>["id"][];
-  /**
-   * Pass this with `onToggleExpand` to drive expansion from outside. A lazily loaded tree needs that, because it has
-   * to fetch a node's children when the node expands.
-   */
-  expandedIds?: Set<ITreeNodeItem<TData>["id"]>;
-  onToggleExpand?: (id: ITreeNodeItem<TData>["id"]) => void;
+  role?: string;
+  onSelect?: (item: ITreeNodeItem<TData>) => void;
+  rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
+  TreeNode?: any;
+  /** Drives expansion from outside. A lazily loaded tree needs it, to fetch a node's children as it expands. */
+  tree?: TreeController<TData>;
+  wrapNodesInListItem?: boolean;
   /** Called when the pointer settles on a node, so a lazy tree can fetch its children ahead of the click. */
   onNodeHover?: (id: ITreeNodeItem<TData>["id"]) => void;
   /** Whether the top level itself was cut short, so its end should load the next page when reached. */
@@ -27,81 +25,34 @@ interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   /** Called with the parent whose level should grow, or `null` for the top level. */
   onLoadMore?: (parentId: ITreeNodeItem<TData>["id"] | null) => void;
   loadingMoreIds?: Set<ITreeNodeItem<TData>["id"] | null>;
-  role?: string;
-  onSelect?: (item: ITreeNodeItem<TData>) => void;
-  rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
-  TreeNode?: any;
 }
 
 function BaseTree<TData = unknown>({
-  data,
-  selectedId,
+  data: dataProp,
+  selectedId: selectedIdProp,
   role = "menu",
   emptyState = null,
   initialExpandedIds,
-  expandedIds: controlledExpandedIds,
-  onToggleExpand: controlledOnToggleExpand,
+  onSelect,
+  TreeNode = DefaultTreeNode,
+  rightSection,
+  tree,
+  wrapNodesInListItem,
   onNodeHover,
   hasMore,
   onLoadMore,
   loadingMoreIds,
-  onSelect,
-  TreeNode = DefaultTreeNode,
-  rightSection,
   ...boxProps
 }: TreeProps<TData>) {
-  const isControlled = controlledExpandedIds != null;
-  const [ownExpandedIds, setExpandedIds] = useState(() => {
-    if (initialExpandedIds) {
-      return new Set(initialExpandedIds);
-    }
-    return new Set(
-      selectedId != null ? getInitialExpandedIds(selectedId, data) : [],
-    );
+  const defaultController = useTree({
+    data: dataProp,
+    selectedId: selectedIdProp,
+    initialExpandedIds,
   });
-  const expandedIds = controlledExpandedIds ?? ownExpandedIds;
-  const previousSelectedId = usePrevious(selectedId);
-  const prevData = usePrevious(data);
-
-  useEffect(() => {
-    if (!selectedId || isControlled) {
-      return;
-    }
-    const dataHasChanged = !_.isEqual(data, prevData);
-    const selectedItemChanged =
-      previousSelectedId !== selectedId && !expandedIds.has(selectedId);
-
-    if (selectedItemChanged || dataHasChanged) {
-      setExpandedIds(
-        (prev) =>
-          new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
-      );
-    }
-  }, [
-    prevData,
-    data,
-    selectedId,
-    previousSelectedId,
-    expandedIds,
-    isControlled,
-  ]);
-
-  const handleToggleExpand = useCallback(
-    (itemId: string | number) => {
-      if (controlledOnToggleExpand) {
-        controlledOnToggleExpand(itemId);
-        return;
-      }
-      if (expandedIds.has(itemId)) {
-        setExpandedIds(
-          (prev) => new Set([...prev].filter((id) => id !== itemId)),
-        );
-      } else {
-        setExpandedIds((prev) => new Set([...prev, itemId]));
-      }
-    },
-    [expandedIds, controlledOnToggleExpand],
-  );
+  const controller = tree ?? defaultController;
+  const data = controller.data ?? dataProp;
+  const selectedId = controller.selectedId ?? selectedIdProp;
+  const { expandedIds, handleToggleExpand } = controller;
 
   if (data.length === 0) {
     return <>{emptyState}</>;
@@ -122,6 +73,7 @@ function BaseTree<TData = unknown>({
       onLoadMore={onLoadMore}
       loadingMoreIds={loadingMoreIds}
       rightSection={rightSection}
+      wrapNodes={wrapNodesInListItem}
       {...boxProps}
     />
   );

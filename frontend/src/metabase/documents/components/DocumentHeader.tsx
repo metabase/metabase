@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { c, t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
+import { getListCommentsQuery } from "metabase/comments/utils";
 import {
   DateTime,
   getFormattedTime,
@@ -32,7 +33,6 @@ import type { Document } from "metabase-types/api";
 
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
-import { getListCommentsQuery } from "../utils/api";
 
 import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 import S from "./DocumentHeader.module.css";
@@ -76,11 +76,16 @@ export const DocumentHeader = ({
   onArchive,
   onShowHistory,
 }: DocumentHeaderProps) => {
-  const { hasComments } = useListCommentsQuery(getListCommentsQuery(document), {
-    selectFromResult: ({ data }) => ({
-      hasComments: !isNewDocument && !!data?.comments?.length,
-    }),
-  });
+  const { hasComments } = useListCommentsQuery(
+    getListCommentsQuery(
+      document ? { target_id: document.id, target_type: "document" } : null,
+    ),
+    {
+      selectFromResult: ({ data }) => ({
+        hasComments: !isNewDocument && !!data?.comments?.length,
+      }),
+    },
+  );
 
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const isAdmin = useSelector(getUserIsAdmin);

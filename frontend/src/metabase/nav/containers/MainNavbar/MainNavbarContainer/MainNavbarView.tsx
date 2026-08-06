@@ -62,7 +62,9 @@ type Props = {
   hasDataAccess: boolean;
   collections: CollectionTreeItem[];
   expandedCollectionIds: Set<string | number>;
+  setExpandedCollectionIds: (ids: Set<string | number>) => void;
   onToggleCollectionExpand: (id: string | number) => void;
+  onCollapseCollection: (id: string | number) => void;
   onCollectionHover: (id: string | number) => void;
   onCollectionLoadMore: (parentId: string | number | null) => void;
   loadingMoreCollectionIds: Set<string | number | null>;
@@ -89,7 +91,9 @@ export function MainNavbarView({
   bookmarks,
   collections,
   expandedCollectionIds,
+  setExpandedCollectionIds,
   onToggleCollectionExpand,
+  onCollapseCollection,
   onCollectionHover,
   onCollectionLoadMore,
   loadingMoreCollectionIds,
@@ -181,6 +185,25 @@ export function MainNavbarView({
       sharedTenantCollections,
       currentUser,
     ]);
+
+  const collectionsController = useMemo(
+    () => ({
+      data: regularCollections,
+      selectedId: collectionItem?.id,
+      expandedIds: expandedCollectionIds,
+      setExpandedIds: setExpandedCollectionIds,
+      handleToggleExpand: onToggleCollectionExpand,
+      collapse: onCollapseCollection,
+    }),
+    [
+      regularCollections,
+      collectionItem?.id,
+      expandedCollectionIds,
+      setExpandedCollectionIds,
+      onToggleCollectionExpand,
+      onCollapseCollection,
+    ],
+  );
 
   const isNewInstance = useSelector(getIsNewInstance);
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
@@ -295,8 +318,7 @@ export function MainNavbarView({
                     collections={regularCollections}
                     selectedId={collectionItem?.id}
                     onSelect={onItemSelect}
-                    expandedIds={expandedCollectionIds}
-                    onToggleExpand={onToggleCollectionExpand}
+                    tree={collectionsController}
                     onNodeHover={onCollectionHover}
                     hasMore={collectionsHaveMore}
                     onLoadMore={onCollectionLoadMore}
@@ -304,11 +326,8 @@ export function MainNavbarView({
                   />
                 ) : (
                   <Tree
-                    data={regularCollections}
-                    selectedId={collectionItem?.id}
                     onSelect={onItemSelect}
-                    expandedIds={expandedCollectionIds}
-                    onToggleExpand={onToggleCollectionExpand}
+                    tree={collectionsController}
                     onNodeHover={onCollectionHover}
                     hasMore={collectionsHaveMore}
                     onLoadMore={onCollectionLoadMore}

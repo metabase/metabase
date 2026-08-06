@@ -23,7 +23,7 @@ import { connect, useDispatch, useSelector } from "metabase/redux";
 import { logout } from "metabase/redux/auth";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import type { LocationDescriptor } from "metabase/router";
+import type { To } from "metabase/router";
 import {
   getIsTenantUser,
   getUser,
@@ -81,7 +81,7 @@ interface Props extends MainNavbarProps {
   currentUser: User | null;
   selectedItems: SelectedItem[];
   logout: () => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
+  onChangeLocation: (location: To) => void;
 }
 
 function MainNavbarContainer({
@@ -151,7 +151,9 @@ function MainNavbarContainer({
   const {
     collections,
     expandedIds,
-    toggleExpand,
+    setExpandedIds,
+    handleToggleExpand,
+    collapse,
     prefetchChildren,
     loadMore,
     loadingMoreIds,
@@ -270,7 +272,9 @@ function MainNavbarContainer({
         isOpen={isOpen}
         collections={collectionTree}
         expandedCollectionIds={expandedIds}
-        onToggleCollectionExpand={toggleExpand}
+        setExpandedCollectionIds={setExpandedIds}
+        onToggleCollectionExpand={handleToggleExpand}
+        onCollapseCollection={collapse}
         onCollectionHover={prefetchChildren}
         onCollectionLoadMore={loadMore}
         loadingMoreCollectionIds={loadingMoreIds}
