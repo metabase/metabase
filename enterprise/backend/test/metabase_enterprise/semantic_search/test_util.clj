@@ -315,7 +315,7 @@
 (def mock-index
   "A mock index for testing low level indexing functions.
   Coincides with what the index-metadata system would create for the mock-embedding-model."
-  (with-redefs [semantic.index/model-table-suffix mock-table-suffix]
+  (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix mock-table-suffix]
     (-> (semantic.index/default-index mock-embedding-model)
         (semantic.index-metadata/qualify-index mock-index-metadata))))
 
