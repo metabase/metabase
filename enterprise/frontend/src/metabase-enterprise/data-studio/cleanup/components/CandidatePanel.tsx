@@ -170,24 +170,26 @@ export function CandidatePanel({
       </Stack>
       {candidate && (
         <>
-          {isCreationCandidate(candidate) && (
+          {showCreateModal && isCreationCandidate(candidate) && (
             <CreateCandidateModal
               key={`create-${candidate.id}`}
               candidate={candidate}
-              opened={showCreateModal}
+              opened
               onClose={() => setShowCreateModal(false)}
               onCreated={handleCreated}
               onStale={handleStale}
             />
           )}
-          <DismissCandidateModal
-            key={`dismiss-${candidate.id}`}
-            candidate={candidate}
-            opened={showDismissModal}
-            onClose={() => setShowDismissModal(false)}
-            onDismissSuccess={handleDismissSuccess}
-            onStale={handleStale}
-          />
+          {showDismissModal && (
+            <DismissCandidateModal
+              key={`dismiss-${candidate.id}`}
+              candidate={candidate}
+              opened
+              onClose={() => setShowDismissModal(false)}
+              onDismissSuccess={handleDismissSuccess}
+              onStale={handleStale}
+            />
+          )}
           <PLUGIN_LIBRARY.PublishTablesModal
             isOpened={showPublishModal}
             tableIds={[candidate.table.id]}
