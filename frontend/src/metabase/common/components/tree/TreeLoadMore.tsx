@@ -6,6 +6,9 @@ import { Box } from "metabase/ui";
 import S from "./TreeLoadMore.module.css";
 import { TreeNodeSkeleton } from "./TreeNodeSkeleton";
 
+/** How far below the fold the end of a level can be and still start loading the next page. */
+const PREFETCH_DISTANCE = 300;
+
 /**
  * Marks the end of a level the server cut short, and loads the next page once it is on screen.
  *
@@ -21,7 +24,12 @@ export function TreeLoadMore({
   isLoading: boolean;
   onLoadMore: () => void;
 }) {
-  const { ref, entry } = useIntersection<HTMLLIElement>({ threshold: 0 });
+  const { ref, entry } = useIntersection<HTMLLIElement>({
+    // Start fetching while the end of the list is still below the fold, so the next page is usually there by the
+    // time the user scrolls to it.
+    rootMargin: `${PREFETCH_DISTANCE}px`,
+    threshold: 0,
+  });
   const isInView = entry?.isIntersecting ?? false;
 
   useEffect(() => {
