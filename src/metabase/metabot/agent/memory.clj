@@ -1,23 +1,34 @@
 (ns metabase.metabot.agent.memory
   "Memory and state management for the agent loop.
-  Tracks conversation history, tool execution steps, and conversation state."
+  Tracks conversation history, tool execution steps, and conversation state.
+
+  `:state` is the live working state readers see — the incoming baseline (prior
+  turns merged, plus seeded viewing context) with this turn's writes applied.
+  `:turn-state` accumulates *only* what this turn wrote, and is what gets
+  persisted to `metabot_message.state`; readers never touch it. Writers record
+  into both."
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [metabase.metabot.schema :as metabot.schema]))
+
+(defn merge-states
+  "Merge two partial states. Map entries (e.g. :queries) merge entry-wise;
+  scalar/vector entries (e.g. :todos) take the later value."
+  [a b]
+  (merge-with (fn [x y] (if (every? map? [x y]) (merge x y) y)) a b))
 
 (defn initialize
-  "Initialize memory from input messages and initial state.
-  State structure:
-  {:queries {query-id query-map}
-   :charts {chart-id chart-map}
-   :todos [...]
-   :transforms {...}}"
+  "Initialize memory from input messages and the incoming baseline `state` (prior
+  turns merged, plus seeded viewing context)."
   ([messages state]
    (initialize messages state nil))
   ([messages state context]
    {:input-messages messages
-    :steps-taken []
-    :context context
-    :state (or state {:queries {} :charts {} :todos [] :transforms {} :link-registry {}})}))
+    :steps-taken    []
+    :context        context
+    :state          (metabot.schema/normalize-state
+                     (or state {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}))
+    :turn-state     {}}))
 
 (defn add-step
   "Add a completed agent step to memory.
@@ -25,16 +36,25 @@
   [memory parts]
   (update memory :steps-taken conj {:parts parts}))
 
+(defn- record
+  "Write `v` at `path` into both the live working `:state` and this turn's
+  `:turn-state` delta. Readers see it via `:state`; persistence keeps `:turn-state`."
+  [memory path v]
+  (-> memory
+      (assoc-in (into [:state] path) v)
+      (assoc-in (into [:turn-state] path) v)))
+
 (defn get-state
-  "Extract conversation state from memory.
-  State includes queries, charts, todos, transforms, etc."
+  "The agent's current full working state."
   [memory]
   (:state memory))
 
-(defn update-state
-  "Update conversation state with new entities."
-  [memory state-updates]
-  (update memory :state merge state-updates))
+(defn turn-state
+  "Only this turn's state writes, or nil if the turn produced none. Persisted to
+  `metabot_message.state`; [[metabase.metabot.persistence/conversation-state]]
+  merges these across a conversation's rows to reconstruct the baseline."
+  [memory]
+  (not-empty (:turn-state memory)))
 
 (defn get-steps
   "Get all steps taken by the agent so far."
@@ -53,15 +73,14 @@
 
 ;;; Query Management
 
-(defn remember-query
-  "Store a query in memory state by its query-id.
+(defn set-query
+  "Store a query in state by its query-id.
   Query should be an MBQL 4 (legacy) or MBQL 5 query map."
   [memory query-id query]
-  (update-in memory [:state :queries] assoc query-id query))
+  (record memory [:queries query-id] query))
 
 (defn find-query
-  "Retrieve a query from memory state by its query-id.
-  Throws if query not found."
+  "Retrieve a query by its query-id. Throws if not found."
   [memory query-id]
   (let [queries (get-in memory [:state :queries] {})]
     (if-let [query (get queries query-id)]
@@ -73,21 +92,15 @@
                        :query-id query-id
                        :available-queries (keys queries)})))))
 
-(defn get-queries
-  "Get all stored queries from memory state."
-  [memory]
-  (get-in memory [:state :queries] {}))
-
 ;;; Chart Management
 
-(defn store-chart
-  "Store a chart configuration in memory state by its chart-id."
+(defn set-chart
+  "Store a chart configuration in state by its chart-id."
   [memory chart-id chart]
-  (update-in memory [:state :charts] assoc chart-id chart))
+  (record memory [:charts chart-id] chart))
 
 (defn find-chart
-  "Retrieve a chart from memory state by its chart-id.
-  Throws if chart not found."
+  "Retrieve a chart by its chart-id. Throws if not found."
   [memory chart-id]
   (let [charts (get-in memory [:state :charts] {})]
     (if-let [chart (get charts chart-id)]
@@ -98,21 +111,15 @@
                        :chart-id chart-id
                        :available-charts (keys charts)})))))
 
-(defn get-charts
-  "Get all stored charts from memory state."
-  [memory]
-  (get-in memory [:state :charts] {}))
-
 ;;; Transform Management
 
-(defn remember-transform
-  "Store a transform in memory state by its ID."
+(defn set-transform
+  "Store a transform in state by its ID."
   [memory transform-id transform]
-  (update-in memory [:state :transforms] assoc (str transform-id) transform))
+  (record memory [:transforms (str transform-id)] transform))
 
 (defn find-transform
-  "Retrieve a transform from memory by its ID.
-  Throws if transform not found."
+  "Retrieve a transform by its ID. Throws if not found."
   [memory transform-id]
   (let [transforms (get-in memory [:state :transforms] {})]
     (if-let [transform (get transforms (str transform-id))]
@@ -123,62 +130,16 @@
                        :transform-id transform-id
                        :available-transforms (keys transforms)})))))
 
-(defn get-transforms
-  "Get all stored transforms from memory state."
-  [memory]
-  (get-in memory [:state :transforms] {}))
-
-;;; Todo Management
+;;; Todos & link registry (whole-value writes)
 
 (defn set-todos
-  "Set the todo list in memory state.
-  Todos should be a vector of todo item maps."
+  "Set the todo list (a vector of todo item maps)."
   [memory todos]
-  (assoc-in memory [:state :todos] (vec todos)))
+  (record memory [:todos] (vec todos)))
 
-(defn get-todos
-  "Get the current todo list from memory state."
-  [memory]
-  (get-in memory [:state :todos] []))
-
-;;; State Loading
-
-(defn load-queries-from-state
-  "Load queries from incoming state into memory."
-  [memory state]
-  (if-let [queries (:queries state)]
-    (reduce-kv remember-query memory queries)
-    memory))
-
-(defn load-charts-from-state
-  "Load charts from incoming state into memory."
-  [memory state]
-  (if-let [charts (:charts state)]
-    (reduce-kv store-chart memory charts)
-    memory))
-
-(defn load-transforms-from-state
-  "Load transforms from incoming state into memory."
-  [memory state]
-  (if-let [transforms (:transforms state)]
-    (reduce-kv remember-transform memory transforms)
-    memory))
-
-(defn load-todos-from-state
-  "Load todos from incoming state into memory."
-  [memory state]
-  (if-let [todos (:todos state)]
-    (set-todos memory todos)
-    memory))
-
-(defn load-link-registry-from-state
-  "Load link registry from incoming state into memory.
-  Ensures keys are strings since JSON round-tripping may keywordize them."
-  [memory state]
-  (if-let [link-registry (not-empty (:link-registry state))]
-    (assoc-in memory [:state :link-registry]
-              ;; We don't use `name` in case the key is a relative url fragment like `:question/123`.
-              (update-keys link-registry #(if (keyword? %)
-                                            (subs (str %) 1)
-                                            %)))
-    memory))
+(defn set-link-registry
+  "Set the link registry (url → stable id mappings)."
+  [memory link-registry]
+  (if (= (get-in memory [:state :link-registry] {}) link-registry)
+    memory
+    (record memory [:link-registry] link-registry)))

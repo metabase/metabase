@@ -1,21 +1,11 @@
-import type { ComponentProps } from "react";
-
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
 
 import { AdminEmbeddingApp } from "./AdminEmbeddingApp";
 
-const TestAdminEmbeddingApp = (
-  props: ComponentProps<typeof AdminEmbeddingApp>,
-) => (
-  <AdminEmbeddingApp {...props}>
-    <div>content</div>
-  </AdminEmbeddingApp>
-);
-
 describe("AdminEmbeddingApp", () => {
   it("shows the sidebar on the setup guide root", () => {
-    renderWithProviders(<Route path="*" component={TestAdminEmbeddingApp} />, {
+    renderWithProviders(<Route path="*" element={<AdminEmbeddingApp />} />, {
       initialRoute: "/admin/embedding/setup-guide",
       withRouter: true,
     });
@@ -27,7 +17,7 @@ describe("AdminEmbeddingApp", () => {
     "/admin/embedding/setup-guide/permissions",
     "/admin/embedding/setup-guide/sso",
   ])("hides the sidebar for %s", (pathname) => {
-    renderWithProviders(<Route path="*" component={TestAdminEmbeddingApp} />, {
+    renderWithProviders(<Route path="*" element={<AdminEmbeddingApp />} />, {
       initialRoute: pathname,
       withRouter: true,
     });
@@ -39,7 +29,7 @@ describe("AdminEmbeddingApp", () => {
   });
 
   it("hides the sidebar for theme editor paths", () => {
-    renderWithProviders(<Route path="*" component={TestAdminEmbeddingApp} />, {
+    renderWithProviders(<Route path="*" element={<AdminEmbeddingApp />} />, {
       initialRoute: "/admin/embedding/themes/42",
       withRouter: true,
     });
@@ -51,7 +41,7 @@ describe("AdminEmbeddingApp", () => {
   });
 
   it("shows the sidebar on the themes listing page", () => {
-    renderWithProviders(<Route path="*" component={TestAdminEmbeddingApp} />, {
+    renderWithProviders(<Route path="*" element={<AdminEmbeddingApp />} />, {
       initialRoute: "/admin/embedding/themes",
       withRouter: true,
     });

@@ -53,7 +53,11 @@ const ItemLinkComponent = ({
   }
 
   return (
-    <ItemLink to={modelToUrl(item)} onClick={() => onClick?.(item)}>
+    <ItemLink
+      draggable={item.model !== "collection"}
+      to={modelToUrl(item)}
+      onClick={() => onClick?.(item)}
+    >
       {children}
     </ItemLink>
   );
@@ -142,9 +146,7 @@ export const Columns = {
     ),
   },
   Name: {
-    Col: ({ isInDragLayer }: { isInDragLayer: boolean }) => (
-      <col style={{ width: isInDragLayer ? "10rem" : undefined }} />
-    ),
+    Col: () => <col />,
     Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
       <SortableColumnHeader
         name="name"

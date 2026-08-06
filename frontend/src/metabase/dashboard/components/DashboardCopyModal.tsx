@@ -1,4 +1,3 @@
-import type { Location } from "history";
 import { dissoc } from "icepick";
 import { useState } from "react";
 import { t } from "ttag";
@@ -7,8 +6,8 @@ import { useCopyDashboardMutation } from "metabase/api";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import type { CopyDashboardFormProperties } from "metabase/common/components/CopyDashboardForm";
 import { CopyModal } from "metabase/common/components/CopyModal";
-import { useDispatch, useSelector } from "metabase/redux";
-import { replace, withRouter } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -16,8 +15,6 @@ import { getDashboardComplete } from "../selectors";
 
 type DashboardCopyModalProps = {
   onClose: () => void;
-  params: { slug?: string };
-  location: Location;
 };
 
 const getTitle = (
@@ -33,12 +30,10 @@ const getTitle = (
     : t`Duplicate "${dashboard.name}" and its questions`;
 };
 
-const DashboardCopyModal = ({
-  onClose,
-  params,
-  location,
-}: DashboardCopyModalProps) => {
-  const dispatch = useDispatch();
+const DashboardCopyModal = ({ onClose }: DashboardCopyModalProps) => {
+  const location = useLocation();
+  const params = useParams();
+  const navigate = useNavigate();
   const [copyDashboard] = useCopyDashboardMutation();
   const dashboard = useSelector(getDashboardComplete);
   const initialCollectionId = useInitialCollectionId({
@@ -79,11 +74,11 @@ const DashboardCopyModal = ({
       }}
       onClose={onClose}
       onSaved={(savedDashboard: Dashboard) =>
-        dispatch(replace(Urls.dashboard(savedDashboard)))
+        navigate(Urls.dashboard(savedDashboard), { replace: true })
       }
       onValuesChange={handleValuesChange}
     />
   );
 };
 
-export const DashboardCopyModalConnected = withRouter(DashboardCopyModal);
+export const DashboardCopyModalConnected = DashboardCopyModal;

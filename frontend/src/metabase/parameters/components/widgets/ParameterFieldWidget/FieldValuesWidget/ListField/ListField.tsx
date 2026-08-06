@@ -1,16 +1,14 @@
+import type { ChangeEventHandler } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import type { InputProps } from "metabase/common/components/Input";
-import { Input } from "metabase/common/components/Input";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { Checkbox, Flex, Text } from "metabase/ui";
+import { Checkbox, Input, Text, TextInput } from "metabase/ui";
 import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
@@ -46,7 +44,6 @@ export const ListField = ({
   optionRenderer,
   placeholder,
   isDashboardFilter,
-  isLoading,
 }: ListFieldProps) => {
   const normalizedValue = useMemo(
     () => normalizeValuesToOptionKeys(value, options),
@@ -152,7 +149,7 @@ export const ListField = ({
     }
   };
 
-  const handleFilterChange: InputProps["onChange"] = (e) =>
+  const handleFilterChange: ChangeEventHandler<HTMLInputElement> = (e) =>
     setFilter(e.target.value);
 
   const handleToggleAll = () => {
@@ -171,14 +168,21 @@ export const ListField = ({
   return (
     <>
       <FilterInputContainer isDashboardFilter={isDashboardFilter}>
-        <Input
-          fullWidth
+        <TextInput
           autoFocus
           placeholder={placeholder}
           value={filter}
           onChange={handleFilterChange}
           onKeyDown={handleKeyDown}
-          onResetClick={() => setFilter("")}
+          rightSectionPointerEvents="all"
+          rightSection={
+            filter.length > 0 ? (
+              <Input.ClearButton
+                c="text-secondary"
+                onClick={() => setFilter("")}
+              />
+            ) : null
+          }
           data-testid="list-field"
         />
       </FilterInputContainer>
@@ -189,41 +193,33 @@ export const ListField = ({
         </EmptyStateContainer>
       )}
 
-      {isLoading && (
-        <Flex p="md" align="center" justify="center">
-          <LoadingSpinner size={24} />
-        </Flex>
-      )}
-
-      {!isLoading && (
-        <OptionsList isDashboardFilter={isDashboardFilter}>
-          {filteredOptions.length > 0 && (
-            <OptionContainer>
-              <Checkbox
-                variant="stacked"
-                label={
-                  <Text c="text-secondary" lh="inherit">
-                    {debouncedFilter ? t`Select these` : t`Select all`}
-                  </Text>
-                }
-                checked={isAll}
-                indeterminate={!isAll && !isNone}
-                onChange={handleToggleAll}
-              />
-            </OptionContainer>
-          )}
-          {filteredOptions.map((option, index) => (
-            <OptionContainer key={index}>
-              <Checkbox
-                data-testid={`${option[0]}-filter-value`}
-                checked={selectedValues.has(option[0])}
-                label={optionRenderer(option)}
-                onChange={() => handleToggleOption(option[0])}
-              />
-            </OptionContainer>
-          ))}
-        </OptionsList>
-      )}
+      <OptionsList isDashboardFilter={isDashboardFilter}>
+        {filteredOptions.length > 0 && (
+          <OptionContainer>
+            <Checkbox
+              variant="stacked"
+              label={
+                <Text c="text-secondary" lh="inherit">
+                  {debouncedFilter ? t`Select these` : t`Select all`}
+                </Text>
+              }
+              checked={isAll}
+              indeterminate={!isAll && !isNone}
+              onChange={handleToggleAll}
+            />
+          </OptionContainer>
+        )}
+        {filteredOptions.map((option, index) => (
+          <OptionContainer key={index}>
+            <Checkbox
+              data-testid={`${option[0]}-filter-value`}
+              checked={selectedValues.has(option[0])}
+              label={optionRenderer(option)}
+              onChange={() => handleToggleOption(option[0])}
+            />
+          </OptionContainer>
+        ))}
+      </OptionsList>
     </>
   );
 };

@@ -1,14 +1,7 @@
 import cx from "classnames";
 import dayjs, { type Dayjs } from "dayjs";
-import Mustache from "mustache";
-import ReactMarkdown from "react-markdown";
 
-import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
-import {
-  clickBehaviorIsValid,
-  getDataFromClicked,
-} from "metabase/parameters/utils/click-behavior";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting/numbers";
 import { removeNewLines } from "metabase/utils/formatting/strings";
@@ -25,18 +18,14 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 
+import { clickBehaviorIsValid, getDataFromClicked } from "./click-data";
 import { formatDateTimeWithUnit, formatRange } from "./date";
 import { formatEmail } from "./email";
 import { formatCoordinate } from "./geography";
 import { formatImage } from "./image";
 import { renderLinkTextForClick } from "./link";
+import { getJsxMarkdownRenderer } from "./registry";
 import { formatUrl } from "./url";
-
-const MARKDOWN_RENDERERS = {
-  a: ({ href, children }: any) => (
-    <ExternalLink href={href}>{children}</ExternalLink>
-  ),
-};
 
 export function formatValue(value: unknown, _options: ColumnSettings = {}) {
   let { prefix, suffix, ...options } = _options;
@@ -60,25 +49,22 @@ export function formatValue(value: unknown, _options: ColumnSettings = {}) {
     // do nothing
   }
   if (options.markdown_template) {
-    if (options.jsx) {
+    const renderJsxMarkdown = options.jsx
+      ? getJsxMarkdownRenderer()
+      : undefined;
+    if (renderJsxMarkdown) {
       // inject the formatted value as "value" and the unformatted value as "raw"
-      const markdown = Mustache.render(options.markdown_template, {
+      return renderJsxMarkdown(options.markdown_template, {
         value: formatted,
         raw: value,
         json: maybeJson,
       });
-      return (
-        <ReactMarkdown components={MARKDOWN_RENDERERS}>
-          {markdown}
-        </ReactMarkdown>
-      );
-    } else {
-      // FIXME: render and get the innerText?
-      console.warn(
-        "formatValue: options.markdown_template not supported when options.jsx = false",
-      );
-      return formatted;
     }
+    // FIXME: render and get the innerText?
+    console.warn(
+      "formatValue: options.markdown_template not supported when options.jsx = false",
+    );
+    return formatted;
   }
   if ((prefix || suffix) && formatted != null) {
     if (options.jsx && typeof formatted !== "string") {

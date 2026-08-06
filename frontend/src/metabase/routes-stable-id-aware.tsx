@@ -3,7 +3,12 @@ import { match } from "ts-pattern";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { WithRouterProps } from "metabase/router";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "metabase/router";
 import { isBaseEntityID } from "metabase-types/api/entity-id";
 
 import {
@@ -20,22 +25,23 @@ type ParamConfig = {
 };
 
 type ParamWithValue = {
-  value: string;
+  value: string | undefined;
   name: string;
   type: ParamType;
   resourceType: ResourceType;
 };
 
-export type EntityIdRedirectProps = WithRouterProps & {
+export type EntityIdRedirectProps = {
   parametersToTranslate: ParamConfig[];
 };
 
 export const EntityIdRedirect = ({
   parametersToTranslate = [],
-  router,
-  params,
-  location,
 }: EntityIdRedirectProps) => {
+  const navigate = useNavigate();
+  const params = useParams();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const currentUrl = location.pathname + location.search;
 
   const paramsWithValues: ParamWithValue[] = useMemo(() => {
@@ -43,14 +49,14 @@ export const EntityIdRedirect = ({
     return parametersToTranslate.map((config) => {
       const value = match(config.type)
         .with("param", () => params[config.name])
-        .with("search", () => location.query[config.name])
+        .with("search", () => searchParams.get(config.name) ?? undefined)
         .exhaustive();
       return {
         ...config,
         value,
       };
     });
-  }, [parametersToTranslate, params, location.query]);
+  }, [parametersToTranslate, params, searchParams]);
 
   const entityIdsToTranslate = useMemo(() => {
     // formats the entity ids in the format {resourceType: [entityId1, entityId2]}
@@ -88,10 +94,10 @@ export const EntityIdRedirect = ({
       }
 
       if (shouldRedirect) {
-        router.push(url.replace("/entity/", "/"));
+        navigate(url.replace("/entity/", "/"));
       }
     }
-  }, [currentUrl, entity_ids, isError, isLoading, paramsWithValues, router]);
+  }, [currentUrl, entity_ids, isError, isLoading, paramsWithValues, navigate]);
 
   if (isError) {
     throw error;
@@ -137,12 +143,7 @@ function handleResults({
 export function createEntityIdRedirect(config: {
   parametersToTranslate: ParamConfig[];
 }) {
-  const Component = (props: WithRouterProps) => (
-    <EntityIdRedirect
-      {...props}
-      parametersToTranslate={config.parametersToTranslate}
-    />
+  return (
+    <EntityIdRedirect parametersToTranslate={config.parametersToTranslate} />
   );
-
-  return Component;
 }

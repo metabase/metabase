@@ -217,7 +217,6 @@
           session-key (session/generate-session-key)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
-      #_{:clj-kondo/ignore [:discouraged-var]}
       (t2.with-temp/with-temp [:model/Session _ {:id (session/generate-session-id)
                                                  :key_hashed (session/hash-session-key session-key)
                                                  :user_id user-id}]
@@ -272,7 +271,6 @@
     (u/the-id test-user-name-or-user-id)))
 
 (defn do-with-group-for-user [group test-user-name-or-user-id f]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (t2.with-temp/with-temp [:model/PermissionsGroup           group group
                            :model/PermissionsGroupMembership _     {:group_id (u/the-id group)
                                                                     :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]

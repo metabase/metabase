@@ -934,7 +934,7 @@ describe("issue 49642", () => {
     H.saveDashboard();
 
     H.filterWidget().click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       cy.findByText("Zackery Bailey").should("not.exist");
       cy.findByPlaceholderText("Search the list").type("Zackery");
       cy.findByText("Zackery Bailey").should("be.visible");
@@ -945,7 +945,7 @@ describe("issue 49642", () => {
         "Zackery Kuhn",
       );
 
-      cy.findByText("Zackery Bailey").should("be.visible");
+      cy.findByText("Zackery Bailey").should("not.exist");
     });
   });
 

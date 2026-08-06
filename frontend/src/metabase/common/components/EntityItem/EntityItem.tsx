@@ -22,10 +22,10 @@ import {
   isPreviewShown,
 } from "metabase/common/collections/utils";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { Link } from "metabase/common/components/Link";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import { Link } from "metabase/router";
 import type { IconProps } from "metabase/ui";
 import {
   ActionIcon,
@@ -43,7 +43,6 @@ import S from "./EntityItem.module.css";
 import {
   EntityIconWrapper,
   EntityItemActions,
-  EntityItemSpinner,
   EntityItemWrapper,
   EntityMenuContainer,
 } from "./EntityItem.styled";
@@ -389,7 +388,6 @@ export const EntityItem = ({
   buttons,
   extraInfo,
   pinned,
-  loading,
   disabled,
 }: {
   name: string;
@@ -406,7 +404,6 @@ export const EntityItem = ({
   buttons?: ReactNode;
   extraInfo?: ReactNode;
   pinned?: boolean;
-  loading?: boolean;
   disabled?: boolean;
 }) => {
   const icon = useMemo(() => ({ name: iconName }), [iconName]);
@@ -436,7 +433,6 @@ export const EntityItem = ({
 
       <EntityItemActions onClick={(e) => e.preventDefault()}>
         {buttons}
-        {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu
           item={item}
           onPin={onPin}

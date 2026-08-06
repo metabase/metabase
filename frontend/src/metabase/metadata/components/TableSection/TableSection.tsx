@@ -6,9 +6,9 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { Link } from "metabase/common/components/Link";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Link } from "metabase/router";
 import {
   ActionIcon,
   Group,
@@ -207,9 +207,7 @@ const TableSectionBase = ({
           >
             {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
 
-            {isUpdatingSorting && (
-              <Loader data-testid="loading-indicator" size="xs" />
-            )}
+            {isUpdatingSorting && <Loader size="xs" />}
 
             {!isSorting && hasFields && (
               <ResponsiveButton

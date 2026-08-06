@@ -4,6 +4,9 @@
    [metabase.metabot.provider-util]
    [metabase.metabot.scope]
    [metabase.metabot.search-models]
+   [metabase.metabot.self]
+   [metabase.metabot.tools.entity-details]
+   [metabase.metabot.tools.util]
    [metabase.metabot.usage]
    [potemkin :as p]))
 
@@ -33,9 +36,20 @@
   search-model->entity-type])
 
 (p/import-vars
+ [metabase.metabot.tools.entity-details
+  get-metric-details
+  get-report-details
+  get-table-details]
+ [metabase.metabot.tools.util
+  ->result-column])
+
+(p/import-vars
  [metabase.metabot.usage
   check-usage-limits!
-  log-ai-usage!])
+  log-ai-usage!]
+ [metabase.metabot.self
+  llm-call-available?
+  llm-call-unavailable-reason])
 
 ;; TODO: Port analyze-chart to use the native LLM infrastructure
 ;; instead of the deleted `metabase.metabot.client`.

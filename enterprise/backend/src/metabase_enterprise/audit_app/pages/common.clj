@@ -8,6 +8,7 @@
    [metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries
     :as qp.middleware.audit]
    [metabase.app-db.core :as mdb]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.query-processor.schema :as qp.schema]
@@ -106,8 +107,10 @@
   (let [driver         (mdb/db-type)
         [sql & params] (compile-honeysql driver honeysql-query)]
     ;; MySQL driver normalizies timestamps. Setting `*results-timezone-id-override*` is a shortcut
-    ;; instead of mocking up a chunk of regular QP pipeline.
-    (binding [qp.timezone/*results-timezone-id-override* (application-db-default-timezone)]
+    ;; instead of mocking up a chunk of regular QP pipeline. `*driver*` must be bound too: the MySQL
+    ;; timestamp reader calls `results-timezone-id`, whose `:keyword` driver arg is validated in tests.
+    (binding [driver/*driver*                            driver
+              qp.timezone/*results-timezone-id-override* (application-db-default-timezone)]
       (try
         (with-open [conn (.getConnection (mdb/app-db))
                     stmt (sql-jdbc.execute/prepared-statement driver conn sql params)

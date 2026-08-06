@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { SchedulePicker } from "metabase/common/components/SchedulePicker/SchedulePicker";
+import { Schedule, toCronString } from "metabase/common/components/Schedule";
 import { FormField } from "metabase/forms";
 import { Box, rem } from "metabase/ui";
 import type {
@@ -90,10 +90,13 @@ export const DatabaseCacheScheduleField = ({
       />
 
       {scheduleMode === "full" && (
-        <SchedulePicker
-          schedule={value ?? DEFAULT_SCHEDULE}
+        <Schedule
+          mt="md"
+          cronString={toCronString(value ?? DEFAULT_SCHEDULE)}
           scheduleOptions={SCHEDULE_OPTIONS}
-          onScheduleChange={handleScheduleChange}
+          onScheduleChange={(_cronString, nextSchedule) =>
+            handleScheduleChange(nextSchedule)
+          }
         />
       )}
 

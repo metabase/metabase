@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
-import { getLocation } from "metabase/selectors/routing";
 import * as Urls from "metabase/urls";
 import type { TransformId } from "metabase-types/api";
 
@@ -20,6 +19,7 @@ import type {
   MetabotChatMessage,
   MetabotUserChatMessage,
 } from "./types";
+import { hasInProgressMessage } from "./utils";
 
 /*
  * Top Level Selectors
@@ -41,6 +41,12 @@ export const getMetabotId = () =>
 export const getDebugMode = createSelector(
   getMetabotState,
   (state) => state.debugMode,
+);
+
+export const getSavedChartCardId = createSelector(
+  [getMetabotState, (_state: State, entityId: string) => entityId],
+  (metabotState, entityId): number | undefined =>
+    metabotState.savedChartCardIds[entityId],
 );
 
 export const getMetabotReactionsState = createSelector(
@@ -97,6 +103,21 @@ export const getMetabotConversation = createSelector(
   },
 );
 
+export const getMetabotConversationId = createSelector(
+  getMetabotConversation,
+  (convo) => convo.conversationId,
+);
+
+export const getIsCurrentConversation = (
+  state: State,
+  agentId: MetabotAgentId,
+  conversationId: string,
+  loadId: string,
+) => {
+  const convo = getMetabotConversation(state, agentId);
+  return convo.conversationId === conversationId && convo.loadId === loadId;
+};
+
 export const getMetabotVisible = createSelector(
   getMetabotConversation,
   (convo) => convo.visible,
@@ -105,6 +126,24 @@ export const getMetabotVisible = createSelector(
 export const getMessages = createSelector(
   getMetabotConversation,
   (convo) => convo.messages,
+);
+
+export const getMetabotConversationTitle = createSelector(
+  getMetabotConversation,
+  (convo) => convo.title,
+);
+
+export const getMetabotConversationForkedFrom = createSelector(
+  getMetabotConversation,
+  (convo) => convo.forkedFromConversationId,
+);
+
+export const getIsPollingForTitle = createSelector(
+  [
+    (state: State) => getMetabotState(state).titlePollingConversationIds,
+    (_state: State, conversationId: string) => conversationId,
+  ],
+  (conversationIds, conversationId) => conversationIds.includes(conversationId),
 );
 
 export const getDeveloperMessage = createSelector(
@@ -121,6 +160,18 @@ export const getLastMessage = createSelector(getMessages, (messages) =>
   _.last(messages),
 );
 
+export const getLastAgentMessageExternalId = createSelector(
+  getMessages,
+  (messages) => {
+    const lastAgentMessage = messages.findLast(
+      (m) => m.role === "agent" && "externalId" in m,
+    );
+    return lastAgentMessage && "externalId" in lastAgentMessage
+      ? lastAgentMessage.externalId
+      : undefined;
+  },
+);
+
 const splitByTurn = (messages: MetabotChatMessage[]): MetabotChatMessage[][] =>
   messages.reduce<MetabotChatMessage[][]>((turns, m) => {
     if (m.role === "user" || turns.length === 0) {
@@ -131,15 +182,18 @@ const splitByTurn = (messages: MetabotChatMessage[]): MetabotChatMessage[][] =>
     return turns;
   }, []);
 
-export const getFinalNavigateToMessageIdsPerTurn = createSelector(
+export const getFinalChartMessageIdsPerTurn = createSelector(
   getMessages,
   (messages) =>
     new Set(
       splitByTurn(messages).flatMap((turn) => {
-        const lastNav = turn.findLast(
-          (m) => m.type === "data_part" && m.part.type === "data-navigate_to",
+        const lastChart = turn.findLast(
+          (m) =>
+            m.type === "data_part" &&
+            m.part.type === "data-generated_entity" &&
+            m.part.data.type === "card",
         );
-        return lastNav ? [lastNav.id] : [];
+        return lastChart ? [lastChart.id] : [];
       }),
     ),
 );
@@ -182,14 +236,24 @@ export const getIsProcessing = createSelector(
   (convo) => convo.isProcessing,
 );
 
-export const getHistory = createSelector(
-  getMetabotConversation,
-  (convo) => convo.history,
+export const getIsConversationInProgress = createSelector(
+  getMessages,
+  hasInProgressMessage,
 );
 
 export const getMetabotRequestState = createSelector(
   getMetabotConversation,
   (convo) => convo.state,
+);
+
+export const getConversationChart = createSelector(
+  [getMetabotState, (_state: State, chartId: string) => chartId],
+  (metabotState, chartId): Urls.ConversationChart | undefined => {
+    const charts = Object.values(metabotState.conversations)
+      .map((convo) => convo?.state?.charts?.[chartId])
+      .filter((chart) => chart != null);
+    return charts.find(Urls.hasLinkableChartQuery) ?? charts[0];
+  },
 );
 
 export const getIsLongMetabotConversation = createSelector(
@@ -220,34 +284,47 @@ export const getProfileOverride = createSelector(
   (convo) => convo.profileOverride,
 );
 
-export const getProfile = createSelector(
-  [getProfileOverride, getDebugMode, getLocation],
-  (profileOverride, debugMode, location): MetabotProfileId | undefined => {
-    const isTransformsPage = location.pathname.startsWith(Urls.transformList());
-    return match({ debugMode, isTransformsPage })
-      .returnType<MetabotProfileId | undefined>()
-      .with(
-        { debugMode: false, isTransformsPage: true },
-        () => "transforms_codegen",
-      )
-      .with(
-        { debugMode: true, isTransformsPage: true },
-        () => profileOverride ?? "transforms_codegen",
-      )
-      .otherwise(() => profileOverride);
-  },
-);
+export const getProfile = (
+  state: State,
+  agentId: MetabotAgentId,
+  isTransformsPage: boolean,
+): MetabotProfileId | undefined => {
+  const profileOverride = getProfileOverride(state, agentId);
+  const debugMode = getDebugMode(state);
+  return match({ debugMode, isTransformsPage })
+    .returnType<MetabotProfileId | undefined>()
+    .with(
+      { debugMode: false, isTransformsPage: true },
+      () => "transforms_codegen",
+    )
+    .with(
+      { debugMode: true, isTransformsPage: true },
+      () => profileOverride ?? "transforms_codegen",
+    )
+    .otherwise(() => profileOverride);
+};
 
 export const getAgentRequestMetadata = createSelector(
-  getHistory,
-  getMetabotRequestState,
-  getProfile,
-  (history, state, profile) => ({
-    state,
-    // NOTE: need end to end support for ids on messages as BE will error if ids are present
-    history: history.map((h) =>
-      h.id && h.id.startsWith(`msg_`) ? _.omit(h, "id") : h,
-    ),
+  [
+    (
+      state: State,
+      agentId: MetabotAgentId,
+      _retryMessageId: string | undefined,
+      isTransformsPage: boolean,
+    ) => getProfile(state, agentId, isTransformsPage),
+    getLastAgentMessageExternalId,
+    (
+      _state: State,
+      _agentId: MetabotAgentId,
+      retryMessageId: string | undefined,
+    ) => retryMessageId,
+  ],
+  (profile, parentMessageId, retryMessageId) => ({
+    // a retry regenerates the response to an existing message, so it carries
+    // retry_message_id in place of parent_message_id — never both
+    ...(retryMessageId
+      ? { retry_message_id: retryMessageId }
+      : { parent_message_id: parentMessageId }),
     ...(profile ? { profile_id: profile } : {}),
   }),
 );

@@ -1,7 +1,7 @@
-import type { LocationDescriptor } from "history";
 import type { Action, ActionImpl } from "kbar";
 import type React from "react";
 
+import type { To } from "metabase/router";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName, ModerationReviewStatus } from "metabase-types/api";
 
@@ -15,7 +15,7 @@ interface PaletteActionExtras {
      * href: If defined, the palette item will be wrapped in a link. This allows for
      * browser interactions to open items in new tabs/windows
      */
-    href?: LocationDescriptor | null;
+    href?: To | null;
     /** iconColor: Color of the icon in the list item*/
     iconColor?: ColorName;
     /** subtext: text to come after the item name */

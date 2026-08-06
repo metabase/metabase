@@ -1,109 +1,86 @@
 import cx from "classnames";
-import type { Location } from "history";
-import { Component } from "react";
+import { useEffect, useRef } from "react";
+import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/redux";
+import { connect, useSelector } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import FieldDetail from "metabase/reference/databases/FieldDetail";
 import * as actions from "metabase/reference/reference";
-import { type InjectedRouteProps, withRouteProps } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import type { ClearStateProps, FetchProps } from "../reference";
-import type {
-  ReferenceRouteParams,
-  ReferenceRouteProps,
-  StateWithReference,
-} from "../selectors";
 import {
+  type ReferenceRouteParams,
   getDatabase,
-  getDatabaseId,
   getField,
   getIsEditing,
   getTable,
+  getTableId,
 } from "../selectors";
-import type { StubbedDatabase, StubbedField, StubbedTable } from "../types";
 
 import FieldSidebar from "./FieldSidebar";
 
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => ({
-  database: getDatabase(state, props),
-  table: getTable(state, props),
-  field: getField(state, props),
-  databaseId: getDatabaseId(state, props),
-  isEditing: getIsEditing(state),
-  metadata: getMetadata(state),
-});
-
 const mapDispatchToProps = {
   ...metadataActions,
+  fetchTableMetadataAndForeignKeys,
   ...actions,
 };
 
 interface FieldDetailContainerProps extends FetchProps, ClearStateProps {
-  // From React Router
-  params: ReferenceRouteParams;
-  location: Location;
-
-  // From route definition / parent
-  style: React.CSSProperties;
-
-  // From mapStateToProps
-  database: StubbedDatabase;
-  databaseId: number;
-  table: StubbedTable;
-  field: StubbedField;
-  isEditing?: boolean;
-
-  // From mapDispatchToProps (metadataActions spread)
-  fetchDatabaseMetadata: (id: number) => Promise<unknown>;
+  fetchTableMetadataAndForeignKeys: (args: { id: number }) => Promise<unknown>;
 }
 
-class FieldDetailContainer extends Component<FieldDetailContainerProps> {
-  fetchContainerData() {
-    actions.wrappedFetchDatabaseMetadata(this.props, this.props.databaseId);
+function FieldDetailContainer(props: FieldDetailContainerProps) {
+  const { pathname } = useLocation();
+  const previousPathname = usePrevious(pathname);
+  const params = useParams<ReferenceRouteParams>();
+
+  const database = useSelector((state) => getDatabase(state, { params }));
+  const table = useSelector((state) => getTable(state, { params }));
+  const field = useSelector((state) => getField(state, { params }));
+  const tableId = useSelector((state) => getTableId(state, { params }));
+  const isEditing = useSelector(getIsEditing);
+  // `FieldDetail` reads `metadata` but doesn't select it itself.
+  const metadata = useSelector(getMetadata);
+
+  // Dispatched during render, not from an effect, to reproduce the
+  // `UNSAFE_componentWillMount` this replaced: the child reads `loading` from
+  // the store, so it has to be true before the child's first render. From an
+  // effect (even `useLayoutEffect`) the tree commits once with no data, and the
+  // reference header lays out wrong — see DEV-2430.
+  const didFetch = useRef(false);
+  if (!didFetch.current) {
+    didFetch.current = true;
+    actions.wrappedFetchTableMetadata(props, tableId);
   }
 
-  UNSAFE_componentWillMount() {
-    this.fetchContainerData();
-  }
-
-  UNSAFE_componentWillReceiveProps(newProps: FieldDetailContainerProps) {
-    if (this.props.location.pathname === newProps.location.pathname) {
-      return;
+  useEffect(() => {
+    const pathnameChanged =
+      previousPathname !== undefined && previousPathname !== pathname;
+    if (pathnameChanged) {
+      actions.clearState(props);
     }
+  }, [pathname, previousPathname, props]);
 
-    actions.clearState(newProps);
-  }
-
-  render() {
-    const { database, table, field, isEditing } = this.props;
-
-    return (
-      <SidebarLayout
-        className={cx(CS.flexFull, CS.relative)}
-        style={isEditing ? { paddingTop: "43px" } : {}}
-        sidebar={
-          <FieldSidebar database={database} table={table} field={field} />
-        }
-      >
-        <FieldDetail {...this.props} />
-      </SidebarLayout>
-    );
-  }
+  return (
+    <SidebarLayout
+      className={cx(CS.flexFull, CS.relative)}
+      style={isEditing ? { paddingTop: "43px" } : {}}
+      sidebar={<FieldSidebar database={database} table={table} field={field} />}
+    >
+      <FieldDetail params={params} metadata={metadata} />
+    </SidebarLayout>
+  );
 }
 
 // connect HOC tangle: action-type constants in `actions` + JS-typed metadata thunks.
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default withRouteProps(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-    // Unjustified type cast. FIXME
-  )(FieldDetailContainer as unknown as React.ComponentType<InjectedRouteProps>),
-);
+export default connect(
+  null,
+  mapDispatchToProps,
+  // Unjustified type cast. FIXME
+)(FieldDetailContainer as unknown as React.ComponentType);

@@ -8,8 +8,6 @@ import {
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
-import { useGetAdminSettingsDetailsQuery } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -21,6 +19,10 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import {
+  useAdminSetting,
+  useGetAdminSettingsDetailsQuery,
+} from "metabase/settings";
 import { Flex, Stack } from "metabase/ui";
 import { provisioningOptions } from "metabase-enterprise/auth/utils";
 import type {

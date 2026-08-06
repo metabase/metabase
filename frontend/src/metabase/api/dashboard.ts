@@ -27,7 +27,7 @@ import type {
   UpdateDashboardRequest,
 } from "metabase-types/api";
 
-import { Api } from "./api";
+import { Api, type RtkCacheKeyed } from "./api";
 import {
   idTag,
   invalidateTags,
@@ -40,7 +40,9 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
+import { userApi } from "./user";
 import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -103,17 +105,9 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       getDashboardCardQuery: builder.query<
         Dataset,
-        DashboardCardQueryRequest & { _refetchDeps?: unknown }
+        DashboardCardQueryRequest & RtkCacheKeyed
       >({
-        // `_refetchDeps` is part of the RTK cache key (so imperative runners can
-        // force a unique key per call) but must not be sent to the server.
-        query: ({
-          dashboardId,
-          dashcardId,
-          cardId,
-          _refetchDeps,
-          ...body
-        }) => ({
+        query: ({ dashboardId, dashcardId, cardId, ...body }) => ({
           method: "POST",
           url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
           body,
@@ -123,15 +117,9 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       getDashboardCardQueryPivot: builder.query<
         Dataset,
-        DashboardCardQueryRequest & { _refetchDeps?: unknown }
+        DashboardCardQueryRequest & RtkCacheKeyed
       >({
-        query: ({
-          dashboardId,
-          dashcardId,
-          cardId,
-          _refetchDeps,
-          ...body
-        }) => ({
+        query: ({ dashboardId, dashcardId, cardId, ...body }) => ({
           method: "POST",
           url: `/api/dashboard/pivot/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
           body,
@@ -233,6 +221,25 @@ export const dashboardApi = Api.injectEndpoints({
             listTag("revision"),
             listTag("subscription"),
           ]),
+        onQueryStarted: (_, { dispatch, queryFulfilled }) =>
+          // Archiving the dashboard the current user has set as their custom
+          // homepage clears the homepage. Drop it from the cached current user
+          // too so the app doesn't redirect to an archived dashboard.
+          handleQueryFulfilled(queryFulfilled, (dashboard) => {
+            if (dashboard.archived) {
+              dispatch(
+                userApi.util.updateQueryData(
+                  "getCurrentUser",
+                  undefined,
+                  (draft) => {
+                    if (draft?.custom_homepage?.dashboard_id === dashboard.id) {
+                      draft.custom_homepage = null;
+                    }
+                  },
+                ),
+              );
+            }
+          }),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
         query: (id) => ({

@@ -109,6 +109,8 @@ If you're using [JWT](../people-and-groups/authenticating-with-jwt.md), you can 
 https://metabase.example.com/auth/sso?jwt=<token>&return_to=%2Fdashboard%2F1
 ```
 
+To avoid putting the JWT in the URL, you can also authenticate with a `POST` request and a JSON body. See [JWT-based authentication](../people-and-groups/authenticating-with-jwt.md).
+
 You must URL encode (or double encode, depending on your web setup) all of the parameters in your redirect link, including parameters for filters (e.g., `filter=value`) and [UI settings](#showing-or-hiding-metabase-ui-components) (e.g., `top_nav=true`). For example, if you added two filter parameters to the JWT example shown above, your `src` link would become:
 
 ```

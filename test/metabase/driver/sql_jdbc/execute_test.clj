@@ -85,6 +85,7 @@
 
 (deftest try-ensure-open-conn-sets-non-recursive-options-test
   (testing "try-ensure-open-conn! sets connection options as non-recursive"
+    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
     #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (mt/test-drivers (disj (descendants driver/hierarchy :sql-jdbc)
                            ;; too tricky to stub the connection

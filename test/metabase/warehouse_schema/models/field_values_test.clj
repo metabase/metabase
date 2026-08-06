@@ -7,7 +7,6 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.serialization :as serdes]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -440,16 +439,6 @@
                                                 :hash_key "random-hash"}]
     (t2/update! :model/FieldValues (:id fv) {:updated_at (t/zoned-date-time)})
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
-
-(deftest identity-hash-test
-  (testing "Field hashes are composed of the name and the table's identity-hash"
-    (mt/with-temp [:model/Database    db    {:name "field-db" :engine :h2}
-                   :model/Table       table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
-                   :model/Field       field {:name "sku" :table_id (:id table)}
-                   :model/FieldValues fv    {:field_id (:id field)}]
-      (is (= "cb0ff8ea"
-             (serdes/raw-hash [(serdes/identity-hash field)])
-             (serdes/identity-hash fv))))))
 
 (deftest select-coherence-test
   (testing "We cannot perform queries with invalid mixes of type and hash_key, which would return nothing"

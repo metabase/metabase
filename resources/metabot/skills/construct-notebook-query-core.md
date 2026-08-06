@@ -12,7 +12,7 @@ Construct a Metabase MBQL 5 query as a JSON object describing the query shape. M
 > Advanced topics — joins, implicit joins, multi-stage queries, `source-card`, metrics, measures/segments, expressions, and aggregation references — are in the **construct-notebook-query-advanced** skill. The full operator/function catalogs are in **construct-notebook-query-operators**. Load those skills when you need them.
 
 Return:
-- `query`: a JSON **object** (never a quoted string). The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by `entity_details` / metadata tools.
+- `query`: a JSON **object** (never a quoted string). The target database is inferred from the first stage's `source-table` (or `source-card`) — use the **exact** database name reported by search / `read_resource` / metadata tools.
 - `visualization`: optional `{"chart_type": "bar"}` (sibling of `query`, never embedded inside it).
 
 ## Minimal example — count of orders by month
@@ -107,10 +107,10 @@ Order by — direction wraps a ref; works on field refs or aggregation refs:
 Shape rules:
 - **Always include `{}` options in every clause**, even when empty. `["count"]` is wrong — it must be `["count", {}]`.
 - **The query is a JSON object**, not a string. Send it directly as the `"query"` field of the call.
-- **Use the exact database name** reported by `entity_details` (e.g. `"Sample Database"`, not `"Sample"`) as the first element of every portable FK. Near-misses surface `Unknown database` instead of silently picking one. Cross-database queries are not supported.
+- **Use the exact database name** reported by search / `read_resource` (e.g. `"Sample Database"`, not `"Sample"`) as the first element of every portable FK. Near-misses surface `Unknown database` instead of silently picking one. Cross-database queries are not supported.
 - **Use portable FKs**, not numeric IDs. Schemaless databases use `null` in the schema slot. JSON-unfolded fields append path segments.
 - **Clause heads are lowercase, hyphenated**: `"count"`, `"sum-where"`, `"time-interval"`, `"get-day-of-week"`. Not underscores, not camelCase.
-- **Never invent a `source-card` entity_id.** It must be a 21-char string copied verbatim from `entity_details` / search — no patterns, no numeric ids, no `card__<id>`.
+- **Never invent a `source-card` entity_id.** It must be a 21-char string copied verbatim from search / `read_resource` — no patterns, no numeric ids, no `card__<id>`.
 - **`source-card` columns are referenced by output name** (string in slot 3), not portable FK.
 
 Anti-hallucination:

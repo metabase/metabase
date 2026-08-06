@@ -143,31 +143,25 @@ export const calculateLegendRows = ({
   };
 };
 
-function calculateNumRowsCols(
+export function calculateNumRowsCols(
   items: LegendItem[],
   width: number,
   fontSize: number,
   fontWeight: number,
   legendItemMarginRight: number,
 ) {
-  let colWidth: number;
-  let numCols = 2;
-
-  do {
-    if (numCols >= items.length) {
-      return { numRows: 1, numCols: items.length };
-    }
-
-    colWidth = Math.floor(width / ++numCols);
-  } while (
-    items.every(
+  const maxItemWidth = Math.max(
+    ...items.map(
       (item) =>
-        calculateItemWidth(item, fontSize, fontWeight) +
-          legendItemMarginRight <=
-        colWidth,
-    )
+        calculateItemWidth(item, fontSize, fontWeight) + legendItemMarginRight,
+    ),
   );
-  numCols--; // This value failed the test, so we decrement to the last passing value
+
+  // Most columns that still fit the widest item without truncation. This grid legend keeps a
+  // minimum of two columns (truncating names if needed) so it never collapses to a single tall
+  // column -- see #45149; only capped lower when there's a single item.
+  const numColsThatFit = Math.floor(width / Math.ceil(maxItemWidth));
+  let numCols = Math.min(items.length, Math.max(2, numColsThatFit));
 
   const numRows = Math.ceil(items.length / numCols);
 

@@ -1,6 +1,5 @@
 (ns metabase.query-processor.referenced-cards-test
-  "Tests for the dynamic-goals engine: running referenced queries and adding their values under
-  `data.referenced_cards`."
+  "Tests for running referenced queries and adding their values under `data.referenced_cards`."
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here since this tests the REST API which doesn't use
                        ;; metadata providers. Same exception as [[metabase.query-processor.card-test]].
@@ -37,7 +36,7 @@
 
 (deftest dataset-endpoint-column-projection-test
   (testing "only the requested columns are returned for a referenced card"
-    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues)}]
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:limit 1})}]
       (let [response (mt/user-http-request
                       :crowberto :post 202 "dataset"
                       (assoc (mt/mbql-query venues {:aggregation [[:count]]})
@@ -45,8 +44,21 @@
             goal     (get (ref-cards response) goal-id)]
         (is (= "completed" (:status goal)))
         (is (= ["NAME" "PRICE"] (map :name (get-in goal [:data :cols]))))
-        (testing "capped to a single row"
-          (is (= 1 (count (get-in goal [:data :rows])))))))))
+        (is (= 1 (count (get-in goal [:data :rows]))))))))
+
+(deftest dataset-endpoint-multi-row-referenced-card-test
+  (testing "a referenced card returning more than one row fails softly instead of being truncated"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (let [response (mt/user-http-request
+                      :crowberto :post 202 "dataset"
+                      (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                             :referenced_cards [{:card_id goal-id :columns ["NAME"]}]))
+            goal     (get (ref-cards response) goal-id)]
+        (testing "main query still succeeds"
+          (is (= "completed" (:status response)))
+          (is (= [[100]] (get-in response [:data :rows]))))
+        (is (= "failed" (:status goal)))
+        (is (re-find #"more rows than the requested maximum" (:error goal)))))))
 
 (deftest dataset-endpoint-error-handling-test
   (testing "a referenced card that cannot be resolved fails softly without failing the main query"
@@ -80,14 +92,24 @@
             (is (= "failed" (:status goal)))
             (is (string? (:error goal)))))))))
 
-(deftest dataset-endpoint-spec-cap-test
-  (testing (format "more than %d referenced cards is a 400" referenced-cards/max-specs)
-    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}]
-      (let [specs (vec (repeat (inc referenced-cards/max-specs) {:card_id goal-id :columns ["count"]}))]
-        (is (mt/user-http-request
-             :crowberto :post 400 "dataset"
-             (assoc (mt/mbql-query venues {:aggregation [[:count]]})
-                    :referenced_cards specs)))))))
+(deftest dataset-endpoint-max-rows-test
+  (testing "a spec can ask for more than one row"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues {:limit 3})}]
+      (let [response (mt/user-http-request
+                      :crowberto :post 202 "dataset"
+                      (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                             :referenced_cards [{:card_id goal-id :columns ["NAME"] :max_rows 3}]))
+            goal     (get (ref-cards response) goal-id)]
+        (is (= "completed" (:status goal)))
+        (is (= 3 (count (get-in goal [:data :rows])))))))
+  (testing "a card returning more than the spec asked for still fails"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (let [response (mt/user-http-request
+                      :crowberto :post 202 "dataset"
+                      (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                             :referenced_cards [{:card_id goal-id :columns ["NAME"] :max_rows 3}]))
+            goal     (get (ref-cards response) goal-id)]
+        (is (= "failed" (:status goal)))))))
 
 (deftest dataset-endpoint-no-referenced-cards-test
   (testing "omitting `referenced_cards` leaves the response untouched"
@@ -97,26 +119,26 @@
       (is (= "completed" (:status response)))
       (is (nil? (get-in response [:data :referenced_cards]))))))
 
-(deftest viz-settings->specs-test
+(deftest viz-settings->goal-specs-test
   (testing "GoalSource references are extracted from the 3 dynamic-goal viz settings and grouped by card"
     (testing "a :graph.goal_value GoalSource"
       (is (= [{:card_id 1 :columns ["total"]}]
-             (referenced-cards/viz-settings->specs {:graph.goal_value {:card_id 1 :column "total"}}))))
+             (referenced-cards/viz-settings->goal-specs {:graph.goal_value {:card_id 1 :column "total"}}))))
     (testing ":gauge.segments and :scalar.segments min/max, grouped + de-duped by card"
       (is (= {1 ["sum" "avg"]
               2 ["total"]}
              (into {} (map (juxt :card_id :columns))
-                   (referenced-cards/viz-settings->specs
+                   (referenced-cards/viz-settings->goal-specs
                     {:gauge.segments  [{:min 0 :max {:card_id 1 :column "sum"}}
                                        {:min {:card_id 1 :column "avg"} :max {:card_id 1 :column "sum"}}]
                      :scalar.segments [{:min {:card_id 2 :column "total"} :max nil :color "red"}]})))))
     (testing "static numbers and bare-string self-column references are ignored"
-      (is (nil? (referenced-cards/viz-settings->specs
+      (is (nil? (referenced-cards/viz-settings->goal-specs
                  {:graph.goal_value 100
                   :gauge.segments   [{:min 0 :max 50}
                                      {:min "self_col" :max 100}]})))))
   (testing "no goal settings at all -> nil"
-    (is (nil? (referenced-cards/viz-settings->specs {})))))
+    (is (nil? (referenced-cards/viz-settings->goal-specs {})))))
 
 (deftest card-endpoint-viz-settings-referenced-cards-test
   (testing "POST /api/card/:id/query derives referenced cards from a :graph.goal_value GoalSource"
@@ -176,3 +198,11 @@
           (is (= "completed" (:status response)))
           (is (= "completed" (:status goal)))
           (is (= [[1000]] (get-in goal [:data :rows]))))))))
+
+(deftest dataset-endpoint-max-rows-ceiling-test
+  (testing "max_rows above the unaggregated query row limit is a 400"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (is (mt/user-http-request
+           :crowberto :post 400 "dataset"
+           (assoc (mt/mbql-query venues {:aggregation [[:count]]})
+                  :referenced_cards [{:card_id goal-id :max_rows 1000000}]))))))

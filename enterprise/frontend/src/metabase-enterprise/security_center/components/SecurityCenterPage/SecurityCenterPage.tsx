@@ -1,12 +1,13 @@
-import type { Location } from "history";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
+import { useSearchParams } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -40,11 +41,8 @@ const DEFAULT_FILTER: AdvisoryFilter = {
 
 const MAX_POLL_COUNT = 30;
 
-type SecurityCenterPageProps = {
-  location?: Location<{ open?: string }>;
-};
-
-export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
+export function SecurityCenterPage() {
+  const [searchParams] = useSearchParams();
   const [isPolling, setIsPolling] = useState(false);
   const {
     data: advisories,
@@ -57,7 +55,7 @@ export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
     useSyncSecurityAdvisoriesMutation();
   const [filter, setFilter] = useState<AdvisoryFilter>(DEFAULT_FILTER);
   const [settingsOpen, setSettingsOpen] = useState(
-    () => location?.query?.open === "notifications",
+    () => searchParams.get("open") === "notifications",
   );
   const notificationConfig = useNotificationConfigState();
   const version = useSetting("version");
@@ -126,18 +124,20 @@ export function SecurityCenterPage({ location }: SecurityCenterPageProps = {}) {
 
   if (isError) {
     return (
-      <Box className={S.root}>
-        <Stack gap="lg" className={S.header}>
-          <Title order={1}>{t`Security Center`}</Title>
-        </Stack>
-        <Stack gap="xl" className={S.content}>
-          <EmptyState
-            className={S.emptyState}
-            icon="warning_triangle_filled"
-            message={t`Something went wrong loading security advisories.`}
-          />
-        </Stack>
-      </Box>
+      <AdminSettingsLayout>
+        <Box className={S.root}>
+          <Stack gap="lg" className={S.header}>
+            <Title order={1}>{t`Security Center`}</Title>
+          </Stack>
+          <Stack gap="xl" className={S.content}>
+            <EmptyState
+              className={S.emptyState}
+              icon="warning_triangle_filled"
+              message={t`Something went wrong loading security advisories.`}
+            />
+          </Stack>
+        </Box>
+      </AdminSettingsLayout>
     );
   }
 

@@ -1,5 +1,5 @@
 import { renderWithProviders, screen, within } from "__support__/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Dataset } from "metabase-types/api";
 import { createMockDataset } from "metabase-types/api/mocks";
 

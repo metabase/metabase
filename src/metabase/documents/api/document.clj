@@ -131,14 +131,31 @@
             to-clone)))
 
 (defn get-document
-  "Get document by id checking if the current user has permission to access and if the document exists."
-  [id]
+  "Get document by id checking if the current user has permission to access and if the document exists.
+  Pass `:log-view? false` to skip publishing the `:event/document-read` view event."
+  [id & {:keys [log-view?] :or {log-view? true}}]
   (u/prog1 (api/check-404
             (api/read-check
              (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
-    (events/publish-event! :event/document-read
-                           {:object-id id
-                            :user-id api/*current-user-id*})))
+    (when log-view?
+      (events/publish-event! :event/document-read
+                             {:object-id id
+                              :user-id api/*current-user-id*}))))
+
+(defn add-card-to-document!
+  "Insert an embed for the already-created card with `card-id` into the prose-mirror ast of the
+  document with `document-id` and persist it. `position` is a 0-based index among the document's
+  top-level blocks; `nil` appends the embed at the end and out-of-range indexes are clamped.
+
+  The caller is responsible for write-checking the document first. The document is re-read inside
+  the transaction so a concurrent edit cannot be overwritten. Returns the updated document."
+  [document-id card-id position]
+  (t2/with-transaction [_conn]
+    (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
+      (t2/update! :model/Document document-id
+                  (select-keys (prose-mirror/insert-card-embed document card-id position) [:document]))
+      (collections/check-for-remote-sync-update document)))
+  (get-document document-id :log-view? false))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

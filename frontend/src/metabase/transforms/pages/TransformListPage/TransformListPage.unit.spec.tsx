@@ -66,7 +66,7 @@ async function setup({ tokenFeatures = {} }: SetupOpts = {}) {
   });
 
   const path = "/transforms";
-  renderWithProviders(<Route path={path} component={TransformListPage} />, {
+  renderWithProviders(<Route path={path} element={<TransformListPage />} />, {
     storeInitialState: state,
     withRouter: true,
     initialRoute: path,

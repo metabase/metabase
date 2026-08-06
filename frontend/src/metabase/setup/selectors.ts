@@ -8,10 +8,8 @@ import type {
   State,
   UserInfo,
 } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
-import type { DatabaseData, LocaleData } from "metabase-types/api";
-
-const DEFAULT_LOCALES: LocaleData[] = [];
+import { getSetting } from "metabase/settings";
+import type { DatabaseData } from "metabase-types/api";
 
 export const getStep = (state: State): SetupStep => {
   return state.setup.step;
@@ -73,17 +71,30 @@ export const getDatabaseEngine = (state: State): string | undefined => {
   return getDatabase(state)?.engine || state.setup.databaseEngine;
 };
 
-export const getSetupToken = (state: State) => {
-  return getSetting(state, "setup-token");
+export const getIsAiConfigRequested = (state: State): boolean => {
+  return state.setup.isAiConfigRequested;
 };
 
-export const getAvailableLocales = (state: State): LocaleData[] => {
-  return getSetting(state, "available-locales") ?? DEFAULT_LOCALES;
-};
+export const getIsAiConfigAvailable = createSelector(
+  [
+    (state: State) => getUsageReason(state),
+    (state: State) => getIsEmbeddingUseCase(state),
+    (state: State) => getSetting(state, "ai-features-enabled?"),
+  ],
+  (usageReason, isEmbeddingUseCase, areAiFeaturesEnabled) =>
+    usageReason !== "embedding" &&
+    !isEmbeddingUseCase &&
+    areAiFeaturesEnabled !== false,
+);
 
-export const getIsEmailConfigured = (state: State): boolean => {
-  return getSetting(state, "email-configured?");
-};
+export const getShouldOfferAiConfig = createSelector(
+  [
+    (state: State) => getIsAiConfigAvailable(state),
+    (state: State) => getIsAiConfigRequested(state),
+  ],
+  (isAiConfigAvailable, isAiConfigRequested) =>
+    isAiConfigAvailable && !isAiConfigRequested,
+);
 
 export const getSteps = createSelector(
   [
@@ -92,6 +103,8 @@ export const getSteps = createSelector(
     (state: State) => getSetting(state, "token-features"),
     (state: State) => state.setup.licenseToken,
     (state: State) => getIsEmbeddingUseCase(state),
+    (state: State) => getIsAiConfigAvailable(state),
+    (state: State) => getIsAiConfigRequested(state),
   ],
   (
     usageReason,
@@ -99,6 +112,8 @@ export const getSteps = createSelector(
     tokenFeatures,
     licenseToken,
     isEmbeddingUseCase,
+    isAiConfigAvailable,
+    isAiConfigRequested,
   ) => {
     const isPaidPlan =
       tokenFeatures &&
@@ -136,6 +151,10 @@ export const getSteps = createSelector(
       ),
       ...maybeAddStep("license_token", shouldShowLicenseStep),
       ...maybeAddStep("data_usage", shouldShowDataUsageStep),
+      // Opted into from the completed step, so it always comes last. The
+      // managed-AI offer relies on PLUGIN_METABOT.isEnabled, which is frozen
+      // at plugin init: a token entered in license_token can't surface it.
+      ...maybeAddStep("ai_config", isAiConfigAvailable && isAiConfigRequested),
       "completed",
     ];
 

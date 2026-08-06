@@ -33,9 +33,7 @@
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (defn- reset-throttlers []
-  (doseq [throttler (vals @#'api.session/login-throttlers)]
-    (reset! (:attempts throttler) nil))
-  (reset! (:attempts (var-get #'api.session/reset-password-throttler)) nil))
+  (api.session/reset-throttlers-for-testing!))
 
 (use-fixtures :each (fn [f] (reset-throttlers) (f)))
 
@@ -103,12 +101,12 @@
       (mt/with-log-messages-for-level [messages :error]
         (is (=? {:specific-errors {:username ["missing required key, received: nil"]}}
                 (mt/client :post 400 "session" {:email (:email user), :password "wooo"})))
-        (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+        (is (=? {:level :error, :e nil, :message #"^Authentication endpoint error: .+"}
                 (or (->> (messages)
                          ;; geojson can throw errors and we want the authentication error
                          ;;
                          ;; TODO -- huh? geojson???? -- Cam
-                         (m/find-first #(= (:message %) "Authentication endpoint error")))
+                         (m/find-first #(re-find #"^Authentication endpoint error" (:message %))))
                     ["no matching message:" (messages)])))))))
 
 (deftest login-validation-username-required-test
@@ -156,7 +154,9 @@
       (testing "Error should be logged (#14317)"
         (mt/with-log-messages-for-level [messages :error]
           (login)
-          (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+          (is (=? {:level   :error
+                   :e       nil
+                   :message #"^Authentication endpoint error: Too many attempts! You must wait \d+ seconds before trying again\.$"}
                   (first (messages))))))
       (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                (login))
@@ -594,7 +594,6 @@
         (t2/insert! :model/User (merge  (mt/with-temp-defaults :model/User) {:email "test@metabase.com" :is_active true}))
         (testing "Google auth works with remember me and rasta"
           ;; client-real-response hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
-          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","

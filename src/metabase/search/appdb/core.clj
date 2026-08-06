@@ -65,6 +65,7 @@
        :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (search.scoring/all-scores weights active-scorers index-row))
+      ;; internal permission signal (published tables) — never surfaced in API responses
       (dissoc :is_published)
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
@@ -145,7 +146,7 @@
           (future
             (search.engine/init! search-engine {:force-reset? false}))
           (catch Exception e
-            (log/error e))))
+            (log/error (ex-message e)))))
       ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
       (throw (ex-info "Search Index not found."
                       {:search-engine      search-engine
@@ -287,10 +288,10 @@
     (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
       (search.index/activate-table!))
     (catch Throwable e
-      (log/error e "Error during reindexing")
+      (log/errorf "Error during reindexing: %s" (ex-message e))
       (throw e))))
 
-(derive :event/setting-update ::settings-changed-event)
+(events/derive! :event/setting-update ::settings-changed-event)
 
 (methodical/defmethod events/publish-event! ::settings-changed-event
   [_topic event]

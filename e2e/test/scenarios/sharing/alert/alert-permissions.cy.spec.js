@@ -159,8 +159,8 @@ function createBasicAlert({ includeNormal } = {}) {
       .findByText("Email")
       .closest('[data-testid="channel-block"]')
       .findByTestId("token-field")
-      .click();
-    cy.findByText(H.getFullName(normal)).click();
+      .findByRole("combobox")
+      .type(`${H.getFullName(normal)}{enter}`);
   }
 
   cy.findByText("Done").click();

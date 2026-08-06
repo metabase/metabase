@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
 import { EmbeddingSettingsCard } from "metabase/admin/settings/components/EmbeddingSettings";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Stack } from "metabase/ui/components";
 import { InteractiveEmbeddingAuthorizedOriginsWidget } from "metabase-enterprise/embedding/components/InteractiveEmbeddingAuthorizedOriginsWidget";
 

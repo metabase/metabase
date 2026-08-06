@@ -19,8 +19,8 @@ import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
 import { canUserCreateQueries } from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
 import { Box, Popover } from "metabase/ui";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,

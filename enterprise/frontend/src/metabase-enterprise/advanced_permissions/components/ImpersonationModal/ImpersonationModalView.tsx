@@ -2,20 +2,19 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { Alert } from "metabase/common/components/Alert";
 import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { Link } from "metabase/common/components/Link/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {
   Form,
+  FormErrorMessage,
   FormProvider,
   FormSelect,
   FormSubmitButton,
 } from "metabase/forms";
-import { Button, Stack, Text } from "metabase/ui";
+import { Alert, Button, Icon, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -98,7 +97,7 @@ export const ImpersonationModalView = ({
       </Text>
       {roleRequired ? (
         <>
-          <Alert icon="warning" variant="warning">
+          <Alert size="compact" icon={<Icon name="warning" />} color="warning">
             {t`Connection impersonation requires specifying a user role on the database connection.`}{" "}
             <Link
               variant="brand"
@@ -131,7 +130,7 @@ export const ImpersonationModalView = ({
               <ImpersonationWarning database={database} />
 
               <FormFooter hasTopBorder>
-                <FormErrorMessage inline />
+                <FormErrorMessage />
                 <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
                 <FormSubmitButton
                   label={t`Save`}
@@ -144,7 +143,7 @@ export const ImpersonationModalView = ({
         </FormProvider>
       ) : (
         <>
-          <Alert icon="warning" variant="warning">
+          <Alert size="compact" icon={<Icon name="warning" />} color="warning">
             {t`To associate a user with a database role, you'll need to give that user at least one user attribute.`}{" "}
             <Link
               variant="brand"

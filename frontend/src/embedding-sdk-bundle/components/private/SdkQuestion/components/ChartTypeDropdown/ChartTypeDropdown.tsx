@@ -4,7 +4,9 @@ import { t } from "ttag";
 import type { IconName } from "metabase/embedding-sdk/types/icon";
 import { Combobox, Flex, Icon, Text, useCombobox } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import visualizations from "metabase/visualizations";
+import visualizations, {
+  getIconForVisualizationType,
+} from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
 
@@ -97,11 +99,13 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
       return null;
     }
 
+    const icon = getIconForVisualizationType(visualizationType);
+
     return {
       value: visualizationType,
       label: visualization.getUiName(),
-      iconName: visualization.iconName,
-      iconUrl: visualization.iconUrl,
+      iconName: icon.name,
+      iconUrl: icon.iconUrl,
     };
   };
 

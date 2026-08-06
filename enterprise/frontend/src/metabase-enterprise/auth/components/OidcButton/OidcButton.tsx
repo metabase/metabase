@@ -1,6 +1,9 @@
 import { useCallback } from "react";
 
-import { AuthButton } from "metabase/auth/components/AuthButton";
+import {
+  AuthCardButton,
+  AuthTextButton,
+} from "metabase/auth/components/AuthButton";
 import type { AuthProvider } from "metabase/plugins/types";
 import type { OidcAuthProvider } from "metabase-types/api";
 
@@ -23,11 +26,8 @@ export const OidcButton = ({
     window.location.href = url;
   }, [provider, redirectUrl]);
 
-  return (
-    <AuthButton isCard={isCard} onClick={handleLogin}>
-      {provider["login-prompt"]}
-    </AuthButton>
-  );
+  const Button = isCard ? AuthCardButton : AuthTextButton;
+  return <Button onClick={handleLogin}>{provider["login-prompt"]}</Button>;
 };
 
 /**

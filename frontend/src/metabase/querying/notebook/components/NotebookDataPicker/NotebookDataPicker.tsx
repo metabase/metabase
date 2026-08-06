@@ -9,6 +9,7 @@ import {
   shouldDisableItemNotInDb,
 } from "metabase/common/components/Pickers/DataPicker";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
+import type { MiniPickerSearchParams } from "metabase/common/components/Pickers/MiniPicker/context";
 import type {
   MiniPickerItem,
   MiniPickerPickableItem,
@@ -34,6 +35,10 @@ import { NotebookCellItem } from "../NotebookCell";
 import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
 import { isObjectWithModel } from "./utils";
 
+const DATA_SOURCE_SEARCH_PARAMS: MiniPickerSearchParams = {
+  filter_items_in_personal_collection: "exclude-others",
+};
+
 export interface NotebookDataPickerProps {
   title: string;
   query: Lib.Query;
@@ -42,6 +47,7 @@ export interface NotebookDataPickerProps {
   placeholder?: string;
   canChangeDatabase: boolean;
   hasMetrics: boolean;
+  hasMetricsInMiniPicker?: boolean;
   isDisabled: boolean;
   isOpened: boolean;
   setIsOpened: (isOpened: boolean) => void;
@@ -63,6 +69,7 @@ export function NotebookDataPicker({
   placeholder = title,
   canChangeDatabase,
   hasMetrics,
+  hasMetricsInMiniPicker,
   isDisabled,
   isOpened,
   setIsOpened,
@@ -131,6 +138,7 @@ export function NotebookDataPicker({
         placeholder={placeholder}
         canChangeDatabase={canChangeDatabase}
         hasMetrics={hasMetrics}
+        hasMetricsInMiniPicker={hasMetricsInMiniPicker}
         isOpened={isOpened}
         setIsOpened={setIsOpened}
         isDisabled={isDisabled}
@@ -153,6 +161,7 @@ type ModernDataPickerProps = {
   setIsOpened: (isOpened: boolean) => void;
   canChangeDatabase: boolean;
   hasMetrics: boolean;
+  hasMetricsInMiniPicker?: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
   shouldDisableItem?: (item: OmniPickerItem) => boolean;
@@ -169,6 +178,7 @@ function ModernDataPicker({
   setIsOpened,
   canChangeDatabase,
   hasMetrics,
+  hasMetricsInMiniPicker = hasMetrics,
   isDisabled,
   onChange,
   shouldDisableItem,
@@ -177,7 +187,11 @@ function ModernDataPicker({
 }: ModernDataPickerProps) {
   const context = useNotebookContext();
   const getItemTooltip = context.dataPickerOptions?.getItemTooltip;
-  const modelList = getModelFilterList(context, hasMetrics);
+  const modalModelList = getModelFilterList(context, hasMetrics);
+  const miniPickerModelList = getModelFilterList(
+    context,
+    hasMetrics && hasMetricsInMiniPicker,
+  );
 
   const databaseId = Lib.databaseID(query) ?? undefined;
 
@@ -227,8 +241,9 @@ function ModernDataPicker({
         opened={isOpened && !isBrowsing}
         onClose={() => setIsOpened(false)}
         // minipicker doesn't support picking a database
-        models={modelList.filter((model) => model !== "database")}
+        models={miniPickerModelList.filter((model) => model !== "database")}
         searchQuery={dataSourceSearchQuery}
+        searchParams={DATA_SOURCE_SEARCH_PARAMS}
         onBrowseAll={() => setIsBrowsing(true)}
         trapFocus={focusPicker}
         onChange={(value: MiniPickerPickableItem) => {
@@ -252,7 +267,7 @@ function ModernDataPicker({
           title={title}
           value={tableValue ?? defaultDbValue}
           onlyDatabaseId={canChangeDatabase ? undefined : databaseId}
-          models={modelList}
+          models={modalModelList}
           onChange={onChange}
           onClose={() => {
             setIsBrowsing(false);

@@ -9,16 +9,13 @@ import {
   within,
 } from "__support__/ui";
 import { ChartSettingsWidgetPopover } from "metabase/visualizations/components/ChartSettingsWidgetPopover";
+import { SliceNameWidget } from "metabase/visualizations/visualizations/PieChart/SliceNameWidget";
 
 import type { Widget } from "../types";
 
 import { ChartSettingSelect } from "./settings/ChartSettingSelect";
 
 type PopoverProps = ComponentProps<typeof ChartSettingsWidgetPopover>;
-
-const DEFAULT_PROPS: Pick<PopoverProps, "handleEndShowWidget"> = {
-  handleEndShowWidget: jest.fn(),
-};
 
 const FORMATTING_WIDGET: Widget = {
   id: "column_settings",
@@ -41,8 +38,11 @@ const STYLE_WIDGET: Widget = {
 type SetupProps = Omit<PopoverProps, "anchor" | "handleEndShowWidget">;
 
 const setup = (props: SetupProps) => {
+  const handleEndShowWidget = jest.fn();
+
   const Container = () => {
     const [anchor, setAnchor] = useState<HTMLElement>(document.body);
+    const [isOpen, setIsOpen] = useState(true);
 
     return (
       <>
@@ -55,15 +55,24 @@ const setup = (props: SetupProps) => {
         >
           Anchor
         </p>
-        <ChartSettingsWidgetPopover
-          anchor={anchor}
-          {...DEFAULT_PROPS}
-          {...props}
-        />
+        {isOpen && (
+          <ChartSettingsWidgetPopover
+            anchor={anchor}
+            handleEndShowWidget={() => {
+              handleEndShowWidget();
+              setIsOpen(false);
+            }}
+            {...props}
+          />
+        )}
       </>
     );
   };
-  return renderWithProviders(<Container />);
+
+  return {
+    ...renderWithProviders(<Container />),
+    handleEndShowWidget,
+  };
 };
 
 it("should display when an anchor is passed", async () => {
@@ -175,4 +184,36 @@ describe("Select widgets", () => {
       screen.getByTestId("chart-settings-widget-popover-content"),
     ).toBeInTheDocument();
   });
+});
+
+it("should discard pending slice name changes when Escape is pressed (#75868)", async () => {
+  const updateRowName = jest.fn();
+  const sliceNameWidget: Widget = {
+    id: "pieSliceName",
+    section: "Data",
+    widget: SliceNameWidget,
+    props: {
+      initialKey: "Widget",
+      pieRows: [
+        {
+          key: "Widget",
+          name: "Widget",
+          originalName: "Widget",
+        },
+      ],
+      updateRowName,
+    },
+  };
+  const { handleEndShowWidget } = setup({ widgets: [sliceNameWidget] });
+
+  const input = await screen.findByDisplayValue("Widget");
+  await userEvent.clear(input);
+  await userEvent.type(input, "MyNewName");
+  await userEvent.keyboard("{Escape}");
+
+  await waitFor(() => expect(handleEndShowWidget).toHaveBeenCalledTimes(1));
+  expect(updateRowName).not.toHaveBeenCalled();
+  expect(
+    screen.queryByTestId("chart-settings-widget-popover-content"),
+  ).not.toBeInTheDocument();
 });

@@ -1,6 +1,5 @@
 /* eslint-disable complexity */
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import React, {
   type CSSProperties,
   type ComponentType,
@@ -18,7 +17,6 @@ import { SmallGenericError } from "metabase/common/components/ErrorPages";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
-import DashboardS from "metabase/css/dashboard.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
@@ -26,7 +24,8 @@ import { connect } from "metabase/redux";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import type { Dispatch, State } from "metabase/redux/store";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
-import { getTokenFeature } from "metabase/selectors/settings";
+import type { Path } from "metabase/router";
+import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconProps } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
@@ -54,6 +53,7 @@ import {
   type ClickActionModeGetter,
   type ClickActionsMode,
   type ClickObject,
+  type HighlightedObject,
   type HoveredObject,
   type QueryClickActionsMode,
   type VisualizationDefinition,
@@ -63,10 +63,7 @@ import {
   isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
-import {
-  formatVisualizerClickObject,
-  isVisualizerDashboardCard,
-} from "metabase/visualizer/utils";
+import { formatVisualizerClickObject } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -81,6 +78,7 @@ import type {
   TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import { EmptyVizState } from "../EmptyVizState";
 
@@ -93,7 +91,6 @@ import {
   VisualizationActionButtonsContainer,
   VisualizationHeader,
   VisualizationRoot,
-  VisualizationSlowSpinner,
 } from "./Visualization.styled";
 import { VisualizationRenderedWrapper } from "./VisualizationRenderedWrapper";
 import { Watermark } from "./Watermark";
@@ -136,6 +133,7 @@ type VisualizationOwnProps = {
   gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
+  highlighted?: HighlightedObject | null;
   headerIcon?: IconProps;
   width?: number | null;
   height?: number | null;
@@ -189,7 +187,7 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
-  onSameOriginNavigation?: (location: LocationDescriptorObject) => void;
+  onSameOriginNavigation?: (location: Partial<Path>) => void;
   /** When true, internal click behaviors (dashboard/question links) are preserved */
   enableEntityNavigation?: boolean;
 } & VisualizationPassThroughProps;
@@ -687,7 +685,7 @@ class Visualization extends PureComponent<
       getHref,
       hasDevWatermark,
       headerIcon,
-      height: rawHeight,
+      highlighted,
       isAction,
       isDashboard,
       isDocument,
@@ -716,6 +714,9 @@ class Visualization extends PureComponent<
       rowChecked,
       onAllSelectClick,
       onRowSelectClick,
+      isSortable,
+      sorting,
+      onSortingChange,
       visualizerRawSeries,
       renderEmptyMessage,
       renderLoadingView = LoadingView,
@@ -731,11 +732,11 @@ class Visualization extends PureComponent<
       tableHeaderHeight,
       timelineEvents,
       totalNumGridCols,
-      width: rawWidth,
       onDeselectTimelineEvents,
       onOpenChartSettings,
       onOpenTimelines,
       onSelectTimelineEvents,
+      onSeeAllEvents,
       onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
@@ -821,13 +822,6 @@ class Visualization extends PureComponent<
 
     const extra = (
       <VisualizationActionButtonsContainer>
-        {isSlow && !loading && (
-          <VisualizationSlowSpinner
-            className={DashboardS.VisualizationSlowSpinner}
-            size={18}
-            isUsuallySlow={isSlow === "usually-slow"}
-          />
-        )}
         {actionButtons}
       </VisualizationActionButtonsContainer>
     );
@@ -957,8 +951,9 @@ class Visualization extends PureComponent<
                     getHref={getHref}
                     gridSize={gridSize}
                     headerIcon={hasHeader ? null : headerIcon}
-                    height={rawHeight}
+                    height={height}
                     hovered={hovered}
+                    highlighted={highlighted}
                     isDashboard={!!isDashboard}
                     isDocument={!!isDocument}
                     isEditing={!!isEditing}
@@ -995,7 +990,7 @@ class Visualization extends PureComponent<
                     timelineEvents={timelineEvents}
                     totalNumGridCols={totalNumGridCols}
                     visualizationIsClickable={this.visualizationIsClickable}
-                    width={rawWidth}
+                    width={width}
                     zoomedRowIndex={zoomedRowIndex}
                     onZoomRow={onZoomRow}
                     onActionDismissal={this.hideActions}
@@ -1011,6 +1006,7 @@ class Visualization extends PureComponent<
                     onRender={this.onRender}
                     onRenderError={this.onRenderError}
                     onSelectTimelineEvents={onSelectTimelineEvents}
+                    onSeeAllEvents={onSeeAllEvents}
                     onTogglePreviewing={onTogglePreviewing}
                     onUpdateVisualizationSettings={
                       onUpdateVisualizationSettings
@@ -1025,6 +1021,9 @@ class Visualization extends PureComponent<
                     rowChecked={rowChecked}
                     onAllSelectClick={onAllSelectClick}
                     onRowSelectClick={onRowSelectClick}
+                    isSortable={isSortable}
+                    sorting={sorting}
+                    onSortingChange={onSortingChange}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}

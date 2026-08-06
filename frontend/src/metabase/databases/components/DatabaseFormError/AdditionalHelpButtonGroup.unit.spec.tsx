@@ -35,7 +35,7 @@ const setup = (params?: SetupParams) => {
   }
 
   renderWithProviders(
-    <Route path="*" component={AdditionalHelpButtonGroup} />,
+    <Route path="*" element={<AdditionalHelpButtonGroup />} />,
     {
       storeInitialState,
       withRouter: true,

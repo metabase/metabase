@@ -37,10 +37,13 @@
   application-db
   data-source
   db-type
+  do-before-commit
   do-after-commit
   in-transaction?
   quoting-style
-  unique-identifier]
+  unique-identifier
+  transaction-state
+  with-unshared-connection]
  [mdb.connection-pool-setup
   recent-activity?]
  [mdb.data-source

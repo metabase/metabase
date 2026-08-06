@@ -44,6 +44,16 @@
   [part]
   (tool-type? (:type part)))
 
+(defn data-part?
+  "True when `part` is a data part — its `:type` is `\"data-<name>\"`."
+  [part]
+  (data-type? (:type part)))
+
+(defn text-part?
+  "True when `part` is a text part — its `:type` is `\"text\"`."
+  [part]
+  (= "text" (:type part)))
+
 (defn tool-part-name
   "The tool name encoded in a tool part's `:type`:
   `{:type \"tool-create_sql_query\" ...}` -> `\"create_sql_query\"`."

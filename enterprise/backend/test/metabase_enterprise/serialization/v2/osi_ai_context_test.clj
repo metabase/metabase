@@ -20,7 +20,6 @@
 (set! *warn-on-reflection* true)
 
 ;; The references point at the H2 test-data Table, so keep the H2 guard off and re-enable H2 in extract.
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
                                                   models.database/assert-not-h2! (constantly nil)]

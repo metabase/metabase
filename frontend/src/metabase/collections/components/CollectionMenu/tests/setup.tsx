@@ -86,13 +86,13 @@ export const setup = ({
     <>
       <Route
         path="/"
-        component={() => (
+        element={
           <CollectionMenu
             collection={collection}
             isAdmin={isAdmin}
             onUpdateCollection={onUpdateCollection}
           />
-        )}
+        }
       />
     </>,
     { storeInitialState: state, initialRoute: "/", withRouter: true },

@@ -6,7 +6,7 @@ export function getWritableConnectionInfoRoutes() {
   return (
     <Route
       path=":databaseId/write-data"
-      component={WritableConnectionInfoPage}
+      element={<WritableConnectionInfoPage />}
     />
   );
 }

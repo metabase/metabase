@@ -29,10 +29,13 @@ import { RefreshWidget } from "../RefreshWidget";
 
 import S from "./Dashboard.module.css";
 import { Grid, ParametersList } from "./components";
+import { useDashboardChartPaste } from "./use-dashboard-chart-paste";
 
 const DashboardDefaultView = ({ className }: { className?: string }) => {
   const { dashboard, isEditing, isFullscreen, isSharing, selectedTabId } =
     useDashboardContext();
+
+  useDashboardChartPaste();
 
   const isHeaderVisible = useSelector(getIsHeaderVisible);
 

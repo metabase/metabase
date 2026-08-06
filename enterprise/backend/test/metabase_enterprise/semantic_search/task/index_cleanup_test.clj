@@ -19,6 +19,17 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest ^:parallel schema-scoping-helpers-test
+  (testing "scope-where-to-schema adds the schema predicate only in shared app-db mode (non-nil schema)"
+    (is (= [:and [:like :t.table_name [:inline "x_%"]]]
+           (#'sut/scope-where-to-schema [:and [:like :t.table_name [:inline "x_%"]]] nil)))
+    (is (= [:and [:like :t.table_name [:inline "x_%"]] [:= :t.table_schema [:inline "semantic_search"]]]
+           (#'sut/scope-where-to-schema [:and [:like :t.table_name [:inline "x_%"]]] "semantic_search"))))
+  (testing "requalify-table-names prefixes the schema only in shared app-db mode"
+    (is (= ["a" "b"] (#'sut/requalify-table-names nil ["a" "b"])))
+    (is (= ["semantic_search.a" "semantic_search.b"]
+           (#'sut/requalify-table-names "semantic_search" ["a" "b"])))))
+
 (use-fixtures :once #'semantic.tu/once-fixture)
 
 (defn- create-test-index
@@ -77,14 +88,12 @@
       (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)]
         (semantic.index-metadata/ensure-control-row-exists! pgvector index-metadata)
         (testing "drops stale tables and leaves recent ones"
-          (let [stale-table "index_table_stale"
-                orphaned-table "index_table_orphaned"
-                recent-table "index_table_recent"
-                active-table "index_table_active"
+          (let [stale-table "index_ollama_staletest_1024"
+                recent-table "index_ollama_recenttest_1024"
+                active-table "index_ollama_activetest_1024"
                 recent-time (t/minus (t/offset-date-time) (t/hours (dec retention-hours)))]
             (try
               (create-table! pgvector stale-table)
-              (create-table! pgvector orphaned-table)
               (create-table! pgvector recent-table)
               (create-table! pgvector active-table)
               (insert-metadata-with-timestamps! pgvector index-metadata {:table-name stale-table
@@ -96,22 +105,19 @@
                                                                        :index-created-at old-time})]
                 (set-active-index! pgvector (:control-table-name index-metadata) active-index-id))
               (is (semantic.tu/table-exists-in-db? stale-table))
-              (is (semantic.tu/table-exists-in-db? orphaned-table))
               (is (semantic.tu/table-exists-in-db? recent-table))
               (is (semantic.tu/table-exists-in-db? active-table))
-              ;; Run cleanup function and ensure only the stale & orphaned tables is dropped
+              ;; Run cleanup function and ensure only the stale table is dropped
               (mt/with-dynamic-fn-redefs [semantic.env/get-pgvector-datasource! (constantly pgvector)
                                           semantic.env/get-index-metadata (constantly index-metadata)]
                 (mt/with-temporary-setting-values [semantic.settings/stale-index-retention-hours retention-hours]
                   (cleanup-stale-indexes! pgvector index-metadata)))
               (is (not (semantic.tu/table-exists-in-db? stale-table)))
-              (is (not (semantic.tu/table-exists-in-db? orphaned-table)))
               (is (semantic.tu/table-exists-in-db? recent-table))
               (is (semantic.tu/table-exists-in-db? active-table))
               (finally
                 (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " recent-table)])
                 (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " stale-table)])
-                (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " orphaned-table)])
                 (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " active-table)])))))
         (testing "handles non-existent tables gracefully"
           (let [nonexistent-table "nonexistent_table"]
@@ -127,6 +133,114 @@
                                         semantic.env/get-index-metadata (constantly index-metadata)]
               (cleanup-stale-indexes! pgvector index-metadata)
               (is (not (semantic.tu/table-exists-in-db? nonexistent-table))))))))))
+
+(deftest orphan-index-cleanup-test
+  (mt/with-premium-features #{:semantic-search}
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
+          ;; not unique-index-metadata: its nanoTime qualifier would push a qualified index_<40-hex>
+          ;; decoy past postgres's 63-char identifier limit (and silent truncation)
+          uniq-id (mod (System/nanoTime) 1000000)
+          fmt (str "mock_%s_" uniq-id)
+          index-metadata {:version "0"
+                          :metadata-table-name (format fmt "metadata")
+                          :control-table-name (format fmt "control")
+                          :gate-table-name (format fmt "gate")
+                          :index-table-qualifier fmt}
+          qualify #(format (:index-table-qualifier index-metadata) %)
+          orphan-index-tables #'sut/orphan-index-tables
+          cleanup-stale-indexes! #'sut/cleanup-stale-indexes!
+          ;; the shapes model-table-name/fresh-index produce plus a legacy pre-BOT-337 straggler,
+          ;; none registered in metadata
+          orphan-tables [(qualify "index_ollama_decoytest_1024")
+                         (qualify "index_ollama_decoytest_1024_1234567")
+                         (qualify (str "index_" (apply str (repeat 40 "a"))))
+                         (qualify "index_table_legacytest")]
+          ;; share the index_ prefix but must never be treated as orphans
+          control-plane-decoys [(qualify "index_metadata")
+                                (qualify "index_control")
+                                (qualify "index_gate")]
+          ;; index_-prefixed but not a shape the naming code produces
+          non-index-shaped (qualify "index_not_an_index")
+          ;; outside this config's qualifier: must be invisible to its scan
+          unqualified-table "index_ollama_decoytest_1024"
+          registered-table (qualify "index_ollama_registered_1024")
+          ;; index-shaped VIEW: not a base table, so never an orphan candidate (and DROP TABLE would choke on it)
+          index-shaped-view (qualify "index_ollama_viewtest_1024")
+          ;; index-shaped, but outside current_schema(): the unqualified DROP could not reach it, so the
+          ;; scan must not see it either
+          side-schema (str "cleanup_side_" uniq-id)
+          side-schema-orphan (str side-schema "." (qualify "index_ollama_sidetest_1024"))
+          ;; a genuine orphan made undroppable by a dependent view: its failure must not abort the batch
+          blocked-orphan (qualify "index_ollama_blockedtest_1024")
+          blocking-view (qualify "blocked_orphan_dep")
+          survivors (concat control-plane-decoys [non-index-shaped unqualified-table registered-table])]
+      (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)]
+        (try
+          (run! #(create-table! pgvector %) (concat orphan-tables survivors [blocked-orphan]))
+          (jdbc/execute! pgvector [(str "CREATE SCHEMA " side-schema)])
+          (create-table! pgvector side-schema-orphan)
+          (jdbc/execute! pgvector [(str "CREATE VIEW " index-shaped-view " AS SELECT 1 AS id")])
+          (jdbc/execute! pgvector [(str "CREATE VIEW " blocking-view " AS SELECT id FROM " blocked-orphan)])
+          (insert-metadata-with-timestamps! pgvector index-metadata {:table-name registered-table})
+          (testing "detects exactly the unregistered index-shaped base tables under this config's qualifier and schema"
+            (is (= (set (conj orphan-tables blocked-orphan))
+                   (set (orphan-index-tables pgvector index-metadata)))))
+          (testing "cleanup drops the orphans; an undroppable orphan is skipped without aborting the batch"
+            (cleanup-stale-indexes! pgvector index-metadata)
+            (doseq [table orphan-tables]
+              (is (not (semantic.tu/table-exists-in-db? table)) table))
+            (is (semantic.tu/table-exists-in-db? blocked-orphan)))
+          (testing "control-plane decoys, registered, differently-qualified, view, and non-index-shaped tables survive"
+            (doseq [table (concat survivors [index-shaped-view side-schema-orphan])]
+              (is (semantic.tu/table-exists-in-db? table) table)))
+          (testing "the config's own metadata/control/gate tables survive"
+            (doseq [table [(:metadata-table-name index-metadata)
+                           (:control-table-name index-metadata)
+                           (:gate-table-name index-metadata)]]
+              (is (semantic.tu/table-exists-in-db? table) table)))
+          (finally
+            (jdbc/execute! pgvector [(str "DROP VIEW IF EXISTS " blocking-view)])
+            (jdbc/execute! pgvector [(str "DROP VIEW IF EXISTS " index-shaped-view)])
+            (jdbc/execute! pgvector [(str "DROP SCHEMA IF EXISTS " side-schema " CASCADE")])
+            (doseq [table (concat orphan-tables survivors [blocked-orphan])]
+              (jdbc/execute! pgvector [(str "DROP TABLE IF EXISTS " table)]))))))))
+
+(deftest orphan-index-tables-schema-scoping-test
+  (mt/with-premium-features #{:semantic-search}
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
+          uniq-id (mod (System/nanoTime) 1000000)
+          schema (str "cleanup_module_" uniq-id)
+          other-schema (str "cleanup_other_" uniq-id)
+          ;; mirrors index-metadata/app-db-index-metadata: schema-qualified names, "<schema>.%s" qualifier
+          index-metadata {:version "0"
+                          :schema schema
+                          :metadata-table-name (str schema ".index_metadata")
+                          :control-table-name (str schema ".index_control")
+                          :gate-table-name (str schema ".index_gate")
+                          :index-table-qualifier (str schema ".%s")}
+          orphan-index-tables #'sut/orphan-index-tables
+          in-schema-orphan (str schema ".index_ollama_decoytest_1024")
+          out-of-schema-orphan (str other-schema ".index_ollama_decoytest_1024")]
+      (try
+        (jdbc/execute! pgvector [(str "CREATE SCHEMA " schema)])
+        (jdbc/execute! pgvector [(str "CREATE SCHEMA " other-schema)])
+        (with-open [_ (semantic.tu/open-metadata! pgvector index-metadata)]
+          (create-table! pgvector in-schema-orphan)
+          (create-table! pgvector out-of-schema-orphan)
+          (testing "only index-shaped tables inside the module schema are orphan candidates, returned schema-qualified"
+            (is (= [in-schema-orphan]
+                   (orphan-index-tables pgvector index-metadata))))
+          (testing "cleanup drops the in-schema orphan and leaves the control plane and other schemas alone"
+            (#'sut/cleanup-stale-indexes! pgvector index-metadata)
+            (is (not (semantic.tu/table-exists-in-db? in-schema-orphan)))
+            (is (semantic.tu/table-exists-in-db? out-of-schema-orphan))
+            (doseq [table [(:metadata-table-name index-metadata)
+                           (:control-table-name index-metadata)
+                           (:gate-table-name index-metadata)]]
+              (is (semantic.tu/table-exists-in-db? table) table))))
+        (finally
+          (jdbc/execute! pgvector [(str "DROP SCHEMA IF EXISTS " schema " CASCADE")])
+          (jdbc/execute! pgvector [(str "DROP SCHEMA IF EXISTS " other-schema " CASCADE")]))))))
 
 (deftest tombstone-cleanup-test
   (mt/with-premium-features #{:semantic-search}
@@ -228,25 +342,25 @@
           recent-time (t/minus (t/instant) (t/hours 1))]                 ; 1 hour ago
       (testing "parse-repair-table-timestamp"
         (let [repair-table-name (with-redefs [t/instant (constantly old-time)]
-                                  (#'repair/repair-table-name))
+                                  (#'repair/repair-table-name semantic.index-metadata/default-index-metadata))
               parsed-time (#'sut/parse-repair-table-timestamp repair-table-name)]
           (is (= (t/truncate-to old-time :millis)
                  parsed-time))))
       (testing "orphan repair table detection and cleanup"
         (let [old-repair-table-name (with-redefs [t/instant (constantly old-time)]
-                                      (#'repair/repair-table-name))
+                                      (#'repair/repair-table-name semantic.index-metadata/default-index-metadata))
               recent-repair-table-name (with-redefs [t/instant (constantly recent-time)]
-                                         (#'repair/repair-table-name))
+                                         (#'repair/repair-table-name semantic.index-metadata/default-index-metadata))
               non-repair-table-name "regular_table_123"]
           (try
             (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" old-repair-table-name)])
             (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" recent-repair-table-name)])
             (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" non-repair-table-name)])
             (mt/with-dynamic-fn-redefs [semantic.settings/repair-table-retention-hours (constantly retention-hours)]
-              (let [orphan-tables (#'sut/orphan-repair-tables pgvector)]
+              (let [orphan-tables (#'sut/orphan-repair-tables pgvector semantic.index-metadata/default-index-metadata)]
                 (is (= #{old-repair-table-name} (set orphan-tables))
                     "Only old repair table should be detected as orphan"))
-              (#'sut/cleanup-orphan-repair-tables! pgvector)
+              (#'sut/cleanup-orphan-repair-tables! pgvector semantic.index-metadata/default-index-metadata)
               (is (not (semantic.tu/table-exists-in-db? old-repair-table-name))
                   "Old repair table should be dropped")
               (is (semantic.tu/table-exists-in-db? recent-repair-table-name)

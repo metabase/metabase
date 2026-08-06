@@ -5,6 +5,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.core :as semantic.core]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
@@ -72,11 +73,10 @@
                               (create-test-document "dashboard" 3 "Animal Stats")]]
           (semantic.core/update-index! initial-docs)
           (semantic.tu/index-all!)
-          ;; Ensure repair-index! brings index into consistency with new documents et.
-          ;; Note: card 2 and dashboard 3 are missing - should be deleted
-          (let [modified-docs [(create-test-document "card" 1 "Dog Training Guide")        ; existing - should remain
-                               (create-test-document "card" 4 "Bird Watching Tips")        ; new - should be added
-                               (create-test-document "dashboard" 5 "Wildlife Dashboard")]] ; new - should be added
+          ;; Retain card 1, add card 4 and dashboard 5, and tombstone the missing card 2 and dashboard 3.
+          (let [modified-docs [(create-test-document "card" 1 "Dog Training Guide")
+                               (create-test-document "card" 4 "Bird Watching Tips")
+                               (create-test-document "dashboard" 5 "Wildlife Dashboard")]]
             (semantic.core/repair-index! modified-docs)
             (let [gate-contents       (gate-table-contents pgvector gate-table)
                   new-card-entry      (gate-entry-by-id gate-contents "card_4")
@@ -96,7 +96,6 @@
       (semantic.tu/with-test-db! {:mode :blank}
         ;; with-redefs mirrors the :mock-initialized bindings, which include non-fn values that
         ;; with-dynamic-fn-redefs cannot proxy.
-        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [semantic.embedding/get-configured-model        (fn [] semantic.tu/mock-embedding-model)
                       semantic.index-metadata/default-index-metadata semantic.tu/mock-index-metadata
                       semantic.index/model-table-suffix              semantic.tu/mock-table-suffix]
@@ -108,6 +107,75 @@
             (testing "the supplied documents are gated for backfill"
               (let [gate-contents (gate-table-contents pgvector (:gate-table-name index-metadata))]
                 (is (some? (:document (gate-entry-by-id gate-contents "card_1"))))))))))))
+
+(deftest count-stale-orphans-test
+  ;; Hermetic: the fn only takes table names, so ad-hoc tables stand in for the index/gate/repair tables.
+  (when semantic.db.datasource/db-url
+    (let [pgvector (semantic.db.datasource/ensure-initialized-data-source!)
+          suffix   (System/nanoTime)
+          index-t  (str "count_orphans_index_" suffix)
+          gate-t   (str "count_orphans_gate_" suffix)
+          repair-t (str "count_orphans_repair_" suffix)
+          dlq-t    (str "count_orphans_dlq_" suffix)
+          exec!    (fn [q] (jdbc/execute! pgvector [q]))
+          count!   (fn [watermark]
+                     (semantic.repair/count-stale-orphans pgvector index-t gate-t repair-t dlq-t watermark))
+          wm-ts    (t/offset-date-time "2026-01-01T12:00:00Z")]
+      (try
+        (exec! (format "CREATE TABLE \"%s\" (model text, model_id text)" index-t))
+        (exec! (format (str "CREATE TABLE \"%s\" (id text, model text, model_id text, "
+                            "document_hash text, gated_at timestamptz)")
+                       gate-t))
+        (exec! (format "CREATE TABLE \"%s\" (model text, model_id text)" repair-t))
+        (exec! (format "CREATE TABLE \"%s\" (gate_id text, error_gated_at timestamptz)" dlq-t))
+        ;; candidate set: card 1 only
+        (exec! (format "INSERT INTO \"%s\" VALUES ('card','1')" repair-t))
+        ;; index rows: 1 = still a candidate, 2 = tombstone behind the watermark (stale), 3 = tombstone ahead
+        ;; of it (indexer backlog), 4 = gate row gone (survived tombstone cleanup), 5 = live gate row,
+        ;; 6/7 = tombstones AT the watermark timestamp with gate ids on either side of the watermark id
+        (exec! (format (str "INSERT INTO \"%s\" VALUES "
+                            "('card','1'),('card','2'),('card','3'),('card','4'),('card','5'),"
+                            "('card','6'),('card','7')")
+                       index-t))
+        (exec! (format (str "INSERT INTO \"%s\" VALUES "
+                            "('card_2', 'card','2', NULL,   timestamptz '2026-01-01 11:00:00+00'), "
+                            "('card_3', 'card','3', NULL,   timestamptz '2026-01-01 13:00:00+00'), "
+                            "('card_5', 'card','5', 'hash', timestamptz '2026-01-01 11:00:00+00'), "
+                            "('card_6', 'card','6', NULL,   timestamptz '2026-01-01 12:00:00+00'), "
+                            "('card_7', 'card','7', NULL,   timestamptz '2026-01-01 12:00:00+00')")
+                       gate-t))
+        ;; card 2 is a current failed delete and remains pending; card 3's obsolete DLQ generation must not
+        ;; hide it once the watermark passes its current tombstone.
+        (exec! (format (str "INSERT INTO \"%s\" VALUES "
+                            "('card_2', timestamptz '2026-01-01 11:00:00+00'), "
+                            "('card_3', timestamptz '2026-01-01 10:00:00+00')")
+                       dlq-t))
+        (testing "counts non-candidates whose tombstone the (gated_at, id) watermark has passed, or whose
+                 gate row is gone"
+          ;; Watermark id between card_6 and card_7: cards 4 (gate row gone) and 6 (same timestamp, earlier
+          ;; id) count. Card 2 has a current DLQ retry; cards 3 and 7 remain ahead of the watermark.
+          (is (= 2 (count! {:indexer_last_seen wm-ts :indexer_last_seen_id "card_6a"}))))
+        (testing "a tombstone ahead of the watermark is in-flight backlog, not garbage"
+          (is (= 4 (count! {:indexer_last_seen (t/plus wm-ts (t/hours 2)) :indexer_last_seen_id ""}))
+              "once the watermark passes them, the same tombstones count"))
+        (testing "nil watermark (indexer never ran) counts no tombstones, only gate-row-gone orphans"
+          (is (= 1 (count! nil))))
+        (testing "a timestamp-only watermark (no id) treats same-timestamp tombstones as pending"
+          (is (= 1 (count! {:indexer_last_seen wm-ts}))
+              "cards 6/7 are pending by watermark and card 2 by DLQ; only gate-row-gone card 4 counts"))
+        (testing "a query failure returns nil rather than failing the repair run"
+          (is (nil? (semantic.repair/count-stale-orphans pgvector "no_such_table" gate-t repair-t dlq-t
+                                                         {:indexer_last_seen wm-ts}))))
+        (finally
+          (exec! (format "DROP TABLE IF EXISTS \"%s\", \"%s\", \"%s\", \"%s\""
+                         index-t gate-t repair-t dlq-t)))))))
+
+(deftest count-stale-orphans-propagates-interruption-test
+  (mt/with-dynamic-fn-redefs
+    [jdbc/execute-one! (fn [& _] (throw (InterruptedException.)))]
+    (is (thrown? InterruptedException
+                 (semantic.repair/count-stale-orphans
+                  ::pgvector "index" "gate" "repair" "dlq" {})))))
 
 (deftest repair-table-cleanup-test
   (testing "The repair table gets cleaned up properly at the end of a repair-index! job"

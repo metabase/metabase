@@ -495,6 +495,7 @@ const buildEChartsBarSeries = (
       itemStyle: {
         color: seriesModel.color,
       },
+      blurScope: "global",
     },
     blur: {
       label: getBlurLabelStyle(settings, hasMultipleSeries),
@@ -647,6 +648,7 @@ const buildEChartsLineAreaSeries = (
       areaStyle: {
         opacity: CHART_STYLE.opacity.areaFocused,
       },
+      blurScope: "global",
     },
     blur: {
       itemStyle: {

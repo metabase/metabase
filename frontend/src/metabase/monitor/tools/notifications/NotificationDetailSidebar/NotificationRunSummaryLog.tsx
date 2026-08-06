@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
 
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { Anchor, Badge, Flex, Loader, Text, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -19,7 +19,7 @@ export const NotificationRunSummaryLog = ({
   cardId,
   onViewAllClick,
 }: NotificationRunSummaryLogProps) => {
-  const viewAllUrl = Urls.adminToolsTasksRunsFor({
+  const viewAllUrl = Urls.monitorTasksRunsFor({
     runType: "alert",
     entityType: "card",
     entityId: cardId,

@@ -1,7 +1,4 @@
 (ns metabase.search.in-place.filter-test
-  ;; Left renaming search.filter out of this PR to save a ton of noise.
-  ;; This comment is way up here, because cljfmt doesn't like it in the middle of the :require.
-  #_{:clj-kondo/ignore [:consistent-alias]}
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
@@ -43,7 +40,7 @@
 (deftest ^:parallel ->applicable-models-test-2
   (testing "optional filters will return intersection of support models and provided models\n"
     (testing "created by"
-      (is (= #{"dashboard" "dataset" "document" "action" "card" "metric" "measure"}
+      (is (= #{"dashboard" "dataset" "document" "exploration" "action" "card" "metric" "measure"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-by #{1}}))))
@@ -53,7 +50,7 @@
                      {:models #{"dashboard" "dataset" "table"}
                       :created-by #{1}})))))
     (testing "created at"
-      (is (= #{"dashboard" "table" "dataset" "document" "collection" "database" "action" "card" "metric" "transform" "measure"}
+      (is (= #{"dashboard" "table" "dataset" "document" "exploration" "collection" "database" "action" "card" "metric" "transform" "measure"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))
@@ -122,7 +119,6 @@
                       :models #{"dashboard" "card" "transform"}})))))))
 
 (deftest joined-with-table?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [expected args]
        (= expected (apply #'search.filter/joined-with-table? args))
 

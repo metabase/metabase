@@ -14,7 +14,7 @@ describe("SsoReload", () => {
       .spyOn(domUtils, "reload")
       .mockImplementation(() => undefined);
 
-    renderWithProviders(<Route path="sso" component={SsoReload} />, {
+    renderWithProviders(<Route path="sso" element={<SsoReload />} />, {
       withRouter: true,
       initialRoute: "/sso",
     });

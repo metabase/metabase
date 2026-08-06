@@ -5,7 +5,8 @@
    [metabase.config.core :as config]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
-   [metabase.transforms-base.util :as transforms-base.u]))
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
 
@@ -99,6 +100,81 @@
   (testing "accepts both string and keyword target types"
     (is (true? (transforms-base.u/full-incremental-run?
                 {:target {:type :table-incremental} :last_checkpoint_value nil})))))
+
+(deftest ^:parallel supported-checkpoint-column?-test
+  (testing "numeric and date/datetime columns are supported"
+    (is (transforms-base.u/supported-checkpoint-column? {:base-type :type/Integer}))
+    (is (transforms-base.u/supported-checkpoint-column? {:base-type :type/Float}))
+    (is (transforms-base.u/supported-checkpoint-column? {:base-type :type/Date}))
+    (is (transforms-base.u/supported-checkpoint-column? {:base-type :type/DateTime}))
+    (is (transforms-base.u/supported-checkpoint-column? {:base-type :type/DateTimeWithTZ}))
+    (is (transforms-base.u/supported-checkpoint-column? {:base-type :type/Instant})))
+  (testing "coerced columns count via their effective type"
+    (is (transforms-base.u/supported-checkpoint-column? {:base-type      :type/BigInteger
+                                                         :effective-type :type/Instant})))
+  (testing "time-only and non-orderable columns are not supported"
+    (is (not (transforms-base.u/supported-checkpoint-column? {:base-type :type/Time})))
+    (is (not (transforms-base.u/supported-checkpoint-column? {:base-type :type/TimeWithTZ})))
+    (is (not (transforms-base.u/supported-checkpoint-column? {:base-type :type/Text})))
+    (is (not (transforms-base.u/supported-checkpoint-column? {:base-type :type/Boolean})))))
+
+(deftest ^:parallel apply-lookback-test
+  (let [apply-lookback @#'transforms-base.u/apply-lookback]
+    (testing "temporal checkpoints are pushed back by value units"
+      (is (= (t/local-date-time 2026 1 27 21 0 4)
+             (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value 4 :unit "day"})))
+      (is (= (t/local-date-time 2026 1 31 19 0 4)
+             (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value 2 :unit "hour"})))
+      (is (= (t/local-date 2026 1 24)
+             (apply-lookback (t/local-date 2026 1 31) {:base-type :type/Date} {:value 1 :unit "week"}))))
+    (testing "a coerced numeric column (e.g. a unix timestamp) is temporal via its effective type"
+      (is (= (u.date/parse "2026-01-30T21:00:04Z")
+             (apply-lookback (u.date/parse "2026-01-31T21:00:04Z")
+                             {:base-type :type/BigInteger :effective-type :type/Instant}
+                             {:value 1 :unit "day"}))))
+    (testing "a lookback on a non-temporal checkpoint throws a user-facing error"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"only supported for date or datetime"
+           (apply-lookback (biginteger 42) {:base-type :type/Integer} {:value 4 :unit "day"}))))
+    (testing "a lookback on a time-only checkpoint throws a user-facing error"
+      ;; time-only watermarks wrap at midnight, and day-based units would throw inside u.date/add
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"only supported for date or datetime"
+           (apply-lookback (t/local-time 21 0 4) {:base-type :type/Time} {:value 2 :unit "hour"})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"only supported for date or datetime"
+           (apply-lookback (t/offset-time 21 0 4) {:base-type :type/TimeWithTZ} {:value 1 :unit "day"}))))
+    (testing "a lookback without a unit throws a user-facing error"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"requires a unit"
+           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value 4}))))
+    (testing "a lookback with a non-positive value throws instead of silently skipping data"
+      ;; a negative window would move `lo` forward past the watermark, permanently skipping rows
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"positive integer value"
+           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value 0 :unit "day"})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"positive integer value"
+           (apply-lookback (t/local-date-time 2026 1 31 21 0 4) {:base-type :type/DateTime} {:value -4 :unit "day"}))))))
+
+(deftest ^:parallel checkpoint-compare-test
+  (let [checkpoint-compare @#'transforms-base.u/checkpoint-compare]
+    (testing "numeric values compare numerically across numeric classes"
+      (is (neg? (checkpoint-compare :type/Integer (biginteger 41) 42)))
+      (is (zero? (checkpoint-compare :type/Integer (biginteger 42) 42))))
+    (testing "temporal values compare as instants even across temporal classes"
+      (is (neg? (checkpoint-compare :type/DateTimeWithTZ
+                                    (t/instant "2026-01-30T10:00:00Z")
+                                    (t/offset-date-time "2026-01-31T10:00:00Z"))))
+      (is (pos? (checkpoint-compare :type/DateTime
+                                    (t/local-date-time 2026 2 1 0 0 0)
+                                    (t/local-date-time 2026 1 31 0 0 0)))))))
 
 (deftest ^:parallel checkpoint-span-attrs-test
   (testing "nil source-range-params yields an empty attrs map"

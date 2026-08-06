@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.test :as mt]))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -233,6 +234,17 @@
                     (memory/initialize [{:role :user :content "Hi"}] {})))]
       (is (str/includes? content "Sales")))))
 
+(deftest ^:parallel context-injection-recent-views-test
+  (testing "includes recent views in the injected context"
+    (let [content (last-user-content
+                   (messages/build-message-history
+                    {:user_recently_viewed [{:type "question" :id 7 :name "Monthly Revenue"}]
+                     :user_is_viewing      [{:type "dashboard" :id 1 :name "Sales"}]}
+                    (memory/initialize [{:role :user :content "Hi"}] {})))]
+      (is (str/includes? content "recently viewed"))
+      (is (str/includes? content "Monthly Revenue"))
+      (is (str/ends-with? content "Hi")))))
+
 (deftest ^:parallel context-injection-viewing-native-query-test
   (testing "includes SQL and schema when user is viewing a native query"
     (let [mp (mt/metadata-provider)
@@ -271,14 +283,60 @@
                    :model           "claude-sonnet-4-5-20250929"}]
       (is (=? {:role "system" :content #"(?s).*Metabot.*"}
               (messages/build-system-message {} profile {})))))
-  (testing "includes viewing context when provided"
-    (let [context {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales Dashboard"}]}
-          profile {:prompt-template "internal.selmer"
-                   :model           "claude-sonnet-4-5-20250929"}]
-      (is (=? {:content #(not (str/blank? %))}
-              (messages/build-system-message context profile {})))))
   (testing "handles empty context gracefully"
     (let [profile {:prompt-template "internal.selmer"
                    :model           "claude-sonnet-4-5-20250929"}]
       (is (=? {:content #(not (str/blank? %))}
               (messages/build-system-message {} profile {}))))))
+
+(deftest build-system-message-excludes-user-context-test
+  (testing "viewing context does not leak into the system message (it is injected into the last user message)"
+    (let [context {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales Dashboard"}]}
+          profile {:prompt-template "internal.selmer"
+                   :model           "claude-sonnet-4-5-20250929"}]
+      (is (=? {:content #(not (str/includes? % "Sales Dashboard"))}
+              (messages/build-system-message context profile {}))))))
+
+(deftest build-system-message-does-not-enrich-context-test
+  (testing "building the system message never runs the expensive context formatting"
+    (let [calls   (atom 0)
+          profile {:prompt-template "internal.selmer"
+                   :model           "claude-sonnet-4-5-20250929"}]
+      (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                  (fn [_] (swap! calls inc) {})]
+        (messages/build-system-message
+         {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales"}]}
+         profile
+         {})
+        (is (zero? @calls))))))
+
+(deftest build-system-message-uses-profile-system-prompt-context-test
+  (testing "a profile's :system-prompt-context fn contributes extra, feature-specific template vars
+            to the system prompt — the generic agent stays unaware of what they are"
+    (let [profile {:prompt-template       "explorations.selmer"
+                   :model                 "claude-sonnet-4-5-20250929"
+                   ;; stand in for any feature hook; here it fills the template's {{research_plan}}
+                   :system-prompt-context (fn [ctx] {:research_plan (str "PLAN:" (:marker ctx))})}
+          content (:content (messages/build-system-message {:marker "abc123"} profile {}))]
+      (is (str/includes? content "PLAN:abc123")
+          "the hook receives the request context and its returned vars reach the template")))
+  (testing "a profile with no :system-prompt-context contributes nothing (and does not error)"
+    (let [profile {:prompt-template "explorations.selmer"
+                   :model           "claude-sonnet-4-5-20250929"}
+          content (:content (messages/build-system-message {} profile {}))]
+      (is (not (str/includes? content "Current research plan"))))))
+
+(deftest build-message-history-enriches-context-once-test
+  (testing "one LLM call formats the user context exactly once (in build-message-history)"
+    (let [calls   (atom 0)
+          profile {:prompt-template "internal.selmer"
+                   :model           "claude-sonnet-4-5-20250929"}
+          context {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales"}]}
+          orig    (mt/original-fn #'user-context/enrich-context-for-template)]
+      (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                  (fn [ctx] (swap! calls inc) (orig ctx))]
+        (messages/build-system-message context profile {})
+        (messages/build-message-history
+         context
+         (memory/initialize [{:role :user :content "Hello"}] {}))
+        (is (= 1 @calls))))))

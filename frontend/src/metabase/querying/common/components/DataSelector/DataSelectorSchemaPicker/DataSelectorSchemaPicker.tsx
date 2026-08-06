@@ -8,15 +8,13 @@ import type { SchemaId } from "metabase-types/api";
 import { CONTAINER_WIDTH } from "../constants";
 
 type DataSelectorSchemaPickerProps = {
-  hasBackButton: boolean;
   hasFiltering: boolean;
   hasInitialFocus: boolean;
   hasNextStep: boolean;
   isLoading: boolean;
   schemas: Schema[];
-  selectedSchemaId: SchemaId;
-  onBack: () => void;
-  onChangeSchema: (item: { schema: Schema }) => void;
+  selectedSchemaId?: SchemaId;
+  onChangeSchema: (schema?: Schema) => void;
 };
 
 export const DataSelectorSchemaPicker = ({

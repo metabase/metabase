@@ -97,7 +97,7 @@
           [a1 a2 _a3] (lib/aggregations query)]
       (log.capture/with-log-messages-for-level [messages [metabase.lib.swap :warn]]
         (lib/swap-clauses query -1 a2 (lib.options/update-options a1 assoc :lib/uuid (str (random-uuid))))
-        (is (=? [{:level :warn, :message #"No matching clause in swap-clauses \[:count .*"}]
+        (is (=? [{:level :warn, :message #"No matching clause in swap-clauses"}]
                 (messages)))))))
 
 (deftest ^:synchronized swap-clauses-ambiguous-test
@@ -111,7 +111,7 @@
           query       (update-in query [:stages 0 :aggregation] conj a2)]
       (log.capture/with-log-messages-for-level [messages [metabase.lib.swap :warn]]
         (lib/swap-clauses query -1 a1 a2)
-        (is (=? [{:level :warn, :message #"Ambiguous match for clause in swap-clauses \[:sum .*"}]
+        (is (=? [{:level :warn, :message #"Ambiguous match for clause in swap-clauses \(2 matches\)"}]
                 (messages)))))))
 
 (deftest ^:parallel swap-clauses-aggregations-with-downstream-refs-test

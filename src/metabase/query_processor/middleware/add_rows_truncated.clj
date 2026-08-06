@@ -2,6 +2,7 @@
   "Adds `:rows_truncated` to the query results if the results were truncated because of the query's constraints."
   (:require
    [metabase.lib.core :as lib]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.middleware.limit :as-alias limit]
    [metabase.query-processor.schema :as qp.schema]
@@ -20,8 +21,8 @@
         max-results
         qp.settings/absolute-max-results)))
 
-(defn- add-rows-truncated-xform [limit rf]
-  {:pre [(int? limit) (fn? rf)]}
+(defn- add-rows-truncated-xform [limit truncated-key rf]
+  {:pre [(int? limit) (keyword? truncated-key) (fn? rf)]}
   (let [row-count (volatile! 0)]
     (fn
       ([]
@@ -31,17 +32,20 @@
        (rf (cond-> result
              (and (map? result)
                   (= @row-count limit))
-             (assoc-in [:data :rows_truncated] limit))))
+             (assoc-in [:data truncated-key] limit))))
 
       ([result row]
        (vswap! row-count inc)
        (rf result row)))))
 
 (mu/defn add-rows-truncated
-  "Add `:rows_truncated` to the result if the results were truncated because of the query's constraints. Only affects QP
-  results that are reduced to a map (e.g. the default reducing function; other reducing functions such as streaming to
-  a CSV are unaffected.)"
+  "Add a truncation flag to the result if the results were truncated because of the query's constraints. Uses
+  `:pivot_rows_truncated` for queries that carry a `:pivot` clause (so the FE pivot warning fires) and `:rows_truncated`
+  otherwise. Only affects QP results that are reduced to a map (e.g. the default reducing function; other reducing
+  functions such as streaming to a CSV are unaffected.)"
   [query :- ::lib.schema/query
    rff   :- ::qp.schema/rff]
   (fn add-rows-truncated-rff* [metadata]
-    (add-rows-truncated-xform (results-limit query) (rff metadata))))
+    (add-rows-truncated-xform (results-limit query)
+                              (if (lib.pivot/has-pivot? query) :pivot_rows_truncated :rows_truncated)
+                              (rff metadata))))

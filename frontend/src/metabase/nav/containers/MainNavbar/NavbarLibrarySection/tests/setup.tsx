@@ -89,13 +89,13 @@ export const setup = ({
   return renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <NavbarLibrarySection
           collections={collections}
           selectedId={undefined}
           onItemSelect={jest.fn()}
         />
-      )}
+      }
     />,
     {
       storeInitialState: state,

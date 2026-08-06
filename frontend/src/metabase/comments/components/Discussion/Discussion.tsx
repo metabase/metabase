@@ -7,7 +7,9 @@ import {
   useToggleReactionMutation,
   useUpdateCommentMutation,
 } from "metabase/api";
-import { getCommentsUrl } from "metabase/comments/utils";
+import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
+import type { CommentExtraRenderer } from "metabase/comments/types";
+import { getCommentNodeId } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
@@ -25,11 +27,12 @@ import S from "./Discussion.module.css";
 import { DiscussionComment } from "./DiscussionComment";
 
 export interface DiscussionProps {
-  childTargetId: EntityId | null;
+  childTargetId: string | null;
   comments: Comment[];
   targetId: EntityId;
   targetType: CommentEntityType;
   onHoverChange?: (childTargetId: string | undefined) => void;
+  renderExtra?: CommentExtraRenderer;
 }
 
 export const Discussion = ({
@@ -38,6 +41,7 @@ export const Discussion = ({
   targetId,
   targetType,
   onHoverChange,
+  renderExtra,
 }: DiscussionProps) => {
   const currentUser = useSelector(getUser);
   const [, setNewComment] = useState<DocumentContent>();
@@ -49,6 +53,8 @@ export const Discussion = ({
   const [updateComment] = useUpdateCommentMutation();
   const [deleteComment] = useDeleteCommentMutation();
   const [toggleReaction] = useToggleReactionMutation();
+
+  const commentsUrl = useCommentUrl({ childTargetId: effectiveChildTargetId });
 
   const handleSubmit = async (doc: DocumentContent) => {
     const { error } = await createComment({
@@ -133,12 +139,7 @@ export const Discussion = ({
   };
 
   const handleCopyLink = (comment: Comment) => {
-    const url = getCommentsUrl({
-      childTargetId: effectiveChildTargetId,
-      targetId,
-      targetType,
-      comment,
-    });
+    const url = `${commentsUrl}#${getCommentNodeId(comment)}`;
 
     navigator.clipboard.writeText(`${window.location.origin}${url}`);
     sendToast({ icon: "check", message: t`Copied link` });
@@ -207,6 +208,7 @@ export const Discussion = ({
             onCopyLink={handleCopyLink}
             onReaction={handleReaction}
             onReactionRemove={handleReactionRemove}
+            renderExtra={renderExtra}
           />
         ))}
         {!comments[0]?.is_resolved && currentUser && (

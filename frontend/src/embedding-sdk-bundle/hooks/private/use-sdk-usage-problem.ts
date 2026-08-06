@@ -10,10 +10,9 @@ import {
   getUsageProblem,
 } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
-import { useSetting } from "metabase/common/hooks";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-import { getTokenFeature } from "metabase/selectors/settings";
+import { getSetting, getTokenFeature, useSetting } from "metabase/settings";
 
 export function useSdkUsageProblem({
   authConfig,
@@ -42,7 +41,7 @@ export function useSdkUsageProblem({
 
   const isDevelopmentMode = useSdkSelector((state) => {
     // Assume that we are not in development mode until the setting is loaded
-    if (!state.settings.values?.["token-features"]) {
+    if (!getSetting(state, "token-features")) {
       return false;
     }
 

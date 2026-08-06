@@ -35,7 +35,6 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [not-empty get-in]]
    [metabase.visualization-settings.core :as mb.viz]
-   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
@@ -81,7 +80,7 @@
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (qp.streaming/streaming-response [rff export-format]
         ;; must run before `process-query` sets up the QP store
-        (let [rff (qp.referenced-cards/maybe-wrap-rff rff referenced-cards-specs)]
+        (let [rff (qp.referenced-cards/maybe-wrap-rff-for-goals rff referenced-cards-specs)]
           (if was-pivot
             (let [constraints (if (= export-format :api)
                                 (qp.constraints/default-query-constraints)
@@ -207,26 +206,19 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/native"
-  "Fetch a native version of an MBQL query.
-
-  Display path: workspace remapping is suppressed via
-  [[ws.table-remapping/with-display-context]] so the user sees canonical-schema SQL
-  in the 'Show me the SQL' panel. The query still executes against the workspace
-  isolation schema at warehouse time (separate code path); this endpoint only
-  affects what the user reads."
+  "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
    {:keys [database pretty] :as query} :- [:map
                                            [:database ms/PositiveInt]
                                            [:pretty   {:default true} [:maybe :boolean]]]]
-  (ws.table-remapping/with-display-context
-    (model-persistence/with-persisted-substituion-disabled
-      (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-      (let [driver (driver.u/database->driver database)
-            prettify (partial driver/prettify-native-form driver)
-            compiled (qp.compile/compile-with-inline-parameters query)]
-        (cond-> compiled
-          pretty (update :query prettify))))))
+  (model-persistence/with-persisted-substituion-disabled
+    (qp.perms/check-current-user-has-adhoc-native-query-perms query)
+    (let [driver (driver.u/database->driver database)
+          prettify (partial driver/prettify-native-form driver)
+          compiled (qp.compile/compile-with-inline-parameters query)]
+      (cond-> compiled
+        pretty (update :query prettify)))))
 
 (api.macros/defendpoint :post "/pivot"
   :- (server/streaming-response-schema ::qp.schema/query-result)

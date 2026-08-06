@@ -45,13 +45,11 @@ const setup = ({ isSuperuser = true, remoteSyncType }: SetupOptions = {}) => {
     <>
       <Route
         path="/"
-        component={() => (
-          <RootSnippetsCollectionMenu collectionId={collection.id} />
-        )}
+        element={<RootSnippetsCollectionMenu collectionId={collection.id} />}
       />
       <Route
         path={dataStudioArchivedSnippets()}
-        component={() => <div data-testid="archived-snippets" />}
+        element={<div data-testid="archived-snippets" />}
       />
     </>,
     {
@@ -124,16 +122,14 @@ describe("RootSnippetsCollectionMenu", () => {
 
   describe("view archived snippets option", () => {
     it("navigates to archived snippets page", async () => {
-      const { history } = setup();
+      const { router } = setup();
       await userEvent.click(
         screen.getByRole("button", { name: "Snippet collection options" }),
       );
       await userEvent.click(
         screen.getByRole("menuitem", { name: /View archived snippets/ }),
       );
-      expect(history?.getCurrentLocation()?.pathname).toMatch(
-        /\/snippets\/archived/,
-      );
+      expect(router?.location?.pathname).toMatch(/\/snippets\/archived/);
     });
   });
 });

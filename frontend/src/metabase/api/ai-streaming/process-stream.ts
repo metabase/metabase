@@ -1,6 +1,6 @@
 import { P, isMatching, match } from "ts-pattern";
 
-import type { MetabotHistory } from "metabase-types/api";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 
 import {
   type KnownDataPart,
@@ -10,10 +10,14 @@ import {
   toolOutputAvailableSchema,
   toolOutputErrorSchema,
 } from "./schemas";
+import { smoothStreamEvents } from "./smooth-stream";
 import { parseSSEStream } from "./sse-stream";
 import type {
   FinishReason,
   MessageMetadata,
+  ReasoningDeltaEvent,
+  ReasoningEndEvent,
+  ReasoningStartEvent,
   StartEvent,
   ToolInputAvailableEvent,
   ToolInputStartEvent,
@@ -38,6 +42,9 @@ export type StreamedError = { errorText: string };
 export type AIStreamingConfig = {
   onStart?: (event: StartEvent) => void;
   onTextPart?: (delta: string) => void;
+  onReasoningStart?: (event: ReasoningStartEvent) => void;
+  onReasoningDelta?: (event: ReasoningDeltaEvent) => void;
+  onReasoningEnd?: (event: ReasoningEndEvent) => void;
   // callback is only called if this version of the client is aware of the received data part type
   onDataPart?: (part: KnownDataPart) => void;
   onToolInputStart?: (event: ToolInputStartEvent) => void;
@@ -51,7 +58,6 @@ export type AIStreamingConfig = {
 export interface ProcessedChatResponse {
   aborted: boolean;
   toolCalls: ToolCall[];
-  history: MetabotHistory;
   data: DataPart[];
   messageMetadata?: MessageMetadata;
   finishReason?: FinishReason;
@@ -81,28 +87,23 @@ export async function processChatResponse(
   const result: ProcessedChatResponse = {
     aborted: false,
     toolCalls: [],
-    history: [],
     data: [],
   };
 
+  const events = parseSSEStream(stream);
+  const paced = isReducedMotionPreferred()
+    ? events
+    : smoothStreamEvents(events);
+
   try {
-    for await (const event of parseSSEStream(stream)) {
+    for await (const event of paced) {
       match(event)
-        .with({ type: "start" }, (e) => {
-          config.onStart?.(e);
-        })
-        .with({ type: "text-delta" }, (e) => {
-          config.onTextPart?.(e.delta);
-          const lastEntry = result.history.at(-1);
-          if (lastEntry?.role === "assistant" && "content" in lastEntry) {
-            lastEntry.content += e.delta;
-          } else {
-            result.history.push({ role: "assistant", content: e.delta });
-          }
-        })
-        .with({ type: "tool-input-start" }, (e) => {
-          config.onToolInputStart?.(e);
-        })
+        .with({ type: "start" }, (e) => config.onStart?.(e))
+        .with({ type: "text-delta" }, (e) => config.onTextPart?.(e.delta))
+        .with({ type: "reasoning-start" }, (e) => config.onReasoningStart?.(e))
+        .with({ type: "reasoning-delta" }, (e) => config.onReasoningDelta?.(e))
+        .with({ type: "reasoning-end" }, (e) => config.onReasoningEnd?.(e))
+        .with({ type: "tool-input-start" }, (e) => config.onToolInputStart?.(e))
         .with({ type: "tool-input-available" }, (e) => {
           toolInputAvailableSchema.validateSync(e, { strict: true });
           config.onToolInputAvailable?.(e);
@@ -110,16 +111,6 @@ export async function processChatResponse(
             toolCallId: e.toolCallId,
             toolName: e.toolName,
             state: "call",
-          });
-          result.history.push({
-            role: "assistant",
-            tool_calls: [
-              {
-                id: e.toolCallId,
-                name: e.toolName,
-                arguments: JSON.stringify(e.input),
-              },
-            ],
           });
         })
         .with({ type: "tool-output-available" }, (e) => {
@@ -131,11 +122,6 @@ export async function processChatResponse(
             state: "result",
             value: e.output,
           };
-          result.history.push({
-            role: "tool",
-            content: e.output,
-            tool_call_id: e.toolCallId,
-          });
         })
         .with({ type: "tool-output-error" }, (e) => {
           toolOutputErrorSchema.validateSync(e, { strict: true });
@@ -147,11 +133,6 @@ export async function processChatResponse(
             value: undefined,
             error: e.errorText,
           };
-          result.history.push({
-            role: "tool",
-            content: e.errorText,
-            tool_call_id: e.toolCallId,
-          });
         })
         .with({ type: "error" }, (e) => {
           config.onError?.({ errorText: e.errorText });
@@ -187,7 +168,6 @@ export async function processChatResponse(
           //   text:       text-start, text-end
           //   tool:       tool-input-delta, tool-input-error, tool-approval-request,
           //               tool-output-denied
-          //   reasoning:  reasoning-start, reasoning-delta, reasoning-end
           //   sources:    source-url, source-document
           //   files:      file
         });

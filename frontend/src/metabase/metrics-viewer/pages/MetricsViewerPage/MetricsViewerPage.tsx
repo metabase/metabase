@@ -1,5 +1,3 @@
-import type { Location } from "history";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { BreakoutLegend } from "metabase/metrics-viewer/components/BreakoutLegend/BreakoutLegend";
 import { DimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
@@ -18,12 +16,8 @@ import { Box, Center, Flex, Stack } from "metabase/ui";
 
 import S from "./MetricsViewerPage.module.css";
 
-export type MetricsViewerPageProps = {
-  location: Location;
-};
-
-export function MetricsViewerPage(props: MetricsViewerPageProps) {
-  const viewerState = useViewerState(props);
+export function MetricsViewerPage() {
+  const viewerState = useViewerState();
 
   if (!viewerState.initialLoadComplete) {
     // parsing formulas won't work until the initial set of definitions are loaded

@@ -3,7 +3,6 @@ import {
   isLibraryCollection,
   isTrashedCollection,
 } from "metabase/common/collections/utils";
-import { withRouter } from "metabase/router";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
@@ -101,4 +100,4 @@ const CollectionHeader = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default withRouter(CollectionHeader);
+export default CollectionHeader;
