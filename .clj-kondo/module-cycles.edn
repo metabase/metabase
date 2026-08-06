@@ -24,7 +24,7 @@
      :modules #{segments
                 xrays}}
 
-    {:edges   949
+    {:edges   986
      :modules #{actions
                 activity-feed
                 agent-api
@@ -45,6 +45,7 @@
                 classloader
                 collections
                 content-verification
+                contextual-interestingness
                 dashboards
                 database-routing
                 documents
@@ -54,6 +55,7 @@
                 embedding
                 entity-retrieval
                 events
+                explorations
                 formatter
                 geojson
                 graph
@@ -73,6 +75,7 @@
                 metrics
                 model-persistence
                 models
+                mq
                 native-query-snippets
                 notification
                 oauth-server
@@ -128,7 +131,7 @@
 
  :uses+model-imports
  {:sccs
-  #{{:edges   1359
+  #{{:edges   1404
      :modules #{actions
                 activity-feed
                 agent-api
@@ -151,6 +154,7 @@
                 collections
                 comments
                 content-verification
+                contextual-interestingness
                 dashboards
                 database-routing
                 documents
@@ -160,6 +164,7 @@
                 embedding
                 entity-retrieval
                 events
+                explorations
                 formatter
                 geojson
                 glossary
@@ -182,6 +187,7 @@
                 metrics
                 model-persistence
                 models
+                mq
                 native-query-snippets
                 notification
                 oauth-server
