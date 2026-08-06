@@ -34,10 +34,10 @@
   "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
   [_route-params
    _query-params
-   {:keys [email hash pulse-id]} :- [:map
+   {:keys [email hash pulse-id]} :- [:map {:closed true}
                                      [:pulse-id ms/PositiveInt]
-                                     [:email    :string]
-                                     [:hash     :string]]
+                                     [:email    ms/NonBlankString]
+                                     [:hash     ms/NonBlankString]]
    request]
   (check-hash pulse-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
@@ -59,10 +59,10 @@
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
   [_route-params
    _query-params
-   {:keys [email hash pulse-id]} :- [:map
+   {:keys [email hash pulse-id]} :- [:map {:closed true}
                                      [:pulse-id ms/PositiveInt]
-                                     [:email    :string]
-                                     [:hash     :string]]
+                                     [:email    ms/NonBlankString]
+                                     [:hash     ms/NonBlankString]]
    request]
   (check-hash pulse-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]

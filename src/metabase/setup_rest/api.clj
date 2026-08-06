@@ -74,16 +74,23 @@
    {{first-name :first_name, last-name :last_name, :keys [email password]} :user
     {site-name :site_name
      site-locale :site_locale} :prefs}
-   :- [:map
+   :- [:map {:closed true}
        [:token SetupToken]
-       [:user [:map
+       [:user [:map {:closed true}
                [:email      ms/Email]
                [:password   ms/ValidPassword]
                [:first_name {:optional true} [:maybe ms/NonBlankString]]
-               [:last_name  {:optional true} [:maybe ms/NonBlankString]]]]
-       [:prefs [:map
+               [:last_name  {:optional true} [:maybe ms/NonBlankString]]
+               ;; the setup flow posts its whole user object, which also carries these two; both are ignored here.
+               [:site_name        {:optional true} [:maybe :string]]
+               [:password_confirm {:optional true} [:maybe :string]]]]
+       [:prefs [:map {:closed true}
                 [:site_name   ms/NonBlankString]
-                [:site_locale {:optional true} [:maybe ms/ValidLocale]]]]]
+                [:site_locale {:optional true} [:maybe ms/ValidLocale]]
+                ;; legacy key still sent by existing clients; ignored -- anonymous tracking is always enabled here.
+                [:allow_tracking {:optional true} [:maybe [:or :boolean :string]]]]]
+       ;; legacy key from the old setup flow that created a Database inline; still sent (often as `null`) and ignored.
+       [:database {:optional true} :any]]
    request]
   (letfn [(create! []
             (try

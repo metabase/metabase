@@ -133,7 +133,7 @@
 (api.macros/defendpoint :get "/:key"
   "Fetch a custom GeoJSON file as defined in the [[metabase.geojson.settings/custom-geojson]] setting. (This just acts
   as a simple proxy for the file specified for `key`)."
-  [{k :key, :as _route-params} :- [:map
+  [{k :key, :as _route-params} :- [:map {:closed true}
                                    [:key ms/NonBlankString]]
    _query-params
    _body
@@ -157,7 +157,7 @@
   "Load a custom GeoJSON file based on a URL or file path provided as a query parameter.
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
   [_route-params
-   {:keys [url], :as _query-params} :- [:map
+   {:keys [url], :as _query-params} :- [:map {:closed true}
                                         [:url ms/NonBlankString]]
    _body
    _request
