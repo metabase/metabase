@@ -599,6 +599,22 @@ function visitExplorationUntilSettled(
   awaitThreadCompletion(0);
 }
 
+/**
+ * The FE polls every 2s while the new thread's queries are in flight, then
+ * toasts once its first page lands. Timing is covered by
+ * ExplorationPage.unit.spec.tsx — here we just wait for the real BE.
+ * Scoped to the toast container so we don't match the thread name in the
+ * sidebar.
+ */
+function openExploreFurtherToast(threadName: string): void {
+  H.undoToastListContainer().within(() => {
+    cy.findByText(`Added ${threadName}`, { timeout: 60000 }).should(
+      "be.visible",
+    );
+    cy.findByRole("button", { name: "View" }).click();
+  });
+}
+
 describe("scenarios > explorations > sidebar triage", () => {
   const sidebar = () => cy.findByTestId("exploration-page-sidebar");
   const filterToggle = () => cy.findByTestId("exploration-show-hidden-toggle");
@@ -1002,18 +1018,9 @@ describe("scenarios > explorations > chart click-through", () => {
             cy.wrap(newThread!.name).as("newThreadName");
           });
 
-          // The FE polls every 2s while the new thread's queries are in flight,
-          // then toasts once its first page lands. Timing is covered by
-          // ExplorationPage.unit.spec.tsx — here we just wait for the real BE.
-          cy.get("@newThreadName").then((name) => {
-            // Scoped to the toast container — an unscoped text query could
-            // match the thread name rendered in the sidebar instead.
-            H.undoToastListContainer()
-              .findByText(`Added ${name}`, { timeout: 60000 })
-              .should("be.visible");
+          cy.get<string>("@newThreadName").then((name) => {
+            openExploreFurtherToast(name);
           });
-
-          cy.findByRole("button", { name: "View" }).click();
 
           cy.location("pathname").should(
             "include",
@@ -1039,15 +1046,16 @@ describe("scenarios > explorations > chart click-through", () => {
   });
 
   it("brushing a timeseries cartesian chart opens Explore further only, posts between explore_filters, and navigates from the new-thread toast", () => {
-    cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
-      // Unjustified type cast. FIXME
-      const data = body as GetExplorationDataResponse;
+    cy.request<GetExplorationDataResponse>(
+      "GET",
+      "/api/exploration/dimensions",
+    ).then(({ body: data }) => {
       const ordersMetric = data.metrics.find(
-        (metric) => metric.name === "Count of orders",
+        (metric) => metric.name === ORDERS_COUNT_METRIC_NAME,
       );
       expect(
         ordersMetric,
-        '"Count of orders" metric is exposed by /api/exploration/dimensions',
+        `"${ORDERS_COUNT_METRIC_NAME}" metric is exposed by /api/exploration/dimensions`,
       ).to.exist;
       const dimsById = new Map(
         data.dimension_groups.flatMap((group) =>
@@ -1074,20 +1082,16 @@ describe("scenarios > explorations > chart click-through", () => {
           `/api/exploration/${explorationId}/explore-further`,
         ).as("exploreFurther");
 
-        H.visitExploration(explorationId);
-        cy.findAllByRole("treeitem", { timeout: 30000 })
-          .first()
-          .should("be.visible");
+        visitExplorationUntilSettled(explorationId, 1);
 
-        cy.request("GET", `/api/exploration/${explorationId}`).then(
-          ({ body }) => {
-            // Unjustified type cast. FIXME
-            const exploration = body as Exploration;
-            initialThreadIds = (exploration.threads ?? []).map(
-              (thread) => thread.id,
-            );
-          },
-        );
+        cy.request<Exploration>(
+          "GET",
+          `/api/exploration/${explorationId}`,
+        ).then(({ body: exploration }) => {
+          initialThreadIds = (exploration.threads ?? []).map(
+            (thread) => thread.id,
+          );
+        });
 
         cy.findByTestId("exploration-page-sidebar").within(() => {
           cy.findByRole("group", { name: ordersMetric!.name }).then(
@@ -1098,18 +1102,12 @@ describe("scenarios > explorations > chart click-through", () => {
             },
           );
           cy.findByRole("treeitem", {
-            name: new RegExp(`${temporalDimension!.display_name}$`), // anchor on end so we don't match e.g. Hour of day
-          })
-            .first()
-            .click();
+            // Anchor on end so we don't match e.g. "Hour of day".
+            name: new RegExp(`${temporalDimension!.display_name}$`),
+          }).click();
         });
 
-        cy.findAllByLabelText("Ready", { timeout: 30000 })
-          .first()
-          .should("be.visible");
-
         H.ensureEchartsContainerHasSvg();
-        cy.wait(100);
         H.applyBrush(120, 280);
 
         cy.findByTestId("click-actions-view").within(() => {
@@ -1138,7 +1136,7 @@ describe("scenarios > explorations > chart click-through", () => {
             .to.be.an("array")
             .and.have.length(2);
 
-          // Unjustified type cast. FIXME
+          // Cypress does not type intercept response bodies.
           const threads = (response?.body as Exploration).threads ?? [];
           const newThread = threads.find(
             (thread) => !initialThreadIds.includes(thread.id),
@@ -1147,20 +1145,21 @@ describe("scenarios > explorations > chart click-through", () => {
           cy.wrap(newThread!.name).as("newThreadName");
         });
 
-        cy.get("@newThreadName").then((name) => {
-          cy.findByText(`Added ${name}`, { timeout: 60000 }).should(
-            "be.visible",
-          );
+        cy.get<string>("@newThreadName").then((name) => {
+          openExploreFurtherToast(name);
         });
-
-        cy.findByRole("button", { name: "View" }).click();
 
         cy.location("pathname").should(
           "include",
           `/question/research/${explorationId}/page/`,
         );
 
-        cy.findByTestId("filter-pill").should("be.visible");
+        // Temporal ranges use an en-dash (e.g. "Feb 2020 – Mar 2020"); exact
+        // bounds depend on brush pixel coords, so just assert range formatting.
+        cy.findByTestId("filter-pill")
+          .should("be.visible")
+          .invoke("text")
+          .should("match", /–/);
       });
     });
   });

@@ -513,7 +513,7 @@ describe("canBrush", () => {
 });
 
 describe("getBrushClickObject", () => {
-  // Unjustified type cast. FIXME
+  // mock element
   const chartElement = {
     getBoundingClientRect: () => ({
       left: 100,
@@ -545,7 +545,7 @@ describe("getBrushClickObject", () => {
         formatter: String,
       },
     });
-    // Unjustified type cast. FIXME
+    // mock event
     const event = {
       areas: [
         {
@@ -593,7 +593,7 @@ describe("getBrushClickObject", () => {
         formatter: String,
       },
     });
-    // Unjustified type cast. FIXME
+    // mock event
     const event = {
       areas: [
         {

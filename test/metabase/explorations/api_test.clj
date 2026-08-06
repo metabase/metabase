@@ -1497,8 +1497,10 @@
             page-id   (some :id (filter #(str/includes? (:name %) "Price")
                                         (-> src :blocks first :pages)))
             drill     {:page_id         page-id
-                       :explore_filters [{:field_ref ["field" {} (mt/id :venues :price)]
-                                          :value 2 :display_value "2"}]}]
+                       :explore_filters [{:operator      "="
+                                          :field_ref     ["field" {} (mt/id :venues :price)]
+                                          :value         2
+                                          :display_value "2"}]}]
         (testing "control: drilling a thread the caller can see succeeds"
           (is (map? (mt/user-http-request u :post 200
                                           (format "exploration/%d/explore-further" expl-id) drill))))
@@ -2420,8 +2422,10 @@
             expl-id        (:id resp)
             page-id        (-> resp :threads first :blocks first :pages first :id)
             body           {:page_id         page-id
-                            :explore_filters [{:field_ref ["field" {} (mt/id :venues :category_id)]
-                                               :value     1}]}
+                            :explore_filters [{:operator      "="
+                                               :field_ref     ["field" {} (mt/id :venues :category_id)]
+                                               :value         1
+                                               :display_value "1"}]}
             threads-before (t2/count :model/ExplorationThread :exploration_id expl-id)]
         (perms/revoke-collection-permissions! (perms-group/all-users) (:id hidden))
         (testing "an unreadable card is a 403"

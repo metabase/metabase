@@ -191,7 +191,7 @@
                    :model/Exploration e {:name "x"}
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid      (:id metric)
-            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
+            mappings [{:dimension-id "d1" :table-id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :price)]}]
             page-id  (insert-block-page-row!
                       (:id t) cid
@@ -201,8 +201,8 @@
                                                            :field_ref ["field" {} (mt/id :venues :price)]
                                                            :values    [4 1]
                                                            :display_value "1 - 4"}]}]
-                       :dimensions [{:dimension_id "d1" :display_name "Price"
-                                     :effective_type "type/Number"}]}
+                       :dimensions [{:dimension-id "d1" :display-name "Price"
+                                     :effective-type "type/Number"}]}
                       "d1")
             ctx      (qp.context/build-row-context {:card_id cid :dimension_id "d1"
                                                     :page_id page-id :params {}})
@@ -222,7 +222,7 @@
                    :model/ExplorationThread t {:exploration_id (:id e)}]
       (let [cid        (:id metric)
             created-at (mt/id :orders :created_at)
-            mappings   [{:dimension_id "d1" :table_id (mt/id :orders)
+            mappings   [{:dimension-id "d1" :table-id (mt/id :orders)
                          :target ["field" {} created-at]}]
             page-id    (insert-block-page-row!
                         (:id t) cid
@@ -233,8 +233,8 @@
                                                              :values    ["2020-03-01T00:00:00"
                                                                          "2020-01-01T00:00:00"]
                                                              :display_value "Jan 2020 - Mar 2020"}]}]
-                         :dimensions [{:dimension_id "d1" :display_name "Created At"
-                                       :effective_type "type/DateTimeWithLocalTZ"}]}
+                         :dimensions [{:dimension-id "d1" :display-name "Created At"
+                                       :effective-type "type/DateTimeWithLocalTZ"}]}
                         "d1")
             ctx        (qp.context/build-row-context {:card_id cid :dimension_id "d1"
                                                       :page_id page-id :params {}})
