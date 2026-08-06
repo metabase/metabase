@@ -68,10 +68,12 @@ describe("ExportAsPdfButton", () => {
     expect(button).toBeDisabled();
   });
 
-  it("is disabled when the dashboard is empty", () => {
+  it("does not render when the dashboard is empty", () => {
     setup({ dashboard: createMockDashboard({ dashcards: [] }) });
 
-    expect(screen.getByTestId("export-as-pdf-button")).toBeDisabled();
+    expect(
+      screen.queryByTestId("export-as-pdf-button"),
+    ).not.toBeInTheDocument();
   });
 
   describe("multi-tab dashboards", () => {
@@ -83,13 +85,15 @@ describe("ExportAsPdfButton", () => {
       dashcards: [createMockDashboardCard({ dashboard_tab_id: 2 })],
     });
 
-    it("is disabled when the selected tab is empty", () => {
+    it("does not render when the selected tab is empty", () => {
       setup({ dashboard, selectedTabId: 1 });
 
-      expect(screen.getByTestId("export-as-pdf-button")).toBeDisabled();
+      expect(
+        screen.queryByTestId("export-as-pdf-button"),
+      ).not.toBeInTheDocument();
     });
 
-    it("is enabled when the selected tab has cards", () => {
+    it("renders when the selected tab has cards", () => {
       setup({ dashboard, selectedTabId: 2 });
 
       expect(screen.getByTestId("export-as-pdf-button")).toBeEnabled();

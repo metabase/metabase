@@ -103,11 +103,12 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
         }
       >
         <InviteToViewMenuItem onClick={openInvite} />
-        <ExportPdfMenuItem
-          dashboard={dashboard}
-          loading={isDashCardsRunning}
-          disabled={isEmpty}
-        />
+        {!isEmpty && (
+          <ExportPdfMenuItem
+            dashboard={dashboard}
+            loading={isDashCardsRunning}
+          />
+        )}
         {canShare && isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
             hasPublicLink={hasPublicLink}
@@ -146,11 +147,9 @@ function NonAdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
 
   return (
     <SharingMenu actions={<CopyDashboardLinkButton dashboard={dashboard} />}>
-      <ExportPdfMenuItem
-        dashboard={dashboard}
-        loading={isDashCardsRunning}
-        disabled={isEmpty}
-      />
+      {!isEmpty && (
+        <ExportPdfMenuItem dashboard={dashboard} loading={isDashCardsRunning} />
+      )}
       {publicUuid && (
         <CopyPublicLinkMenuItem
           url={getPublicDashboardUrl(publicUuid)}

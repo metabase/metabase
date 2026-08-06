@@ -85,16 +85,15 @@ describe("DashboardSharingMenu", () => {
       );
     });
 
-    it("should be disabled if the dashboard is empty", async () => {
+    it("should not be shown if the dashboard is empty", async () => {
       setupDashboardSharingMenu({ dashboard: { dashcards: [] } });
       await openMenu();
-      expect(screen.getByTestId("dashboard-export-pdf-button")).toBeDisabled();
-      expect(screen.getByTestId("dashboard-export-pdf-button")).not.toHaveStyle(
-        { cursor: "wait" },
-      );
+      expect(
+        screen.queryByTestId("dashboard-export-pdf-button"),
+      ).not.toBeInTheDocument();
     });
 
-    it("should be disabled if the selected tab is empty", async () => {
+    it("should not be shown if the selected tab is empty", async () => {
       setupDashboardSharingMenu({
         dashboard: {
           tabs: [
@@ -106,10 +105,9 @@ describe("DashboardSharingMenu", () => {
         dashboardState: { selectedTabId: 1 },
       });
       await openMenu();
-      expect(screen.getByTestId("dashboard-export-pdf-button")).toBeDisabled();
-
-      await userEvent.hover(screen.getByTestId("dashboard-export-pdf-button"));
-      expect(await screen.findByText("Dashboard is empty")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("dashboard-export-pdf-button"),
+      ).not.toBeInTheDocument();
     });
 
     it("should be enabled if the selected tab has cards", async () => {

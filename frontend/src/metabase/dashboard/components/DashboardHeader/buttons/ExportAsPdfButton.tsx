@@ -26,15 +26,18 @@ export const ExportAsPdfButton = (
     );
   }, [dispatch, dashboard]);
 
+  if (isEmpty) {
+    return null;
+  }
+
   return (
     <ToolbarButton
       icon="download"
       onClick={saveAsPDF}
       loading={loading}
-      tooltipLabel={isEmpty ? t`Dashboard is empty` : t`Download as PDF`}
+      tooltipLabel={t`Download as PDF`}
       data-testid="export-as-pdf-button"
       {...props}
-      disabled={isEmpty}
     />
   );
 };
