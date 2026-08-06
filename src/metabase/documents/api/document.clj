@@ -162,12 +162,19 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
-  "Gets existing `Documents`."
+  "Gets existing `Documents`. `worktree-id` lists the documents checked out into a remote-sync worktree instead
+  of the main app (admin only)."
   [_route-params
-   _query-params]
-  {:items (t2/hydrate (t2/select :model/Document {:where [:and
-                                                          (collection/visible-collection-filter-clause)
-                                                          [:= :archived false]]})
+   {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
+  {:items (t2/hydrate (t2/select :model/Document
+                                 {:where [:and
+                                          (collection/visible-collection-filter-clause
+                                           :collection_id
+                                           {:worktree-id worktree-id})
+                                          [:= :archived false]
+                                          [:= :worktree_id worktree-id]]})
                       :creator :can_write :is_remote_synced)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

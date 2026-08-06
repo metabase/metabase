@@ -12,15 +12,18 @@ import {
   Stack,
 } from "metabase/ui";
 import { useExportChangesMutation } from "metabase-enterprise/api";
+import type { WorktreeId } from "metabase-types/api";
 
 import { trackPushChanges } from "../../analytics";
-import { type SyncError, parseSyncError } from "../../utils";
+import { parseSyncError } from "../../utils";
 import { ChangesLists } from "../ChangesLists";
 
 import { CommitMessageSection } from "./CommitMessageSection";
 
 interface PushChangesModalProps {
   currentBranch: string;
+  /** Push a worktree's changes instead of the main app's. */
+  worktreeId?: WorktreeId | null;
   onClose: () => void;
 }
 
@@ -32,6 +35,7 @@ interface PushChangesModalProps {
 export const PushChangesModal = ({
   onClose,
   currentBranch,
+  worktreeId = null,
 }: PushChangesModalProps) => {
   const [commitMessage, setCommitMessage] = useState("");
 
@@ -41,8 +45,7 @@ export const PushChangesModal = ({
   ] = useExportChangesMutation();
 
   const { errorMessage } = useMemo(
-    // Unjustified type cast. FIXME
-    () => parseSyncError(exportError as SyncError),
+    () => parseSyncError(exportError),
     [exportError],
   );
 
@@ -60,13 +63,14 @@ export const PushChangesModal = ({
     exportChanges({
       message: commitMessage.trim() || undefined,
       branch: currentBranch,
+      worktree_id: worktreeId,
     });
 
     trackPushChanges({
-      triggeredFrom: "app-bar",
+      triggeredFrom: worktreeId != null ? "worktree" : "app-bar",
       force: false,
     });
-  }, [commitMessage, exportChanges, currentBranch]);
+  }, [commitMessage, exportChanges, currentBranch, worktreeId]);
 
   return (
     <Modal
@@ -89,7 +93,7 @@ export const PushChangesModal = ({
         )}
 
         <Stack gap="lg">
-          <ChangesLists title={t`Changes to push`} />
+          <ChangesLists title={t`Changes to push`} worktreeId={worktreeId} />
 
           <CommitMessageSection
             value={commitMessage}

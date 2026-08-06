@@ -56,19 +56,23 @@ export function AreaLayout({
         className={cx(S.nav, { [S.opened]: isNavbarOpened })}
         h="100%"
         p="0.75rem"
-        justify="space-between"
+        gap="sm"
         data-testid={testId}
       >
+        <AreaNavbarHeader
+          logo={logo}
+          headerControls={headerControls}
+          isNavbarOpened={isNavbarOpened}
+          onNavbarToggle={onNavbarToggle}
+        />
         <Stack gap="md" flex={1} mih={0} className={S.upperGroup}>
-          <AreaNavbarHeader
-            logo={logo}
-            headerControls={headerControls}
-            isNavbarOpened={isNavbarOpened}
-            onNavbarToggle={onNavbarToggle}
-          />
           {upperNav}
         </Stack>
-        {lowerNav && <Stack gap="0.75rem">{lowerNav}</Stack>}
+        {lowerNav && (
+          <Stack gap="xs" className={S.lowerGroup}>
+            {lowerNav}
+          </Stack>
+        )}
       </Stack>
       <Box h="100%" flex={1} miw={0}>
         {children}

@@ -21,10 +21,10 @@ export function AreaNavbarHeader({
 }: AreaNavbarHeaderProps) {
   return (
     <Flex
+      className={S.header}
       align="center"
       justify={isNavbarOpened ? "space-between" : "center"}
-      mb="0.75rem"
-      mt="sm"
+      mt="xs"
     >
       <Group gap="sm">
         <Box

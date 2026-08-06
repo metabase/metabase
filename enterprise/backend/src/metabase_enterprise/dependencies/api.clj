@@ -11,7 +11,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.documents.schema :as documents.schema]
    [metabase.graph.core :as graph]
@@ -193,123 +192,35 @@
   Accepts three arguments:
   - `entity-type-field`: Database column name for entity type (e.g., :to_entity_type)
   - `entity-id-field`: Database column name for entity ID (e.g., :to_entity_id)
-  - `include-archived-items`: How to handle archived items (:exclude, :all, :only). Defaults to :exclude.
-    This applies to both archived collections AND archived entities (cards/dashboards/documents/snippets).
+  - `opts`: `:include-archived-items` (:exclude, :all, :only; defaults to :exclude) and `:worktree-id`, the
+    remote-sync worktree to scope to (nil is the main app).
 
-  Returns a compound [:or ...] clause checking whether entities at those columns are readable.
-
-  Handles different entity types:
-  - Superuser-only (:model/Sandbox): Only if api/*is-superuser?* is true
-  - Collection-based (:model/Card, :model/Dashboard, :model/Document, :model/NativeQuerySnippet):
-    Uses collection/visible-collection-filter-clause for collection filtering and adds archived entity filtering.
-    Native query snippets have additional restrictions for sandboxed users.
-  - Table: Uses perms/visible-table-filter-select with appropriate permissions. Tables are NOT filtered by
-    active/visibility_type regardless of `include-archived-items`, so dependencies broken by dropped or
-    hidden tables stay visible.
-  - Transform: Analysts can view any transform they have source view permission to."
+  Each model answers for itself through [[mi/visible-filter-clause]], so the rules live next to the model's
+  `can-read?` rather than here. Tables are the exception: their shared implementation returns a CTE, which this
+  clause is spliced into queries that cannot carry one.
+  TODO (ed 2025-12-16): support CTE-based filters in the dependency graph and drop the special case."
   ([entity-type-field entity-id-field]
    (visible-entities-filter-clause entity-type-field entity-id-field nil))
-  ([entity-type-field entity-id-field {:keys [include-archived-items] :or {include-archived-items :exclude}}]
-   (into [:or]
-         (keep (fn [[entity-type model]]
-                 (let [table-name (t2/table-name model)
-                       id-column (keyword (name table-name) "id")]
-                   (case model
-                     ;; Sandbox is superuser-only
-                     :model/Sandbox
-                     (when api/*is-superuser?*
-                       [:and
-                        [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id] :from [table-name]}]])
-
-                     :model/Transform
-                     (cond
-                       api/*is-superuser?*
-                       [:and
-                        [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id] :from [table-name]}]]
-
-                       api/*is-data-analyst?*
-                       [:and
-                        [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field
-                         {:select [:id]
-                          :from   [table-name]
-                          :where  [:in :source_database_id
-                                   (perms/visible-database-filter-select
-                                    {:user-id          api/*current-user-id*
-                                     :is-superuser?    api/*is-superuser?*
-                                     :is-data-analyst? api/*is-data-analyst?*}
-                                    {:perms/create-queries :query-builder})]}]])
-
-                     ;; Collection-based entities with archived field
-                     (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
-                     (let [archived-column (keyword (name table-name) "archived")]
-                       (when-not (and (= model :model/NativeQuerySnippet)
-                                      (or (perms/sandboxed-user?)
-                                          (not (perms/user-has-any-perms-of-type?
-                                                api/*current-user-id* :perms/create-queries))))
-                         [:and
-                          [:= entity-type-field (name entity-type)]
-                          [:in entity-id-field {:select [:id]
-                                                :from   [table-name]
-                                                :where  [:and
-                                                         ;; Filter by collection visibility
-                                                         (collection/visible-collection-filter-clause
-                                                          (keyword (name table-name) "collection_id")
-                                                          {:include-archived-items include-archived-items}
-                                                          {:current-user-id api/*current-user-id*
-                                                           :is-superuser?   api/*is-superuser?*})
-                                                         ;; Filter by entity archived status
-                                                         (case include-archived-items
-                                                           :exclude [:= archived-column false]
-                                                           :only [:= archived-column true]
-                                                           :all nil)]}]]))
-
-                     ;; Table with visible-filter-clause; inactive/hidden tables are always included
-                     ;; so that dependencies broken by dropped tables stay visible
-                     :model/Table
-                     [:and
-                      [:= entity-type-field (name entity-type)]
-                      [:in entity-id-field {:select [:id]
-                                            :from   [table-name]
-                                            :where  [:in id-column
-                                                     (perms/visible-table-filter-select
-                                                      :id
-                                                      {:user-id       api/*current-user-id*
-                                                       :is-superuser? api/*is-superuser?*}
-                                                      {:perms/view-data      :unrestricted
-                                                       :perms/create-queries :query-builder})]}]]
-
-                     ;; Segment/Measure with table permissions and archived filtering
-                     (:model/Segment :model/Measure)
-                     (let [archived-column (keyword (name table-name) "archived")
-                           table-id-column (keyword (name table-name) "table_id")]
-                       [:and
-                        [:= entity-type-field (name entity-type)]
-                        [:in entity-id-field {:select [:id]
-                                              :from   [table-name]
-                                              :where  [:and
-                                                       ;; Check that user can see the table this entity belongs to
-                                                       [:in table-id-column
-                                                        {:select [:metabase_table.id]
-                                                         :from   [:metabase_table]
-                                                         ;; using this clause because we had to change the mi/visible-filter-clause
-                                                         ;; to allow returning CTE based filters
-                                                         ;; TODO(ed 2025-12-16: support using CTES in filters in dependency graph)
-                                                         :where  [:in :metabase_table.id
-                                                                  (perms/visible-table-filter-select
-                                                                   :id
-                                                                   {:user-id       api/*current-user-id*
-                                                                    :is-superuser? api/*is-superuser?*}
-                                                                   {:perms/view-data      :unrestricted
-                                                                    :perms/create-queries :query-builder})]}]
-                                                       ;; Filter by archived status
-                                                       (case include-archived-items
-                                                         :exclude [:= archived-column false]
-                                                         :only [:= archived-column true]
-                                                         :all nil)]}]])))))
-         deps.dependency-types/dependency-type->model)))
+  ([entity-type-field entity-id-field {:keys [include-archived-items worktree-id]
+                                       :or   {include-archived-items :exclude}}]
+   (let [user-info {:user-id          api/*current-user-id*
+                    :is-superuser?    api/*is-superuser?*
+                    :is-data-analyst? (boolean api/*is-data-analyst?*)}]
+     (into [:or]
+           (map (fn [[entity-type model]]
+                  [:and
+                   [:= entity-type-field (name entity-type)]
+                   (if (= model :model/Table)
+                     ;; tables are never filtered by active/visibility_type, so dependencies broken by a dropped
+                     ;; or hidden table stay visible
+                     [:in entity-id-field (perms/visible-table-filter-select
+                                           :id user-info
+                                           {:perms/view-data      :unrestricted
+                                            :perms/create-queries :query-builder})]
+                     (:clause (mi/visible-filter-clause model entity-id-field user-info nil
+                                                        {:include-archived-items include-archived-items
+                                                         :worktree-id            worktree-id})))])
+                deps.dependency-types/dependency-type->model)))))
 
 (defn- broken-entities-filter-clause
   "Returns a HoneySQL WHERE clause for filtering to only broken entities.
@@ -332,6 +243,15 @@
                                                [:= :analysis_finding.result false]]}]])
               deps.dependency-types/dependency-type->model)))
 
+(defn- entity-worktree-id
+  "The remote-sync worktree the request's starting entity lives in; nil for the main app. A dependency graph never
+  spans two scopes, so the whole request follows the entity the caller named. `api/read-check` on that entity is
+  what keeps a worktree's graph admin-only."
+  [entity-type id]
+  (when id
+    ;; a model whose table carries no `worktree_id` -- a table, a sandbox -- simply has no such key
+    (:worktree_id (t2/select-one (deps.dependency-types/dependency-type->model entity-type) :id id))))
+
 (defn- readable-graph-dependencies
   ([]
    (readable-graph-dependencies nil))
@@ -343,11 +263,12 @@
 (defn- readable-graph-dependents
   ([]
    (readable-graph-dependents nil))
-  ([{:keys [include-archived-items broken] :or {include-archived-items :exclude} :as _opts}]
+  ([{:keys [include-archived-items broken worktree-id] :or {include-archived-items :exclude} :as _opts}]
    (dependency/filtered-graph-dependents
     (fn [entity-type-field entity-id-field]
       (let [visibility-clause (visible-entities-filter-clause entity-type-field entity-id-field
-                                                              {:include-archived-items include-archived-items})]
+                                                              {:include-archived-items include-archived-items
+                                                               :worktree-id            worktree-id})]
         (if broken
           [:and visibility-clause (broken-entities-filter-clause entity-type-field entity-id-field)]
           visibility-clause))))))
@@ -375,10 +296,10 @@
 
 (defn- node-downstream-errors
   "Fetches errors caused by the given source entities (what downstream entities they're breaking).
-   Filters out errors where the analyzed entity is not visible to the current user.
+   Filters out errors where the analyzed entity is not visible to the current user, in `worktree-id`'s scope.
    Unlike `node-errors` which fetches errors on an entity, this fetches errors that
    the entity is causing in other entities that depend on it."
-  [nodes-by-type]
+  [nodes-by-type worktree-id]
   (letfn [(errors-by-source-type-and-id [[source-type ids]]
             (when (seq ids)
               (let [finding-errors (t2/select :model/AnalysisFindingError
@@ -386,7 +307,8 @@
                                                        [:= :source_entity_type (name source-type)]
                                                        [:in :source_entity_id ids]
                                                        (visible-entities-filter-clause
-                                                        :analyzed_entity_type :analyzed_entity_id)]})]
+                                                        :analyzed_entity_type :analyzed_entity_id
+                                                        {:worktree-id worktree-id})]})]
                 (u/group-by (juxt :source_entity_type :source_entity_id)
                             identity conj #{} finding-errors))))]
     (->> nodes-by-type
@@ -395,9 +317,9 @@
 
 (defn- node-errors
   "Fetches and normalizes AnalysisFindingErrors for the given entities.
-   Filters out errors where the source entity is not visible to the current user.
+   Filters out errors where the source entity is not visible to the current user, in `worktree-id`'s scope.
    Returns {[entity-type entity-id] #{error-maps...}}, or nil if none."
-  [nodes-by-type]
+  [nodes-by-type worktree-id]
   (letfn [(normalize-finding-error
             [{:keys [error_type error_detail]}]
             (cond-> {:type error_type}
@@ -411,7 +333,8 @@
                                                        [:or
                                                         [:= :source_entity_type nil]
                                                         (visible-entities-filter-clause
-                                                         :source_entity_type :source_entity_id)]]})]
+                                                         :source_entity_type :source_entity_id
+                                                         {:worktree-id worktree-id})]]})]
                 (u/group-by (juxt :analyzed_entity_type :analyzed_entity_id)
                             normalize-finding-error conj #{} finding-errors))))]
     (->> nodes-by-type
@@ -456,12 +379,12 @@
                                   [[entity-type (:id entity)] entity])))))))
         nodes-by-type))
 
-(defn- expanded-nodes [downstream-graph nodes {:keys [include-errors?]}]
+(defn- expanded-nodes [downstream-graph nodes {:keys [include-errors? worktree-id]}]
   (let [usages (node-usages downstream-graph nodes)
         nodes-by-type (-> (group-by first nodes)
                           (update-vals #(map second %)))
         errors (when include-errors?
-                 (node-errors nodes-by-type))
+                 (node-errors nodes-by-type worktree-id))
         hydrated-entities (fetch-and-hydrate-nodes nodes-by-type)
         nodes-by-type-and-id
         (into {}
@@ -488,14 +411,18 @@
                          [:id {:optional true} ms/PositiveInt]
                          [:type {:optional true} ::deps.dependency-types/dependency-types]]]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)
-  (let [starting-nodes [[type id]]
-        upstream-graph (readable-graph-dependencies {:include-archived-items :all})
-        downstream-graph (graph/cached-graph (readable-graph-dependents))
-        edge-graph (graph/cached-graph (readable-graph-dependents {:include-archived-items :all}))
+  (let [worktree-id (entity-worktree-id type id)
+        starting-nodes [[type id]]
+        upstream-graph (readable-graph-dependencies {:include-archived-items :all
+                                                     :worktree-id            worktree-id})
+        downstream-graph (graph/cached-graph (readable-graph-dependents {:worktree-id worktree-id}))
+        edge-graph (graph/cached-graph (readable-graph-dependents {:include-archived-items :all
+                                                                   :worktree-id            worktree-id}))
         nodes (into (set starting-nodes)
                     (graph/transitive upstream-graph starting-nodes))
         edges (graph/edges-between edge-graph nodes)]
-    {:nodes (expanded-nodes downstream-graph nodes {:include-errors? false})
+    {:nodes (expanded-nodes downstream-graph nodes {:include-errors? false
+                                                    :worktree-id     worktree-id})
      :edges edges}))
 
 (def ^:private sort-directions
@@ -600,7 +527,9 @@
          sort-column :name
          sort-direction :asc}} :- dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)
-  (let [downstream-graph (graph/cached-graph (readable-graph-dependents {:broken broken}))
+  (let [worktree-id (entity-worktree-id type id)
+        downstream-graph (graph/cached-graph (readable-graph-dependents {:broken      broken
+                                                                         :worktree-id worktree-id}))
         nodes (-> (graph/children-of downstream-graph [[type id]])
                   (get [type id]))
         dep-types-set (cond
@@ -628,7 +557,8 @@
          (if query
            (filter #(entity-matches-query? % query))
            identity))]
-    (-> (into [] dependents-filter (expanded-nodes downstream-graph nodes {:include-errors? false}))
+    (-> (into [] dependents-filter (expanded-nodes downstream-graph nodes {:include-errors? false
+                                                                           :worktree-id     worktree-id}))
         (sort-dependents sort-column sort-direction))))
 
 (defn- entity-type-config
@@ -663,14 +593,15 @@
                         (:segment :measure) :table.display_name)}))
 
 (defn- query-type-join-and-filter
-  [query-type entity-type]
+  [query-type entity-type worktree-id]
   (case query-type
     :unreferenced {:join [:dependency [:and
                                        [:= :dependency.to_entity_id :entity.id]
                                        [:= :dependency.to_entity_type (name entity-type)]
                                        (visible-entities-filter-clause
                                         :dependency.from_entity_type
-                                        :dependency.from_entity_id)]]
+                                        :dependency.from_entity_id
+                                        {:worktree-id worktree-id})]]
                    :join-filter [:= :dependency.id nil]}
     :broken {:join [:analysis_finding [:and
                                        [:= :analysis_finding.analyzed_entity_id :entity.id]
@@ -681,7 +612,8 @@
                                                [:= :analysis_finding_error.source_entity_type (name entity-type)]
                                                (visible-entities-filter-clause
                                                 :analysis_finding_error.analyzed_entity_type
-                                                :analysis_finding_error.analyzed_entity_id)]]
+                                                :analysis_finding_error.analyzed_entity_id
+                                                {:worktree-id worktree-id})]]
                :join-filter [:!= :analysis_finding_error.id nil]}))
 
 (defn- location-joins-for-entity
@@ -751,7 +683,7 @@
      :filter-joins (reduce set/union #{} (map :filter-joins filter-results))}))
 
 (defn- sort-key-cols-and-joins
-  [sort-column entity-type name-column location-column]
+  [sort-column entity-type name-column location-column worktree-id]
   (case sort-column
     :location {:sort-column location-column
                :sort-joins (location-joins-for-entity entity-type)}
@@ -763,7 +695,8 @@
                                               [:= :source_entity_id :entity.id]
                                               [:= :source_entity_type (name entity-type)]
                                               (visible-entities-filter-clause
-                                               :analyzed_entity_type :analyzed_entity_id)]}
+                                               :analyzed_entity_type :analyzed_entity_id
+                                               {:worktree-id worktree-id})]}
                         :sort-joins #{}}
     :dependents-with-errors {:sort-column {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
                                                                           [:concat :analyzed_entity_id [:inline "-"] :analyzed_entity_type]
@@ -773,7 +706,8 @@
                                                    [:= :source_entity_id :entity.id]
                                                    [:= :source_entity_type (name entity-type)]
                                                    (visible-entities-filter-clause
-                                                    :analyzed_entity_type :analyzed_entity_id)]}
+                                                    :analyzed_entity_type :analyzed_entity_id
+                                                    {:worktree-id worktree-id})]}
                              :sort-joins #{}}
     {:sort-column name-column
      :sort-joins #{}}))
@@ -788,14 +722,16 @@
     (:table joins) (conj [:metabase_table :table] [:= :entity.table_id :table.id])))
 
 (defn- dependency-items-query
-  [{:keys [query-type entity-type sort-column] :as params}]
+  [{:keys [query-type entity-type sort-column worktree-id] :as params}]
   (let [{:keys [table-name name-column location-column] :as config} (entity-type-config entity-type)
-        {:keys [join join-filter]} (query-type-join-and-filter query-type entity-type)
+        {:keys [join join-filter]} (query-type-join-and-filter query-type entity-type worktree-id)
         {:keys [filters filter-joins]} (build-optional-filters params config)
-        {:keys [sort-column sort-joins]} (sort-key-cols-and-joins sort-column entity-type name-column location-column)
+        {:keys [sort-column sort-joins]} (sort-key-cols-and-joins sort-column entity-type name-column location-column
+                                                                  worktree-id)
         visible-filter (visible-entities-filter-clause (name entity-type) :entity.id
-                                                       (when (= query-type :breaking)
-                                                         {:include-archived-items :all}))
+                                                       (cond-> {:worktree-id worktree-id}
+                                                         (= query-type :breaking)
+                                                         (assoc :include-archived-items :all)))
         all-required-joins (set/union filter-joins sort-joins)
         select-clause [[[:inline (name entity-type)] :entity_type]
                        [:entity.id :entity_id]
@@ -820,7 +756,8 @@
    [:query {:optional true} :string]
    [:include-personal-collections {:optional true} :boolean]
    [:sort-column {:optional true} (ms/enum-decode-keyword breaking-items-sort-columns)]
-   [:sort-direction {:optional true} (ms/enum-decode-keyword sort-directions)]])
+   [:sort-direction {:optional true} (ms/enum-decode-keyword sort-directions)]
+   [:worktree-id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private dependency-items-response
   [:map
@@ -849,12 +786,14 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card-types query include-personal-collections sort-column sort-direction]
+   {:keys [types card-types query include-personal-collections sort-column sort-direction worktree-id]
     :or {types (vec deps.dependency-types/dependency-types)
          card-types (vec lib.schema.metadata/card-types)
          include-personal-collections false
          sort-column :name
          sort-direction :asc}} :- dependency-items-args]
+  (when worktree-id
+    (api/check-superuser))
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         selected-types (cond->> (if (sequential? types) types [types])
@@ -866,7 +805,8 @@
                                                      :card-types card-types
                                                      :query query
                                                      :include-personal-collections include-personal-collections
-                                                     :sort-column sort-column})
+                                                     :sort-column sort-column
+                                                     :worktree-id worktree-id})
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
@@ -906,12 +846,14 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card-types query include-personal-collections sort-column sort-direction]
+   {:keys [types card-types query include-personal-collections sort-column sort-direction worktree-id]
     :or {types [:card :table]
          card-types (vec lib.schema.metadata/card-types)
          include-personal-collections false
          sort-column :name
          sort-direction :asc}} :- dependency-items-args]
+  (when worktree-id
+    (api/check-superuser))
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         selected-types (cond->> (if (sequential? types) types [types])
@@ -923,7 +865,8 @@
                                                      :card-types card-types
                                                      :query query
                                                      :include-personal-collections include-personal-collections
-                                                     :sort-column sort-column})
+                                                     :sort-column sort-column
+                                                     :worktree-id worktree-id})
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
@@ -932,9 +875,9 @@
                                       :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
-        downstream-graph (graph/cached-graph (readable-graph-dependents))
+        downstream-graph (graph/cached-graph (readable-graph-dependents {:worktree-id worktree-id}))
         nodes-by-type (u/group-by first second all-ids)
-        downstream-errors (node-downstream-errors nodes-by-type)
+        downstream-errors (node-downstream-errors nodes-by-type worktree-id)
         total (-> (t2/query {:select [[:%count.* :total]]
                              :from [[union-query :subquery]]})
                   first
@@ -999,7 +942,8 @@
          sort-column :name
          sort-direction :asc}} :- broken-dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model entity-type) id)
-  (let [normalize-types (fn normalize-types [types]
+  (let [worktree-id (entity-worktree-id entity-type id)
+        normalize-types (fn normalize-types [types]
                           (if (keyword? types)
                             [(name types)]
                             (not-empty (map name types))))
@@ -1012,7 +956,8 @@
                               (visible-entities-filter-clause
                                :afe.analyzed_entity_type
                                :afe.analyzed_entity_id
-                               {:include-archived-items :exclude})]
+                               {:include-archived-items :exclude
+                                :worktree-id            worktree-id})]
                        dep-types  (conj [:in :afe.analyzed_entity_type dep-types])
                        card-types (conj [:or
                                          [:!= :afe.analyzed_entity_type [:inline "card"]]

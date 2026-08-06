@@ -473,16 +473,14 @@
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
              (spec/removal-conditions spec))))))
 
-(deftest transform-tag-spec-uses-conditions-test
-  (testing "TransformTag spec still uses :conditions (not split)"
+(deftest transform-tag-spec-conditions-test
+  (testing "TransformTag exports built-in tags but never deletes them"
     (let [spec (spec/spec-for-model-key :model/TransformTag)]
-      (is (= {:built_in_type nil} (:conditions spec)))
-      (is (nil? (:export-conditions spec)))
-      (is (nil? (:removal-conditions spec)))
-      (is (= {:built_in_type nil} (spec/export-conditions spec))
-          "export-conditions falls back to :conditions for TransformTag")
+      (is (nil? (:conditions spec)))
+      (is (nil? (spec/export-conditions spec))
+          "built-in tags are exported like any other tag -- their entity_ids are stable across instances")
       (is (= {:built_in_type nil} (spec/removal-conditions spec))
-          "removal-conditions falls back to :conditions for TransformTag"))))
+          "but a reconcile never deletes them: they are instance-seeded and built-in jobs depend on them"))))
 
 (deftest removal-condition-clauses-value-shapes-test
   (testing "removal conditions render each value shape into a well-formed HoneySQL fragment"
@@ -497,19 +495,21 @@
              (spec/removal-where-clauses {:removal-conditions {:status ["removed" "delete"]}} #{} []))))))
 
 (deftest check-eligibility-applies-conditions-uniformly-test
-  (testing ":conditions are enforced for non-:collection eligibility types"
-    (testing "TransformTag (:setting): built-in tags fail eligibility even when the setting is on"
-      (mt/with-temporary-setting-values [remote-sync-transforms true]
-        (let [spec (spec/spec-for-model-key :model/TransformTag)]
+  (let [spec {:model-type  "TransformTag"
+              :model-key   :model/TransformTag
+              :eligibility {:type :setting :setting :remote-sync-transforms}
+              :conditions  {:built_in_type nil}}]
+    (testing ":conditions are enforced for non-:collection eligibility types"
+      (testing "a :setting spec's conditions are applied even when the setting is on"
+        (mt/with-temporary-setting-values [remote-sync-transforms true]
           (is (true?  (spec/check-eligibility spec {:id 1 :name "user-tag"   :built_in_type nil})))
           (is (false? (spec/check-eligibility spec {:id 2 :name "system-tag" :built_in_type "system"}))
-              "built-in TransformTag must NOT be eligible — was previously creating wasteful RSO churn")
+              "a conditioned-out row must NOT be eligible — it was previously creating wasteful RSO churn")
           (is (= {1 true 2 false}
                  (spec/batch-check-eligibility spec [{:id 1 :built_in_type nil}
-                                                     {:id 2 :built_in_type "system"}]))))))
-    (testing "TransformTag (:setting): setting off short-circuits regardless of conditions"
-      (mt/with-temporary-setting-values [remote-sync-transforms false]
-        (let [spec (spec/spec-for-model-key :model/TransformTag)]
+                                                     {:id 2 :built_in_type "system"}])))))
+      (testing "the setting being off short-circuits regardless of conditions"
+        (mt/with-temporary-setting-values [remote-sync-transforms false]
           (is (false? (spec/check-eligibility spec {:id 1 :built_in_type nil}))))))))
 (deftest check-deletion-conflicts-test
   (testing "unsynced transform-family content absent from an import is flagged; synced content is excluded"

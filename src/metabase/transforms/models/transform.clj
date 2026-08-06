@@ -29,14 +29,18 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
-  (derive :model/Transform trait))
+(doto :model/Transform
+  (derive :metabase/model)
+  (derive :hook/entity-id)
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (defn- transform-readable?
   "Whether the current user can read `instance`. Any extra `args` (an optional `models-cache`) are
   passed through to `transforms.u/source-tables-readable?`."
   [instance & args]
   (and (transforms.u/check-feature-enabled instance)
+       (remote-sync/worktree-accessible? instance)
        (or api/*is-superuser?*
            (and (api/is-data-analyst?)
                 (apply transforms.u/source-tables-readable? instance args)))))
@@ -52,7 +56,7 @@
   "Whether the current user can write `instance`. Any extra `args` (an optional `models-cache`) are
   passed through to the source-readability check, as in `transform-readable?`."
   [instance & args]
-  (and (remote-sync/transforms-editable?)
+  (and (remote-sync/transform-editable? instance)
        (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
            (and (apply transform-readable? instance args)
@@ -73,6 +77,29 @@
    (when-let [transform (t2/select-one :model/Transform :id pk)]
      (mi/can-write? transform))))
 
+(defmethod mi/visible-filter-clause :model/Transform
+  [_model column-or-exp {:keys [is-superuser? is-data-analyst?] :as user-info} _perm-type->perm-level & [{:keys [worktree-id]}]]
+  {:clause (cond
+             ;; a superuser sees the scope they asked for; worktree content is admin-only, so an analyst is
+             ;; pinned to the main app and everyone else sees nothing
+             is-superuser?
+             [:in column-or-exp {:select [:id]
+                                 :from   [:transform]
+                                 :where  [:= :transform.worktree_id worktree-id]}]
+
+             is-data-analyst?
+             [:in column-or-exp {:select [:id]
+                                 :from   [:transform]
+                                 :where  [:and
+                                          [:= :transform.worktree_id nil]
+                                          [:in :transform.source_database_id
+                                           (perms/visible-database-filter-select
+                                            user-info
+                                            {:perms/create-queries :query-builder})]]}]
+
+             :else
+             [:= [:inline 0] [:inline 1]])})
+
 ;; Users who can read the transform can also query it. This is a duplicate, but keeps things explicit.
 (defmethod mi/can-query? :model/Transform
   ([instance]
@@ -83,9 +110,9 @@
 (defmethod mi/can-create? :model/Transform
   [_model instance]
   ;; Inline can-write? logic since instance is a plain map without model metadata.
-  ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
+  ;; can-write? requires: can-read?, has-db-transforms-permission?, and transform-editable?
   ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
-  (and (remote-sync/transforms-editable?)
+  (and (remote-sync/transform-editable? instance)
        (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
@@ -145,7 +172,8 @@
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
-  (let [target-db-id (transforms-base.i/target-db-id transform)
+  (let [transform    (collection/inherit-worktree-id transform)
+        target-db-id (transforms-base.i/target-db-id transform)
         valid-db-id? (and target-db-id (t2/exists? :model/Database :id target-db-id))]
     ;; Don't warn when target-db-id is nil — that's an orphan source (e.g. a
     ;; serdes-imported transform whose source database is missing), not a
@@ -181,6 +209,10 @@
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
+  (cond-> transform
+    ;; only when moving into a real collection: a transform is one of the two models that may sit at a
+    ;; worktree root, so a move to one is legal and has no collection to compare worktrees against
+    (some? (:collection_id (t2/changes transform))) collection/check-same-worktree)
   ;; The target db is recomputed when source changes because for MBQL transforms,
   ;; the source query's :database is the source of truth for the target database.
   (let [target-changed? (or (:source (t2/changes transform)) (:target (t2/changes transform)))
@@ -244,10 +276,17 @@
   [_model k transforms]
   (hydrate-permission k transforms transform-writable?))
 
+(defn- transform-executable?
+  "Whether the current user can run `instance`. Running requires write permission, and a transform checked out
+  into a remote-sync worktree is never run: a worktree is a working copy of a branch."
+  [instance & args]
+  (and (nil? (:worktree_id instance))
+       (apply transform-writable? instance args)))
+
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
-  "Add can_execute to transforms. Executing a transform requires write permission."
+  "Add can_execute to transforms. Executing a transform requires write permission, and worktree transforms never run."
   [_model k transforms]
-  (hydrate-permission k transforms transform-writable?))
+  (hydrate-permission k transforms transform-executable?))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),
@@ -355,7 +394,9 @@
   [transform-id tag-ids]
   (when transform-id
     (t2/with-transaction [_conn]
-      (let [;; Deduplicate while preserving order of first occurrence
+      (let [;; an assignment belongs to the same worktree as the transform it is for
+            worktree-id          (t2/select-one-fn :worktree_id :model/Transform :id transform-id)
+            ;; Deduplicate while preserving order of first occurrence
             deduped-tag-ids      (vec (distinct tag-ids))
             ;; Get current associations
             current-associations (t2/select [:model/TransformTransformTag :tag_id :position]
@@ -394,6 +435,7 @@
                       (for [tag-id to-insert]
                         {:transform_id transform-id
                          :tag_id       tag-id
+                         :worktree_id  worktree-id
                          :position     (get new-positions tag-id)})))))))
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
@@ -470,7 +512,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
+   :skip      [:worktree_id :source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
@@ -579,6 +621,7 @@
                   :native-query  {:fn maybe-extract-transform-query-text
                                   :fields [:source :source_type]}
                   :database-id   :source_database_id
+                  :worktree-id   true
                   :source-type   true}
    :search-terms [:name :description]
    :render-terms {:transform-name :name

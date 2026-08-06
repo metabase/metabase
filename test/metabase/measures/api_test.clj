@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
+   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -464,3 +465,41 @@
                                                  :value "2")]
               ;; Should return [value] or [value, display-name]
               (is (= [2] response)))))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so this needs `:model/Worktree` on the classpath. The endpoint it
+;;; covers is OSS.
+
+(deftest worktree-content-is-excluded-from-the-list-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Measure {main-id :id} {:name "main measure" :table_id (mt/id :venues)}
+                   :model/Measure {wt-content-id :id} {:name "worktree measure" :table_id (mt/id :venues) :worktree_id wt-id}]
+      (testing "the main-app list leaves worktree content out"
+        (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "measure"))]
+          (is (contains? ids main-id))
+          (is (not (contains? ids wt-content-id)))))
+      (testing "worktree-id returns only that worktree's content"
+        (is (= [wt-content-id]
+               (mapv :id (mt/user-http-request :crowberto :get 200 "measure" :worktree-id wt-id)))))
+      (testing "worktree-id is admin-only"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "measure" :worktree-id wt-id)))))))
+
+(deftest create-measure-in-a-worktree-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}]
+      (mt/with-model-cleanup [:model/Measure]
+        (let [definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))]
+          (testing "an admin can create a measure inside a worktree"
+            (let [created (mt/user-http-request :crowberto :post 200 "measure"
+                                                {:name "worktree measure" :definition definition :worktree_id wt-id})]
+              (is (= wt-id (t2/select-one-fn :worktree_id :model/Measure :id (:id created))))))
+          (testing "a non-admin cannot"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "measure"
+                                         {:name "nope" :definition definition :worktree_id wt-id}))))
+          (testing "an unknown worktree 404s rather than failing on the foreign key"
+            (is (= "Not found."
+                   (mt/user-http-request :crowberto :post 404 "measure"
+                                         {:name "nope" :definition definition :worktree_id 99999999})))))))))

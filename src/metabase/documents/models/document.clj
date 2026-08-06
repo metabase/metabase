@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -32,7 +33,28 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
+
+(defmethod mi/can-read? :model/Document
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :read))))
+  ([_model pk]
+   (when-let [document (t2/select-one :model/Document :id pk)]
+     (mi/can-read? document))))
+
+(defmethod mi/can-write? :model/Document
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
+  ([_model pk]
+   (when-let [document (t2/select-one :model/Document :id pk)]
+     (mi/can-write? document))))
+
+(defmethod mi/visible-filter-clause :model/Document
+  [_model column-or-exp user-info _perm-type->perm-level & [opts]]
+  {:clause [:in column-or-exp (collection/visible-collection-content-select :document user-info opts)]})
 
 (def DocumentName
   "Validations for the name of a document"
@@ -148,6 +170,7 @@
    :attrs {:archived true
            :collection-id :collection_id
            :creator-id :creator_id
+           :worktree-id :worktree_id
            :view-count :view_count
            :created-at :created_at
            :updated-at :updated_at
@@ -226,7 +249,7 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id]
+   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id :worktree_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
@@ -292,8 +315,9 @@
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
-  model)
+  (collection/inherit-worktree-id model))
 
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
-  model)
+  (cond-> model
+    (contains? (t2/changes model) :collection_id) collection/check-same-worktree))

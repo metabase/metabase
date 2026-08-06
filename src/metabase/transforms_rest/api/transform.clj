@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
@@ -90,6 +91,7 @@
    [:updated_at :any]
    [:creator_id pos-int?]
    [:collection_id [:maybe pos-int?]]
+   [:worktree_id [:maybe pos-int?]]
    [:target_db_id {:optional true} [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
    [:creator CreatorResponse]
@@ -158,7 +160,8 @@
     [:last-run-start-time {:optional true} [:maybe ms/NonBlankString]]
     [:last-run-statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-    [:database-id {:optional true} [:maybe ms/PositiveInt]]]]
+    [:database-id {:optional true} [:maybe ms/PositiveInt]]
+    [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
   (transforms.core/get-transforms query-params))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -176,9 +179,11 @@
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:worktree_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
   (transforms.core/check-feature-enabled! body)
+  (remote-sync/check-worktree-exists! (:worktree_id body))
   (api/create-check :model/Transform body)
   (transforms.core/check-database-feature body)
   (transforms.core/validate-incremental-column-type! body)
@@ -198,8 +203,8 @@
   "Get the dependencies of a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/read-check :model/Transform id)
-  (let [id->transform (t2/select-pk->fn identity :model/Transform)
+  (let [transform     (api/read-check :model/Transform id)
+        id->transform (t2/select-pk->fn identity :model/Transform :worktree_id (:worktree_id transform))
         {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
         dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]
@@ -343,10 +348,13 @@
   nil)
 
 (defn- check-feature-and-lock!
-  "Check that the transform's premium features are enabled and that transforms are not locked by the
-  trial quota."
+  "Check that the transform's premium features are enabled, that transforms are not locked by the
+  trial quota, and that this transform can be run at all — one checked out into a remote-sync worktree
+  cannot, since a worktree is a working copy of a branch."
   [transform]
   (transforms.core/check-feature-enabled! transform)
+  (api/check-400 (nil? (:worktree_id transform))
+                 (deferred-tru "Transforms in a remote sync worktree cannot be run."))
   (api/check (not (transforms.core/transform-locked? transform))
              [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
                    :error-code "metabase_transforms_locked"}]))

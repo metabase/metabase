@@ -70,14 +70,17 @@
 (doto :model/Segment
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/can-read? :model/Segment
   ([instance]
    (let [table (:table (t2/hydrate instance :table))]
-     (mi/can-read? table)))
+     (and (remote-sync/worktree-accessible? instance)
+          (mi/can-read? table))))
   ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+   (when-let [segment (t2/select-one model pk)]
+     (mi/can-read? segment))))
 
 ;; Segments can be created by
 ;; a) superusers
@@ -87,7 +90,8 @@
   ([instance]
    (let [table (or (:table instance)
                    (t2/select-one :model/Table :id (:table_id instance)))]
-     (and (or (mi/superuser?)
+     (and (remote-sync/worktree-accessible? instance)
+          (or (mi/superuser?)
               (and api/*is-data-analyst?*
                    (perms/user-has-permission-for-table?
                     api/*current-user-id*
@@ -97,7 +101,32 @@
                     (u/the-id table))))
           (remote-sync/table-editable? table))))
   ([model pk]
-   (mi/can-write? (t2/select-one model pk))))
+   (when-let [segment (t2/select-one model pk)]
+     (mi/can-write? segment))))
+
+(defmethod mi/visible-filter-clause :model/Segment
+  [_model column-or-exp {:keys [is-superuser?] :as user-info} _perm-type->perm-level
+   & [{:keys [include-archived-items worktree-id] :or {include-archived-items :exclude}}]]
+  {:clause [:in column-or-exp
+            {:select [:id]
+             :from   [:segment]
+             :where  [:and
+                      ;; the user has to be able to see the table this hangs off
+                      ;; TODO (ed 2025-12-16): support using CTEs in filters in the dependency graph, so this can
+                      ;; use `perms/visible-table-filter-with-cte` instead of wrapping a plain select
+                      [:in :segment.table_id
+                       {:select [:metabase_table.id]
+                        :from   [:metabase_table]
+                        :where  [:in :metabase_table.id
+                                 (perms/visible-table-filter-select
+                                  :id user-info
+                                  {:perms/view-data      :unrestricted
+                                   :perms/create-queries :query-builder})]}]
+                      (case include-archived-items
+                        :exclude [:= :segment.archived false]
+                        :only    [:= :segment.archived true]
+                        :all     nil)
+                      [:= :segment.worktree_id (when is-superuser? worktree-id)]]}]})
 
 ;; Segments can be created by
 ;; a) superusers
@@ -107,7 +136,8 @@
   [_model instance]
   (let [table (or (:table instance)
                   (t2/select-one :model/Table :id (:table_id instance)))]
-    (and (or (mi/superuser?)
+    (and (remote-sync/worktree-accessible? instance)
+         (or (mi/superuser?)
              (and api/*is-data-analyst?*
                   (perms/user-has-permission-for-table?
                    api/*current-user-id*
@@ -223,7 +253,8 @@
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
   {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
    :skip      [;; always re-derived from definition by before-insert via lib/primary-source-table-id
-               :table_id]
+               :table_id
+               :worktree_id]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import serdes/import-mbql}}
@@ -237,6 +268,7 @@
            :collection-id false
            :creator-id false
            :database-id :table.db_id
+           :worktree-id true
            ;; should probably change this, but will break legacy search tests
            :created-at false
            :updated-at true}

@@ -1,6 +1,7 @@
 import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
+import { useWorktreeId } from "metabase/common/worktrees";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
@@ -17,6 +18,7 @@ export function PublishedTableBreadcrumbs({
   newEntityLabel,
   tableListUrl,
 }: PublishedTableBreadcrumbsProps) {
+  const worktreeId = useWorktreeId();
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: table.collection_id,
   });
@@ -28,6 +30,7 @@ export function PublishedTableBreadcrumbs({
           key={collection.id}
           to={Urls.dataStudioLibrary({
             expandedIds: path.slice(1, i + 1).map((c) => c.id),
+            worktreeId,
           })}
         >
           {collection.name}

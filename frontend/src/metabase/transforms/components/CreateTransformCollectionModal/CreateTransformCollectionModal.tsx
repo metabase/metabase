@@ -9,6 +9,7 @@ import {
   type CollectionFormValues,
 } from "metabase/common/collections/schemas";
 import { useToast } from "metabase/common/hooks";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   Form,
   FormErrorMessage,
@@ -31,6 +32,7 @@ export function CreateTransformCollectionModal({
 }: CreateTransformCollectionModalProps) {
   const [sendToast] = useToast();
   const [createCollection] = useCreateCollectionMutation();
+  const worktreeId = useWorktreeId();
 
   const initialValues = useMemo<CollectionFormValues>(
     () => COLLECTION_FORM_SCHEMA.getDefault(),
@@ -45,6 +47,7 @@ export function CreateTransformCollectionModal({
           description: values.description ?? undefined,
           parent_id: values.parent_id,
           namespace: "transforms",
+          worktree_id: worktreeId,
         }).unwrap();
         onCreate?.(collection);
         onClose();
@@ -55,7 +58,7 @@ export function CreateTransformCollectionModal({
         });
       }
     },
-    [createCollection, onCreate, onClose, sendToast],
+    [createCollection, onCreate, onClose, sendToast, worktreeId],
   );
 
   const stopPropagation = useCallback(
@@ -93,7 +96,10 @@ export function CreateTransformCollectionModal({
             <FormCollectionPicker
               name="parent_id"
               title={t`Parent collection`}
-              collectionPickerModalProps={{ namespaces: ["transforms"] }}
+              collectionPickerModalProps={{
+                namespaces: ["transforms"],
+                worktreeId,
+              }}
             />
             <Group justify="flex-end">
               <FormErrorMessage />

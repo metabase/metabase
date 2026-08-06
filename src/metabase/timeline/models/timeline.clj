@@ -2,7 +2,9 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -13,7 +15,24 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
+
+(defmethod mi/can-read? :model/Timeline
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :read))))
+  ([_model pk]
+   (when-let [timeline (t2/select-one :model/Timeline :id pk)]
+     (mi/can-read? timeline))))
+
+(defmethod mi/can-write? :model/Timeline
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
+  ([_model pk]
+   (when-let [timeline (t2/select-one :model/Timeline :id pk)]
+     (mi/can-write? timeline))))
 
 ;;;; transforms
 
@@ -26,11 +45,12 @@
 
 (t2/define-before-insert :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id model))
-  model)
+  (collection/inherit-worktree-id model))
 
 (t2/define-before-update :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))
-  model)
+  (cond-> model
+    (contains? (t2/changes model) :collection_id) collection/check-same-worktree))
 
 ;;;; functions
 
@@ -58,7 +78,7 @@
 
 (defmethod serdes/make-spec "Timeline" [_model-name opts]
   {:copy      [:archived :default :description :entity_id :icon :name]
-   :skip      []
+   :skip      [:worktree_id]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)

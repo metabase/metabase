@@ -543,7 +543,11 @@
    "metabase_table"     #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"           #{"action" "model_index_value" "report_card"}
    "report_card"        #{"action" "model_index_value"}
-   "report_dashboard"   #{"action" "model_index_value" "report_card"}})
+   "report_dashboard"   #{"action" "model_index_value" "report_card"}
+   ;; deleting a remote-sync worktree cascades to everything it checked out, and on to whatever hangs off
+   ;; those cards in turn
+   "worktree"           #{"action" "collection" "document" "measure" "model_index_value" "report_card"
+                          "report_dashboard" "segment" "transform"}})
 
 (deftest search-model-cascade-test
   (is (= model->deleted-descendants

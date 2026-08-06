@@ -4,44 +4,57 @@ import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase/common/data-studio/components/PaneHeader";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import * as Urls from "metabase/urls";
-import type { Transform, TransformId } from "metabase-types/api";
+import type { Transform, TransformId, WorktreeId } from "metabase-types/api";
 
 type TransformTabsProps = {
   transform: Transform;
 };
 
 export const TransformTabs = ({ transform }: TransformTabsProps) => {
-  const tabs = getTabs(transform.id);
+  const worktreeId = useWorktreeId();
+  const tabs = getTabs(transform.id, worktreeId);
   return <PaneHeaderTabs tabs={tabs} />;
 };
 
-function getTabs(id: TransformId): PaneHeaderTab[] {
+function getTabs(id: TransformId, worktreeId?: WorktreeId): PaneHeaderTab[] {
   const inspectUrl = Urls.transformInspect(id);
+  const isWorktree = worktreeId != null;
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Definition`,
-      to: Urls.transform(id),
+      to: Urls.transform(id, { worktreeId }),
     },
-    {
-      label: t`Run`,
-      to: Urls.transformRun(id),
-    },
+    // A worktree transform never runs, so its run history, target-table
+    // indexes, and inspector have nothing to show.
+    ...(isWorktree
+      ? []
+      : [
+          {
+            label: t`Run`,
+            to: Urls.transformRun(id),
+          },
+        ]),
     {
       label: t`Settings`,
-      to: Urls.transformSettings(id),
+      to: Urls.transformSettings(id, { worktreeId }),
     },
-    {
-      label: t`Indexes`,
-      to: Urls.transformIndexes(id),
-    },
+    ...(isWorktree
+      ? []
+      : [
+          {
+            label: t`Indexes`,
+            to: Urls.transformIndexes(id),
+          },
+        ]),
   ];
 
-  if (PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectTab) {
+  if (PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectTab && !isWorktree) {
     tabs.push({
       label: t`Inspect`,
       to: inspectUrl,
@@ -53,7 +66,7 @@ function getTabs(id: TransformId): PaneHeaderTab[] {
   if (PLUGIN_DEPENDENCIES.isEnabled) {
     tabs.push({
       label: t`Dependencies`,
-      to: Urls.transformDependencies(id),
+      to: Urls.transformDependencies(id, { worktreeId }),
     });
   }
 

@@ -6,6 +6,7 @@ import {
   skipToken,
   useListCollectionItemsQuery,
 } from "metabase/api";
+import { useWorktreeId } from "metabase/common/worktrees";
 import type {
   LibrarySectionType,
   TreeItem,
@@ -30,6 +31,7 @@ export function useLibraryCollectionTree(
 ) {
   const dispatch = useDispatch();
   const getIcon = useGetIcon();
+  const worktreeId = useWorktreeId();
 
   // 1. Fetch top-level items
   const {
@@ -121,6 +123,7 @@ export function useLibraryCollectionTree(
                 sectionType,
                 metricCollectionId,
                 isRemoteSyncReadOnly,
+                worktreeId,
               ),
             ],
       },
@@ -134,6 +137,7 @@ export function useLibraryCollectionTree(
     sectionType,
     metricCollectionId,
     isRemoteSyncReadOnly,
+    worktreeId,
   ]);
 
   // 4. Watch rows for expanded-but-empty collections → trigger fetch

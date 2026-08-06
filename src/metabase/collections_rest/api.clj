@@ -25,6 +25,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.tracing.core :as tracing]
@@ -84,11 +85,16 @@
   This will select only collections where `personal_owner_id` is not `nil`.
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
-  By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
+  By default, library-type collections are excluded.
+
+  `worktree-id` selects a remote-sync worktree's collections instead of the main app's; nil (the default) is the
+  main app. "
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
+           worktree-id]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
+                       [:= :worktree_id worktree-id]
                        (case archived
                          nil nil
                          false [:and
@@ -120,6 +126,7 @@
                                                       :exclude)
                          :include-trash-collection? true
                          :permission-level          :read
+                         :worktree-id               worktree-id
                          :archive-operation-id      nil})]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
@@ -147,13 +154,18 @@
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
   [_route-params
-   {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map
-                                                                                 [:archived                       {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
-                                                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [archived exclude-other-user-collections namespace personal-only worktree-id]}
+   :- [:map
+       [:archived                       {:default false} [:maybe ms/BooleanValue]]
+       [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
+       [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+       [:personal-only                  {:default false} [:maybe ms/BooleanValue]]
+       [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
   (as->
    (select-collections {:archived                       (boolean archived)
+                        :worktree-id                    worktree-id
                         :exclude-other-user-collections exclude-other-user-collections
                         :namespaces                     (cond
                                                           namespace [namespace]
@@ -179,6 +191,27 @@
                collection/maybe-mark-collection-as-library-root))
          collection/personal-collections-with-ui-details
          collection/maybe-localize-tenant-collection-names)))
+
+(defn- collections-containing-published-tables
+  "Which of `collection-ids` present published tables. For a worktree's collections that is decided by their main-app
+  counterparts: tables are never checked out into a worktree, so a worktree collection presents the tables sitting in
+  the collection it was copied from."
+  [worktree-id collection-ids]
+  (let [wt->main       (when worktree-id
+                         (collection/worktree-collection-counterpart-ids collection-ids))
+        table-coll-ids (if worktree-id (vals wt->main) collection-ids)
+        with-tables    (into #{}
+                             (map :collection_id)
+                             (when (seq table-coll-ids)
+                               (t2/query {:select-distinct [:collection_id]
+                                          :from            :metabase_table
+                                          :where           [:and
+                                                            [:= :is_published true]
+                                                            [:= :archived_at nil]
+                                                            [:in :collection_id table-coll-ids]]})))]
+    (if worktree-id
+      (into #{} (keep (fn [[wt-id main-id]] (when (contains? with-tables main-id) wt-id))) wt->main)
+      with-tables)))
 
 (defn- prep-collection-for-export
   "Given a collection, tweaks it to be ready for returning to the FE.
@@ -247,7 +280,7 @@
   the root, if `collection-id` is `nil`)."
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
-           namespace namespaces shallow collection-id]}
+           namespace namespaces shallow collection-id worktree-id]}
    :- [:map
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
@@ -255,9 +288,12 @@
        [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
        [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
        [:shallow                        {:default false} [:maybe :boolean]]
-       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
+       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]
+       [:worktree-id                    {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-400
    (not (and namespace (seq namespaces))))
+  (when worktree-id
+    (api/check-superuser))
   (let [archived    (if exclude-archived false nil)
         namespaces (cond
                      namespace #{namespace}
@@ -269,6 +305,7 @@
                                              :namespaces                     namespaces
                                              :shallow                        shallow
                                              :collection-id                  collection-id
+                                             :worktree-id                    worktree-id
                                              :include-library?               include-library})
                         (t2/hydrate :can_write))]
     (if shallow
@@ -286,13 +323,15 @@
                                                                     :where           [:= :archived false]}))
                                        ;; Tables in collections are an EE feature (library)
                                        (when (premium-features/has-feature? :library)
-                                         {:table (->> (t2/query {:select-distinct [:collection_id]
-                                                                 :from :metabase_table
-                                                                 :where [:and
-                                                                         [:= :is_published true]
-                                                                         [:= :archived_at nil]]})
-                                                      (map :collection_id)
-                                                      (into #{}))}))
+                                         {:table (if worktree-id
+                                                   (collections-containing-published-tables worktree-id (map :id collections))
+                                                   (->> (t2/query {:select-distinct [:collection_id]
+                                                                   :from :metabase_table
+                                                                   :where [:and
+                                                                           [:= :is_published true]
+                                                                           [:= :archived_at nil]]})
+                                                        (map :collection_id)
+                                                        (into #{})))}))
             collections-with-details (map prep-collection-for-export collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
@@ -567,6 +606,7 @@
      :where  [:and
               (poison-when-pinned-clause pinned-state)
               [:= :collection_id (:id collection)]
+              [:= :worktree_id (:worktree_id collection)]
               (if (seq enabled-types)
                 [:in :source_type enabled-types]
                 [:=
@@ -824,9 +864,20 @@
   [_ collection options]
   (collection-query collection options))
 
+(defn- published-tables-collection-id
+  "The collection whose published tables `collection` presents. Its own, unless it is a worktree's copy of a
+  collection: tables are never checked out, so those live in the main-app collection it was copied from. `nil` when
+  the worktree collection has no main-app counterpart, i.e. it exists only on the branch."
+  [collection]
+  (if (:worktree_id collection)
+    (get (collection/worktree-collection-counterpart-ids [(:id collection)]) (:id collection))
+    (:id collection)))
+
 (defmethod collection-children-query :table
   [_ collection {:keys [archived? pinned-state]}]
-  (let [user-info {:user-id       api/*current-user-id*
+  (let [worktree-id (:worktree_id collection)
+        table-collection-id (published-tables-collection-id collection)
+        user-info {:user-id       api/*current-user-id*
                    :is-superuser? api/*is-superuser?*}
         published-clause (perms/published-table-visible-clause :t.id user-info)
         queryable-clause (cond-> [:or
@@ -853,9 +904,16 @@
      :where  [:and
               [:= :t.is_published true]
               (poison-when-pinned-clause pinned-state)
-              (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+              ;; the visible-collection CTE holds this worktree's collections, and the tables hang off a main-app
+              ;; one; data permissions still gate them through `queryable-clause`, and a worktree collection is
+              ;; only ever readable by an admin in the first place
+              (if worktree-id
+                always-true-hsql-expr
+                (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids}))
               queryable-clause
-              [:= :t.collection_id (:id collection)]
+              (if (and worktree-id (nil? table-collection-id))
+                always-false-hsql-expr
+                [:= :t.collection_id table-collection-id])
               (if archived?
                 [:!= :t.archived_at nil]
                 [:= :t.archived_at nil])]}))
@@ -889,15 +947,7 @@
         ;; Tables in collections are an EE feature (library)
         collections-containing-tables
         (if (premium-features/has-feature? :library)
-          (->> (when (seq descendant-collection-ids)
-                 (t2/query {:select-distinct [:collection_id]
-                            :from :metabase_table
-                            :where [:and
-                                    [:= :is_published true]
-                                    [:= :archived_at nil]
-                                    [:in :collection_id descendant-collection-ids]]}))
-               (map :collection_id)
-               (into #{}))
+          (collections-containing-published-tables (:worktree_id parent-coll) descendant-collection-ids)
           #{})
 
         collections-containing-transforms
@@ -968,11 +1018,15 @@
             update-personal-collection)))))
 
 (defmethod post-process-collection-children :table
-  [_ {:keys [models]} _collection rows]
+  [_ {:keys [models]} collection rows]
   (let [tables (map #(-> (t2/instance :model/Table %)
                          (update :archived api/bit->boolean)) rows)]
     (if (contains? models :measure)
-      (t2/hydrate tables :measures)
+      ;; a table is shared between the main app and every worktree that refers to it; its measures are not
+      (for [table (t2/hydrate tables :measures)]
+        (update table :measures #(filterv (fn [measure]
+                                            (= (:worktree_id measure) (:worktree_id collection)))
+                                          %)))
       tables)))
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
@@ -1162,7 +1216,9 @@
         viz-config  {:include-archived-items :all
                      :archive-operation-id nil
                      :permission-level (if archived? :write :read)
-                     :include-trash-collection? archived?}
+                     :include-trash-collection? archived?
+                     ;; children always live in the same worktree as their parent (nil = the main app)
+                     :worktree-id (:worktree_id collection)}
         rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                      :select   [:* [[:over [[:count :*] {} :total_count]]]]
                      :from     [[{:union-all queries} :dummy_alias]]
@@ -1412,26 +1468,32 @@
 
   By default, library collections are excluded from the results; to include them, pass `?include_library=true`.
 
+  `worktree-id` selects the root-level content of a remote-sync worktree instead of the main app's; nil (the
+  default) is the main app.
+
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query include_library collection_type
-           show_dashboard_questions]} :- [:map
-                                          [:models                      {:optional true} [:maybe Models]]
-                                          [:collection_type             {:optional true} CollectionType]
-                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
-                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                          [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
-                                          [:include_library             {:default false} [:maybe ms/BooleanValue]]
-                                          [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                          [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                          [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                          [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+           show_dashboard_questions worktree-id]} :- [:map
+                                                      [:models                      {:optional true} [:maybe Models]]
+                                                      [:collection_type             {:optional true} CollectionType]
+                                                      [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
+                                                      [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                                      [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                                      [:include_library             {:default false} [:maybe ms/BooleanValue]]
+                                                      [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                                      [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                                      [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                                      [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                      [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                      [:worktree-id                 {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
-  (let [root-collection (assoc collection/root-collection :namespace namespace)
+  (let [root-collection (assoc collection/root-collection :namespace namespace :worktree_id worktree-id)
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (visible-model-kwds root-collection model-set)]
     (collection-children
@@ -1464,7 +1526,8 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
-  "Create a new Collection."
+  "Create a new Collection. Pass `worktree_id` to create it at the root of a remote-sync worktree, which is
+  admin-only; with a `parent_id` the parent's worktree wins, so pass one or the other."
   [_route-params
    _query-params
    body :- [:map
@@ -1472,7 +1535,9 @@
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-            [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
+            [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]
+            [:worktree_id     {:optional true} [:maybe ms/PositiveInt]]]]
+  (remote-sync/check-worktree-exists! (:worktree_id body))
   (collections/create-collection! body))
 
 (defn- maybe-send-archived-notifications!

@@ -16,76 +16,117 @@ import type {
   TransformRunSortColumn,
   TransformRunStatus,
   TransformTagId,
+  WorktreeId,
 } from "metabase-types/api";
 
 const TRANSFORMS_ROOT_URL = `/data-studio/transforms`;
+const WORKTREES_ROOT_URL = `/data-studio/worktrees`;
 const JOBS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/jobs`;
 const RUNS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/runs`;
 const INDIVIDUAL_RUNS_ROOT_URL = `${RUNS_ROOT_URL}/individual`;
-const LIBRARY_ROOT_URL = `${TRANSFORMS_ROOT_URL}/library`;
 
 export type TransformPythonLibraryParams = {
   path: string;
 };
 
-export type TransformListParams = {
+export type TransformUrlParams = {
+  worktreeId?: WorktreeId | null;
+};
+
+export type TransformListParams = TransformUrlParams & {
   collectionId?: CollectionId;
 };
 
-export function transformList({ collectionId }: TransformListParams = {}) {
+export function dataStudioWorktrees() {
+  return WORKTREES_ROOT_URL;
+}
+
+function transformsRootUrl(worktreeId?: WorktreeId | null) {
+  return worktreeId != null
+    ? `${WORKTREES_ROOT_URL}/${worktreeId}/transforms`
+    : TRANSFORMS_ROOT_URL;
+}
+
+export function transformList({
+  collectionId,
+  worktreeId,
+}: TransformListParams = {}) {
   const searchParams = new URLSearchParams();
   if (collectionId != null) {
     searchParams.set("collectionId", String(collectionId));
   }
 
   const queryString = searchParams.toString();
-  return queryString.length > 0
-    ? `${TRANSFORMS_ROOT_URL}?${queryString}`
-    : TRANSFORMS_ROOT_URL;
+  const rootUrl = transformsRootUrl(worktreeId);
+  return queryString.length > 0 ? `${rootUrl}?${queryString}` : rootUrl;
 }
 
-export function newQueryTransform() {
-  return `${TRANSFORMS_ROOT_URL}/new/query`;
+export function newQueryTransform({ worktreeId }: TransformUrlParams = {}) {
+  return `${transformsRootUrl(worktreeId)}/new/query`;
 }
 
-export function newNativeTransform() {
-  return `${TRANSFORMS_ROOT_URL}/new/native`;
+export function newNativeTransform({ worktreeId }: TransformUrlParams = {}) {
+  return `${transformsRootUrl(worktreeId)}/new/native`;
 }
 
-export function newPythonTransform() {
-  return `${TRANSFORMS_ROOT_URL}/new/python`;
+export function newPythonTransform({ worktreeId }: TransformUrlParams = {}) {
+  return `${transformsRootUrl(worktreeId)}/new/python`;
 }
 
-export function newTransformFromCard(cardId: CardId) {
-  return `${TRANSFORMS_ROOT_URL}/new/card/${cardId}`;
+export function newTransformFromCard(
+  cardId: CardId,
+  { worktreeId }: TransformUrlParams = {},
+) {
+  return `${transformsRootUrl(worktreeId)}/new/card/${cardId}`;
 }
 
-export function transform(transformId: TransformId) {
-  return `${TRANSFORMS_ROOT_URL}/${transformId}`;
+export function transform(
+  transformId: TransformId,
+  { worktreeId }: TransformUrlParams = {},
+) {
+  return `${transformsRootUrl(worktreeId)}/${transformId}`;
 }
 
-export function transformEdit(transformId: TransformId) {
-  return `${TRANSFORMS_ROOT_URL}/${transformId}/edit`;
+export function transformEdit(
+  transformId: TransformId,
+  { worktreeId }: TransformUrlParams = {},
+) {
+  return `${transformsRootUrl(worktreeId)}/${transformId}/edit`;
 }
 
-export function transformRun(transformId: TransformId) {
-  return `${TRANSFORMS_ROOT_URL}/${transformId}/run`;
+export function transformRun(
+  transformId: TransformId,
+  { worktreeId }: TransformUrlParams = {},
+) {
+  return `${transformsRootUrl(worktreeId)}/${transformId}/run`;
 }
 
-export function transformSettings(transformId: TransformId) {
-  return `${TRANSFORMS_ROOT_URL}/${transformId}/settings`;
+export function transformSettings(
+  transformId: TransformId,
+  { worktreeId }: TransformUrlParams = {},
+) {
+  return `${transformsRootUrl(worktreeId)}/${transformId}/settings`;
 }
 
-export function transformIndexes(transformId: TransformId) {
-  return `${TRANSFORMS_ROOT_URL}/${transformId}/indexes`;
+export function transformIndexes(
+  transformId: TransformId,
+  { worktreeId }: TransformUrlParams = {},
+) {
+  return `${transformsRootUrl(worktreeId)}/${transformId}/indexes`;
 }
 
-export function transformDependencies(transformId: TransformId) {
-  return `${TRANSFORMS_ROOT_URL}/${transformId}/dependencies`;
+export function transformDependencies(
+  transformId: TransformId,
+  { worktreeId }: TransformUrlParams = {},
+) {
+  return `${transformsRootUrl(worktreeId)}/${transformId}/dependencies`;
 }
 
-export function transformInspect(transformId: TransformId) {
-  return `${TRANSFORMS_ROOT_URL}/${transformId}/inspect`;
+export function transformInspect(
+  transformId: TransformId,
+  { worktreeId }: TransformUrlParams = {},
+) {
+  return `${transformsRootUrl(worktreeId)}/${transformId}/inspect`;
 }
 
 export function transformMigrateModels() {
@@ -288,8 +329,11 @@ export function pickCommonRunListParams(
   );
 }
 
-export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {
-  return `${LIBRARY_ROOT_URL}/${path}`;
+export function transformPythonLibrary({
+  path,
+  worktreeId,
+}: TransformPythonLibraryParams & TransformUrlParams) {
+  return `${transformsRootUrl(worktreeId)}/library/${path}`;
 }
 
 export function queryBuilderTable(tableId: TableId, databaseId: DatabaseId) {

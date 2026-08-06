@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModalWithProps } from "metabase/redux/ui";
@@ -39,6 +40,7 @@ export const CreateMenu = ({
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDataAccess = useSelector(canUserCreateQueries);
   const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+  const worktreeId = useWorktreeId();
 
   if (remoteSyncReadOnly) {
     return null;
@@ -84,6 +86,7 @@ export const CreateMenu = ({
         component={ForwardRefLink}
         to={Urls.newDataStudioMetric({
           collectionId: metricCollectionId,
+          worktreeId,
         })}
         leftSection={<FixedSizeIcon name="metric" />}
         onClickCapture={() => trackMetricCreateStarted("data_studio_library")}
@@ -95,7 +98,7 @@ export const CreateMenu = ({
       <Menu.Item
         key="snippet"
         component={ForwardRefLink}
-        to={Urls.newDataStudioSnippet()}
+        to={Urls.newDataStudioSnippet({ worktreeId })}
         leftSection={<FixedSizeIcon name="snippet" />}
         aria-label={t`Create new snippet`}
       >
@@ -116,6 +119,7 @@ export const CreateMenu = ({
                 pickerOptions: LIBRARY_COLLECTION_PICKER_OPTIONS,
                 showAuthorityLevelPicker: false,
                 inDataStudio: true,
+                worktreeId,
               },
             }),
           )
@@ -141,7 +145,9 @@ export const CreateMenu = ({
       <PublishTableModal
         opened={showPublishTableModal}
         onClose={closePublishTableModal}
-        onPublished={(table) => navigate(Urls.dataStudioTable(table.id))}
+        onPublished={(table) =>
+          navigate(Urls.dataStudioTable(table.id, { worktreeId }))
+        }
       />
     </>
   );

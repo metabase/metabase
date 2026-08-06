@@ -3,6 +3,7 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
+  PLUGIN_REMOTE_SYNC,
   PLUGIN_SCHEMA_VIEWER,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -54,6 +55,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           <Route path="transforms" element={<TransformsSectionLayout />}>
             {getDataStudioTransformRoutes()}
           </Route>
+          {PLUGIN_REMOTE_SYNC.getDataStudioWorktreeRoutes(IsAdmin)}
           {getDataStudioGlossaryRoutes()}
           {getDataStudioSettingsRoutes()}
           {PLUGIN_LIBRARY.isEnabled ? (

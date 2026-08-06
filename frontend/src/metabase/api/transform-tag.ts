@@ -1,5 +1,6 @@
 import type {
   CreateTransformTagRequest,
+  ListTransformTagsRequest,
   TransformTag,
   TransformTagId,
   UpdateTransformTagRequest,
@@ -15,7 +16,10 @@ import {
 
 export const transformTagApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    listTransformTags: builder.query<TransformTag[], void>({
+    listTransformTags: builder.query<
+      TransformTag[],
+      ListTransformTagsRequest | void
+    >({
       query: (params) => ({
         method: "GET",
         url: "/api/transform-tag",

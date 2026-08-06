@@ -1,6 +1,7 @@
 import { skipToken, useGetSnippetQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Outlet, useParams } from "metabase/router";
 import { Card, Center } from "metabase/ui";
@@ -15,6 +16,7 @@ export type SnippetDependenciesPageParams = {
 export function SnippetDependenciesPage() {
   const params = useParams<SnippetDependenciesPageParams>();
   const snippetId = Urls.extractEntityId(params.snippetId);
+  const worktreeId = useWorktreeId();
 
   const {
     data: snippet,
@@ -35,7 +37,9 @@ export function SnippetDependenciesPage() {
       <SnippetHeader snippet={snippet} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
-          baseUrl: Urls.dataStudioSnippetDependencies(snippet.id),
+          baseUrl: Urls.dataStudioSnippetDependencies(snippet.id, {
+            worktreeId,
+          }),
           defaultEntry: { id: snippet.id, type: "snippet" },
         }}
       >

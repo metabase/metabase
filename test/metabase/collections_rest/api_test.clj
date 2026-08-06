@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [with-library-not-synced without-library]]
+   [metabase.config.core :as config]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -3590,6 +3591,134 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
                                        {:archived false :parent_id (u/the-id dest-collection)}))))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so these need `:model/Worktree` on the classpath. The
+;;; endpoints they cover are OSS.
+
+(deftest collection-worktree-id-is-admin-only-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}]
+      (testing "a non-admin cannot create a collection in a worktree"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "collection" {:name "nope" :worktree_id wt-id}))))
+      (testing "an unknown worktree 404s rather than failing on the foreign key"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404 "collection"
+                                     {:name "nope" :worktree_id 99999999}))))
+      (mt/with-model-cleanup [:model/Collection]
+        (testing "an admin can, and a worktree collection is remote-synced by definition"
+          (is (=? {:worktree_id wt-id :is_remote_synced true}
+                  (mt/user-http-request :crowberto :post 200 "collection"
+                                        {:name "in worktree" :worktree_id wt-id}))))))))
+
+(deftest worktree-collections-are-excluded-from-listings-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Collection {wt-coll :id} {:name "worktree collection" :worktree_id wt-id}
+                   :model/Collection {main-coll :id} {:name "main collection"}]
+      (testing "worktree collections are absent from the main-app listing and tree"
+        (doseq [route ["collection" "collection/tree"]]
+          (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 route))]
+            (is (contains? ids main-coll) (str route " should include main-app collections"))
+            (is (not (contains? ids wt-coll)) (str route " should not include worktree collections")))))
+      (testing "worktree-id selects that worktree's collections instead"
+        (doseq [route ["collection" "collection/tree"]]
+          (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 route :worktree-id wt-id))]
+            (is (contains? ids wt-coll) (str route " should include the worktree's collections"))
+            (is (not (contains? ids main-coll)) (str route " should not mix in main-app collections")))))
+      (testing "worktree-id is admin-only, and the collection itself is unreadable to a non-admin"
+        (doseq [route ["collection" "collection/tree"]]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 route :worktree-id wt-id))))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (str "collection/" wt-coll))))))))
+
+(deftest root-items-worktree-id-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-temp [:model/Worktree   {wt-id :id}     {}
+                       :model/Collection {wt-coll :id}   {:name        "worktree root collection"
+                                                          :namespace   "transforms"
+                                                          :worktree_id wt-id}
+                       :model/Collection {main-coll :id} {:name      "main root collection"
+                                                          :namespace "transforms"}
+                       :model/Transform  {wt-tf :id}     {:name        "worktree transform"
+                                                          :worktree_id wt-id}
+                       :model/Transform  {main-tf :id}   {:name "main transform"}]
+          (letfn [(item-ids [& params]
+                    (->> (apply mt/user-http-request :crowberto :get 200 "collection/root/items"
+                                :namespace "transforms" params)
+                         :data
+                         (into #{} (map (juxt :model :id)))))]
+            (testing "by default the root listing shows only main-app content"
+              (let [ids (item-ids)]
+                (is (contains? ids ["collection" main-coll]))
+                (is (contains? ids ["transform" main-tf]))
+                (is (not (contains? ids ["collection" wt-coll])))
+                (is (not (contains? ids ["transform" wt-tf])))))
+            (testing "worktree-id selects only that worktree's root-level content"
+              (let [ids (item-ids :worktree-id wt-id)]
+                (is (contains? ids ["collection" wt-coll]))
+                (is (contains? ids ["transform" wt-tf]))
+                (is (not (contains? ids ["collection" main-coll])))
+                (is (not (contains? ids ["transform" main-tf]))))))
+          (testing "worktree-id is admin-only"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "collection/root/items" :worktree-id wt-id)))))))))
+
+(deftest worktree-collection-items-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-temp [:model/Worktree   {wt-id :id}     {}
+                       :model/Collection {parent-id :id} {:name        "worktree parent"
+                                                          :namespace   "transforms"
+                                                          :worktree_id wt-id}
+                       :model/Collection {child-id :id}  {:name        "worktree child"
+                                                          :namespace   "transforms"
+                                                          :worktree_id wt-id
+                                                          :location    (format "/%d/" parent-id)}
+                       :model/Transform  {tf-id :id}     {:name          "transform in worktree collection"
+                                                          :collection_id parent-id
+                                                          :worktree_id   wt-id}]
+          (testing "a worktree collection's items include its child collections and transforms"
+            (is (= #{["collection" child-id] ["transform" tf-id]}
+                   (->> (mt/user-http-request :crowberto :get 200 (str "collection/" parent-id "/items"))
+                        :data
+                        (into #{} (map (juxt :model :id))))))))))))
+
+(deftest worktree-collection-lists-its-counterpart-published-tables-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:library}
+      (mt/with-temp [:model/Worktree   {wt-id :id}   {}
+                     :model/Collection main-coll     {:name "checked out collection"
+                                                      :type collection/library-data-collection-type}
+                     :model/Collection wt-coll       {:name        "checked out collection"
+                                                      :type        collection/library-data-collection-type
+                                                      :worktree_id wt-id}
+                     :model/Collection branch-coll   {:name        "branch-only collection"
+                                                      :type        collection/library-data-collection-type
+                                                      :worktree_id wt-id}
+                     :model/Table      {tbl-id :id}  {:db_id         (mt/id)
+                                                      :display_name  "Published Table"
+                                                      :collection_id (:id main-coll)
+                                                      :is_published  true}]
+        (t2/insert! :model/WorktreeRemapping {:worktree_id      wt-id
+                                              :type             "Collection"
+                                              :source_entity_id (:entity_id main-coll)
+                                              :local_entity_id  (:entity_id wt-coll)})
+        (letfn [(item-ids [coll-id]
+                  (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items"))
+                       :data
+                       (into #{} (map (juxt :model :id)))))]
+          (testing "a worktree collection lists the published tables of the main-app collection it was checked out from"
+            (is (contains? (item-ids (:id wt-coll)) ["table" tbl-id])))
+          (testing "a worktree collection that exists only on the branch lists no tables"
+            (is (= #{} (item-ids (:id branch-coll)))))
+          (testing "the main-app collection is unaffected"
+            (is (contains? (item-ids (:id main-coll)) ["table" tbl-id]))))))))
 
 (defn- exploration-items-in [coll-id & {:keys [user] :or {user :crowberto}}]
   (->> (:data (mt/user-http-request user :get 200 (str "collection/" coll-id "/items")))

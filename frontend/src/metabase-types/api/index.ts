@@ -53,6 +53,7 @@ export * from "./permissions";
 export * from "./persist";
 export * from "./query";
 export * from "./remote-sync";
+export * from "./worktree";
 export * from "./replacement";
 export * from "./revision";
 export * from "./schema";

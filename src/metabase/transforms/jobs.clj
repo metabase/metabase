@@ -81,9 +81,13 @@
         {:order (map transforms-by-id complete)
          :deps  dependencies}))))
 
-(defn- get-plan [transform-ids]
+(defn- get-plan
+  "Execution plan for `transform-ids`. Transforms checked out into a remote-sync worktree are never part of a plan —
+  they don't run, and a worktree's copy must never stand in for the main app's transform."
+  [transform-ids]
   (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
-    (let [all-transforms (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies])
+    (let [all-transforms (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]
+                                    :worktree_id nil)
           ;; Walk only the dependency closure of the transforms we're asked to run.
           ;; `table-dependencies` (and the QP preprocessing it triggers) is therefore called
           ;; only on transforms in that closure — never on unrelated transforms elsewhere in
@@ -401,12 +405,15 @@
       (seq (:failures final-state)) {::status :failed ::failures (:failures final-state)}
       :else                         {::status :succeeded})))
 
-(defn- job-transform-ids [job-id]
+(defn- job-transform-ids
+  "Ids of the transforms a job runs. Transforms checked out into a remote-sync worktree are left out: a worktree is a
+  working copy of a branch, and its transforms only run once they are merged into the main app."
+  [job-id]
   (let [tag-ids (t2/select-fn-set :tag_id :model/TransformJobTransformTag :job_id job-id)]
-    (if (seq tag-ids)
-      (or (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids])
-          #{})
-      #{})))
+    (or (when (seq tag-ids)
+          (when-let [tagged (seq (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))]
+            (t2/select-pks-set :model/Transform :id [:in tagged] :worktree_id nil)))
+        #{})))
 
 (defn job-transforms
   "Return the transforms that are executed when running the job with ID `job-id`, in execution order.

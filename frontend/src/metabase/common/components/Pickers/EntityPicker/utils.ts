@@ -5,9 +5,12 @@ import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
+  CollectionId,
   CollectionItemModel,
   CollectionNamespace,
   CollectionType,
+  ListCollectionItemsRequest,
+  WorktreeId,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -246,6 +249,18 @@ export const getCollectionItemsOptions = ({
     include_can_run_adhoc_query: models.includes("table"),
   };
 };
+
+/**
+ * The root listing has no collection row to infer worktree scope from, so it takes an
+ * explicit `worktree-id`; every other listing scopes to its own collection's worktree.
+ */
+export const getWorktreeIdParam = (
+  collectionId: OmniPickerItem["id"] | CollectionId,
+  worktreeId: WorktreeId | undefined,
+): Pick<ListCollectionItemsRequest, "worktree-id"> =>
+  collectionId === "root" && worktreeId != null
+    ? { "worktree-id": worktreeId }
+    : {};
 
 export const isCollection = (
   item: OmniPickerItem,

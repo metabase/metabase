@@ -3,3 +3,9 @@
     color: var(--mb-color-core-brand);
   }
 }
+
+.worktreeBranch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}

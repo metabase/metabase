@@ -6,6 +6,8 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -27,8 +29,14 @@
 
 (defn- add-here-and-below [collection]
   (let [descendent-ids (map :id (collection/descendants-flat collection))
+        ;; a worktree's collections hold no tables of their own; the tables under its Library are the ones under
+        ;; the main-app collections it checked those out from
+        table-coll-ids (if (:worktree_id collection)
+                         (vals (collections/worktree-collection-counterpart-ids descendent-ids))
+                         descendent-ids)
         below-card-types (t2/select-fn-set :type [:model/Card :type] :collection_id [:in descendent-ids])
-        below-tables? (t2/exists? :model/Table :is_published true :collection_id [:in descendent-ids])]
+        below-tables? (and (seq table-coll-ids)
+                           (t2/exists? :model/Table :is_published true :collection_id [:in table-coll-ids]))]
     ;; This function is only used on the root Library which cannot have items directly in it
     ;; So can assume :here is only collection, and all descendants are :below
     (assoc collection :here #{"collection"}
@@ -40,11 +48,17 @@
                     true ((partial map name))))))
 
 (api.macros/defendpoint :get "/" :- [:or ::collections.schema/CollectionItem [:map [:data nil?]]]
-  "Get the Library. If no library exists, it doesn't fail but returns an empty response"
+  "Get the Library. If no library exists, it doesn't fail but returns an empty response.
+
+  `worktree-id` gets the Library a remote-sync worktree checked out rather than the main app's (admin only)."
   [_route
-   _query
+   {:keys [worktree-id]} :- [:map
+                             [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]
    _body]
-  (if-let [library (collections/library-collection)]
+  (when worktree-id
+    (api/check-superuser)
+    (remote-sync/check-worktree-exists! worktree-id))
+  (if-let [library (collections/library-collection worktree-id)]
     (-> (api/read-check library)
         (t2/hydrate
          :can_write
@@ -54,9 +68,10 @@
     {:data nil}))
 
 (defn- select-collections
-  []
+  [worktree-id]
   (t2/select :model/Collection
              {:where    [:and
+                         [:= :worktree_id worktree-id]
                          [:in :type [collection/library-collection-type
                                      collection/library-data-collection-type
                                      collection/library-metrics-collection-type]]
@@ -65,6 +80,7 @@
                           {:include-archived-items    :exclude
                            :include-trash-collection? false
                            :permission-level          :read
+                           :worktree-id               worktree-id
                            :archive-operation-id      nil})]
               :order-by [[:%lower.name :asc]]}))
 
@@ -73,10 +89,16 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/tree"
-  "This matches /api/collection/tree but only returns the library collection."
+  "This matches /api/collection/tree but only returns the library collection.
+
+  `worktree-id` returns the Library a remote-sync worktree checked out rather than the main app's (admin only)."
   [_route-params
-   _query]
-  (let [collections              (-> (select-collections)
+   {:keys [worktree-id]} :- [:map
+                             [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser)
+    (remote-sync/check-worktree-exists! worktree-id))
+  (let [collections              (-> (select-collections worktree-id)
                                      (t2/hydrate :can_write))
         collection-type-ids      (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
                                            (update acc (case (keyword card-type)

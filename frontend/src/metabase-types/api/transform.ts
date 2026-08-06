@@ -9,6 +9,7 @@ import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, SchemaName, Table } from "./table";
 import type { UserId, UserInfo } from "./user";
 import type { CardDisplayType } from "./visualization";
+import type { WorktreeId } from "./worktree";
 
 export type TransformId = number;
 export type TransformTagId = number;
@@ -36,6 +37,7 @@ export type Transform = {
   source_type: TransformType;
   target: TransformTarget;
   collection_id: CollectionId | null;
+  worktree_id: WorktreeId | null;
   created_at: string;
   updated_at: string;
   source_readable: boolean;
@@ -267,6 +269,7 @@ export type TransformRunForJobRun = TransformRun & {
 export type TransformTag = {
   id: TransformTagId;
   name: string;
+  worktree_id: WorktreeId | null;
   created_at: string;
   updated_at: string;
   can_run: boolean;
@@ -297,6 +300,7 @@ export type CreateTransformRequest = {
   collection_id?: number | null;
   owner_user_id?: UserId | null;
   owner_email?: string | null;
+  worktree_id?: WorktreeId | null;
 };
 
 export type UpdateTransformRequest = {
@@ -331,6 +335,11 @@ export type UpdateTransformJobRequest = {
 
 export type CreateTransformTagRequest = {
   name: string;
+  worktree_id?: WorktreeId | null;
+};
+
+export type ListTransformTagsRequest = {
+  "worktree-id"?: WorktreeId | null;
 };
 
 export type UpdateTransformTagRequest = {
@@ -348,6 +357,7 @@ export type ListTransformsRequest = {
   "last-run-statuses"?: TransformRunStatus[];
   "tag-ids"?: TransformTagId[];
   "database-id"?: DatabaseId;
+  "worktree-id"?: WorktreeId | null;
 };
 
 export type ListTransformJobsRequest = {
@@ -484,11 +494,13 @@ export type PythonLibrary = {
 
 export type GetPythonLibraryRequest = {
   path: string;
+  "worktree-id"?: WorktreeId | null;
 };
 
 export type UpdatePythonLibraryRequest = {
   path: string;
   source: string;
+  worktree_id?: WorktreeId | null;
 };
 
 export type InspectorFieldStats = {

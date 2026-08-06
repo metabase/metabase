@@ -676,7 +676,7 @@
   "Returns transform usage metrics for the Snowplow stats ping."
   []
   (let [one-day-ago (->one-day-ago)]
-    {:transforms               (t2/count :model/Transform)
+    {:transforms               (t2/count :model/Transform :worktree_id nil)
      :transform_runs_last_24h  (t2/count :model/TransformRun
                                          :start_time [:>= one-day-ago])}))
 

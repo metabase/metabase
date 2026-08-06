@@ -24,7 +24,9 @@
     :metabot_conversation_id
     :public_uuid
     :updated_at
-    :view_count})
+    :view_count
+    ;; which worktree a card belongs to is fixed at creation, so a revision can neither describe nor revert it
+    :worktree_id})
 
 (defmethod revision/revert-to-revision! :model/Card
   [model id user-id serialized-card]

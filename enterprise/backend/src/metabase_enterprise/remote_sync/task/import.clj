@@ -37,7 +37,7 @@
                                 :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
                 (log/info "Auto-importing remote-sync collections")
                 (let [result (impl/import! snapshot task-id)]
-                  (impl/handle-task-result! result task-id)
+                  (impl/handle-task-result! result task-id :branch branch)
                   (when (= :success (:status result))
                     ;; events/publish-event! rethrows handler exceptions; don't let an audit-log
                     ;; failure mark an already-successful import as failed

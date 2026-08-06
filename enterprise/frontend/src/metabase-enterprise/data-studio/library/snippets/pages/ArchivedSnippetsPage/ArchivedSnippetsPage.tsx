@@ -7,6 +7,7 @@ import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -27,6 +28,7 @@ import { useColumnDef } from "./hooks/useColumnDef";
 
 export function ArchivedSnippetsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const worktreeId = useWorktreeId();
   const {
     tree: snippetTree,
     isLoading,
@@ -75,7 +77,9 @@ export function ArchivedSnippetsPage() {
       <PaneHeader
         breadcrumbs={
           <DataStudioBreadcrumbs>
-            <Link to={Urls.dataStudioLibrary()}>{t`SQL snippets`}</Link>
+            <Link to={Urls.dataStudioLibrary({ worktreeId })}>
+              {t`SQL snippets`}
+            </Link>
             {t`Archived snippets`}
           </DataStudioBreadcrumbs>
         }
@@ -122,7 +126,10 @@ export function ArchivedSnippetsPage() {
                 if (data.model === "snippet") {
                   const snippetId = Number(data.id);
                   return (
-                    <Link to={Urls.dataStudioSnippet(snippetId)} {...props} />
+                    <Link
+                      to={Urls.dataStudioSnippet(snippetId, { worktreeId })}
+                      {...props}
+                    />
                   );
                 }
 

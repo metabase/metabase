@@ -7,6 +7,7 @@ import type { Measure } from "./measure";
 import type { Segment } from "./segment";
 import type { Transform, TransformId } from "./transform";
 import type { UserId, UserInfo } from "./user";
+import type { WorktreeId } from "./worktree";
 
 export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
@@ -144,6 +145,8 @@ export interface GetTableQueryMetadataRequest {
   include_sensitive_fields?: boolean;
   include_hidden_fields?: boolean;
   include_editable_data_model?: boolean;
+  /** Scopes the hydrated segments and measures to a remote-sync worktree's copies */
+  "worktree-id"?: WorktreeId | null;
 }
 
 export interface UpdateTableRequest {

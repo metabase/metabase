@@ -9,41 +9,53 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn get-python-library-by-path
-  "Get Python library details by path for use by other APIs."
-  [path]
-  (-> (python-library/get-python-library-by-path path)
-      api/read-check
-      (select-keys [:source :path :created_at :updated_at])))
+  "Get Python library details by path for use by other APIs. `worktree-id` reads the copy checked out into a
+  remote-sync worktree; nil (the default) is the main app's."
+  ([path]
+   (get-python-library-by-path path nil))
+  ([path worktree-id]
+   (-> (python-library/get-python-library-by-path path worktree-id)
+       api/read-check
+       (select-keys [:source :path :created_at :updated_at]))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/library/:path"
-  "Get the Python library for user modules."
+  "Get the Python library for user modules. `worktree-id` reads the copy checked out into a remote-sync worktree
+  instead of the main app's, and is admin-only; 404 when that worktree has no library."
   [{:keys [path]} :- [:map [:path ms/NonBlankString]]
-   _query-params]
-  (get-python-library-by-path path))
+   {:keys [worktree-id]} :- [:map [:worktree-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
+  (get-python-library-by-path path worktree-id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/library/:path"
-  "Update the Python library source code for user modules."
+  "Update the Python library source code for user modules. `worktree_id` writes the copy checked out into a
+  remote-sync worktree instead of the main app's, and is admin-only."
   [{:keys [path]} :- [:map [:path ms/NonBlankString]]
    _query-params
-   body :- [:map {:closed true}
-            [:source :string]]]
-  ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
-  (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
-  (python-library/update-python-library-source! path (:source body)))
+   {:keys [source worktree_id]} :- [:map {:closed true}
+                                    [:source :string]
+                                    [:worktree_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (if worktree_id
+    (do (api/check-superuser)
+        (remote-sync/check-worktree-exists! worktree_id))
+    ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
+    (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*)))
+  (python-library/update-python-library-source! path source worktree_id))
 
 (api.macros/defendpoint :post "/test-run"
   :- [:map

@@ -17,6 +17,7 @@ import type {
   SchemaName,
   SearchRequest,
   TableId,
+  WorktreeId,
 } from "metabase-types/api";
 
 export type EntityPickerOptions = {
@@ -52,6 +53,8 @@ export type EntityPickerProps = {
   onClose: () => void;
   models: OmniPickerItem["model"][];
   namespaces?: CollectionNamespace[];
+  /** Scopes the picker to a remote-sync worktree's content instead of the main app's */
+  worktreeId?: WorktreeId;
   options: EntityPickerOptions;
   searchParams?: Partial<SearchRequest>;
   value?: OmniPickerValue;

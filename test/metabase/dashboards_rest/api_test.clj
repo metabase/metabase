@@ -6466,3 +6466,23 @@
                   (is (=? {:message #"(?i).*No destination parameter found.*"}
                           (mt/user-http-request :crowberto :post 400 execute-path
                                                 {:parameters {"id" 1 "name" "Store" "old_name" "Shop"}}))))))))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so this needs `:model/Worktree` on the classpath. The endpoint it
+;;; covers is OSS.
+
+(deftest worktree-content-is-excluded-from-the-list-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Collection wt-coll {:name "worktree collection" :worktree_id wt-id}
+                   :model/Dashboard {main-id :id} {:name "main dashboard"}
+                   :model/Dashboard {wt-content-id :id} {:name "worktree dashboard" :collection_id (:id wt-coll) :worktree_id wt-id}]
+      (testing "the main-app list leaves worktree content out"
+        (let [ids (into #{} (map :id) (mt/user-http-request :crowberto :get 200 "dashboard"))]
+          (is (contains? ids main-id))
+          (is (not (contains? ids wt-content-id)))))
+      (testing "worktree-id returns only that worktree's content"
+        (is (= [wt-content-id] (mapv :id (mt/user-http-request :crowberto :get 200 "dashboard" :worktree-id wt-id)))))
+      (testing "worktree-id is admin-only"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "dashboard" :worktree-id wt-id)))))))

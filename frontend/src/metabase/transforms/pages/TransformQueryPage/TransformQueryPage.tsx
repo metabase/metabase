@@ -14,6 +14,7 @@ import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
@@ -114,6 +115,7 @@ function TransformQueryPageBody({
     initialSource: transform.source,
   });
   const navigate = useNavigate();
+  const worktreeId = useWorktreeId();
   const metadata = useSelector(getMetadata);
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
@@ -161,9 +163,9 @@ function TransformQueryPageBody({
   useEffect(() => {
     if (isEditMode && isRemoteSyncReadOnly) {
       // If remote sync is set up to read-only mode, user can't edit transforms
-      navigate(Urls.transform(transform.id));
+      navigate(Urls.transform(transform.id, { worktreeId }));
     }
-  }, [isRemoteSyncReadOnly, isEditMode, transform.id, navigate]);
+  }, [isRemoteSyncReadOnly, isEditMode, transform.id, navigate, worktreeId]);
 
   const handleSave = async (request: UpdateTransformRequest) => {
     const { error } = await updateTransform(request);
@@ -178,7 +180,7 @@ function TransformQueryPageBody({
       sendSuccessToast(t`Transform query updated`);
 
       if (isEditMode) {
-        navigate(Urls.transform(transform.id));
+        navigate(Urls.transform(transform.id, { worktreeId }));
       }
     }
   };
@@ -212,7 +214,7 @@ function TransformQueryPageBody({
 
   const handleCancel = () => {
     if (isEditMode) {
-      navigate(Urls.transform(transform.id));
+      navigate(Urls.transform(transform.id, { worktreeId }));
     }
   };
 

@@ -1,6 +1,7 @@
 import type { DatasetQuery } from "./query";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
+import type { WorktreeId } from "./worktree";
 
 export type SegmentId = number;
 
@@ -21,12 +22,14 @@ export interface Segment {
   creator_id: number;
   creator?: UserInfo;
   updated_at: string;
+  worktree_id?: WorktreeId | null;
 }
 
 export interface CreateSegmentRequest {
   name: string;
   definition: DatasetQuery;
   description?: string;
+  worktree_id?: WorktreeId | null;
 }
 
 export interface UpdateSegmentRequest {

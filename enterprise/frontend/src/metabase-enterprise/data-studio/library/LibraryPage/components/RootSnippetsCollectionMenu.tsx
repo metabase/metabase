@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
@@ -18,6 +19,7 @@ export const RootSnippetsCollectionMenu = ({
   collectionId,
 }: RootSnippetsCollectionMenu) => {
   const isAdmin = useSelector(getUserIsAdmin);
+  const worktreeId = useWorktreeId();
   const remoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const isReadOnly = remoteSyncReadOnly || !isAdmin;
   const [showPermissionsModal, { toggle: togglePermissionsModal }] =
@@ -53,7 +55,7 @@ export const RootSnippetsCollectionMenu = ({
         <Menu.Item
           component={Link}
           leftSection={<FixedSizeIcon name="view_archive" />}
-          to={dataStudioArchivedSnippets()}
+          to={dataStudioArchivedSnippets({ worktreeId })}
         >
           {t`View archived snippets`}
         </Menu.Item>

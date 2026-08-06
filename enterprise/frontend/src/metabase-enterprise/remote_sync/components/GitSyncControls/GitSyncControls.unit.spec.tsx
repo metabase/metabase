@@ -7,6 +7,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
+  createMockRemoteSyncTask,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -421,17 +422,19 @@ describe("GitSyncControls", () => {
       // Simulate the polled export task coming back in conflict (what the middleware dispatches when a
       // push loses the preflight->execute race). GitSyncControls observes it and toasts via useToast.
       store.dispatch(
-        taskUpdated({
-          id: 77,
-          sync_task_type: "export",
-          status: "conflict",
-          progress: 1,
-          started_at: "2026-01-01T00:00:00Z",
-          ended_at: "2026-01-01T00:00:01Z",
-          last_progress_report_at: null,
-          error_message: null,
-          initiated_by: 0,
-        }),
+        taskUpdated(
+          createMockRemoteSyncTask({
+            id: 77,
+            sync_task_type: "export",
+            status: "conflict",
+            progress: 1,
+            started_at: "2026-01-01T00:00:00Z",
+            ended_at: "2026-01-01T00:00:01Z",
+            last_progress_report_at: null,
+            error_message: null,
+            initiated_by: 0,
+          }),
+        ),
       );
 
       await waitFor(() => {

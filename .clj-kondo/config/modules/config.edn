@@ -636,6 +636,7 @@
            permissions
            premium-features
            queries
+           remote-sync
            request
            revisions
            settings
@@ -736,6 +737,7 @@
            public-sharing
            queries
            query-processor
+           remote-sync
            search
            settings
            staleness
@@ -836,6 +838,7 @@
            queries
            query-permissions
            query-processor
+           remote-sync
            revisions
            search
            util
@@ -1503,7 +1506,8 @@
                     :model/NativeQuerySnippet
                     :model/Segment
                     :model/Table
-                    :model/User}}
+                    :model/User
+                    :model/WorktreeRemapping}}
 
   mq
   {:team "UX West"
@@ -1848,6 +1852,7 @@
            pulse
            query-permissions
            query-processor
+           remote-sync
            request
            search
            settings
@@ -2462,6 +2467,7 @@
            collections
            events
            models
+           remote-sync
            util}
    :model-exports #{:model/Timeline}
    :model-imports #{:model/Collection :model/User}}
@@ -2517,7 +2523,8 @@
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
-                    :model/TransformTag}
+                    :model/TransformTag
+                    :model/TransformTransformTag}
    :model-imports #{:model/Collection
                     :model/Database
                     :model/Field
@@ -2564,6 +2571,7 @@
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
            models
+           remote-sync
            request
            transforms
            transforms-base
@@ -2819,7 +2827,8 @@
            util
            warehouse-schema
            xrays}
-   :model-imports #{:model/Database
+   :model-imports #{:model/Card
+                    :model/Database
                     :model/Dimension
                     :model/Field
                     :model/FieldValues
@@ -3405,7 +3414,9 @@
    :api  #{metabase-enterprise.library.api}
    :uses #{api
            collections
-           premium-features}
+           premium-features
+           remote-sync
+           util}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
   enterprise/mcp
@@ -3528,7 +3539,7 @@
            enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
-   :model-exports #{:model/RemoteSyncTask}
+   :model-exports #{:model/RemoteSyncTask :model/WorktreeRemapping}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3543,6 +3554,7 @@
                     :model/Timeline
                     :model/Transform
                     :model/TransformTag
+                    :model/TransformTransformTag
                     :model/User}}
 
   enterprise/replacement
@@ -3717,8 +3729,7 @@
            permissions
            premium-features
            remote-sync
-           util}
-   :model-imports #{:model/NativeQuerySnippet}}
+           util}}
 
   enterprise/sso
   {:team "UX West"
@@ -3831,6 +3842,7 @@
            models
            permissions
            query-processor
+           remote-sync
            settings
            tracing
            transforms

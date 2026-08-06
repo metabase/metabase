@@ -6,6 +6,7 @@ import {
   PaneHeader,
   PanelHeaderTitle,
 } from "metabase/common/data-studio/components/PaneHeader";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { Button, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -22,11 +23,13 @@ export const PythonLibraryEditorHeader = ({
   onSave,
   onRevert,
 }: PythonLibraryEditorHeaderProps) => {
+  const worktreeId = useWorktreeId();
+
   return (
     <PaneHeader
       breadcrumbs={
         <DataStudioBreadcrumbs>
-          <Link to={Urls.transformList()}>{t`Transforms`}</Link>
+          <Link to={Urls.transformList({ worktreeId })}>{t`Transforms`}</Link>
           {t`Python library`}
         </DataStudioBreadcrumbs>
       }

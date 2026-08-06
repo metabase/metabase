@@ -109,6 +109,7 @@ export function createMockTransform(opts?: Partial<Transform>): Transform {
     source_type: opts?.source_type ?? getSourceType(),
     target: opts?.target ?? createMockTransformTarget(),
     collection_id: null,
+    worktree_id: null,
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
     source_readable: true,
@@ -226,6 +227,7 @@ export function createMockTransformTag(
   return {
     id: 1,
     name: "Tag",
+    worktree_id: null,
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
     can_run: true,

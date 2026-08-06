@@ -90,6 +90,110 @@
   "Maximum number of ids per `:in` clause, to stay under database parameter limits."
   1000)
 
+(def ^:dynamic *worktree-id*
+  "The remote-sync worktree an import or export is operating on; `nil` is the main app. Bound for the duration of a
+  single pull/push (which is always about exactly one worktree) by the remote-sync code that drives it, and left `nil`
+  by the plain serdes API, which only ever sees main-app content. Extraction is scoped by it, and entity ids are
+  translated through the worktree's remapping table on the way out and back in. This is the only ambient worktree
+  scope in the app -- everywhere else `worktree_id` is passed explicitly."
+  nil)
+
+(def worktree-scoped-models
+  "Serdes model names whose table carries a `worktree_id` column. Extraction for these is scoped by
+  [[*worktree-id*]], loads stamp it, and their `entity_id`s are translated through
+  `worktree_remapping` -- so a worktree holds its own copy of an entity the main app already has,
+  under an id of its own.
+
+  A worktree checks out collections, everything that lives in them, and the data-model content hanging off
+  shared tables. What is left is the shared warehouse metadata itself -- tables and fields -- which has no
+  `worktree_id` column and inside a worktree is skipped outright by extraction and load rather than being read
+  from, or written to, the main app's rows."
+  #{"Card" "Collection" "Dashboard" "Document" "Measure" "NativeQuerySnippet" "PythonLibrary" "Segment"
+    "Timeline" "Transform" "TransformTag" "TransformTransformTag"})
+
+(defn worktree-scoped?
+  "Whether `model` -- a serdes model-name string, or a model keyword/symbol -- is scoped by the current worktree."
+  [model]
+  (contains? worktree-scoped-models (if (string? model) model (name model))))
+
+(defn worktree-scope-clause
+  "HoneySQL predicate restricting a worktree-scoped `model`'s rows to [[*worktree-id*]], the worktree being
+  exported; `nil` for models that aren't worktree-scoped. Every extraction query for such a model needs it, so an
+  export only ever contains one worktree's content -- the main app's, for the plain serdes API."
+  [model]
+  (when (worktree-scoped? model)
+    [:= :worktree_id *worktree-id*]))
+
+(defn source-entity-id
+  "The `entity_id` `entity-id` is serialized under -- the one the branch knows the entity by. Inside a worktree that
+  is read from the remapping table; a row with no remapping is main-app content the worktree merely refers to, and
+  keeps its own id."
+  [model-name entity-id]
+  (or (when (and *worktree-id* entity-id)
+        (t2/select-one-fn :source_entity_id :model/WorktreeRemapping
+                          :worktree_id     *worktree-id*
+                          :type            (name model-name)
+                          :local_entity_id entity-id))
+      entity-id))
+
+(defn local-entity-id
+  "The `entity_id` of the local row standing for the serialized `entity-id`. Inside a worktree that is the copy the
+  worktree checked out, so a load never matches -- or overwrites -- the main app's row for the same entity; `nil`
+  when this worktree has not checked the entity out yet, which is what makes a load insert a fresh copy."
+  [model-name entity-id]
+  (if *worktree-id*
+    (when entity-id
+      (t2/select-one-fn :local_entity_id :model/WorktreeRemapping
+                        :worktree_id      *worktree-id*
+                        :type             (name model-name)
+                        :source_entity_id entity-id))
+    entity-id))
+
+(defn local-entity-ids
+  "Batch [[local-entity-id]] over `entity-ids`, returned as a set. Ids this worktree has no remapping for pass
+  through unchanged -- they name content the worktree has not checked out, so they cannot match any local row.
+  Returns the ids untouched outside a worktree."
+  [model-name entity-ids]
+  (if (and *worktree-id* (seq entity-ids))
+    (let [source->local (into {}
+                              (mapcat (fn [chunk]
+                                        (t2/select-fn->fn :source_entity_id :local_entity_id
+                                                          :model/WorktreeRemapping
+                                                          :worktree_id *worktree-id*
+                                                          :type (name model-name)
+                                                          :source_entity_id [:in chunk])))
+                              (partition-all query-batch-size entity-ids))]
+      (into #{} (map #(source->local % %)) entity-ids))
+    (set entity-ids)))
+
+(defn ensure-remapping!
+  "Records that this worktree's copy of a `model-name` entity is `local-entity-id`, known to the branch as `source`,
+  and returns `source`. When `source` is nil -- content created inside the worktree, which the branch has never
+  seen -- a fresh id is minted for it, so what the worktree pushes can never collide with the row the main app
+  holds. A no-op outside a worktree, when the pair is already recorded, and when handed an id that is already a
+  source id for this worktree, so calling it twice on the way out never mints a second id."
+  ([model-name local-entity-id]
+   (ensure-remapping! model-name local-entity-id nil))
+  ([model-name local-entity-id source]
+   (if-not (and *worktree-id* local-entity-id)
+     (or source local-entity-id)
+     (or (t2/select-one-fn :source_entity_id :model/WorktreeRemapping
+                           :worktree_id     *worktree-id*
+                           :type            (name model-name)
+                           :local_entity_id local-entity-id)
+         (when (t2/exists? :model/WorktreeRemapping
+                           :worktree_id      *worktree-id*
+                           :type             (name model-name)
+                           :source_entity_id local-entity-id)
+           local-entity-id)
+         (let [source (or source (u/generate-nano-id))]
+           (t2/insert! :model/WorktreeRemapping
+                       {:worktree_id      *worktree-id*
+                        :type             (name model-name)
+                        :source_entity_id source
+                        :local_entity_id local-entity-id})
+           source)))))
+
 (mr/def ::model-keyword
   [:and
    qualified-keyword?
@@ -173,7 +277,8 @@
         pk    (first (t2/primary-keys model))
         eid   (cond-> eid
                 (str/starts-with? eid "eid:") (subs 4))]
-    (t2/select-one-fn pk [model pk] :entity_id eid)))
+    (when-let [eid (if (worktree-scoped? model-name) (local-entity-id model-name eid) eid)]
+      (t2/select-one-fn pk [model pk] :entity_id eid))))
 
 ;;; # Serdes paths and <tt>:serdes/meta</tt>
 ;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
@@ -209,10 +314,16 @@
   (fn [model-name _instance] model-name))
 
 (defn infer-self-path
-  "Returns `{:model \"ModelName\" :id \"id-string\"}`"
+  "Returns `{:model \"ModelName\" :id \"id-string\"}`.
+
+  Inside a worktree the id is the entity's *source* id -- what the branch calls it -- so what gets written, and
+  every reference to it, matches the rest of the branch rather than naming the worktree's private copy. The
+  mapping is recorded if it does not exist yet: a reference can be serialized before the entity it points at, and
+  both have to name it the same way."
   [model-name entity]
-  {:model model-name
-   :id    (entity-id model-name entity)})
+  (let [eid (entity-id model-name entity)]
+    {:model model-name
+     :id    (if (worktree-scoped? model-name) (ensure-remapping! model-name eid) eid)}))
 
 (defn maybe-labeled
   "Common helper for defining [[generate-path]] for an entity that is
@@ -390,10 +501,17 @@
   - Convert to a vanilla Clojure map, not a modeled Toucan 2 entity.
   - Drop the numeric database primary key (usually `:id`)
   - Drop the updated_at timestamp, if it exists.
-  - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)"
+  - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)
+
+  Inside a worktree the entity's `entity_id` is swapped for the one the branch knows it by, so everything
+  downstream -- the copied column, the path, and every reference to it -- names the branch's entity rather than the
+  worktree's private copy."
   [model-name opts instance]
   (try
-    (let [spec (*make-spec* model-name opts)]
+    (let [spec     (*make-spec* model-name opts)
+          instance (cond-> instance
+                     (worktree-scoped? model-name)
+                     (m/update-existing :entity_id #(ensure-remapping! model-name %)))]
       (assert spec (str "No serialization spec defined for model " model-name))
       (-> (into {}
                 (remove (fn [[k v]] (= v (get-in spec [:defaults k]))))
@@ -497,7 +615,12 @@
         ;; Nested fetches (e.g. a Dashboard's DashboardCards) are embedded as lists inside the parent's file
         ;; rather than written to their own files, so they keep their natural order and are left untouched.
         order-by (when-not (::nested-fetch opts)
-                   (stable-storage-order-by spec))]
+                   (stable-storage-order-by spec))
+        scope    (worktree-scope-clause model)
+        where    (cond
+                   (and where scope) [:and where scope]
+                   scope             scope
+                   :else             where)]
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
@@ -674,6 +797,9 @@
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
+  Inside a worktree the incoming `entity_id` names the branch's entity, so it is dropped: the local row keeps the id
+  of the copy this worktree checked out, and the remapping table already pairs the two.
+
   Returns the updated entity."
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
@@ -681,7 +807,9 @@
 (defmethod load-update! :default [model-name ingested local]
   (let [model    (t2.model/resolve-model (symbol model-name))
         pk       (first (t2/primary-keys model))
-        id       (get local pk)]
+        id       (get local pk)
+        ingested (cond-> ingested
+                   (and *worktree-id* (worktree-scoped? model-name)) (dissoc :entity_id))]
     (log/tracef "Upserting %s %d" model-name id)
     (t2/update! model id ingested)
     (t2/select-one model pk id)))
@@ -699,13 +827,26 @@
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
+  A worktree-scoped row is stamped with the worktree being loaded into (`nil` for the plain serdes API, which only
+  ever loads into the main app). Inside a worktree the incoming `entity_id` names the branch's entity, which the
+  main app may already hold, so the row is inserted without one -- the insert hook mints a fresh id -- and the pair
+  is recorded in the remapping table for every later export and load to resolve through.
+
   Returns the newly inserted entity."
   {:arglists '([model ingested])}
   (fn [model _] model))
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s" model-name)
-  (first (t2/insert-returning-instances! (t2.model/resolve-model (symbol model-name)) ingested)))
+  (let [model     (t2.model/resolve-model (symbol model-name))
+        scoped?   (worktree-scoped? model-name)
+        source    (:entity_id ingested)
+        row       (cond-> ingested
+                    scoped?                    (assoc :worktree_id *worktree-id*)
+                    (and scoped? *worktree-id*) (dissoc :entity_id))]
+    (u/prog1 (first (t2/insert-returning-instances! model row))
+      (when scoped?
+        (ensure-remapping! model-name (:entity_id <>) source)))))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -787,9 +928,13 @@
 
 (mu/defn lookup-by-id
   "Given an entity ID string, finds the matching entity. This is useful when writing [[xform-one]] to
-  turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
+  turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil.
+
+  Inside a worktree the id is resolved through the remapping table first, so a load finds the worktree's own copy
+  and never the main app's row for the same entity."
   [model :- ::model-keyword-or-symbol id-str]
-  (t2/select-one model :entity_id id-str))
+  (when-let [id-str (if (worktree-scoped? model) (local-entity-id model id-str) id-str)]
+    (t2/select-one model :entity_id id-str)))
 
 (defn storage-default-collection-path
   "Implements the most common structure for [[storage-path]].
@@ -1897,11 +2042,17 @@
                                       (load-one! (enrich ingested) nil)))
 
                                 :else                       ; match by entity id
-                                (do (t2/delete! model backward-fk parent-id :entity_id [:not-in (map :entity_id lst)])
-                                    (doseq [ingested lst
-                                            :let [ingested (enrich ingested)
-                                                  local    (lookup-by-id model (entity-id model-name ingested))]]
-                                      (load-one! ingested local))))))}))
+                                (let [keep-eids (into [] (keep #(if (worktree-scoped? model-name)
+                                                                  (local-entity-id model-name (:entity_id %))
+                                                                  (:entity_id %)))
+                                                      lst)]
+                                  (if (seq keep-eids)
+                                    (t2/delete! model backward-fk parent-id :entity_id [:not-in keep-eids])
+                                    (t2/delete! model backward-fk parent-id))
+                                  (doseq [ingested lst
+                                          :let [ingested (enrich ingested)
+                                                local    (lookup-by-id model (entity-id model-name ingested))]]
+                                    (load-one! ingested local))))))}))
 
 (def parent-ref "Transformer for parent id for nested entities."
   (constantly

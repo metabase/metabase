@@ -1,6 +1,7 @@
 (ns metabase.transforms.models.transform-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -216,3 +217,55 @@
                                     :type     "query"
                                     :query    {:source-table (mt/id :people)}}}})
       (is (nil? (stored-deps id))))))
+
+;;; ------------------------------------------ remote-sync worktrees ------------------------------------------
+;;; A worktree is an enterprise concept, so these need `:model/Worktree` on the classpath. The rules
+;;; they cover live in this (OSS) model.
+
+(deftest worktree-id-cannot-change-test
+  (when config/ee-available?
+    (testing "which worktree a transform belongs to is fixed when it is created"
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/Transform {tf-id :id} {:name "main transform"}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"worktree_id cannot be changed"
+                              (t2/update! :model/Transform tf-id {:worktree_id wt-id})))))))
+
+(deftest creating-a-worktree-transform-is-admin-only-test
+  (when config/ee-available?
+    (testing "a non-admin cannot put a transform into a worktree"
+      (mt/with-temp [:model/Worktree {wt-id :id} {}]
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that"
+                                (t2/insert! :model/Transform
+                                            (merge (mt/with-temp-defaults :model/Transform)
+                                                   {:name "sneaky" :worktree_id wt-id})))))))))
+
+(deftest transform-takes-its-worktree-from-its-collection-test
+  (when config/ee-available?
+    (mt/with-temp [:model/Worktree {wt-id :id} {}
+                   :model/Collection main-coll {:name "main transforms" :namespace "transforms"}
+                   :model/Collection wt-coll {:name        "worktree transforms"
+                                              :namespace   "transforms"
+                                              :worktree_id wt-id}]
+      (testing "a transform takes its worktree from the collection it is created in"
+        (mt/with-temp [:model/Transform tf {:name "inherited" :collection_id (:id wt-coll)}]
+          (is (= wt-id (:worktree_id tf)))))
+      (testing "at a root there is no collection to ask, so the caller's worktree stands"
+        (mt/with-temp [:model/Transform tf {:name "rootless" :collection_id nil :worktree_id wt-id}]
+          (is (= wt-id (:worktree_id tf)))))
+      (testing "a transform cannot be moved into another worktree's collection"
+        (mt/with-temp [:model/Transform {tf-id :id} {:name "main transform" :collection_id (:id main-coll)}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move content into or out of"
+                                (t2/update! :model/Transform tf-id {:collection_id (:id wt-coll)})))
+          (testing "but moving to the root is always allowed"
+            (is (= 1 (t2/update! :model/Transform tf-id {:collection_id nil}))))))
+      (testing "a transform is one of the two models that can sit at a worktree root, so it may move there"
+        (mt/with-temp [:model/Transform {tf-id :id} {:name          "worktree transform"
+                                                     :collection_id (:id wt-coll)}]
+          (is (= 1 (t2/update! :model/Transform tf-id {:collection_id nil})))
+          (is (= wt-id (t2/select-one-fn :worktree_id :model/Transform tf-id)))))
+      (testing "a transform in the same worktree as its collection is fine"
+        (mt/with-temp [:model/Transform tf {:name          "matched"
+                                            :collection_id (:id wt-coll)
+                                            :worktree_id   wt-id}]
+          (is (= wt-id (:worktree_id tf))))))))

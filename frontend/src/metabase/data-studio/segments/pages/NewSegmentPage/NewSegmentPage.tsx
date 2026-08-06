@@ -6,6 +6,7 @@ import { useCreateSegmentMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { trackSegmentCreated } from "metabase/common/data-studio/analytics";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";
@@ -34,6 +35,7 @@ export function NewSegmentPage({
   const navigate = useNavigate();
   const metadata = useSelector(getMetadataWithHiddenTables);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const worktreeId = useWorktreeId();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -72,6 +74,7 @@ export function NewSegmentPage({
       name: name.trim(),
       definition: definition,
       description: description.trim() || undefined,
+      worktree_id: worktreeId,
     });
 
     if (error) {
@@ -91,6 +94,7 @@ export function NewSegmentPage({
     createSegment,
     sendSuccessToast,
     sendErrorToast,
+    worktreeId,
   ]);
 
   useEffect(() => {

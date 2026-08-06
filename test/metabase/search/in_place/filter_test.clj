@@ -148,7 +148,7 @@
 
 (deftest ^:parallel build-archived-filter-test
   (testing "archived filters"
-    (is (= [:= :card.archived false]
+    (is (= [:and [:= :card.archived false] [:= :card.worktree_id nil]]
            (:where (search.filter/build-filters
                     base-search-query "card" default-search-ctx))))
     (is (= [:and
@@ -172,7 +172,8 @@
              [:like [:lower :card.name] "%string%"]
              [:like [:lower :card.description] "%a%"]
              [:like [:lower :card.description] "%string%"]]
-            [:= :card.archived false]]
+            [:= :card.archived false]
+            [:= :card.worktree_id nil]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx {:search-string "a string"})))))))
@@ -226,7 +227,8 @@
             :where  [:and
                      [:= :card.archived false]
                      [:>= [:cast :card.created_at :date] #t "2016-04-18"]
-                     [:< [:cast :card.created_at :date]  #t "2016-04-24"]]}
+                     [:< [:cast :card.created_at :date]  #t "2016-04-24"]
+                     [:= :card.worktree_id nil]]}
            (search.filter/build-filters
             base-search-query "card"
             (merge default-search-ctx {:created-at "2016-04-18~2016-04-23"}))))))
@@ -241,7 +243,8 @@
                      [:= :revision.most_recent true]
                      [:= :revision.model "Card"]
                      [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
-                     [:< [:cast :revision.timestamp :date] #t "2016-04-24"]]}
+                     [:< [:cast :revision.timestamp :date] #t "2016-04-24"]
+                     [:= :card.worktree_id nil]]}
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"}))))
@@ -255,7 +258,8 @@
                        [:= :revision.model "Card"]
                        [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
                        [:< [:cast :revision.timestamp :date] #t "2016-04-24"]
-                       [:= :revision.user_id 1]]}
+                       [:= :revision.user_id 1]
+                       [:= :card.worktree_id nil]]}
              (search.filter/build-filters
               base-search-query "dataset"
               (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"
@@ -272,12 +276,12 @@
 
 (deftest ^:parallel build-created-by-filter-test
   (testing "created-by filter"
-    (is (= [:and [:= :card.archived false] [:= :card.creator_id 1]]
+    (is (= [:and [:= :card.archived false] [:= :card.creator_id 1] [:= :card.worktree_id nil]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx
                            {:created-by #{1}})))))
-    (is (= [:and [:= :card.archived false] [:in :card.creator_id #{1 2}]]
+    (is (= [:and [:= :card.archived false] [:in :card.creator_id #{1 2}] [:= :card.worktree_id nil]]
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx
@@ -291,7 +295,8 @@
                      [:= :card.archived false]
                      [:= :revision.most_recent true]
                      [:= :revision.model "Card"]
-                     [:= :revision.user_id 1]]
+                     [:= :revision.user_id 1]
+                     [:= :card.worktree_id nil]]
             :join   [:revision [:= :revision.model_id :card.id]]}
            (search.filter/build-filters
             base-search-query "dataset"
@@ -306,7 +311,8 @@
                      [:= :card.archived false]
                      [:= :revision.most_recent true]
                      [:= :revision.model "Card"]
-                     [:in :revision.user_id #{1 2}]]
+                     [:in :revision.user_id #{1 2}]
+                     [:= :card.worktree_id nil]]
             :join   [:revision [:= :revision.model_id :card.id]]}
            (search.filter/build-filters
             base-search-query "dataset"
@@ -323,7 +329,8 @@
                           [:= :card.archived false]
                           [:= :moderation_review.status "verified"]
                           [:= :moderation_review.moderated_item_type "card"]
-                          [:= :moderation_review.most_recent true]]
+                          [:= :moderation_review.most_recent true]
+                          [:= :card.worktree_id nil]]
                  :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
                (search.filter/build-filters
                 base-search-query "card"
@@ -339,7 +346,8 @@
                           [:= :card.archived false]
                           [:= :moderation_review.status "verified"]
                           [:= :moderation_review.moderated_item_type "card"]
-                          [:= :moderation_review.most_recent true]]
+                          [:= :moderation_review.most_recent true]
+                          [:= :card.worktree_id nil]]
                  :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
                (search.filter/build-filters
                 base-search-query "dataset"
@@ -353,7 +361,8 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
-                          [:inline [:= 0 1]]]})
+                          [:inline [:= 0 1]]
+                          [:= :card.worktree_id nil]]})
                (search.filter/build-filters
                 base-search-query "card"
                 (merge default-search-ctx {:verified true}))))))))
@@ -366,7 +375,8 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
-                          [:inline [:= 0 1]]]})
+                          [:inline [:= 0 1]]
+                          [:= :card.worktree_id nil]]})
                (search.filter/build-filters
                 base-search-query "dataset"
                 (merge default-search-ctx {:verified true}))))))))
@@ -410,7 +420,8 @@
       (testing "do not search for native query by default"
         (is (= [:and
                 [:or [:like [:lower :card.name] "%foo%"] [:like [:lower :card.description] "%foo%"]]
-                [:= :card.archived false]]
+                [:= :card.archived false]
+                [:= :card.worktree_id nil]]
                (:where (search.filter/build-filters
                         base-search-query
                         model
@@ -426,7 +437,8 @@
                       [:and
                        [:= :card.query_type "native"]
                        [:like [:lower :card.dataset_query] "%foo%"]]]
-                [:= :card.archived false]]
+                [:= :card.archived false]
+                [:= :card.worktree_id nil]]
                (:where (search.filter/build-filters
                         base-search-query
                         model

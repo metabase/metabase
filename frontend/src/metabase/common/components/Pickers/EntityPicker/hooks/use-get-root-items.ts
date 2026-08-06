@@ -21,6 +21,7 @@ import type {
   CollectionNamespace,
   Database,
   User,
+  WorktreeId,
 } from "metabase-types/api";
 
 import { useOmniPickerContext } from "../context";
@@ -46,7 +47,8 @@ const personalCollectionsRoot: OmniPickerCollectionItem = {
  * This will generate a list of the top level items for the entity picker
  */
 export const useRootItems = () => {
-  const { options, models, searchQuery, namespaces } = useOmniPickerContext();
+  const { options, models, searchQuery, namespaces, worktreeId } =
+    useOmniPickerContext();
   const isAdmin = useSelector(getUserIsAdmin);
   const hasTenants = useSetting("use-tenants");
   const transformsEnabled = useHasTokenFeature("transforms-basic");
@@ -65,6 +67,7 @@ export const useRootItems = () => {
 
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection({
     skip: !options.hasLibrary,
+    worktreeId,
   });
 
   const {
@@ -97,6 +100,7 @@ export const useRootItems = () => {
       transformsEnabled,
       currentUser,
       hasTenants,
+      worktreeId,
       dispatch,
     })
       .then((rootItems) => {
@@ -119,6 +123,7 @@ export const useRootItems = () => {
     transformsEnabled,
     currentUser,
     hasTenants,
+    worktreeId,
     setIsLoadingCollections,
     dispatch,
   ]);
@@ -146,6 +151,7 @@ async function getRootItems({
   transformsEnabled,
   currentUser,
   hasTenants,
+  worktreeId,
   dispatch,
 }: {
   searchQuery?: string;
@@ -161,6 +167,7 @@ async function getRootItems({
   transformsEnabled: boolean;
   currentUser: User | null;
   hasTenants: boolean;
+  worktreeId?: WorktreeId;
   dispatch: DispatchFn;
 }): Promise<OmniPickerCollectionItem[]> {
   const collectionItems: OmniPickerCollectionItem[] = [];
@@ -232,7 +239,14 @@ async function getRootItems({
     });
   }
 
-  if (options?.hasRootCollection && namespaces.includes(null)) {
+  // The root collection is main-app content, so it is hidden from
+  // worktree-scoped pickers; namespace roots (transforms, snippets) list
+  // worktree content and stay available.
+  if (
+    options?.hasRootCollection &&
+    namespaces.includes(null) &&
+    worktreeId == null
+  ) {
     collectionItems.push({
       ...(await getRootCollectionItem({
         namespace: null,

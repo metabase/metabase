@@ -113,17 +113,24 @@
                    (deferred-tru "Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field."))))
 
 (defn get-transforms
-  "Get a list of transforms."
-  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
+  "Get a list of transforms the current user can read. Transforms checked out into a remote-sync worktree are left
+  out unless a single worktree's transforms are requested via `worktree-id`, which returns *only* that worktree's
+  transforms and is admin-only."
+  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id worktree-id]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (t2/select :model/Transform {:where    (into [:and [:in :source_type enabled-types]]
+    (when worktree-id
+      (api/check-superuser))
+    (let [transforms (t2/select :model/Transform {:where    (into [:and
+                                                                   [:in :source_type enabled-types]
+                                                                   [:= :worktree_id worktree-id]]
                                                                   (when database-id
                                                                     [[:= :source_database_id database-id]]))
                                                   :order-by [[:id :asc]]})]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
            (into []
-                 (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
+                 (comp (filter :can_read)
+                       (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
                        (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                        (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
                        (map #(update % :last_run transforms-base.u/present-run))
@@ -173,7 +180,7 @@
                             transform     (t2/insert-returning-instance!
                                            :model/Transform
                                            (assoc (select-keys body [:name :description :source :target :run_trigger
-                                                                     :collection_id :owner_email])
+                                                                     :collection_id :worktree_id :owner_email])
                                                   :creator_id creator-id
                                                   :owner_user_id owner-user-id))]
                         ;; Add tag associations if provided

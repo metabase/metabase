@@ -17,6 +17,7 @@ const FAKE_COLLECTION_DEFAULTS = {
   can_write: false,
   can_restore: false,
   can_delete: false,
+  worktree_id: null,
   namespace: null,
 } as const satisfies Partial<Collection>;
 

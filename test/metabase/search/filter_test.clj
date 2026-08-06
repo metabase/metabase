@@ -108,6 +108,7 @@
               :where
               [:and
                [:= 1 2]
+               [:= :search_index.worktree_id nil]
                [:or [:= nil :search_index.dashboard_id] nil]]}
              (search.filter/with-filters {:models []} {:select [:some :stuff], :from :somewhere})))
       (is (= {:select [:some :stuff],
@@ -115,13 +116,15 @@
               :where
               [:and
                [:in :search_index.model ["a"]]
+               [:= :search_index.worktree_id nil]
                [:or [:= nil :search_index.dashboard_id] nil]]}
              (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
     (testing "We can insert appropriate constraints for all the filters"
       (is (= {:select [:some :stuff],
               :from :somewhere,
               :where
-              #{[:in :search_index.last_editor_id [321]]
+              #{[:= :search_index.worktree_id nil]
+                [:in :search_index.last_editor_id [321]]
                 [:in :search_index.creator_id [123]]
                 [:or [:= :search_index.collection_id 5] [:like :collection.location "%/5/%"]]
                 [:not= :search_index.model [:inline "table"]]

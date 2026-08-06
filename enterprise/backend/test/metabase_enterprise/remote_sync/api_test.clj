@@ -801,6 +801,28 @@
               (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel")))
       (is (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id id))))))
 
+(deftest cancel-worktree-task-test
+  (testing "POST /api/ee/remote-sync/current-task/cancel with worktree_id cancels the worktree's task"
+    (mt/with-temp [:model/Worktree {worktree-id :id} {}
+                   :model/RemoteSyncTask {worktree-task-id :id} {:sync_task_type "import"
+                                                                 :worktree_id worktree-id
+                                                                 :last_progress_report_at :%now
+                                                                 :started_at :%now}]
+      (testing "without worktree_id the running worktree task is not the main app's current task"
+        (is (= "No active task to cancel"
+               (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel"))))
+      (is (=? {:id worktree-task-id
+               :cancelled true}
+              (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel"
+                                    {:worktree_id worktree-id})))
+      (is (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id worktree-task-id))))))
+
+(deftest cancel-worktree-task-checks-worktree-exists-test
+  (testing "POST /api/ee/remote-sync/current-task/cancel 404s for a nonexistent worktree"
+    (is (= "Not found."
+           (mt/user-http-request :crowberto :post 404 "ee/remote-sync/current-task/cancel"
+                                 {:worktree_id Integer/MAX_VALUE})))))
+
 ;;; ------------------------------------------------- Is Dirty Endpoint -------------------------------------------------
 
 (deftest is-dirty-returns-false-when-no-changes-test

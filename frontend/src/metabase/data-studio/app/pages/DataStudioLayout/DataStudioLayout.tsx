@@ -5,7 +5,11 @@ import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
-import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
+import {
+  AreaLayout,
+  AreaTab,
+  AreaTabGroup,
+} from "metabase/nav/components/AreaLayout";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
@@ -14,8 +18,10 @@ import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
+import { Box } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import S from "./DataStudioLayout.module.css";
 import { getCurrentTab } from "./utils";
 
 export function DataStudioLayout() {
@@ -57,66 +63,78 @@ export function DataStudioLayout() {
 
   const upperNav = (
     <>
-      <AreaTab
-        label={t`Library`}
-        icon="repository"
-        to={Urls.dataStudioLibrary()}
-        isSelected={currentTab === "library"}
-        showLabel={isNavbarOpened}
-        isGated={!hasLibraryFeature}
-        rightSection={
-          hasDirtyChanges && PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
-            <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
-          ) : null
-        }
-      />
-      {canAccessDataModel && (
+      <AreaTabGroup label={t`Instance`} showLabel={isNavbarOpened}>
+        {isNavbarOpened && (
+          <Box className={S.branchPicker}>
+            <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
+          </Box>
+        )}
         <AreaTab
-          label={t`Tables`}
-          icon="open_folder"
-          to={Urls.dataStudioData()}
-          isSelected={currentTab === "data"}
+          label={t`Library`}
+          icon="repository"
+          to={Urls.dataStudioLibrary()}
+          isSelected={currentTab === "library"}
           showLabel={isNavbarOpened}
-        />
-      )}
-      <AreaTab
-        label={t`Schema viewer`}
-        icon="network"
-        to={Urls.dataStudioSchemaViewer()}
-        isSelected={currentTab === "schema-viewer"}
-        showLabel={isNavbarOpened}
-        isGated={!hasSchemaViewerFeature}
-      />
-      <AreaTab
-        label={t`Dependency graph`}
-        icon="dependencies"
-        to={Urls.dependencyGraph()}
-        isSelected={currentTab === "dependencies"}
-        showLabel={isNavbarOpened}
-        isGated={!hasDependenciesFeature}
-      />
-      {shouldShowTransforms && (
-        <AreaTab
-          label={t`Transforms`}
-          icon="transform"
-          to={Urls.transformList()}
-          isSelected={currentTab === "transforms"}
-          showLabel={isNavbarOpened}
+          isGated={!hasLibraryFeature}
           rightSection={
-            hasTransformDirtyChanges &&
-            PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+            hasDirtyChanges && PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
               <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
             ) : null
           }
         />
+        {canAccessDataModel && (
+          <AreaTab
+            label={t`Tables`}
+            icon="open_folder"
+            to={Urls.dataStudioData()}
+            isSelected={currentTab === "data"}
+            showLabel={isNavbarOpened}
+          />
+        )}
+        <AreaTab
+          label={t`Schema viewer`}
+          icon="network"
+          to={Urls.dataStudioSchemaViewer()}
+          isSelected={currentTab === "schema-viewer"}
+          showLabel={isNavbarOpened}
+          isGated={!hasSchemaViewerFeature}
+        />
+        <AreaTab
+          label={t`Dependency graph`}
+          icon="dependencies"
+          to={Urls.dependencyGraph()}
+          isSelected={currentTab === "dependencies"}
+          showLabel={isNavbarOpened}
+          isGated={!hasDependenciesFeature}
+        />
+        {shouldShowTransforms && (
+          <AreaTab
+            label={t`Transforms`}
+            icon="transform"
+            to={Urls.transformList()}
+            isSelected={currentTab === "transforms"}
+            showLabel={isNavbarOpened}
+            rightSection={
+              hasTransformDirtyChanges &&
+              PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+                <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+              ) : null
+            }
+          />
+        )}
+        <AreaTab
+          label={t`Glossary`}
+          icon="glossary"
+          to={Urls.dataStudioGlossary()}
+          isSelected={currentTab === "glossary"}
+          showLabel={isNavbarOpened}
+        />
+      </AreaTabGroup>
+      {PLUGIN_REMOTE_SYNC.DataStudioWorktreesSection && (
+        <PLUGIN_REMOTE_SYNC.DataStudioWorktreesSection
+          isNavbarOpened={isNavbarOpened}
+        />
       )}
-      <AreaTab
-        label={t`Glossary`}
-        icon="glossary"
-        to={Urls.dataStudioGlossary()}
-        isSelected={currentTab === "glossary"}
-        showLabel={isNavbarOpened}
-      />
     </>
   );
 
@@ -188,7 +206,6 @@ export function DataStudioLayout() {
       isLoading={isLoadingNavbarKey}
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={setIsNavbarOpened}
-      headerControls={<PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
       upperNav={upperNav}
       lowerNav={lowerNav}
     >

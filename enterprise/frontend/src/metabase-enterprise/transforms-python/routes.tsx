@@ -6,10 +6,25 @@ import { TransformListPage } from "metabase/transforms/pages/TransformListPage";
 import { PythonLibraryEditorPage } from "./pages/PythonLibraryEditorPage";
 import { PythonTransformsUpsellModal } from "./upsells/PythonTransformsUpsellModal";
 
+export function getPythonLibraryRoutes() {
+  return <Route path="library/:path" element={<PythonLibraryEditorPage />} />;
+}
+
+export function getPythonLibraryUpsellRoutes() {
+  return (
+    // Render upsell modal on the library route if the feature is not enabled
+    <Route path="" element={<TransformListPage />}>
+      {modalRoute("library/:path", PythonTransformsUpsellModal, {
+        noWrap: true,
+      })}
+    </Route>
+  );
+}
+
 export function getPythonTransformsRoutes() {
   return (
     <>
-      <Route path="library/:path" element={<PythonLibraryEditorPage />} />
+      {getPythonLibraryRoutes()}
       <Route path="new/python" element={<NewPythonTransformPage />} />
     </>
   );

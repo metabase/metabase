@@ -5,6 +5,7 @@ import {
   type PaneHeaderProps,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
+import { useWorktreeId } from "metabase/common/worktrees";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
@@ -17,6 +18,7 @@ type TableHeaderProps = {
 } & Omit<PaneHeaderProps, "breadcrumbs">;
 
 export function TableHeader({ table, ...rest }: TableHeaderProps) {
+  const worktreeId = useWorktreeId();
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: table.collection_id,
   });
@@ -35,6 +37,7 @@ export function TableHeader({ table, ...rest }: TableHeaderProps) {
               key={collection.id}
               to={Urls.dataStudioLibrary({
                 expandedIds: path.slice(1, i + 1).map((c) => c.id),
+                worktreeId,
               })}
             >
               {collection.name}

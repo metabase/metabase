@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
+import { useWorktreeId } from "metabase/common/worktrees";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -12,12 +13,16 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
   tree: TreeItem[];
   error?: unknown;
 } => {
+  const worktreeId = useWorktreeId();
   const {
     data: snippets,
     isLoading: loadingSnippets,
     isFetching: fetchingSnippets,
     error,
-  } = useListSnippetsQuery({ archived }, { refetchOnMountOrArgChange: true });
+  } = useListSnippetsQuery(
+    { archived, "worktree-id": worktreeId },
+    { refetchOnMountOrArgChange: true },
+  );
   const {
     data: snippetCollections,
     isLoading: loadingCollections,
@@ -26,6 +31,7 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
     {
       namespace: "snippets",
       archived,
+      "worktree-id": worktreeId,
     },
     { refetchOnMountOrArgChange: true },
   );
@@ -58,6 +64,7 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
             snippetCollections,
             snippets,
             !isRemoteSyncReadOnly,
+            worktreeId,
           ),
     };
   }, [
@@ -70,5 +77,6 @@ export const useBuildSnippetTree = ({ archived = false } = {}): {
     error,
     archived,
     isRemoteSyncReadOnly,
+    worktreeId,
   ]);
 };

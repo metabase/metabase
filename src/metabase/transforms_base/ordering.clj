@@ -255,7 +255,8 @@
                                   to-check
                                   transform))
                               (t2/select [:model/Transform :id :name :target :target_table_id
-                                          :source_database_id :table_dependencies]))
+                                          :source_database_id :table_dependencies]
+                                         :worktree_id (:worktree_id to-check)))
         transforms-by-id (into {}
                                (map (juxt :id identity))
                                transforms)

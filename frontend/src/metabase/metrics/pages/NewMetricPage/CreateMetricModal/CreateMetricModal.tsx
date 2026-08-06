@@ -5,6 +5,7 @@ import * as Yup from "yup";
 import { useCreateCardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { trackMetricCreated } from "metabase/common/data-studio/analytics";
+import { useWorktreeId } from "metabase/common/worktrees";
 import {
   Form,
   FormErrorMessage,
@@ -16,7 +17,7 @@ import {
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import * as Lib from "metabase-lib";
-import type { Card, CreateCardRequest } from "metabase-types/api";
+import type { Card, CreateCardRequest, WorktreeId } from "metabase-types/api";
 
 import type { NewMetricValues } from "../types";
 
@@ -62,6 +63,7 @@ function CreateMetricForm({
   onClose,
 }: CreateMetricModalProps) {
   const [createCard] = useCreateCardMutation();
+  const worktreeId = useWorktreeId();
 
   const initialValues: NewMetricValues = useMemo(
     () => getInitialValues(defaultValues),
@@ -70,7 +72,7 @@ function CreateMetricForm({
 
   const handleSubmit = async (values: NewMetricValues) => {
     try {
-      const request = getCreateRequest(query, values);
+      const request = getCreateRequest(query, values, worktreeId);
       const card = await createCard(request).unwrap();
       trackMetricCreated("success", triggeredFrom, card.id);
       onCreate(card);
@@ -105,6 +107,7 @@ function CreateMetricForm({
             name="collection_id"
             title={t`Where do you want to save this?`}
             entityType="metric"
+            collectionPickerModalProps={{ worktreeId }}
           />
           <Group>
             <Box flex={1}>
@@ -135,6 +138,7 @@ function getInitialValues(
 function getCreateRequest(
   query: Lib.Query,
   { name, description, collection_id, result_metadata }: NewMetricValues,
+  worktreeId: WorktreeId | undefined,
 ): CreateCardRequest {
   const { display, settings = {} } = Lib.defaultDisplay(query);
   return {
@@ -147,5 +151,10 @@ function getCreateRequest(
     dataset_query: Lib.toJsQuery(query),
     display,
     visualization_settings: settings,
+    // A card saved into a collection inherits the collection's worktree, so
+    // only a root-level save needs the explicit scope.
+    ...(worktreeId != null && collection_id == null
+      ? { worktree_id: worktreeId }
+      : {}),
   };
 }

@@ -399,6 +399,10 @@
        :schedule        "0 0 * * * ?"
        :ui_display_type :cron/raw}))
 
+   :model/Worktree
+   (fn [_]
+     (default-timestamped {:branch (str "test-branch-" (u/generate-nano-id))}))
+
    :model/TransformRun
    (fn [_]
      {:status     "succeeded"

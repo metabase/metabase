@@ -163,6 +163,11 @@
                                            (update :circular conj path))
                                        path))
     (seen path)           ctx           ; Already been done, can skip it.
+    ;; A worktree only checks out transform content. Anything else -- reached as a top-level file or as a
+    ;; declared dependency, e.g. the Database a Transform names -- would be loaded into the main app's rows.
+    (and serdes/*worktree-id*
+         (not (serdes/worktree-scoped? (:model (last path)))))
+    ctx
     :else
     (let [ingested (serdes.ingest/ingest-one ingestion path)]
       (if-not ingested
@@ -253,7 +258,11 @@
    :errors    []})
 
 (defn load-metabase!
-  "Loads in a database export from an ingestion source, which is any Ingestable instance."
+  "Loads in a database export from an ingestion source, which is any Ingestable instance.
+
+  Inside a worktree ([[serdes/*worktree-id*]]) every model whose table carries no `worktree_id` is skipped by
+  [[load-one!]]: a worktree only checks out transform content, and loading anything else would write the
+  branch's cards, snippets or Python libraries straight into the main app's rows."
   [ingestion & {:keys [continue-on-error reindex?]
                 :or   {continue-on-error false
                        reindex?          true}}]

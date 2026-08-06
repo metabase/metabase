@@ -49,6 +49,8 @@ export type PythonTransformsPlugin = {
   isEnabled: boolean;
   shouldShowInspectTab: boolean;
   getPythonTransformsRoutes: () => ReactNode;
+  /** The library editor route alone, for route spaces that exclude Python transform creation (worktrees) */
+  getPythonLibraryRoutes: () => ReactNode;
   getInspectorRoutes: () => ReactNode;
   getPythonSourceValidationResult: (
     source: PythonTransformSourceDraft,
@@ -72,6 +74,7 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
   shouldShowInspectTab: false,
   getPythonTransformsRoutes: () => null,
+  getPythonLibraryRoutes: () => null,
   getInspectorRoutes: () => null,
   getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,

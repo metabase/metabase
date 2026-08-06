@@ -83,8 +83,17 @@ export function EntityPickerModal({
   ] = useDisclosure(false);
 
   const hydratedOptions: EntityPickerOptions = useMemo(
-    () => ({ ...defaultOptions, ...options }),
-    [options],
+    () => ({
+      ...defaultOptions,
+      ...options,
+      // Recents and personal collections always belong to the main app, so a
+      // worktree-scoped picker never offers them.
+      ...(rest.worktreeId != null && {
+        hasRecents: false,
+        hasPersonalCollections: false,
+      }),
+    }),
+    [options, rest.worktreeId],
   );
 
   const { open } = useModalOpen();

@@ -2201,7 +2201,7 @@
                       :source_entity_type   nil
                       :source_entity_id     nil
                       :error_type           "invalid-query"}])
-        (let [result      (#'deps.api/node-errors {:card [card-id]})
+        (let [result      (#'deps.api/node-errors {:card [card-id]} nil)
               card-errors (get result [:card card-id])]
           (testing "includes errors with visible source"
             (is (contains? card-errors {:type :missing-column :detail "col1"})))
@@ -2229,7 +2229,7 @@
                       :source_entity_type   "card"
                       :source_entity_id     source-card
                       :error_type           "missing-column"}])
-        (let [result      (#'deps.api/node-downstream-errors {:card [source-card]})
+        (let [result      (#'deps.api/node-downstream-errors {:card [source-card]} nil)
               card-errors (get result [:card source-card])]
           (testing "includes errors with visible analyzed entity"
             (is (= 1 (count card-errors))))
@@ -2778,3 +2778,57 @@
           (testing "graph with transform"
             (is (map? (mt/user-http-request analyst-id :get 200
                                             (str "ee/dependencies/graph?type=transform&id=" transform-id))))))))))
+
+(deftest unreferenced-excludes-worktree-transforms-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced leaves out transforms checked out into a worktree"
+    (mt/with-premium-features #{:dependencies :transforms-basic}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/Transform {main-id :id} {:name "main transform"}
+                     :model/Transform {wt-tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
+        (deps.test/synchronously-run-backfill!)
+        (let [ids (into #{}
+                        (comp (filter #(= "transform" (:type %))) (map :id))
+                        (:data (mt/user-http-request :crowberto :get 200
+                                                     "ee/dependencies/graph/unreferenced"
+                                                     :types "transform")))]
+          (is (contains? ids main-id)
+              "the main app's transform is listed")
+          (is (not (contains? ids wt-tf-id))
+              "the worktree's transform is not"))))))
+
+(deftest unreferenced-worktree-id-scopes-the-list-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced :worktree-id lists that worktree's transforms instead"
+    (mt/with-premium-features #{:dependencies :transforms-basic}
+      (mt/with-temp [:model/Worktree {wt-id :id} {}
+                     :model/Transform {main-id :id} {:name "main transform"}
+                     :model/Transform {wt-tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
+        (deps.test/synchronously-run-backfill!)
+        (let [ids-for (fn [& kvs]
+                        (into #{}
+                              (comp (filter #(= "transform" (:type %))) (map :id))
+                              (:data (apply mt/user-http-request :crowberto :get 200
+                                            "ee/dependencies/graph/unreferenced" :types "transform" kvs))))]
+          (testing "the worktree's transforms, and only those"
+            (let [ids (ids-for :worktree-id wt-id)]
+              (is (contains? ids wt-tf-id))
+              (is (not (contains? ids main-id)))))
+          (testing "worktree-id is admin-only"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "ee/dependencies/graph/unreferenced"
+                                         :types "transform" :worktree-id wt-id)))))))))
+
+(deftest graph-follows-the-starting-entitys-worktree-test
+  (testing "GET /api/ee/dependencies/graph takes its scope from the entity it was asked about"
+    (mt/with-premium-features #{:dependencies :transforms-basic}
+      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+        (mt/with-temp [:model/Worktree {wt-id :id} {}
+                       :model/Transform {wt-tf-id :id} {:name "worktree transform" :worktree_id wt-id}]
+          (deps.test/synchronously-run-backfill!)
+          (testing "an admin gets the worktree transform's own graph"
+            (is (=? {:nodes [{:id wt-tf-id :type "transform"}]}
+                    (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                          :id wt-tf-id :type "transform"))))
+          (testing "a non-admin cannot reach it at all"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "ee/dependencies/graph"
+                                         :id wt-tf-id :type "transform")))))))))

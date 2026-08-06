@@ -1,5 +1,6 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -14,6 +15,7 @@ type PublishedTableNewSegmentPageParams = {
 export function PublishedTableNewSegmentPage() {
   const params = useParams<PublishedTableNewSegmentPageParams>();
   const tableId = Urls.extractEntityId(params.tableId);
+  const worktreeId = useWorktreeId();
 
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId, {
     includeForeignTables: true,
@@ -32,7 +34,9 @@ export function PublishedTableNewSegmentPage() {
       table={table}
       breadcrumbs={<PublishedTableSegmentBreadcrumbs table={table} />}
       getSuccessUrl={(segment) =>
-        Urls.dataStudioPublishedTableSegment(tableId, segment.id)
+        Urls.dataStudioPublishedTableSegment(tableId, segment.id, {
+          worktreeId,
+        })
       }
     />
   );

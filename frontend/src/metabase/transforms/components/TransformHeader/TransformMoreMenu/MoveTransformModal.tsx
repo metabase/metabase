@@ -9,6 +9,7 @@ import type {
   OmniPickerValue,
 } from "metabase/common/components/Pickers";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
+import { useWorktreeId } from "metabase/common/worktrees";
 import type { Transform } from "metabase-types/api";
 
 const TRANSFORM_COLLECTION_PICKER_OPTIONS: EntityPickerOptions = {
@@ -34,13 +35,13 @@ export function MoveTransformModal({
   onClose,
 }: MoveTransformModalProps) {
   const [updateTransform] = useUpdateTransformMutation();
+  const worktreeId = useWorktreeId();
 
   const handleChange = useCallback(
     async ({ id }: OmniPickerItem) => {
-      const collectionId = canonicalCollectionId(id);
       await updateTransform({
         id: transform.id,
-        collection_id: collectionId,
+        collection_id: canonicalCollectionId(id),
       }).unwrap();
       onMove();
     },
@@ -56,12 +57,15 @@ export function MoveTransformModal({
     [transform.collection_id],
   );
 
+  const title = c("dialog title for moving a transform to another collection")
+    .t`Move "${transform.name}"`;
+
   return (
     <CollectionPickerModal
-      title={c("dialog title for moving a transform to another collection")
-        .t`Move "${transform.name}"`}
+      title={title}
       value={pickerValue}
       namespaces={["transforms"]}
+      worktreeId={worktreeId}
       onChange={handleChange}
       onClose={onClose}
       options={TRANSFORM_COLLECTION_PICKER_OPTIONS}

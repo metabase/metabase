@@ -10,6 +10,7 @@
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -2272,6 +2273,64 @@
                     (search-request-data :crowberto :q measure-name
                                          :search_engine "appdb"
                                          :models "measure")))))))))
+
+(deftest ^:synchronized worktree-content-is-scoped-to-its-worktree-test
+  (when (and config/ee-available? (search/supports-index?))
+    (let [term (mt/random-name)]
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Worktree {wt-id :id} {}
+                       :model/Collection {main-id :id} {:name (str term " main")}
+                       :model/Collection {wt-coll-id :id} {:name (str term " worktree") :worktree_id wt-id}
+                       :model/Card {main-card-id :id} {:name (str term " main card")}
+                       :model/Card {wt-card-id :id} {:name          (str term " worktree card")
+                                                     :collection_id wt-coll-id
+                                                     :worktree_id   wt-id}
+                       :model/Segment {main-seg-id :id} {:name (str term " main segment")
+                                                         :table_id (mt/id :venues)}
+                       :model/Segment {wt-seg-id :id} {:name        (str term " worktree segment")
+                                                       :table_id    (mt/id :venues)
+                                                       :worktree_id wt-id}]
+          (search/reindex! {:async? false :in-place? true})
+          (letfn [(card-ids [& params]
+                    (->> (apply mt/user-http-request :crowberto :get 200 "search" :q term :models "card"
+                                :search_engine "appdb" params)
+                         :data
+                         (into #{} (map :id))))
+                  (collection-ids [user & params]
+                    (->> (apply mt/user-http-request user :get 200 "search" :q term :models "collection"
+                                :search_engine "appdb" params)
+                         :data
+                         (into #{} (map :id))))]
+            (testing "a search without a worktree only sees the main app"
+              (let [ids (collection-ids :crowberto)]
+                (is (contains? ids main-id))
+                (is (not (contains? ids wt-coll-id)))))
+            (testing "worktree-id returns that worktree's content instead"
+              (let [ids (collection-ids :crowberto :worktree-id wt-id)]
+                (is (contains? ids wt-coll-id))
+                (is (not (contains? ids main-id)))))
+            (testing "worktree-id is admin-only"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 "search" :q term :worktree-id wt-id))))
+            (testing "cards are scoped the same way"
+              (is (= #{main-card-id} (card-ids)))
+              (is (= #{wt-card-id} (card-ids :worktree-id wt-id))))
+            (testing "so is data-model content hanging off a shared table"
+              (let [segment-ids (fn [& params]
+                                  (->> (apply mt/user-http-request :crowberto :get 200 "search" :q term
+                                              :models "segment" :search_engine "appdb" params)
+                                       :data
+                                       (into #{} (map :id))))]
+                (is (= #{main-seg-id} (segment-ids)))
+                (is (= #{wt-seg-id} (segment-ids :worktree-id wt-id)))))
+            (testing "the in-place engine scopes the same way"
+              (let [ids (fn [& params]
+                          (->> (apply mt/user-http-request :crowberto :get 200 "search" :q term
+                                      :models "collection" :search_engine "in-place" params)
+                               :data
+                               (into #{} (map :id))))]
+                (is (= #{main-id} (ids)))
+                (is (= #{wt-coll-id} (ids :worktree-id wt-id)))))))))))
 
 (deftest ^:synchronized search-results-do-not-expose-is-published-test
   (testing "the internal is_published permission signal never carries a value in search API responses"

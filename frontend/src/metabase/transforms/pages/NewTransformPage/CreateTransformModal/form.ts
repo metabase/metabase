@@ -5,6 +5,7 @@ import { slugify } from "metabase/visualizations/lib/formatting/url";
 import type {
   CreateTransformRequest,
   TransformSource,
+  WorktreeId,
 } from "metabase-types/api";
 
 import {
@@ -50,6 +51,7 @@ export const convertTransformFormToCreateRequest = (
   source: TransformSource,
   values: NewTransformValues,
   databaseId: number,
+  worktreeId?: WorktreeId,
 ): CreateTransformRequest => {
   const transformSource = buildIncrementalSource(source, values);
   const transformTarget = buildIncrementalTarget(
@@ -66,5 +68,6 @@ export const convertTransformFormToCreateRequest = (
     source: transformSource,
     target: transformTarget,
     collection_id: values.collection_id,
+    worktree_id: worktreeId,
   };
 };

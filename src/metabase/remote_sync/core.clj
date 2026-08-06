@@ -1,7 +1,42 @@
 (ns metabase.remote-sync.core
   (:require
+   [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
+
+(defenterprise worktree-accessible?
+  "Whether the current user may see or edit `instance`: content checked out into a remote-sync worktree is
+  admin-only, always. Main-app content (`:worktree_id` `nil`) is not restricted here. AND this into a
+  worktree-scoped model's `can-read?` / `can-write?` / `can-create?`.
+
+  Always true on OSS: worktrees are an enterprise feature, so there are none to hide."
+  metabase-enterprise.remote-sync.core
+  [_instance]
+  true)
+
+(defenterprise check-worktree-exists!
+  "404s when `worktree-id` names no remote-sync worktree. Returns nil; call for side effect.
+
+  Worktrees are an enterprise feature, so on OSS any non-nil id names one that cannot exist."
+  metabase-enterprise.remote-sync.core
+  [worktree-id]
+  (api/check-404 (nil? worktree-id))
+  nil)
+
+(defenterprise check-same-worktree
+  "Guard throwing a 400 when a row's `worktree_id` and its container's disagree -- content never moves into, out
+  of, or between worktrees. `container-worktree-id` is the worktree of whatever contains the row (its collection,
+  its transform).
+
+  Call this only when the row actually has a container: content at the root -- a null `collection_id`, a
+  collection at `/` -- has nothing to compare against. Whether a root is a legal place for the row at all is a
+  separate question, and one only its own model can answer; see
+  [[metabase.collections.models.collection/check-same-worktree]].
+
+  On OSS there are no worktrees, so nothing can disagree. Returns nil; call for side effect."
+  metabase-enterprise.remote-sync.core
+  [_instance _container-worktree-id]
+  nil)
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.
@@ -20,34 +55,34 @@
   [_table]
   true)
 
-(defenterprise transforms-editable?
-  "Returns if transforms can be edited.
+(defenterprise transform-editable?
+  "Whether `transform` can be edited.
 
-  Returns false if remote-sync is enabled and remote-sync-type is :read-only.
+  Returns false if remote-sync is enabled and remote-sync-type is :read-only. A transform checked out into a
+  worktree is exempt: a worktree tracks its own branch, so the main app's setting says nothing about it.
   Always true on OSS."
   metabase-enterprise.remote-sync.core
-  []
+  [_transform]
   true)
 
-(defenterprise model-editable?
-  "Determines if a model instance is editable based on remote sync configuration.
+(defenterprise snippet-editable?
+  "Whether `snippet` can be edited.
 
-   Returns false if the instance is eligible for remote sync AND remote-sync-type
-   is :read-only. Always returns true on OSS.
-
-   For models with global eligibility (e.g., :setting, :library-synced), the instance
-   can be nil or empty map."
+  Returns false when the Library is remote-synced and remote-sync-type is :read-only. A snippet checked out into
+  a worktree is exempt: a worktree tracks its own branch, so the main app's setting says nothing about it.
+  Always true on OSS."
   metabase-enterprise.remote-sync.core
-  [_model-key _instance]
+  [_snippet]
   true)
 
-(defenterprise batch-model-editable?
-  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean.
+(defenterprise batch-snippet-editable?
+  "Batch version of [[snippet-editable?]], for hydrating `:can_write` over a list without a query per snippet.
+  Returns a map of snippet id -> editable? boolean.
 
-   OSS always returns true for all instances."
+  Always true on OSS."
   metabase-enterprise.remote-sync.core
-  [_model-key instances]
-  (into {} (map (fn [inst] [(:id inst) true])) instances))
+  [snippets]
+  (into {} (map (fn [snippet] [(:id snippet) true])) snippets))
 
 (defenterprise batch-model-eligible?
   "Batch check if model instances are eligible for remote sync based on spec rules.

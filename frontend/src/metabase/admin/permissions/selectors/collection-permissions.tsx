@@ -184,6 +184,7 @@ const getCollection = createSelector(
         can_write: true,
         can_restore: false,
         can_delete: false,
+        worktree_id: null,
         namespace: null,
         children: collections,
       };

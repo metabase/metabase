@@ -995,8 +995,8 @@ serdes/meta:
                 (is (not (t2/exists? :model/Transform :id local-transform-id))
                     "Local transform should be removed because it's not on the remote")))))))))
 
-(deftest export-excludes-builtin-transform-tags-test
-  (testing "Export excludes built-in transform tags based on :conditions"
+(deftest export-includes-builtin-transform-tags-test
+  (testing "Export includes built-in transform tags: their entity_ids are stable across instances"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
@@ -1011,8 +1011,8 @@ serdes/meta:
                 exported-ids (set (map second export-roots))]
             (is (contains? exported-ids custom-tag-id)
                 "Custom tag (built_in_type nil) should be in export roots")
-            (is (not (contains? exported-ids builtin-tag-id))
-                "Built-in tag should NOT be in export roots")))))))
+            (is (contains? exported-ids builtin-tag-id)
+                "Built-in tag should be in export roots too -- its entity_id is stable across instances")))))))
 
 (deftest export-includes-builtin-python-library-test
   (testing "Export includes built-in PythonLibrary (common.py) since it has no export-conditions"

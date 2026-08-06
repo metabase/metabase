@@ -12,6 +12,7 @@ import {
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import { useConfirmation, useSetCollection } from "metabase/common/hooks";
+import { useWorktreeId } from "metabase/common/worktrees";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
@@ -220,6 +221,7 @@ function LibraryMoveModal({
   onMove,
   onClose,
 }: LibraryMoveModalProps) {
+  const worktreeId = useWorktreeId();
   const isDisabledItem = useCallback(
     (item: OmniPickerItem) =>
       isMoveDestinationDisabled(item, movingCollectionIds),
@@ -237,6 +239,7 @@ function LibraryMoveModal({
         onClose={onClose}
         namespaces={["snippets"]}
         isDisabledItem={isDisabledItem}
+        worktreeId={worktreeId}
         options={{
           hasPersonalCollections: false,
           canCreateCollections: true,
@@ -261,6 +264,7 @@ function LibraryMoveModal({
       onChange={(destination) => onMove(destination.id)}
       onClose={onClose}
       isDisabledItem={isDisabledItem}
+      worktreeId={worktreeId}
       options={{
         hasLibrary: true,
         hasRootCollection: false,

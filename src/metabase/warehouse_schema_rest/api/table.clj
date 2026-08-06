@@ -317,17 +317,24 @@
    Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
    data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
 
-   These options are provided for use in the Admin Edit Metadata page."
+   These options are provided for use in the Admin Edit Metadata page.
+
+   Passing `worktree-id` describes the table with the segments and measures a remote-sync worktree checked out
+   instead of the main app's (admin only). The table itself is shared between the two."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
+   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model worktree-id]}
    :- [:map
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
-       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+       [:worktree-id                 {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
   (schema.table/fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                                :include-hidden-fields?       include_hidden_fields
-                                               :include-editable-data-model? include_editable_data_model}))
+                                               :include-editable-data-model? include_editable_data_model
+                                               :worktree-id                  worktree-id}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -340,7 +347,10 @@
   "Return metadata for the 'virtual' table for a Card."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
+  (first (schema.table/batch-fetch-card-query-metadatas
+          [id]
+          {:include-database? true
+           :worktree-id       (t2/select-one-fn :worktree_id :model/Card :id id)})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

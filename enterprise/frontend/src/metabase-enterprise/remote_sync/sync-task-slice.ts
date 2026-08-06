@@ -4,6 +4,7 @@ import type {
   RemoteSyncConflictVariant,
   RemoteSyncTask,
   RemoteSyncTaskType,
+  WorktreeId,
 } from "metabase-types/api";
 
 export interface SyncTaskState {
@@ -24,11 +25,17 @@ export const remoteSyncSlice = createSlice({
   reducers: {
     taskStarted: (
       state,
-      action: { payload: { taskType: RemoteSyncTaskType } },
+      action: {
+        payload: {
+          taskType: RemoteSyncTaskType;
+          worktreeId?: WorktreeId | null;
+        };
+      },
     ) => {
       state.currentTask = {
         id: 0,
         sync_task_type: action.payload.taskType,
+        worktree_id: action.payload.worktreeId ?? null,
         status: "running",
         progress: 0,
         started_at: new Date().toISOString(),
@@ -40,11 +47,15 @@ export const remoteSyncSlice = createSlice({
       state.showModal = true;
     },
     taskUpdated: (state, action: { payload: RemoteSyncTask }) => {
-      if (
-        !state.currentTask ||
-        // status for old task can come in when a new task has been already started
-        state.currentTask.sync_task_type === action.payload.sync_task_type
-      ) {
+      // status for an old task can come in when a new task has been already started, and the main
+      // app and a worktree can poll their tasks concurrently — only accept updates for the task
+      // this slice is tracking
+      const matchesCurrentTask =
+        state.currentTask !== null &&
+        state.currentTask.sync_task_type === action.payload.sync_task_type &&
+        (state.currentTask.worktree_id ?? null) ===
+          (action.payload.worktree_id ?? null);
+      if (!state.currentTask || matchesCurrentTask) {
         state.currentTask = action.payload;
         if (action.payload.ended_at === null) {
           state.showModal = true;

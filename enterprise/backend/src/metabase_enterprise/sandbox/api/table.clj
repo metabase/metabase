@@ -79,11 +79,15 @@
   information."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
+   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model worktree-id]}
    :- [:map
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
-       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+       [:worktree-id                 {:optional true} [:maybe ms/PositiveInt]]]]
+  (when worktree-id
+    (api/check-superuser))
   (fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                   :include-hidden-fields?       include_hidden_fields
-                                  :include-editable-data-model? include_editable_data_model}))
+                                  :include-editable-data-model? include_editable_data_model
+                                  :worktree-id                  worktree-id}))

@@ -36,6 +36,7 @@ import type {
   SmartScalarComparison,
   TreemapRow,
 } from "./visualization-settings";
+import type { WorktreeId } from "./worktree";
 
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -104,6 +105,8 @@ export interface Card<
 
   download_perms?: DownloadPermission;
   displayIsLocked?: boolean;
+
+  worktree_id: WorktreeId | null;
 }
 
 export interface PublicCard {
@@ -581,9 +584,14 @@ export type CardQueryMetadata = {
   fields: Field[];
 };
 
+export type AdhocQueryMetadataRequest = DatasetQuery & {
+  worktree_id?: WorktreeId | null;
+};
+
 export type ListCardsRequest = {
   f?: CardFilterOption;
   model_id?: CardId;
+  "worktree-id"?: WorktreeId | null;
 };
 
 export interface GetCardRequest {
@@ -610,6 +618,7 @@ export interface CreateCardRequest {
   result_metadata?: Field[] | null;
   cache_ttl?: number | null;
   size?: DashboardCardSize;
+  worktree_id?: WorktreeId | null;
 }
 
 export interface CreateCardFromCsvRequest {

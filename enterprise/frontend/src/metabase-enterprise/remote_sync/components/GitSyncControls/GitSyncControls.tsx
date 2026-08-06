@@ -34,7 +34,7 @@ import { trackPullChanges } from "../../analytics";
 import { useGitSyncVisible } from "../../hooks/use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
 import { useSyncStatus } from "../../hooks/use-sync-status";
-import { type SyncError, parseSyncError } from "../../utils";
+import { parseSyncError } from "../../utils";
 import { PushChangesModal } from "../PushChangesModal";
 import { SyncConflictModal } from "../SyncConflictModal";
 
@@ -72,12 +72,14 @@ export const GitSyncControls = () => {
 
   // An export task that ends in conflict (the push lost the preflight->execute race, or fell through a
   // preflight error) is otherwise silent: the middleware can't toast (no hook), so surface it here, then
-  // clear the task so it doesn't re-fire on re-render/navigation.
+  // clear the task so it doesn't re-fire on re-render/navigation. Worktree tasks are surfaced by the
+  // worktree's own sync controls instead.
   const currentTask = useSelector(getCurrentTask);
   useEffect(() => {
     if (
       currentTask?.status === "conflict" &&
-      currentTask?.sync_task_type === "export"
+      currentTask?.sync_task_type === "export" &&
+      currentTask?.worktree_id == null
     ) {
       sendToast({
         icon: "warning",
@@ -107,8 +109,7 @@ export const GitSyncControls = () => {
       hasBranchMismatch,
       errorMessage,
       currentBranch: serverBranch,
-      // Unjustified type cast. FIXME
-    } = parseSyncError(error as SyncError);
+    } = parseSyncError(error);
     if (hasBranchMismatch) {
       setBranchMismatch({
         message: errorMessage ?? t`The sync branch changed in another session.`,
@@ -206,8 +207,7 @@ export const GitSyncControls = () => {
         return;
       }
 
-      // Unjustified type cast. FIXME
-      const { hasConflict, errorMessage } = parseSyncError(error as SyncError);
+      const { hasConflict, errorMessage } = parseSyncError(error);
 
       if (hasConflict) {
         setConflictPreflight(null);
@@ -254,7 +254,7 @@ export const GitSyncControls = () => {
             p="sm"
             size="compact-sm"
             bd="none"
-            mr="lg"
+            classNames={{ inner: S.shrinkable, label: S.shrinkable }}
             disabled={isLoading}
             onClick={() => combobox.toggleDropdown()}
             leftSection={

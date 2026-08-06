@@ -14,6 +14,8 @@ interface BranchSwitchOptionsProps {
   variant: RemoteSyncConflictVariant;
   /** When true (push variant only), offer a "Merge changes" option. */
   canMerge?: boolean;
+  /** A worktree can only sync with its own branch, so the new-branch option is not offered. */
+  isWorktree?: boolean;
 }
 
 interface OutOfSyncOption {
@@ -36,6 +38,7 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
     optionValue,
     variant,
     canMerge,
+    isWorktree = false,
   } = props;
 
   const options = useMemo<OutOfSyncOption[]>(() => {
@@ -66,26 +69,32 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
       label: t`Delete unsynced changes (can’t be undone)`,
     };
 
-    switch (variant) {
-      case "push":
-        return canMerge
-          ? [mergeOption, newBranchOption, forcePushOption]
-          : [newBranchOption, forcePushOption];
-      case "switch-branch":
-        return [pushOption, newBranchOption, discardOption];
-      case "setup":
-        return isRemoteSyncReadOnly
-          ? [discardOption]
-          : [newBranchOption, discardOption];
-      default: // pull
-        if (isRemoteSyncReadOnly) {
-          return [discardOption];
-        }
-        return canMerge
-          ? [mergeOption, forcePushOption, newBranchOption, discardOption]
-          : [forcePushOption, newBranchOption, discardOption];
-    }
-  }, [currentBranch, isRemoteSyncReadOnly, variant, canMerge]);
+    const allOptions = (() => {
+      switch (variant) {
+        case "push":
+          return canMerge
+            ? [mergeOption, newBranchOption, forcePushOption]
+            : [newBranchOption, forcePushOption];
+        case "switch-branch":
+          return [pushOption, newBranchOption, discardOption];
+        case "setup":
+          return isRemoteSyncReadOnly
+            ? [discardOption]
+            : [newBranchOption, discardOption];
+        default: // pull
+          if (isRemoteSyncReadOnly) {
+            return [discardOption];
+          }
+          return canMerge
+            ? [mergeOption, forcePushOption, newBranchOption, discardOption]
+            : [forcePushOption, newBranchOption, discardOption];
+      }
+    })();
+
+    return isWorktree
+      ? allOptions.filter((option) => option.value !== "new-branch")
+      : allOptions;
+  }, [currentBranch, isRemoteSyncReadOnly, variant, canMerge, isWorktree]);
 
   const safeOptions = options.filter(
     (option) => !DESTRUCTIVE_OPTIONS.has(option.value),
