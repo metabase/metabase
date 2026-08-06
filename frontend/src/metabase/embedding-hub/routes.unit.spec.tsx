@@ -19,6 +19,7 @@ describe("embedding hub routes", () => {
       "embedding/get-started",
       "embedding/get-started/permissions-setup",
       "embedding/get-started/sso-setup",
+      "embedding/security",
     ]);
   });
 

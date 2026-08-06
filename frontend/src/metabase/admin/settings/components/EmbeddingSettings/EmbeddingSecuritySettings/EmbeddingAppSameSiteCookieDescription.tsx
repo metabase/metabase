@@ -28,7 +28,10 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
   return (
     <Stack gap="sm">
       {shouldDisplayNote && <AuthorizedOriginsNote />}
-      <Text>{jt`Determines whether to allow cookies for cross-site requests. ${(
+      {/* Naming the two methods is accurate now that the card is paid-only:
+          guest embeds never set a session cookie, so SameSite is inert below
+          the paywall and the card is not rendered there. */}
+      <Text>{jt`Determines whether or not cookies are allowed to be sent on cross-site requests. Applies to Modular embedding and Full-app embedding. You'll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure. If you set this to None, you'll have to use HTTPS, or browsers will reject the request. ${(
         <ExternalLink key="learn-more" href={docsUrl}>
           {t`Learn more`}
         </ExternalLink>
