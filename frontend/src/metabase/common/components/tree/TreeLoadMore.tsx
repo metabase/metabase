@@ -1,5 +1,6 @@
 import { useIntersection } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
+import { useLatest } from "react-use";
 
 import { Box } from "metabase/ui";
 
@@ -66,6 +67,7 @@ export function TreeLoadMore({
   remaining?: number;
   onLoadMore: () => void;
 }) {
+  const [sentinel, setSentinel] = useState<HTMLLIElement | null>(null);
   const [scrollingAncestor, setScrollingAncestor] = useState<Element | null>(
     null,
   );
@@ -84,6 +86,7 @@ export function TreeLoadMore({
   const observeSentinel = useCallback(
     (element: HTMLLIElement | null) => {
       if (element) {
+        setSentinel(element);
         setScrollingAncestor(findScrollingAncestor(element));
       }
       ref(element);
@@ -96,6 +99,35 @@ export function TreeLoadMore({
       onLoadMore();
     }
   }, [isInView, isLoading, onLoadMore]);
+
+  const loadMoreRef = useLatest(onLoadMore);
+
+  // An observer only reports the moments the sentinel crosses in or out of view, and a fast scroll can carry it
+  // across between two frames with nothing reported at all. Measuring where the sentinel actually is cannot miss
+  // that way: whatever the scroll did, the answer afterwards is still "the end of the list is above the fold".
+  useEffect(() => {
+    const scroller = scrollingAncestor;
+    // Without layout there is nothing to measure, which is also the case under jsdom.
+    if (!sentinel || !scroller || isLoading || scroller.clientHeight === 0) {
+      return;
+    }
+
+    const check = () => {
+      const distanceBelowFold =
+        sentinel.getBoundingClientRect().top -
+        scroller.getBoundingClientRect().bottom;
+      const isCloseEnough =
+        distanceBelowFold < PREFETCH_DISTANCE &&
+        distanceBelowFold > -catchUpDistance;
+      if (isCloseEnough) {
+        loadMoreRef.current();
+      }
+    };
+
+    check();
+    scroller.addEventListener("scroll", check, { passive: true });
+    return () => scroller.removeEventListener("scroll", check);
+  }, [sentinel, scrollingAncestor, isLoading, catchUpDistance, loadMoreRef]);
 
   // The placeholder rows stand in the reserved space rather than adding to it, so showing them moves nothing.
   const placeholderRows = isLoading ? Math.min(pageSize, remaining) : 0;

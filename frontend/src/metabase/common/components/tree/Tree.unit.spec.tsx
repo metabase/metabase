@@ -155,6 +155,56 @@ describe("Tree", () => {
         </div>,
       );
 
+    /**
+     * Puts the end of the list `sentinelTop` pixels from the top of a 200px scroll box, so the component has a
+     * layout to measure. jsdom has none of its own, and the whole point of measuring is that it does not depend on
+     * the observer having reported anything.
+     */
+    const renderWithLayout = (sentinelTop: number) => {
+      jest
+        .spyOn(HTMLElement.prototype, "clientHeight", "get")
+        .mockReturnValue(200);
+      jest
+        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+        .mockImplementation(function (this: HTMLElement) {
+          const isSentinel = this.dataset.testid === "tree-load-more";
+          // Only the two edges the component reads, rather than a whole DOMRect of zeroes to no purpose.
+          return {
+            top: isSentinel ? sentinelTop : 0,
+            bottom: isSentinel ? sentinelTop : 200,
+          } as DOMRect;
+        });
+
+      const onLoadMore = jest.fn();
+      render(
+        <div style={{ overflowY: "auto" }}>
+          <Tree
+            data={data}
+            onSelect={jest.fn()}
+            hasMore
+            onLoadMore={onLoadMore}
+            loadingMoreIds={new Set()}
+            pageSize={5}
+            remainingByLevel={new Map([[null, 100]])}
+          />
+        </div>,
+      );
+      return onLoadMore;
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should load when the end of the list is already above the fold", () => {
+      // A fast scroll can leave the end of the list behind without the observer reporting a thing.
+      expect(renderWithLayout(-500)).toHaveBeenCalled();
+    });
+
+    it("should not chase an end of list that is pages away", () => {
+      expect(renderWithLayout(-1_000_000)).not.toHaveBeenCalled();
+    });
+
     it("should watch the box the tree scrolls in, not the viewport", () => {
       renderInScrollBox(5);
 
