@@ -6,7 +6,6 @@ import { Link } from "metabase/common/components/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import { getHelpUrl } from "metabase/common/utils/help-url";
 import CS from "metabase/css/core/index.css";
-import { getEngines } from "metabase/databases/selectors";
 import { useSelector } from "metabase/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -34,7 +33,7 @@ interface Props {
 }
 
 export const DatabaseHelpSidePanel = ({ engineKey, onClose }: Props) => {
-  const engines = useSelector(getEngines);
+  const engines = useSetting("engines");
   const { url: fullDocsUrl, showMetabaseLinks } = useDocsUrl(
     `databases/connections/${ENGINE_DOC_MAP[engineKey]}`,
   );
