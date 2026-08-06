@@ -117,7 +117,7 @@ const CollectionItemsLoading = () => (
 );
 
 const CollectionNoResults = () => (
-  <Box mt="4rem" data-testid="collection-filter-empty-state">
+  <Box my="4rem" data-testid="collection-filter-empty-state">
     <EmptyState
       title={t`Didn't find anything`}
       message={t`There weren't any results for your search.`}
@@ -281,11 +281,8 @@ const CollectionItemsTableContent = ({
   onSearchTextChange,
   onUnpinnedItemsSortingChange,
 }: CollectionItemsTableContentProps) => {
-  const {
-    data,
-    isLoading: loadingUnpinnedItems,
-    isFetching: fetchingUnpinnedItems,
-  } = useListCollectionItemsQuery(unpinnedQuery);
+  const { data, isFetching: fetchingUnpinnedItems } =
+    useListCollectionItemsQuery(unpinnedQuery);
 
   const unpinnedItems = data?.data ?? [];
   const total = data?.total;
@@ -305,7 +302,7 @@ const CollectionItemsTableContent = ({
     selectOnlyTheseItems?.(unpinnedItems);
   };
 
-  const loading = loadingPinnedItems || loadingUnpinnedItems;
+  const loading = loadingPinnedItems || fetchingUnpinnedItems;
   const hasActiveFilters =
     searchText.trim().length > 0 ||
     (unpinnedQuery !== skipToken && Boolean(unpinnedQuery.q));
@@ -315,13 +312,14 @@ const CollectionItemsTableContent = ({
     unpinnedItems.length === 0 &&
     !hasActiveFilters;
 
-  if (isEmpty && !loadingUnpinnedItems) {
+  if (isEmpty) {
     return <EmptyContentComponent collection={collection} />;
   }
 
   const showNoResults =
     !fetchingUnpinnedItems && hasActiveFilters && unpinnedItems.length === 0;
-  const showTable = !fetchingUnpinnedItems && !showNoResults;
+  const showLoading = Boolean(showFilterBar) && fetchingUnpinnedItems;
+  const showTable = !showLoading && !showNoResults;
 
   return (
     <>
@@ -331,7 +329,7 @@ const CollectionItemsTableContent = ({
           onSearchTextChange={onSearchTextChange}
         />
       )}
-      {fetchingUnpinnedItems && <CollectionItemsLoading />}
+      {showLoading && <CollectionItemsLoading />}
       {showNoResults && <CollectionNoResults />}
       {showTable && (
         <CollectionTable data-testid="collection-table">

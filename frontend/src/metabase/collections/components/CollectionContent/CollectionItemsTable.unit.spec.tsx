@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Api } from "metabase/api";
 import { Route } from "metabase/router";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type {
@@ -155,6 +156,96 @@ describe("CollectionItemsTable", () => {
     expect(
       screen.queryByTestId("collection-items-toolbar"),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps the table mounted during background fetches without a filter bar", async () => {
+    setup({ pageSize: 1, showFilterBar: false });
+
+    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+    let resolveRequest: (() => void) | undefined;
+    const requestGate = new Promise<void>((resolve) => {
+      resolveRequest = resolve;
+    });
+    fetchMock.modifyRoute(`collection-${collection.id}-items`, {
+      response: async () => {
+        await requestGate;
+        return {
+          data: [collectionItems[1]],
+          total: collectionItems.length,
+          models: [],
+          limit: 1,
+          offset: 1,
+        };
+      },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    const tableWasMounted = screen.queryByTestId("collection-table") != null;
+    const cachedItemWasVisible = screen.queryByText("Revenue overview") != null;
+    const loadingWasVisible =
+      screen.queryByTestId("collection-items-loading") != null;
+    await act(async () => {
+      resolveRequest?.();
+      await fetchMock.callHistory.flush();
+    });
+
+    expect(await screen.findByText("Customer 360")).toBeInTheDocument();
+    expect(tableWasMounted).toBe(true);
+    expect(cachedItemWasVisible).toBe(true);
+    expect(loadingWasVisible).toBe(false);
+  });
+
+  it("keeps an empty table mounted while refetching without a filter bar", async () => {
+    const { store } = setup({ collectionItems: [], showFilterBar: false });
+
+    expect(
+      await screen.findByTestId("collection-empty-state"),
+    ).toBeInTheDocument();
+    let resolveRequest: (() => void) | undefined;
+    const requestGate = new Promise<void>((resolve) => {
+      resolveRequest = resolve;
+    });
+    fetchMock.modifyRoute(`collection-${collection.id}-items`, {
+      response: async () => {
+        await requestGate;
+        return {
+          data: [],
+          total: 0,
+          models: [],
+          limit: 25,
+          offset: 0,
+        };
+      },
+    });
+
+    act(() => {
+      store.dispatch(
+        Api.util.invalidateTags([
+          { type: "collection", id: `${collection.id}-items` },
+        ]),
+      );
+    });
+    await waitFor(() => {
+      expect(getItemsCalls()).toHaveLength(2);
+    });
+
+    const tableWasMounted = screen.queryByTestId("collection-table") != null;
+    const emptyStateWasVisible =
+      screen.queryByTestId("collection-empty-state") != null;
+    const loadingWasVisible =
+      screen.queryByTestId("collection-items-loading") != null;
+    await act(async () => {
+      resolveRequest?.();
+      await fetchMock.callHistory.flush();
+    });
+
+    expect(
+      await screen.findByTestId("collection-empty-state"),
+    ).toBeInTheDocument();
+    expect(tableWasMounted).toBe(true);
+    expect(emptyStateWasVisible).toBe(false);
+    expect(loadingWasVisible).toBe(false);
   });
 
   it("sends search text and shows only matching items", async () => {
