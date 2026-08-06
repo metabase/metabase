@@ -66,6 +66,31 @@
     (is (=? {:direction :increasing}
             (#'time-series/compute-trend [100.0 110.0 120.0 130.0 140.0])))))
 
+;;; ---- reconcile-direction: don't assert a label that contradicts the data ----
+
+(deftest ^:parallel reconcile-direction-sign-disagreement-test
+  (testing "Slope direction that contradicts the first→last change is downgraded"
+    ;; the real bug: slope says 'strongly increasing' but the series ended 97.9% lower
+    (is (= :no-clear-trend (#'time-series/reconcile-direction :strongly-increasing -97.9 0.3)))
+    (is (= :no-clear-trend (#'time-series/reconcile-direction :increasing -20.0 0.3)))
+    (is (= :no-clear-trend (#'time-series/reconcile-direction :strongly-decreasing 50.0 0.3)))))
+
+(deftest ^:parallel reconcile-direction-agreement-preserved-test
+  (testing "Agreeing sign keeps the label, even for a wide (high-CV) clean ramp"
+    (is (= :strongly-increasing (#'time-series/reconcile-direction :strongly-increasing 200.0 0.35)))
+    ;; a clean 100→20 decrease has CV ~0.5 — must NOT be suppressed
+    (is (= :strongly-decreasing (#'time-series/reconcile-direction :strongly-decreasing -80.0 0.53)))
+    (is (= :flat (#'time-series/reconcile-direction :flat -5.0 0.3)))))
+
+(deftest ^:parallel reconcile-direction-pathological-variance-test
+  (testing "Swings far exceeding the mean (CV ≥ 1.0) make any single direction meaningless"
+    (is (= :no-clear-trend (#'time-series/reconcile-direction :strongly-increasing 300.0 2.28)))))
+
+(deftest ^:parallel compute-trend-no-clear-trend-on-noisy-series-test
+  (testing "A series whose swings dwarf its mean reports no clear trend, not a confident direction"
+    (is (=? {:direction :no-clear-trend}
+            (#'time-series/compute-trend [10.0 1000.0 5.0 900.0 8.0])))))
+
 (deftest ^:parallel compute-trend-returns-start-end-values-test
   (testing "trend includes correct start and end values"
     (is (=? {:start-value 5.0

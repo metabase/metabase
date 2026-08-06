@@ -9,9 +9,8 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { useDispatch } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import { push, replace } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Box, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -33,7 +32,7 @@ const askConfig: MetabotConfig = {
 };
 
 export const MetabotAsk = () => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { setVisible: setSidebarVisible } = useMetabotAgent("omnibot");
   const askAgent = useMetabotAgent("ask");
   const { messages, isDoingScience, conversationId } = askAgent;
@@ -50,10 +49,10 @@ export const MetabotAsk = () => {
   useEffect(
     function navigateToConversationOnFirstMessage() {
       if (isAskPage && messages.length > 0 && conversationId) {
-        dispatch(replace(Urls.metabotConversation(conversationId)));
+        navigate(Urls.metabotConversation(conversationId), { replace: true });
       }
     },
-    [isAskPage, messages.length, conversationId, dispatch],
+    [isAskPage, messages.length, conversationId, navigate],
   );
 
   const showGreeting = messages.length === 0 && !isDoingScience;
@@ -63,9 +62,7 @@ export const MetabotAsk = () => {
     <MetabotConversationHistory
       profileId={askAgent.profile}
       activeConversationId={conversationId}
-      onConversationSelect={(id) =>
-        dispatch(push(Urls.metabotConversation(id)))
-      }
+      onConversationSelect={(id) => navigate(Urls.metabotConversation(id))}
     />
   ) : undefined;
 

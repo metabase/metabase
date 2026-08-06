@@ -84,6 +84,16 @@
 (api-scope/defscope agent-snippets-read "agent:snippets:read"
   (deferred-tru "View SQL snippets"))
 
+;; Timelines
+(api-scope/defscope agent-timelines-read "agent:timelines:read"
+  (deferred-tru "View timelines and timeline events"))
+
+;; Explorations (Research mode)
+(api-scope/defscope agent-explorations-read "agent:explorations:read"
+  (deferred-tru "View exploration research candidates"))
+(api-scope/defscope agent-explorations-write "agent:explorations:write"
+  (deferred-tru "Edit an exploration research plan"))
+
 ;; Dashboard
 (api-scope/defscope agent-dashboard-create "agent:dashboard:create"
   (deferred-tru "Create dashboards"))
@@ -208,15 +218,23 @@
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
    ;; `agent:content:*` rides both buckets: the type-generic tools cover question (nlq) and
    ;; dashboard/document (other-tools).
+   ;;
+   ;; `agent:timelines:*` and `agent:explorations:*` are granted under nlq: the
+   ;; NLQ-gated :explorations profile offers the exploration + read-only timeline
+   ;; tools (and its prompt instructs their use), so NLQ-only users must not have
+   ;; them silently scope-filtered away.
    :permission/metabot-nlq            #{"agent:notebook:*"
                                         "agent:query:*"
                                         "agent:question:*"
                                         "agent:metric:*"
+                                        "agent:timelines:*"
+                                        "agent:explorations:*"
                                         "agent:content:*"}
    :permission/metabot-other-tools    #{"agent:viz:*"
                                         "agent:dashboard:*"
                                         "agent:document:*"
                                         "agent:alert:*"
+                                        "agent:timelines:*"
                                         "agent:collection:*"
                                         "agent:content:*"}})
 
@@ -253,6 +271,16 @@
   metabase-enterprise.metabot.permissions
   [_user-id]
   all-yes-permissions)
+
+(defn missing-permission
+  "Validate a resolved metabot `perms` map against required permissions. Always
+  checks the base `:permission/metabot`. When `required-perm` is non-nil, also
+  checks that permission. Returns the first permission keyword that's not `:yes`,
+  or nil when all required perms are granted."
+  [perms required-perm]
+  (cond
+    (not= :yes (:permission/metabot perms))                   :permission/metabot
+    (and required-perm (not= :yes (get perms required-perm))) required-perm))
 
 (defn user-metabot-perms->scopes
   "Convert a resolved metabot permissions map into a set of scope strings.

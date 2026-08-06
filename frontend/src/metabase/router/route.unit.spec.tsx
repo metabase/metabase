@@ -171,7 +171,7 @@ describe("router/Route element memoization", () => {
     const PageA = () => <div>page-a</div>;
     const PageB = () => <div>page-b</div>;
 
-    const { history } = renderWithProviders(
+    const { router } = renderWithProviders(
       <Route path="shared">
         <Route path=":a" element={<Shared />}>
           <Route index element={<PageA />} />
@@ -187,7 +187,7 @@ describe("router/Route element memoization", () => {
     expect(mounts).toBe(1);
 
     act(() => {
-      checkNotNull(history).push("/shared/1/2");
+      checkNotNull(router).navigate("/shared/1/2");
     });
 
     // The sibling route renders the same `Shared` component, so it reconciles

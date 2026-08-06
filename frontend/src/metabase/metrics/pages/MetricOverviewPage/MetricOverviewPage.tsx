@@ -8,8 +8,7 @@ import type {
   MetricPageProps,
   MetricUrls,
 } from "metabase/common/metrics/types";
-import { useDispatch } from "metabase/redux";
-import { replace, useParams } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
@@ -53,7 +52,7 @@ function MetricOverviewPageBody({
   showAppSwitcher,
   showDataStudioLink,
 }: MetricOverviewPageBodyProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { data: metric, isLoading: isMetricLoading } = useGetMetricQuery(
     card.id,
   );
@@ -62,9 +61,9 @@ function MetricOverviewPageBody({
 
   useEffect(() => {
     if (!isMetricLoading && !hasDimensions) {
-      dispatch(replace(urls.about(card.id)));
+      navigate(urls.about(card.id), { replace: true });
     }
-  }, [card.id, isMetricLoading, hasDimensions, dispatch, urls]);
+  }, [card.id, isMetricLoading, hasDimensions, urls, navigate]);
 
   if (isMetricLoading) {
     return (

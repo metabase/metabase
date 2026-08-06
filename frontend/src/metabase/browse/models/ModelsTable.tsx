@@ -18,8 +18,7 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Ellipsified,
   FixedSizeIcon,
@@ -159,7 +158,7 @@ function preventDefault(event: MouseEvent) {
 }
 
 const ModelRow = ({ model }: { model?: ModelResult }) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleClick = useCallback(
     (event: MouseEvent) => {
@@ -186,10 +185,10 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
       if ((event.ctrlKey || event.metaKey) && event.button === 0) {
         Urls.openInNewTab(subpathSafeUrl);
       } else {
-        dispatch(push(url));
+        navigate(url);
       }
     },
-    [model, dispatch],
+    [model, navigate],
   );
 
   return (

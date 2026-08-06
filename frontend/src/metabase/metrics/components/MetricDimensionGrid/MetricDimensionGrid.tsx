@@ -9,8 +9,7 @@ import {
 } from "metabase/common/metrics/utils/dimension-types";
 import { trackMetricPageShowMoreClicked } from "metabase/metrics/analytics";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Button,
   Flex,
@@ -149,7 +148,7 @@ function MetricDimensionCard({
   dimension,
   displayType,
 }: MetricDimensionCardProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { data } = useMetricDimensionQuery(definition, dimension.dimensionId);
 
   const rawSeries = useMemo(
@@ -158,18 +157,16 @@ function MetricDimensionCard({
   );
 
   const handleClick = useCallback(() => {
-    dispatch(
-      push(
-        Urls.exploreMetricDimension({
-          metricId,
-          dimensionId: dimension.dimensionId,
-          dimensionType: dimension.dimensionType,
-          displayType,
-          label: dimension.label,
-        }),
-      ),
+    navigate(
+      Urls.exploreMetricDimension({
+        metricId,
+        dimensionId: dimension.dimensionId,
+        dimensionType: dimension.dimensionType,
+        displayType,
+        label: dimension.label,
+      }),
     );
-  }, [dispatch, metricId, dimension, displayType]);
+  }, [metricId, dimension, displayType, navigate]);
 
   return (
     <Paper withBorder shadow="none" className={S.card} onClick={handleClick}>

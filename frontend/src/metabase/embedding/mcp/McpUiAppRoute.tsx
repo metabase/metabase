@@ -4,8 +4,7 @@ import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponen
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
-import { useSelector } from "metabase/redux";
-import { getIsHosted } from "metabase/selectors/settings";
+import { useSetting } from "metabase/settings";
 import { Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
@@ -106,7 +105,7 @@ function McpUiAppRouteContent({
   uiCredential,
 }: McpUiAppRouteContentProps) {
   const handleDrillThrough = useHandleMcpDrillThrough(app);
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
 
   const { mcpSessionId = "" } =
     // Unjustified type cast. FIXME

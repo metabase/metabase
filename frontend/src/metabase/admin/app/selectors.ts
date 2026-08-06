@@ -1,7 +1,6 @@
-import { getEngines } from "metabase/databases/selectors";
 import { isDeprecatedEngine } from "metabase/databases/utils/engine";
 import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 interface Props {
@@ -9,7 +8,7 @@ interface Props {
 }
 
 export const hasDeprecatedDatabase = (state: State, props: Props): boolean => {
-  const engines = getEngines(state);
+  const engines = getSetting(state, "engines");
   return (
     props.databases?.some(
       (d) => !d.is_sample && d.engine && isDeprecatedEngine(engines, d.engine),
