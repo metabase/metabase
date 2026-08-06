@@ -128,21 +128,18 @@
 
 (defmethod mi/can-write? :model/NativeQuerySnippet
   ([instance]
-   (and (remote-sync/worktree-accessible? instance)
-        (snippet.perms/can-write? instance)))
+   (snippet.perms/can-write? instance))
   ([model pk]
    (when-let [snippet (t2/select-one model pk)]
      (mi/can-write? snippet))))
 
 (defmethod mi/can-create? :model/NativeQuerySnippet
   [model instance]
-  (and (remote-sync/worktree-accessible? instance)
-       (snippet.perms/can-create? model instance)))
+  (snippet.perms/can-create? model instance))
 
 (defmethod mi/can-update? :model/NativeQuerySnippet
   [snippet changes]
-  (and (remote-sync/worktree-accessible? snippet)
-       (snippet.perms/can-update? snippet changes)))
+  (snippet.perms/can-update? snippet changes))
 
 (defmethod mi/visible-filter-clause :model/NativeQuerySnippet
   [_model column-or-exp user-info _perm-type->perm-level & [opts]]
@@ -155,7 +152,7 @@
   [_model k snippets]
   (let [non-nil-snippets (remove nil? snippets)
         snippets-with-collections (t2/hydrate non-nil-snippets :collection)
-        editable-map (remote-sync/batch-model-editable? :model/NativeQuerySnippet non-nil-snippets)]
+        editable-map (remote-sync/batch-snippet-editable? non-nil-snippets)]
     (mi/instances-with-hydrated-data
      snippets k
      #(into {}

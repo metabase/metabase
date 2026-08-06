@@ -34,7 +34,7 @@
     (not (perms/sandboxed-user?))
     (snippets/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :write)
-    (remote-sync/model-editable? :model/NativeQuerySnippet snippet)))
+    (remote-sync/snippet-editable? snippet)))
   ([model id]
    (can-write? (t2/select-one [model :collection_id] :id id))))
 
@@ -46,7 +46,7 @@
    (not (perms/sandboxed-user?))
    (snippets/has-any-native-permissions?)
    (has-parent-collection-perms? m :write)
-   (remote-sync/model-editable? :model/NativeQuerySnippet m)))
+   (remote-sync/snippet-editable? m)))
 
 (defenterprise can-update?
   "Can the current User apply a map of `changes` to a `snippet`?"
@@ -58,4 +58,4 @@
    (has-parent-collection-perms? snippet :write)
    (or (not (contains? changes :collection_id))
        (has-parent-collection-perms? changes :write))
-   (remote-sync/model-editable? :model/NativeQuerySnippet snippet)))
+   (remote-sync/snippet-editable? snippet)))

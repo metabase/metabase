@@ -2,12 +2,12 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-  ))
+   [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Timeline  [_model] :timeline)
 
@@ -18,7 +18,21 @@
   (derive :hook/entity-id)
   (derive :hook/worktree-id))
 
-(perms/define-collection-based-visibility! :model/Timeline)
+(defmethod mi/can-read? :model/Timeline
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :read))))
+  ([_model pk]
+   (when-let [timeline (t2/select-one :model/Timeline :id pk)]
+     (mi/can-read? timeline))))
+
+(defmethod mi/can-write? :model/Timeline
+  ([instance]
+   (and (remote-sync/worktree-accessible? instance)
+        (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
+  ([_model pk]
+   (when-let [timeline (t2/select-one :model/Timeline :id pk)]
+     (mi/can-write? timeline))))
 
 ;;;; transforms
 

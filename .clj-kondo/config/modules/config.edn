@@ -737,6 +737,7 @@
            public-sharing
            queries
            query-processor
+           remote-sync
            search
            settings
            staleness
@@ -833,11 +834,11 @@
            collections
            events
            models
-           permissions
            public-sharing
            queries
            query-permissions
            query-processor
+           remote-sync
            revisions
            search
            util
@@ -1851,6 +1852,7 @@
            pulse
            query-permissions
            query-processor
+           remote-sync
            request
            search
            settings
@@ -2006,8 +2008,7 @@
    :uses #{api
            events
            models
-           premium-features
-           util}
+           premium-features}
    :model-imports #{:model/Collection}}
 
   request
@@ -2466,7 +2467,7 @@
            collections
            events
            models
-           permissions
+           remote-sync
            util}
    :model-exports #{:model/Timeline}
    :model-imports #{:model/Collection :model/User}}
@@ -3529,7 +3530,6 @@
            events
            models
            premium-features
-           remote-sync
            search
            settings
            startup
@@ -3729,8 +3729,7 @@
            permissions
            premium-features
            remote-sync
-           util}
-   :model-imports #{:model/NativeQuerySnippet}}
+           util}}
 
   enterprise/sso
   {:team "UX West"

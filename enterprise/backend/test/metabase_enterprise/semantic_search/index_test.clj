@@ -766,7 +766,7 @@
 (deftest collection-id-only-search-models-derived-correctly-test
   (testing "derived set includes every collection-id-only search-model plus indexed-entity"
     ;; Update the expected set when `define-collection-based-visibility!` is added to or removed from a model.
-    (is (= #{"card" "metric" "dataset" "dashboard" "document" "indexed-entity"}
+    (is (= #{"card" "metric" "dataset" "dashboard" "indexed-entity"}
            @@#'semantic.index/collection-id-only-search-models))))
 
 (deftest collection-based-visibility-search-model-claims-verified-test

@@ -10,7 +10,7 @@
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -23,17 +23,49 @@
  [source.p
   ->ingestable])
 
+(defenterprise check-worktree-exists!
+  "404s when `worktree-id` names no remote-sync worktree. The FK would reject a bogus id anyway, but as a 500
+  rather than the 404 the remote-sync endpoints give for the same input. Returns nil; call for side effect."
+  :feature :none
+  [worktree-id]
+  (when worktree-id
+    (api/check-404 (t2/exists? :model/Worktree :id worktree-id)))
+  nil)
+
+(defenterprise check-same-worktree
+  "Guard throwing a 400 when a row's `worktree_id` and its container's disagree -- content never moves into, out
+  of, or between worktrees."
+  :feature :none
+  [instance container-worktree-id]
+  (when (not= (:worktree_id instance) container-worktree-id)
+    (throw (ex-info (tru "Cannot move content into or out of a remote sync worktree.")
+                    {:status-code        400
+                     :worktree-id        (:worktree_id instance)
+                     :target-worktree-id container-worktree-id})))
+  nil)
+
+(defenterprise worktree-accessible?
+  "Whether the current user may see or edit `instance`: content checked out into a worktree is admin-only."
+  :feature :none
+  [instance]
+  (or (nil? (:worktree_id instance))
+      api/*is-superuser?*))
+
 (defenterprise collection-editable?
   "Determines if a remote-synced collection should be editable.
 
   Takes a collection to check for editability.
 
   Returns true if the collection is editable, false otherwise. Returns true when remote-sync-type is :read-write
-  or when the collection is not a remote-synced collection. Always returns true on OSS."
+  or when the collection is not a remote-synced collection. Always returns true on OSS.
+
+  A collection checked out into a worktree is admin-only, and exempt from the main app's read-only mode once the
+  admin is past that gate: a worktree tracks its own branch, so the setting says nothing about its content."
   :feature :none
   [collection]
-  (and (remote-sync/collection-readable? collection)
-       (or (= (settings/remote-sync-type) :read-write)
+  (and (worktree-accessible? collection)
+       (or (some? (:worktree_id collection))
+           (= (settings/remote-sync-type) :read-write)
            (not (collections/remote-synced-collection? collection)))))
 
 (defenterprise table-editable?
@@ -57,29 +89,44 @@
       (not (collections/remote-synced-collection? (or (:collection table)
                                                       (:collection_id table))))))
 
-(defenterprise transforms-editable?
-  "Determines if transforms should be editable.
+(defenterprise transform-editable?
+  "Determines if `transform` should be editable.
 
-  Returns true if transforms are editable, false otherwise. Transforms are globally
-  read-only when remote-sync is enabled and remote-sync-type is :read-only.
+  Transforms are globally read-only when remote-sync is enabled and remote-sync-type is :read-only. One checked
+  out into a worktree is admin-only, and exempt from that setting once the admin is past the gate: a worktree
+  tracks its own branch, so the main app's mode says nothing about its content.
 
   Always returns true on OSS."
   :feature :none
-  []
-  (or (not (settings/remote-sync-enabled))
-      (= (settings/remote-sync-type) :read-write)))
+  [transform]
+  (and (worktree-accessible? transform)
+       (or (some? (:worktree_id transform))
+           (not (settings/remote-sync-enabled))
+           (= (settings/remote-sync-type) :read-write))))
 
-(defenterprise model-editable?
-  "Determines if a model instance is editable based on remote sync configuration."
-  :feature :none
-  [model-key instance]
-  (spec/model-editable? model-key instance))
+(defenterprise snippet-editable?
+  "Determines if `snippet` should be edited.
 
-(defenterprise batch-model-editable?
-  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean."
+  Snippets are read-only when the Library is remote-synced and remote-sync-type is :read-only. One checked out
+  into a worktree is admin-only, and exempt from that setting once the admin is past the gate: a worktree tracks
+  its own branch, so the main app's mode says nothing about its content."
   :feature :none
-  [model-key instances]
-  (spec/batch-model-editable? model-key instances))
+  [snippet]
+  (and (worktree-accessible? snippet)
+       (or (some? (:worktree_id snippet))
+           (spec/model-editable? :model/NativeQuerySnippet snippet))))
+
+(defenterprise batch-snippet-editable?
+  "Batch version of [[snippet-editable?]]. Returns a map of snippet id -> editable? boolean."
+  :feature :none
+  [snippets]
+  (let [editable (spec/batch-model-editable? :model/NativeQuerySnippet snippets)]
+    (into {}
+          (map (fn [snippet]
+                 [(:id snippet) (boolean (and (worktree-accessible? snippet)
+                                              (or (some? (:worktree_id snippet))
+                                                  (get editable (:id snippet)))))]))
+          snippets)))
 
 (defenterprise batch-model-eligible?
   "Batch check if model instances are eligible for remote sync based on spec rules.

@@ -56,9 +56,8 @@
   "Whether the current user can write `instance`. Any extra `args` (an optional `models-cache`) are
   passed through to the source-readability check, as in `transform-readable?`."
   [instance & args]
-  (and (remote-sync/transforms-editable?)
+  (and (remote-sync/transform-editable? instance)
        (transforms.u/check-feature-enabled instance)
-       (remote-sync/worktree-accessible? instance)
        (or api/*is-superuser?*
            (and (apply transform-readable? instance args)
                 (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
@@ -111,11 +110,10 @@
 (defmethod mi/can-create? :model/Transform
   [_model instance]
   ;; Inline can-write? logic since instance is a plain map without model metadata.
-  ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
+  ;; can-write? requires: can-read?, has-db-transforms-permission?, and transform-editable?
   ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
-  (and (remote-sync/transforms-editable?)
+  (and (remote-sync/transform-editable? instance)
        (transforms.u/check-feature-enabled instance)
-       (remote-sync/worktree-accessible? instance)
        (or api/*is-superuser?*
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
              (and api/*is-data-analyst?*
