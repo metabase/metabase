@@ -287,7 +287,16 @@
            (map :original
                 (:sites (#'kondo-ratchet/remove-ignores-at
                          "(a)\n#_{:clj-kondo/ignore [:x\n                      :y]}\n(b)\n"
-                         [2])))))))
+                         [2]))))))
+  (testing "a `#` before the form is left for a human -- `#^` metadata and a gensym's `#` need a reader to tell apart"
+    (doseq [[description text] [["legacy #^ metadata"        "(def #^{:clj-kondo/ignore [:x]} y 1)\n"]
+                                ["a syntax-quote gensym"     "`(m x#^{:clj-kondo/ignore [:x]} y)\n"]
+                                ["a quote macro before it"   "(def x '#^{:clj-kondo/ignore [:z]} y)\n"]]]
+      (testing description
+        (let [{removed :text, :keys [sites skipped]} (#'kondo-ratchet/remove-ignores-at text [1])]
+          (is (= text removed) "the source is left exactly as it was")
+          (is (= [] sites) "nothing is excised")
+          (is (= [1] skipped) "the row is reported instead"))))))
 
 (deftest inline-ignore-separator-round-trip-test
   (doseq [[description separator text]
