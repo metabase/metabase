@@ -74,6 +74,7 @@
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (embed-test/with-temp-card [card]
         (testing "It should be possible to run a Card successfully if you jump through the right hoops..."
+          ;; embed tests still assert via the deprecated helper; not yet migrated
           #_{:clj-kondo/ignore [:deprecated-var]}
           (embed-test/test-query-results
            (mt/user-http-request :crowberto :get 202 (card-query-url card))))
@@ -97,6 +98,7 @@
             (is (= "You must specify a value for :venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:venue_id "locked"}})))))
           (testing "if `:locked` param is supplied, request should succeed"
+            ;; embed tests still assert via the deprecated helper; not yet migrated
             #_{:clj-kondo/ignore [:deprecated-var]}
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:venue_id "locked"}
@@ -132,11 +134,13 @@
                                                                                         :params            {:venue_id 100}})
                                                                   "?venue_id=200")))))
           (testing "If an `:enabled` param is present in the JWT, that's ok"
+            ;; embed tests still assert via the deprecated helper; not yet migrated
             #_{:clj-kondo/ignore [:deprecated-var]}
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:venue_id "enabled"}
                                                                              :params            {:venue_id "enabled"}}))))
           (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
+            ;; embed tests still assert via the deprecated helper; not yet migrated
             #_{:clj-kondo/ignore [:deprecated-var]}
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}})
@@ -259,6 +263,7 @@
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (embed-test/with-temp-dashcard [dashcard]
         (testing "It should be possible to run a Card successfully if you jump through the right hoops..."
+          ;; embed tests still assert via the deprecated helper; not yet migrated
           #_{:clj-kondo/ignore [:deprecated-var]}
           (embed-test/test-query-results
            (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard))))

@@ -404,6 +404,7 @@
       (f))))
 
 (defn- log! [fmt & args]
+  ;; drop-dataset! is a clojure -X CLI entry point; stdout is the user interface
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println (apply format fmt args)))
 
@@ -425,10 +426,11 @@
     (tx/destroy-db! driver dbdef)
     (log! "[%s] Done." (name driver))))
 
+;; kept bang-less to preserve this documented CLI entry point; it is only invoked explicitly
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn test-drop-dataset
   "Like [[drop-dataset!]] but checks existence before and after, verifying deletion.
-   Name lacks `!` because clojure -X cannot resolve function names ending in `!`.
+   The historical CLI name is retained for compatibility.
 
      clojure -X:dev:drivers:drivers-dev:test metabase.test.data.impl/test-drop-dataset :driver '\"snowflake\"' :dataset-name '\"test-data\"'"
   [{:keys [driver dataset-name] :as opts}]

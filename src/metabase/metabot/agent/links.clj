@@ -38,6 +38,7 @@
   Normalize before converting so rehydrated queries have their canonical enum
   values restored."
   [query]
+  ;; builds the legacy-MBQL /question# hash; the FE also accepts MBQL 5, so this could migrate
   #_{:clj-kondo/ignore [:discouraged-var]}
   (if (and (map? query) (:lib/type query))
     (lib/->legacy-MBQL (lib/normalize query))

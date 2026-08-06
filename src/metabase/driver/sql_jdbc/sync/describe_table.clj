@@ -26,6 +26,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some select-keys every? mapv empty? not-empty]]
    [potemkin :as p]
+   ;; sync-time read of already-synced Field rows; sync runs without a metadata provider
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import

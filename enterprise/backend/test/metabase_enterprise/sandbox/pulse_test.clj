@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sandbox.pulse-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.pulse-test]}}}}}}
+  ;; exercises the deprecated /api/pulse endpoints under sandboxing until notification APIs replace them
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.data.csv :as csv]

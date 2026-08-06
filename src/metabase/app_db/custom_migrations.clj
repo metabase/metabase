@@ -1255,6 +1255,7 @@
   (defn- pretty-spit [file-name data]
     (with-open [writer (io/writer file-name)]
       (binding [*out* writer]
+        ;; REPL recipe in (comment): pprints EDN into a file writer, not the console
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pprint/pprint data))))
 

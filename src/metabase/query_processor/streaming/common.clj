@@ -7,6 +7,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.driver :as driver]
    [metabase.models.visualization-settings :as mb.viz]
+   ;; per-query-execution cache via qp.store/cached; general-cached-value migration pending
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.currency :as currency]

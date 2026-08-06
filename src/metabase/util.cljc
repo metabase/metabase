@@ -1,3 +1,4 @@
+;; grandfathered two-segment ns; renaming metabase.util would touch nearly every namespace
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
@@ -788,6 +789,7 @@
   (^String [x]
    #?(:clj
       (with-out-str
+        ;; pprint-to-str exists to render a string; output is captured by with-out-str, never printed
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pp/pprint x {:max-width 120}))
       :cljs-dev
@@ -795,6 +797,7 @@
       ;; default value wastes too much space, 120 is a little easier to read actually.
       (binding [pprint/*print-right-margin* 120]
         (with-out-str
+          ;; pprint-to-str exists to render a string; output is captured by with-out-str, never printed
           #_{:clj-kondo/ignore [:discouraged-var]}
           (pprint/pprint x)))
       :default
@@ -816,6 +819,7 @@
   `profile` form or 1 for a form inside that."
   0)
 
+;; only called from `profile` macroexpansions, so clojure-lsp sees no usage
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn -profile-print-time
   "Impl for [[profile]] macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
@@ -1225,6 +1229,7 @@
      "Return how many milliseconds have elapsed since the given system millisecond time.
      For cases where you can't use u/start-timer, e.g., external time sources or process boundaries."
      [start-ms]
+     ;; the sanctioned wall-clock helper: nanoTime timers can't cross process or external-source boundaries
      #_{:clj-kondo/ignore [:metabase/discourage-millis-duration]}
      (- (System/currentTimeMillis) start-ms)))
 
@@ -1295,6 +1300,7 @@
   #?(:clj
      (reify CollReduce
        (coll-reduce [_ f]
+         ;; this IS the no-init reduce arity; it must delegate without an init
          #_{:clj-kondo/ignore [:reduce-without-init]}
          (let [acc1 (reduce f r1)
                acc2 (reduce f acc1 r2)]

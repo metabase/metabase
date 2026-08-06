@@ -398,6 +398,7 @@
   ([sql]
    (pprint-sql (mdb/db-type) sql))
   ([driver sql]
+   ;; dev REPL helper; pretty SQL goes to the console for a human
    #_{:clj-kondo/ignore [:discouraged-var]}
    (println (driver/prettify-native-form driver sql))))
 
@@ -429,5 +430,6 @@
      (stop-portal!)
      (reset! portal (portal.api/start config))
      (add-tap #'portal.api/submit)
+     ;; dev REPL feedback; the startup notice goes to the console
      #_{:clj-kondo/ignore [:discouraged-var]}
      (printf "Started Portal on port %d.\n" (:port config)))))

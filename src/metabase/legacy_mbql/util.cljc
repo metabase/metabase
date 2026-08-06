@@ -57,6 +57,7 @@
       (do
         (log/error "normalize-token should not be getting called on a base type! This probably means we're using a base type in the wrong place, like as a parameter type")
         (keyword s))
+      ;; cljs-only branch: JS toLowerCase has no locale trap, so it matches u/lower-case-en
       #_{:clj-kondo/ignore [:discouraged-var]}
       (-> s
           #?(:clj u/lower-case-en :cljs str/lower-case)

@@ -1,3 +1,4 @@
+;; grandfathered two-segment ns; deps.edn aliases invoke metabase.test-runner/find-and-run-tests-cli
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.test-runner
   "The only purpose of this namespace is to make sure all of the other stuff below gets loaded."
@@ -131,6 +132,7 @@
   ([options]
    (hawk/find-tests-with-options (parse-options options))))
 
+;; runs once at runner startup before any tests execute, so the thread-safety naming rule is moot
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- initialize-all-fixtures []
   (let [steps (initialize/all-components)]
