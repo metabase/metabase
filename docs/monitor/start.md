@@ -42,7 +42,7 @@ The AI auditing tabs are only available on [Pro and Enterprise plans](https://ww
 - **[Usage stats](../ai/usage-auditing.md#usage-stats)**: See AI feature usage, including tokens and messages.
 - **[Conversations](../ai/usage-auditing.md#conversations)**: Review people's conversations with Metabot.
 - **MCP analytics**: See usage of the [Metabase MCP server](../ai/mcp.md).
-- **CLI analytics**: See usage of Metabase's AI features from the [command line](../installation-and-operation/metabase-cli.md).
+- **[CLI analytics](./cli-analytics.md)**: See which operations the [Metabase CLI](../installation-and-operation/metabase-cli.md) runs against your Metabase.
 
 ## Permissions for Monitor
 
