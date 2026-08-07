@@ -182,6 +182,28 @@
     (boolean (when-let [capable? (and (registered? type) (optional type capability))]
                (capable? resolved)))))
 
+(mu/defn model-display-name :- [:maybe :string]
+  "What a `connection-key/model` reference is called in the model picker, e.g. `\"Claude Sonnet 4.6\"`.
+
+  Read from the provider's `:supported-models` allow-list, or from the catalog `metabase.llm.provider` fixes for a
+  provider whose own cannot be listed. Nil when nothing names it: an Azure deployment, a model outside its
+  provider's allow-list, or a reference to a connection that is not configured. Answering from what is already in
+  memory is what lets a name be shown while the provider it belongs to is failing."
+  [model-ref :- [:maybe :string]]
+  (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)]
+    (or (when (registered? type)
+          (get-in (optional type :supported-models) [model :display-name]))
+        (some (fn [{:keys [id display_name]}]
+                (when (= id model) display_name))
+              (llm.provider/fixed-models (:type (llm.provider/connection
+                                                 (llm.provider/model-ref->connection-key model-ref))))))))
+
+(mu/defn model-name :- [:maybe :string]
+  "[[model-display-name]] for `model-ref`, or the model id it names when nothing does."
+  [model-ref :- [:maybe :string]]
+  (or (model-display-name model-ref)
+      (llm.provider/model-ref->model model-ref)))
+
 (mu/defn streams-reasoning? :- :boolean
   "Whether a model reference names a model that streams its reasoning back to us."
   [model-ref :- [:maybe :string]]
