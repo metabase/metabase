@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
@@ -44,7 +44,11 @@ export function CleanupHeader({
           <Group gap="sm">
             {snapshot?.summary && (
               <Text c="text-secondary" size="sm">
-                {t`${snapshot.summary.table_count} tables analyzed`}
+                {ngettext(
+                  msgid`${snapshot.summary.table_count} table with recommendations`,
+                  `${snapshot.summary.table_count} tables with recommendations`,
+                  snapshot.summary.table_count,
+                )}
               </Text>
             )}
             {effectiveFinishedAt && (

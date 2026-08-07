@@ -56,7 +56,6 @@ const candidate: UsageMetadataCandidateDetail = {
     total_view_count: 40,
   },
   creation_blockers: [],
-  dismissal: null,
   sources: [],
   matches: [],
 };

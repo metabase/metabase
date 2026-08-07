@@ -127,6 +127,9 @@ describe("CleanupPage", () => {
     setup();
 
     expect(await screen.findByText("Orders")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 table with recommendations"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Published")).toBeInTheDocument();
     expect(screen.getByText("6")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Suggested" })).toBeInTheDocument();

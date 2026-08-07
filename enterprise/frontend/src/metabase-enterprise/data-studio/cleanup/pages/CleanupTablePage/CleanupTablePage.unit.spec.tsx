@@ -90,7 +90,6 @@ const candidate: UsageMetadataCandidateDetail = {
     total_view_count: 400,
   },
   creation_blockers: [],
-  dismissal: null,
   sources: [],
   matches: [],
 };
@@ -148,12 +147,6 @@ describe("CleanupTablePage", () => {
     setupDismissUsageMetadataCandidateEndpoint(candidate.id, {
       ...candidate,
       dismissed: true,
-      dismissal: {
-        id: 1,
-        dismissed_by: 1,
-        dismissed_at: "2026-07-27T10:00:00Z",
-        reason: null,
-      },
     });
     setup();
 
@@ -340,7 +333,20 @@ describe("CleanupTablePage", () => {
     ).toBeInTheDocument();
   });
 
-  it("resets candidate action drafts when their modals are reopened", async () => {
+  it("keeps a directly linked candidate open when the initial list loads", async () => {
+    setupUsageMetadataCandidateEndpoint(candidate.id, candidate);
+    setup(candidate, `/data-studio/cleanup/tables/1?candidate=${candidate.id}`);
+
+    const panel = await screen.findByRole("complementary", {
+      name: "Candidate report",
+    });
+    expect(
+      await screen.findByRole("row", { name: "Total revenue" }),
+    ).toHaveAttribute("data-selected");
+    expect(panel).toBeVisible();
+  });
+
+  it("resets candidate creation drafts and keeps dismissal confirmation concise", async () => {
     setupUsageMetadataCandidateEndpoint(candidate.id, candidate);
     setup();
 
@@ -380,37 +386,26 @@ describe("CleanupTablePage", () => {
     await userEvent.click(
       within(panel).getByRole("button", { name: "Dismiss" }),
     );
-    const reasonInput = screen.getByRole("textbox", {
-      name: "Reason (optional)",
-    });
-    expect(reasonInput).toHaveAttribute("maxlength", "1000");
-    await userEvent.type(reasonInput, "Abandoned reason");
-    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-
-    await userEvent.click(
-      within(panel).getByRole("button", { name: "Dismiss" }),
-    );
     expect(
-      screen.getByRole("textbox", { name: "Reason (optional)" }),
-    ).toHaveValue("");
+      screen.getByText(
+        "This candidate will stay hidden across future analyses until an administrator restores it.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: "Reason (optional)" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
   });
 
   it("closes restored candidate details after it leaves the discarded queue", async () => {
     const dismissedCandidate: UsageMetadataCandidateDetail = {
       ...candidate,
       dismissed: true,
-      dismissal: {
-        id: 1,
-        dismissed_by: 1,
-        dismissed_at: "2026-07-27T10:00:00Z",
-        reason: null,
-      },
     };
     setupUsageMetadataCandidateEndpoint(candidate.id, dismissedCandidate);
     setupRestoreUsageMetadataCandidateEndpoint(candidate.id, {
       ...candidate,
       dismissed: false,
-      dismissal: null,
     });
     setup(dismissedCandidate, "/data-studio/cleanup/tables/1?queue=discarded");
 

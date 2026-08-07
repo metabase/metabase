@@ -5,7 +5,6 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { Segment } from "./segment";
 import type { TableDataLayer, TableId } from "./table";
-import type { UserId } from "./user";
 
 export type UsageMetadataCandidateType =
   | "table"
@@ -119,8 +118,6 @@ export type UsageMetadataTableDependencyPath = {
 };
 
 export type UsageMetadataCandidateSource = {
-  id: number;
-  candidate_id: number;
   card_id: CardId;
   card_name: string | null;
   card_type: CardType;
@@ -138,20 +135,13 @@ export type UsageMetadataCandidateMatch =
   | {
       relation: UsageMetadataMatchRelation;
       entity_type: "measure";
-      entity: Pick<Measure, "id" | "name" | "description" | "archived">;
+      entity: Pick<Measure, "id" | "name" | "description">;
     }
   | {
       relation: UsageMetadataMatchRelation;
       entity_type: "segment";
-      entity: Pick<Segment, "id" | "name" | "description" | "archived">;
+      entity: Pick<Segment, "id" | "name" | "description">;
     };
-
-export type UsageMetadataCandidateDismissal = {
-  id: number;
-  dismissed_by: UserId;
-  dismissed_at: string;
-  reason: string | null;
-};
 
 export type UsageMetadataCandidateDetail = UsageMetadataCandidateSummary & {
   table: UsageMetadataTable;
@@ -160,7 +150,6 @@ export type UsageMetadataCandidateDetail = UsageMetadataCandidateSummary & {
   required_tables: UsageMetadataTableReference[];
   definition: UsageMetadataCandidateDefinition;
   creation_blockers: UsageMetadataCreationBlocker[];
-  dismissal: UsageMetadataCandidateDismissal | null;
   sources: UsageMetadataCandidateSource[];
   matches: UsageMetadataCandidateMatch[];
 };
@@ -180,7 +169,6 @@ export type ListUsageMetadataRequest = PaginationRequest & {
 
 export type DismissUsageMetadataCandidateRequest = {
   id: number;
-  reason?: string | null;
 };
 
 export type CreateUsageMetadataCandidateRequest = {
