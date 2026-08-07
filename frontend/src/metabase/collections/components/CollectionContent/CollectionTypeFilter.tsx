@@ -83,23 +83,21 @@ export function CollectionTypeFilter({
         aria-labelledby={headingId}
         data-testid="collection-type-filter-popover"
       >
-        <Stack gap="sm" px="lg" py="md" miw="11rem">
-          <Text
-            id={headingId}
-            fw="bold"
-            lh="1.25rem"
-            mb="sm"
-          >{t`Filter by type`}</Text>
-          {options.map(({ value, label }) => (
-            <Checkbox
-              key={value}
-              value={value}
-              label={label}
-              checked={checkedFilters.includes(value)}
-              onChange={() => handleToggle(value)}
-              mb="xs"
-            />
-          ))}
+        <Stack gap="md" px="1.25rem" py="md" miw="11rem">
+          <Text id={headingId} fw="bold">
+            {t`Filter by type`}
+          </Text>
+          <Stack gap="0.75rem">
+            {options.map(({ value, label }) => (
+              <Checkbox
+                key={value}
+                value={value}
+                label={label}
+                checked={checkedFilters.includes(value)}
+                onChange={() => handleToggle(value)}
+              />
+            ))}
+          </Stack>
         </Stack>
       </Popover.Dropdown>
     </Popover>

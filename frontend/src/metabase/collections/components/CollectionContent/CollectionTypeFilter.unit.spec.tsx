@@ -39,11 +39,11 @@ describe("CollectionTypeFilter", () => {
     setup({
       availableModels: [
         "metric",
-        "timeline",
         "card",
         "collection",
         "dataset",
         "dashboard",
+        "exploration",
       ],
     });
 
@@ -55,18 +55,21 @@ describe("CollectionTypeFilter", () => {
     expect(filterButton).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Filter by type")).toBeInTheDocument();
     const checkboxes = screen.getAllByRole("checkbox");
-    const labels = ["Collection", "Dashboard", "Model", "Question", "Metric"];
-    expect(checkboxes).toHaveLength(5);
+    const labels = [
+      "Collection",
+      "Dashboard",
+      "Model",
+      "Question",
+      "Metric",
+      "Research",
+    ];
+    expect(checkboxes).toHaveLength(6);
     expect(checkboxes).toEqual(
       labels.map((label) => screen.getByLabelText(label)),
     );
     for (const label of labels) {
       expect(screen.getByLabelText(label)).toBeChecked();
     }
-    expect(screen.queryByLabelText("Timeline")).not.toBeInTheDocument();
-    expect(
-      screen.queryByLabelText("Official collections"),
-    ).not.toBeInTheDocument();
   });
 
   it("returns the remaining models when an option is unchecked", async () => {
@@ -76,22 +79,6 @@ describe("CollectionTypeFilter", () => {
     await userEvent.click(screen.getByLabelText("Dashboard"));
 
     expect(onSelectedFiltersChange).toHaveBeenCalledWith(["card"]);
-  });
-
-  it("offers explorations and keeps them when another option is unchecked", async () => {
-    const { onSelectedFiltersChange } = setup({
-      availableModels: ["dashboard", "card", "exploration"],
-    });
-
-    await userEvent.click(screen.getByTestId("collection-type-filter-button"));
-    expect(screen.getByLabelText("Research")).toBeChecked();
-
-    await userEvent.click(screen.getByLabelText("Dashboard"));
-
-    expect(onSelectedFiltersChange).toHaveBeenCalledWith([
-      "card",
-      "exploration",
-    ]);
   });
 
   it("clears the filter when all available options are checked", async () => {
