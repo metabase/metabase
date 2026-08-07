@@ -97,7 +97,7 @@
    [:temporal_units       {:optional true} [:maybe [:sequential ::lib.schema.temporal-bucketing/unit]]]
    [:type                 [:ref ::lib.schema.parameter/type]]
    ;; the currently selected value. Dashboard subscriptions save their filter values on the parameter itself.
-   [:value                {:optional true} :any]
+   [:value                {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
    [:values_query_type    {:optional true} [:maybe ::values-query-type]]
    [:values_source_config {:optional true} [:maybe ::values-source-config]]
    [:values_source_type   {:optional true} [:maybe ::values-source-type]]])
