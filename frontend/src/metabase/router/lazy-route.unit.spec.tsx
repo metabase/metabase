@@ -69,6 +69,25 @@ describe("a lazy route", () => {
     expect(screen.queryByTestId("hydrating")).not.toBeInTheDocument();
   });
 
+  // The sharp edge of deferring the location. A second navigation arriving
+  // before the module resolves does not queue behind the first, it replaces it,
+  // and the destination the user asked for is dropped with no trace. Anything
+  // that navigates on a timer or from an effect has to sit this window out:
+  // `useDashboardUrlQuery` skips its URL sync on `useIsNavigating` for exactly
+  // this reason.
+  it("drops a pending navigation if another one lands first", async () => {
+    const { router } = renderRoutes(makeRoutes(), { initialRoute: "/" });
+
+    router?.navigate("/split");
+    router?.navigate("/");
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(router?.location.pathname).toBe("/");
+    expect(screen.getByTestId("home")).toBeInTheDocument();
+    expect(screen.queryByTestId("split")).not.toBeInTheDocument();
+  });
+
   // react-router resolves `lazy` onto the route object itself, so the cost is
   // paid once per chunk rather than on every navigation into the subtree.
   it("is synchronous again on the second visit", async () => {
