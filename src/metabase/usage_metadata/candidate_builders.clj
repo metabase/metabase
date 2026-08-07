@@ -8,9 +8,10 @@
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
    [metabase.usage-metadata.candidate-suggestions :as candidate-suggestions]
+   [metabase.usage-metadata.query-utils :as query-utils]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -37,7 +38,7 @@
   happen to reach the same table."
   [card model-index model-lineage visited]
   (try
-    (if-let [query (candidate-mining/wrap-query (:database_id card) (:dataset_query card))]
+    (if-let [query (query-utils/wrap-query (:database_id card) (:dataset_query card))]
       (if (lib/any-native-stage? query)
         {:table-paths {}
          :unsupported [{:reason :native-query, :model-lineage model-lineage}]}
@@ -294,7 +295,7 @@
 (defn- prepare-metric-definition
   [card card-index]
   (try
-    (when-let [query (candidate-mining/wrap-query (:database_id card) (:dataset_query card))]
+    (when-let [query (query-utils/wrap-query (:database_id card) (:dataset_query card))]
       (when (and (not (lib/any-native-stage? query))
                  (= 1 (lib/stage-count query)))
         (let [stage        (lib/query-stage query 0)
@@ -321,7 +322,7 @@
 
                          :else nil)]
               (let [definition (clean-metric-definition query stage)]
-                (when-let [validated (candidate-mining/wrap-query (:database_id card) definition)]
+                (when-let [validated (query-utils/wrap-query (:database_id card) definition)]
                   (let [table-ids (metric-table-ids validated)]
                     (when (and (lib/can-save? validated :metric)
                                (seq table-ids)
@@ -416,7 +417,7 @@
                                   (candidate-suggestions/safe-definition-description definition :filters nil))]
     (if (str/blank? filter-description)
       aggregation-description
-      (tru "{0}; {1}" aggregation-description filter-description))))
+      (trs "{0}; {1}" aggregation-description filter-description))))
 
 (defn- metric-suggestions
   [candidate naming-candidate]
@@ -431,8 +432,8 @@
                                  (candidate-suggestions/safe-display-name
                                   naming-definition
                                   (first (lib/aggregations naming-definition 0))
-                                  (tru "Metric")))
-                               (tru "Metric"))
+                                  (trs "Metric")))
+                               (trs "Metric"))
         description        (or source-description
                                (when naming-definition
                                  (metric-fallback-description naming-definition suggested-name))
@@ -664,7 +665,7 @@
            models       (candidate-mining/candidate-model-index cards)
            raw-measures (raw-measure-candidates cards models)
            raw-segments (raw-segment-candidates cards models)
-           source-idx   (candidate-mining/build-source-index
+           source-idx   (query-utils/build-source-index
                          (into #{}
                                (map (comp #(vector :table %) ::candidate-mining/table-id))
                                (concat raw-measures raw-segments)))
@@ -694,7 +695,7 @@
            cards      (candidate-mining/candidate-source-cards opts)
            models     (candidate-mining/candidate-model-index cards)
            candidates (raw-measure-candidates cards models)
-           source-idx (candidate-mining/build-source-index
+           source-idx (query-utils/build-source-index
                        (into #{} (map (comp #(vector :table %) ::candidate-mining/table-id)) candidates))]
        (mapv candidate-suggestions/add-measure-suggestions
              (merge-candidates candidates
@@ -724,7 +725,7 @@
            cards       (candidate-mining/candidate-source-cards opts)
            models      (candidate-mining/candidate-model-index cards)
            candidates  (raw-segment-candidates cards models)
-           source-idx  (candidate-mining/build-source-index
+           source-idx  (query-utils/build-source-index
                         (into #{} (map (comp #(vector :table %) ::candidate-mining/table-id)) candidates))]
        (mapv candidate-suggestions/add-segment-suggestions
              (merge-candidates candidates

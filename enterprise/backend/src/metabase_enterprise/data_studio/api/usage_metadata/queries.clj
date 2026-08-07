@@ -37,23 +37,15 @@
   "Load table response dependencies and index them by table id."
   [table-ids]
   (if (seq table-ids)
-    (let [tables (t2/select [:model/Table :id :db_id :schema :name :display_name :description
-                             :data_layer :data_authority :view_count :active
-                             :is_published :collection_id]
+    (let [tables (t2/select [:model/Table :id :db_id :schema :display_name :active :is_published]
                             :id [:in table-ids])
           db-ids (into #{} (keep :db_id) tables)
           dbs     (if (seq db-ids)
                     (t2/select-pk->fn identity :model/Database :id [:in db-ids])
-                    {})
-          collection-ids (into #{} (keep :collection_id) tables)
-          collections    (if (seq collection-ids)
-                           (t2/select-pk->fn identity :model/Collection :id [:in collection-ids])
-                           {})]
+                    {})]
       (into {}
             (map (fn [{:keys [id db_id] :as table}]
-                   [id (assoc table
-                              :database (select-keys (dbs db_id) [:id :name])
-                              :collection (collections (:collection_id table)))]))
+                   [id (assoc table :database (select-keys (dbs db_id) [:id :name]))]))
             tables))
     {}))
 
@@ -116,8 +108,7 @@
                          (t2/query
                           (assoc base-query
                                  :select [[:candidate.id :id]]
-                                 :order-by [[:candidate.family_order :asc]
-                                            [:candidate.family_position :asc]]
+                                 :order-by [[:candidate.sort_position :asc]]
                                  :limit limit
                                  :offset offset)))
         candidates (if (seq ids)
@@ -127,7 +118,7 @@
                        :id :candidate_type :table_id :signature_version :signature_hash
                        :display_name :semantic_details :modeling_status
                        :verified_source_count :official_source_count :popular_source_count
-                       :distinct_source_count :total_view_count]
+                       :distinct_source_count :recent_view_count]
                       :id [:in ids])
                      {})]
     {:rows (mapv candidates ids), :total total, :limit limit, :offset offset}))
@@ -159,7 +150,7 @@
         dismissals      (dismissal-index [candidate])
         sources         (t2/select [:model/UsageMetadataCandidateSource
                                     :card_id :card_name :card_type :verified :official :popular
-                                    :view_count :joined :stage_numbers :model_lineage]
+                                    :recent_view_count :joined :stage_numbers :model_lineage]
                                    :candidate_id (:id candidate)
                                    {:order-by [[:card_id :asc]]})
         matches         (t2/select [:model/UsageMetadataCandidateMatch

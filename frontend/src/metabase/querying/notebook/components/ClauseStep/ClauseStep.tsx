@@ -42,7 +42,7 @@ type RenderPopoverOpts<T> = {
  */
 type ClauseStepReadOnlyMode = "static" | "inspectable";
 
-type ClauseStepBaseProps<T> = {
+export type ClauseStepProps<T> = {
   color: ColorName;
   items: T[];
   initialAddText?: string;
@@ -50,33 +50,14 @@ type ClauseStepBaseProps<T> = {
   hasAddButton?: boolean;
   isAddButtonDisabled?: boolean;
   hasRemoveButton?: boolean;
+  readOnly?: boolean;
+  readOnlyMode?: ClauseStepReadOnlyMode;
   renderName: (item: T, index: number) => JSX.Element | string;
   renderPopover: (opts: RenderPopoverOpts<T>) => JSX.Element | null;
+  onRemove?: (item: T, index: number) => void;
+  onReorder?: (sourceItem: T, targetItem: T) => void;
   "data-testid"?: string;
 };
-
-type ClauseStepInteractionProps<T> =
-  | {
-      readOnly: true;
-      readOnlyMode?: ClauseStepReadOnlyMode;
-      onRemove?: never;
-      onReorder?: never;
-    }
-  | {
-      readOnly?: false;
-      readOnlyMode?: never;
-      onRemove: (item: T, index: number) => void;
-      onReorder: (sourceItem: T, targetItem: T) => void;
-    }
-  | {
-      readOnly: boolean;
-      readOnlyMode?: ClauseStepReadOnlyMode;
-      onRemove: (item: T, index: number) => void;
-      onReorder: (sourceItem: T, targetItem: T) => void;
-    };
-
-export type ClauseStepProps<T> = ClauseStepBaseProps<T> &
-  ClauseStepInteractionProps<T>;
 
 export const ClauseStep = <T,>({
   color,

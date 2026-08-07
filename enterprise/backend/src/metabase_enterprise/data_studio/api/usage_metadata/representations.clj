@@ -19,18 +19,11 @@
 (defn table
   "Represent a physical table for cleanup API responses."
   [table]
-  {:id             (:id table)
-   :db_id          (:db_id table)
-   :schema         (:schema table)
-   :name           (:name table)
-   :display_name   (:display_name table)
-   :description    (:description table)
-   :data_layer     (:data_layer table)
-   :data_authority (:data_authority table)
-   :view_count     (long (or (:view_count table) 0))
-   :is_published   (boolean (:is_published table))
-   :collection_id  (:collection_id table)
-   :database       (:database table)})
+  {:id           (:id table)
+   :schema       (:schema table)
+   :display_name (:display_name table)
+   :is_published (boolean (:is_published table))
+   :database     (:database table)})
 
 (defn- presented-atom
   [{:keys [signature display-name kind]}]
@@ -57,11 +50,6 @@
     {:table_id (:table-id definition)}
     definition))
 
-(defn created-entity
-  "Represent a Measure or Segment returned after candidate creation."
-  [entity]
-  (select-keys entity [:id :name :table_id :definition :description :archived]))
-
 (defn candidate-summary
   "Represent one candidate in list responses."
   [candidate dismissed?]
@@ -75,7 +63,7 @@
                      :official_source_count (:official_source_count candidate)
                      :popular_source_count  (:popular_source_count candidate)
                      :distinct_source_count (:distinct_source_count candidate)
-                     :total_view_count      (:total_view_count candidate)}})
+                     :recent_view_count      (:recent_view_count candidate)}})
 
 (defn- candidate-detail-summary
   [candidate candidate-table dismissed? creation-blockers]
@@ -97,7 +85,7 @@
     (assoc (candidate-detail-summary candidate table dismissed? creation-blockers)
            :sources (mapv (fn [source]
                             (cond-> (select-keys source [:card_id :card_name :card_type :verified :official
-                                                         :popular :view_count :joined
+                                                         :popular :recent_view_count :joined
                                                          :stage_numbers :model_lineage])
                               (contains? dependency-paths (:card_id source))
                               (assoc :dependency_paths

@@ -4,10 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupCreateUsageMetadataCandidateEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { UsageMetadataCandidateDetail } from "metabase-types/api";
-import {
-  createMockMeasure,
-  createMockStructuredDatasetQuery,
-} from "metabase-types/api/mocks";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 
 import { CreateCandidateModal } from "./CreateCandidateModal";
 
@@ -20,16 +17,9 @@ const candidate: UsageMetadataCandidateDetail = {
   candidate_type: "measure",
   table: {
     id: 1,
-    db_id: 1,
     schema: "PUBLIC",
-    name: "orders",
     display_name: "Orders",
-    description: null,
-    data_layer: null,
-    data_authority: null,
-    view_count: 0,
     is_published: true,
-    collection_id: 2,
     database: { id: 1, name: "Sample Database" },
   },
   display_name: "Total revenue",
@@ -53,7 +43,7 @@ const candidate: UsageMetadataCandidateDetail = {
     official_source_count: 0,
     popular_source_count: 1,
     distinct_source_count: 2,
-    total_view_count: 40,
+    recent_view_count: 40,
   },
   creation_blockers: [],
   sources: [],
@@ -67,11 +57,7 @@ describe("CreateCandidateModal", () => {
   });
 
   it("submits only editable metadata overrides", async () => {
-    const entity = createMockMeasure({ id: 99, table_id: 1 });
-    setupCreateUsageMetadataCandidateEndpoint(candidate.id, {
-      candidate: { ...candidate, modeling_status: "modeled" },
-      entity,
-    });
+    setupCreateUsageMetadataCandidateEndpoint(candidate.id, { id: 99 });
     const onCreated = jest.fn();
 
     renderWithProviders(

@@ -10,6 +10,7 @@
    [metabase.usage-metadata.candidate-builders :as candidate-builders]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
    [metabase.usage-metadata.models.source-segment-composite-daily]
+   [metabase.usage-metadata.query-utils :as query-utils]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -301,7 +302,7 @@
                 3 {:id 3, :name "Right", :dataset_query {:tables #{99}}}}
         analyze (fn []
                   (card-table-dependencies root models [] #{1}))]
-    (with-redefs-fn {#'candidate-mining/wrap-query (fn [_ query] query)
+    (with-redefs-fn {#'query-utils/wrap-query (fn [_ query] query)
                      #'lib/any-native-stage? (constantly false)
                      #'lib/all-source-table-ids :tables
                      #'lib/all-implicitly-joined-table-ids (constantly nil)

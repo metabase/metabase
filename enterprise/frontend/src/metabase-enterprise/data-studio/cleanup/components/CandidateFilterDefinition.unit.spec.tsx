@@ -33,7 +33,7 @@ function createQueryWithCategoryFilter() {
 }
 
 describe("CandidateFilterDefinition", () => {
-  it("shows and inspects detailed filter values", async () => {
+  it("shows the standard filter label and exposes its values", async () => {
     const user = userEvent.setup();
     setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES]);
 
@@ -41,7 +41,7 @@ describe("CandidateFilterDefinition", () => {
       <CandidateFilterDefinition query={createQueryWithCategoryFilter()} />,
     );
 
-    await user.click(screen.getByText("Category is one of Gadget, Widget"));
+    await user.click(screen.getByText("Category is 2 selections"));
 
     expect(
       await screen.findByTestId("string-filter-picker"),

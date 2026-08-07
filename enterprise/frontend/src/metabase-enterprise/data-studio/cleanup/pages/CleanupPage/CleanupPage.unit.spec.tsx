@@ -47,16 +47,9 @@ const refreshStatus: UsageMetadataRefreshStatus = {
 const tableSummary: UsageMetadataTableSummary = {
   table: {
     id: 1,
-    db_id: 1,
     schema: "PUBLIC",
-    name: "orders",
     display_name: "Orders",
-    description: null,
-    data_layer: null,
-    data_authority: null,
-    view_count: 12,
     is_published: true,
-    collection_id: null,
     database: { id: 1, name: "Sample Database" },
   },
   candidate_count: 6,

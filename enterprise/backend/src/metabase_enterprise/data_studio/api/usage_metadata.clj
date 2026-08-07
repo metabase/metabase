@@ -78,21 +78,19 @@
   (api/check-superuser)
   (candidate-detail-response (current-candidate! id)))
 
-(api.macros/defendpoint :post "/candidates/:id/dismiss" :- ::schema/candidate-detail
+(api.macros/defendpoint :post "/candidates/:id/dismiss" :- :nil
   "Globally dismiss a semantic candidate."
   [{:keys [id]} :- schema/candidate-id]
   (api/check-superuser)
-  (let [candidate (current-candidate! id)]
-    (service/dismiss! candidate api/*current-user-id*)
-    (candidate-detail-response candidate)))
+  (service/dismiss! (current-candidate! id) api/*current-user-id*)
+  nil)
 
-(api.macros/defendpoint :delete "/candidates/:id/dismissal" :- ::schema/candidate-detail
+(api.macros/defendpoint :delete "/candidates/:id/dismissal" :- :nil
   "Restore a globally dismissed semantic candidate."
   [{:keys [id]} :- schema/candidate-id]
   (api/check-superuser)
-  (let [candidate (current-candidate! id)]
-    (service/restore! candidate)
-    (candidate-detail-response candidate)))
+  (service/restore! (current-candidate! id))
+  nil)
 
 (api.macros/defendpoint :post "/candidates/:id/create" :- ::schema/create-response
   "Create a Measure or Segment from a persisted candidate definition."
@@ -102,10 +100,7 @@
   (api/check-superuser)
   ;; Measure and Segment creation publishes synchronous domain events that perform database work. Keep it outside a
   ;; surrounding transaction so those events retain the same semantics as their normal REST creation endpoints.
-  (let [candidate (current-candidate! id)
-        entity    (service/create! candidate body)]
-    {:candidate (candidate-detail-response (current-candidate! id))
-     :entity    (representations/created-entity entity)}))
+  {:id (:id (service/create! (current-candidate! id) body))})
 
 (api.macros/defendpoint :get "/refresh" :- ::schema/refresh-status
   "Return candidate refresh and snapshot status."

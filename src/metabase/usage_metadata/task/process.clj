@@ -74,8 +74,3 @@
 
 (defmethod task/init! ::UsageMetadataProcess [_]
   (task/schedule-task! (job) (trigger)))
-
-(defn trigger-refresh!
-  "Ask Quartz to execute the shared usage-metadata processing job now."
-  []
-  (task/trigger-now! job-key))

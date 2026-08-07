@@ -1,40 +1,11 @@
 (ns metabase.usage-metadata.core
-  "Public API for usage-metadata rollups and deterministic candidate mining."
+  "Public API for usage-metadata rollup insights."
   (:require
-   [metabase.usage-metadata.candidate-builders :as candidate-builders]
    [metabase.usage-metadata.insights :as insights]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
-
-(mu/defn candidate-tables :- ::usage-metadata.schema/candidate-table-report
-  "Deterministically rank unpublished physical tables reached by selected MBQL questions and models.
-  The report preserves source curation and usage evidence plus every saved-model dependency path.
-  Native and unreadable source branches are reported separately instead of being silently ignored."
-  [opts :- ::usage-metadata.schema/candidate-opts]
-  (candidate-builders/candidate-tables opts))
-
-(mu/defn candidate-metrics :- [:sequential ::usage-metadata.schema/candidate-metric]
-  "Deterministically mine creation-ready Metric Card candidates from selected questions and models.
-  Plain table aggregations remain Measure candidates; Metrics require reusable semantic context and
-  dependencies that resolve to published or publishable physical tables."
-  [opts :- ::usage-metadata.schema/candidate-opts]
-  (candidate-builders/candidate-metrics opts))
-
-(mu/defn candidate-measures :- [:sequential ::usage-metadata.schema/candidate-measure]
-  "Deterministically mine creation-ready Measure candidates from questions and models selected by
-  `:card-ids`. Without them, verified, official-collection, or popular items are used. Bare row
-  counts are excluded; existing Measures are excluded by semantic definition."
-  [opts :- ::usage-metadata.schema/candidate-opts]
-  (candidate-builders/candidate-measures opts))
-
-(mu/defn candidate-segments :- [:sequential ::usage-metadata.schema/candidate-segment]
-  "Deterministically mine creation-ready atomic and recurring small conjunctive Segment candidates
-  from questions and models selected by `:card-ids`. Without them, verified,
-  official-collection, or popular items are used. Existing Segments are excluded by exact definition."
-  [opts :- ::usage-metadata.schema/candidate-opts]
-  (candidate-builders/candidate-segments opts))
 
 (mu/defn implicit-segments :- [:sequential ::usage-metadata.schema/implicit-segment]
   "Filter predicates users have run ad-hoc that aren't already saved as Segments — surface candidates

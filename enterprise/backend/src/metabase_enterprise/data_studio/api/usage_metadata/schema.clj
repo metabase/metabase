@@ -27,16 +27,9 @@
 (mr/def ::table
   [:map
    [:id ms/PositiveInt]
-   [:db_id ms/PositiveInt]
    [:schema [:maybe :string]]
-   [:name :string]
    [:display_name :string]
-   [:description [:maybe :string]]
-   [:data_layer [:maybe :keyword]]
-   [:data_authority [:maybe :keyword]]
-   [:view_count ms/IntGreaterThanOrEqualToZero]
    [:is_published :boolean]
-   [:collection_id [:maybe ms/PositiveInt]]
    [:database ::database]])
 
 (mr/def ::table-summary
@@ -65,15 +58,7 @@
    [:official_source_count ms/IntGreaterThanOrEqualToZero]
    [:popular_source_count ms/IntGreaterThanOrEqualToZero]
    [:distinct_source_count ms/IntGreaterThanOrEqualToZero]
-   [:total_view_count ms/IntGreaterThanOrEqualToZero]])
-
-(mr/def ::table-reference
-  [:map
-   [:id ms/PositiveInt]
-   [:schema [:maybe :string]]
-   [:display_name :string]
-   [:is_published :boolean]
-   [:database ::database]])
+   [:recent_view_count ms/IntGreaterThanOrEqualToZero]])
 
 (mr/def ::candidate-definition
   [:or ::lib.schema/query [:map [:table_id ms/PositiveInt]]])
@@ -104,7 +89,7 @@
    [:verified :boolean]
    [:official :boolean]
    [:popular :boolean]
-   [:view_count ms/IntGreaterThanOrEqualToZero]
+   [:recent_view_count ms/IntGreaterThanOrEqualToZero]
    [:joined :boolean]
    [:stage_numbers [:sequential ms/IntGreaterThanOrEqualToZero]]
    [:model_lineage [:maybe [:sequential ::model-lineage-item]]]
@@ -126,7 +111,7 @@
     [:table ::table]
     [:suggested_name :string]
     [:suggested_description [:maybe :string]]
-    [:required_tables [:sequential ::table-reference]]
+    [:required_tables [:sequential ::table]]
     [:definition ::candidate-definition]
     [:creation_blockers [:sequential ::creation-blocker]]
     [:sources [:sequential ::candidate-source]]
@@ -148,17 +133,8 @@
    [:offset ms/IntGreaterThanOrEqualToZero]
    [:snapshot [:maybe ::snapshot]]])
 
-(mr/def ::created-entity
-  [:map
-   [:id ms/PositiveInt]
-   [:name ms/NonBlankString]
-   [:table_id {:optional true} ms/PositiveInt]
-   [:definition {:optional true} ::lib.schema/query]
-   [:description {:optional true} [:maybe :string]]
-   [:archived {:optional true} :boolean]])
-
 (mr/def ::create-response
-  [:map [:candidate ::candidate-detail] [:entity ::created-entity]])
+  [:map [:id ms/PositiveInt]])
 
 (mr/def ::run-state
   [:map [:id ms/PositiveInt] [:status [:enum :queued :running :failed]]])

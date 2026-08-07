@@ -24,11 +24,12 @@
                                                             :source {:display-name "Orders"}}
                                                            :measure
                                                            failure)))
-    (is (=? {:atoms []
+    (is (=? {:atoms [{:display-name "Filter", :kind :other}]
              :source {:display-name "Orders"}
              :suggested-name "Segment"
              :suggested-description "Filtered by Segment on Orders"}
-            (candidate-suggestions/suggestions-or-fallback {:source {:display-name "Orders"}}
+            (candidate-suggestions/suggestions-or-fallback {:predicate [:= {} [:field {} 1] 1]
+                                                            :source {:display-name "Orders"}}
                                                            :segment
                                                            failure)))))
 

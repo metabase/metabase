@@ -1,6 +1,7 @@
 (ns metabase.usage-metadata.candidate-repository
   "Persistence operations for mined candidates and their Library reconciliation state."
   (:require
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [metabase.usage-metadata.candidate-definitions :as definitions]
@@ -12,6 +13,12 @@
 (def ^:private existing-entity-query-batch-size 200)
 (def ^:private dismissal-identity-keys
   [:candidate_type :table_id :signature_version :signature_hash])
+
+(defn with-snapshot-action-lock
+  "Run `f` while snapshot promotion and candidate actions are mutually exclusive across the cluster."
+  [f]
+  (cluster-lock/with-cluster-lock {:lock ::snapshot-promotion-or-action, :timeout-seconds 30}
+    (f)))
 
 (defn candidate
   "Fetch a persisted candidate by id."

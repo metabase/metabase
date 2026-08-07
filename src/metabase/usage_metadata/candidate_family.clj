@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [metabase.usage-metadata.candidate-definitions :as definitions]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.string :as u.str]
    [toucan2.core :as t2]))
 
@@ -80,14 +80,14 @@
   (let [details-by-signature (u/index-by :signature (candidate-atom-details candidate))
         atom-names           (mapv (comp :display-name details-by-signature) atom-order)
         condition-name       (when (every? some? atom-names)
-                               (i18n/join-strings-with-conjunction (tru "and") atom-names))]
+                               (i18n/join-strings-with-conjunction (trs "and") atom-names))]
     (u.str/elide
      (or
       (when condition-name
         (case (:candidate_type candidate)
           :segment condition-name
           :measure (when-let [base-name (get-in candidate [:semantic_details :base-name])]
-                     (tru "{0} where {1}" base-name condition-name))))
+                     (trs "{0} where {1}" base-name condition-name))))
       (:suggested_name candidate))
      254)))
 
@@ -129,19 +129,17 @@
                       (first (sort-by definitions/candidate-priority-key members)))
                      (:signature root)
                      (:id root)]))
+         (mapcat (fn [{:keys [root]}]
+                   (ordered-family root children-index candidates-by-id)))
          (map-indexed
-          (fn [family-order {:keys [root]}]
-            (map-indexed
-             (fn [family-position {:keys [candidate atom-order]}]
-               {:candidate-id     (:id candidate)
-                :display-name     (family-display-name candidate atom-order)
-                :semantic-details (assoc (:semantic_details candidate)
-                                         :display-atoms
-                                         (ordered-atom-details candidate atom-order))
-                :family-order     family-order
-                :family-position  family-position})
-             (ordered-family root children-index candidates-by-id))))
-         (into [] cat))))
+          (fn [sort-position {:keys [candidate atom-order]}]
+            {:candidate-id     (:id candidate)
+             :display-name     (family-display-name candidate atom-order)
+             :semantic-details (assoc (:semantic_details candidate)
+                                      :display-atoms
+                                      (ordered-atom-details candidate atom-order))
+             :sort-position    sort-position}))
+         vec)))
 
 (defn materialize!
   "Persist deterministic family ordering and display presentation for one run."
@@ -150,7 +148,7 @@
                                :id :table_id :candidate_type :modeling_status
                                :signature_hash :signature :definition :semantic_details
                                :suggested_name :verified_source_count :official_source_count
-                               :distinct_source_count :complexity :total_view_count]
+                               :distinct_source_count :complexity :recent_view_count]
                               :run_id run-id)]
     (doseq [{:keys [candidate-id] :as family} (candidate-families candidates)]
       (t2/update! :model/UsageMetadataCandidate candidate-id
@@ -158,5 +156,4 @@
                       (dissoc :candidate-id)
                       (set/rename-keys {:display-name     :display_name
                                         :semantic-details :semantic_details
-                                        :family-order     :family_order
-                                        :family-position  :family_position}))))))
+                                        :sort-position    :sort_position}))))))

@@ -127,7 +127,7 @@
 (defn candidate-row->observation
   "Normalize a database-shaped candidate row for shared mining rules."
   [{:keys [candidate_type semantic_details complexity verified_source_count official_source_count
-           popular_source_count distinct_source_count total_view_count signature]}]
+           popular_source_count distinct_source_count recent_view_count signature]}]
   {:candidate-type candidate_type
    :aggregation    (when (= candidate_type :measure)
                      (update semantic_details :type #(some-> % keyword)))
@@ -136,7 +136,7 @@
                     :official-source-count official_source_count
                     :popular-source-count  popular_source_count
                     :distinct-source-count distinct_source_count
-                    :total-view-count      total_view_count}
+                    :total-view-count      recent_view_count}
    :signature      signature})
 
 (defn candidate-priority-key

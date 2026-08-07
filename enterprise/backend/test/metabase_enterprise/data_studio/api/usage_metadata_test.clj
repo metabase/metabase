@@ -72,14 +72,13 @@
      :display_name          "Recent orders"
      :suggested_name        "Recent orders"
      :suggested_description "Recent orders on Orders"
-     :family_order          0
-     :family_position       0
+     :sort_position         0
      :modeling_status       :missing
      :verified_source_count 1
      :official_source_count 0
      :popular_source_count  1
      :distinct_source_count 1
-     :total_view_count      10
+     :recent_view_count      10
      :complexity            1}
     overrides)))
 
@@ -176,15 +175,13 @@
           (is (= #{:table :candidate_count}
                  (set (keys (first (:data response))))))))
       (testing "dismiss and restore are global and immediately visible"
-        (is (=? {:dismissed true}
-                (mt/user-http-request :crowberto :post 200
-                                      (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/dismiss")
-                                      {})))
+        (is (nil? (mt/user-http-request :crowberto :post 204
+                                        (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/dismiss")
+                                        {})))
         (is (= 0 (:total (mt/user-http-request :crowberto :get 200
                                                "ee/data-studio/usage-metadata/candidates"))))
-        (is (=? {:dismissed false}
-                (mt/user-http-request :crowberto :delete 200
-                                      (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/dismissal"))))))))
+        (is (nil? (mt/user-http-request :crowberto :delete 204
+                                        (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/dismissal"))))))))
 
 (deftest candidate-detail-uses-snapshot-match-metadata-test
   (mt/with-premium-features #{:library}
@@ -229,7 +226,7 @@
                                                                     :display_name "Zulu"
                                                                     :signature_hash (apply str (repeat 64 "d"))
                                                                     :signature "[\"zulu\"]"
-                                                                    :family_position 1
+                                                                    :sort_position 1
                                                                     :verified_source_count 0
                                                                     :popular_source_count 0})]
       (testing "limit and offset are applied after deterministic priority ordering"
@@ -325,7 +322,7 @@
                    :verified      true
                    :official      false
                    :popular       true
-                   :view_count    12
+                   :recent_view_count 12
                    :joined        false
                    :stage_numbers [0]
                    :model_lineage [{:id 123456, :name "Accounts model"}]})
@@ -345,12 +342,7 @@
                                                           :trigger           :manual
                                                           :algorithm_version 1
                                                           :source_config     {:kind :qualified-cards}
-                                                          :summary           {:candidate-count 6
-                                                                              :measure-count 1
-                                                                              :segment-count 2
-                                                                              :metric-count 1
-                                                                              :publish-table-count 2
-                                                                              :table-count 3}
+                                                          :summary           {:table-count 3}
                                                           :finished_at       (mi/now)}]
       (let [response (mt/user-http-request :crowberto :get 200
                                            "ee/data-studio/usage-metadata/refresh")]
@@ -370,22 +362,19 @@
                                   {:suggested_name "Shared concept"
                                    :display_name "Shared concept"
                                    :signature_hash (apply str (repeat 64 "7"))
-                                   :family_order 0
-                                   :family_position 0})
+                                   :sort_position 0})
                    :model/UsageMetadataCandidate child
                    (candidate-row (:id run)
                                   {:suggested_name "Shared concept with detail"
                                    :display_name "Shared concept with detail"
                                    :signature_hash (apply str (repeat 64 "8"))
-                                   :family_order 0
-                                   :family_position 1})
+                                   :sort_position 1})
                    :model/UsageMetadataCandidate other
                    (candidate-row (:id run)
                                   {:suggested_name "Other concept"
                                    :display_name "Other concept"
                                    :signature_hash (apply str (repeat 64 "9"))
-                                   :family_order 1
-                                   :family_position 0
+                                   :sort_position 2
                                    :verified_source_count 10
                                    :distinct_source_count 100})]
       (let [response (mt/user-http-request :crowberto :get 200
@@ -441,7 +430,7 @@
                 (mt/user-http-request :crowberto :get 200
                                       "ee/data-studio/usage-metadata/tables?queue=used-raw")))
         (testing "a previous dismissal does not hide raw usage after it becomes modeled"
-          (mt/user-http-request :crowberto :post 200
+          (mt/user-http-request :crowberto :post 204
                                 (str "ee/data-studio/usage-metadata/candidates/" (:id modeled-candidate) "/dismiss")
                                 {})
           (is (=? {:total 1
@@ -449,7 +438,7 @@
                   (mt/user-http-request :crowberto :get 200
                                         "ee/data-studio/usage-metadata/candidates?queue=used-raw")))))
       (testing "discarded suggestions have a dedicated queue"
-        (mt/user-http-request :crowberto :post 200
+        (mt/user-http-request :crowberto :post 204
                               (str "ee/data-studio/usage-metadata/candidates/" (:id missing-candidate) "/dismiss")
                               {})
         (is (=? {:total 1}
@@ -498,19 +487,30 @@
                         [[measure-candidate :model/Measure "Created order subtotal"]
                          [segment-candidate :model/Segment "Created large orders"]]]
                   (testing (str "creates " (name (:candidate_type candidate)) " from its persisted definition")
-                    (let [path     (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/create")
-                          response (mt/user-http-request :crowberto :post 200 path
-                                                         {:name expected-name
-                                                          :description "Admin override"})
-                          entity   (:entity response)]
+                    (let [path      (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/create")
+                          start     (promise)
+                          requests  (mapv (fn [_]
+                                            (future
+                                              @start
+                                              (mt/user-http-request :crowberto :post 200 path
+                                                                    {:name expected-name
+                                                                     :description "Admin override"})))
+                                          (range 2))
+                          _         (deliver start true)
+                          responses (mapv deref requests)
+                          response  (first responses)
+                          entity   (t2/select-one model :id (:id response))]
+                      (is (apply = (map :id responses)) "concurrent creation is idempotent")
                       (is (= expected-name (:name entity)))
                       (is (= "Admin override" (:description entity)))
                       (is (= (lib/normalize (:definition candidate))
-                             (lib/normalize (:definition entity))))
-                      (is (= "modeled" (get-in response [:candidate :modeling_status])))
-                      (is (= 1 (count (get-in response [:candidate :matches]))))
+                             (dissoc (lib/normalize (:definition entity)) :lib/metadata)))
+                      (is (=? {:modeling_status "modeled", :matches [{:relation "exact"}]}
+                              (mt/user-http-request :crowberto :get 200
+                                                    (str "ee/data-studio/usage-metadata/candidates/"
+                                                         (:id candidate)))))
                       (is (= (:id entity)
-                             (get-in (mt/user-http-request :crowberto :post 200 path {}) [:entity :id])))
+                             (:id (mt/user-http-request :crowberto :post 200 path {}))))
                       (is (= 1 (t2/count model :name expected-name))))))
                 (is (= [{:topic :event/measure-create, :visible? true}
                         {:topic :event/segment-create, :visible? true}]

@@ -4,7 +4,7 @@ import type { Measure } from "./measure";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { Segment } from "./segment";
-import type { TableDataLayer, TableId } from "./table";
+import type { TableId } from "./table";
 
 export type UsageMetadataCandidateType =
   | "table"
@@ -44,23 +44,11 @@ export type UsageMetadataDatabase = {
 
 export type UsageMetadataTable = {
   id: TableId;
-  db_id: DatabaseId;
   schema: string | null;
-  name: string;
   display_name: string;
-  description: string | null;
-  data_layer: TableDataLayer | null;
-  data_authority: string | null;
-  view_count: number;
   is_published: boolean;
-  collection_id: number | null;
   database: UsageMetadataDatabase;
 };
-
-export type UsageMetadataTableReference = Pick<
-  UsageMetadataTable,
-  "id" | "schema" | "display_name" | "is_published" | "database"
->;
 
 export type UsageMetadataTableSummary = {
   table: UsageMetadataTable;
@@ -72,7 +60,7 @@ export type UsageMetadataEvidence = {
   official_source_count: number;
   popular_source_count: number;
   distinct_source_count: number;
-  total_view_count: number;
+  recent_view_count: number;
 };
 
 export type UsageMetadataPredicateKind =
@@ -124,7 +112,7 @@ export type UsageMetadataCandidateSource = {
   verified: boolean;
   official: boolean;
   popular: boolean;
-  view_count: number;
+  recent_view_count: number;
   joined: boolean;
   stage_numbers: number[];
   model_lineage: UsageMetadataModelLineageItem[] | null;
@@ -147,7 +135,7 @@ export type UsageMetadataCandidateDetail = UsageMetadataCandidateSummary & {
   table: UsageMetadataTable;
   suggested_name: string;
   suggested_description: string | null;
-  required_tables: UsageMetadataTableReference[];
+  required_tables: UsageMetadataTable[];
   definition: UsageMetadataCandidateDefinition;
   creation_blockers: UsageMetadataCreationBlocker[];
   sources: UsageMetadataCandidateSource[];
@@ -167,10 +155,6 @@ export type ListUsageMetadataRequest = PaginationRequest & {
   search?: string;
 };
 
-export type DismissUsageMetadataCandidateRequest = {
-  id: number;
-};
-
 export type CreateUsageMetadataCandidateRequest = {
   id: number;
   name?: string;
@@ -178,15 +162,7 @@ export type CreateUsageMetadataCandidateRequest = {
 };
 
 export type CreateUsageMetadataCandidateResponse = {
-  candidate: UsageMetadataCandidateDetail;
-  entity: {
-    id: number;
-    name: string;
-    table_id?: TableId;
-    definition?: DatasetQuery;
-    description?: string | null;
-    archived?: boolean;
-  };
+  id: number;
 };
 
 export type UsageMetadataRunState = {
