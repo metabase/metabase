@@ -417,6 +417,9 @@
             [:first_name             {:optional true} [:maybe ms/NonBlankString]]
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
+            ;; `invite-user!` passes this through to `create-and-invite-user!`; without it the new user gets a random
+            ;; password and can never log in
+            [:password               {:optional true} [:maybe ms/ValidPassword]]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
             [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
             [:source                 {:optional true, :default :admin} [:maybe keyword?]]
