@@ -12,6 +12,7 @@ import {
   matchKey,
   quarantinedSuiteGlob,
   suiteMatchesGlob,
+  testSearchUrl,
 } from "./quarantine.ts";
 
 const failed = (
@@ -24,7 +25,14 @@ const quarantined = (
   test_name: string,
   test_path = "Suite",
   file_path = "e2e/test/foo.cy.spec.ts",
-): QuarantineEntry => ({ test_name, test_path, file_path, test_suite: "e2e" });
+  permalink = `https://conductor.example.com/tests/${test_name}`,
+): QuarantineEntry => ({
+  test_name,
+  test_path,
+  file_path,
+  permalink,
+  test_suite: "e2e",
+});
 
 describe("compareFailedToQuarantine", () => {
   it("puts every failure in `unquarantined` when nothing is quarantined", () => {
@@ -118,6 +126,39 @@ describe("matchKey", () => {
     expect(
       matchKey({ filePath: "a", testPath: "b", testName: "c" }),
     ).not.toBe(matchKey({ filePath: "ab", testPath: "", testName: "c" }));
+  });
+});
+
+describe("testSearchUrl", () => {
+  const base = "https://conductor.coredev.metabase.com";
+
+  it("searches the full `test_path > test_name` title", () => {
+    expect(
+      testSearchUrl(base, {
+        test_name: "should be able to view and revert document revisions",
+        test_path: "documents > revision history",
+      }),
+    ).toBe(
+      "https://conductor.coredev.metabase.com/tests?q=documents+%3E+revision+history+%3E+should+be+able+to+view+and+revert+document+revisions",
+    );
+  });
+
+  it("searches the name alone when there's no path", () => {
+    expect(testSearchUrl(base, { test_name: "a test", test_path: null })).toBe(
+      `${base}/tests?q=a+test`,
+    );
+  });
+
+  it("trims a trailing slash off the base url", () => {
+    expect(testSearchUrl(`${base}//`, { test_name: "a test" })).toBe(
+      `${base}/tests?q=a+test`,
+    );
+  });
+
+  it("escapes characters that would otherwise break out of the query string", () => {
+    expect(
+      testSearchUrl(base, { test_name: `#1 "a" & b`, test_path: null }),
+    ).toBe(`${base}/tests?q=%231+%22a%22+%26+b`);
   });
 });
 

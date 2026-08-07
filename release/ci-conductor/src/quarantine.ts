@@ -245,6 +245,20 @@ function title(test: FailedTest): string {
   return test.test_path ? `${test.test_path} › ${test.test_name}` : test.test_name;
 }
 
+/**
+ * Fallback to building a search link for a given test if we don't have a permalink,
+ * expected if this test isn't on the quarantine list. Properly escape all the special
+ * characters.
+ */
+export function testSearchUrl(
+  baseUrl: string,
+  test: FailedTest | QuarantineEntry,
+): string {
+  const base = baseUrl.replace(/\/+$/, "");
+  const query = title(test);
+  return `${base}/tests?${new URLSearchParams({ q: query })}`;
+}
+
 /** Print the verdict (+ dry-run footer) and return the gate result. */
 function finish(opts: {
   shouldFail: boolean;
@@ -347,12 +361,16 @@ export async function checkQuarantineGate(opts: {
   for (const test of quarantined) {
     log(`  🔒 quarantined      ${title(test)}`);
     log(`                      ↳ ${test.file_path ?? "(no file)"}`);
-    log(`                      ↳ View test in CI Conductor: ${test.permalink ?? ""}`);
+    log(
+      `                      ↳ View test in CI Conductor: ${test.permalink || testSearchUrl(baseUrl, test)}`,
+    );
   }
   for (const test of unquarantined) {
     log(`  🚨 NOT quarantined  ${title(test)}`);
-    log(`                      ↳ ${test.file_path ?? "(no file)"}`);
-    log(`                      ↳ View test in CI Conductor: ${""}`);
+    log(`                      ↳ ${test.file_path ?? "(no file)"}`); 
+    log(
+      `                      ↳ View test in CI Conductor: ${testSearchUrl(baseUrl, test)}`,
+    );
   }
 
   return finish({
