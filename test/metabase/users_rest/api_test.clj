@@ -1093,20 +1093,20 @@
                                                 :email        "testuser@metabase.com"
                                                 :is_superuser true}]
         (is (=? {:errors {:login_attributes #(str/includes? % "must not start with `@`")}}
-               (mt/user-http-request :crowberto :put 400 (str "user/" user-id)
-                                     {:email            "testuser@metabase.com"
-                                      :login_attributes {"@foo" "foo"}}))))))
+                (mt/user-http-request :crowberto :put 400 (str "user/" user-id)
+                                      {:email            "testuser@metabase.com"
+                                       :login_attributes {"@foo" "foo"}}))))))
   (testing "POST /api/user"
     (let [user-name (mt/random-name)
           email     (mt/random-email)]
       (mt/with-model-cleanup [:model/User]
         (mt/with-fake-inbox
           (is (=? {:errors {:login_attributes #(str/includes? % "must not start with `@`")}}
-                 (mt/user-http-request :crowberto :post 400 "user"
-                                       {:first_name       user-name
-                                        :last_name        user-name
-                                        :email            email
-                                        :login_attributes {"@foo" "bar"}}))))))))
+                  (mt/user-http-request :crowberto :post 400 "user"
+                                        {:first_name       user-name
+                                         :last_name        user-name
+                                         :email            email
+                                         :login_attributes {"@foo" "bar"}}))))))))
 
 (deftest ^:parallel updated-user-name-test
   (testing "Test that `metabase.users-rest.api/updated-user-name` works as intended."
