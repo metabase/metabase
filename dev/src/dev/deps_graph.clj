@@ -830,16 +830,10 @@
    (let [fd (partial file-dependencies prefix->module)]
      (map fd (find-source-files)))))
 
-(defn configured-dependencies
-  "Scan dependencies using every declared module's effective namespace prefix."
-  []
-  (let [config (kondo-config)]
-    (dependencies (build-prefix->module config))))
-
 (defn external-usages
   "All usages of a module named by `module-symb` outside that module."
   ([module-symb]
-   (external-usages (configured-dependencies) module-symb))
+   (external-usages (dependencies) module-symb))
 
   ([deps module-symb]
    (for [dep    deps
@@ -854,7 +848,7 @@
 (defn external-usages-by-namespace
   "Return a map of module namespace => set of external namespaces using it"
   ([module-symb]
-   (external-usages-by-namespace (configured-dependencies) module-symb))
+   (external-usages-by-namespace (dependencies) module-symb))
 
   ([deps module-symb]
    (into (sorted-map)
@@ -962,7 +956,7 @@
 (defn module-usages-of-other-module
   "Information about how `module-x` uses `module-y`."
   ([module-x module-y]
-   (module-usages-of-other-module (configured-dependencies) module-x module-y))
+   (module-usages-of-other-module (dependencies) module-x module-y))
 
   ([deps module-x module-y]
    (let [module-x-ns->module-y-ns (->> (external-usages deps module-y)
@@ -1239,7 +1233,7 @@
     {api      []                         ; settings depends on api directly
      api-keys [permissions collections]} ; settings depends on permissions which depends on collections which depends on api-keys"
   ([module]
-   (all-module-deps-paths (configured-dependencies) module))
+   (all-module-deps-paths (dependencies) module))
   ([deps module]
    (all-module-deps-paths deps module (sorted-map) (atom #{}) []))
   ([deps module acc already-seen path]
@@ -1269,7 +1263,7 @@
               ...}
      ...}"
   ([module]
-   (module-dependencies-by-namespace (configured-dependencies) module))
+   (module-dependencies-by-namespace (dependencies) module))
 
   ([deps module]
    (into (sorted-map)
@@ -1287,7 +1281,7 @@
     ;; =>
     #{request}"
   [module namespace-symb-or-set]
-  (let [deps            (configured-dependencies)
+  (let [deps            (dependencies)
         namespace-symbs (if (symbol? namespace-symb-or-set)
                           #{namespace-symb-or-set}
                           namespace-symb-or-set)
@@ -1301,7 +1295,7 @@
 (defn leaf-modules
   "Modules that are leaf nodes in the module dependency tree -- nothing else depends on them."
   ([]
-   (leaf-modules (configured-dependencies)))
+   (leaf-modules (dependencies)))
   ([deps]
    (into (sorted-set)
          (comp (map :module)
@@ -1314,7 +1308,7 @@
   "Modules that `module` does not depend on, either directly or indirectly -- changes to any of these modules should not
   affect `module`."
   [module]
-  (let [deps        (configured-dependencies)
+  (let [deps        (dependencies)
         all-modules (into (sorted-set) (map :module) deps)
         module-deps (set (keys (all-module-deps-paths deps module)))]
     ;; dev REPL tool; the summary line is for the human at the console
@@ -1441,7 +1435,7 @@
 (defn- indirect-dependents
   "Set of modules that either directly or indirectly depend on `module`."
   ([module]
-   (indirect-dependents (configured-dependencies) module))
+   (indirect-dependents (dependencies) module))
   ([deps module]
    (indirect-dependents deps module (sorted-set)))
   ([deps module acc]
