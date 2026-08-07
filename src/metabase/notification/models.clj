@@ -417,7 +417,8 @@
    ;; nil on an unsaved notification, e.g. the one POST /api/pulse/test builds to send a test alert
    [:id              {:optional true} [:maybe ms/PositiveInt]]
    [:notification_id {:optional true} [:maybe ms/PositiveInt]]
-   [:card            {:optional true} [:maybe :map]]
+   ;; the hydrated Card, echoed back by clients on update; nothing here reads it
+   [:card            {:optional true} [:maybe ms/Map]]
    [:send_condition  {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
    [:send_once       {:optional true} :boolean]])
 
@@ -518,7 +519,8 @@
   we hand back out."
   [handler-schema]
   (let [entries (into notification-entries
-                      [[:creator       {:optional true} [:maybe :map]]
+                      [;; the hydrated User, echoed back by clients on update; `:creator_id` is what gets read
+                       [:creator       {:optional true} [:maybe ms/Map]]
                        [:creator_id    {:optional true} [:maybe int?]]
                        [:payload_id    {:optional true} [:maybe int?]]
                        [:subscriptions {:optional true} [:sequential [:ref ::NotificationSubscription]]]

@@ -42,7 +42,8 @@
   [:map
    [:name                         string?]
    [:type                         :keyword]
-   [:details                      :map]
+   ;; per-channel-type connection config (a Slack token, an HTTP url and auth, ...) -- free-form like database details
+   [:details                      ms/Map]
    [:active      {:optional true} :boolean]
    [:description {:optional true} [:maybe string?]]])
 
