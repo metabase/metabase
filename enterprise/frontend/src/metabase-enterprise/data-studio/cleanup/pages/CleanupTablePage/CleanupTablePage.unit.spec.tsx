@@ -49,16 +49,9 @@ const snapshot: UsageMetadataSnapshot = {
 
 const table = {
   id: 1,
-  db_id: 1,
   schema: "PUBLIC",
-  name: "orders",
   display_name: "Orders",
-  description: null,
-  data_layer: null,
-  data_authority: null,
-  view_count: 12,
   is_published: true,
-  collection_id: 2,
   database: { id: 1, name: "Sample Database" },
 };
 
@@ -87,7 +80,7 @@ const candidate: UsageMetadataCandidateDetail = {
     official_source_count: 1,
     popular_source_count: 1,
     distinct_source_count: 12,
-    total_view_count: 400,
+    recent_view_count: 400,
   },
   creation_blockers: [],
   sources: [],
@@ -144,10 +137,7 @@ describe("CleanupTablePage", () => {
   });
 
   it("shows a continuous prioritized list and supports one-click dismissal", async () => {
-    setupDismissUsageMetadataCandidateEndpoint(candidate.id, {
-      ...candidate,
-      dismissed: true,
-    });
+    setupDismissUsageMetadataCandidateEndpoint(candidate.id);
     setup();
 
     await waitFor(() => {
@@ -306,7 +296,7 @@ describe("CleanupTablePage", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Technical details")).not.toBeInTheDocument();
     expect(
-      within(panel).getByText("12 sources · 400 views"),
+      within(panel).getByText("12 sources · 400 recent views"),
     ).toBeInTheDocument();
     expect(window.HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
       behavior: "smooth",
@@ -403,10 +393,7 @@ describe("CleanupTablePage", () => {
       dismissed: true,
     };
     setupUsageMetadataCandidateEndpoint(candidate.id, dismissedCandidate);
-    setupRestoreUsageMetadataCandidateEndpoint(candidate.id, {
-      ...candidate,
-      dismissed: false,
-    });
+    setupRestoreUsageMetadataCandidateEndpoint(candidate.id);
     setup(dismissedCandidate, "/data-studio/cleanup/tables/1?queue=discarded");
 
     await userEvent.click(

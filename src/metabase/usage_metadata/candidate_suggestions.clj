@@ -5,7 +5,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.string :as u.str]))
 
@@ -49,7 +49,7 @@
   (cond
     (string? value) value
     (keyword? value) (name value)
-    (nil? value) (tru "empty")
+    (nil? value) (trs "empty")
     :else (str value)))
 
 (defn- detailed-multi-value-filter-name
@@ -62,15 +62,15 @@
                           (keyword? %)
                           (nil? %))
                      values))
-    (let [field-name     (safe-display-name definition field (tru "Field"))
+    (let [field-name     (safe-display-name definition field (trs "Field"))
           visible-values (take candidate-name-max-inline-values values)
           remaining      (- (count values) (count visible-values))
           value-names    (cond-> (mapv literal-display-name visible-values)
-                           (pos? remaining) (conj (tru "{0} more" remaining)))
-          joined-values  (i18n/join-strings-with-conjunction (tru "or") value-names)]
+                           (pos? remaining) (conj (trs "{0} more" remaining)))
+          joined-values  (i18n/join-strings-with-conjunction (trs "or") value-names)]
       (if (contains? #{:= :in} operator)
-        (tru "{0} is one of {1}" field-name joined-values)
-        (tru "{0} excludes {1}" field-name joined-values)))))
+        (trs "{0} is one of {1}" field-name joined-values)
+        (trs "{0} excludes {1}" field-name joined-values)))))
 
 (defn- detailed-candidate-display-name
   [definition clause fallback]
@@ -81,7 +81,7 @@
               names (mapv #(detailed-candidate-display-name definition % fallback)
                           subclauses)]
           (i18n/join-strings-with-conjunction
-           (if (= operator :and) (tru "and") (tru "or"))
+           (if (= operator :and) (trs "and") (trs "or"))
            names)))
       (safe-display-name definition clause fallback)))
 
@@ -128,7 +128,7 @@
        (sort-by candidate-mining/canonical-signature)
        (mapv (fn [atom]
                {:signature    (candidate-mining/canonical-signature atom)
-                :display-name (detailed-candidate-display-name definition atom (tru "Filter"))
+                :display-name (detailed-candidate-display-name definition atom (trs "Filter"))
                 :kind         (atom-predicate-kind definition atom)}))))
 
 (defn- source-display-name
@@ -138,7 +138,7 @@
 (defn- description-on-source
   [description source]
   (if-let [source-name (source-display-name source)]
-    (tru "{0} on {1}" description source-name)
+    (trs "{0} on {1}" description source-name)
     description))
 
 (defn- conditional-base-aggregation
@@ -155,10 +155,10 @@
     (if (and (contains? candidate-mining/conditional-aggregation-operators type) condition)
       (let [base-name      (safe-display-name definition
                                               (conditional-base-aggregation clause)
-                                              (tru "Measure"))
-            condition-name (detailed-candidate-display-name definition condition (tru "matching condition"))]
-        (tru "{0} where {1}" base-name condition-name))
-      (safe-display-name definition clause (tru "Measure")))))
+                                              (trs "Measure"))
+            condition-name (detailed-candidate-display-name definition condition (trs "matching condition"))]
+        (trs "{0} where {1}" base-name condition-name))
+      (safe-display-name definition clause (trs "Measure")))))
 
 (defn- measure-base-name
   [definition {:keys [type condition]}]
@@ -167,7 +167,7 @@
                        (if (and (contains? candidate-mining/conditional-aggregation-operators type) condition)
                          (conditional-base-aggregation clause)
                          clause)
-                       (tru "Measure"))))
+                       (trs "Measure"))))
 
 (defn- candidate-naming-definition
   [{:keys [definition], metadata-provider ::metadata-provider}]
@@ -194,34 +194,43 @@
 (defn- segment-with-suggestions
   [{:keys [predicate source] :as candidate}]
   (let [naming-definition (candidate-naming-definition candidate)
-        compact-name      (safe-display-name naming-definition predicate (tru "Segment"))
-        suggested-name    (detailed-candidate-display-name naming-definition predicate (tru "Segment"))
+        compact-name      (safe-display-name naming-definition predicate (trs "Segment"))
+        suggested-name    (detailed-candidate-display-name naming-definition predicate (trs "Segment"))
         atoms             (candidate-atom-details naming-definition predicate)
         description       (if (= compact-name suggested-name)
                             (safe-definition-description naming-definition
                                                          :filters
-                                                         (tru "Filtered by {0}" suggested-name))
-                            (tru "Filtered by {0}" suggested-name))]
+                                                         (trs "Filtered by {0}" suggested-name))
+                            (trs "Filtered by {0}" suggested-name))]
     (-> candidate
         (dissoc ::metadata-provider)
         (assoc :atoms atoms
                :suggested-name (u.str/elide suggested-name candidate-name-max-length)
                :suggested-description (description-on-source description source)))))
 
+(defn- fallback-atom-details
+  [predicate]
+  (when predicate
+    (mapv (fn [atom]
+            {:signature    (candidate-mining/canonical-signature atom)
+             :display-name (trs "Filter")
+             :kind         :other})
+          (conjunction-atoms predicate))))
+
 (defn- fallback-suggestions
-  [{:keys [aggregation source] :as candidate} candidate-type]
+  [{:keys [aggregation predicate source] :as candidate} candidate-type]
   (let [entity-name (case candidate-type
-                      :measure (tru "Measure")
-                      :segment (tru "Segment"))
+                      :measure (trs "Measure")
+                      :segment (trs "Segment"))
         description (case candidate-type
                       :measure entity-name
-                      :segment (tru "Filtered by {0}" entity-name))]
+                      :segment (trs "Filtered by {0}" entity-name))]
     (cond-> (-> candidate
                 (dissoc ::metadata-provider)
                 (assoc :suggested-name entity-name
                        :suggested-description (description-on-source description source)))
       (= candidate-type :measure) (assoc :aggregation (assoc aggregation :base-name entity-name))
-      (= candidate-type :segment) (assoc :atoms []))))
+      (= candidate-type :segment) (assoc :atoms (fallback-atom-details predicate)))))
 
 (defn suggestions-or-fallback
   "Run a candidate suggestion builder without allowing stale metadata to abort mining."

@@ -73,7 +73,7 @@ export function CreateCandidateModal({
       errorMessage: t`The Library entity could not be created`,
       onStale,
       onSuccess: (response) => {
-        onCreated(candidate.candidate_type, response.entity.id);
+        onCreated(candidate.candidate_type, response.id);
       },
     });
   };

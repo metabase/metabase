@@ -3,58 +3,17 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.segments.create :as segments.create]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
-
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-(defn- definition-table-id
-  "Derive the source table ID from a segment definition, or throw a 400 if it has none. Handles MBQL5 and legacy full
-  queries as well as MBQL4 fragments (which carry `:source-table` directly)."
-  [definition]
-  (api/check-400 (when (seq definition)
-                   (case (lib/normalized-mbql-version definition)
-                     (:mbql-version/mbql5 :mbql-version/legacy)
-                     (lib/primary-source-table-id (lib-be/normalize-query definition))
-                     ;; default: MBQL4 fragment
-                     (let [table-id (:source-table definition)]
-                       (when (pos-int? table-id)
-                         table-id))))
-                 (tru "Segment definition must specify a source table.")))
-
-(defn create-segment!
-  "Create and return a hydrated Segment using the same permission, validation, and event path as the REST endpoint."
-  ([body]
-   (create-segment! body {}))
-  ([{:keys [name description definition], :as body} {:keys [publish-event?], :or {publish-event? true}}]
-   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
-   (let [table-id (definition-table-id definition)]
-     (api/create-check :model/Segment (assoc body :table_id table-id))
-     (let [user-id api/*current-user-id*
-           segment (api/check-500
-                    (first (t2/insert-returning-instances! :model/Segment
-                                                           :table_id    table-id
-                                                           :creator_id  user-id
-                                                           :name        name
-                                                           :description description
-                                                           :definition  definition)))]
-       (when publish-event?
-         (mdb/do-after-commit
-          #(events/publish-event! :event/segment-create {:object segment :user-id user-id})))
-       (t2/hydrate segment :creator)))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
@@ -65,7 +24,7 @@
             [:name        ms/NonBlankString]
             [:definition  ::segments.schema/definition]
             [:description {:optional true} [:maybe :string]]]]
-  (create-segment! body))
+  (segments.create/create! body))
 
 (mu/defn- hydrated-segment [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one :model/Segment :id id))
@@ -113,7 +72,7 @@
     ;; table, the write-check above checked the old table, so also make sure the user could create a Segment on the
     ;; new one.
     (when-let [definition (:definition new-body)]
-      (let [new-table-id (definition-table-id definition)]
+      (let [new-table-id (segments.create/definition-table-id definition)]
         (when (not= new-table-id (:table_id existing))
           (api/create-check :model/Segment {:table_id new-table-id}))))
     (when changes

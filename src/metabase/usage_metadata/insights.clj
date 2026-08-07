@@ -11,6 +11,7 @@
    [metabase.usage-metadata.models.source-metric-daily]
    [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.models.source-segment-daily]
+   [metabase.usage-metadata.query-utils :as query-utils]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -47,34 +48,6 @@
                       :name         name
                       :display-name (or display_name name)}]))
           rows)))
-
-(defn- build-source-index
-  "Bulk-fetch Table and Card metadata for `[source-type source-id]` keys."
-  [source-keys]
-  (let [by-type   (group-by first source-keys)
-        table-ids (into #{} (comp (keep second) (filter pos-int?)) (get by-type :table))
-        card-ids  (into #{} (comp (keep second) (filter pos-int?)) (get by-type :card))
-        tables    (when (seq table-ids)
-                    (t2/select [:model/Table :id :name :display_name :db_id :schema]
-                               :id [:in table-ids]))
-        cards     (when (seq card-ids)
-                    (t2/select [:model/Card :id :name] :id [:in card-ids]))]
-    (into {}
-          cat
-          [(map (fn [{:keys [id name display_name db_id schema]}]
-                  [[:table id] {:type         :table
-                                :id           id
-                                :db-id        db_id
-                                :schema       schema
-                                :name         name
-                                :display-name (or display_name name)}])
-                tables)
-           (map (fn [{:keys [id name]}]
-                  [[:card id] {:type         :card
-                               :id           id
-                               :name         name
-                               :display-name name}])
-                cards)])))
 
 (defn- predicate-field-ids
   "Return distinct field ids referenced in a decoded predicate."
@@ -201,22 +174,9 @@
                 :group-by [:source_type :source_id :field_id :source_basis :observation_type :observation_value]
                 :order-by [[:total_count :desc]]})))
 
-(defn- wrap-query
-  "Wrap raw MBQL in a Lib query backed by the application metadata provider."
-  [database-id query-map]
-  (when (and (pos-int? database-id) (seq query-map))
-    (try
-      (lib/query (lib-be/application-database-metadata-provider database-id) query-map)
-      (catch InterruptedException e
-        (.interrupt (Thread/currentThread))
-        (throw e))
-      (catch Exception e
-        (log/debugf "Failed to wrap query for usage-metadata insights: %s" (ex-message e))
-        nil))))
-
 (defn- extract-facts
   [database-id query-map]
-  (when-let [q (wrap-query database-id query-map)]
+  (when-let [q (query-utils/wrap-query database-id query-map)]
     (try
       (usage-metadata.extract/extract-usage-facts q)
       (catch InterruptedException e
@@ -319,7 +279,7 @@
                                       ::decoded   decoded
                                       ::field-ids (predicate-field-ids decoded))))
                            raw-rows)
-         source-idx  (build-source-index
+         source-idx  (query-utils/build-source-index
                       (into #{} (map (juxt :source_type :source_id)) enriched))
          field-idx   (build-field-index
                       (into #{} (mapcat ::field-ids) enriched))]
@@ -347,7 +307,7 @@
          rows       (remove (fn [{:keys [source_type source_id agg_type agg_field_id temporal_field_id temporal_unit]}]
                               (contains? existing [source_type source_id agg_type agg_field_id temporal_field_id temporal_unit]))
                             (grouped-metric-rows opts))
-         source-idx (build-source-index
+         source-idx (query-utils/build-source-index
                      (into #{} (map (juxt :source_type :source_id)) rows))
          field-idx  (build-field-index
                      (into #{} (mapcat (juxt :agg_field_id :temporal_field_id)) rows))]
@@ -369,7 +329,7 @@
   ([] (implicit-dimensions {}))
   ([{:keys [limit] :or {limit 10} :as opts} :- ::usage-metadata.schema/opts]
    (let [rows       (grouped-dimension-rows opts)
-         source-idx (build-source-index
+         source-idx (query-utils/build-source-index
                      (into #{} (map (juxt :source_type :source_id)) rows))
          field-idx  (build-field-index
                      (into #{} (keep :field_id) rows))]
@@ -416,7 +376,7 @@
   ([{:keys [limit] :or {limit frequent-itemsets/default-limit} :as opts} :- ::usage-metadata.schema/opts]
    (let [rows          (grouped-composite-rows opts)
          by-source     (group-by (juxt :source_type :source_id) rows)
-         source-idx    (build-source-index (keys by-source))
+         source-idx    (query-utils/build-source-index (keys by-source))
          candidates    (into []
                              (mapcat (fn [[[source-type source-id] source-rows]]
                                        (when-let [source (source-idx [source-type source-id])]
@@ -447,7 +407,7 @@
   ([] (profile-observations {}))
   ([{:keys [limit] :or {limit 10} :as opts} :- ::usage-metadata.schema/opts]
    (let [rows       (grouped-profile-rows opts)
-         source-idx (build-source-index
+         source-idx (query-utils/build-source-index
                      (into #{} (map (juxt :source_type :source_id)) rows))
          field-idx  (build-field-index
                      (into #{} (keep :field_id) rows))]

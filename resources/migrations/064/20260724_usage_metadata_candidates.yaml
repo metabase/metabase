@@ -55,10 +55,9 @@ databaseChangeLog:
               - column: {name: official_source_count, type: int, remarks: Distinct official source cards, constraints: {nullable: false}}
               - column: {name: popular_source_count, type: int, remarks: Distinct popular source cards, constraints: {nullable: false}}
               - column: {name: distinct_source_count, type: int, remarks: Distinct source cards, constraints: {nullable: false}}
-              - column: {name: total_view_count, type: int, remarks: Sum of source card views, constraints: {nullable: false}}
+              - column: {name: recent_view_count, type: int, remarks: Sum of source Card views in the snapshot usage window, constraints: {nullable: false}}
               - column: {name: complexity, type: int, remarks: Predicate or condition atom count, constraints: {nullable: false}}
-              - column: {name: family_order, type: int, remarks: Global family order within the snapshot, constraints: {nullable: false}}
-              - column: {name: family_position, type: int, remarks: Depth-first position inside the recommendation family, constraints: {nullable: false}}
+              - column: {name: sort_position, type: int, remarks: Deterministic depth-first position within the snapshot, constraints: {nullable: false}}
 
   # These indexes precede constraints that can replace MySQL's automatically generated foreign-key indexes. They are
   # intentionally retained during partial rollback and marked as already applied when migrations run forward again.
@@ -129,11 +128,10 @@ databaseChangeLog:
       changes:
         - createIndex:
             tableName: usage_metadata_candidate
-            indexName: idx_um_candidate_family_order
+            indexName: idx_um_candidate_sort_position
             columns:
               - column: {name: run_id}
-              - column: {name: family_order}
-              - column: {name: family_position}
+              - column: {name: sort_position}
 
   - changeSet:
       id: v64.um-candidate-source
@@ -161,7 +159,7 @@ databaseChangeLog:
               - column: {name: verified, type: "${boolean.type}", remarks: Whether the source was verified, constraints: {nullable: false}}
               - column: {name: official, type: "${boolean.type}", remarks: Whether the source was in an official collection, constraints: {nullable: false}}
               - column: {name: popular, type: "${boolean.type}", remarks: Whether the source met the popularity threshold, constraints: {nullable: false}}
-              - column: {name: view_count, type: int, remarks: Source Card lifetime views, constraints: {nullable: false}}
+              - column: {name: recent_view_count, type: int, remarks: Source Card views in the snapshot usage window, constraints: {nullable: false}}
               - column: {name: joined, type: "${boolean.type}", remarks: Whether evidence came from a joined stage, constraints: {nullable: false}}
               - column: {name: stage_numbers, type: "${text.type}", remarks: JSON stage numbers contributing evidence, constraints: {nullable: false}}
               - column: {name: model_lineage, type: "${text.type}", remarks: JSON transparent model lineage}

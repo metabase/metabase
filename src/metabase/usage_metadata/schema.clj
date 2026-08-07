@@ -1,8 +1,5 @@
 (ns metabase.usage-metadata.schema
-  "Shared malli schemas for usage-metadata public API inputs and results.
-
-  These are the shape contracts pinned at the `metabase.usage-metadata.core` boundary and
-  enforced by the underlying candidate and rollup producers."
+  "Shared malli schemas for usage-metadata inputs and results."
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))

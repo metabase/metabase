@@ -29,7 +29,7 @@ export function DismissCandidateModal({
     await runCandidateAction({
       action: "dismiss",
       candidate,
-      request: () => dismissCandidate({ id: candidate.id }).unwrap(),
+      request: () => dismissCandidate(candidate.id).unwrap(),
       errorMessage: t`The candidate could not be dismissed`,
       onStale,
       onSuccess: onDismissSuccess,

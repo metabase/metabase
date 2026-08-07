@@ -140,7 +140,7 @@ export function CleanupTablePage() {
     await runCandidateAction({
       action: "dismiss",
       candidate,
-      request: () => dismissCandidate({ id: candidate.id }).unwrap(),
+      request: () => dismissCandidate(candidate.id).unwrap(),
       errorMessage: t`The suggestion could not be dismissed`,
       onStale: handleStale,
       onSuccess: () => {

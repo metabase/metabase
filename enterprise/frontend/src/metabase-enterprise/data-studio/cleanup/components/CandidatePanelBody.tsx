@@ -270,7 +270,7 @@ function EvidenceSection({
           popular={evidence.popular_source_count > 0}
         />
         <Text size="sm" c="text-secondary">
-          {t`${evidence.distinct_source_count} sources · ${evidence.total_view_count} views`}
+          {t`${evidence.distinct_source_count} sources · ${evidence.recent_view_count} recent views`}
         </Text>
       </Group>
     </Stack>
@@ -329,7 +329,7 @@ function SourceRow({
             {source.card_name ?? t`Untitled saved content`}
           </Link>
           <Text size="sm" c="text-secondary">
-            {t`${source.view_count} views`}
+            {t`${source.recent_view_count} recent views`}
           </Text>
         </Group>
         <Group gap="xs">

@@ -1346,7 +1346,8 @@
 
   measures
   {:team "Graphy"
-   :api  #{metabase.measures.api}
+   :api  #{metabase.measures.api
+           metabase.measures.create}
    :uses #{api
            events
            lib
@@ -2143,6 +2144,7 @@
   segments
   {:team "Graphy"
    :api  #{metabase.segments.api
+           metabase.segments.create
            metabase.segments.schema}
    :uses #{api
            events

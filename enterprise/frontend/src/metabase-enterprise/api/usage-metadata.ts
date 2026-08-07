@@ -1,7 +1,6 @@
 import type {
   CreateUsageMetadataCandidateRequest,
   CreateUsageMetadataCandidateResponse,
-  DismissUsageMetadataCandidateRequest,
   ListUsageMetadataRequest,
   StartUsageMetadataRefreshResponse,
   UsageMetadataCandidateDetail,
@@ -57,24 +56,18 @@ export const usageMetadataApi = EnterpriseApi.injectEndpoints({
         idTag("usage-metadata-candidate", id),
       ],
     }),
-    dismissUsageMetadataCandidate: builder.mutation<
-      UsageMetadataCandidateDetail,
-      DismissUsageMetadataCandidateRequest
-    >({
-      query: ({ id }) => ({
+    dismissUsageMetadataCandidate: builder.mutation<void, number>({
+      query: (id) => ({
         method: "POST",
         url: `${BASE_URL}/candidates/${id}/dismiss`,
       }),
-      invalidatesTags: (response, error, { id }) =>
+      invalidatesTags: (response, error, id) =>
         invalidateTags(error, [
           idTag("usage-metadata-candidate", id),
           listTag("usage-metadata-candidate"),
         ]),
     }),
-    restoreUsageMetadataCandidate: builder.mutation<
-      UsageMetadataCandidateDetail,
-      number
-    >({
+    restoreUsageMetadataCandidate: builder.mutation<void, number>({
       query: (id) => ({
         method: "DELETE",
         url: `${BASE_URL}/candidates/${id}/dismissal`,

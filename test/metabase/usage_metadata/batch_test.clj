@@ -303,6 +303,7 @@
                    :count          1})
       (mt/with-temporary-setting-values [usage-metadata-last-completed-day nil
                                          usage-metadata-retention-days     2]
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [usage-metadata.store/replace-day! (fn [bucket-date payload]
                                                           (if (= bucket-date day-b)
                                                             (throw (ex-info "boom" {:bucket-date bucket-date}))
@@ -372,6 +373,7 @@
       (insert-query-execution! query-hash (t/offset-date-time "2026-04-14T12:00Z"))
       (mt/with-temporary-setting-values [usage-metadata-last-completed-day nil
                                          usage-metadata-retention-days     2]
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [usage-metadata.store/replace-day! (fn [bucket-date payload]
                                                           (if (= bucket-date day-b)
                                                             (throw (ex-info "boom" {:bucket-date bucket-date}))

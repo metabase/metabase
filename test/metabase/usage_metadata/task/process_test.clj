@@ -28,6 +28,8 @@
   (mt/with-temp-scheduler!
     (task/init! ::usage-metadata.task.process/UsageMetadataProcess)
     (let [ran? (promise)]
+      ;; Quartz runs the replacement on a scheduler thread, so this must be a process-wide redef.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [metabase.usage-metadata.batch/run-batch! (fn []
                                                                (deliver ran? true))
                     candidate-refresh/queue-refresh! (constantly nil)]

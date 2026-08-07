@@ -38,7 +38,6 @@
 (def ^:private candidate-family-parent-index candidate-family/candidate-family-parent-index)
 (def ^:private candidate-families candidate-family/candidate-families)
 (def ^:private prune-old-candidate-snapshots! candidate-snapshot/prune-old-candidate-snapshots!)
-(def ^:private reconcile-candidate! candidate-snapshot/reconcile-candidate!)
 (def ^:private reconcile-candidates! candidate-snapshot/reconcile-candidates!)
 
 (defn- candidate-row
@@ -54,14 +53,13 @@
    :suggested_name         "Recent orders"
    :display_name           "Recent orders"
    :suggested_description  "Recent orders on Orders"
-   :family_order           0
-   :family_position        0
+   :sort_position          0
    :modeling_status        :missing
    :verified_source_count  1
    :official_source_count  0
    :popular_source_count   1
    :distinct_source_count  1
-   :total_view_count       10
+   :recent_view_count       10
    :complexity             1})
 
 (defn- family-candidate
@@ -84,7 +82,7 @@
     :official_source_count 0
     :distinct_source_count 1
     :complexity            (count atoms)
-    :total_view_count      10}
+    :recent_view_count      10}
    overrides))
 
 (deftest recommendation-families-use-a-deterministic-primary-subset-parent-test
@@ -115,8 +113,7 @@
              (mapv :display-name (get-in child-row [:semantic-details :display-atoms])))))
     (testing "each candidate appears exactly once"
       (is (= [1 3 2] (mapv :candidate-id families)))
-      (is (= [0 0 1] (mapv :family-order families)))
-      (is (= [0 1 0] (mapv :family-position families))))))
+      (is (= [0 1 2] (mapv :sort-position families))))))
 
 (deftest ^:parallel candidate-family-parent-index-prefers-the-largest-subset-test
   (let [small-parent   (family-candidate 1 [["a" "A"]]
@@ -222,11 +219,11 @@
                                :definition (:definition mined)
                                :semantic_details (:aggregation mined)})]
           (testing "a mined definition and its saved Library entity have the same exact signature"
+            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true}
+              (reconcile-candidates! (:id published-run)))
             (is (= :modeled
-                   (reconcile-candidate! (assoc published-candidate
-                                                :definition (:definition mined)
-                                                :signature (:signature mined))
-                                         true)))
+                   (t2/select-one-fn :modeling_status :model/UsageMetadataCandidate
+                                     :id (:id published-candidate))))
             (is (= {:relation        :exact
                     :entity_id       (:id measure)
                     :entity_name     "Revenue"}
@@ -234,11 +231,11 @@
                                    :relation :entity_id :entity_name]
                                   :candidate_id (:id published-candidate)))))
           (testing "entities on an unpublished table are not treated as Library matches"
+            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published false}
+              (reconcile-candidates! (:id unpublished-run)))
             (is (= :missing
-                   (reconcile-candidate! (assoc unpublished-candidate
-                                                :definition (:definition mined)
-                                                :signature (:signature mined))
-                                         false)))
+                   (t2/select-one-fn :modeling_status :model/UsageMetadataCandidate
+                                     :id (:id unpublished-candidate))))
             (is (zero? (t2/count :model/UsageMetadataCandidateMatch
                                  :candidate_id (:id unpublished-candidate))))))))))
 
@@ -571,12 +568,7 @@
                 rows    (t2/select :model/UsageMetadataCandidate :run_id (:id run))
                 by-type (u/index-by :candidate_type rows)]
             (is (= :succeeded (:status result)))
-            (is (= {:candidate-count 2
-                    :measure-count 0
-                    :segment-count 0
-                    :metric-count 1
-                    :publish-table-count 1
-                    :table-count 1}
+            (is (= {:table-count 1}
                    (:summary result)))
             (is (= "Publish Orders" (:suggested_name (by-type :table))))
             (is (= [{:card-id (:id card)
@@ -592,44 +584,44 @@
               :verified_source_count  0
               :official_source_count  0
               :distinct_source_count  1
-              :total_view_count       0}]
+              :recent_view_count       0}]
     (testing "verified evidence requires at least 10 total views"
       (is (not (globally-eligible? (assoc base
                                           :verified_source_count 1
-                                          :total_view_count 9))))
+                                          :recent_view_count 9))))
       (is (globally-eligible? (assoc base
                                      :verified_source_count 1
-                                     :total_view_count 10))))
+                                     :recent_view_count 10))))
     (testing "official evidence requires two distinct sources and 10 total views"
       (is (not (globally-eligible? (assoc base
                                           :official_source_count 1
                                           :distinct_source_count 1
-                                          :total_view_count 100))))
+                                          :recent_view_count 100))))
       (is (not (globally-eligible? (assoc base
                                           :official_source_count 1
                                           :distinct_source_count 2
-                                          :total_view_count 9))))
+                                          :recent_view_count 9))))
       (is (globally-eligible? (assoc base
                                      :official_source_count 1
                                      :distinct_source_count 2
-                                     :total_view_count 10))))
+                                     :recent_view_count 10))))
     (testing "general usage requires three distinct sources and 25 total views"
       (is (not (globally-eligible? (assoc base
                                           :distinct_source_count 2
-                                          :total_view_count 1000))))
+                                          :recent_view_count 1000))))
       (is (not (globally-eligible? (assoc base
                                           :distinct_source_count 3
-                                          :total_view_count 24))))
+                                          :recent_view_count 24))))
       (is (globally-eligible? (assoc base
                                      :distinct_source_count 3
-                                     :total_view_count 25))))
+                                     :recent_view_count 25))))
     (testing "evidence cutoffs do not override semantic exclusions"
       (is (not (globally-eligible? (assoc base
                                           :candidate_type :measure
                                           :semantic_details {:type :count, :field nil}
                                           :verified_source_count 1
                                           :distinct_source_count 3
-                                          :total_view_count 100)))))))
+                                          :recent_view_count 100)))))))
 
 (deftest persisted-candidates-are-pruned-by-the-fixed-evidence-cutoffs-test
   (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :running
@@ -641,7 +633,7 @@
                         :verified_source_count 0
                         :official_source_count 1
                         :popular_source_count 0
-                        :total_view_count 8)
+                        :recent_view_count 8)
                  :model/UsageMetadataCandidate strong-candidate
                  (candidate-row (:id run) (mt/id :products))]
     (prune-ineligible-candidates! (:id run))
@@ -757,7 +749,7 @@
                     :verified      true
                     :official      false
                     :popular       true
-                    :view_count    12
+                    :recent_view_count 12
                     :joined        false
                     :stage_numbers [0 1]
                     :model_lineage []}]
@@ -770,7 +762,7 @@
                 :verified      true
                 :official      false
                 :popular       true
-                :view_count    12
+                :recent_view_count 12
                 :joined        false
                 :stage_numbers [0 1]
                 :model_lineage []}]}
@@ -783,7 +775,7 @@
                                 :verified_source_count  1
                                 :official_source_count  1
                                 :distinct_source_count  3
-                                :total_view_count       100}))))
+                                :recent_view_count       100}))))
 
 (deftest structural-library-relations-test
   (let [metadata-provider (lib-be/application-database-metadata-provider (mt/id))
@@ -845,7 +837,7 @@
                    :verified      true
                    :official      false
                    :popular       true
-                   :view_count    42
+                   :recent_view_count 42
                    :joined        false
                    :stage_numbers [0]
                    :model_lineage nil})
@@ -857,8 +849,8 @@
                    :entity_description (:description measure)})
       (t2/delete! :model/Card :id (:id source-card))
       (t2/delete! :model/Measure :id (:id measure))
-      (is (= {:card_id (:id source-card), :card_name "Revenue by region", :view_count 42}
-             (t2/select-one [:model/UsageMetadataCandidateSource :card_id :card_name :view_count]
+      (is (= {:card_id (:id source-card), :card_name "Revenue by region", :recent_view_count 42}
+             (t2/select-one [:model/UsageMetadataCandidateSource :card_id :card_name :recent_view_count]
                             :candidate_id (:id candidate))))
       (is (= {:relation           :exact
               :entity_id          (:id measure)

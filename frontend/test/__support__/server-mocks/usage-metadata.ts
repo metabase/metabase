@@ -53,20 +53,12 @@ export function setupCreateUsageMetadataCandidateEndpoint(
 
 export function setupDismissUsageMetadataCandidateEndpoint(
   candidateId: number,
-  response: UsageMetadataCandidateDetail,
 ) {
-  fetchMock.post(
-    `path:${BASE_URL}/candidates/${candidateId}/dismiss`,
-    response,
-  );
+  fetchMock.post(`path:${BASE_URL}/candidates/${candidateId}/dismiss`, {});
 }
 
 export function setupRestoreUsageMetadataCandidateEndpoint(
   candidateId: number,
-  response: UsageMetadataCandidateDetail,
 ) {
-  fetchMock.delete(
-    `path:${BASE_URL}/candidates/${candidateId}/dismissal`,
-    response,
-  );
+  fetchMock.delete(`path:${BASE_URL}/candidates/${candidateId}/dismissal`, {});
 }

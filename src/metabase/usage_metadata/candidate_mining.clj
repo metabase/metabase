@@ -7,57 +7,16 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.collections.models.collection]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.usage-metadata.query-utils :as query-utils]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn build-source-index
-  "Bulk-fetch the Tables and Cards identified by `[source-type source-id]` keys."
-  [source-keys]
-  (let [by-type   (group-by first source-keys)
-        table-ids (into #{} (comp (keep second) (filter pos-int?)) (get by-type :table))
-        card-ids  (into #{} (comp (keep second) (filter pos-int?)) (get by-type :card))
-        tables    (when (seq table-ids)
-                    (t2/select [:model/Table :id :name :display_name :db_id :schema]
-                               :id [:in table-ids]))
-        cards     (when (seq card-ids)
-                    (t2/select [:model/Card :id :name] :id [:in card-ids]))]
-    (into {}
-          cat
-          [(map (fn [{:keys [id name display_name db_id schema]}]
-                  [[:table id] {:type         :table
-                                :id           id
-                                :db-id        db_id
-                                :schema       schema
-                                :name         name
-                                :display-name (or display_name name)}])
-                tables)
-           (map (fn [{:keys [id name]}]
-                  [[:card id] {:type         :card
-                               :id           id
-                               :name         name
-                               :display-name name}])
-                cards)])))
-
-(defn wrap-query
-  "Wrap raw MBQL in a Lib query backed by the application metadata provider."
-  [database-id query-map]
-  (when (and (pos-int? database-id) (seq query-map))
-    (try
-      (lib/query (lib-be/application-database-metadata-provider database-id) query-map)
-      (catch InterruptedException e
-        (.interrupt (Thread/currentThread))
-        (throw e))
-      (catch Exception e
-        (log/debugf "Failed to wrap query for usage-metadata insights: %s" (ex-message e))
-        nil))))
 
 (def conditional-aggregation-operators
   "Aggregation operators whose semantics include a filter predicate."
@@ -463,7 +422,7 @@
                 :as              card} (card-index source-card-id)]
       (when (and (eligible-card? card)
                  (= database-id card-database-id))
-        (when-let [card-query (wrap-query database-id card-query-map)]
+        (when-let [card-query (query-utils/wrap-query database-id card-query-map)]
           (let [stage (when (= 1 (lib/stage-count card-query))
                         (lib/query-stage card-query 0))
                 source
@@ -493,7 +452,7 @@
 (defn query-stage-contexts
   "Return physically traceable MBQL stages up to the first semantic lineage barrier."
   [database-id dataset-query model-index]
-  (when-let [query (wrap-query database-id dataset-query)]
+  (when-let [query (query-utils/wrap-query database-id dataset-query)]
     (let [stage (lib/query-stage query 0)
           source
           (cond

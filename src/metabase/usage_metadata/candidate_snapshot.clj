@@ -12,7 +12,7 @@
    [metabase.usage-metadata.candidate-repository :as candidate-repository]
    [metabase.usage-metadata.models.candidate]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [trs]]
    [toucan2.core :as t2])
   (:import
    (java.nio.charset StandardCharsets)
@@ -90,8 +90,8 @@
                              (mapv (fn [{:keys [id dependency-paths]}]
                                      {:card-id id, :dependency-paths dependency-paths})
                                    (:source-items evidence))}
-     :suggested-name        (tru "Publish {0}" (:display-name table))
-     :suggested-description (tru "Saved content depends on this unpublished table.")
+     :suggested-name        (trs "Publish {0}" (:display-name table))
+     :suggested-description (trs "Saved content depends on this unpublished table.")
      :evidence              (update evidence :source-items
                                     (fn [source-items]
                                       (mapv #(assoc % :joined? false, :stage-numbers [0]) source-items)))}))
@@ -147,24 +147,23 @@
      :official_source_count  official-source-count
      :popular_source_count   popular-source-count
      :distinct_source_count  distinct-source-count
-     :total_view_count       total-view-count
+     :recent_view_count      total-view-count
      :complexity             complexity
-     :family_order           0
-     :family_position        0}))
+     :sort_position          0}))
 
 (defn- source-row
   [candidate-id source]
-  {:candidate_id  candidate-id
-   :card_id       (:id source)
-   :card_name     (:name source)
-   :card_type     (:type source)
-   :verified      (:verified? source)
-   :official      (:official-collection? source)
-   :popular       (:popular? source)
-   :view_count    (:view-count source)
-   :joined        (:joined? source)
-   :stage_numbers (:stage-numbers source)
-   :model_lineage (:model-lineage source)})
+  {:candidate_id      candidate-id
+   :card_id           (:id source)
+   :card_name         (:name source)
+   :card_type         (:type source)
+   :verified          (:verified? source)
+   :official          (:official-collection? source)
+   :popular           (:popular? source)
+   :recent_view_count (:view-count source)
+   :joined            (:joined? source)
+   :stage_numbers     (:stage-numbers source)
+   :model_lineage     (:model-lineage source)})
 
 (defn- candidate-reconciliation
   [{:keys [candidate_type table_id] :as candidate} published? existing-entities]
@@ -190,18 +189,6 @@
                            (candidate-repository/candidate-match-row candidate entity relation))
                          matches)})
     {:candidate candidate, :status :missing, :match-rows []}))
-
-(defn reconcile-candidate!
-  "Reconcile one persisted candidate with active Library entities."
-  [{:keys [id candidate_type table_id] :as candidate} published?]
-  (let [{:keys [status match-rows]}
-        (candidate-reconciliation candidate published?
-                                  (when published?
-                                    (candidate-repository/existing-entities candidate_type table_id)))]
-    (when (seq match-rows)
-      (t2/insert! :model/UsageMetadataCandidateMatch match-rows))
-    (t2/update! :model/UsageMetadataCandidate id {:modeling_status status})
-    status))
 
 (defn- published-table-ids
   [table-ids]
@@ -264,7 +251,7 @@
              :official_source_count (+ (:official_source_count candidate) official-source-count)
              :popular_source_count  (+ (:popular_source_count candidate) popular-source-count)
              :distinct_source_count (+ (:distinct_source_count candidate) distinct-source-count)
-             :total_view_count      (+ (:total_view_count candidate) total-view-count)}
+             :recent_view_count      (+ (:recent_view_count candidate) total-view-count)}
       (= :table (:candidate_type candidate))
       (assoc :semantic_details
              (assoc (:semantic_details candidate)
@@ -315,7 +302,7 @@
 (defn globally-eligible?
   "Whether an aggregated persisted candidate meets semantic and evidence cutoffs."
   [candidate]
-  (let [{:keys [verified_source_count official_source_count distinct_source_count total_view_count]}
+  (let [{:keys [verified_source_count official_source_count distinct_source_count recent_view_count]}
         candidate
         cutoffs (:candidate-cutoffs source-config)
         {verified-min-views :minimum-total-view-count} (:verified cutoffs)
@@ -327,12 +314,12 @@
      (candidate-mining/semantically-eligible-candidate?
       (definitions/candidate-row->observation candidate))
      (or (and (pos? verified_source_count)
-              (>= total_view_count verified-min-views))
+              (>= recent_view_count verified-min-views))
          (and (pos? official_source_count)
               (>= distinct_source_count official-min-sources)
-              (>= total_view_count official-min-views))
+              (>= recent_view_count official-min-views))
          (and (>= distinct_source_count general-min-sources)
-              (>= total_view_count general-min-views))))))
+              (>= recent_view_count general-min-views))))))
 
 (defn prune-ineligible-candidates!
   "Delete candidates that do not meet semantic or evidence thresholds."
@@ -340,7 +327,7 @@
   (loop [last-id 0]
     (let [rows (t2/select [:model/UsageMetadataCandidate :id :candidate_type :semantic_details
                            :complexity :verified_source_count :official_source_count
-                           :distinct_source_count :total_view_count]
+                           :distinct_source_count :recent_view_count]
                           :run_id run-id
                           :id [:> last-id]
                           {:order-by [[:id :asc]], :limit 200})]
@@ -358,7 +345,7 @@
                      (mapcat (fn [ids]
                                (t2/select [:model/UsageMetadataCandidateSource
                                            :candidate_id :card_id :card_name :card_type
-                                           :verified :official :popular :view_count :joined
+                                           :verified :official :popular :recent_view_count :joined
                                            :stage_numbers :model_lineage]
                                           :candidate_id [:in ids])))
                      (group-by :candidate_id))]
@@ -427,22 +414,12 @@
 
 (defn- run-summary
   [run-id]
-  (let [{:keys [candidate_count measure_count segment_count metric_count publish_table_count table_count]}
+  (let [{:keys [table_count]}
         (t2/query-one
-         {:select [[[:count :*] :candidate_count]
-                   [[:count [:case [:= :candidate_type "measure"] [:inline 1]]] :measure_count]
-                   [[:count [:case [:= :candidate_type "segment"] [:inline 1]]] :segment_count]
-                   [[:count [:case [:= :candidate_type "metric"] [:inline 1]]] :metric_count]
-                   [[:count [:case [:= :candidate_type "table"] [:inline 1]]] :publish_table_count]
-                   [[:count [:distinct :table_id]] :table_count]]
+         {:select [[[:count [:distinct :table_id]] :table_count]]
           :from   [(t2/table-name :model/UsageMetadataCandidate)]
           :where  [:= :run_id run-id]})]
-    {:candidate-count candidate_count
-     :measure-count measure_count
-     :segment-count segment_count
-     :metric-count metric_count
-     :publish-table-count publish_table_count
-     :table-count table_count}))
+    {:table-count table_count}))
 
 (defn prune-old-candidate-snapshots!
   "Delete candidate payloads belonging to older runs in bounded batches."
@@ -482,8 +459,9 @@
     (reconcile-candidates! run-id)
     (candidate-family/materialize! run-id)
     (let [summary (run-summary run-id)]
-      (t2/with-transaction [_conn]
-        (t2/update! :model/UsageMetadataCandidateRun run-id
-                    {:status :succeeded, :finished_at (mi/now), :summary summary})
-        (prune-old-snapshots! run-id))
+      (candidate-repository/with-snapshot-action-lock
+        #(t2/with-transaction [_conn]
+           (t2/update! :model/UsageMetadataCandidateRun run-id
+                       {:status :succeeded, :finished_at (mi/now), :summary summary})
+           (prune-old-snapshots! run-id)))
       (assoc run :status :succeeded, :summary summary))))

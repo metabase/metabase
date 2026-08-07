@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
-   [metabase.usage-metadata.candidate-builders :as candidate-builders]
    [metabase.usage-metadata.core :as usage-metadata]
    [metabase.usage-metadata.insights :as insights]))
 
@@ -35,89 +34,6 @@
    :basis       :fingerprint
    :observation {:type :low-cardinality, :value 5}
    :count       1})
-
-(def ^:private sample-candidate-table-report
-  {:candidates
-   [{:table {:id 42
-             :database-id 1
-             :database-name "DB"
-             :schema nil
-             :name "orders"
-             :display-name "Orders"
-             :description nil
-             :data-layer :final
-             :data-authority :authoritative
-             :view-count 7}
-     :evidence {:source-items [{:id 99
-                                :name "Question"
-                                :type :question
-                                :verified? true
-                                :official-collection? false
-                                :popular? true
-                                :view-count 12
-                                :dependency-paths [{:direct? true, :models []}]}]
-                :distinct-source-count 1
-                :verified-source-count 1
-                :official-source-count 0
-                :popular-source-count 1
-                :total-view-count 12}}]
-   :unsupported-source-items []})
-
-(def ^:private sample-candidate-metric
-  {:definition {:lib/type :mbql/query
-                :database 1
-                :stages [{:lib/type :mbql.stage/mbql
-                          :source-table 42
-                          :aggregation [[:sum {} [:field {} 10]]]
-                          :filters [[:= {} [:field {} 11] "paid"]]}]}
-   :suggested-name "Paid revenue"
-   :suggested-description "Revenue from paid orders"
-   :aggregation [:sum {} [:field {} 10]]
-   :required-tables [{:id 42
-                      :database-id 1
-                      :database-name "DB"
-                      :schema nil
-                      :name "orders"
-                      :display-name "Orders"
-                      :description nil
-                      :data-layer :final
-                      :data-authority :authoritative
-                      :view-count 7
-                      :published? true}]
-   :evidence {:source-items [{:id 99
-                              :name "Paid revenue question"
-                              :type :question
-                              :verified? true
-                              :official-collection? false
-                              :popular? true
-                              :view-count 12
-                              :stage-numbers [0]
-                              :joined? false}]
-              :distinct-source-count 1
-              :verified-source-count 1
-              :official-source-count 0
-              :popular-source-count 1
-              :total-view-count 12}})
-
-(deftest ^:parallel candidate-tables-delegate-to-builder-test
-  (let [captured-args (atom nil)]
-    (mt/with-dynamic-fn-redefs [candidate-builders/candidate-tables
-                                (fn [opts]
-                                  (reset! captured-args opts)
-                                  sample-candidate-table-report)]
-      (is (= sample-candidate-table-report
-             (usage-metadata/candidate-tables {:limit 3})))
-      (is (= {:limit 3} @captured-args)))))
-
-(deftest ^:parallel candidate-metrics-delegate-to-builder-test
-  (let [captured-args (atom nil)]
-    (mt/with-dynamic-fn-redefs [candidate-builders/candidate-metrics
-                                (fn [opts]
-                                  (reset! captured-args opts)
-                                  [sample-candidate-metric])]
-      (is (= [sample-candidate-metric]
-             (usage-metadata/candidate-metrics {:limit 3})))
-      (is (= {:limit 3} @captured-args)))))
 
 (deftest ^:parallel implicit-segments-delegate-to-insights-test
   (let [captured-args (atom nil)]

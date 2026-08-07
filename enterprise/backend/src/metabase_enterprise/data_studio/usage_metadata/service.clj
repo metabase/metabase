@@ -1,9 +1,9 @@
 (ns metabase-enterprise.data-studio.usage-metadata.service
   "Domain operations for reviewing and acting on persisted usage-metadata recommendations."
   (:require
-   [metabase.measures.api :as measures.api]
+   [metabase.measures.create :as measures.create]
    [metabase.models.interface :as mi]
-   [metabase.segments.api :as segments.api]
+   [metabase.segments.create :as segments.create]
    [metabase.usage-metadata.candidate-refresh :as candidate-refresh]
    [metabase.usage-metadata.candidate-repository :as candidate-repository]))
 
@@ -60,11 +60,8 @@
   [candidate]
   (candidate-repository/restore! candidate))
 
-(defn create!
-  "Create or return the exact Measure or Segment represented by `candidate`."
+(defn- create-current!
   [candidate {:keys [name description] :as overrides}]
-  (when-not (candidate-entity-model candidate)
-    (conflict! "This recommendation does not support direct creation" :unsupported-candidate-action))
   (let [table (candidate-repository/candidate-table candidate)]
     (when-not table
       (throw (ex-info "Candidate table does not exist" {:status-code 404})))
@@ -86,6 +83,16 @@
                                    (:suggested_description candidate))
                     :definition  (:definition candidate)}
             entity (case (:candidate_type candidate)
-                     :measure (measures.api/create-measure! body)
-                     :segment (segments.api/create-segment! body))]
+                     :measure (measures.create/create! body)
+                     :segment (segments.create/create! body))]
         (candidate-repository/mark-modeled! candidate entity)))))
+
+(defn create!
+  "Create or return the exact Measure or Segment represented by the current candidate snapshot."
+  [candidate overrides]
+  (when-not (candidate-entity-model candidate)
+    (conflict! "This recommendation does not support direct creation" :unsupported-candidate-action))
+  (candidate-repository/with-snapshot-action-lock
+    #(if-let [current (current-candidate (:id candidate))]
+       (create-current! current overrides)
+       (conflict! "Candidate no longer belongs to the current snapshot" :obsolete-snapshot))))
