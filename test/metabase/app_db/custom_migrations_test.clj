@@ -3025,6 +3025,21 @@
                         :deployment-name "gpt-4.1-mini"}}]
              (llm-connections))))))
 
+(deftest migrate-llm-provider-settings-google-test
+  (testing "v64.7qmx3p : either Google credential is enough, and the model comes from the reference it lived in"
+    (impl/test-migrations ["v64.7qmx3p"] [migrate!]
+      (insert-llm-settings! {"llm-google-oauth-access-token" "ya29.stored-token"
+                             "llm-google-project-id"         "my-project"
+                             "llm-metabot-provider"          "google/google/gemini-3.5-flash"})
+      (migrate!)
+      (is (= [{:key    "google"
+               :type   "google"
+               :name   "Google Gemini"
+               :config {:oauth-access-token "ya29.stored-token"
+                        :project-id         "my-project"
+                        :model              "google/gemini-3.5-flash"}}]
+             (llm-connections))))))
+
 (deftest migrate-llm-provider-settings-managed-test
   (testing "v64.7qmx3p : an instance already on the managed provider gets the connection its reference names"
     (impl/test-migrations ["v64.7qmx3p"] [migrate!]
