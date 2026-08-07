@@ -343,44 +343,54 @@
 
   By default, library collections are excluded from the results; to include them, pass `?include_library=true`.
 
+  Pass `?q=` to filter items by name or last editor. Pass `?include_available_models=true` to include the models that
+  have at least one visible item in the requested scope.
+
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query include_library collection_type
-           show_dashboard_questions]} :- [:map
-                                          [:models                      {:optional true} [:maybe collections.children/Models]]
-                                          [:collection_type             {:optional true} collections.children/CollectionType]
-                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
-                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                          [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
-                                          [:include_library             {:default false} [:maybe ms/BooleanValue]]
-                                          [:pinned_state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
-                                          [:sort_column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
-                                          [:sort_direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
-                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                          [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+           show_dashboard_questions q include_available_models]} :- [:map
+                                                                     [:models                      {:optional true} [:maybe collections.children/Models]]
+                                                                     [:collection_type             {:optional true} collections.children/CollectionType]
+                                                                     [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                                                     [:include_library             {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:pinned_state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
+                                                                     [:sort_column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
+                                                                     [:sort_direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
+                                                                     [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                     [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                     [:q                           {:optional true} [:maybe :string]]
+                                                                     [:include_available_models    {:default false} [:maybe ms/BooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
-        model-kwds      (collections.children/visible-model-kwds root-collection model-set)]
-    (collections.children/collection-children
-     root-collection
-     {:archived?                   (boolean archived)
-      :include-can-run-adhoc-query include_can_run_adhoc_query
-      :show-dashboard-questions?   (boolean show_dashboard_questions)
-      :collection-type             collection_type
-      :include-library?            include_library
-      :models                      (if-not (contains? collections.children/namespaces-holding-non-collection-types namespace)
-                                     #{:collection}
-                                     model-kwds)
-      :pinned-state                (keyword pinned_state)
-      :sort-info                   {:sort-column                 (or (some-> sort_column collections.children/normalize-sort-choice) :name)
-                                    :sort-direction              (or (some-> sort_direction collections.children/normalize-sort-choice) :asc)
-                                    ;; default to sorting official collections first, but provide the option not to
-                                    :official-collections-first? (or (nil? official_collections_first)
-                                                                     (boolean official_collections_first))}})))
+        model-kwds      (collections.children/visible-model-kwds root-collection model-set)
+        restrict-models (when (or (not (contains? collections.children/namespaces-holding-non-collection-types namespace))
+                                  (not (mi/can-read? root-collection)))
+                          #{:collection})
+        options         {:archived?                   (boolean archived)
+                         :include-can-run-adhoc-query include_can_run_adhoc_query
+                         :show-dashboard-questions?   (boolean show_dashboard_questions)
+                         :collection-type             collection_type
+                         :include-library?            include_library
+                         :models                      (if-not (contains? collections.children/namespaces-holding-non-collection-types namespace)
+                                                        #{:collection}
+                                                        model-kwds)
+                         :pinned-state                (keyword pinned_state)
+                         :search-text                 q
+                         :sort-info                   {:sort-column                 (or (some-> sort_column collections.children/normalize-sort-choice) :name)
+                                                       :sort-direction              (or (some-> sort_direction collections.children/normalize-sort-choice) :asc)
+                                                       ;; default to sorting official collections first, but provide the option not to
+                                                       :official-collections-first? (or (nil? official_collections_first)
+                                                                                        (boolean official_collections_first))}}]
+    (cond-> (collections.children/collection-children root-collection options)
+      include_available_models
+      (merge (collections.children/collection-filter-metadata root-collection restrict-models options)))))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
@@ -566,6 +576,8 @@
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything.
   *  `include_can_run_adhoc_query` - when this is true hydrates the `can_run_adhoc_query` flag on card models
+  *  `q` - filter items by name or last editor. Blank or whitespace-only values are ignored.
+  *  `include_available_models` - include the models that have at least one visible item in the requested scope.
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
@@ -573,30 +585,36 @@
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query
-           show_dashboard_questions]} :- [:map
-                                          [:models                      {:optional true} [:maybe collections.children/Models]]
-                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
-                                          [:pinned_state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
-                                          [:sort_column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
-                                          [:sort_direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
-                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                          [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]]]
+           show_dashboard_questions q include_available_models]} :- [:map
+                                                                     [:models                      {:optional true} [:maybe collections.children/Models]]
+                                                                     [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:pinned_state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
+                                                                     [:sort_column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
+                                                                     [:sort_direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
+                                                                     [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                     [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]
+                                                                     [:q                           {:optional true} [:maybe :string]]
+                                                                     [:include_available_models    {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
-        model-kwds (set (map keyword (u/one-or-many models)))
-        collection (api/read-check :model/Collection resolved-id)]
-    (u/prog1 (collections.children/collection-children collection
-                                                       {:show-dashboard-questions?   show_dashboard_questions
-                                                        :models                      model-kwds
-                                                        :include-library?             true
-                                                        :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
-                                                        :pinned-state                (keyword pinned_state)
-                                                        :include-can-run-adhoc-query include_can_run_adhoc_query
-                                                        :sort-info                   {:sort-column                 (or (some-> sort_column collections.children/normalize-sort-choice) :name)
-                                                                                      :sort-direction              (or (some-> sort_direction collections.children/normalize-sort-choice) :asc)
-                                                                                      ;; default to sorting official collections first, except for the trash.
-                                                                                      :official-collections-first? (if (and (nil? official_collections_first)
-                                                                                                                            (not (collection/is-trash? collection)))
-                                                                                                                     true
-                                                                                                                     (boolean official_collections_first))}})
-      (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
+        model-kwds  (set (map keyword (u/one-or-many models)))
+        collection  (api/read-check :model/Collection resolved-id)
+        options     {:show-dashboard-questions?   show_dashboard_questions
+                     :models                      model-kwds
+                     :include-library?            true
+                     :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
+                     :pinned-state                (keyword pinned_state)
+                     :include-can-run-adhoc-query include_can_run_adhoc_query
+                     :search-text                 q
+                     :sort-info                   {:sort-column                 (or (some-> sort_column collections.children/normalize-sort-choice) :name)
+                                                   :sort-direction              (or (some-> sort_direction collections.children/normalize-sort-choice) :asc)
+                                                   ;; default to sorting official collections first, except for the trash.
+                                                   :official-collections-first? (if (and (nil? official_collections_first)
+                                                                                         (not (collection/is-trash? collection)))
+                                                                                  true
+                                                                                  (boolean official_collections_first))}}
+        children    (cond-> (collections.children/collection-children collection options)
+                      include_available_models
+                      (merge (collections.children/collection-filter-metadata collection nil options)))]
+    (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*})
+    children))

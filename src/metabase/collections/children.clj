@@ -206,6 +206,8 @@
    ;; when set, restrict results to items created by this user id; models without a creator
    ;; column (see [[creator-filterable-models]]) return nothing.
    [:created-by-id {:optional true} [:maybe pos-int?]]
+   ;; when set, match every token against an item's name or its last editor's name
+   [:search-text  {:optional true} [:maybe :string]]
    [:sort-info    {:optional true} [:maybe [:map
                                             [:sort-column (into [:enum {:error/message "sort-columns"}]
                                                                 (map normalize-sort-choice)
@@ -885,6 +887,37 @@
     :timeline   :model/Timeline
     :transform  :model/Transform))
 
+(defn- escape-like-pattern
+  "Escape characters that have special meaning in a SQL LIKE pattern so they match literally."
+  ^String [^String s]
+  (str/replace s #"([\\%_])" "\\\\$1"))
+
+(defn- search-text-clause
+  "Match every token in `search-text` against an item's name or last editor's first or last name."
+  [search-text]
+  (when-not (str/blank? search-text)
+    (when-let [tokens (->> (str/split (u/lower-case-en (str/trim search-text)) #"\s+")
+                           (filter seq)
+                           not-empty)]
+      (into [:and]
+            (for [token tokens
+                  :let  [pattern (str "%" (escape-like-pattern token) "%")]]
+              [:or
+               [:like [:lower :name] pattern]
+               [:like [:lower :last_edit_first_name] pattern]
+               [:like [:lower :last_edit_last_name] pattern]])))))
+
+(defn- total-count
+  "The size of the whole result set `rows` is a page of, read off the `total_count` window column.
+
+  A page past the end of the result set comes back empty and so carries no window column; in that case read the count
+  off the first row of the same query without its pagination."
+  [rows rows-query offset]
+  (or (some-> rows first :total_count)
+      (when (pos? (or offset 0))
+        (some-> (mdb/query (assoc rows-query :limit 1)) first :total_count))
+      0))
+
 (defn post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
   `post-process-collection-children`. Must respect the order passed in."
@@ -1019,7 +1052,7 @@
          [[:id :asc]]]))
 
 (defn- collection-children*
-  [collection models {:keys [sort-info archived?] :as options}]
+  [collection models {:keys [sort-info archived? search-text] :as options}]
   (let [sql-order   (children-sort-clause sort-info (mdb/db-type))
         models      (sort (map keyword models))
         queries     (for [model models
@@ -1036,10 +1069,13 @@
                      :archive-operation-id nil
                      :permission-level (if archived? :write :read)
                      :include-trash-collection? archived?}
-        rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                     :select   [:* [[:over [[:count :*] {} :total_count]]]]
-                     :from     [[{:union-all queries} :dummy_alias]]
-                     :order-by sql-order}
+        search-clause (search-text-clause search-text)
+        rows-query  (cond-> {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
+                             :select   [:* [[:over [[:count :*] {} :total_count]]]]
+                             :from     [[{:union-all queries} :dummy_alias]]
+                             :order-by sql-order}
+                      search-clause
+                      (sql.helpers/where search-clause))
         limit       (request/limit)
         offset      (request/offset)
         ;; We didn't implement collection pagination for snippets namespace for root/items
@@ -1056,7 +1092,7 @@
                              :offset offset))
         rows        (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
                       (mdb/query limit-query))
-        res         {:total  (->> rows first :total_count)
+        res         {:total  (total-count rows rows-query offset)
                      :data   (if (= limit 0)
                                []
                                (tracing/with-span :db-app "db-app.collection-items-post-process" {:collection/id (:id collection)}
@@ -1068,6 +1104,53 @@
     (if (= (:collection-namespace options) "snippets")
       res
       limit-res)))
+
+(defn- valid-collection-models
+  "Return every item model that can appear in `collection-namespace`."
+  [collection-namespace]
+  (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
+                   ;; Tables in collections are an EE feature (library)
+                   (premium-features/has-feature? :library) (conj :table))
+        :let     [toucan-model       (model-name->toucan-model model-kw)
+                  allowed-namespaces (collection/allowed-namespaces toucan-model)]
+        :when    (or (= model-kw :collection)
+                     (contains? allowed-namespaces (keyword collection-namespace)))]
+    model-kw))
+
+(mu/defn collection-filter-metadata :- [:map
+                                        [:available_models [:sequential :string]]]
+  "Return the models that have at least one visible item in `collection`. Respect the requested scope and visibility,
+  but ignore model and search filters. When present, `restrict-models` limits the candidate models. Snippets are never
+  reported: they are not a filterable type."
+  [collection                      :- collection/CollectionWithLocationAndIDOrRoot
+   restrict-models                 :- [:maybe [:set :keyword]]
+   {:keys [archived?] :as options} :- CollectionChildrenOptions]
+  (let [candidates (cond->> (remove #{:snippet} (valid-collection-models (:namespace collection)))
+                     (seq restrict-models) (filter restrict-models))
+        options    (-> options
+                       (dissoc :models :search-text)
+                       (assoc :collection-namespace (:namespace collection)))]
+    ;; This result is independent of search and model filters. Requesting it with every filter update
+    ;; repeats the same EXISTS probes; a separately cached request could avoid that work.
+    (if (empty? candidates)
+      {:available_models []}
+      (let [viz-config {:include-archived-items    :all
+                        :archive-operation-id      nil
+                        :permission-level          (if archived? :write :read)
+                        :include-trash-collection? archived?}
+            row        (first
+                        (mdb/query
+                         {:with   [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
+                          :select (vec
+                                   (for [model candidates]
+                                     [[:exists (collection-children-query model collection options)] model]))}))]
+        {:available_models
+         (->> candidates
+              (keep (fn [model]
+                      (when (api/bit->boolean (get row model))
+                        (name model))))
+              sort
+              vec)}))))
 
 (mu/defn collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
