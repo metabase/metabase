@@ -1,7 +1,18 @@
-import type { TestStageWithSourceSpec } from "metabase-types/api";
+import type {
+  TestBreakoutSpec,
+  TestExpressionSpec,
+  TestOrderBySpec,
+  TestStageWithSourceSpec,
+} from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import type { MetricSchema, QuestionSchema, TableSchema } from "./schema";
+import type {
+  MeasureSchema,
+  MetricSchema,
+  QuestionSchema,
+  SegmentSchema,
+  TableSchema,
+} from "./schema";
 
 export type TableQueryInput = Omit<TestStageWithSourceSpec, "source"> & {
   source: TableSchema;
@@ -11,6 +22,14 @@ export type TableQueryInput = Omit<TestStageWithSourceSpec, "source"> & {
 
 export type QuestionQueryInput = {
   source: QuestionSchema;
+
+  // Segments, Measures, and Metrics belong to a table source, so a card stage
+  // only accepts expressions over the saved question's own result columns.
+  filters?: readonly TestExpressionSpec[];
+  aggregations?: readonly TestExpressionSpec[];
+  breakouts?: readonly TestBreakoutSpec[];
+  orderBys?: readonly TestOrderBySpec[];
+  limit?: number;
   enabled?: boolean;
 };
 
@@ -24,6 +43,12 @@ export const isTableReference = (value: unknown): value is TableSchema =>
 
 export const isMetricReference = (value: unknown): value is MetricSchema =>
   isObject(value) && typeof value.id === "number" && value.type === "metric";
+
+export const isSegmentReference = (value: unknown): value is SegmentSchema =>
+  isObject(value) && typeof value.id === "number" && value.type === "segment";
+
+export const isMeasureReference = (value: unknown): value is MeasureSchema =>
+  isObject(value) && typeof value.id === "number" && value.type === "measure";
 
 export const isQuestionInput = (input: unknown): input is QuestionQueryInput =>
   isObject(input) && "source" in input && isQuestionReference(input.source);
