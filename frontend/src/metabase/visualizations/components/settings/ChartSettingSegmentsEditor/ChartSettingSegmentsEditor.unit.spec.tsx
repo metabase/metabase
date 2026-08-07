@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupCardEndpoints } from "__support__/server-mocks";
 import { fireEvent, render, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
-import type { ScalarSegment } from "metabase-types/api";
+import type { DatasetData, GoalSegment, GoalValue } from "metabase-types/api";
 import {
+  createMockCard,
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
@@ -13,7 +15,7 @@ import {
   type ChartSettingSegmentsEditorProps,
 } from "./ChartSettingSegmentsEditor";
 
-const createMockSegment = (opts?: Partial<ScalarSegment>): ScalarSegment => {
+const createMockSegment = (opts?: Partial<GoalSegment>): GoalSegment => {
   return { label: "", min: 0, max: 100, color: "red", ...opts };
 };
 
@@ -69,6 +71,115 @@ describe("ChartSettingSegmentsEditor", () => {
     expect(
       screen.getAllByRole("button", { name: "Pick a dynamic value" }),
     ).toHaveLength(inputsPerSegmentCount * segmentsCount);
+  });
+
+  it("labels each range and its bounds distinctly", () => {
+    setup();
+
+    expect(screen.getByLabelText("Range 1 label")).toHaveValue("bad");
+    expect(screen.getByLabelText("Range 1 minimum")).toHaveValue("0");
+    expect(screen.getByLabelText("Range 2 maximum")).toHaveValue("200");
+    expect(
+      screen.getByRole("button", { name: "Remove range 2" }),
+    ).toBeInTheDocument();
+  });
+
+  describe("bound errors", () => {
+    const renderWithBound = (min: GoalValue | null, data: DatasetData) => {
+      // GoalValueInput loads the referenced card to label the pill
+      setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
+
+      return renderWithProviders(
+        <ChartSettingSegmentsEditor
+          value={[createMockSegment({ min })]}
+          onChange={jest.fn()}
+          allowQuestionReference
+          data={data}
+        />,
+      );
+    };
+
+    const DATA = createMockDatasetData({
+      cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
+      rows: [[10]],
+    });
+
+    it("reports a column of this question that no longer exists", () => {
+      renderWithBound("gone", DATA);
+
+      expect(
+        screen.getByText("This column no longer exists"),
+      ).toBeInTheDocument();
+    });
+
+    it("reports a referenced query that failed", () => {
+      renderWithBound(
+        { type: "card", id: 9, column: "total" },
+        createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            card: { 9: { status: "failed", error: "boom" } },
+          },
+        }),
+      );
+
+      expect(screen.getByText("Couldn't load this value")).toBeInTheDocument();
+    });
+
+    it("reports a referenced value that isn't a number", () => {
+      renderWithBound(
+        { type: "card", id: 9, column: "total" },
+        createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            card: {
+              9: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "total" })],
+                  rows: [["nope"]],
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      expect(screen.getByText("This value isn't a number")).toBeInTheDocument();
+    });
+
+    it("stays quiet while a reference is still resolving", () => {
+      renderWithBound({ type: "card", id: 9, column: "total" }, DATA);
+
+      expect(screen.queryByText(/Couldn't load/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
+    });
+
+    // the results still carry the column the reference pointed at before the
+    // re-run this settings change kicked off
+    it("stays quiet while a retargeted reference is still resolving", () => {
+      renderWithBound(
+        { type: "card", id: 9, column: "avg" },
+        createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            card: {
+              9: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "total" })],
+                  rows: [[250]],
+                },
+              },
+            },
+          },
+        }),
+      );
+
+      expect(screen.queryByText(/Couldn't load/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/isn't a number/)).not.toBeInTheDocument();
+    });
   });
 
   it("Should pass back a new array of segments on change", async () => {

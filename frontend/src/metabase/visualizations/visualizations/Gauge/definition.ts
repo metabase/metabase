@@ -46,7 +46,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
     "gauge.range": {
       // currently not exposed in settings, just computed from gauge.segments
       getDefault(series, vizSettings) {
-        const { segments } = resolveGoalSegments(
+        const segments = resolveGoalSegments(
           vizSettings["gauge.segments"],
           series[0].data,
         );

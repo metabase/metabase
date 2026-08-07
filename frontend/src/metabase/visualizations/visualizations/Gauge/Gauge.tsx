@@ -2,10 +2,8 @@ import { useMounted } from "@mantine/hooks";
 import cx from "classnames";
 import * as d3 from "d3";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { addUndo } from "metabase/redux/undo";
 import { resolveGoalSegments } from "metabase/visualizations/lib/dynamic-goals";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -34,7 +32,6 @@ import { getValue, radians } from "./utils";
 
 function GaugeComponent({
   className,
-  dispatch,
   isSettings,
   height: heightProp,
   series: [{ data }],
@@ -69,26 +66,11 @@ function GaugeComponent({
 
   const gaugeRange = settings["gauge.range"];
   const range: number[] = isGaugeRange(gaugeRange) ? gaugeRange : [];
-  const { segments, errors } = useMemo(
-    () => resolveGoalSegments(settings["gauge.segments"], data),
-    [settings, data],
+  const gaugeSegments = settings["gauge.segments"];
+  const segments = useMemo(
+    () => resolveGoalSegments(gaugeSegments, data),
+    [gaugeSegments, data],
   );
-
-  const errorsKey = errors
-    .map((error) => `${error.type}:${error.id}:${error.column}:${error.reason}`)
-    .join("|");
-
-  useEffect(() => {
-    if (errorsKey) {
-      dispatch(
-        addUndo({
-          icon: "warning",
-          toastColor: "error",
-          message: t`Some gauge ranges couldn't be loaded from the referenced questions.`,
-        }),
-      );
-    }
-  }, [dispatch, errorsKey]);
 
   // value to angle in radians, clamped
   const angle = d3

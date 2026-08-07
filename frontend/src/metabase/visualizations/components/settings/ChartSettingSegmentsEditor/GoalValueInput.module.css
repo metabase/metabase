@@ -2,23 +2,7 @@
   position: relative;
 }
 
-.iconButton {
-  align-items: center;
-  border-radius: var(--mantine-radius-sm);
-  color: var(--mb-color-text-secondary);
-  cursor: pointer;
-  display: flex;
-  height: 24px;
-  justify-content: center;
-  width: 24px;
-
-  &:hover {
-    background-color: var(--mb-color-background-hover);
-  }
-}
-
 .trigger {
-  composes: iconButton;
   visibility: hidden;
 }
 
@@ -30,12 +14,14 @@
 
 .refShell {
   align-items: center;
-  background-color: var(--mb-color-background-primary);
+  /* the same surface Mantine's inputs use, so both bound inputs match */
+  background-color: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-sm);
   cursor: default;
   display: flex;
   gap: var(--mantine-spacing-sm);
+  /* matches --input-height-md, which Mantine only exposes inside its wrapper */
   height: 40px;
   padding: 0 var(--mantine-spacing-sm);
 
@@ -50,9 +36,7 @@
   align-items: center;
   background-color: var(--mb-color-background-primary);
   border-radius: 1rem;
-  box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.07),
-    0 1px 3px 0 rgba(0, 0, 0, 0.07);
+  box-shadow: var(--mantine-shadow-xs);
   cursor: pointer;
   display: flex;
   gap: 6px;

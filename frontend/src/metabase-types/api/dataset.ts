@@ -293,6 +293,8 @@ export type GetRemappedParameterValueRequest = {
 
 export type Point = [number, number];
 
+export type ReferencedEntityType = "card" | "measure";
+
 export type ReferencedEntity =
   | { type: "card"; id: CardId; columns?: string[] }
   | { type: "measure"; id: MeasureId; columns?: string[] };
@@ -303,8 +305,9 @@ export type ReferencedEntitiesResults = {
 };
 
 export interface ReferencedEntityResult {
-  status: string;
+  status: "completed" | "failed";
   error?: string;
+  /** Narrowed to the columns the request asked for. */
   data?: {
     cols: DatasetColumn[];
     rows: RowValues[];

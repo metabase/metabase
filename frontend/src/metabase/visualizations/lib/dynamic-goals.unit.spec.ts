@@ -3,11 +3,7 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import {
-  getReferencedEntitiesFromVizSettings,
-  resolveGoalSegments,
-  resolveGoalValue,
-} from "./dynamic-goals";
+import { resolveGoalSegments, resolveGoalValue } from "./dynamic-goals";
 
 const cols = [
   createMockColumn({ name: "value" }),
@@ -149,7 +145,9 @@ describe("resolveGoalValue", () => {
     expect(goalValue).toEqual({ value: null, isResolving: true });
   });
 
-  it("errors when the referenced column is missing", () => {
+  // The server projects each entity down to the requested columns, so getting
+  // back a different column means these results predate the current reference.
+  it("is resolving, not erroring, when the reference was retargeted to another column of the same entity", () => {
     const data = createMockDatasetData({
       cols,
       rows,
@@ -167,15 +165,7 @@ describe("resolveGoalValue", () => {
       data,
     );
 
-    expect(goalValue).toEqual({
-      value: null,
-      error: {
-        type: "card",
-        id: 7,
-        column: "total",
-        reason: "column-not-found",
-      },
-    });
+    expect(goalValue).toEqual({ value: null, isResolving: true });
   });
 
   it("errors when the referenced value is not a number", () => {
@@ -211,43 +201,6 @@ describe("resolveGoalValue", () => {
   });
 });
 
-describe("getReferencedEntitiesFromVizSettings", () => {
-  it("returns no referenced entities when there are no foreign references", () => {
-    const referencedEntities = getReferencedEntitiesFromVizSettings({
-      "gauge.segments": [{ min: 0, max: "goal", color: "red" }],
-    });
-
-    expect(referencedEntities).toEqual([]);
-  });
-
-  it("collects and dedupes referenced columns per entity", () => {
-    const referencedEntities = getReferencedEntitiesFromVizSettings({
-      "gauge.segments": [
-        {
-          min: { type: "card", id: 1, column: "sum" },
-          max: 100,
-          color: "red",
-        },
-        {
-          min: 100,
-          max: { type: "card", id: 1, column: "total" },
-          color: "yellow",
-        },
-        {
-          min: { type: "measure", id: 1, column: "avg" },
-          max: { type: "card", id: 1, column: "sum" },
-          color: "green",
-        },
-      ],
-    });
-
-    expect(referencedEntities).toEqual([
-      { type: "card", id: 1, columns: ["sum", "total"] },
-      { type: "measure", id: 1, columns: ["avg"] },
-    ]);
-  });
-});
-
 describe("resolveGoalSegments", () => {
   const DATA = createMockDatasetData({
     cols: [createMockColumn({ name: "value" })],
@@ -255,12 +208,11 @@ describe("resolveGoalSegments", () => {
   });
 
   it("keeps static numeric segments", () => {
-    const { segments, errors } = resolveGoalSegments(
+    const segments = resolveGoalSegments(
       [{ min: 0, max: 100, color: "red", label: "range" }],
       DATA,
     );
 
-    expect(errors).toEqual([]);
     expect(segments).toEqual([
       { min: 0, max: 100, color: "red", label: "range" },
     ]);
@@ -279,7 +231,7 @@ describe("resolveGoalSegments", () => {
       },
     });
 
-    const { segments, errors } = resolveGoalSegments(
+    const segments = resolveGoalSegments(
       [
         {
           min: 0,
@@ -290,18 +242,19 @@ describe("resolveGoalSegments", () => {
       data,
     );
 
-    expect(errors).toEqual([]);
-    expect(segments).toEqual([{ min: 0, max: 250, color: "green" }]);
+    expect(segments).toEqual([
+      { min: 0, max: 250, color: "green", label: undefined },
+    ]);
   });
 
-  it("drops segments that fail to resolve and reports errors", () => {
+  it("drops segments that fail to resolve", () => {
     const data = createMockDatasetData({
       ...DATA,
       referenced_entities: {
         card: { 9: { status: "failed", error: "boom" } },
       },
     });
-    const { segments, errors } = resolveGoalSegments(
+    const segments = resolveGoalSegments(
       [
         {
           min: 0,
@@ -313,8 +266,5 @@ describe("resolveGoalSegments", () => {
     );
 
     expect(segments).toEqual([]);
-    expect(errors).toEqual([
-      { type: "card", id: 9, column: "goal", reason: "query-failed" },
-    ]);
   });
 });

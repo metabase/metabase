@@ -1,13 +1,14 @@
 import * as d3 from "d3";
 import type { MouseEvent } from "react";
 
+import type { ResolvedGoalSegment } from "metabase/visualizations/lib/dynamic-goals";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type {
   ClickObject,
   ComputedVisualizationSettings,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { DatasetColumn, ResolvedGoalSegment } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 
 import { INNER_RADIUS_RATIO, OUTER_RADIUS } from "./constants";
 

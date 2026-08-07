@@ -5,6 +5,7 @@ import { useLatest } from "react-use";
 import { TextInput } from "metabase/ui";
 
 interface ChartSettingInputProps {
+  "aria-label"?: string;
   value: string | undefined;
   placeholder: string;
   onChange: (value: string) => void;
@@ -14,6 +15,7 @@ interface ChartSettingInputProps {
 }
 
 export const ChartSettingInput = ({
+  "aria-label": ariaLabel,
   value,
   onChange,
   placeholder,
@@ -37,11 +39,12 @@ export const ChartSettingInput = ({
     <TextInput
       id={id}
       data-testid={id}
+      aria-label={ariaLabel}
       placeholder={placeholder}
       leftSection={leftSection}
-      leftSectionPointerEvents="all"
+      leftSectionPointerEvents={leftSection == null ? undefined : "all"}
       rightSection={rightSection}
-      rightSectionPointerEvents="all"
+      rightSectionPointerEvents={rightSection == null ? undefined : "all"}
       value={inputValue}
       onChange={(e) => {
         setInputValue(e.target.value);

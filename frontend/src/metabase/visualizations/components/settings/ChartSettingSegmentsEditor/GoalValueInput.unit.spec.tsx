@@ -1,23 +1,29 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import {
   setupCardEndpoints,
   setupMeasureEndpoint,
+  setupRecentViewsAndSelectionsEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
   fireEvent,
+  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
   within,
 } from "__support__/ui";
-import type { DatasetData, GoalValue } from "metabase-types/api";
+import type { DatasetData, GoalValue, SearchResult } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockField,
   createMockMeasure,
+  createMockSearchResult,
 } from "metabase-types/api/mocks";
 
 import { GoalValueInput, type GoalValueInputProps } from "./GoalValueInput";
@@ -50,7 +56,6 @@ const setup = (
       value={0}
       onChange={onChange}
       data={data}
-      allowQuestionReference
       {...props}
     />,
   );
@@ -61,6 +66,22 @@ const openMenu = async () => {
   await userEvent.click(
     screen.getByRole("button", { name: "Pick a dynamic value" }),
   );
+};
+
+const setupEntityPicker = (searchResults: SearchResult[]) => {
+  mockGetBoundingClientRect(); // for virtualization
+  setupSearchEndpoints(searchResults);
+  setupRecentViewsAndSelectionsEndpoints([]);
+};
+
+/** Walks the picker from an already-open menu to a committed entity pick. */
+const pickEntity = async (name: string) => {
+  await userEvent.click(
+    await screen.findByRole("menuitem", {
+      name: /Value from another question/,
+    }),
+  );
+  await userEvent.click(await screen.findByText(name));
 };
 
 describe("GoalValueInput", () => {
@@ -79,13 +100,12 @@ describe("GoalValueInput", () => {
 
     await openMenu();
 
-    expect(screen.getByText("Pick a value from")).toBeInTheDocument();
     expect(
-      screen.getByRole("menuitem", { name: /This question/ }),
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("menuitem", {
-        name: /A measure, metric, or saved question/,
+        name: /Value from another question/,
       }),
     ).toBeInTheDocument();
   });
@@ -96,7 +116,7 @@ describe("GoalValueInput", () => {
     await openMenu();
 
     expect(
-      screen.queryByRole("menuitem", { name: /This question/ }),
+      screen.queryByRole("menuitem", { name: /Value from this question/ }),
     ).not.toBeInTheDocument();
   });
 
@@ -105,7 +125,7 @@ describe("GoalValueInput", () => {
 
     await openMenu();
     await userEvent.click(
-      screen.getByRole("menuitem", { name: /This question/ }),
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
     );
 
     const item = await screen.findByRole("menuitem", {
@@ -136,7 +156,7 @@ describe("GoalValueInput", () => {
 
     await openMenu();
     await userEvent.click(
-      screen.getByRole("menuitem", { name: /This question/ }),
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
     );
 
     expect(onChange).toHaveBeenCalledWith("count");
@@ -195,7 +215,7 @@ describe("GoalValueInput", () => {
   it("clears the reference with backspace", async () => {
     const { onChange } = setup({ value: "sum" });
 
-    const shell = screen.getByRole("button", { name: "Min" });
+    const shell = screen.getByRole("group", { name: "Min" });
     fireEvent.keyDown(shell, { key: "Backspace" });
 
     expect(onChange).toHaveBeenCalledWith(null);
@@ -211,13 +231,12 @@ describe("GoalValueInput", () => {
           value={value}
           onChange={setValue}
           data={DATA}
-          allowQuestionReference
         />
       );
     };
     renderWithProviders(<Harness />);
 
-    const shell = screen.getByRole("button", { name: "Min" });
+    const shell = screen.getByRole("group", { name: "Min" });
     fireEvent.keyDown(shell, { key: "Backspace" });
 
     await waitFor(() =>
@@ -269,7 +288,7 @@ describe("GoalValueInput", () => {
 
     expect(
       await screen.findByRole("menuitem", {
-        name: /A measure, metric, or saved question/,
+        name: /Value from another question/,
       }),
     ).toBeInTheDocument();
   });
@@ -309,7 +328,145 @@ describe("GoalValueInput", () => {
     await userEvent.click(pill);
     expect(
       await screen.findByRole("menuitem", {
-        name: /A measure, metric, or saved question/,
+        name: /Value from another question/,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps describing the committed reference after an entity pick is abandoned", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "metric", name: "Other metric" }),
+    ]);
+    setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
+    setupCardEndpoints(
+      createMockCard({
+        id: 15,
+        name: "Other metric",
+        result_metadata: [
+          createMockField({
+            name: "revenue",
+            display_name: "Revenue",
+            base_type: "type/Integer",
+          }),
+          createMockField({
+            name: "target",
+            display_name: "Target",
+            base_type: "type/Integer",
+          }),
+        ],
+      }),
+    );
+    setup(
+      { value: { type: "card", id: 9, column: "total" } },
+      {
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            card: {
+              9: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "total" })],
+                  rows: [[250]],
+                },
+              },
+            },
+          },
+        }),
+      },
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+    await pickEntity("Other metric");
+
+    // the pick has two numeric columns, so the menu waits on the entity level
+    expect(
+      await screen.findByRole("menuitem", { name: /Revenue/ }),
+    ).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("menuitem", { name: /Revenue/ }),
+      ).not.toBeInTheDocument(),
+    );
+
+    await userEvent.hover(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+    expect(await screen.findByText("Orders → total")).toBeInTheDocument();
+    expect(screen.queryByText(/Other metric/)).not.toBeInTheDocument();
+  });
+
+  it("does not clear a reference it cannot render when the static input is blurred", () => {
+    const { onChange } = setup(
+      { value: "gone" },
+      {
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({
+              name: "count",
+              display_name: "Count",
+              base_type: "type/Integer",
+            }),
+          ],
+          rows: [[10]],
+        }),
+      },
+    );
+
+    const input = screen.getByRole("textbox", { name: "Min" });
+    expect(input).toHaveValue("");
+
+    fireEvent.focus(input);
+    fireEvent.blur(input);
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("still commits a typed value over a reference it cannot render", () => {
+    const { onChange } = setup(
+      { value: "gone" },
+      {
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({
+              name: "count",
+              display_name: "Count",
+              base_type: "type/Integer",
+            }),
+          ],
+          rows: [[10]],
+        }),
+      },
+    );
+
+    const input = screen.getByRole("textbox", { name: "Min" });
+    fireEvent.change(input, { target: { value: "7" } });
+    fireEvent.blur(input);
+
+    expect(onChange).toHaveBeenCalledWith(7);
+  });
+
+  it("reports a failure instead of spinning forever when the entity metadata can't be loaded", async () => {
+    setupEntityPicker([
+      createMockSearchResult({
+        id: 15,
+        model: "metric",
+        name: "Broken metric",
+      }),
+    ]);
+    fetchMock.get("path:/api/card/15", 403);
+    setup();
+
+    await openMenu();
+    await pickEntity("Broken metric");
+
+    expect(
+      await screen.findByRole("menuitem", {
+        name: "Couldn't load this question",
       }),
     ).toBeInTheDocument();
   });

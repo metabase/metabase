@@ -28,6 +28,7 @@ import {
 import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
+  ActionIcon,
   Box,
   Group,
   Icon,
@@ -55,9 +56,12 @@ import {
 import S from "./GoalValueInput.module.css";
 
 const MENU_MIN_WIDTH = 225;
+const ICON_BUTTON_SIZE = 24;
+const SEARCH_RESULTS_LIMIT = 5;
 
-// stable references - MiniPicker's onSearchResults loops otherwise
-// saved questions are reachable through Browse all only
+// Model lists are module constants because MiniPicker re-runs its search
+// whenever the `models` array changes identity.
+// Saved questions are reachable through Browse all only.
 const ENTITY_PICKER_MODELS: MiniPickerPickableItem["model"][] = [
   "metric",
   "measure",
@@ -67,7 +71,6 @@ const QUESTION_FALLBACK_MODELS: MiniPickerPickableItem["model"][] = [
   "card",
   "dataset",
 ];
-const RECENT_QUESTIONS_LIMIT = 5;
 const BROWSE_ALL_MODELS: OmniPickerItem["model"][] = [
   "metric",
   "measure",
@@ -97,7 +100,6 @@ export type GoalValueInputProps = {
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
   data: DatasetData;
-  allowQuestionReference?: boolean;
   placeholder?: string;
   "aria-label"?: string;
 };
@@ -107,7 +109,6 @@ export const GoalValueInput = ({
   value,
   onChange,
   data,
-  allowQuestionReference = false,
   placeholder,
   "aria-label": ariaLabel,
 }: GoalValueInputProps) => {
@@ -116,9 +117,14 @@ export const GoalValueInput = ({
   const [isEntityPickerOpen, entityPicker] = useDisclosure(false);
   const [isBrowseModalOpen, browseModal] = useDisclosure(false);
   const [pickedEntity, setPickedEntity] = useState<PickedEntity | null>(null);
+  const [hasOpenedEntityPicker, setHasOpenedEntityPicker] = useState(false);
   const [fetchCard] = useLazyGetCardQuery();
   const [fetchMeasure] = useLazyGetMeasureQuery();
   const numberInputRef = useRef<HTMLInputElement>(null);
+
+  const { models: entityPickerModels, getSearchParams } = useEntityPickerSearch(
+    hasOpenedEntityPicker,
+  );
 
   const foreignRef = isGoalForeignColumnRef(value) ? value : null;
   const selfColumns: ColumnOption[] = data.cols
@@ -134,14 +140,17 @@ export const GoalValueInput = ({
 
   const entity: Pick<PickedEntity, "type" | "id"> | null =
     pickedEntity ?? foreignRef;
-  const { data: entityCard } = useGetCardQuery(
+  const { data: entityCard, isError: isCardError } = useGetCardQuery(
     entity?.type === "card" ? { id: entity.id } : skipToken,
   );
-  const { data: entityMeasure } = useGetMeasureQuery(
+  const { data: entityMeasure, isError: isMeasureError } = useGetMeasureQuery(
     entity?.type === "measure" ? entity.id : skipToken,
   );
+  const hasEntityMetadataError =
+    entity != null && (entity.type === "card" ? isCardError : isMeasureError);
   const isEntityMetadataLoading =
     entity != null &&
+    !hasEntityMetadataError &&
     (entity.type === "card" ? entityCard == null : entityMeasure == null);
 
   const entityName =
@@ -179,16 +188,18 @@ export const GoalValueInput = ({
       : foreignColumnLabel
     : selfColumnLabel;
 
+  // An entity picked but never committed must not outlive the menu, or the pill
+  // would describe an entity the value doesn't come from.
   const closeMenu = useCallback(() => {
     menu.close();
     setMenuLevel("root");
+    setPickedEntity(null);
   }, [menu]);
 
   const commitValue = useCallback(
     (newValue: GoalValue | null) => {
       onChange(newValue);
       closeMenu();
-      setPickedEntity(null);
     },
     [onChange, closeMenu],
   );
@@ -231,9 +242,8 @@ export const GoalValueInput = ({
     entityPicker.open();
   };
 
-  // Commits from here run after an await, i.e. in a fresh React batch. Doing
-  // this in an effect instead makes the whole settings-change dispatch chain a
-  // nested update and overflows React's nested-update limit (metabase#gauge).
+  // Committing here rather than from an effect on `pickedEntity` keeps the
+  // settings update out of React's nested-update chain.
   const handleEntityPicked = async (item: {
     id: number | string;
     model: string;
@@ -280,23 +290,6 @@ export const GoalValueInput = ({
     }
   };
 
-  const [hasOpenedEntityPicker, setHasOpenedEntityPicker] = useState(false);
-  const { models: entityPickerModels, getSearchParams } = useEntityPickerSearch(
-    hasOpenedEntityPicker,
-  );
-
-  if (!allowQuestionReference) {
-    return (
-      <StaticGoalValueInput
-        id={id}
-        value={value}
-        placeholder={placeholder}
-        ariaLabel={ariaLabel}
-        onCommit={onChange}
-      />
-    );
-  }
-
   return (
     <Box className={S.root}>
       <Menu
@@ -316,7 +309,7 @@ export const GoalValueInput = ({
             <div
               className={S.refShell}
               tabIndex={0}
-              role="button"
+              role="group"
               aria-label={ariaLabel}
               onKeyDown={handleShellKeyDown}
             >
@@ -332,20 +325,22 @@ export const GoalValueInput = ({
                   ) : (
                     <span className={S.pillValue}>
                       {resolved.value != null
-                        ? String(formatValue(resolved.value))
+                        ? formatValue(resolved.value)
                         : "—"}
                     </span>
                   )}
                 </UnstyledButton>
               </Tooltip>
-              <Box flex={1} />
-              <UnstyledButton
+              <ActionIcon
                 className={S.trigger}
+                data-open={isMenuOpen}
+                size={ICON_BUTTON_SIZE}
+                ml="auto"
                 aria-label={t`Remove value source`}
                 onClick={() => commitValue(null)}
               >
                 <Icon name="close" size={16} />
-              </UnstyledButton>
+              </ActionIcon>
             </div>
           ) : (
             <Box>
@@ -357,14 +352,15 @@ export const GoalValueInput = ({
                 ariaLabel={ariaLabel}
                 onCommit={onChange}
                 rightSection={
-                  <UnstyledButton
+                  <ActionIcon
                     className={S.trigger}
                     data-open={isMenuOpen || isEntityPickerOpen}
+                    size={ICON_BUTTON_SIZE}
                     aria-label={t`Pick a dynamic value`}
                     onClick={openMenuFromTrigger}
                   >
                     <Icon name="hexagon" size={16} />
-                  </UnstyledButton>
+                  </ActionIcon>
                 }
               />
             </Box>
@@ -373,20 +369,19 @@ export const GoalValueInput = ({
         <Menu.Dropdown miw={MENU_MIN_WIDTH}>
           {menuLevel === "root" && (
             <>
-              <Menu.Label>{t`Pick a value from`}</Menu.Label>
               {selfColumns.length > 0 && (
                 <Menu.Item
                   rightSection={<Icon name="chevronright" />}
                   onClick={selectSelfOption}
                 >
-                  {t`This question`}
+                  {t`Value from this question`}
                 </Menu.Item>
               )}
               <Menu.Item
                 rightSection={<Icon name="chevronright" />}
                 onClick={openEntityPicker}
               >
-                {t`A measure, metric, or saved question`}
+                {t`Value from another question`}
               </Menu.Item>
             </>
           )}
@@ -422,10 +417,12 @@ export const GoalValueInput = ({
                 leftSection={<Icon name="chevronleft" size={12} />}
                 onClick={() => setMenuLevel("root")}
               >
-                {entityName ?? t`Pick a value`}
+                {entityName ?? t`Value from another question`}
               </Menu.Item>
               <Menu.Divider />
-              {isEntityMetadataLoading ? (
+              {hasEntityMetadataError ? (
+                <Menu.Item disabled>{t`Couldn't load this question`}</Menu.Item>
+              ) : isEntityMetadataLoading ? (
                 <Group justify="center" p="md">
                   <Loader size="sm" />
                 </Group>
@@ -511,6 +508,7 @@ function useEntityPickerSearch(enabled: boolean) {
   const { data: libraryMetricsCollection } =
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
       type: "library-metrics",
+      skip: !enabled,
     });
 
   const { data: probe } = useSearchQuery(
@@ -528,7 +526,7 @@ function useEntityPickerSearch(enabled: boolean) {
     () =>
       (recentItems ?? [])
         .filter((item) => item.model === "card" || item.model === "dataset")
-        .slice(0, RECENT_QUESTIONS_LIMIT)
+        .slice(0, SEARCH_RESULTS_LIMIT)
         .map((item) => item.id),
     [recentItems],
   );
@@ -538,7 +536,7 @@ function useEntityPickerSearch(enabled: boolean) {
       if (shouldFallBackToQuestions) {
         const showRecents = !params.q && recentQuestionIds.length > 0;
         return {
-          limit: RECENT_QUESTIONS_LIMIT,
+          limit: SEARCH_RESULTS_LIMIT,
           ...(showRecents ? { ids: recentQuestionIds } : {}),
         };
       }
@@ -550,7 +548,7 @@ function useEntityPickerSearch(enabled: boolean) {
         !params.q;
 
       return {
-        limit: 5,
+        limit: SEARCH_RESULTS_LIMIT,
         ...(scopeToLibraryMetrics
           ? { collection: libraryMetricsCollection.id }
           : {}),
@@ -586,7 +584,7 @@ function GoalColumnMenuItem({
       rightSection={
         resolvedValue != null ? (
           <Text c="text-secondary" fz="md">
-            {String(formatValue(resolvedValue))}
+            {formatValue(resolvedValue)}
           </Text>
         ) : undefined
       }
@@ -616,6 +614,10 @@ export function StaticGoalValueInput({
   rightSection,
   inputRef,
 }: StaticGoalValueInputProps) {
+  // A reference we can't render here (e.g. its column disappeared from the
+  // results) still shows an empty input; committing on blur would delete it.
+  const numericValue = typeof value === "number" ? value : null;
+
   return (
     <NumberInput
       id={id}
@@ -623,15 +625,13 @@ export function StaticGoalValueInput({
       aria-label={ariaLabel}
       placeholder={placeholder}
       w="100%"
-      value={typeof value === "number" ? value : ""}
+      value={numericValue ?? ""}
       rightSection={rightSection}
       rightSectionPointerEvents="all"
-      // 24px trigger button + 8px gap to each side
-      rightSectionWidth={rightSection != null ? 40 : undefined}
       onBlur={(event) => {
         const rawValue = event.target.value;
         const newValue = rawValue === "" ? null : parseFloat(rawValue);
-        if (newValue !== value) {
+        if (newValue !== numericValue) {
           onCommit(newValue);
         }
       }}

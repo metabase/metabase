@@ -1,25 +1,22 @@
 import type {
-  CardId,
   DatasetData,
   GoalForeignColumnRef,
+  GoalSegment,
   GoalValue,
-  MeasureId,
-  ReferencedEntity,
   ReferencedEntityType,
-  ResolvedGoalSegment,
   RowValue,
-  VisualizationSettings,
 } from "metabase-types/api";
-import {
-  isGoalForeignColumnRef,
-  isGoalSelfColumnRef,
-  isGoalStaticValue,
-  isGoalValue,
-  isObject,
-  isResolvedGoalSegment,
-} from "metabase-types/guards";
+import { isGoalSelfColumnRef, isGoalStaticValue } from "metabase-types/guards";
 
 import { segmentIsValid } from "./utils";
+
+/** A gauge segment whose bounds have been resolved to concrete numbers. */
+export type ResolvedGoalSegment = {
+  color: string;
+  label?: string;
+  min: number;
+  max: number;
+};
 
 export type GoalRefErrorReason =
   | "query-failed"
@@ -98,7 +95,7 @@ const resolveForeignColumnRef = (
 ): ResolvedGoalValue => {
   // A missing entry means the current results predate this reference (the
   // query re-runs after a settings change): treat as still resolving without
-  // surfacing an error to avoid transient error toasts.
+  // surfacing an error.
   const result = data.referenced_entities?.[type]?.[id];
   if (result == null) {
     return { value: null, isResolving: true };
@@ -115,11 +112,11 @@ const resolveForeignColumnRef = (
     (resultColumn) => resultColumn.name === column,
   );
 
+  // The server narrows each entity to the columns the request asked for, so a
+  // column we didn't get means these results were fetched for a different
+  // reference - same "predates the reference" case as a missing entry above.
   if (columnIndex === -1) {
-    return {
-      value: null,
-      error: { type, id, column, reason: "column-not-found" },
-    };
+    return { value: null, isResolving: true };
   }
 
   const value = toNumberOrNull(result.data.rows[0]?.[columnIndex]);
@@ -134,110 +131,26 @@ const resolveForeignColumnRef = (
   return { value };
 };
 
-const toNumberOrNull = (raw: RowValue | undefined): number | null => {
-  if (typeof raw === "number" && !Number.isNaN(raw) && Number.isFinite(raw)) {
-    return raw;
-  }
+const toNumberOrNull = (raw: RowValue | undefined): number | null =>
+  typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 
-  return null;
-};
-
-type ReferencedEntityColumns =
-  | { type: "card"; id: CardId; columns: Set<string> }
-  | { type: "measure"; id: MeasureId; columns: Set<string> };
-
-export const getReferencedEntitiesFromVizSettings = (
-  settings: VisualizationSettings,
-): ReferencedEntity[] => {
-  const refs = getSegmentGoalValues(settings["gauge.segments"]).filter(
-    isGoalForeignColumnRef,
-  );
-
-  const columnsByEntity = refs.reduce((map, ref) => {
-    const key = `${ref.type}:${ref.id}`;
-    const entry = map.get(key) ?? {
-      type: ref.type,
-      id: ref.id,
-      columns: new Set<string>(),
-    };
-    entry.columns.add(ref.column);
-    map.set(key, entry);
-    return map;
-  }, new Map<string, ReferencedEntityColumns>());
-
-  return Array.from(columnsByEntity.values(), ({ type, id, columns }) => ({
-    type,
-    id,
-    columns: Array.from(columns),
-  }));
-};
-
-// TODO: unknown
-const getSegmentGoalValues = (rawSegments: unknown[]): unknown[] => {
-  if (!Array.isArray(rawSegments)) {
+/** Resolves the possibly dynamic min/max of every gauge segment to concrete numbers. */
+export const resolveGoalSegments = (
+  segments: GoalSegment[] | undefined,
+  data: DatasetData,
+): ResolvedGoalSegment[] => {
+  if (!Array.isArray(segments)) {
     return [];
   }
 
-  return rawSegments.flatMap((segment) =>
-    isObject(segment) ? [segment.min, segment.max] : [],
-  );
-};
+  return segments.flatMap((segment) => {
+    const min = resolveGoalValue(segment.min, data).value;
+    const max = resolveGoalValue(segment.max, data).value;
 
-type ResolvedGoalSegments = {
-  segments: ResolvedGoalSegment[];
-  errors: GoalRefError[];
-};
-
-// Resolves the possibly dynamic min/max of every gauge segment to concrete numbers
-export const resolveGoalSegments = (
-  rawSegments: unknown, // TODO: unknown
-  data: DatasetData,
-): ResolvedGoalSegments => {
-  if (!Array.isArray(rawSegments)) {
-    return { segments: [], errors: [] };
-  }
-
-  const errors: GoalRefError[] = [];
-  const segments: ResolvedGoalSegment[] = [];
-
-  for (const rawSegment of rawSegments) {
-    if (!isObject(rawSegment)) {
-      continue;
+    if (min == null || max == null || !segmentIsValid({ min, max })) {
+      return [];
     }
 
-    const min = resolveGoalValue(
-      isGoalValue(rawSegment.min) ? rawSegment.min : null,
-      data,
-    );
-    const max = resolveGoalValue(
-      isGoalValue(rawSegment.max) ? rawSegment.max : null,
-      data,
-    );
-
-    if (min.error) {
-      errors.push(min.error);
-    }
-
-    if (max.error) {
-      errors.push(max.error);
-    }
-
-    const resolvedSegment = {
-      color:
-        typeof rawSegment.color === "string" ? rawSegment.color : undefined,
-      label:
-        typeof rawSegment.label === "string" ? rawSegment.label : undefined,
-      min: min.value,
-      max: max.value,
-    };
-
-    if (
-      isResolvedGoalSegment(resolvedSegment) &&
-      segmentIsValid(resolvedSegment)
-    ) {
-      segments.push(resolvedSegment);
-    }
-  }
-
-  return { segments, errors };
+    return [{ color: segment.color, label: segment.label, min, max }];
+  });
 };

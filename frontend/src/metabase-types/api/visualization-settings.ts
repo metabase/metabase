@@ -77,8 +77,6 @@ export type GoalStaticValue = number;
 // name of another column in the same question
 export type GoalSelfColumnRef = string;
 
-export type ReferencedEntityType = "card" | "measure";
-
 export type GoalForeignColumnRef =
   | { type: "card"; id: CardId; column: string }
   | { type: "measure"; id: MeasureId; column: string };
@@ -95,11 +93,4 @@ export type ScalarSegment = {
   max: GoalStaticValue | null;
   color: string;
   label?: string;
-};
-
-export type ResolvedGoalSegment = {
-  color?: string; // TODO: why optional?
-  label?: string;
-  min: number;
-  max: number;
 };
