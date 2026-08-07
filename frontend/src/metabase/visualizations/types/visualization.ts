@@ -18,6 +18,7 @@ import type {
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
+import type { BrushClickObject } from "metabase-lib/query/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -120,6 +121,11 @@ export type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
+export type OnBrush = (options: {
+  clickObject: BrushClickObject;
+  openClickActions: (clicked: ClickObject | null) => void;
+}) => void;
+
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
   series?: (key: LegacySeriesSettingsObjectKey) => SeriesSettings;
@@ -198,7 +204,7 @@ export interface VisualizationProps {
   onRenderError: (error?: string) => void;
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
-  onBrush?: ((range: { start: number; end: number }) => void) | null;
+  onBrush?: OnBrush | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (
