@@ -100,7 +100,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: "!! double-backport and triple-backport label deprecation warning !!"
-        if: 
+        if:
           |
           github.event.pull_request.merged == true && (
             github.event.action == 'closed' && (
@@ -117,7 +117,7 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
-          msg="ERROR: backport failed because double-backport and triple-backport labels are deprecated! Use the backport label to port changes to all supported releases."
+          msg="🚨🚨 Backport failed because \`double-backport\` and \`triple-backport\` labels are **deprecated**! Use the \`backport\` label to port changes to all supported releases instead. 🚨🚨"
 
           gh api \
             --method POST \
@@ -125,7 +125,7 @@ jobs:
             -H "X-GitHub-Api-Version: 2026-03-10" \
             /repos/"$REPO"/issues/"$PR"/comments \
             -f "body=$msg"
-          
+
           echo "::error::$msg"
           exit 1
       - uses: actions/checkout@v6
