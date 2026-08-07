@@ -94,7 +94,7 @@
   (or (t2/exists? :model/Card :enable_embedding true)
       (t2/exists? :model/Dashboard :enable_embedding true)))
 
-(defn- embedding-hub-checklist []
+(defn- setup-guide-checklist []
   (let [enable-tenants?                  (and (perms/use-tenants)
                                               (has-shared-tenant-collections?))
         create-tenants?                  (has-user-created-tenants?)
@@ -124,8 +124,8 @@
 
      "data-isolation-strategy"           (active-data-segregation-strategy)}))
 
-(def ^:private EmbeddingHubChecklistResponse
-  "Schema for the embedding hub checklist response."
+(def ^:private SetupGuideChecklistResponse
+  "Schema for the setup guide checklist response."
   [:map {:closed true}
    ["checklist"
     [:map {:closed true}
@@ -145,10 +145,10 @@
    ["data-isolation-strategy"
     [:maybe [:enum "row-column-level-security" "connection-impersonation" "database-routing"]]]])
 
-(api.macros/defendpoint :get "/checklist" :- EmbeddingHubChecklistResponse
+(api.macros/defendpoint :get "/checklist" :- SetupGuideChecklistResponse
   "Get the embedding hub checklist status, indicating which setup steps have been completed."
   []
-  (embedding-hub-checklist))
+  (setup-guide-checklist))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/embedding-hub` routes."
