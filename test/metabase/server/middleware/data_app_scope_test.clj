@@ -78,13 +78,22 @@
       (is (mt/user-http-request :crowberto :get 200 "session/properties" as-data-app)))
     (testing "the data-app read/query surface still passes scope enforcement when marked"
       (is (mt/user-http-request :crowberto :get 200 "collection/root" as-data-app)))
-    (testing "the feature-surface reads (downloads pref, alerts probe) are reachable when marked"
+    (testing "the feature-surface reads (downloads pref) are reachable when marked"
       ;; POST /api/action/:id/execute (write-back for `useAction`) is tagged too, but needs an
       ;; action fixture — actions.cy.spec.ts is its functional guard under enforcement.
-      (is (mt/user-http-request :crowberto :get 200 "pulse/form_input" as-data-app))
+      ;;
       ;; 204 (not scope_not_permitted) proves the marked request reached the handler; the key is unset.
       (is (nil? (mt/user-http-request :crowberto :get 204
                                       "user-key-value/namespace/data-app-test/key/format" as-data-app))))
+    (testing "alerts and subscriptions are not part of the data-app surface"
+      ;; Scheduled email delivered out of band is not something a data app renders, so neither
+      ;; the probe the SDK buttons gate on nor the CRUD behind them is reachable. The buttons are
+      ;; gated off in a data app too (`embedding-sdk-ee/notifications`), so nothing offers a
+      ;; control that would 403 here.
+      (doseq [endpoint ["pulse/form_input" "pulse" "notification"]]
+        (is (= "scope_not_permitted"
+               (:error (mt/user-http-request :crowberto :get 403 endpoint as-data-app)))
+            endpoint)))
     (testing "the user-key-value key a marked request writes is one it can also clear"
       ;; The delete body is irrelevant — reaching the handler at all is what the tag buys.
       (is (not= "scope_not_permitted"
