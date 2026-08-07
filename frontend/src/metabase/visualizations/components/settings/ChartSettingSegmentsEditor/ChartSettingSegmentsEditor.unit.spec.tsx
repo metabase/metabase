@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupCardEndpoints } from "__support__/server-mocks";
-import { fireEvent, render, renderWithProviders, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type { DatasetData, GoalSegment, GoalValue } from "metabase-types/api";
 import {
@@ -24,17 +24,23 @@ const DEFAULT_VALUE = [
   createMockSegment({ label: "good", min: 100, max: 200, color: "green" }),
 ];
 
-const setup = (props: Partial<ChartSettingSegmentsEditorProps> = {}) => {
+const CARD_ID = 9;
+
+function setup(props: Partial<ChartSettingSegmentsEditorProps> = {}) {
+  setupCardEndpoints(createMockCard({ id: CARD_ID, name: "Orders" }));
+
   const onChange = jest.fn();
-  render(
+
+  renderWithProviders(
     <ChartSettingSegmentsEditor
       value={DEFAULT_VALUE}
       onChange={onChange}
       {...props}
     />,
   );
+
   return { onChange };
-};
+}
 
 describe("ChartSettingSegmentsEditor", () => {
   it("Should render a segment editor", () => {
@@ -53,16 +59,12 @@ describe("ChartSettingSegmentsEditor", () => {
   });
 
   it("uses the goal-value widget for min/max", () => {
-    renderWithProviders(
-      <ChartSettingSegmentsEditor
-        value={DEFAULT_VALUE}
-        onChange={jest.fn()}
-        data={createMockDatasetData({
-          cols: [createMockColumn({ name: "count" })],
-          rows: [[10]],
-        })}
-      />,
-    );
+    setup({
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "count" })],
+        rows: [[10]],
+      }),
+    });
 
     const inputsPerSegmentCount = 2;
     const segmentsCount = DEFAULT_VALUE.length;
@@ -84,17 +86,9 @@ describe("ChartSettingSegmentsEditor", () => {
   });
 
   describe("bound errors", () => {
-    const renderWithBound = (min: GoalValue | null, data: DatasetData) => {
-      setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
-
-      return renderWithProviders(
-        <ChartSettingSegmentsEditor
-          value={[createMockSegment({ min })]}
-          onChange={jest.fn()}
-          data={data}
-        />,
-      );
-    };
+    function setupBound(min: GoalValue | null, data: DatasetData) {
+      return setup({ value: [createMockSegment({ min })], data });
+    }
 
     const DATA = createMockDatasetData({
       cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
@@ -102,7 +96,7 @@ describe("ChartSettingSegmentsEditor", () => {
     });
 
     it("reports a column of this question that no longer exists", () => {
-      renderWithBound("gone", DATA);
+      setupBound("gone", DATA);
 
       expect(
         screen.getByText("This column no longer exists"),
@@ -110,11 +104,11 @@ describe("ChartSettingSegmentsEditor", () => {
     });
 
     it("reports a referenced query that failed without saying why", () => {
-      renderWithBound(
-        { type: "card", id: 9, column: "total" },
+      setupBound(
+        { type: "card", id: CARD_ID, column: "total" },
         createMockDatasetData({
           ...DATA,
-          referenced_entities: { card: { 9: { status: "failed" } } },
+          referenced_entities: { card: { [CARD_ID]: { status: "failed" } } },
         }),
       );
 
@@ -122,13 +116,13 @@ describe("ChartSettingSegmentsEditor", () => {
     });
 
     it("reports a referenced value that isn't a number", () => {
-      renderWithBound(
-        { type: "card", id: 9, column: "total" },
+      setupBound(
+        { type: "card", id: CARD_ID, column: "total" },
         createMockDatasetData({
           ...DATA,
           referenced_entities: {
             card: {
-              9: {
+              [CARD_ID]: {
                 status: "completed",
                 data: {
                   cols: [createMockColumn({ name: "total" })],
@@ -144,13 +138,13 @@ describe("ChartSettingSegmentsEditor", () => {
     });
 
     it("surfaces the server's explanation for a referenced query that failed", () => {
-      renderWithBound(
-        { type: "card", id: 9, column: "total" },
+      setupBound(
+        { type: "card", id: CARD_ID, column: "total" },
         createMockDatasetData({
           ...DATA,
           referenced_entities: {
             card: {
-              9: {
+              [CARD_ID]: {
                 status: "failed",
                 error: "Referenced card 9 returned 3 rows",
               },
@@ -165,7 +159,7 @@ describe("ChartSettingSegmentsEditor", () => {
     });
 
     it("stays quiet while a reference is still resolving", () => {
-      renderWithBound({ type: "card", id: 9, column: "total" }, DATA);
+      setupBound({ type: "card", id: CARD_ID, column: "total" }, DATA);
 
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
       expect(screen.queryByText(/Couldn't load/)).not.toBeInTheDocument();
@@ -173,13 +167,13 @@ describe("ChartSettingSegmentsEditor", () => {
     });
 
     it("reports a column of another question that no longer exists", () => {
-      renderWithBound(
-        { type: "card", id: 9, column: "avg" },
+      setupBound(
+        { type: "card", id: CARD_ID, column: "avg" },
         createMockDatasetData({
           ...DATA,
           referenced_entities: {
             card: {
-              9: {
+              [CARD_ID]: {
                 status: "completed",
                 data: {
                   cols: [createMockColumn({ name: "total" })],
@@ -198,18 +192,12 @@ describe("ChartSettingSegmentsEditor", () => {
   });
 
   it("offers both value sources for a bound", async () => {
-    renderWithProviders(
-      <ChartSettingSegmentsEditor
-        value={DEFAULT_VALUE}
-        onChange={jest.fn()}
-        data={createMockDatasetData({
-          cols: [
-            createMockColumn({ name: "count", base_type: "type/Integer" }),
-          ],
-          rows: [[10]],
-        })}
-      />,
-    );
+    setup({
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
+        rows: [[10]],
+      }),
+    });
 
     expect(screen.getByLabelText("Range 1 minimum")).toHaveValue("0");
 
