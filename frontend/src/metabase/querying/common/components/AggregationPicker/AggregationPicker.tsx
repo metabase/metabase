@@ -12,9 +12,9 @@ import {
   PopoverHoverTarget,
 } from "metabase/common/components/MetadataInfo/InfoIcon";
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
-import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import {
   ExpressionWidget,
   ExpressionWidgetHeader,
