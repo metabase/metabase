@@ -21,6 +21,7 @@ export type QuarantineEntry = {
   test_suite: string;
   test_path: string;
   file_path: string;
+  permalink: string;
 };
 
 /**
@@ -77,27 +78,27 @@ export function matchKey(opts: {
 export function compareFailedToQuarantine(
   failedTests: FailedTest[],
   quarantineEntries: QuarantineEntry[],
-): { quarantined: FailedTest[]; unquarantined: FailedTest[] } {
-  const quarantinedKeys = new Set(
+): { quarantined: QuarantineEntry[]; unquarantined: FailedTest[] } {
+  const quarantinedByKeys = new Map(
     quarantineEntries.map((q) =>
-      matchKey({
+      [matchKey({
         filePath: q.file_path,
         testPath: q.test_path,
         testName: q.test_name,
-      }),
+      }), q],
     ),
   );
-  const quarantined: FailedTest[] = [];
+  const quarantined: QuarantineEntry[] = [];
   const unquarantined: FailedTest[] = [];
   for (const test of failedTests) {
-    const isQuarantined = quarantinedKeys.has(
+    const quarantineEntry = quarantinedByKeys.get(
       matchKey({
         filePath: test.file_path,
         testPath: test.test_path,
         testName: test.test_name,
       }),
     );
-    (isQuarantined ? quarantined : unquarantined).push(test);
+    quarantineEntry ? quarantined.push(quarantineEntry) : unquarantined.push(test);
   }
   return { quarantined, unquarantined };
 }
@@ -346,10 +347,12 @@ export async function checkQuarantineGate(opts: {
   for (const test of quarantined) {
     log(`  🔒 quarantined      ${title(test)}`);
     log(`                      ↳ ${test.file_path ?? "(no file)"}`);
+    log(`                      ↳ View test in CI Conductor: ${test.permalink ?? ""}`);
   }
   for (const test of unquarantined) {
     log(`  🚨 NOT quarantined  ${title(test)}`);
     log(`                      ↳ ${test.file_path ?? "(no file)"}`);
+    log(`                      ↳ View test in CI Conductor: ${""}`);
   }
 
   return finish({
