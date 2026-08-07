@@ -1,7 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import type { DashboardSubscriptionData } from "metabase/redux/store";
 import { getEmailDomain } from "metabase/utils/email";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatFrame } from "metabase/utils/time-dayjs";
@@ -13,17 +12,16 @@ import {
   getDefaultValuePopulatedParameters,
   normalizeParameterValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  Alert,
+import type { Alert,
   Channel,
   ChannelApiResponse,
   ChannelSpec,
   ChannelSpecs,
   DashboardSubscription,
+  DashboardSubscriptionData,
   Parameter,
   ScheduleSettings,
-  User,
-} from "metabase-types/api";
+  User } from "metabase-types/api";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,

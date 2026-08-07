@@ -4,9 +4,9 @@ import { t } from "ttag";
 import type { MfaChallengeResponse } from "metabase/api/session";
 import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { LoginData } from "metabase/redux/auth";
 import { login } from "metabase/redux/auth";
 import { useSetting } from "metabase/settings";
+import type { LoginData } from "metabase-types/api";
 
 import { getExternalAuthProviders } from "../../selectors";
 import { AuthTextLink } from "../AuthButton";

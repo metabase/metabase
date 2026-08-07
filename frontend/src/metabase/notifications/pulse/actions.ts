@@ -3,15 +3,13 @@ import { t } from "ttag";
 
 import { subscriptionApi } from "metabase/api";
 import { createThunkAction } from "metabase/redux";
-import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import type {
-  ChannelApiResponse,
+import type { ChannelApiResponse,
   CreateSubscriptionRequest,
   DashboardSubscription,
-  UpdateSubscriptionRequest,
-} from "metabase-types/api";
+  DraftDashboardSubscription,
+  UpdateSubscriptionRequest } from "metabase-types/api";
 
 import { getEditingPulse } from "./selectors";
 

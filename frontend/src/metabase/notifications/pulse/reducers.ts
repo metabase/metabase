@@ -1,10 +1,8 @@
 import { handleActions } from "redux-actions";
 
-import type { DraftDashboardSubscription } from "metabase/redux/store";
-import type {
-  ChannelApiResponse,
+import type { ChannelApiResponse,
   DashboardSubscription,
-} from "metabase-types/api";
+  DraftDashboardSubscription } from "metabase-types/api";
 
 import {
   CANCEL_EDITING_PULSE,

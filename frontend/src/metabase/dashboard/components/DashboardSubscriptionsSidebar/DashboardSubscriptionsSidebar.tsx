@@ -21,21 +21,20 @@ import {
 } from "metabase/notifications/pulse/selectors";
 import { NEW_PULSE_TEMPLATE, cleanPulse, createChannel } from "metabase/pulse";
 import { connect, useDispatch } from "metabase/redux";
-import type { DraftDashboardSubscription, State } from "metabase/redux/store";
+import type { State } from "metabase/redux/store";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  Channel,
+import type { Channel,
   ChannelApiResponse,
   ChannelSpec,
   ChannelSpecs,
   ChannelType,
   Dashboard,
   DashboardSubscription,
+  DraftDashboardSubscription,
   ScheduleSettings,
   SubscriptionSupportingCard,
-  User,
-} from "metabase-types/api";
+  User } from "metabase-types/api";
 
 import { useDashboardContext } from "../../context";
 

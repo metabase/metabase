@@ -12,19 +12,17 @@ import { SlackChannelField } from "metabase/notifications/channels/SlackChannelF
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
-import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
 import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import {
-  type Channel,
+import type { type Channel,
   type ChannelApiResponse,
   type ChannelSpec,
   type Dashboard,
   DataPermissionValue,
-  type ScheduleSettings,
-} from "metabase-types/api";
+  DraftDashboardSubscription,
+  type ScheduleSettings } from "metabase-types/api";
 
 import S from "./AddEditSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";
