@@ -31,7 +31,10 @@ const GOOGLE_SETTING_KEYS = [
 const GOOGLE_MODEL_LOCATIONS_URL =
   "https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations#google-models";
 
-const RECOMMENDED_MODEL = "gemini-3.5-flash";
+// The models Metabot is known to work well with. Which of them a project can actually reach depends
+// on its location, thus the input still accepts any model ID and only warns about the rest.
+// The first entry in this list is used as the placeholder for the model form input below.
+const RECOMMENDED_MODELS = ["gemini-3.5-flash", "gemini-3.6-flash"] as const;
 
 type GoogleSettingDetails = SettingDefinitionMap<
   (typeof GOOGLE_SETTING_KEYS)[number]
@@ -59,31 +62,19 @@ const stripGooglePublisher = (model: string | undefined) =>
 const qualifyGoogleModel = (model: string) =>
   model.includes("/") ? model : `google/${model}`;
 
-// Warnings about model IDs that are probably bad choices for Metabot.
+const isRecommendedModel = (model: string) =>
+  RECOMMENDED_MODELS.some(
+    (recommended) =>
+      recommended === stripGooglePublisher(model.trim().toLowerCase()),
+  );
+
+// Advisory only — a model outside the list still connects, it just may not work well with Metabot.
 const getModelWarning = (model: string): string | null => {
-  const normalized = model.trim().toLowerCase();
-  if (!normalized) {
+  if (!model.trim() || isRecommendedModel(model)) {
     return null;
   }
-  if (!normalized.includes("gemini")) {
-    return t`Only Gemini models are currently supported, e.g. ${RECOMMENDED_MODEL}`;
-  }
-  if (normalized.includes("image")) {
-    return t`This appears to be an image model. Use a standard model like ${RECOMMENDED_MODEL} or newer.`;
-  }
-  if (normalized.includes("audio")) {
-    return t`This appears to be an audio model. Use a standard model like ${RECOMMENDED_MODEL} or newer.`;
-  }
-  if (normalized.includes("tts")) {
-    return t`This appears to be a TTS model. Use a standard model like ${RECOMMENDED_MODEL} or newer.`;
-  }
-  if (normalized.includes("gemini-2.5")) {
-    return t`Metabot performance may be degraded with the Gemini 2.5 family of models. ${RECOMMENDED_MODEL} or stronger is recommended.`;
-  }
-  if (normalized.includes("lite")) {
-    return t`Metabot performance may be degraded with 'lite' models. ${RECOMMENDED_MODEL} or stronger is recommended.`;
-  }
-  return null;
+  const recommendedModels = RECOMMENDED_MODELS.join(", ");
+  return t`Metabot works best with these models: ${recommendedModels}. Other models may not work as expected.`;
 };
 
 const readFileText = (file: File) =>
@@ -298,7 +289,7 @@ const GoogleCredentialFields = ({
             {t`See which Gemini models are available in each location.`}
           </ExternalLink>
         )}`}
-        placeholder="gemini-3.5-flash"
+        placeholder={RECOMMENDED_MODELS[0]}
         disabled={isMutating || isEnvSetting}
         w="100%"
       />

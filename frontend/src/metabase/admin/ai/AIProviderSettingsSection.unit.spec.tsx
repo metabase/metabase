@@ -2445,82 +2445,42 @@ describe("AIProviderSettingsSection", () => {
       await userEvent.type(await screen.findByLabelText("Model"), model);
     };
 
-    const ANY_MODEL_WARNING =
-      /may be degraded|This appears to be|Only Gemini models/;
+    const MODEL_WARNING =
+      "Metabot works best with these models: gemini-3.5-flash, gemini-3.6-flash. Other models may not work as expected.";
 
-    it("shows no advisory warning for a standard Gemini model", async () => {
-      await typeModel("gemini-3.5-flash");
+    it.each(["gemini-3.5-flash", "gemini-3.6-flash"])(
+      "shows no advisory warning for %s",
+      async (model) => {
+        await typeModel(model);
 
-      expect(screen.queryByText(ANY_MODEL_WARNING)).not.toBeInTheDocument();
+        expect(screen.queryByText(MODEL_WARNING)).not.toBeInTheDocument();
+      },
+    );
+
+    it("shows no advisory warning for a recommended model entered with the google publisher prefix", async () => {
+      await typeModel("google/gemini-3.5-flash");
+
+      expect(screen.queryByText(MODEL_WARNING)).not.toBeInTheDocument();
     });
 
-    it("warns that the Gemini 2.5 family may degrade Metabot performance", async () => {
+    it("lists the recommended models when the model is another Gemini model", async () => {
       await typeModel("gemini-2.5-flash");
 
-      expect(
-        screen.getByText(
-          "Metabot performance may be degraded with the Gemini 2.5 family of models. gemini-3.5-flash or stronger is recommended.",
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByText(MODEL_WARNING)).toBeInTheDocument();
     });
 
-    it("warns that 'lite' models may degrade Metabot performance", async () => {
-      await typeModel("gemini-3.5-flash-lite");
-
-      expect(
-        screen.getByText(
-          "Metabot performance may be degraded with 'lite' models. gemini-3.5-flash or stronger is recommended.",
-        ),
-      ).toBeInTheDocument();
-    });
-
-    it("warns when the model looks like an image model", async () => {
-      await typeModel("gemini-3.5-flash-image");
-
-      expect(
-        screen.getByText(
-          "This appears to be an image model. Use a standard model like gemini-3.5-flash or newer.",
-        ),
-      ).toBeInTheDocument();
-    });
-
-    it("warns when the model looks like an audio model", async () => {
-      await typeModel("gemini-3.6-native-audio");
-
-      expect(
-        screen.getByText(
-          "This appears to be an audio model. Use a standard model like gemini-3.5-flash or newer.",
-        ),
-      ).toBeInTheDocument();
-    });
-
-    it("warns when the model looks like a TTS model", async () => {
-      await typeModel("gemini-3.6-tts");
-
-      expect(
-        screen.getByText(
-          "This appears to be a TTS model. Use a standard model like gemini-3.5-flash or newer.",
-        ),
-      ).toBeInTheDocument();
-    });
-
-    it("warns when the model is not a Gemini model", async () => {
+    it("lists the recommended models when the model is not a Gemini model", async () => {
       await typeModel("claude-sonnet-4-6");
 
-      expect(
-        screen.getByText(
-          "Only Gemini models are currently supported, e.g. gemini-3.5-flash",
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByText(MODEL_WARNING)).toBeInTheDocument();
     });
 
-    it("warns about the modality rather than 'lite' when a model is both", async () => {
-      await typeModel("gemini-3.1-flash-lite-image");
+    it("shows no advisory warning while the model is still blank", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+      await selectProvider("Gemini Enterprise Agent Platform");
+      await screen.findByLabelText("Model");
 
-      expect(
-        screen.getByText(/This appears to be an image model/),
-      ).toBeInTheDocument();
-      expect(screen.queryByText(/'lite' models/)).not.toBeInTheDocument();
+      expect(screen.queryByText(MODEL_WARNING)).not.toBeInTheDocument();
     });
 
     it("advisory warnings do not block connect", async () => {
@@ -2544,7 +2504,7 @@ describe("AIProviderSettingsSection", () => {
       await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
       await userEvent.type(screen.getByLabelText("Model"), "gemini-2.5-flash");
 
-      expect(screen.getByText(ANY_MODEL_WARNING)).toBeInTheDocument();
+      expect(screen.getByText(MODEL_WARNING)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
 
       await userEvent.click(screen.getByRole("button", { name: "Connect" }));
