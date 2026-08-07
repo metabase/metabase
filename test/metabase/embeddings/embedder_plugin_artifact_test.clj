@@ -13,7 +13,7 @@
 
 (def ^:private requested-model
   {:provider   "in-process"
-   :model-name "Snowflake/snowflake-arctic-embed-l-v2.0"})
+   :model-name "Snowflake/snowflake-arctic-embed-xs"})
 
 (def ^:private requested-minilm-model
   {:provider   "in-process"
@@ -98,7 +98,7 @@
                 (assoc requested-model :vector-dimensions 768))))
         (is (re-matches #"emb:v1:sha256:[0-9a-f]{64}"
                         (:embedding-space-id (embeddings.provider/resolve-model requested-model))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has 1024 dimensions"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has 384 dimensions"
                               (embeddings.provider/resolve-model
                                (assoc requested-model :vector-dimensions 768))))
         (let [architecture-var (ns-resolve 'metabase-enterprise.embedder.catalog 'architecture)
@@ -188,7 +188,7 @@
             {model-fn-var (constantly
                            (fn [_model-name texts]
                              (swap! batch-sizes conj (count texts))
-                             (mapv (fn [_] (float-array 1024)) texts)))}
+                             (mapv (fn [_] (float-array 384)) texts)))}
             #(embeddings.provider/embed-texts requested-model (repeat 65 "text")))
           (is (= [32 32 1] @batch-sizes))
           (is (nil? (find-ns 'metabase-enterprise.embedder.model)))))
@@ -206,7 +206,7 @@
                    (isolated-thread-call
                     #(embeddings.provider/embed-texts requested-minilm-model ["dog" "invoice"])))]
               (is (some? (find-ns 'metabase-enterprise.embedder.model)))
-              (is (= [1024 1024 1024] (mapv alength [dog puppy invoice])))
+              (is (= [384 384 384] (mapv alength [dog puppy invoice])))
               (is (> (cosine dog puppy) (cosine dog invoice)))
               (is (= [384 384] (mapv alength minilm-embeddings)))
               (is (every? #(< (Math/abs (- 1.0 (magnitude %))) 1.0e-5) minilm-embeddings)

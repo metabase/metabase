@@ -16,7 +16,7 @@
 
 (def default-model-name
   "Canonical Library retrieval model bundled by this plugin."
-  "Snowflake/snowflake-arctic-embed-l-v2.0")
+  "Snowflake/snowflake-arctic-embed-xs")
 
 (defn- plugin-resource
   [resource-path]

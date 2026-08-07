@@ -37,27 +37,14 @@ jobs:
     - uses: actions/checkout@v6
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
-    - name: Get cache keys
-      uses: ./.github/actions/get-cache-keys
-      id: get-cache-keys
-    # Restore-only: the weekly cache-generator workflow is the single cache
-    # writer. The model downloader verifies SHA-256s and re-fetches anything
-    # missing, so a stale or absent cache only slows the job down.
-    - name: Restore pinned model downloads
-      uses: actions/cache/restore@v5
-      with:
-        path: modules/embedder/target/model-download
-        key: ${{ steps.get-cache-keys.outputs.embedder-models-cache-key }}
-        restore-keys: |
-          ${{ steps.get-cache-keys.outputs.embedder-models-restore-key }}
     - name: Build embedder plugin
       run: ./bin/build-embedder-plugin.sh
     - name: Verify packaged plugin resources
       run: |
         jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase/embedder/metabase-plugin.yaml
         jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase/embedder-model-catalog.edn
-        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase-embedder/snowflake-arctic-embed-l-v2.0-f0ff6dce29c14995095706b2c861b31f13643ceb-arm64.zip
-        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase-embedder/snowflake-arctic-embed-l-v2.0-f0ff6dce29c14995095706b2c861b31f13643ceb-avx2.zip
+        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase-embedder/snowflake-arctic-embed-xs-d8c86521100d3556476a063fc2342036d45c106f-arm64.zip
+        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase-embedder/snowflake-arctic-embed-xs-d8c86521100d3556476a063fc2342036d45c106f-avx2.zip
     - name: Run artifact-only plugin smoke test
       env:
         MB_EMBEDDER_ARTIFACT_TEST: "true"

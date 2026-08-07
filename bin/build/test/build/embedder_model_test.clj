@@ -7,17 +7,17 @@
 (deftest model-catalog-test
   (let [{:keys [catalog-version models]} (embedder-model/model-catalog)]
     (is (= 1 catalog-version))
-    (is (= #{"Snowflake/snowflake-arctic-embed-l-v2.0"
+    (is (= #{"Snowflake/snowflake-arctic-embed-xs"
              "sentence-transformers/all-MiniLM-L6-v2"}
            (set (keys models))))
-    (is (= {"Snowflake/snowflake-arctic-embed-l-v2.0"
-            {:vector-dimensions 1024
+    (is (= {"Snowflake/snowflake-arctic-embed-xs"
+            {:vector-dimensions 384
              :runtime           {:inference-contract-version 1
                                  :djl-version                "0.36.0"
                                  :engine                     "OnnxRuntime"
                                  :pooling                    "cls"
                                  :normalize?                 true
-                                 :include-token-types?       false}}
+                                 :include-token-types?       true}}
             "sentence-transformers/all-MiniLM-L6-v2"
             {:vector-dimensions 384
              :runtime           {:inference-contract-version 1
