@@ -193,12 +193,18 @@
   [_route-params
    _query-params
    body :- [:maybe {:decode/api {:enter (fn [body] (when (map? body) body))}}
+            ;; the RFC 7591 client metadata we keep -- see the column list in `metabase.oauth-server.store`
             [:map
-             [:application_type {:optional true} [:maybe :string]]
-             [:client_name      {:optional true} [:maybe :string]]
-             [:grant_types      {:optional true} [:maybe [:sequential :string]]]
-             [:redirect_uris    {:optional true} [:maybe [:sequential :string]]]
-             [:scope            {:optional true} [:maybe :string]]]]
+             [:application_type           {:optional true} [:maybe :string]]
+             [:client_name                {:optional true} [:maybe :string]]
+             [:client_uri                 {:optional true} [:maybe :string]]
+             [:contacts                   {:optional true} [:maybe [:sequential :string]]]
+             [:grant_types                {:optional true} [:maybe [:sequential :string]]]
+             [:logo_uri                   {:optional true} [:maybe :string]]
+             [:redirect_uris              {:optional true} [:maybe [:sequential :string]]]
+             [:response_types             {:optional true} [:maybe [:sequential :string]]]
+             [:scope                      {:optional true} [:maybe :string]]
+             [:token_endpoint_auth_method {:optional true} [:maybe :string]]]]
    request]
   (if-not (oauth-settings/oauth-server-dynamic-registration-enabled)
     {:status  403
