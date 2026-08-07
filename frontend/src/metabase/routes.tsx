@@ -78,6 +78,7 @@ import {
   Navigate,
   type RouteObject,
   redirect,
+  registerPagePrefetch,
   toRouteObjects,
   useParams,
 } from "metabase/router";
@@ -129,6 +130,21 @@ const metabotQueryBuilder = () =>
   import("metabase/query_builder/components/MetabotQueryBuilder").then(
     ({ MetabotQueryBuilder }) => ({ Component: MetabotQueryBuilder }),
   );
+
+/**
+ * Hovering a link into the query builder starts the fetch, so the chunk is
+ * usually in hand by the time the click lands. The router still awaits `lazy`
+ * and still commits the location a tick late, so this removes the round trip
+ * rather than the asynchrony. See `lazy-route.unit.spec.tsx`.
+ *
+ * The paths are prefixes, so `/table/` also covers the table detail page, which
+ * is not the query builder. The chunk is fetched once either way, and someone
+ * looking at a table row is a fair bet to open a question next.
+ */
+registerPagePrefetch("/question", queryBuilder);
+registerPagePrefetch("/model", queryBuilder);
+registerPagePrefetch("/table/", queryBuilder);
+registerPagePrefetch("/question/ask", metabotQueryBuilder);
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
   {

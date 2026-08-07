@@ -88,6 +88,31 @@ describe("a lazy route", () => {
     expect(screen.queryByTestId("split")).not.toBeInTheDocument();
   });
 
+  // What prefetching on hover buys, and what it does not. The module is already
+  // in hand, so the gap is a tick rather than a round trip, but the router still
+  // awaits `lazy` and still commits the location late.
+  it("defers the location even when the module is already loaded", async () => {
+    const load = jest.fn().mockResolvedValue({ Component: Split });
+    const { router } = renderRoutes(
+      [
+        { path: "/", element: <Home /> },
+        {
+          path: "/split",
+          lazy: load,
+        },
+      ],
+      { initialRoute: "/" },
+    );
+
+    await load();
+
+    router?.navigate("/split");
+    expect(router?.location.pathname).toBe("/");
+
+    expect(await screen.findByTestId("split")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/split");
+  });
+
   // react-router resolves `lazy` onto the route object itself, so the cost is
   // paid once per chunk rather than on every navigation into the subtree.
   it("is synchronous again on the second visit", async () => {
