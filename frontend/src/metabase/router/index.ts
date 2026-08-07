@@ -13,11 +13,13 @@ export {
   useSearchParams,
 } from "react-router";
 export * from "./use-navigate";
+export * from "./prefetch";
 export * from "./redirect";
 export * from "./to-route-objects";
 export * from "./location-change";
 export * from "./RouterProvider";
 export * from "./types";
+export * from "./use-is-navigating";
 export * from "./use-maybe-location";
 export * from "./use-route-leave-blocker";
 export {

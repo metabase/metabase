@@ -1199,7 +1199,6 @@
            metabase.lib.schema.ref
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
-           metabase.lib.schema.test-spec
            metabase.lib.schema.util
            metabase.lib.schema.validate
            metabase.lib.types.isa
@@ -1411,7 +1410,6 @@
               events
               explorations
               interestingness
-              legacy-mbql
               lib
               lib-be
               llm
@@ -1828,6 +1826,7 @@
            lib
            models
            notification
+           parameters
            permissions
            premium-features
            query-processor

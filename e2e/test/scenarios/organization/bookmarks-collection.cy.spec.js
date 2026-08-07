@@ -168,7 +168,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
       H.visitCollection("root");
 
       pin(name);
-      H.tableHeaderColumn("ID");
+      H.getPinnedSection().findByText("A question");
       bookmarkPinnedItem(name);
 
       H.expectUnstructuredSnowplowEvent({

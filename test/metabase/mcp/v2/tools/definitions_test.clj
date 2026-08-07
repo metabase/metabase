@@ -429,7 +429,10 @@
 ;;; ------------------------------------------ Definition validation -----------------------------------------------
 
 (deftest ^:parallel definition-validation-teaching-test
-  (testing "GHY-4137: the model layer's raw Malli failures reach the caller as teaching errors naming the rule"
+  (testing "GHY-4137: the model layer's raw Malli failures reach the caller as teaching errors rather than
+            \"Internal error\". The messages name the constraint that was broken; they stopped naming the
+            offending clause when master moved stage validation to a top-level `[:fn]`, which short-circuits
+            before malli descends far enough to produce the per-clause rule text"
     (testing "a segment definition with an aggregation"
       (let [msg (tool-error (call-tool! :crowberto nil "segment_write"
                                         {:method "create" :table_id (mt/id :venues)
@@ -439,7 +442,7 @@
                                                       :query    {:source-table (mt/id :venues)
                                                                  :aggregation  [["count"]]
                                                                  :filter       ["=" 1 1]}}}))]
-        (is (str/includes? msg "Segments cannot use :aggregation"))
+        (is (str/includes? msg "A segment's stages must be segment stages"))
         (is (not= "Internal error" msg))))
     (testing "a measure definition with two aggregations"
       (let [definition (update-in (count-definition (mt/id :venues)) [:stages 0 :aggregation]
@@ -448,7 +451,7 @@
                                                {:method "create" :table_id (mt/id :venues)
                                                 :name "definitions-test two aggs"
                                                 :definition definition}))]
-        (is (str/includes? msg "exactly one aggregation"))
+        (is (str/includes? msg "A measure definition's stages must be measure stages"))
         (is (not= "Internal error" msg))))
     (testing "a definition that fails MBQL normalization outright — the models would silently store {} for it"
       (is (str/includes? (tool-error (call-tool! :crowberto nil "segment_write"

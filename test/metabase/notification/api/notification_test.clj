@@ -269,7 +269,10 @@
             (is (=? template recreated-template))))))))
 
 (deftest api-rejects-handlebars-resource-templates-test
-  (let [resource-template {:name         "test"
+  (let [;; the request schema only admits the handlebars-text template type, so the API rejects a
+        ;; handlebars-resource one before the endpoint gets a chance to look at it
+        rejected          {:errors {:handlers {:template {:details {:type "enum of :email/handlebars-text, email/handlebars-text"}}}}}
+        resource-template {:name         "test"
                            :channel_type "channel/email"
                            :details      {:type    "email/handlebars-resource"
                                           :subject "test"
@@ -277,7 +280,7 @@
     (testing "POST /api/notification rejects handlebars-resource templates"
       (mt/with-model-cleanup [:model/Notification]
         (mt/with-temp [:model/Card {card-id :id} {}]
-          (is (=? "invalid template"
+          (is (=? rejected
                   (mt/user-http-request :crowberto :post 400 "notification"
                                         {:payload_type "notification/card"
                                          :payload      {:card_id card-id}
@@ -287,7 +290,7 @@
                                                                          :user_id (mt/user->id :crowberto)}]}]}))))))
     (testing "POST /api/notification/send rejects handlebars-resource templates"
       (mt/with-temp [:model/Card {card-id :id} {}]
-        (is (=? "invalid template"
+        (is (=? rejected
                 (mt/user-http-request :crowberto :post 400 "notification/send"
                                       {:payload_type "notification/card"
                                        :payload      {:card_id        card-id
@@ -301,7 +304,7 @@
         [notification {:handlers [{:channel_type "channel/email"
                                    :recipients   [{:type    :notification-recipient/user
                                                    :user_id (mt/user->id :crowberto)}]}]}]
-        (is (=? "invalid template"
+        (is (=? rejected
                 (mt/user-http-request :crowberto :put 400 (format "notification/%d" (:id notification))
                                       (update notification :handlers
                                               (fn [[handler]]
