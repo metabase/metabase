@@ -47,30 +47,45 @@ describe("compareFailedToQuarantine", () => {
     expect(unquarantined).toEqual(failures);
   });
 
-  it("puts every failure in `quarantined` when all are listed", () => {
-    const failures = [failed("a"), failed("b")];
+  // A matched failure comes back as its *quarantine entry*, not as the failure
+  // itself — that's what carries the permalink the report links to.
+  it("puts every failure in `quarantined` when all are listed, as list entries", () => {
+    const entries = [quarantined("a"), quarantined("b")];
 
     const { quarantined: q, unquarantined } = compareFailedToQuarantine(
-      failures,
-      [quarantined("a"), quarantined("b")],
+      [failed("a"), failed("b")],
+      entries,
     );
 
-    expect(q).toEqual(failures);
+    expect(q).toEqual(entries);
     expect(unquarantined).toEqual([]);
   });
 
   it("partitions a mixed set", () => {
-    const a = failed("a");
     const b = failed("b");
-    const c = failed("c");
+    const entryA = quarantined("a");
+    const entryC = quarantined("c");
 
     const { quarantined: q, unquarantined } = compareFailedToQuarantine(
-      [a, b, c],
-      [quarantined("a"), quarantined("c")],
+      [failed("a"), b, failed("c")],
+      [entryA, entryC],
     );
 
-    expect(q).toEqual([a, c]);
+    expect(q).toEqual([entryA, entryC]);
     expect(unquarantined).toEqual([b]);
+  });
+
+  // The failure's order wins: `quarantined` follows the run, not the list.
+  it("returns matches in the order the failures came in", () => {
+    const entryA = quarantined("a");
+    const entryB = quarantined("b");
+
+    const { quarantined: q } = compareFailedToQuarantine(
+      [failed("b"), failed("a")],
+      [entryA, entryB],
+    );
+
+    expect(q).toEqual([entryB, entryA]);
   });
 
   it("returns two empty buckets for no failures", () => {
@@ -103,14 +118,14 @@ describe("compareFailedToQuarantine", () => {
   });
 
   it("treats a null path on the failure as an empty string for matching", () => {
-    const failure = failed("a", null, null);
+    const entry = quarantined("a", "", "");
 
     const { quarantined: q } = compareFailedToQuarantine(
-      [failure],
-      [quarantined("a", "", "")],
+      [failed("a", null, null)],
+      [entry],
     );
 
-    expect(q).toEqual([failure]);
+    expect(q).toEqual([entry]);
   });
 });
 
@@ -132,33 +147,43 @@ describe("matchKey", () => {
 describe("testSearchUrl", () => {
   const base = "https://conductor.coredev.metabase.com";
 
-  it("searches the full `test_path > test_name` title", () => {
+  // `›` (U+203A) is the separator `title` uses, so it lands percent-encoded.
+  it("searches the full `test_path › test_name` title", () => {
     expect(
-      testSearchUrl(base, {
-        test_name: "should be able to view and revert document revisions",
-        test_path: "documents > revision history",
-      }),
+      testSearchUrl(
+        base,
+        failed(
+          "should be able to view and revert document revisions",
+          "documents › revision history",
+        ),
+      ),
     ).toBe(
-      "https://conductor.coredev.metabase.com/tests?q=documents+%3E+revision+history+%3E+should+be+able+to+view+and+revert+document+revisions",
+      "https://conductor.coredev.metabase.com/tests?q=documents+%E2%80%BA+revision+history+%E2%80%BA+should+be+able+to+view+and+revert+document+revisions",
     );
   });
 
   it("searches the name alone when there's no path", () => {
-    expect(testSearchUrl(base, { test_name: "a test", test_path: null })).toBe(
+    expect(testSearchUrl(base, failed("a test", null))).toBe(
       `${base}/tests?q=a+test`,
     );
   });
 
+  it("takes a quarantine entry just as happily as a failure", () => {
+    expect(testSearchUrl(base, quarantined("a test", "Suite"))).toBe(
+      `${base}/tests?q=Suite+%E2%80%BA+a+test`,
+    );
+  });
+
   it("trims a trailing slash off the base url", () => {
-    expect(testSearchUrl(`${base}//`, { test_name: "a test" })).toBe(
+    expect(testSearchUrl(`${base}//`, failed("a test", null))).toBe(
       `${base}/tests?q=a+test`,
     );
   });
 
   it("escapes characters that would otherwise break out of the query string", () => {
-    expect(
-      testSearchUrl(base, { test_name: `#1 "a" & b`, test_path: null }),
-    ).toBe(`${base}/tests?q=%231+%22a%22+%26+b`);
+    expect(testSearchUrl(base, failed(`#1 "a" & b`, null))).toBe(
+      `${base}/tests?q=%231+%22a%22+%26+b`,
+    );
   });
 });
 
