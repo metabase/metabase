@@ -54,18 +54,6 @@
         (api/write-check :model/Collection new-coll)
         (api/write-check collection/root-collection)))))
 
-(defn- exploration-query-dim-label
-  "Display label for a dimension inside an ExplorationQuery `name`. When `ambiguous?` and the dim
-  has a known group, prefixes with the group's display name and the canonical ` → ` separator
-  (matches `metabase.lib.display-name/separator`). Otherwise falls back to the dim's display name
-  (or id when missing)."
-  [dim ambiguous?]
-  (let [dn       (or (:display-name dim) (:dimension-id dim))
-        group-dn (some-> dim :group :display-name)]
-    (if (and ambiguous? (not (str/blank? group-dn)))
-      (str group-dn " → " dn)
-      dn)))
-
 (defn- blocks-by-thread-id
   "The persisted blocks (`ExplorationBlock`) for `thread-ids`, in authoring order, grouped by
    `:exploration_thread_id`."
@@ -76,51 +64,32 @@
                          :exploration_thread_id [:in thread-ids]
                          {:order-by [[:position :asc] [:id :asc]]}))))
 
-(defn- enrich-block-dimensions
-  "Attach each block dimension's `:group` (source) label from `card-dim-by-id` so the read tree
-  can qualify same-named dimension headings by their source."
-  [blocks card-dim-by-id]
-  (mapv (fn [block]
-          (update block :dimensions
-                  (fn [dims]
-                    (mapv #(block/enrich-with-card-group % card-dim-by-id) dims))))
-        blocks))
-
 (defn- attach-query-dimension-labels
   "Attach `:dimension_name` to each query on `thread`. Dimension snapshots come from the
-  thread's `blocks` (deduped by id); each is enriched with `:group` looked up from
-  `card-dim-by-id` (the metric Cards' snapshotted `:dimensions`, the only place that group
-  metadata lives), then `exploration-query-dim-label` is applied with ambiguity scoped to the
-  thread's dimensions."
-  [thread blocks card-dim-by-id]
-  (let [thread-dims   (vals (u/index-by :dimension-id (mapcat :dimensions blocks)))
-        enriched-dims (mapv #(block/enrich-with-card-group % card-dim-by-id)
-                            thread-dims)
-        dim-by-id     (u/index-by :dimension-id enriched-dims)
-        name-counts   (frequencies (keep :display-name enriched-dims))]
+  thread's `blocks` (deduped by id via [[u/index-by]]); each query gets the dim's curated
+  [[block/dimension-label]]."
+  [thread blocks]
+  (let [dim-by-id (u/index-by :dimension-id (mapcat :dimensions blocks))]
     (update thread :queries
             (fn [queries]
               (some->> queries
                        (mapv (fn [q]
                                ;; `:dimension_id` on a query is the exploration_query DB column.
-                               (let [dim-id     (:dimension_id q)
-                                     dim        (or (get dim-by-id dim-id)
-                                                    {:dimension-id dim-id})
-                                     ambiguous? (> (get name-counts (:display-name dim) 0) 1)]
+                               (let [dim-id (:dimension_id q)
+                                     dim    (or (get dim-by-id dim-id)
+                                                {:dimension-id dim-id})]
                                  (assoc q :dimension_name
-                                        (exploration-query-dim-label dim ambiguous?))))))))))
+                                        (block/dimension-label dim))))))))))
 
 (defn- attach-thread-read-data
   "Compute the read-side nested `:blocks` (each with its `:pages`) and per-query
-  `:dimension_name` labels for `thread` from its pre-fetched `blocks`, `pages`, and the shared
-  metric-Card lookup maps (`card-name-by-id` for page/heading names, `card-dim-by-id` for
-  dimension source metadata)."
-  [thread blocks pages card-name-by-id card-dim-by-id]
-  (let [enriched-blocks (enrich-block-dimensions blocks card-dim-by-id)
-        ;; Label queries first so blocks-tree can name metric-anchored pages "By <dimension>".
-        labeled         (attach-query-dimension-labels thread enriched-blocks card-dim-by-id)]
+  `:dimension_name` labels for `thread` from its pre-fetched `blocks`, `pages`, and
+  `card-name-by-id` (metric Card id → name, for page/heading names)."
+  [thread blocks pages card-name-by-id]
+  ;; Label queries first so blocks-tree can name metric-anchored pages "By <dimension>".
+  (let [labeled (attach-query-dimension-labels thread blocks)]
     (assoc labeled :blocks (explorations.blocks/blocks-tree
-                            enriched-blocks pages card-name-by-id (:queries labeled)))))
+                            blocks pages card-name-by-id (:queries labeled)))))
 
 (defn- attach-threads-read-data
   "Batch [[attach-thread-read-data]] across `threads`: select every thread's blocks, their
@@ -136,15 +105,12 @@
                                                 :exploration_block_id [:in block-ids])))
         card-ids         (distinct (mapcat #(map :card_id (:metrics %)) all-blocks))
         cards            (when (seq card-ids)
-                           (t2/select [:model/Card :id :name :dimensions] :id [:in card-ids]))
-        card-name-by-id  (into {} (map (juxt :id :name)) cards)
-        card-dim-by-id   (into {}
-                               (mapcat (fn [c] (map (juxt :id identity) (:dimensions c))))
-                               cards)]
+                           (t2/select [:model/Card :id :name] :id [:in card-ids]))
+        card-name-by-id  (into {} (map (juxt :id :name)) cards)]
     (mapv (fn [thread]
             (let [blocks (get blocks-by-thread (:id thread) [])
                   pages  (mapcat #(get pages-by-block (:id %) []) blocks)]
-              (attach-thread-read-data thread blocks pages card-name-by-id card-dim-by-id)))
+              (attach-thread-read-data thread blocks pages card-name-by-id)))
           threads)))
 
 (defn- gate-threads-derived-data

@@ -14,6 +14,7 @@
   instance, and teaching `pick-planner!` to dispatch to it."
   (:require
    [clojure.set :as set]
+   [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
    [metabase.explorations.query-plan.planner :as planner]
@@ -57,7 +58,7 @@
   (let [metric    (get metric-by-key [(:block_id item) (:metric_id item)])
         appl      (get-in metric [:applicability (:dimension_id item)])
         dim       (:dim appl)
-        dim-label (or (:display-name dim) (:dimension-id dim))
+        dim-label (block/dimension-label dim)
         item-seg  (segment-for metric (get-in item [:params :segment_id]))
         plan-ctx  {:segment item-seg :params (:params item)}]
     (mapv (fn [recipe]
