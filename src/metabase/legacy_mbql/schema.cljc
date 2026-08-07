@@ -1856,6 +1856,10 @@
      [:effective_type     {:optional true} ::lib.schema.common/base-type]
      [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
      [:field_ref          {:optional true} [:maybe [:ref ::Reference]]]
+     ;; implicit-join provenance -- the FE renders "Orders → Category" from these, and drill-thru needs them to
+     ;; rebuild the `:source-field` option
+     [:fk_field_id        {:optional true} [:maybe ::lib.schema.id/field]]
+     [:fk_target_field_id {:optional true} [:maybe ::lib.schema.id/field]]
      ;; Fingerprint is required in order to use BINNING
      [:fingerprint        {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
      [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
