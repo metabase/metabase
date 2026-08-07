@@ -464,9 +464,10 @@
           block     (#'mage.modules/codeowners-block config assignees)
           lines     (->> (str/split-lines block)
                          (filter #(str/starts-with? % "src/metabase/lib")))]
-      (is (= 2 (count lines)) "both parent and child stanzas are emitted")
+      (is (= 3 (count lines)) "the parent and both child paths are emitted")
       (is (= ["src/metabase/lib @metabase/querying-platform"
-              "src/metabase/lib/schema @metabase/querying-platform"]
+              "src/metabase/lib/schema @metabase/querying-platform"
+              "src/metabase/lib/schema.cljc @metabase/querying-platform"]
              lines)))))
 
 (deftest codeowners-block-comments-out-unknown-teams

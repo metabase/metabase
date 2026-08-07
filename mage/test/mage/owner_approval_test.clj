@@ -99,3 +99,23 @@
     (is (= "tooling & scripts" (no-team-bucket ".clj-kondo/hooks/x.clj")))
     (is (= "tooling & scripts" (no-team-bucket "dev/src/dev/x.clj")))
     (is (= "tooling & scripts" (no-team-bucket "mage/src/mage/x.clj")))))
+
+(deftest fetch-fatal-errors-tolerates-not-found
+  (testing (str "Classifying which GraphQL responses are fatal. A benign per-PR NOT_FOUND must not "
+                "abort the batch: throwing there cached nothing, and because only uncached PRs are "
+                "re-fetched, every later run hit the same batch and wedged the audit.")
+    (let [fatal? @#'mage.owner-approval/fetch-fatal-errors]
+      (testing "no repository in the response is fatal even with no errors listed"
+        (is (seq (fatal? nil nil))))
+      (testing "a clean response is not fatal"
+        (is (nil? (fatal? {:pr1 {}} nil)))
+        (is (nil? (fatal? {:pr1 {}} []))))
+      (testing "NOT_FOUND alone is not fatal; those nodes are legitimately missing"
+        (is (nil? (fatal? {:pr1 nil} [{:type "NOT_FOUND" :path ["repository" "pr1"]}])))
+        (is (nil? (fatal? {:pr1 nil} [{:type "NOT_FOUND"} {:type "NOT_FOUND"}]))))
+      (testing "any other error type is fatal, even alongside NOT_FOUND"
+        (is (seq (fatal? {:pr1 {}} [{:type "RATE_LIMITED"}])))
+        (is (seq (fatal? {:pr1 {}} [{:type "NOT_FOUND"} {:type "RATE_LIMITED"}])))
+        (is (= ["RATE_LIMITED"]
+               (map :type (fatal? {:pr1 {}} [{:type "NOT_FOUND"} {:type "RATE_LIMITED"}])))
+            "and only the genuinely fatal ones are reported")))))

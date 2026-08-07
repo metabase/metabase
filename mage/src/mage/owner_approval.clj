@@ -183,6 +183,19 @@
                       (keep (fn [r] (when (= "APPROVED" (:state r)) (get-in r [:author :login]))))
                       (get-in node [:reviews :nodes]))}))
 
+(defn- fetch-fatal-errors
+  "Errors that mean the whole request failed, or nil when the response is usable.
+
+  `nil` `by-pr` means no repository came back at all. Otherwise only errors whose `:type` is not
+  `NOT_FOUND` are fatal: GitHub answers with partial data, and `gh` exits non-zero, when one queried
+  number doesn't resolve to a live PR, and those nodes are legitimately `:missing`. Pure so the
+  classification can be tested without shelling out; treating a benign `NOT_FOUND` as fatal is what
+  previously wedged the audit."
+  [by-pr errors]
+  (cond
+    (nil? by-pr) (or (seq errors) [{:type "NO_REPOSITORY"}])
+    :else        (seq (remove #(= "NOT_FOUND" (:type %)) errors))))
+
 (defn- fetch-batch!
   "Fetch reviews for a batch of PR numbers via one GraphQL call, writing each to the cache. Throws when
   the request failed as a whole, so a transient failure can't poison the cache with false `:missing`
@@ -199,11 +212,10 @@
   [prs]
   (let [{:keys [exit out]} (shell/sh* {:quiet? true} "gh" "api" "graphql" "-f" (str "query=" (graphql-query prs)))
         body   (json/parse-string (str/join "\n" out) true)
-        by-pr  (get-in body [:data :repository])
-        fatal  (remove #(= "NOT_FOUND" (:type %)) (:errors body))]
-    (when (or (nil? by-pr) (seq fatal))
+        by-pr  (get-in body [:data :repository])]
+    (when-let [fatal (fetch-fatal-errors by-pr (:errors body))]
       (throw (ex-info "GraphQL review fetch failed; leaving cache untouched"
-                      {:exit exit, :errors (:errors body), :prs (vec prs)})))
+                      {:exit exit, :errors (vec fatal), :prs (vec prs)})))
     (doseq [n prs
             :let [node (get by-pr (keyword (str "pr" n)))
                   data (assoc (or (parse-pr-node node) {:pr n :missing true})
