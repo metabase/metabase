@@ -100,6 +100,8 @@
   "Options map for dimension references."
   [:map
    {:decode/normalize lib.schema.common/normalize-options-map}
+   ;; `normalize-options-map` adds this, so it has to be declared or decoding strips it straight back off
+   [:lib/uuid       {:optional true} ::lib.schema.common/uuid]
    [:display-name   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]

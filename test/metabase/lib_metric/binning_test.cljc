@@ -221,10 +221,10 @@
 
 (deftest ^:parallel with-binning-preserves-other-options-test
   (testing "with-binning preserves other options"
-    (let [projection [:dimension {:lib/uuid "test-uuid" :display-name "Test"} uuid-numeric]
+    (let [projection [:dimension {:lib/uuid "550e8400-e29b-41d4-a716-4466554400aa" :display-name "Test"} uuid-numeric]
           binning {:strategy :default}
           result (lib-metric.projection/with-binning projection binning)]
-      (is (= "test-uuid" (:lib/uuid (second result))))
+      (is (= "550e8400-e29b-41d4-a716-4466554400aa" (:lib/uuid (second result))))
       (is (= "Test" (:display-name (second result))))
       (is (= binning (:binning (second result)))))))
 
