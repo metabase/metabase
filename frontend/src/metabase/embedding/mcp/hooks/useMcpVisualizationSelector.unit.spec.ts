@@ -213,6 +213,8 @@ describe("useMcpVisualizationSelector", () => {
       requestedDisplay: CardDisplayType | null;
     }
 
+    const initialProps: Props = { requestedDisplay: null };
+
     const { rerender } = renderHook(
       ({ requestedDisplay }: Props) =>
         useMcpVisualizationSelector({
@@ -222,11 +224,7 @@ describe("useMcpVisualizationSelector", () => {
           updateQuestion,
           requestedDisplay,
         }),
-      {
-        initialProps: { requestedDisplay: null } satisfies {
-          initialProps: Props;
-        },
-      },
+      { initialProps },
     );
 
     expect(updateQuestion).not.toHaveBeenCalled();
