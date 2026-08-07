@@ -5,9 +5,9 @@ import { OTHER_BUCKET_LABEL } from "metabase/explorations/constants";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatValue } from "metabase/value-formatting";
 import { isCartesianChart } from "metabase/visualizations";
 import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import type {
   ClickObject,
   ComputedVisualizationSettings,
