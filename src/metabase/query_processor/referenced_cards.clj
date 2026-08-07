@@ -143,12 +143,11 @@
 (defn viz-settings->goal-specs
   "Extract referenced-card specs from merged viz settings; nil when there are none."
   [viz]
-  (let [sources (keep dynamic-goals/card-ref (dynamic-goals/goal-values viz))]
-    (when (seq sources)
-      (perf/mapv (fn [[card-id ss]]
-                   {:card_id card-id
-                    :columns (vec (distinct (map :column ss)))})
-                 (group-by :card_id sources)))))
+  (when-let [sources (seq (keep dynamic-goals/card-ref (dynamic-goals/goal-values viz)))]
+    (perf/mapv (fn [[card-id ss]]
+                 {:card_id card-id
+                  :columns (vec (distinct (map :column ss)))})
+               (group-by :card_id sources))))
 
 (defn maybe-wrap-qp-for-goals
   "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values."

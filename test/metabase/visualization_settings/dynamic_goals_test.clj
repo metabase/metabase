@@ -72,11 +72,14 @@
                 (update-in referenced-cards ["1" :status] keyword))))))
 
 (deftest ^:parallel resolve-goal-value-unresolved-test
+  (testing ":never-ran when the card has no entry at all"
+    (are [refs] (= :never-ran (unresolved-reason {:card_id 1 :column "total"} refs))
+      nil
+      (dissoc referenced-cards "1")))
   (testing ":query-failed"
     (are [refs] (= :query-failed (unresolved-reason {:card_id 1 :column "total"} refs))
-      nil
-      (dissoc referenced-cards "1")
-      {"1" (get referenced-cards "2")}))
+      {"1" (get referenced-cards "2")}
+      {"1" {:status "completed"}}))
   (testing ":column-not-found"
     (is (= :column-not-found (unresolved-reason {:card_id 1 :column "nope"} referenced-cards))))
   (testing ":not-a-number"

@@ -58,11 +58,15 @@
   "Resolve `goal-value` against `referenced-cards` (a query result's `[:data :referenced_cards]`,
   keyed by card id *string*). Literal numbers and self-column names pass through unchanged; a card
   reference becomes the referenced column's first-row value. Throws `::unresolved-goal` with
-  `:reason` `:query-failed`/`:column-not-found`/`:not-a-number` when the reference can't produce a
-  finite number."
+  `:reason` `:never-ran`/`:query-failed`/`:column-not-found`/`:not-a-number` when the reference can't
+  produce a finite number."
   [goal-value referenced-cards]
   (if-let [{:keys [card_id column] :as ref} (card-ref goal-value)]
-    (let [{:keys [status data]} (get referenced-cards (str card_id))]
+    (let [{:keys [status data] :as result} (get referenced-cards (str card_id))]
+      ;; no entry at all: the card was never queried (cancelled mid-run, or the caller derived its
+      ;; specs from different settings than the ones being resolved here)
+      (when-not result
+        (unresolved! :never-ran ref))
       (when-not (and data (some-> status name (= "completed")))
         (unresolved! :query-failed ref))
       (let [idx (first (keep-indexed (fn [i col] (when (= column (:name col)) i)) (:cols data)))]
