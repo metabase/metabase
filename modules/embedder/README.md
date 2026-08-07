@@ -2,8 +2,13 @@
 
 This module builds `metabase-embedder-plugin.jar`, an optional runtime plugin containing two pinned models:
 
-- `Snowflake/snowflake-arctic-embed-l-v2.0` (1024 dimensions) — semantic search and Library retrieval
+- `Snowflake/snowflake-arctic-embed-xs` (384 dimensions) — semantic search and Library retrieval
 - `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions) — the data complexity score's synonym axis
+
+Both models are deliberately small (~23 MB per architecture) so CI can build the artifact and run real inference
+against it on every change without caching multi-GB downloads. They exercise the full packaging, tokenizer, and DJL
+runtime machinery. A release build bundling a larger retrieval model (such as `snowflake-arctic-embed-l-v2.0`) will
+be added when the plugin is published for customers or offline use such as evals.
 
 Build it with `./bin/build-embedder-plugin.sh`, then place the jar in Metabase's plugin directory. The plugin is
 discovered from the jar manifest at startup; each model's DJL runtime is loaded lazily on first inference, and only
