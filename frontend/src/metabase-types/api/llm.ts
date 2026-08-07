@@ -106,6 +106,7 @@ export interface LlmProviderConnection {
 export interface LlmActiveModel {
   model_ref: string | null;
   model: string | null;
+  model_name: string | null;
   connection_key: string | null;
   connection_name: string | null;
   selected_model_ref: string | null;

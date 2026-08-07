@@ -12,7 +12,6 @@ import {
   type MetabotAgentDataPartMessage,
   type MetabotAgentId,
   type MetabotAgentTextChatMessage,
-  type MetabotAgentTurnError,
   type MetabotAgentTurnErroredMessage,
   type MetabotAgentTurnIncompleteMessage,
   type MetabotChatMessage,
@@ -26,14 +25,11 @@ import { useDispatch } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
-  Box,
   Button,
-  Card,
   Flex,
   type FlexProps,
   Icon,
   Loader,
-  Text,
   Tooltip,
 } from "metabase/ui";
 import type { IconName, MetabotFeedback } from "metabase-types/api";
@@ -41,6 +37,7 @@ import type { IconName, MetabotFeedback } from "metabase-types/api";
 import { useSubmitMetabotFeedbackMutation } from "../../api";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
+import { AgentTurnAlert } from "./AgentTurnAlert";
 import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
 import {
@@ -366,60 +363,6 @@ export const AgentMessage = ({
     </MessageContainer>
   );
 };
-
-const AgentTurnAlert = ({
-  variant,
-  message,
-  cta,
-  footer,
-  debugDetails,
-}: {
-  variant: "error" | "info";
-  message: string;
-  cta?: ReactNode;
-  footer?: ReactNode;
-  debugDetails?: MetabotAgentTurnError;
-}) => (
-  <Flex
-    direction="column"
-    gap="xxs"
-    p="sm"
-    bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="xs"
-    data-testid="metabot-chat-message-turn-alert"
-    bg="background_page-primary"
-  >
-    <Flex align="center" gap="sm">
-      <Icon
-        name={variant === "error" ? "warning" : "info"}
-        c={variant === "error" ? "feedback-negative" : "text-secondary"}
-        size="1rem"
-        flex="0 0 auto"
-      />
-      <Text c="text-secondary" size="sm" flex="1">
-        {message}
-      </Text>
-      {cta}
-    </Flex>
-    {debugDetails && (
-      <Card
-        bdrs="xxs"
-        ml="xl"
-        p="sm"
-        withBorder
-        shadow="none"
-        c="text-secondary"
-        fz="xs"
-        ff="monospace"
-        style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-        data-testid="metabot-chat-message-turn-alert-debug"
-      >
-        {JSON.stringify(debugDetails, null, 2)}
-      </Card>
-    )}
-    {footer && <Box ml="xl">{footer}</Box>}
-  </Flex>
-);
 
 const AgentErroredTurnAlert = ({
   message,

@@ -32,7 +32,7 @@ export function ProviderFallbackSettings() {
         <Stack gap={0}>
           <Text fw="bold">{t`Fall back to the next provider`}</Text>
           <Text size="sm" c="text-secondary">
-            {t`When a provider stops responding, Metabot moves to the default model of the next provider in this list until it recovers.`}
+            {t`When a provider stops responding, Metabot moves down this list to the default model of the next one that works, and moves back up as soon as it recovers.`}
           </Text>
         </Stack>
         <Switch
@@ -50,13 +50,11 @@ export function ProviderFallbackSettings() {
       {activeModel?.is_fallback && (
         <Text size="sm" c="text-secondary" data-testid="active-provider-notice">
           {jt`Metabot is currently running on ${(
-            <Text key="provider" span fw="bold">
-              {activeModel.connection_name}
-            </Text>
+            <strong key="provider">{activeModel.connection_name}</strong>
           )} using ${(
-            <Text key="model" span fw="bold">
-              {activeModel.model}
-            </Text>
+            <strong key="model">
+              {activeModel.model_name ?? activeModel.model}
+            </strong>
           )}.`}
         </Text>
       )}

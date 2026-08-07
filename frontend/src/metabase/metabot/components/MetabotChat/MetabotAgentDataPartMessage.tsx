@@ -32,6 +32,7 @@ import {
 import * as Urls from "metabase/urls";
 import type { MetabotCodeEdit } from "metabase-types/api";
 
+import { AgentTurnAlert } from "./AgentTurnAlert";
 import {
   CodeEditTablePills,
   GeneratedCardTablePills,
@@ -232,12 +233,16 @@ const ModelFallbackMessage = ({ value }: { value: ModelFallbackValue }) => {
   const model = value.model_name ?? value.model;
 
   return (
-    <Flex align="center" gap="sm" c="text-secondary">
-      <Icon name="warning" size={14} />
-      <Text c="text-secondary" data-testid="model-fallback-message">
-        {t`${previousProvider} isn't responding, so this answer is coming from ${provider} using ${model}.`}
-      </Text>
-    </Flex>
+    <AgentTurnAlert
+      variant="info"
+      message={
+        <span data-testid="model-fallback-message">
+          {jt`${previousProvider} isn't responding, so this answer is coming from ${(
+            <strong key="provider">{provider}</strong>
+          )} using ${<strong key="model">{model}</strong>}.`}
+        </span>
+      }
+    />
   );
 };
 
