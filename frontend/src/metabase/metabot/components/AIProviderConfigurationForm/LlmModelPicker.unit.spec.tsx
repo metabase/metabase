@@ -34,7 +34,10 @@ const setup = (putResponse: number | object) => {
 };
 
 const pickModel = async () => {
-  await userEvent.click(await screen.findByRole("textbox"));
+  // the picker is disabled until the model list lands, and a click on a disabled input opens nothing
+  const input = await screen.findByRole("textbox");
+  await waitFor(() => expect(input).toBeEnabled());
+  await userEvent.click(input);
   await userEvent.click(
     await screen.findByRole("option", { name: /Claude X/ }),
   );
