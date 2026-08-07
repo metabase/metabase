@@ -97,15 +97,13 @@
     (swap! failures dissoc conn-key))
   nil)
 
-(defn forget!
-  "Drop whatever is recorded against `conn-key`, without treating it as a recovery. For a connection that has just
-  been edited or removed: what the old credentials did says nothing about the new ones."
-  [conn-key]
-  (swap! failures dissoc conn-key)
-  nil)
-
-(defn forget-all!
-  "Drop every recorded failure."
-  []
-  (reset! failures {})
+(defn forget-superseded!
+  "Drop what is recorded for every key whose value in `old` the `new` map does not repeat, treating neither as a
+  recovery. `old` and `new` describe how connections were configured before and after a write: a connection that
+  was edited or removed is one nothing is known about any more, while one that only moved in the list is still the
+  same connection and keeps whatever it was doing."
+  [old new]
+  (doseq [[conn-key configuration] old
+          :when (not= configuration (get new conn-key))]
+    (swap! failures dissoc conn-key))
   nil)
