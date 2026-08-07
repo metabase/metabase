@@ -49,57 +49,60 @@ export const ChartSettingSegmentsEditor = ({
       {segments.length > 0 ? (
         <Stack gap="lg">
           {segments.map((segment, index) => (
-            <Stack key={index} gap="sm">
+            <Stack gap="sm" key={index}>
               <ChartSettingInput
                 aria-label={t`Range ${index + 1} label`}
-                placeholder={t`Value ${index + 1}`}
-                value={segment.label}
-                onChange={(label) => updateSegment(index, { label })}
                 leftSection={
                   <ColorSelector
                     pillSize="small"
                     value={segment.color}
                     colors={getColorPalette()}
-                    onChange={(newColor) =>
-                      updateSegment(index, { color: newColor })
-                    }
+                    onChange={(newColor) => {
+                      updateSegment(index, { color: newColor });
+                    }}
                   />
                 }
+                placeholder={t`Value ${index + 1}`}
                 rightSection={
                   canRemove ? (
                     <Tooltip label={t`Remove range`}>
                       <ActionIcon
                         aria-label={t`Remove range ${index + 1}`}
                         size={REMOVE_BUTTON_SIZE}
-                        onClick={() =>
-                          onChange(segments.filter((v, i) => i !== index))
-                        }
+                        onClick={() => {
+                          const newSegments = segments.filter(
+                            (_v, segmentIndex) => segmentIndex !== index,
+                          );
+                          onChange(newSegments);
+                        }}
                       >
-                        <Icon name="trash" size={16} />
+                        <Icon name="trash" />
                       </ActionIcon>
                     </Tooltip>
                   ) : undefined
                 }
+                value={segment.label}
+                onChange={(label) => updateSegment(index, { label })}
               />
 
               <Group align="center" gap="sm" wrap="nowrap">
                 <SegmentBoundInput
+                  aria-label={t`Range ${index + 1} minimum`}
+                  data={data}
                   id={`segment-min-${index}`}
-                  ariaLabel={t`Range ${index + 1} minimum`}
                   placeholder={t`Min`}
                   value={segment.min}
-                  data={data}
                   onChange={(min) => updateSegment(index, { min })}
                 />
 
                 <Icon name="arrow_right" size={12} c="text-secondary" />
 
                 <SegmentBoundInput
+                  aria-label={t`Range ${index + 1} maximum`}
+                  data={data}
                   id={`segment-max-${index}`}
-                  ariaLabel={t`Range ${index + 1} maximum`}
                   placeholder={t`Max`}
                   value={segment.max}
-                  data={data}
                   onChange={(max) => updateSegment(index, { max })}
                 />
               </Group>
@@ -116,10 +119,11 @@ export const ChartSettingSegmentsEditor = ({
           px="1.5rem"
         >{t`Add color ranges to make this number change color depending on it's value`}</Text>
       )}
+
       <Button
-        variant="subtle"
-        fullWidth
         leftSection={<Icon name="add" />}
+        fullWidth
+        variant="subtle"
         onClick={() => onChange(segments.concat(newSegment(segments)))}
       >
         {t`Add a range`}
@@ -154,7 +158,7 @@ function newSegment(segments: GoalSegment[]): GoalSegment {
       : palette[0];
 
   return {
-    min: lastMax ?? 0,
+    min: lastMax !== null ? lastMax : 0,
     max: lastMax !== null ? lastMax * 2 : 1,
     color: nextColor,
     label: "",

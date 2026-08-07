@@ -9,8 +9,8 @@ import { GoalValueInput } from "./GoalValueInput";
 import { StaticGoalValueInput } from "./StaticGoalValueInput";
 
 export type SegmentBoundInputProps = {
+  "aria-label"?: string;
   id: string;
-  ariaLabel: string;
   placeholder: string;
   value: GoalValue | null;
   /** Present only when this bound may reference another column or entity. */
@@ -20,8 +20,8 @@ export type SegmentBoundInputProps = {
 
 /** One end of a color range, with the reason it couldn't be resolved below it. */
 export function SegmentBoundInput({
+  "aria-label": ariaLabel,
   id,
-  ariaLabel,
   placeholder,
   value,
   data,
