@@ -52,6 +52,13 @@
 
 (driver/register! :mysql, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
+(defmethod driver/host-carrying-parameters :mysql [_driver] [])
+
+(defmethod driver/non-host-parameters :mysql
+  [_driver]
+  ["disableSslHostnameVerification" "localSocketAddress" "serverRsaPublicKeyFile" "serverSslCert" "serverTimezone"
+   "tcpNoDelay" "trustServerCertificate" "useServerPrepStmts"])
+
 (def ^:private ^:const min-supported-mysql-version 5.7)
 (def ^:private ^:const min-supported-mariadb-version 10.2)
 
