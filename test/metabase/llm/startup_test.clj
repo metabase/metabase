@@ -147,8 +147,12 @@
     (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key      nil
                                   mb-llm-openai-api-key         nil
                                   mb-llm-bedrock-access-key-id  nil]
-      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-stored"
-                                         llm-openai-api-key    "sk-stored"]
+      ;; the base URLs are pinned as unset because they have defaults: a test elsewhere that binds one leaves that
+      ;; default stored in the app DB, and adoption would then carry it into the connection
+      (mt/with-temporary-setting-values [llm-anthropic-api-key      "sk-ant-stored"
+                                         llm-anthropic-api-base-url nil
+                                         llm-openai-api-key         "sk-stored"
+                                         llm-openai-api-base-url    nil]
         (mt/with-temporary-raw-setting-values [llm-providers        nil
                                                llm-metabot-provider "anthropic/claude-opus-4-1"]
           (with-entitlements nil nil false
