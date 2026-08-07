@@ -3852,6 +3852,7 @@
 
   enterprise/native-query-snippets
   {:team "Graphy"
+   :suppress-codeowners true
    :ns-prefix "metabase-enterprise.snippet-collections"
    :uses #{models
            native-query-snippets
@@ -3960,6 +3961,7 @@
 
   enterprise/pulse
   {:team "Graphy"
+   :suppress-codeowners true
    :ns-prefix "metabase-enterprise.dashboard-subscription-filters"
    :uses #{premium-features}}
 

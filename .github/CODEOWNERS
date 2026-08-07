@@ -145,9 +145,9 @@ frontend/test/__support__/custom-viz-fixtures @metabase/core-frontend-gadget
 # enterprise/backend/src/metabase_enterprise/custom_viz_plugin
 # enterprise/backend/test/metabase_enterprise/custom_viz_plugin
 
-# pulse (Graphy)
-enterprise/backend/src/metabase_enterprise/dashboard_subscription_filters @metabase/graphy
-enterprise/backend/test/metabase_enterprise/dashboard_subscription_filters @metabase/graphy
+# pulse (Graphy, suppressed via :suppress-codeowners)
+# enterprise/backend/src/metabase_enterprise/dashboard_subscription_filters @metabase/graphy
+# enterprise/backend/test/metabase_enterprise/dashboard_subscription_filters @metabase/graphy
 
 # data-apps (Gadget, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/data_apps
@@ -272,9 +272,9 @@ enterprise/backend/test/metabase_enterprise/mfa @metabase/graphy
 # enterprise/backend/src/metabase_enterprise/serialization @metabase/graphy
 # enterprise/backend/test/metabase_enterprise/serialization @metabase/graphy
 
-# native-query-snippets (Graphy)
-enterprise/backend/src/metabase_enterprise/snippet_collections @metabase/graphy
-enterprise/backend/test/metabase_enterprise/snippet_collections @metabase/graphy
+# native-query-snippets (Graphy, suppressed via :suppress-codeowners)
+# enterprise/backend/src/metabase_enterprise/snippet_collections @metabase/graphy
+# enterprise/backend/test/metabase_enterprise/snippet_collections @metabase/graphy
 
 # sso (UX West, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/sso
