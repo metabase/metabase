@@ -5,7 +5,7 @@ import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 
 import { setup, waitForUpdateSetting } from "./test-setup";
 
-describe("Embed flow > Setup guide step completion tracking", () => {
+describe("Embed flow > setup guide step completion tracking", () => {
   beforeEach(() => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
   });

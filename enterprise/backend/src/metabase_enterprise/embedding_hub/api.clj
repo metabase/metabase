@@ -1,6 +1,6 @@
 (ns metabase-enterprise.embedding-hub.api
-  "Checklist state for the Setup guide. Named for the embedding hub because that is the API path
-  (`/api/ee/embedding-hub/checklist`); the UI it serves is the Setup guide."
+  "Checklist state for the setup guide. Named for the embedding hub because that is the API path
+  (`/api/ee/embedding-hub/checklist`); the UI it serves is the setup guide."
   (:require
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
@@ -146,7 +146,7 @@
     [:maybe [:enum "row-column-level-security" "connection-impersonation" "database-routing"]]]])
 
 (api.macros/defendpoint :get "/checklist" :- SetupGuideChecklistResponse
-  "Get the Setup guide checklist status, indicating which setup steps have been completed."
+  "Get the setup guide checklist status, indicating which setup steps have been completed."
   []
   (setup-guide-checklist))
 
