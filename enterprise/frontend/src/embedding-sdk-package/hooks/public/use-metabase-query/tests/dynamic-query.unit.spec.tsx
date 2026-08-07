@@ -1,10 +1,12 @@
+/* eslint-disable import/order */
+
+import { createMockStore, resetTestState, stagesOf } from "./setup";
+import { TEST_SCHEMA } from "./fixtures";
+
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 import { count, filter, orderBy } from "..";
-
-import { TEST_SCHEMA } from "./fixtures";
-import { createMockStore, resetTestState, stagesOf } from "./setup";
 
 beforeEach(resetTestState);
 afterEach(() => {
@@ -65,6 +67,41 @@ describe("dynamic query clauses", () => {
         ],
       },
     ]);
+  });
+
+  // The static clauses are already inside the published card, so the swapped
+  // source must drop them rather than apply them a second time.
+  it("drops the static clauses when it swaps in the published card", async () => {
+    const aggregatingQuery = {
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [count()],
+      breakouts: [TEST_SCHEMA.tables.orders.fields.status],
+      savedQuestionSourceId: 41,
+    };
+
+    const production = await resolveDatasetQueryInBundle(createMockStore())(
+      aggregatingQuery,
+      { filters: [filter({ type: "column", name: "STATUS" }, "=", "paid")] },
+    );
+
+    expect(stagesOf(production)[0]).toEqual({
+      "lib/type": "mbql.stage/mbql",
+      "source-card": 41,
+    });
+
+    // The dev preview keeps them, since nothing has been published into a card.
+    EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+    const preview = await resolveDatasetQueryInBundle(createMockStore())(
+      aggregatingQuery,
+      { filters: [filter({ type: "column", name: "count" }, ">", 1)] },
+    );
+
+    expect(stagesOf(preview)[0]).toMatchObject({
+      "source-table": 1,
+      aggregation: [["count", expect.anything()]],
+      breakout: [["field", expect.anything(), 101]],
+    });
   });
 
   it("stays a single stage when there is no dynamic part", async () => {

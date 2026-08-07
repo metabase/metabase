@@ -3,7 +3,10 @@ import {
   StaticQuestion,
   useAction,
 } from "@metabase/embedding-sdk-react";
-import type { MetabaseQueryOptions } from "@metabase/embedding-sdk-react/data-app";
+import type {
+  MetabaseDynamicQuery,
+  MetabaseQueryOptions,
+} from "@metabase/embedding-sdk-react/data-app";
 import {
   aggregations,
   breakout,
@@ -248,15 +251,15 @@ function CardSource() {
     <div data-testid="data-app-card-source" style={{ padding: 24 }}>
       <h1>Card source</h1>
 
-      <CardSourceCase
-        caseKey="source"
+      <QueryComparison
+        testId="card-source-case-source"
         tableQuery={{ source: tableSource, aggregations: [countAgg] }}
         cardQuery={{ source, aggregations: [countAgg] }}
         totalTestId="card-source-total"
       />
 
-      <CardSourceCase
-        caseKey="filters"
+      <QueryComparison
+        testId="card-source-case-filters"
         tableQuery={{
           source: tableSource,
           filters: [filter(filterField, ">", filterValue)],
@@ -269,8 +272,8 @@ function CardSource() {
         }}
       />
 
-      <CardSourceCase
-        caseKey="aggregations"
+      <QueryComparison
+        testId="card-source-case-aggregations"
         tableQuery={{
           source: tableSource,
           filters: [filter(filterField, ">", filterValue)],
@@ -283,8 +286,8 @@ function CardSource() {
         }}
       />
 
-      <CardSourceCase
-        caseKey="breakouts"
+      <QueryComparison
+        testId="card-source-case-breakouts"
         tableQuery={{
           source: tableSource,
           filters: [filter(filterField, ">", filterValue)],
@@ -304,19 +307,25 @@ function CardSource() {
   );
 }
 
-function CardSourceCase({
-  caseKey,
+/**
+ * Runs the same clauses against a table and against a card and reports whether
+ * the results agree, so a spec never has to encode sample-database numbers.
+ */
+function QueryComparison({
+  testId,
   tableQuery,
   cardQuery,
+  dynamic,
   totalTestId,
 }: {
-  caseKey: string;
+  testId: string;
   tableQuery: MetabaseQueryOptions<undefined>;
   cardQuery: MetabaseQueryOptions<undefined>;
+  dynamic?: MetabaseDynamicQuery;
   totalTestId?: string;
 }) {
-  const fromTable = useMetabaseQuery(tableQuery);
-  const fromCard = useMetabaseQuery(cardQuery);
+  const fromTable = useMetabaseQuery(tableQuery, dynamic);
+  const fromCard = useMetabaseQuery(cardQuery, dynamic);
 
   const failure = fromTable.error ?? fromCard.error;
   const tableResult = describeResult(fromTable.data);
@@ -332,7 +341,7 @@ function CardSourceCase({
 
   return (
     <div>
-      <div data-testid={`card-source-case-${caseKey}`}>{status}</div>
+      <div data-testid={testId}>{status}</div>
       {totalTestId && (
         <div data-testid={totalTestId}>
           {String(fromCard.data?.rawRows?.[0]?.[0] ?? "")}
@@ -355,40 +364,65 @@ const describeResult = (
  * clauses applied to the table the card was published from.
  */
 function PublishedSource() {
-  const { savedQuestionSourceId, tableSource, filterField, filterValue } =
-    getTestEnv().publishedSource!;
+  const {
+    savedQuestionSourceId,
+    tableSource,
+    filterField,
+    filterValue,
+    aggregatedSourceId,
+    breakoutField,
+    countColumn,
+    minCount,
+  } = getTestEnv().publishedSource!;
 
-  const countAgg = aggregations.count();
-  const dynamic = {
-    filters: [filter(filterField, ">", filterValue)],
-    aggregations: [countAgg],
-  };
-
-  const fromCard = useMetabaseQuery(
-    { source: tableSource, savedQuestionSourceId },
-    dynamic,
-  );
-  const fromTable = useMetabaseQuery({ source: tableSource }, dynamic);
-
-  const failure = fromCard.error ?? fromTable.error;
-  const cardResult = describeResult(fromCard.data);
-  const tableResult = describeResult(fromTable.data);
-
-  const status = failure
-    ? `error: ${describeError(failure)}`
-    : cardResult === null || tableResult === null
-      ? "loading"
-      : cardResult === tableResult
-        ? "match"
-        : `mismatch: card=${cardResult} table=${tableResult}`;
+  // What the dev preview runs (the table) against what production runs (the
+  // card the static query was published as). Both must return the same rows,
+  // with and without dynamic clauses layered on top.
+  const tableQuery = { source: tableSource };
+  const cardQuery = { source: tableSource, savedQuestionSourceId };
 
   return (
     <div data-testid="data-app-published-source" style={{ padding: 24 }}>
       <h1>Published source</h1>
-      <div data-testid="published-source-status">{status}</div>
-      <div data-testid="published-source-total">
-        {String(fromCard.data?.rawRows?.[0]?.[0] ?? "")}
-      </div>
+
+      <QueryComparison
+        testId="published-source-case-static"
+        tableQuery={tableQuery}
+        cardQuery={cardQuery}
+        totalTestId="published-source-total"
+      />
+
+      <QueryComparison
+        testId="published-source-case-dynamic"
+        tableQuery={tableQuery}
+        cardQuery={cardQuery}
+        dynamic={{
+          filters: [filter(filterField, ">", filterValue)],
+          aggregations: [aggregations.count()],
+        }}
+      />
+
+      {/*
+        The static query aggregates, so the dynamic filter has to run on its
+        output. Merged into one stage it would filter the table's rows before
+        the count instead, and the two sources would disagree.
+      */}
+      <QueryComparison
+        testId="published-source-case-aggregated"
+        tableQuery={{
+          source: tableSource,
+          aggregations: [aggregations.count()],
+          breakouts: [breakoutField],
+        }}
+        cardQuery={{
+          source: tableSource,
+          aggregations: [aggregations.count()],
+          breakouts: [breakoutField],
+          savedQuestionSourceId: aggregatedSourceId,
+        }}
+        dynamic={{ filters: [filter(countColumn, ">", minCount)] }}
+        totalTestId="published-source-aggregated-rows"
+      />
     </div>
   );
 }

@@ -79,6 +79,16 @@ export type DataAppTestEnv = {
     tableSource: TableSource;
     filterField: LocalFieldReference;
     filterValue: number;
+    /**
+     * A card published from a static query that *aggregates*, with the clauses
+     * that reproduce it from the table. This is the case the second-stage design
+     * exists for: merged into one stage the dynamic filter would run before the
+     * static aggregation on the table but after it on the card.
+     */
+    aggregatedSourceId: number;
+    breakoutField: LocalFieldReference;
+    countColumn: QuestionColumnReference;
+    minCount: number;
   };
   /**
    * `/actions` page: the id of the action the spec creates and `useAction`
