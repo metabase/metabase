@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupLlmActiveModelEndpoint,
   setupLlmModelsEndpoint,
   setupLlmProviderTypesEndpoint,
   setupLlmProvidersEndpoint,
@@ -91,6 +92,7 @@ function setup({
     createMockLlmProviderConnection(),
   ]);
   setupLlmModelsEndpoint([]);
+  setupLlmActiveModelEndpoint();
 
   const storeInitialState = createMockState({
     currentUser: createMockUser({ is_superuser: true }),
