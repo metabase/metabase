@@ -28,15 +28,31 @@
     (catch Throwable e
       (log/error "Failed to mark entity stale" {:entity-type entity-type :entity-id entity-id :error (ex-message e)}))))
 
+(defn- unchanged?
+  "True when `previous-object` is present and every key in `ks` is identical in both.
+
+  Creates carry no previous object, and a publisher that omits one is telling us nothing about what
+  changed — either way we assume the worst and do the work."
+  [previous-object object ks]
+  (and (some? previous-object)
+       (= (select-keys previous-object ks) (select-keys object ks))))
+
 ;; ### Cards
+
+;; Recomputing a card's upstream dependencies reads exactly these for `:card`, which unions the deps of
+;; the query, the tables the `dimension_mappings` target, and the cards the parameters source values
+;; from. An edit touching none of them would recompute an identical graph.
+(def ^:private card-dependency-inputs
+  [:dataset_query :dimension_mappings :parameters])
+
 (events/derive! ::card-deps :metabase/event)
 (events/derive! :event/card-create ::card-deps)
 (events/derive! :event/card-update ::card-deps)
-(events/derive! :event/metric-dimensions-update ::card-deps)
 
 (methodical/defmethod events/publish-event! ::card-deps
-  [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
+  [_ {:keys [object previous-object]}]
+  (when (and (premium-features/has-feature? :dependencies)
+             (not (unchanged? previous-object object card-dependency-inputs)))
     (mark-stale-and-trigger! :card (:id object))))
 
 (events/derive! ::card-delete :metabase/event)
@@ -210,13 +226,23 @@
 ;;
 ;; Both are triggered from the same entity events but serve different purposes and run independently.
 
+;; Re-analysis validates a dependent's *own* query against current metadata, so the only things about this
+;; card its dependents can observe are what the metadata provider exposes for it: the query behind it,
+;; the columns it declares, what kind of entity it is, and whether it is still there. An edit touching
+;; none of those cannot change any dependent's verdict, and sweeping the subtree for it is pure cost —
+;; the sweep marks every transitive dependent stale, so a rename on a widely-used card queues the whole
+;; downstream tree for re-analysis to reach the same answers.
+(def ^:private card-interface-keys
+  [:dataset_query :result_metadata :type :archived])
+
 (events/derive! ::check-card-dependents :metabase/event)
 (events/derive! :event/card-create ::check-card-dependents)
 (events/derive! :event/card-update ::check-card-dependents)
 
 (methodical/defmethod events/publish-event! ::check-card-dependents
-  [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
+  [_ {:keys [object previous-object]}]
+  (when (and (premium-features/has-feature? :dependencies)
+             (not (unchanged? previous-object object card-interface-keys)))
     (deps.findings/mark-entity-and-transitive-dependents-stale! :card (:id object))
     (task.entity-check/trigger-entity-check-job!)))
 
