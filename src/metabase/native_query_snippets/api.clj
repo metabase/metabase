@@ -48,6 +48,9 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; Not tagged `data-apps:base`, though the list route above is: a data app needs the list to
+;; resolve snippet names while rendering a native question, whereas fetching one by id is the
+;; Data Studio snippet editor (`useGetSnippetQuery`), which a data app does not render.
 (api.macros/defendpoint :get "/:id"
   "Fetch native query snippet with ID."
   [{:keys [id]} :- [:map

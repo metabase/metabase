@@ -197,6 +197,9 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; The only route in this namespace not tagged `data-apps:base`: converting MBQL to native SQL
+;; powers the query builder's "View SQL" preview modal, which the SDK does not ship, so no data
+;; app reaches it.
 (api.macros/defendpoint :post "/native"
   "Fetch a native version of an MBQL query."
   [_route-params

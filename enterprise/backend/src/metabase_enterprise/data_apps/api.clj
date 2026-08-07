@@ -170,6 +170,10 @@
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
 
+;; Not tagged `data-apps:base`, though the bundle route below is — which looks backwards until
+;; you place the two callers. `DataAppView` fetches this metadata on the *host* page to decide
+;; what iframe to render, before any data-app realm exists, so the request never carries the
+;; marker. The bundle is fetched from inside that iframe, where it does.
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]

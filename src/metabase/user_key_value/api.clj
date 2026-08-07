@@ -58,6 +58,9 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; Not tagged `data-apps:base`, though the three per-key routes around it are: `useUserKeyValue`
+;; only ever reads, writes or clears one key at a time, so nothing a data app renders enumerates
+;; a whole namespace.
 (api.macros/defendpoint :get "/namespace/:namespace"
   "Returns all KV pairs in a given namespace for the current user"
   [{nmspace :namespace} :- [:map
