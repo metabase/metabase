@@ -146,7 +146,7 @@
     [:maybe [:enum "row-column-level-security" "connection-impersonation" "database-routing"]]]])
 
 (api.macros/defendpoint :get "/checklist" :- SetupGuideChecklistResponse
-  "Get the embedding hub checklist status, indicating which setup steps have been completed."
+  "Get the Setup guide checklist status, indicating which setup steps have been completed."
   []
   (setup-guide-checklist))
 
