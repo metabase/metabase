@@ -1133,6 +1133,102 @@ describe("scenarios > collection items listing", () => {
 
   const PAGE_SIZE = 25;
 
+  describe("search", () => {
+    function interceptSearch(query, alias) {
+      cy.intercept({
+        method: "GET",
+        pathname: "/api/collection/root/items",
+        query: {
+          pinned_state: "is_not_pinned",
+          q: query,
+        },
+      }).as(alias);
+    }
+
+    beforeEach(() => {
+      archiveAll();
+
+      H.createCollection({
+        name: "Quarterly revenue",
+      });
+
+      cy.signIn("normal");
+      H.createQuestion({
+        name: "Customer health",
+        collection_position: null,
+        query: TEST_QUESTION_QUERY,
+      });
+      cy.signInAsAdmin();
+    });
+
+    it("should search by item name and last editor name, clear results, and show an empty state", () => {
+      visitRootCollection();
+
+      interceptSearch("revenue", "searchByName");
+      cy.findByLabelText("Search items in this collection")
+        .should("have.value", "")
+        .type("revenue")
+        .should("have.value", "revenue");
+      cy.wait("@searchByName").then(({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+
+        expect(searchParams.get("q")).to.equal("revenue");
+        expect(searchParams.get("offset")).to.equal("0");
+      });
+
+      cy.findByTestId("collection-table")
+        .should("contain", "Quarterly revenue")
+        .and("not.contain", "Customer health");
+
+      cy.findByLabelText("Clear search").click();
+      cy.findByLabelText("Search items in this collection").should(
+        "have.value",
+        "",
+      );
+      cy.findByTestId("collection-table")
+        .should("contain", "Quarterly revenue")
+        .and("contain", "Customer health");
+
+      interceptSearch("Robert", "searchByEditor");
+      cy.findByLabelText("Search items in this collection")
+        .type("Robert")
+        .should("have.value", "Robert");
+      cy.wait("@searchByEditor").then(({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+
+        expect(searchParams.get("q")).to.equal("Robert");
+        expect(searchParams.get("offset")).to.equal("0");
+      });
+
+      cy.findByTestId("collection-table")
+        .should("contain", "Customer health")
+        .and("not.contain", "Quarterly revenue");
+
+      cy.findByLabelText("Clear search").click();
+      cy.findByLabelText("Search items in this collection").should(
+        "have.value",
+        "",
+      );
+
+      interceptSearch("nothing matches this", "searchWithoutResults");
+      cy.findByLabelText("Search items in this collection")
+        .type("nothing matches this")
+        .should("have.value", "nothing matches this");
+      cy.wait("@searchWithoutResults").then(({ request }) => {
+        expect(new URL(request.url).searchParams.get("q")).to.equal(
+          "nothing matches this",
+        );
+      });
+
+      cy.findByTestId("collection-filter-empty-state").within(() => {
+        cy.findByText("Didn't find anything").should("be.visible");
+        cy.findByText("There weren't any results for your search.").should(
+          "be.visible",
+        );
+      });
+    });
+  });
+
   describe("pagination", () => {
     const SUBCOLLECTIONS = 1;
     const ADDED_QUESTIONS = 15;

@@ -171,6 +171,7 @@ export type ListCollectionItemsSortColumn =
 export type ListCollectionItemsRequest = {
   id: CollectionId;
   models?: CollectionItemModel[];
+  q?: string;
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: CollectionNamespace;

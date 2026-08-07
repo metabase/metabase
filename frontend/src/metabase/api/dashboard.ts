@@ -169,7 +169,7 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
-        Omit<ListCollectionItemsRequest, "id"> & { id: DashboardId }
+        Omit<ListCollectionItemsRequest, "id" | "q"> & { id: DashboardId }
       >({
         query: ({ id, ...body }) => ({
           method: "GET",
