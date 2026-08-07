@@ -444,6 +444,12 @@
 ;;; the app DB would not reach the connection serving requests, so a write is rejected rather than silently ignored.
 ;;; Connections are managed through the `/api/llm/providers` endpoints instead.
 
+(defn- connection-configurations
+  "How each connection in `conns` is set up, keyed by connection key: everything but its display name and its
+  position in the list, which is what decides whether a write leaves it the same connection."
+  [conns]
+  (into {} (map (juxt :key #(select-keys % [:type :config]))) conns))
+
 (defsetting llm-providers
   (deferred-tru "JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type''s credential fields.")
   :type       :json
@@ -453,11 +459,13 @@
   :visibility :settings-manager
   :export?    false
   :audit      :no-value
-  ;; Rewriting the list invalidates what the old one did: credentials may have been rotated, a connection replaced,
-  ;; the order changed. Everything [[metabase.llm.health]] holds is about connections as they were configured, so it
-  ;; is dropped rather than held against whatever is configured now.
+  ;; What [[metabase.llm.health]] holds is about a connection as it was configured, so an edit that changes the
+  ;; credentials — or removes the connection outright — drops it rather than holding it against the new ones.
+  ;; Reordering the list changes no connection, and must not quietly clear the failures the list is showing.
   :setter     (fn [new-value]
-                (llm.health/forget-all!)
+                (llm.health/forget-superseded! (connection-configurations
+                                                (setting/get-value-of-type :json :llm-providers))
+                                               (connection-configurations new-value))
                 (setting/set-value-of-type! :json :llm-providers new-value))
   :doc        "Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
 
@@ -469,7 +477,9 @@ Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_
   :default    true
   :visibility :settings-manager
   :export?    true
-  :doc        "When a provider rejects Metabase's requests, Metabase records the failure and — with this on — runs on the default model of the next connection in `llm-providers` instead, until the original one works again. Turn it off to have requests fail on the selected provider rather than move to another one.")
+  :doc        "When a provider rejects Metabase's requests, Metabase records the failure and — with this on — runs on the default model of the next connection in `llm-providers` instead, until the original one works again. Turn it off to have requests fail on the selected provider rather than move to another one.
+
+`llm-providers` is a priority list, not a rotation: requests always go to the highest connection in it that is working, so they return to the selected provider as soon as it stops failing. Nothing is load balanced across connections.")
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 

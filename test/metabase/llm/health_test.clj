@@ -60,17 +60,22 @@
     (llm.health/record-success! "recovering-conn")
     (is (nil? (llm.health/failure "recovering-conn")))))
 
-(deftest forget-test
-  (testing "a connection that was just edited starts from nothing rather than from what the old key did"
-    (llm.health/record-failure! "forgotten-conn" "invalid x-api-key" true)
-    (llm.health/forget! "forgotten-conn")
-    (is (nil? (llm.health/failure "forgotten-conn")))))
-
-(deftest forget-all-test
-  (testing "the whole record can be dropped at once, which is what rewriting the connection list does"
-    (llm.health/record-failure! "dropped-conn" "invalid x-api-key" true)
-    (llm.health/forget-all!)
-    (is (nil? (llm.health/failure "dropped-conn")))))
+(deftest forget-superseded-test
+  (let [config {:type "anthropic" :config {:api-key "sk-ant-1"}}]
+    (testing "a connection whose credentials changed starts from nothing rather than from what the old ones did"
+      (llm.health/record-failure! "edited-conn" "invalid x-api-key" true)
+      (llm.health/forget-superseded! {"edited-conn" config}
+                                     {"edited-conn" (assoc-in config [:config :api-key] "sk-ant-2")})
+      (is (nil? (llm.health/failure "edited-conn"))))
+    (testing "so does one that is gone from the list"
+      (llm.health/record-failure! "removed-conn" "invalid x-api-key" true)
+      (llm.health/forget-superseded! {"removed-conn" config} {})
+      (is (nil? (llm.health/failure "removed-conn"))))
+    (testing "a connection that only moved is the same connection, and keeps what it was doing"
+      (llm.health/record-failure! "moved-conn" "invalid x-api-key" true)
+      (llm.health/forget-superseded! {"moved-conn" config "other-conn" config}
+                                     {"other-conn" config "moved-conn" config})
+      (is (some? (llm.health/failure "moved-conn"))))))
 
 (deftest nil-connection-key-is-ignored-test
   (testing "a call with no connection behind it records nothing rather than a failure against nil"

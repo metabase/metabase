@@ -1323,6 +1323,7 @@
       (testing "with nothing failing, what is in use is what was selected"
         (is (= {:model_ref          "anthropic/claude-sonnet-4-6"
                 :model              "claude-sonnet-4-6"
+                :model_name         "Claude Sonnet 4.6"
                 :connection_key     "anthropic"
                 :connection_name    "anthropic"
                 :selected_model_ref "anthropic/claude-sonnet-4-6"
@@ -1332,6 +1333,7 @@
         (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
         (is (= {:model_ref          "openai/gpt-5.4"
                 :model              "gpt-5.4"
+                :model_name         "GPT-5.4"
                 :connection_key     "openai"
                 :connection_name    "openai"
                 :selected_model_ref "anthropic/claude-sonnet-4-6"
@@ -1342,3 +1344,25 @@
   (mt/with-temporary-setting-values [llm-providers []]
     (mt/user-http-request :rasta :get 403 "llm/active-model")
     (mt/user-http-request :rasta :put 403 "llm/provider-order" {:order []})))
+
+(deftest reordering-keeps-the-recorded-failures-test
+  (testing "moving a provider up or down changes no connection, so the errors the list is showing stay put"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
+                                                      (connection "openai" "openai" {:api-key "sk-o"})]]
+      (llm.health/record-failure! "openai" "invalid api key" true)
+      (is (= {"anthropic" nil "openai" {:message "invalid api key" :fatal true}}
+             (into {} (map (juxt :key :error))
+                   (mt/user-http-request :crowberto :put 200 "llm/provider-order"
+                                         {:order ["openai" "anthropic"]})))))))
+
+(deftest editing-a-connection-clears-only-its-own-failure-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-old"})
+                                                    (connection "openai" "openai" {:api-key "sk-o"})]]
+    (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
+    (llm.health/record-failure! "openai" "invalid api key" true)
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+      (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic" {:config {:api-key "sk-ant-new"}}))
+    (testing "the edited connection starts from nothing rather than from what the old key did"
+      (is (nil? (llm.health/failure "anthropic"))))
+    (testing "and the one that was not touched keeps what it was doing"
+      (is (some? (llm.health/failure "openai"))))))
