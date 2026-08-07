@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.llm.health :as llm.health]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting]
@@ -562,3 +563,58 @@
   (testing "every type other than the managed one is always available"
     (is (true? (llm.provider/type-available? "anthropic")))
     (is (false? (llm.provider/type-available? "evilai")))))
+
+(deftest serviceable?-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
+                                                    (connection "openai" "openai")]]
+    (testing "a connection with the credentials its type needs and nothing recorded against it can serve requests"
+      (is (true? (llm.provider/connection-serviceable? "anthropic"))))
+    (testing "a connection missing credentials cannot"
+      (is (false? (llm.provider/connection-serviceable? "openai"))))
+    (testing "a connection that is failing cannot, until the failure clears"
+      (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
+      (is (false? (llm.provider/connection-serviceable? "anthropic")))
+      (llm.health/record-success! "anthropic")
+      (is (true? (llm.provider/connection-serviceable? "anthropic"))))
+    (testing "a connection that does not exist cannot"
+      (is (false? (llm.provider/connection-serviceable? "nope"))))))
+
+(deftest first-model-ref-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
+                                                    (connection "openai" "openai" {:api-key "sk-openai-1"})]]
+    (testing "the list order is the fallback order: the first connection that names a model wins"
+      (is (= "anthropic/claude-sonnet-4-6" (llm.provider/first-model-ref))))
+    (testing "with a predicate, the first connection that satisfies it wins — this is how a failing provider is
+              routed around"
+      (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
+      (is (= "openai/gpt-5.4" (llm.provider/first-model-ref llm.provider/serviceable?))))
+    (testing "nothing serviceable left reads as nil rather than as a connection that cannot run"
+      (llm.health/record-failure! "openai" "invalid api key" true)
+      (is (nil? (llm.provider/first-model-ref llm.provider/serviceable?))))))
+
+(deftest first-model-ref-follows-the-admins-order-test
+  (testing "the connection the fallback lands on is the next one in the list the admin arranged"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
+                                                      (connection "mistral" "mistral" {:api-key "m-1"})
+                                                      (connection "openai" "openai" {:api-key "sk-openai-1"})]]
+      (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
+      (is (= "mistral/mistral-medium-3-5" (llm.provider/first-model-ref llm.provider/serviceable?))))))
+
+(deftest first-model-ref-uses-a-connections-own-model-test
+  (testing "a type whose model is part of its configuration falls back to the deployment it names, not to nothing"
+    (mt/with-temporary-setting-values [llm-providers [(connection "azure" "azure" {:api-key         "az-1"
+                                                                                   :base-url        "https://x.example"
+                                                                                   :model-family    "openai"
+                                                                                   :deployment-name "my-gpt"})]]
+      (is (= "azure/openai/my-gpt" (llm.provider/first-model-ref)))))
+  (testing "an azure connection with no deployment names no model, so there is nothing to fall back to"
+    (mt/with-temporary-setting-values [llm-providers [(connection "azure" "azure" {:api-key  "az-1"
+                                                                                   :base-url "https://x.example"})]]
+      (is (nil? (llm.provider/first-model-ref))))))
+
+(deftest rewriting-the-connection-list-clears-recorded-failures-test
+  (testing "what a connection did under its old configuration says nothing about the list that replaced it"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})]]
+      (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
+      (llm.provider/set-connections! [(connection "anthropic" "anthropic" {:api-key "sk-ant-2"})])
+      (is (nil? (llm.health/failure "anthropic"))))))

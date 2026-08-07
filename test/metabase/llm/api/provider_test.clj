@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.llm.api.provider :as llm.api.provider]
+   [metabase.llm.health :as llm.health]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
@@ -170,38 +171,44 @@
                                                                  :base-url "https://api.anthropic.com"})
                                                     (connection "openai" "openai" {:api-key ""})]]
     (testing "secrets come back masked and non-secret fields come back as they are"
-      (is (= [{:key        "anthropic"
-               :type       "anthropic"
-               :name       "anthropic"
-               :source     "db"
-               :usable     true
-               :env_vars   []
-               :env_fields []
-               :config     {:api-key "**********et" :base-url "https://api.anthropic.com"}}
-              {:key        "openai"
-               :type       "openai"
-               :name       "openai"
-               :source     "db"
-               :usable     false
-               :env_vars   []
-               :env_fields []
-               :config     {:api-key ""}}]
+      (is (= [{:key         "anthropic"
+               :type        "anthropic"
+               :name        "anthropic"
+               :source      "db"
+               :usable      true
+               :reorderable true
+               :error       nil
+               :env_vars    []
+               :env_fields  []
+               :config      {:api-key "**********et" :base-url "https://api.anthropic.com"}}
+              {:key         "openai"
+               :type        "openai"
+               :name        "openai"
+               :source      "db"
+               :usable      false
+               :reorderable true
+               :error       nil
+               :env_vars    []
+               :env_fields  []
+               :config      {:api-key ""}}]
              (mt/user-http-request :crowberto :get 200 "llm/providers"))))))
 
 (deftest list-providers-marks-env-connections-test
   (testing "a connection synthesized from the single-provider environment variables is reported as read-only"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
-        (is (= [{:key        "anthropic"
-                 :type       "anthropic"
-                 :name       "Anthropic"
-                 :source     "env"
-                 :usable     true
-                 :env_vars   ["MB_LLM_ANTHROPIC_API_KEY"]
-                 :env_fields ["api-key"]
+        (is (= [{:key         "anthropic"
+                 :type        "anthropic"
+                 :name        "Anthropic"
+                 :source      "env"
+                 :usable      true
+                 :reorderable false
+                 :error       nil
+                 :env_vars    ["MB_LLM_ANTHROPIC_API_KEY"]
+                 :env_fields  ["api-key"]
                  ;; only what the environment supplies: the base URL's registry default is filled in when the
                  ;; connection is resolved for a request, not stored on it
-                 :config     {:api-key "**********nv"}}]
+                 :config      {:api-key "**********nv"}}]
                (mt/user-http-request :crowberto :get 200 "llm/providers")))))))
 
 (deftest list-providers-marks-env-shadowed-fields-test
@@ -226,14 +233,16 @@
                                         "credentials are verified before the connection is saved")
                                     {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]})]
         (testing "a created connection defaults its key and name to its provider type"
-          (is (= {:key        "anthropic"
-                  :type       "anthropic"
-                  :name       "Anthropic"
-                  :source     "db"
-                  :usable     true
-                  :env_vars   []
-                  :env_fields []
-                  :config     {:api-key "**********id"}}
+          (is (= {:key         "anthropic"
+                  :type        "anthropic"
+                  :name        "Anthropic"
+                  :source      "db"
+                  :usable      true
+                  :reorderable true
+                  :error       nil
+                  :env_vars    []
+                  :env_fields  []
+                  :config      {:api-key "**********id"}}
                  (mt/user-http-request :crowberto :post 200 "llm/providers"
                                        {:type "anthropic" :config {:api-key "sk-ant-valid"}}))))
         (testing "the credentials are verified against the provider exactly once, unmasked and with the
@@ -608,14 +617,16 @@
                                   (is (= {:api-key "sk-ant-stored" :base-url "https://new.example.com"} credentials)
                                       "the stored secret is what gets verified, not the mask")
                                   {:models []})]
-      (is (= {:key        "anthropic"
-              :type       "anthropic"
-              :name       "Anthropic (prod)"
-              :source     "db"
-              :usable     true
-              :env_vars   []
-              :env_fields []
-              :config     {:api-key "**********ed" :base-url "https://new.example.com"}}
+      (is (= {:key         "anthropic"
+              :type        "anthropic"
+              :name        "Anthropic (prod)"
+              :source      "db"
+              :usable      true
+              :reorderable true
+              :error       nil
+              :env_vars    []
+              :env_fields  []
+              :config      {:api-key "**********ed" :base-url "https://new.example.com"}}
              (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
                                    {:name   "Anthropic (prod)"
                                     :config {:api-key  "**********ed"
@@ -1230,3 +1241,104 @@
           (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
                                 {:config {:api-key "sk-ant-rotated"}}))
         (is (= {:api-key "sk-ant-rotated"} (stored-config "anthropic")))))))
+
+;;; ------------------------------------------- Failures and fallback ---------------------------------------------
+
+(deftest providers-carry-the-last-failure-test
+  (testing "a failure recorded anywhere is reported with the connection, so the list can show it at any time
+            rather than only while the models are being fetched"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
+                                                      (connection "openai" "openai" {:api-key "sk-o"})]]
+      (is (= [nil nil] (map :error (mt/user-http-request :crowberto :get 200 "llm/providers"))))
+      (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
+      (is (= [{:message "invalid x-api-key" :fatal true} nil]
+             (map :error (mt/user-http-request :crowberto :get 200 "llm/providers")))))))
+
+(deftest listing-models-records-what-happened-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "recorded-anthropic" "anthropic" {:api-key "sk-ant-r"})
+                                                    (connection "recorded-openai" "openai" {:api-key "sk-o-r"})]]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                (fn [provider _opts]
+                                  (if (= "anthropic" provider)
+                                    (throw (ex-info "invalid x-api-key" {:api-error true :status-code 401}))
+                                    {:models [{:id "gpt-5.4" :display_name "gpt-5.4"}]}))]
+      (mt/user-http-request :crowberto :get 200 "llm/models")
+      (testing "a rejection outlives the listing request that discovered it"
+        (is (= [{:message "invalid x-api-key" :fatal true} nil]
+               (map :error (mt/user-http-request :crowberto :get 200 "llm/providers")))))
+      (testing "and the connection is taken out of the fallback rotation"
+        (is (false? (llm.provider/connection-serviceable? "recorded-anthropic")))))))
+
+(deftest editing-a-connection-clears-its-failure-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-old"})]]
+    (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+      (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic" {:config {:api-key "sk-ant-new"}}))
+    (testing "new credentials start from nothing rather than from what the old ones did"
+      (is (nil? (llm.health/failure "anthropic"))))))
+
+(deftest provider-order-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
+                                                    (connection "openai" "openai" {:api-key "sk-o"})
+                                                    (connection "mistral" "mistral" {:api-key "m-1"})]]
+    (testing "the list comes back in the requested order, which is also the fallback order"
+      (is (= ["openai" "mistral" "anthropic"]
+             (map :key (mt/user-http-request :crowberto :put 200 "llm/provider-order"
+                                             {:order ["openai" "mistral" "anthropic"]}))))
+      (is (= ["openai" "mistral" "anthropic"] (map :key (llm.provider/stored-connections)))))
+    (testing "an order that leaves a connection out is rejected rather than silently dropping it"
+      (is (= "The order must list every stored provider connection exactly once."
+             (mt/user-http-request :crowberto :put 400 "llm/provider-order" {:order ["openai"]})))
+      (is (= ["openai" "mistral" "anthropic"] (map :key (llm.provider/stored-connections)))))
+    (testing "so is one that names a connection twice"
+      (is (= "The order must list every stored provider connection exactly once."
+             (mt/user-http-request :crowberto :put 400 "llm/provider-order"
+                                   {:order ["openai" "openai" "mistral" "anthropic"]}))))
+    (testing "credentials survive the move"
+      (is (= {:api-key "sk-ant-1"} (stored-config "anthropic"))))))
+
+(deftest provider-order-ignores-env-only-connections-test
+  (testing "a connection that only exists because of an env var has no stored position, so it is not required in
+            the order and does not block one"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
+                                                      (connection "openai" "openai" {:api-key "sk-o"})]]
+      (mt/with-temp-env-var-value! [mb-llm-mistral-api-key "m-env"]
+        (is (= ["openai" "anthropic" "mistral"]
+               (map :key (mt/user-http-request :crowberto :put 200 "llm/provider-order"
+                                               {:order ["openai" "anthropic" "mistral"]}))))
+        (testing "and it is marked as one the client must not offer to drag"
+          (is (= {"anthropic" true "openai" true "mistral" false}
+                 (into {} (map (juxt :key :reorderable))
+                       (mt/user-http-request :crowberto :get 200 "llm/providers")))))))))
+
+(deftest provider-order-is-rejected-when-connections-are-env-managed-test
+  (mt/with-temp-env-var-value! [mb-llm-providers "[]"]
+    (is (re-find #"LLM provider connections are set by the .* environment variable"
+                 (mt/user-http-request :crowberto :put 400 "llm/provider-order" {:order []})))))
+
+(deftest active-model-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-1"})
+                                                    (connection "openai" "openai" {:api-key "sk-o"})]]
+    (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+      (testing "with nothing failing, what is in use is what was selected"
+        (is (= {:model_ref          "anthropic/claude-sonnet-4-6"
+                :model              "claude-sonnet-4-6"
+                :connection_key     "anthropic"
+                :connection_name    "anthropic"
+                :selected_model_ref "anthropic/claude-sonnet-4-6"
+                :is_fallback        false}
+               (mt/user-http-request :crowberto :get 200 "llm/active-model"))))
+      (testing "once it fails, the connection actually serving requests is reported, with the model it runs"
+        (llm.health/record-failure! "anthropic" "invalid x-api-key" true)
+        (is (= {:model_ref          "openai/gpt-5.4"
+                :model              "gpt-5.4"
+                :connection_key     "openai"
+                :connection_name    "openai"
+                :selected_model_ref "anthropic/claude-sonnet-4-6"
+                :is_fallback        true}
+               (mt/user-http-request :crowberto :get 200 "llm/active-model")))))))
+
+(deftest failure-and-order-endpoints-need-admin-test
+  (mt/with-temporary-setting-values [llm-providers []]
+    (mt/user-http-request :rasta :get 403 "llm/active-model")
+    (mt/user-http-request :rasta :put 403 "llm/provider-order" {:order []})))

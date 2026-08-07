@@ -15,9 +15,13 @@
   reads exactly as it did when there was one connection per type.
 
   A *model reference* is the `connection-key/model` string stored in `llm-metabot-provider` and friends;
-  [[resolve-model-ref]] turns one into the provider type, model, and credentials an adapter needs."
+  [[resolve-model-ref]] turns one into the provider type, model, and credentials an adapter needs.
+
+  The list is ordered, and the order is the fallback order: [[first-model-ref]] walks it to find something that can
+  serve a request when the connection Metabot is pointed at cannot."
   (:require
    [clojure.string :as str]
+   [metabase.llm.health :as llm.health]
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -676,6 +680,18 @@
    (when-let [{:keys [type config]} (connection conn-key)]
      (config-complete? type config))))
 
+(defn serviceable?
+  "Whether `conn` can serve a request right now: it has the credentials it needs, and nothing it did recently is
+  recorded against it in [[metabase.llm.health]]."
+  [{conn-key :key :keys [type config]}]
+  (and (config-complete? type config)
+       (llm.health/healthy? conn-key)))
+
+(defn connection-serviceable?
+  "[[serviceable?]] for the connection `conn-key` names. False when there is no such connection."
+  [conn-key]
+  (boolean (some-> (connection conn-key) serviceable?)))
+
 (defn set-connections!
   "Persist `conns` as the stored connection list, dropping the derived annotation keys."
   [conns]
@@ -748,6 +764,26 @@
                 (update key normalize))))
           (or config {})
           (:fields (provider-type type-name))))
+
+(defn connection-model-ref
+  "The `connection-key/model` reference for the model `conn` serves on its own: the one its config names, for types
+  whose model is part of their configuration, or its provider type's default model. Nil for a connection that names
+  no model and whose type has no default (an Azure connection that has not been given a deployment)."
+  [{conn-key :key :keys [type config]}]
+  (when-let [model (or (connection-model type (with-field-defaults type config))
+                       (default-model type))]
+    (str conn-key "/" model)))
+
+(defn first-model-ref
+  "The [[connection-model-ref]] of the first connection, in admin-facing order, that satisfies `pred` and names a
+  model. This is the fallback order: pass [[serviceable?]] to find something that can run a request right now."
+  ([]
+   (first-model-ref (constantly true)))
+  ([pred]
+   (some (fn [conn]
+           (when (pred conn)
+             (connection-model-ref conn)))
+         (connections))))
 
 (defn resolve-model-ref
   "Resolve a `connection-key/model` string against the configured connections.

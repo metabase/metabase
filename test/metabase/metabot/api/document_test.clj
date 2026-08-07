@@ -16,11 +16,16 @@
 
 (def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
 
+;;; These tests mock the one adapter `test-provider` names and assert on the model that served the request, so they
+;;; pin the provider fallback off: a failure recorded against that connection — by these tests or by any other
+;;; running alongside them — would otherwise divert the request to a connection with no mock behind it.
+
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest generate-content-backwards-compatible-route-test
-  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                     llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers                   llm.tu/default-connections
+                                     llm-provider-fallback-enabled? false
+                                     llm-metabot-provider            test-provider]
     (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                 (fn [_]
                                   (mut/mock-llm-response
@@ -45,8 +50,9 @@
                                    {:instructions "Show me sales data"}))))))
 
 (deftest generate-content-prometheus-test
-  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                     llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers                   llm.tu/default-connections
+                                     llm-provider-fallback-enabled? false
+                                     llm-metabot-provider            test-provider]
     (mt/with-prometheus-system! [_ system]
       (mt/with-dynamic-fn-redefs [openrouter/openrouter
                                   (fn [_]
@@ -74,8 +80,9 @@
     ;; resolve the test database *before* process-query gets redefed below, so DB sync (which
     ;; itself calls process-query) isn't affected by the mock
     (let [db-id (mt/id)]
-      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                         llm-metabot-provider test-provider]
+      (mt/with-temporary-setting-values [llm-providers                   llm.tu/default-connections
+                                         llm-provider-fallback-enabled? false
+                                         llm-metabot-provider            test-provider]
         (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                     (fn [_]
                                       {:validation-result {:valid? true, :dialect "h2"}
@@ -110,8 +117,9 @@
                     response))))))))
 
 (deftest generate-content-snowplow-test
-  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                     llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers                   llm.tu/default-connections
+                                     llm-provider-fallback-enabled? false
+                                     llm-metabot-provider            test-provider]
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
       (let [rasta-id (mt/user->id :rasta)]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter

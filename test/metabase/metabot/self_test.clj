@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.llm.health :as llm.health]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.schema.v2 :as schema.v2]
@@ -106,6 +107,33 @@
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))
+
+(deftest call-llm-records-provider-health-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (letfn [(call! []
+                (into [] (self/call-llm "anthropic/claude-haiku-4-5" nil [] {}
+                                        {:tag "agent" :required-permission :permission/metabot}
+                                        nil)))]
+        (testing "a call that throws leaves the connection recorded as failing, so the next one routes around it"
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (throw (ex-info "invalid x-api-key" {:status 401})))]
+            (is (thrown? clojure.lang.ExceptionInfo (call!)))
+            (is (=? {:message "invalid x-api-key" :fatal? true} (llm.health/failure "anthropic")))))
+        (testing "a call that works clears it"
+          (mt/with-dynamic-fn-redefs [self.claude/claude (fn [_]
+                                                           (test-util/mock-llm-response [{:type :text :text "hi"}]))]
+            (call!)
+            (is (nil? (llm.health/failure "anthropic")))))
+        (testing "a provider that streams an error part instead of throwing still counts as a failure"
+          (mt/with-dynamic-fn-redefs [self.claude/claude
+                                      (fn [_]
+                                        (test-util/mock-llm-response
+                                         [{:type :error :error {:message "upstream is overloaded"}}]))]
+            (mt/with-log-level [metabase.metabot.self :fatal]
+              (call!))
+            (is (=? {:message "upstream is overloaded" :fatal? false}
+                    (llm.health/failure "anthropic")))))))))
 
 (deftest call-llm-tool-choice-test
   (llm.tu/with-default-connections

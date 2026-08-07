@@ -3,8 +3,9 @@
   (:require
    [clojure.string :as str]
    [metabase.config.core :as config]
+   [metabase.llm.health :as llm.health]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]])
   (:import
@@ -452,9 +453,23 @@
   :visibility :settings-manager
   :export?    false
   :audit      :no-value
+  ;; Rewriting the list invalidates what the old one did: credentials may have been rotated, a connection replaced,
+  ;; the order changed. Everything [[metabase.llm.health]] holds is about connections as they were configured, so it
+  ;; is dropped rather than held against whatever is configured now.
+  :setter     (fn [new-value]
+                (llm.health/forget-all!)
+                (setting/set-value-of-type! :json :llm-providers new-value))
   :doc        "Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
 
 Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.")
+
+(defsetting llm-provider-fallback-enabled?
+  (deferred-tru "Whether Metabot switches to the next connected provider when the one it is set to use is failing.")
+  :type       :boolean
+  :default    true
+  :visibility :settings-manager
+  :export?    true
+  :doc        "When a provider rejects Metabase's requests, Metabase records the failure and — with this on — runs on the default model of the next connection in `llm-providers` instead, until the original one works again. Turn it off to have requests fail on the selected provider rather than move to another one.")
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 

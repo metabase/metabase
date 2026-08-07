@@ -541,6 +541,19 @@
                                (get model)))
              part)))))
 
+(defn- model-fallback-part
+  "The part that tells the user this turn is not running on the model the instance is configured for, because that
+  provider is failing. Emitted once per turn, before the first request, so the switch is visible in the
+  conversation rather than something they have to notice in the admin settings."
+  [fallback]
+  {:type :data, :data-type "model_fallback", :version 1, :data fallback})
+
+(defn- announce-model-fallback
+  [{:keys [profile]} rf result iteration]
+  (if-let [fallback (and (= iteration 1) (:model-fallback profile))]
+    (rf result (model-fallback-part fallback))
+    result))
+
 (defn- loop-step
   "Execute one iteration of the agent loop. Returns next loop state.
 
@@ -549,7 +562,8 @@
   [{:keys [agent rf result iteration usage-atom] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
-    (let [{:keys [profile tools context memory-atom tracking-opts]} agent
+    (let [result             (announce-model-fallback agent rf result iteration)
+          {:keys [profile tools context memory-atom tracking-opts]} agent
           max-iter           (:max-iterations profile 15)
           terminal-tools     (set (:terminal-tools profile))
           tracking-opts      (assoc tracking-opts :iteration iteration)

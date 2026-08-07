@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.llm.health :as llm.health]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
@@ -54,6 +55,12 @@
    [:required_any [:sequential [:sequential :string]]]
    [:fields [:sequential field-response-schema]]])
 
+(def ^:private connection-failure-response-schema
+  [:map
+   [:message :string]
+   ;; Whether retrying is pointless until the connection is changed — a rejected key rather than an outage.
+   [:fatal :boolean]])
+
 (def ^:private connection-response-schema
   [:map
    [:key :string]
@@ -61,9 +68,20 @@
    [:name :string]
    [:source [:enum "db" "env"]]
    [:usable :boolean]
+   [:reorderable :boolean]
+   [:error [:maybe connection-failure-response-schema]]
    [:env_vars [:sequential :string]]
    [:env_fields [:sequential :string]]
    [:config [:map-of :keyword [:maybe :string]]]])
+
+(def ^:private active-model-response-schema
+  [:map
+   [:model_ref [:maybe :string]]
+   [:model [:maybe :string]]
+   [:connection_key [:maybe :string]]
+   [:connection_name [:maybe :string]]
+   [:selected_model_ref [:maybe :string]]
+   [:is_fallback :boolean]])
 
 (def ^:private llm-model-response-schema
   [:map
@@ -118,17 +136,32 @@
    :required_any  (mapv #(mapv name %) required-any)
    :fields        (mapv field-response fields)})
 
+(defn- connection-reorderable?
+  "Whether this connection's position in the fallback order can be changed. Only connections stored
+  in `llm-providers` can move: ones synthesized from the single-provider environment variables are appended to
+  whatever is stored, and the whole list is read-only when `llm-providers` itself comes from the environment."
+  [conn-key]
+  (and (nil? (setting/env-var-value :llm-providers))
+       (boolean (some #(= conn-key (:key %)) (llm.provider/stored-connections)))))
+
+(defn- connection-failure-response
+  [conn-key]
+  (when-let [{:keys [message fatal?]} (llm.health/failure conn-key)]
+    {:message message :fatal fatal?}))
+
 (defn- connection-response
   [{conn-key :key conn-name :name :keys [type source config env-vars env-fields] :as conn}]
-  {:key        conn-key
-   :type       type
-   :name       conn-name
-   :source     (name (or source :db))
-   :usable     (llm.provider/config-complete? type config)
-   :env_vars   (vec env-vars)
+  {:key         conn-key
+   :type        type
+   :name        conn-name
+   :source      (name (or source :db))
+   :usable      (llm.provider/config-complete? type config)
+   :reorderable (connection-reorderable? conn-key)
+   :error       (connection-failure-response conn-key)
+   :env_vars    (vec env-vars)
    ;; the config keys the environment owns; the form disables exactly these inputs
-   :env_fields (mapv name env-fields)
-   :config     (or (:config (llm.provider/redact conn)) {})})
+   :env_fields  (mapv name env-fields)
+   :config      (or (:config (llm.provider/redact conn)) {})})
 
 ;;; ------------------------------------------------ Model listing -------------------------------------------------
 
@@ -220,15 +253,34 @@
   [{conn-key :key :keys [type config]}]
   [conn-key type (hash config) (selected-model conn-key)])
 
+(defn- record-listing-health!
+  "Report a model listing to [[metabase.llm.health]] so what it found outlives the response — the provider list
+  shows the failure, and the fallback skips the connection until it works again. Returns `result`.
+
+  Called on the way into the cache rather than on every read, so an error being served from the cache does not keep
+  pushing back the moment a transient failure expires. Types whose catalog is fixed are answered from the registry
+  without a request, so they prove nothing about the connection either way and are left out of the record."
+  [{conn-key :key :keys [type]} {:keys [error transient?] :as result}]
+  (when-not (llm.provider/fixed-models type)
+    (if error
+      (llm.health/record-failure! conn-key error (not transient?))
+      (llm.health/record-success! conn-key)))
+  result)
+
 (defn- connection-models-response
+  "List `conn`'s models for the client, reporting to [[metabase.llm.health]] whatever the listing found."
   [{conn-key :key conn-name :name :keys [type] :as conn}]
   (merge {:key conn-key :name conn-name :type type}
-         (try
-           (cache.wrapped/lookup-or-miss models-cache (models-cache-key conn)
-                                         (fn [_] (list-connection-models* conn nil nil false)))
-           (catch Exception e
-             (log/warn e "Failed to list models for LLM provider connection" {:connection conn-key})
-             {:models [] :error (.getMessage e)}))))
+         (dissoc
+          (try
+            (cache.wrapped/lookup-or-miss models-cache (models-cache-key conn)
+                                          (fn [_] (record-listing-health! conn (list-connection-models* conn nil nil false))))
+            (catch Exception e
+              (log/warn e "Failed to list models for LLM provider connection" {:connection conn-key})
+              ;; Not a rejection from the provider — a request that never got an answer, which a later one still
+              ;; might, so it is not cached and not held against the connection permanently.
+              (record-listing-health! conn {:models [] :error (.getMessage e) :transient? true})))
+          :transient?)))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
@@ -288,20 +340,13 @@
   (when listed
     (swap! models-cache cache/miss (models-cache-key conn) (select-keys listed [:models]))))
 
-(defn- connection-model-ref
-  "The `connection-key/model` reference that points Metabot at `conn`: the model the connection's own config names
-  (Azure's deployment) when it has one, and the type's default model otherwise. Nil when the type neither names nor
-  defaults to a model."
-  [{conn-key :key :keys [type config]}]
-  (when-let [model (or (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
-                       (llm.provider/default-model type))]
-    (str conn-key "/" model)))
-
 (defn- fallback-model-ref
   "A model reference to fall back to once the connection Metabot was pointed at is gone: the first remaining
-  connection that names a model, or nil to leave Metabot unconfigured."
+  connection that names a model, or nil to leave Metabot unconfigured. Unlike the runtime fallback this ignores
+  which connections are currently failing — a recorded failure is a reason to route around a connection, not to
+  refuse to select it."
   []
-  (some connection-model-ref (llm.provider/connections)))
+  (llm.provider/first-model-ref))
 
 (defenterprise cancel-managed-ai-subscription!
   "Cancel the Metabase Cloud add-on that backs the Metabase-managed provider, called when its connection is
@@ -339,7 +384,7 @@
   [{conn-key :key :as conn} requested-model]
   (when-let [model-ref (if (not-empty requested-model)
                          (str conn-key "/" requested-model)
-                         (connection-model-ref conn))]
+                         (llm.provider/connection-model-ref conn))]
     (repoint-metabot! model-ref)))
 
 (defn- follow-edited-connection-model!
@@ -356,7 +401,7 @@
   mini model needs no help, since it follows the Metabot selection on its own."
   [{conn-key :key :keys [type config] :as conn} requested-model]
   (let [composed-ref (when (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
-                       (connection-model-ref conn))
+                       (llm.provider/connection-model-ref conn))
         picked-ref   (when (and (not-empty requested-model) (seq (llm.provider/fixed-models type)))
                        (str conn-key "/" requested-model))
         metabot-ref  (metabot.settings/llm-metabot-provider)
@@ -508,6 +553,43 @@
       (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider)))
         (repoint-metabot! (fallback-model-ref)))))
   nil)
+
+(api.macros/defendpoint :put "/provider-order"
+  :- [:sequential connection-response-schema]
+  "Set the order the provider connections are listed and fallen back to in.
+
+  `order` is the full list of connection keys, top first. Keys that name a connection configured by the
+  single-provider environment variables are ignored: those are appended after the stored ones on every read, so
+  there is no position to save for them."
+  [_route-params
+   _query-params
+   {:keys [order]} :- [:map [:order [:sequential connection-key-schema]]]]
+  (perms/check-has-application-permission :setting)
+  (check-connections-not-env-managed!)
+  (let [stored    (llm.provider/stored-connections)
+        by-key    (into {} (map (juxt :key identity)) stored)
+        requested (filterv by-key order)]
+    (api/check-400 (= (frequencies requested) (frequencies (map :key stored)))
+                   (tru "The order must list every stored provider connection exactly once."))
+    (llm.provider/set-connections! (mapv by-key requested))
+    (mapv connection-response (llm.provider/connections))))
+
+(api.macros/defendpoint :get "/active-model"
+  :- active-model-response-schema
+  "The model Metabot is running on right now, and the one it is configured to run on.
+
+  These differ when the selected connection cannot serve requests and `llm-provider-fallback-enabled?` moved
+  Metabot to the next connection in the list; `is_fallback` says whether that has happened."
+  []
+  (perms/check-has-application-permission :setting)
+  (let [{:keys [model-ref selected-model-ref fallback]} (metabot.settings/metabot-model-selection)
+        conn-key                                        (llm.provider/model-ref->connection-key model-ref)]
+    {:model_ref          model-ref
+     :model              (llm.provider/model-ref->model model-ref)
+     :connection_key     conn-key
+     :connection_name    (:name (llm.provider/connection conn-key))
+     :selected_model_ref selected-model-ref
+     :is_fallback        (some? fallback)}))
 
 (api.macros/defendpoint :get "/models"
   :- models-response-schema

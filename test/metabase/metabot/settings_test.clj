@@ -1,6 +1,7 @@
 (ns metabase.metabot.settings-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.llm.health :as llm.health]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.settings.core :as setting]
@@ -477,3 +478,80 @@
          java.lang.UnsupportedOperationException
          #"You cannot set ai-usage-max-retention-days"
          (setting/set! :ai-usage-max-retention-days 30)))))
+
+;;; -------------------------------------------------- Fallback ---------------------------------------------------
+
+(def ^:private configured-openai
+  (connection "openai" "openai" {:api-key "sk-openai-test"}))
+
+(defn- do-with-failing-connection!
+  [conn-key thunk]
+  (llm.health/record-failure! conn-key "invalid x-api-key" true)
+  (try
+    (thunk)
+    (finally
+      (llm.health/forget! conn-key))))
+
+(defmacro ^:private with-failing-connection
+  [conn-key & body]
+  `(do-with-failing-connection! ~conn-key (fn [] ~@body)))
+
+(deftest fallback-leaves-a-working-selection-alone-test
+  (testing "nothing is switched while the selected connection can serve requests"
+    (with-connections [configured-anthropic configured-openai]
+      (with-selected-model "anthropic/claude-sonnet-4-6"
+        (is (= {:model-ref          "anthropic/claude-sonnet-4-6"
+                :selected-model-ref "anthropic/claude-sonnet-4-6"
+                :fallback           nil}
+               (metabot.settings/metabot-model-selection)))))))
+
+(deftest fallback-moves-to-the-next-connection-test
+  (testing "a failing provider hands the turn to the next connection's default model"
+    (with-connections [configured-anthropic configured-openai]
+      (with-selected-model "anthropic/claude-sonnet-4-6"
+        (with-failing-connection "anthropic"
+          (is (=? {:model-ref          "openai/gpt-5.4"
+                   :selected-model-ref "anthropic/claude-sonnet-4-6"
+                   :fallback           {:model                  "openai/gpt-5.4"
+                                        :provider_name          "openai"
+                                        :previous_model         "anthropic/claude-sonnet-4-6"
+                                        :previous_provider_name "anthropic"}}
+                  (metabot.settings/metabot-model-selection))))))))
+
+(deftest fallback-skips-a-connection-that-was-never-usable-test
+  (testing "a connection missing its credentials is skipped the same way a failing one is"
+    (with-connections [configured-anthropic
+                       (connection "mistral" "mistral")
+                       configured-openai]
+      (with-selected-model "anthropic/claude-sonnet-4-6"
+        (with-failing-connection "anthropic"
+          (is (= "openai/gpt-5.4" (:model-ref (metabot.settings/metabot-model-selection)))))))))
+
+(deftest fallback-can-be-turned-off-test
+  (testing "with fallback off the request stays on the provider the admin chose, and fails there"
+    (mt/with-temporary-setting-values [llm-provider-fallback-enabled? false]
+      (with-connections [configured-anthropic configured-openai]
+        (with-selected-model "anthropic/claude-sonnet-4-6"
+          (with-failing-connection "anthropic"
+            (is (= {:model-ref          "anthropic/claude-sonnet-4-6"
+                    :selected-model-ref "anthropic/claude-sonnet-4-6"
+                    :fallback           nil}
+                   (metabot.settings/metabot-model-selection)))))))))
+
+(deftest fallback-with-nothing-to-fall-back-to-test
+  (testing "the selected model is returned unchanged when no other connection can serve the request"
+    (with-connections [configured-anthropic]
+      (with-selected-model "anthropic/claude-sonnet-4-6"
+        (with-failing-connection "anthropic"
+          (is (= {:model-ref          "anthropic/claude-sonnet-4-6"
+                  :selected-model-ref "anthropic/claude-sonnet-4-6"
+                  :fallback           nil}
+                 (metabot.settings/metabot-model-selection))))))))
+
+(deftest mini-model-follows-the-fallback-test
+  (testing "quick background tasks move off a failing provider too, rather than leaving every conversation unnamed"
+    (with-connections [configured-anthropic configured-openai]
+      (with-selected-model "anthropic/claude-sonnet-4-6"
+        (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model)))
+        (with-failing-connection "anthropic"
+          (is (= "openai/gpt-5.4" (metabot.settings/llm-mini-model))))))))

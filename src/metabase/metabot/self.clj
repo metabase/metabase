@@ -13,6 +13,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
+   [metabase.llm.health :as llm.health]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.azure :as azure]
@@ -112,18 +113,39 @@
   Throws a 400 when the string names a connection that is not configured, so a stale
   `llm-metabot-provider` surfaces as a clear error rather than an unauthenticated request."
   [s]
-  (let [{:keys [type model credentials ai-proxy?]}
+  (let [{:keys [connection-key type model credentials ai-proxy?]}
         (or (llm.provider/resolve-model-ref s)
             (throw (ex-info (tru "No LLM provider connection named {0} is configured."
                                  (pr-str (llm.provider/model-ref->connection-key s)))
                             {:status-code 400
                              :api-error   true
                              :model-ref   s})))]
-    {:provider    type
-     :stream-fn   (resolve-adapter type)
-     :model       model
-     :credentials credentials
-     :ai-proxy?   ai-proxy?}))
+    {:connection-key connection-key
+     :provider       type
+     :stream-fn      (resolve-adapter type)
+     :model          model
+     :credentials    credentials
+     :ai-proxy?      ai-proxy?}))
+
+(defn- with-health-recorded
+  "Run `thunk`, reporting to [[metabase.llm.health]] whether `conn-key` served the request. A failure recorded here
+  is what takes the connection out of the fallback rotation, so the user's next message — or their retry of a
+  response that died mid-stream — runs on the next provider instead of hitting the same wall.
+
+  `errored?` covers the provider that fails without throwing: it streams an `:error` part and then ends the
+  response normally, which [[report-aisdk-errors-xf]] has already recorded. Returning true keeps that from being
+  overwritten by a success the stream did not earn."
+  ([conn-key thunk]
+   (with-health-recorded conn-key (constantly false) thunk))
+  ([conn-key errored? thunk]
+   (try
+     (let [result (thunk)]
+       (when-not (errored?)
+         (llm.health/record-success! conn-key))
+       result)
+     (catch Exception e
+       (llm.health/record-exception! conn-key e)
+       (throw e)))))
 
 (defn- resolve-context-window-fn [provider]
   ;; a `case` inside of function instead of a map so that with-redefs work well
@@ -272,6 +294,9 @@
                       {:model  (:model tracking-opts "unknown")
                        :source (:tag tracking-opts "none")
                        :error  (:error part)})
+           (llm.health/record-failure! (:connection-key tracking-opts)
+                                       (:message (:error part))
+                                       false)
            (analytics/inc! :metabase-metabot/llm-errors
                            {:model      (:model tracking-opts "unknown")
                             :source     (:tag tracking-opts "none")
@@ -500,10 +525,13 @@
          (error-reducible limit-msg "ai_usage_limit_reached"))
        (when-let [missing (missing-required-permission (:required-permission tracking-opts))]
          (error-reducible (format "Permission denied: %s required" missing) "permission_denied"))
-       (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)]
+       (let [{:keys [connection-key provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)]
          (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
                                   :tool-choice tool-choice :ai-proxy? ai-proxy?})
-         (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
+         (let [tracking-opts  (assoc tracking-opts
+                                     :model provider-and-model
+                                     :ai-proxy? ai-proxy?
+                                     :connection-key connection-key)
                streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
                                        :credentials credentials :ai-proxy? ai-proxy?
                                        :fast?       (metabot.settings/llm-fast-mode)}
@@ -531,13 +559,21 @@
                  ;; has seen output, replaying would duplicate it and re-execute tools. Gate retries
                  ;; on "nothing emitted yet" so a mid-stream failure surfaces instead of replaying.
                  (let [emitted? (volatile! false)
+                       errored? (volatile! false)
                        rf*      (fn
                                   ([acc]   (rf acc))
-                                  ([acc x] (vreset! emitted? true) (rf acc x)))]
-                   (with-retries
-                     tracking-opts
-                     #(reduce rf* init (make-source))
-                     (fn [_e] (not @emitted?))))))))))))
+                                  ([acc x]
+                                   (vreset! emitted? true)
+                                   (when (= (:type x) :error)
+                                     (vreset! errored? true))
+                                   (rf acc x)))]
+                   (with-health-recorded
+                     connection-key
+                     #(deref errored?)
+                     #(with-retries
+                        tracking-opts
+                        (fn [] (reduce rf* init (make-source)))
+                        (fn [_e] (not @emitted?)))))))))))))
 
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
@@ -565,7 +601,7 @@
                      :error-code "ai_usage_limit_reached"
                      :message    limit-msg})))
   (check-permission! (:required-permission opts))
-  (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)
+  (let [{:keys [connection-key provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)
         [system-msg input] (if (= "system" (some-> messages first :role name))
                              [(:content (first messages)) (vec (rest messages))]
                              [nil messages])
@@ -575,7 +611,9 @@
                                                            :ai-proxy? ai-proxy?})
         tracking-opts  (-> opts
                            (dissoc :required-permission)
-                           (assoc :model provider-and-model :ai-proxy? ai-proxy?))
+                           (assoc :model provider-and-model
+                                  :ai-proxy? ai-proxy?
+                                  :connection-key connection-key))
         streaming-opts (cond-> {:model       model
                                 :input       input
                                 :schema      json-schema
@@ -589,45 +627,47 @@
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
                       :msg-count (count input)}
-      (with-retries
-        tracking-opts
-        (fn []
-          (let [parts (into []
-                            (comp (core/aisdk-xf)
-                                  (report-aisdk-errors-xf tracking-opts)
-                                  (report-token-usage-xf tracking-opts))
-                            (stream-fn streaming-opts))
-                result (some (fn [{:keys [type arguments]}]
-                               (when (= type :tool-input)
-                                 arguments))
-                             parts)
-                error  (some (fn [{:keys [type error]}]
-                               (when (= type :error)
-                                 error))
-                             parts)]
-            (cond
-              ;; The tool call's JSON failed to parse; `parse-tool-arguments` returned the
-              ;; `{:_raw_arguments ...}` sentinel. Reject it as invalid rather than handing a
-              ;; bogus map back to the caller as if it were a valid structured result.
-              (and (map? result) (contains? result :_raw_arguments))
-              (throw (ex-info "LLM returned malformed JSON in its structured tool call"
-                              {:parts         parts
-                               :error-code    "structured-output-invalid"
-                               :raw-arguments (:_raw_arguments result)}))
+      (with-health-recorded
+        connection-key
+        #(with-retries
+           tracking-opts
+           (fn []
+             (let [parts (into []
+                               (comp (core/aisdk-xf)
+                                     (report-aisdk-errors-xf tracking-opts)
+                                     (report-token-usage-xf tracking-opts))
+                               (stream-fn streaming-opts))
+                   result (some (fn [{:keys [type arguments]}]
+                                  (when (= type :tool-input)
+                                    arguments))
+                                parts)
+                   error  (some (fn [{:keys [type error]}]
+                                  (when (= type :error)
+                                    error))
+                                parts)]
+               (cond
+                 ;; The tool call's JSON failed to parse; `parse-tool-arguments` returned the
+                 ;; `{:_raw_arguments ...}` sentinel. Reject it as invalid rather than handing a
+                 ;; bogus map back to the caller as if it were a valid structured result.
+                 (and (map? result) (contains? result :_raw_arguments))
+                 (throw (ex-info "LLM returned malformed JSON in its structured tool call"
+                                 {:parts         parts
+                                  :error-code    "structured-output-invalid"
+                                  :raw-arguments (:_raw_arguments result)}))
 
-              result
-              {:result result :parts parts}
+                 result
+                 {:result result :parts parts}
 
-              ;; The provider failed mid-stream and emitted an `:error` part instead of throwing
-              ;; (e.g. an OpenAI `response.failed`). Surface its message and code so callers/logs
-              ;; see the real cause rather than a misleading "no tool call".
-              error
-              (throw (ex-info (or (:message error) "LLM stream returned an error")
-                              {:parts parts :error error :error-code "llm-stream-error"}))
+                 ;; The provider failed mid-stream and emitted an `:error` part instead of throwing
+                 ;; (e.g. an OpenAI `response.failed`). Surface its message and code so callers/logs
+                 ;; see the real cause rather than a misleading "no tool call".
+                 error
+                 (throw (ex-info (or (:message error) "LLM stream returned an error")
+                                 {:parts parts :error error :error-code "llm-stream-error"}))
 
-              :else
-              (throw (ex-info "LLM returned no tool call in structured response"
-                              {:parts parts})))))))))
+                 :else
+                 (throw (ex-info "LLM returned no tool call in structured response"
+                                 {:parts parts}))))))))))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.

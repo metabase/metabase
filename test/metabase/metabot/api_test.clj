@@ -507,11 +507,15 @@
 
 (defn- with-mock-streaming-provider!
   "Runs `thunk` with the LLM provider mocked. Each provider call consumes the next
-  parts vector from `responses`, falling back to `default-mock-parts` once exhausted."
+  parts vector from `responses`, falling back to `default-mock-parts` once exhausted.
+
+  Only the one adapter is mocked, so the provider fallback is off: a turn that ends in an `:error` part records the
+  connection as failing, and the next request would otherwise be served by a connection with no mock behind it."
   ([thunk] (with-mock-streaming-provider! [] thunk))
   ([responses thunk]
    (let [queue (atom (vec responses))]
      (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                        llm.settings/llm-provider-fallback-enabled? false
                                         metabot.settings/llm-metabot-provider test-provider]
        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
          (mt/with-dynamic-fn-redefs [openrouter/openrouter
