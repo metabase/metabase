@@ -10,15 +10,32 @@ const STAGE_INDEX = -1;
 
 type MeasureAggregationPickerProps = {
   query: Lib.Query;
-  onChange?: (query: Lib.Query) => void;
+  onChange: (query: Lib.Query) => void;
   readOnly?: boolean;
 };
 
-export function MeasureAggregationPicker({
+type MeasureAggregationPickerContentProps = Omit<
+  MeasureAggregationPickerProps,
+  "onChange"
+> & {
+  onChange?: MeasureAggregationPickerProps["onChange"];
+};
+
+export function MeasureAggregationPicker(props: MeasureAggregationPickerProps) {
+  return <MeasureAggregationPickerContent {...props} />;
+}
+
+export function ReadOnlyMeasureAggregationPicker({
+  query,
+}: Pick<MeasureAggregationPickerProps, "query">) {
+  return <MeasureAggregationPickerContent query={query} readOnly />;
+}
+
+function MeasureAggregationPickerContent({
   query,
   onChange,
   readOnly = false,
-}: MeasureAggregationPickerProps) {
+}: MeasureAggregationPickerContentProps) {
   const aggregations = useMemo(
     () => Lib.aggregations(query, STAGE_INDEX),
     [query],

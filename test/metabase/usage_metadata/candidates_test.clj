@@ -39,6 +39,7 @@
 (def ^:private candidate-families candidate-family/candidate-families)
 (def ^:private prune-old-candidate-snapshots! candidate-snapshot/prune-old-candidate-snapshots!)
 (def ^:private reconcile-candidates! candidate-snapshot/reconcile-candidates!)
+(def ^:private persist-observations! @#'candidate-snapshot/persist-observations!)
 
 (defn- candidate-row
   [run-id table-id]
@@ -398,10 +399,7 @@
                                                            :finished_at       (mi/now)}
                  :model/UsageMetadataCandidate old-candidate (candidate-row (:id old-run) (mt/id :orders))]
     (mt/with-dynamic-fn-redefs [candidate-mining/qualified-card-ids (constantly [])
-                                candidate-builders/cleanup-candidates (constantly {:measures [], :segments []})
-                                candidate-builders/candidate-table-observations (constantly {:candidates []
-                                                                                             :unsupported-source-items []})
-                                candidate-builders/candidate-metric-observations (constantly [])]
+                                candidate-builders/candidate-analysis-inputs (constantly {})]
       (let [run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
         (is (= :succeeded (:status (candidate-refresh/run-refresh! run))))
         (is (= (:id run) (:id (candidate-refresh/latest-successful-run))))
@@ -473,23 +471,20 @@
         (Thread/interrupted)))))
 
 (deftest persisted-refresh-uses-recent-view-source-configuration-test
-  (let [cleanup-opts (atom nil)
-        table-opts   (atom nil)
-        metric-opts  (atom nil)]
+  (let [batch-opts (atom nil)]
     (mt/with-dynamic-fn-redefs
       [candidate-mining/qualified-card-ids (fn [minimum-view-count window-days]
                                              (is (= 10 minimum-view-count))
                                              (is (= 90 window-days))
                                              [1])
-       candidate-builders/cleanup-candidates (fn [opts]
-                                               (reset! cleanup-opts opts)
-                                               {:measures [], :segments []})
-       candidate-builders/candidate-table-observations (fn [opts]
-                                                         (reset! table-opts opts)
-                                                         {:candidates [], :unsupported-source-items []})
-       candidate-builders/candidate-metric-observations (fn [opts]
-                                                          (reset! metric-opts opts)
-                                                          [])]
+       candidate-builders/candidate-analysis-inputs (constantly {:analysis :inputs})
+       candidate-builders/candidate-batch-observations
+       (fn [analysis-inputs opts]
+         (is (= {:analysis :inputs} analysis-inputs))
+         (reset! batch-opts opts)
+         {:cleanup {:measures [], :segments []}
+          :table-report {:candidates [], :unsupported-source-items []}
+          :metrics []})]
       (let [run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
         (is (= :succeeded (:status (candidate-refresh/run-refresh! run))))
         (is (= {:kind                      "qualified-cards"
@@ -501,12 +496,11 @@
                                             :general  {:minimum-distinct-source-count 3
                                                        :minimum-total-view-count      25}}}
                (:source_config (t2/select-one :model/UsageMetadataCandidateRun :id (:id run)))))
-        (is (= 10 (:min-view-count @cleanup-opts)))
-        (is (= 90 (:view-count-window-days @cleanup-opts)))
-        (is (not (contains? @table-opts :limit))
-            "persisted table observations are not presentation-limited")
-        (is (not (contains? @metric-opts :limit))
-            "persisted metric observations are not presentation-limited")))))
+        (is (=? {:card-ids #{1}
+                 :min-view-count 10
+                 :view-count-window-days 90
+                 :include-ineligible? true}
+                @batch-opts))))))
 
 (deftest persisted-refresh-materializes-table-and-metric-recommendations-test
   (let [table-id          (mt/id :orders)
@@ -527,42 +521,45 @@
                          :view-count 20}]
         (mt/with-dynamic-fn-redefs
           [candidate-mining/qualified-card-ids (constantly [(:id card)])
-           candidate-builders/cleanup-candidates (constantly {:measures [], :segments []})
-           candidate-builders/candidate-table-observations
-           (constantly {:candidates
-                        [{:table {:id table-id
-                                  :database-id (mt/id)
-                                  :database-name "Test Database"
-                                  :schema "PUBLIC"
-                                  :name "ORDERS"
-                                  :display-name "Orders"
-                                  :description nil
-                                  :data-layer nil
-                                  :data-authority nil
-                                  :view-count 0}
-                          :evidence {:source-items [(assoc source-item
-                                                           :dependency-paths
-                                                           [{:direct? true, :models []}])]
-                                     :distinct-source-count 1
-                                     :verified-source-count 1
-                                     :official-source-count 0
-                                     :popular-source-count 1
-                                     :total-view-count 20}}]
-                        :unsupported-source-items []})
-           candidate-builders/candidate-metric-observations
-           (constantly [{:definition definition
-                         :suggested-name "Large order count"
-                         :suggested-description "Count large orders"
-                         :aggregation (first (lib/aggregations definition 0))
-                         :required-tables [{:id table-id, :published? false}]
-                         :evidence {:source-items [(assoc source-item
-                                                          :stage-numbers [0]
-                                                          :joined? false)]
-                                    :distinct-source-count 1
-                                    :verified-source-count 1
-                                    :official-source-count 0
-                                    :popular-source-count 1
-                                    :total-view-count 20}}])]
+           candidate-builders/candidate-analysis-inputs (constantly {})
+           candidate-builders/candidate-batch-observations
+           (fn [_analysis-inputs _opts]
+             {:cleanup {:measures [], :segments []}
+              :table-report
+              {:candidates
+               [{:table {:id table-id
+                         :database-id (mt/id)
+                         :database-name "Test Database"
+                         :schema "PUBLIC"
+                         :name "ORDERS"
+                         :display-name "Orders"
+                         :description nil
+                         :data-layer nil
+                         :data-authority nil
+                         :view-count 0}
+                 :evidence {:source-items [(assoc source-item
+                                                  :dependency-paths
+                                                  [{:direct? true, :models []}])]
+                            :distinct-source-count 1
+                            :verified-source-count 1
+                            :official-source-count 0
+                            :popular-source-count 1
+                            :total-view-count 20}}]
+               :unsupported-source-items []}
+              :metrics
+              [{:definition definition
+                :suggested-name "Large order count"
+                :suggested-description "Count large orders"
+                :aggregation (first (lib/aggregations definition 0))
+                :required-tables [{:id table-id, :published? false}]
+                :evidence {:source-items [(assoc source-item
+                                                 :stage-numbers [0]
+                                                 :joined? false)]
+                           :distinct-source-count 1
+                           :verified-source-count 1
+                           :official-source-count 0
+                           :popular-source-count 1
+                           :total-view-count 20}}]})]
           (let [run     (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))
                 result  (candidate-refresh/run-refresh! run)
                 rows    (t2/select :model/UsageMetadataCandidate :run_id (:id run))
@@ -576,6 +573,52 @@
                    (get-in (by-type :table) [:semantic_details :source-dependencies])))
             (is (= (dissoc (lib/normalize definition) :lib/metadata)
                    (:definition (by-type :metric))))))))))
+
+(deftest persisted-observations-merge-evidence-in-batches-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :running
+                                                       :trigger           :manual
+                                                       :algorithm_version 1
+                                                       :source_config     {}}
+                 :model/Card first-card {:name "First source", :type :question}
+                 :model/Card second-card {:name "Second source", :type :question}]
+    (let [observation (fn [card views]
+                        {:candidate-type :segment
+                         :source {:id (mt/id :orders)}
+                         :signature "[\"batched-segment\"]"
+                         :definition {:table-id (mt/id :orders)}
+                         :predicate [:field (mt/id :orders :subtotal) nil]
+                         :fields [{:id (mt/id :orders :subtotal)
+                                   :name "SUBTOTAL"
+                                   :display-name "Subtotal"}]
+                         :atoms [{:signature "subtotal", :display-name "Subtotal", :kind :number}]
+                         :composite? false
+                         :atom-count 1
+                         :suggested-name "Subtotal filter"
+                         :suggested-description "Filter Orders by Subtotal"
+                         :evidence {:source-items [{:id (:id card)
+                                                    :name (:name card)
+                                                    :type :question
+                                                    :verified? false
+                                                    :official-collection? false
+                                                    :popular? true
+                                                    :view-count views
+                                                    :stage-numbers [0]
+                                                    :joined? false}]
+                                    :distinct-source-count 1
+                                    :verified-source-count 0
+                                    :official-source-count 0
+                                    :popular-source-count 1
+                                    :total-view-count views}})]
+      (persist-observations! (:id run) [(observation first-card 10)])
+      (persist-observations! (:id run) [(observation second-card 20)])
+      (let [candidate (t2/select-one :model/UsageMetadataCandidate :run_id (:id run))]
+        (is (=? {:distinct_source_count 2
+                 :popular_source_count 2
+                 :recent_view_count 30}
+                candidate))
+        (is (= #{(:id first-card) (:id second-card)}
+               (t2/select-fn-set :card_id :model/UsageMetadataCandidateSource
+                                 :candidate_id (:id candidate))))))))
 
 (deftest fixed-candidate-evidence-cutoffs-test
   (let [base {:candidate_type         :segment

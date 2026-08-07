@@ -3,10 +3,9 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.task.core :as task]
    [metabase.usage-metadata.batch :as usage-metadata.batch]
-   [metabase.usage-metadata.candidate-refresh :as candidate-refresh]
    [metabase.usage-metadata.settings :as usage-metadata.settings]
    [metabase.util.log :as log])
   (:import
@@ -28,6 +27,12 @@
 (def ^:private trigger-key
   (triggers/key "metabase.task.usage-metadata-process.trigger"))
 
+(defenterprise run-candidate-refresh!
+  "Refresh Library cleanup candidates in Enterprise editions that provide the feature."
+  metabase-enterprise.data-studio.usage-metadata.task
+  []
+  nil)
+
 (defn- run-step
   [message f]
   (try
@@ -48,15 +53,8 @@
         (when (usage-metadata.settings/usage-metadata-enabled?)
           (run-step "Error processing usage metadata rollups"
                     usage-metadata.batch/run-batch!))
-        candidate-error
-        (when (premium-features/has-feature? :library)
-          (run-step
-           "Error refreshing usage metadata candidates"
-           (fn []
-             ;; `queue-refresh!` also recovers runs interrupted by a previous process, so every
-             ;; scheduled tick must go through it rather than short-circuiting on `active-run`.
-             (when-let [run (candidate-refresh/queue-refresh! :scheduled nil)]
-               (candidate-refresh/run-refresh! run)))))]
+        candidate-error (run-step "Error refreshing usage metadata candidates"
+                                  run-candidate-refresh!)]
     (when-let [error (or batch-error candidate-error)]
       (throw error))))
 

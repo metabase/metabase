@@ -57,7 +57,13 @@ describe("useUsageMetadataPages", () => {
       .fn<Promise<UsageMetadataPage<TestItem>>, [object]>()
       .mockResolvedValueOnce(newSecondPage)
       .mockResolvedValueOnce(newSecondPage);
-    const refetch = jest.fn();
+    let finishRefetch: (() => void) | undefined;
+    const refetch = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRefetch = resolve;
+        }),
+    );
     const { result, rerender } = renderHook(
       ({ firstPage }) =>
         useUsageMetadataPages(
@@ -77,6 +83,10 @@ describe("useUsageMetadataPages", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeUndefined();
     expect(result.current.data).toEqual(firstSnapshot);
+    expect(result.current.isFetching).toBe(true);
+
+    await act(async () => finishRefetch?.());
+    expect(result.current.isFetching).toBe(false);
 
     rerender({ firstPage: newFirstPage });
     await waitFor(() => expect(result.current.data).toEqual(newFirstPage));
