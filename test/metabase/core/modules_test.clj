@@ -2,9 +2,12 @@
   "Tests that the modules config file is configured correctly."
   (:require
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.tools.namespace.file :as ns.file]
+   [clojure.tools.namespace.parse :as ns.parse]
    [dev.deps-graph]
    [dev.model-boundary-config]
    [metabase.util.json :as json]
@@ -145,8 +148,8 @@
   (testing (str "Please update .clj-kondo/config/modules/config.edn 🥰\n"
                 "[Pro Tip: use (dev.deps-graph/print-kondo-config-diff) to see the changes you need to make in a nicer format]\n")
     (let [deps     (dev.deps-graph/dependencies)
-          expected (dev.deps-graph/generate-config deps (dev.deps-graph/kondo-config))
           actual   (dev.deps-graph/kondo-config)
+          expected (dev.deps-graph/generate-config deps actual)
           modules  (set/union (set (keys expected))
                               (set (keys actual)))]
       (doseq [module modules
@@ -173,20 +176,268 @@
         (testing (format "Remove %s from %s" (pr-str extraneous) (pr-str ks))
           (is (empty? extraneous)))))))
 
-(defn- rest-module? [module]
-  (str/ends-with? module "-rest"))
+(deftest ^:parallel module-boundary-config-values-have-valid-types-test
+  (testing "Module boundary keys use the values understood by the linter"
+    (doseq [[module config] (dev.deps-graph/kondo-config)]
+      (testing (format "\n%s" module)
+        (is (or (nil? (:api config))
+                (set? (:api config))
+                (= :any (:api config)))
+            ":api must be omitted, a set, or :any")
+        (is (or (nil? (:uses config))
+                (set? (:uses config))
+                (= :any (:uses config)))
+            ":uses must be omitted, a set, or :any")
+        (is (or (nil? (:friends config))
+                (set? (:friends config)))
+            ":friends must be a set when present")))))
+
+(deftest ^:parallel module-boundary-debt-matches-ratchets-test
+  (testing "Module boundary anti-pattern counts match their exact ratchets"
+    (let [actual   (dev.deps-graph/module-boundary-debt)
+          ratchets (dev.deps-graph/module-boundary-ratchets)]
+      (is (= (set (keys actual)) (set (keys ratchets)))
+          "Every debt metric must have an exact committed ratchet")
+      (doseq [[metric ratchet] ratchets
+              :let [value (get actual metric)]]
+        (testing (format "\n%s" metric)
+          (is (= value ratchet)
+              (if (< value ratchet)
+                (format (str "%s improved from %d to %d. Run `./bin/mage modules-validate "
+                             "--update-ratchets` and commit the lower value now.")
+                        metric ratchet value)
+                (format (str "%s increased from its ratchet of %d to %d. "
+                             "Reduce the new boundary debt; the updater will not bless increases.")
+                        metric ratchet value))))))))
+
+(def ^:private config-derived-stat-keys
+  "The module-stats keys derivable from the committed config-dir files alone. Only these are enforced
+  exactly: PR CI checks out the merge preview with master, so scan-derived keys (SCC sizes, namespace
+  counts, test blast) legitimately differ from any branch's committed baseline whenever master moves.
+  They are still synced into module-stats.edn for PR-diff visibility."
+  [:largest-api :module-count :total-api])
+
+(deftest ^:parallel module-boundary-stats-match-committed-test
+  (testing (str "Config-derived module surface stats match module-stats.edn. Unlike the ratchets these\n"
+                "move in both directions by design — run `./bin/mage fix-modules-config` (or\n"
+                "`modules-validate --update-ratchets`) and commit the new values; the PR diff is the\n"
+                "review signal.")
+    (let [actual    (dev.deps-graph/module-boundary-stats)
+          committed (dev.deps-graph/committed-module-boundary-stats)]
+      (is (= (set (keys actual)) (set (keys committed)))
+          "module-stats.edn must carry the full stat shape, scan-derived keys included")
+      (is (= (select-keys actual config-derived-stat-keys)
+             (select-keys committed config-derived-stat-keys))))))
+
+(deftest ^:parallel driver-test-overrides-not-stale-test
+  (testing (str "Every driver-test exemption in driver-test-overrides.edn must still be justified by the\n"
+                "graph: a declared module that a driver-triggering module transitively depends on. An entry\n"
+                "that goes stale (renamed, removed, or no longer upstream of a trigger) does nothing and\n"
+                "must be dropped — the set is a ratchet (:driver-test-exempt-modules) and may only shrink.")
+    (let [config    (dev.deps-graph/kondo-config)
+          declared  (set (keys config))
+          deps      (dev.deps-graph/dependencies)
+          full      (dev.deps-graph/full-dependencies deps)
+          ;; mirrors the trigger set of mage.modules/driver-deps-affected?:
+          ;; the union of default-modules-which-trigger-drivers and modules-triggering-cloud-drivers.
+          ;; A trigger module's own entry is also meaningful: mage strips exemptions from the
+          ;; changed set before computing what is affected, so it suppresses self-triggering.
+          triggers  '[driver transforms query-processor
+                      enterprise/transforms enterprise/transforms-python]
+          upstream  (into (set triggers) (mapcat #(get full %)) triggers)
+          overrides (:exempt-modules (dev.deps-graph/driver-test-overrides))]
+      (doseq [m (sort overrides)]
+        (testing (format "\n%s" m)
+          (is (contains? declared m)
+              "exempts a module that is not declared in config.edn — rename or drop the entry")
+          (is (contains? upstream m)
+              "exempts a module no drivers-triggering module depends on — the entry is a no-op, drop it"))))))
+
+(deftest ^:parallel module-boundary-ratchets-can-only-be-lowered-test
+  (is (= {:debt 2}
+         (dev.deps-graph/lowered-module-boundary-ratchets {:debt 3} {:debt 2})))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                        #"Refusing to increase"
+                        (dev.deps-graph/lowered-module-boundary-ratchets {:debt 2} {:debt 3})))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                        #"metrics do not match"
+                        (dev.deps-graph/lowered-module-boundary-ratchets {:debt 2} {:other 1}))))
+
+(deftest ^:parallel legacy-rest-module-debt-test
+  (testing "-rest module symbols count as debt"
+    (is (= 2
+           (:legacy-rest-modules
+            (dev.deps-graph/module-boundary-debt
+             []
+             {'actions-rest          {}
+              'actions               {}
+              'enterprise/users-rest {}}))))))
+
+;;;; Classpath / namespace convention
+;;;;
+;;;; Asymmetric rules, matching how the classpath separation actually works
+;;;; in Metabase:
+;;;;
+;;;;   - OSS source tree (`src/` and `test/`): namespaces must NOT use the
+;;;;     `metabase-enterprise.*` prefix. That prefix is reserved for the EE
+;;;;     classpath; using it in OSS would at best fail to build and at
+;;;;     worst leak EE code into the OSS jar.
+;;;;
+;;;;   - EE source tree (`enterprise/backend/src/`): every namespace MUST
+;;;;     use the `metabase-enterprise.*` prefix. Files in the EE source
+;;;;     classpath should be EE code; anything else slipping in would
+;;;;     suggest OSS code is being built as part of the EE jar.
+;;;;
+;;;;   - EE test tree (`enterprise/backend/test/`): intentionally NOT
+;;;;     checked. OSS code that needs to be tested with premium features
+;;;;     mocked (via `mt/with-premium-features` and friends) lives here
+;;;;     because premium features don't exist on the OSS test classpath.
+;;;;     Those test files keep their OSS-matching namespace (e.g.
+;;;;     `metabase.notification.payload.execute-test`) because they're
+;;;;     testing OSS code; mixing OSS-namespaced and EE-namespaced tests
+;;;;     in the EE test tree is legitimate.
+;;;;
+;;;; This is the primary mechanism for enforcing the OSS/EE split — much
+;;;; simpler than config-level encapsulation primitives because the
+;;;; classpath separation is already doing the real work at build time.
+;;;; These tests just surface the mistake earlier, with a clearer error
+;;;; message than a build failure.
+
+(def ^:private clojure-source-extensions
+  #{".clj" ".cljc" ".cljs"})
+
+(defn- clojure-source-file? [^java.io.File f]
+  (and (.isFile f)
+       (some #(str/ends-with? (.getName f) %) clojure-source-extensions)))
+
+(defn- source-files-under
+  "Clojure source files under `dir`, which is resolved relative to the working directory.
+  Throws when the scan finds nothing: these roots always contain sources, so an empty
+  result means the tests are running from the wrong directory, and returning `nil` there
+  would let the classpath checks pass with zero assertions."
+  [^String dir]
+  (let [files (->> (io/file dir) file-seq (filter clojure-source-file?))]
+    (when (empty? files)
+      (throw (ex-info (str "No Clojure source files found under " dir
+                           ". Run these tests from the repository root.")
+                      {:dir dir, :working-directory (System/getProperty "user.dir")})))
+    files))
+
+(defn- file->namespace-symbol
+  "Read `file` and extract its namespace symbol from the `ns` form.
+  Returns `nil` if the file has no `ns` declaration at all (e.g. data
+  resources); throws with file context if the file cannot be read or
+  parsed, so malformed sources fail validation instead of silently
+  dropping out of the classpath checks."
+  [file]
+  (try
+    (some-> (ns.file/read-file-ns-decl file)
+            ns.parse/name-from-ns-decl)
+    (catch Throwable e
+      (throw (ex-info (str "Failed to read ns declaration from " file)
+                      {:file (str file)}
+                      e)))))
+
+(def ^:private oss-classpath-roots
+  ["src" "test"])
+
+(def ^:private ee-classpath-roots
+  ;; Only the source tree — NOT `enterprise/backend/test`. The EE test tree
+  ;; legitimately contains OSS-namespaced test files for OSS code that needs
+  ;; EE premium features mocked (e.g. `metabase.notification.payload.execute-test`
+  ;; under `enterprise/backend/test/metabase/notification/payload/`). Those
+  ;; tests can only run against the EE classpath because `mt/with-premium-features`
+  ;; and friends don't work when EE isn't loaded. Narrow the strict check to
+  ;; source only — the EE test tree is allowed to mix OSS and EE namespaces.
+  ["enterprise/backend/src"])
+
+(def ^:private ee-namespace-prefix
+  "All EE namespaces start with this string (followed by a dot)."
+  "metabase-enterprise")
+
+(defn- ee-namespace? [ns-symb]
+  (let [s (str ns-symb)]
+    (or (= s ee-namespace-prefix)
+        (str/starts-with? s (str ee-namespace-prefix ".")))))
+
+(deftest ^:parallel oss-classpath-forbids-enterprise-namespaces-test
+  (testing (str "OSS source files under " (pr-str oss-classpath-roots) " must not declare "
+                "namespaces in the `metabase-enterprise.*` tree. That prefix is reserved "
+                "for the EE classpath (enterprise/backend/{src,test}/). An OSS file using "
+                "an EE namespace would at best fail to build against the OSS classpath and "
+                "at worst leak EE code into the OSS jar.")
+    (doseq [root oss-classpath-roots
+            ^java.io.File file (source-files-under root)
+            :let [ns-symb (file->namespace-symbol file)]
+            :when ns-symb]
+      (testing (format "\n%s" (.getPath file))
+        (is (not (ee-namespace? ns-symb))
+            (format (str "File %s has namespace %s, which starts with `%s`. That prefix "
+                         "is reserved for the EE classpath. Move the file to "
+                         "enterprise/backend/%s/ if it's actually EE code, or rename "
+                         "its namespace if it's OSS code.")
+                    (.getPath file)
+                    ns-symb
+                    ee-namespace-prefix
+                    root))))))
+
+(deftest ^:parallel ee-classpath-requires-enterprise-namespaces-test
+  (testing (str "Every source file under " (pr-str ee-classpath-roots) " must have a "
+                "namespace in the `metabase-enterprise.*` tree. The EE classpath is "
+                "reserved for EE code; anything else slipping in would mean (a) an OSS "
+                "module is being built as part of the EE jar, or (b) the naming "
+                "convention has drifted.")
+    (doseq [root ee-classpath-roots
+            ^java.io.File file (source-files-under root)
+            :let [ns-symb (file->namespace-symbol file)]
+            :when ns-symb]
+      (testing (format "\n%s" (.getPath file))
+        (is (ee-namespace? ns-symb)
+            (format (str "File %s has namespace %s, which does not start with `%s`. "
+                         "Files in the EE classpath must use the `%s.*` prefix. "
+                         "If this file is actually OSS code, move it to src/ or test/ instead.")
+                    (.getPath file)
+                    ns-symb
+                    ee-namespace-prefix
+                    ee-namespace-prefix))))))
+
+(defn- rest-module?
+  "True for deprecated `-rest` module symbols."
+  [module]
+  (str/ends-with? (str module) "-rest"))
+
+(defn- routes-module?
+  "True for route aggregators, which are allowed to assemble REST routes."
+  [module]
+  (str/ends-with? (str module) "-routes"))
+
+(defn- core-module?
+  "True for OSS and EE core initializer modules."
+  [module]
+  (= (name module) "core"))
+
+(defn- allowed-rest-consumer?
+  "Whether `module` may depend on REST modules."
+  [module]
+  ((some-fn rest-module? routes-module? core-module?) module))
+
+(deftest ^:parallel rest-module-recognition-test
+  (are [module] (rest-module? module)
+    'queries-rest
+    'enterprise/queries-rest)
+  (is (not (rest-module? 'queries))))
 
 (deftest do-not-use-rest-modules-in-other-modules-test
   (doseq [[module {:keys [uses], :as _config}] (dev.deps-graph/kondo-config)
-          :when                                (not (rest-module? module))
+          :when                                (not (allowed-rest-consumer? module))
           used-module                          (when (set? uses)
                                                  uses)]
     (is (not (rest-module? used-module))
-        (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
+        (format "Do not use REST modules (%s) in non-REST modules (%s) -- move things from %s to %s if needed"
                 used-module
                 module
                 used-module
-                (symbol (str/replace used-module #"-rest$" ""))))))
+                (symbol (str/replace (str used-module) #"-rest$" ""))))))
 
 ;;;; Model boundary tests
 
