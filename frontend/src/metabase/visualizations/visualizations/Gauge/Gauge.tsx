@@ -68,8 +68,8 @@ function GaugeComponent({
   const range: number[] = isGaugeRange(gaugeRange) ? gaugeRange : [];
   const gaugeSegments = settings["gauge.segments"];
   const segments = useMemo(
-    () => resolveGoalSegments(gaugeSegments, data),
-    [gaugeSegments, data],
+    () => resolveGoalSegments(data, gaugeSegments),
+    [data, gaugeSegments],
   );
 
   // value to angle in radians, clamped

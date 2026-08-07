@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type {
   CardId,
   DatasetData,
@@ -18,7 +20,6 @@ import {
 
 import { segmentIsValid } from "./utils";
 
-/** A gauge segment whose bounds have been resolved to concrete numbers. */
 export type ResolvedGoalSegment = {
   color: string;
   label?: string;
@@ -31,26 +32,32 @@ export type GoalRefErrorReason =
   | "column-not-found"
   | "not-a-number";
 
-export type GoalRefError = {
-  type?: ReferencedEntityType;
-  id?: number;
-  column: string;
-  reason: GoalRefErrorReason;
-  /** The server's explanation, when it gave one. */
-  message?: string;
-};
+export type GoalRefError =
+  | {
+      type?: Extract<ReferencedEntityType, "card">;
+      id?: CardId;
+      column: string;
+      reason: GoalRefErrorReason;
+      message?: string;
+    }
+  | {
+      type?: Extract<ReferencedEntityType, "measure">;
+      id?: MeasureId;
+      column: string;
+      reason: GoalRefErrorReason;
+      message?: string;
+    };
 
 export type ResolvedGoalValue = {
   value: number | null;
   error?: GoalRefError;
-  /** The results predate this reference; the re-run it triggered will fill it in. */
   isResolving?: boolean;
 };
 
-export const resolveGoalValue = (
-  goalValue: GoalValue | null | undefined,
+export function resolveGoalValue(
   data: DatasetData,
-): ResolvedGoalValue => {
+  goalValue: GoalValue | null | undefined,
+): ResolvedGoalValue {
   if (goalValue == null) {
     return { value: null };
   }
@@ -60,16 +67,16 @@ export const resolveGoalValue = (
   }
 
   if (isGoalSelfColumnRef(goalValue)) {
-    return resolveSelfColumnValue(goalValue, data);
+    return resolveSelfColumnValue(data, goalValue);
   }
 
-  return resolveForeignColumnRef(goalValue, data);
-};
+  return resolveForeignColumnRef(data, goalValue);
+}
 
-const resolveSelfColumnValue = (
-  columnName: string,
+function resolveSelfColumnValue(
   data: DatasetData,
-): ResolvedGoalValue => {
+  columnName: string,
+): ResolvedGoalValue {
   const columnIndex = data.cols.findIndex(
     (column) => column.name === columnName,
   );
@@ -97,21 +104,19 @@ const resolveSelfColumnValue = (
   }
 
   return { value };
-};
+}
 
-const resolveForeignColumnRef = (
-  { type, id, column }: GoalForeignColumnRef,
+function resolveForeignColumnRef(
   data: DatasetData,
-): ResolvedGoalValue => {
+  { type, id, column }: GoalForeignColumnRef,
+): ResolvedGoalValue {
   const result = data.referenced_entities?.[type]?.[id];
 
-  // These results were produced before the entity was referenced, by the run
-  // that the settings change is replacing.
   if (result == null) {
     return { value: null, isResolving: true };
   }
 
-  if (result.status !== "completed" || result.data == null) {
+  if (result.status === "failed" || result.data == null) {
     return {
       value: null,
       error: {
@@ -128,11 +133,17 @@ const resolveForeignColumnRef = (
     (resultColumn) => resultColumn.name === column,
   );
 
-  // The server narrows each entity to the columns the request asked for, so a
-  // column we didn't get means these results were fetched for a different
-  // reference - same "predates the reference" case as a missing entry above.
   if (columnIndex === -1) {
-    return { value: null, isResolving: true };
+    return {
+      value: null,
+      error: {
+        type,
+        id,
+        column,
+        reason: "column-not-found",
+        message: t`Column not found`,
+      },
+    };
   }
 
   const value = toNumberOrNull(result.data.rows[0]?.[columnIndex]);
@@ -140,28 +151,34 @@ const resolveForeignColumnRef = (
   if (value == null) {
     return {
       value: null,
-      error: { type, id, column, reason: "not-a-number" },
+      error: {
+        type,
+        id,
+        column,
+        reason: "not-a-number",
+        message: t`Column value is not a number`,
+      },
     };
   }
 
   return { value };
-};
+}
 
-const toNumberOrNull = (raw: RowValue | undefined): number | null =>
-  typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+function toNumberOrNull(raw: RowValue | undefined): number | null {
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+}
 
-/** Resolves the possibly dynamic min/max of every gauge segment to concrete numbers. */
 export const resolveGoalSegments = (
-  segments: GoalSegment[] | undefined,
   data: DatasetData,
+  segments: GoalSegment[] | undefined,
 ): ResolvedGoalSegment[] => {
   if (!Array.isArray(segments)) {
     return [];
   }
 
   return segments.flatMap((segment) => {
-    const min = resolveGoalValue(segment.min, data).value;
-    const max = resolveGoalValue(segment.max, data).value;
+    const min = resolveGoalValue(data, segment.min).value;
+    const max = resolveGoalValue(data, segment.max).value;
 
     if (min == null || max == null || !segmentIsValid({ min, max })) {
       return [];
@@ -171,62 +188,40 @@ export const resolveGoalSegments = (
   });
 };
 
-/**
- * Bounds that will never resolve without a fix. Segments with these are dropped
- * by [[resolveGoalSegments]], which silently rescales the chart, so callers
- * render an error instead of a chart built on the surviving segments.
- */
 export const getGoalSegmentErrors = (
-  segments: GoalSegment[] | undefined,
   data: DatasetData,
+  segments: GoalSegment[] | undefined,
 ): GoalRefError[] => {
   if (!Array.isArray(segments)) {
     return [];
   }
 
-  return segments.flatMap((segment) =>
-    [segment.min, segment.max].flatMap((bound) => {
-      const { error } = resolveGoalValue(bound, data);
+  return segments.flatMap((segment) => {
+    return [segment.min, segment.max].flatMap((bound) => {
+      const { error } = resolveGoalValue(data, bound);
       return error ? [error] : [];
-    }),
-  );
+    });
+  });
 };
-
-/**
- * Viz settings whose values may reference another entity's column. The backend
- * derives the same references from a saved card's settings in
- * `metabase.visualization-settings.dynamic-goals`, which covers `graph.goal_value`,
- * `progress.goal` and `scalar.segments` too; those aren't pickable in the UI yet,
- * so nothing here needs to send them.
- */
-const getGoalValues = (settings: VisualizationSettings): (GoalValue | null)[] =>
-  (settings["gauge.segments"] ?? []).flatMap((segment) => [
-    segment.min,
-    segment.max,
-  ]);
 
 type ReferencedEntityColumns =
   | { type: "card"; id: CardId; columns: Set<string> }
   | { type: "measure"; id: MeasureId; columns: Set<string> };
 
-/**
- * The entities whose values the server has to run alongside the main query for
- * these settings to render, deduped and grouped by entity.
- */
 export const getReferencedEntitiesFromVizSettings = (
   settings: VisualizationSettings,
 ): ReferencedEntity[] => {
-  const refs = getGoalValues(settings).filter(isGoalForeignColumnRef);
+  const foreignColumnRefs = getGoalForeignColumnRefs(settings);
 
-  const columnsByEntity = refs.reduce((map, ref) => {
-    const key = `${ref.type}:${ref.id}`;
-    const entry = map.get(key) ?? {
+  const columnsByEntity = foreignColumnRefs.reduce((map, ref) => {
+    const refKey = `${ref.type}:${ref.id}`;
+    const entry = map.get(refKey) ?? {
       type: ref.type,
       id: ref.id,
       columns: new Set<string>(),
     };
     entry.columns.add(ref.column);
-    map.set(key, entry);
+    map.set(refKey, entry);
     return map;
   }, new Map<string, ReferencedEntityColumns>());
 
@@ -236,3 +231,11 @@ export const getReferencedEntitiesFromVizSettings = (
     columns: Array.from(columns),
   }));
 };
+
+function getGoalForeignColumnRefs(
+  settings: VisualizationSettings,
+): GoalForeignColumnRef[] {
+  return (settings["gauge.segments"] ?? [])
+    .flatMap((segment) => [segment.min, segment.max])
+    .filter(isGoalForeignColumnRef);
+}

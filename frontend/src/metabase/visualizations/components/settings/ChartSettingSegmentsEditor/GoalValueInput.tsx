@@ -164,7 +164,7 @@ export const GoalValueInput = ({
     return [];
   }, [entity?.type, entityCard, entityMeasure]);
 
-  const resolved = resolveGoalValue(value, data);
+  const resolved = resolveGoalValue(data, value);
   const selfColumnLabel = isSelfRef
     ? (selfColumns.find((column) => column.name === value)?.label ??
       String(value))
@@ -431,7 +431,7 @@ export const GoalValueInput = ({
                 <GoalColumnMenuItem
                   key={column.name}
                   label={column.label}
-                  resolvedValue={resolveGoalValue(column.name, data).value}
+                  resolvedValue={resolveGoalValue(data, column.name).value}
                   isSelected={value === column.name}
                   onClick={() => commitValue(column.name)}
                 />
@@ -463,14 +463,11 @@ export const GoalValueInput = ({
                     label={column.label}
                     resolvedValue={
                       entity != null
-                        ? resolveGoalValue(
-                            {
-                              type: entity.type,
-                              id: entity.id,
-                              column: column.name,
-                            },
-                            data,
-                          ).value
+                        ? resolveGoalValue(data, {
+                            type: entity.type,
+                            id: entity.id,
+                            column: column.name,
+                          }).value
                         : null
                     }
                     isSelected={foreignRef?.column === column.name}

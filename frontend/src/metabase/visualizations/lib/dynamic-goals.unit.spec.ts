@@ -20,21 +20,21 @@ const rows = [[10, 42]];
 describe("resolveGoalValue", () => {
   it("returns a static number as-is", () => {
     const data = createMockDatasetData({ cols, rows });
-    const goalValue = resolveGoalValue(5, data);
+    const goalValue = resolveGoalValue(data, 5);
 
     expect(goalValue).toEqual({ value: 5 });
   });
 
   it("resolves a self-column reference from the current rows", () => {
     const data = createMockDatasetData({ cols, rows });
-    const goalValue = resolveGoalValue("goal", data);
+    const goalValue = resolveGoalValue(data, "goal");
 
     expect(goalValue).toEqual({ value: 42 });
   });
 
   it("returns null for a self-column reference that does not exist", () => {
     const data = createMockDatasetData({ cols, rows });
-    const goalValue = resolveGoalValue("missing", data);
+    const goalValue = resolveGoalValue(data, "missing");
 
     expect(goalValue).toEqual({
       value: null,
@@ -61,10 +61,11 @@ describe("resolveGoalValue", () => {
         },
       },
     });
-    const goalValue = resolveGoalValue(
-      { type: "card", id: 7, column: "total" },
-      data,
-    );
+    const goalValue = resolveGoalValue(data, {
+      type: "card",
+      id: 7,
+      column: "total",
+    });
 
     expect(goalValue).toEqual({
       value: 123,
@@ -87,10 +88,11 @@ describe("resolveGoalValue", () => {
         },
       },
     });
-    const goalValue = resolveGoalValue(
-      { type: "measure", id: 3, column: "avg" },
-      data,
-    );
+    const goalValue = resolveGoalValue(data, {
+      type: "measure",
+      id: 3,
+      column: "avg",
+    });
 
     expect(goalValue).toEqual({
       value: 55,
@@ -110,10 +112,11 @@ describe("resolveGoalValue", () => {
         },
       },
     });
-    const goalValue = resolveGoalValue(
-      { type: "card", id: 7, column: "total" },
-      data,
-    );
+    const goalValue = resolveGoalValue(data, {
+      type: "card",
+      id: 7,
+      column: "total",
+    });
 
     expect(goalValue).toEqual({
       value: null,
@@ -133,20 +136,22 @@ describe("resolveGoalValue", () => {
       rows,
       referenced_entities: {},
     });
-    const goalValue = resolveGoalValue(
-      { type: "card", id: 7, column: "total" },
-      data,
-    );
+    const goalValue = resolveGoalValue(data, {
+      type: "card",
+      id: 7,
+      column: "total",
+    });
 
     expect(goalValue).toEqual({ value: null, isResolving: true });
   });
 
   it("is resolving while referenced results are unavailable", () => {
     const data = createMockDatasetData({ cols, rows });
-    const goalValue = resolveGoalValue(
-      { type: "card", id: 7, column: "total" },
-      data,
-    );
+    const goalValue = resolveGoalValue(data, {
+      type: "card",
+      id: 7,
+      column: "total",
+    });
 
     expect(goalValue).toEqual({ value: null, isResolving: true });
   });
@@ -166,10 +171,11 @@ describe("resolveGoalValue", () => {
         },
       },
     });
-    const goalValue = resolveGoalValue(
-      { type: "card", id: 7, column: "total" },
-      data,
-    );
+    const goalValue = resolveGoalValue(data, {
+      type: "card",
+      id: 7,
+      column: "total",
+    });
 
     expect(goalValue).toEqual({ value: null, isResolving: true });
   });
@@ -190,10 +196,11 @@ describe("resolveGoalValue", () => {
         },
       },
     });
-    const goalValue = resolveGoalValue(
-      { type: "card", id: 7, column: "total" },
-      data,
-    );
+    const goalValue = resolveGoalValue(data, {
+      type: "card",
+      id: 7,
+      column: "total",
+    });
 
     expect(goalValue).toEqual({
       value: null,
@@ -214,10 +221,9 @@ describe("resolveGoalSegments", () => {
   });
 
   it("keeps static numeric segments", () => {
-    const segments = resolveGoalSegments(
-      [{ min: 0, max: 100, color: "red", label: "range" }],
-      DATA,
-    );
+    const segments = resolveGoalSegments(DATA, [
+      { min: 0, max: 100, color: "red", label: "range" },
+    ]);
 
     expect(segments).toEqual([
       { min: 0, max: 100, color: "red", label: "range" },
@@ -237,16 +243,13 @@ describe("resolveGoalSegments", () => {
       },
     });
 
-    const segments = resolveGoalSegments(
-      [
-        {
-          min: 0,
-          max: { type: "card", id: 9, column: "goal" },
-          color: "green",
-        },
-      ],
-      data,
-    );
+    const segments = resolveGoalSegments(data, [
+      {
+        min: 0,
+        max: { type: "card", id: 9, column: "goal" },
+        color: "green",
+      },
+    ]);
 
     expect(segments).toEqual([
       { min: 0, max: 250, color: "green", label: undefined },
@@ -260,16 +263,13 @@ describe("resolveGoalSegments", () => {
         card: { 9: { status: "failed", error: "boom" } },
       },
     });
-    const segments = resolveGoalSegments(
-      [
-        {
-          min: 0,
-          max: { type: "card", id: 9, column: "goal" },
-          color: "green",
-        },
-      ],
-      data,
-    );
+    const segments = resolveGoalSegments(data, [
+      {
+        min: 0,
+        max: { type: "card", id: 9, column: "goal" },
+        color: "green",
+      },
+    ]);
 
     expect(segments).toEqual([]);
   });
@@ -283,15 +283,14 @@ describe("getGoalSegmentErrors", () => {
 
   it("reports nothing when every bound resolves", () => {
     expect(
-      getGoalSegmentErrors([{ min: 0, max: 100, color: "red" }], DATA),
+      getGoalSegmentErrors(DATA, [{ min: 0, max: 100, color: "red" }]),
     ).toEqual([]);
   });
 
   it("reports nothing while a reference is still resolving", () => {
-    const errors = getGoalSegmentErrors(
-      [{ min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" }],
-      DATA,
-    );
+    const errors = getGoalSegmentErrors(DATA, [
+      { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
+    ]);
 
     expect(errors).toEqual([]);
   });
@@ -304,10 +303,9 @@ describe("getGoalSegmentErrors", () => {
       },
     });
 
-    const errors = getGoalSegmentErrors(
-      [{ min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" }],
-      data,
-    );
+    const errors = getGoalSegmentErrors(data, [
+      { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
+    ]);
 
     expect(errors).toEqual([
       {

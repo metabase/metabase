@@ -28,8 +28,8 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
     if (!isNumeric(data.cols[0]) || isDate(data.cols[0])) {
       throw new Error(t`Gauge visualization requires a number.`);
     }
-    // Rendering the ranges that did resolve would silently rescale the gauge.
-    if (getGoalSegmentErrors(settings["gauge.segments"], data).length > 0) {
+
+    if (getGoalSegmentErrors(data, settings["gauge.segments"]).length > 0) {
       throw new Error(
         t`Couldn't load a value one of this gauge's ranges depends on.`,
       );
@@ -52,8 +52,8 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       // currently not exposed in settings, just computed from gauge.segments
       getDefault(series, vizSettings) {
         const segments = resolveGoalSegments(
-          vizSettings["gauge.segments"],
           series[0].data,
+          vizSettings["gauge.segments"],
         );
         const values = [
           ...segments.map((segment) => segment.max),

@@ -29,7 +29,7 @@ export function SegmentBoundInput({
   canReferenceOtherEntities = true,
   onChange,
 }: SegmentBoundInputProps) {
-  const error = data != null ? resolveGoalValue(value, data).error : undefined;
+  const error = data != null ? resolveGoalValue(data, value).error : undefined;
 
   return (
     <Box flex={1} miw={0}>
