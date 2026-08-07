@@ -778,7 +778,7 @@ export const sendAgentRequest = createAsyncThunk<
 
       const handled = handleResponseError(
         error,
-        getSetting(getState(), "metabot-name") || "Metabot",
+        getSetting(getState(), "metabot-name"),
       );
       return rejectWithValue({
         type: "error" as const,
@@ -841,12 +841,13 @@ export const retryPrompt = createAsyncThunk<
     context: MetabotChatContext;
     metabot_id?: string;
     agentId: MetabotAgentId;
+    profile?: MetabotProfileId;
     isTransformsPage?: boolean;
   }
 >(
   "metabase/metabot/retryPrompt",
   async (
-    { messageId, context, metabot_id, agentId, isTransformsPage },
+    { messageId, context, metabot_id, agentId, profile, isTransformsPage },
     { getState, dispatch },
   ) => {
     const state = getState();
@@ -873,6 +874,7 @@ export const retryPrompt = createAsyncThunk<
         message: prompt.message,
         context,
         metabot_id,
+        profile,
         retryMessageId: prompt.externalId,
         isTransformsPage,
       }),

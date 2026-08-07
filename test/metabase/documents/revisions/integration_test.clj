@@ -129,7 +129,7 @@
                      (:document reverted-document)))))
           (testing "Reversion creates new revision entry"
             (let [final-revisions (get-document-revisions doc-id)]
-              (is (= 3 (count final-revisions)))
+              (is (= 4 (count final-revisions)))
               (let [latest-revision (first final-revisions)]
                 (is (:is_reversion latest-revision))
                 (is (= "reverted to an earlier version." (:description latest-revision)))))))))))

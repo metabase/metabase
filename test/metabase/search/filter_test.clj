@@ -67,7 +67,7 @@
     (is (= (disj search.config/all-models "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
   (testing "We only search for certain models in the trash"
-    (is (= #{"dashboard" "dataset" "document" "segment" "measure" "collection" "action" "metric" "card"}
+    (is (= #{"dashboard" "dataset" "document" "exploration" "segment" "measure" "collection" "action" "metric" "card"}
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
   (testing "Indexed entities and transforms (which are admin-only) are not visible for sandboxed users"
     (is (= (disj search.config/all-models "indexed-entity" "transform")
@@ -140,6 +140,7 @@
                    "measure"
                    "transform"
                    "document"
+                   "exploration"
                    "database"
                    "action"
                    "indexed-entity"
