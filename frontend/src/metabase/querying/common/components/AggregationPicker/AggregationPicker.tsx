@@ -12,6 +12,7 @@ import {
   PopoverHoverTarget,
 } from "metabase/common/components/MetadataInfo/InfoIcon";
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
+import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import {
@@ -26,8 +27,6 @@ import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
-import { QueryColumnPicker } from "../QueryColumnPicker";
 
 import {
   ColumnPickerHeaderContainer,
