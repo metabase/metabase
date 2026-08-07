@@ -82,7 +82,7 @@ function resolveQueryFromLoadedMetadata(
   const provider = Lib.metadataProvider(databaseId, metadata);
   const sourceStage = toStageSpec(input);
 
-  return Lib.toJsQuery(
+  const datasetQuery = Lib.toJsQuery(
     Lib.createTestQuery(provider, {
       // The dynamic clauses run as their own stage rather than merging into the
       // source stage. Merged, they would apply before the static aggregation on
@@ -93,6 +93,12 @@ function resolveQueryFromLoadedMetadata(
         : [sourceStage],
     } satisfies TestQuerySpec),
   );
+
+  // Lib reads the database off the metadata provider, and a user who may read a
+  // card but not create queries gets none from `/api/card/:id/query_metadata` —
+  // so the query comes back without `:database`, which `/api/dataset` rejects.
+  // The source itself carries the id, so set it explicitly.
+  return { ...datasetQuery, database: databaseId };
 }
 
 function toStageSpec(input: QueryInput): TestStageWithSourceSpec {
