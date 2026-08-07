@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupTreeLayout } from "__support__/tree-layout";
 import { screen, waitFor, within } from "__support__/ui";
 import * as Urls from "metabase/urls";
 import { createMockCollection } from "metabase-types/api/mocks";
@@ -37,17 +36,13 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
   });
 
   describe("paged levels", () => {
-    const { scrollEndOfListTo, findScroller } = setupTreeLayout();
-
-    /** Puts the reader at the end of the loaded rows, which is what asks for the next page. */
-    const scrollToEndOfList = () => {
-      // Any of them: the fake layout puts every level's end in the same place, so they all measure alike.
-      const [sentinel] = screen.getAllByTestId("tree-load-more");
-      const scroller = findScroller(sentinel);
-      if (!scroller) {
-        throw new Error("the sidebar rendered outside any scrolling box");
-      }
-      scrollEndOfListTo(0, scroller);
+    /**
+     * Asks the innermost cut-short level for its next page. A nested level renders inside its parent's row, so its
+     * button comes before the one that ends the root level.
+     */
+    const clickShowMore = async () => {
+      const [button] = screen.getAllByRole("button", { name: /Show more/ });
+      await userEvent.click(button);
     };
 
     const MANY_COLLECTIONS = Array.from({ length: 5 }, (_, index) =>
@@ -71,7 +66,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
         screen.queryByRole("treeitem", { name: /Wide collection 3/ }),
       ).not.toBeInTheDocument();
 
-      scrollToEndOfList();
+      await clickShowMore();
 
       expect(
         await screen.findByRole("treeitem", { name: /Wide collection 3/ }),
@@ -113,7 +108,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
         screen.queryByRole("treeitem", { name: /Nested child 3/ }),
       ).not.toBeInTheDocument();
 
-      scrollToEndOfList();
+      await clickShowMore();
 
       expect(
         await screen.findByRole("treeitem", { name: /Nested child 3/ }),
@@ -131,7 +126,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
       const target = await screen.findByRole("treeitem", {
         name: /Test collection/i,
       });
-      scrollToEndOfList();
+      await clickShowMore();
       expect(
         await screen.findByRole("treeitem", { name: /Wide collection 5/ }),
       ).toBeInTheDocument();
@@ -179,7 +174,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
         screen.queryByRole("treeitem", { name: /Child 0101/ }),
       ).not.toBeInTheDocument();
 
-      scrollToEndOfList();
+      await clickShowMore();
 
       expect(
         await screen.findByRole("treeitem", { name: /Child 0101/ }),
@@ -220,7 +215,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
         screen.queryByRole("treeitem", { name: /Delivered child 3/ }),
       ).not.toBeInTheDocument();
 
-      scrollToEndOfList();
+      await clickShowMore();
 
       expect(
         await screen.findByRole("treeitem", { name: /Delivered child 3/ }),
@@ -238,7 +233,7 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
         await screen.findByRole("treeitem", { name: /Wide collection 1/ }),
       ).toBeInTheDocument();
 
-      scrollToEndOfList();
+      await clickShowMore();
 
       expect(
         await screen.findByRole("treeitem", { name: /Wide collection 5/ }),

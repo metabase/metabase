@@ -1,4 +1,5 @@
-import { setupTreeLayout } from "__support__/tree-layout";
+import userEvent from "@testing-library/user-event";
+
 import { fireEvent, render, screen } from "__support__/ui";
 import { Tree } from "metabase/common/components/tree";
 
@@ -76,8 +77,6 @@ describe("Tree", () => {
   });
 
   describe("lazily loaded nodes", () => {
-    const { scrollEndOfListTo, findScroller } = setupTreeLayout();
-
     const lazyData = [
       {
         id: 1,
@@ -139,35 +138,28 @@ describe("Tree", () => {
       expect(screen.getByText("Item 2")).toBeInTheDocument();
     });
 
-    /** A level of 102 rows with 100 still unread, inside a box that scrolls. */
+    /** A level of 102 rows with 100 still unread. */
     const renderLongLevel = ({ onLoadMore = jest.fn() } = {}) => {
       render(
-        <div style={{ overflowY: "auto" }}>
-          <Tree
-            data={data}
-            onSelect={jest.fn()}
-            hasMore
-            onLoadMore={onLoadMore}
-            loadingMoreIds={new Set()}
-            remainingByLevel={new Map([[null, 100]])}
-            totalByLevel={new Map([[null, 102]])}
-          />
-        </div>,
+        <Tree
+          data={data}
+          onSelect={jest.fn()}
+          hasMore
+          onLoadMore={onLoadMore}
+          loadingMoreIds={new Set()}
+          remainingByLevel={new Map([[null, 100]])}
+          totalByLevel={new Map([[null, 102]])}
+        />,
       );
-      const [sentinel] = screen.getAllByTestId("tree-load-more");
-      const scroller = findScroller(sentinel);
-      if (!scroller) {
-        throw new Error("the tree rendered outside any scrolling box");
-      }
-      return { onLoadMore, scroller };
+      return { onLoadMore };
     };
 
-    it("should load the next page when the reader reaches the end of the level", () => {
-      const { onLoadMore, scroller } = renderLongLevel();
+    it("should read the next page when asked", async () => {
+      const { onLoadMore } = renderLongLevel();
 
       expect(onLoadMore).not.toHaveBeenCalled();
 
-      scrollEndOfListTo(0, scroller);
+      await userEvent.click(screen.getByRole("button", { name: /Show more/ }));
 
       expect(onLoadMore).toHaveBeenCalled();
     });

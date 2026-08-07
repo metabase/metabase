@@ -1,15 +1,12 @@
-/*
- * Invisible, but not zero height: an element with no box is unreliable to observe, and this one has to be seen
- * scrolling into view for the next page to load.
- */
-.sentinel {
-  height: 1px;
+.root {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding-left: 1.25rem;
 }
 
-/* How much of a long level is on screen, sat at the end of it. */
+/* How much of a long level is on screen, sat beside the button that reads the rest. */
 .count {
-  padding-block: 0.5rem;
-  padding-left: 1.75rem;
   color: var(--mb-color-text-secondary);
   font-size: 0.75rem;
 }
