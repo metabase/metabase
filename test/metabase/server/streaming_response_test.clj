@@ -20,9 +20,10 @@
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
-   (java.io ByteArrayOutputStream Closeable InputStream)
+   (java.io ByteArrayInputStream ByteArrayOutputStream Closeable InputStream)
    (java.util.concurrent CountDownLatch Executors Future TimeUnit)
    (java.util.concurrent.atomic AtomicBoolean)
+   (java.util.zip GZIPInputStream)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
 (set! *warn-on-reflection* true)
@@ -229,6 +230,33 @@
           (is (thrown? Exception (consume))))
         (testing "no JSON error blob is appended to the body"
           (is (not (re-find #"boom" (try (second (consume)) (catch Exception _ ""))))))
+        (finally
+          (.stop server))))))
+
+(deftest gzip-encoded-response-is-not-truncated-test
+  (testing "a gzip-encoded streaming response is terminated so the client can read the whole body"
+    ;; Completing the async context closes the servlet stream but not the GZIPOutputStream wrapping it,
+    ;; and the trailer is only written on close. Needs a real server; the mock client never gzips.
+    (let [payload (apply str (repeat 200 "0123456789abcdefghij"))
+          handler (fn [req respond _raise]
+                    (respond
+                     (compojure.response/render
+                      (streaming-response/streaming-response {:content-type "text/csv"} [os _canceled-chan]
+                        (.write os (.getBytes payload "UTF-8")))
+                      req)))
+          server  (doto (server.instance/create-server handler {:port 0 :join? false})
+                    .start)
+          url     (str "http://localhost:" (.. server getURI getPort))]
+      (try
+        ;; clj-http otherwise decompresses and strips Content-Encoding, hiding whether gzip happened.
+        (let [res (http/request {:method :get, :url url, :as :byte-array
+                                 :decompress-body false
+                                 :headers {"accept-encoding" "gzip"}})]
+          (testing "the response really was gzip-encoded"
+            (is (= "gzip" (get-in res [:headers "content-encoding"]))))
+          (testing "the gzip stream is complete"
+            (is (= payload
+                   (slurp (GZIPInputStream. (ByteArrayInputStream. ^bytes (:body res))))))))
         (finally
           (.stop server))))))
 

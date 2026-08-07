@@ -1,6 +1,7 @@
 (ns metabase.server.streaming-response
   (:require
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [compojure.response]
    [metabase.api.common.internal]
@@ -62,6 +63,11 @@
   "An `AtomicBoolean` that is set to `true` when the async context has been completed,
    either by the worker thread or by Jetty's timeout/error callbacks. When `true`, the
    response object may have been recycled and must not be touched."
+  nil)
+
+(def ^:private ^:dynamic *errored?*
+  "An `AtomicBoolean` set to `true` once [[write-error!]] has handled an error. Error paths dispose of
+   the output stream themselves, so the worker thread uses this to decide whether to close it."
   nil)
 
 (defn- async-context-completed?
@@ -181,6 +187,8 @@
   ([os obj export-format]
    (write-error! os obj export-format nil))
   ([^OutputStream os obj export-format status-code]
+   (when *errored?*
+     (.set ^AtomicBoolean *errored?* true))
    (cond
      (async-context-completed?)
      (log-skipped-error! obj)
@@ -239,7 +247,8 @@
   (let [task (^:once fn* []
                (binding [*response*   response
                          *request*    request
-                         *completed?* completed?]
+                         *completed?* completed?
+                         *errored?*   (AtomicBoolean. false)]
                  (try
                    (do-f* f os finished-chan canceled-chan)
                    (catch Throwable e
@@ -247,6 +256,11 @@
                      (a/>!! finished-chan :unexpected-error)
                      (write-error! os e nil))
                    (finally
+                     ;; A gzip trailer is only written on close, so a stream left open truncates the response.
+                     ;; Not on error paths: they close it themselves, and an aborted connection must stay
+                     ;; without a clean terminator.
+                     (when-not (.get ^AtomicBoolean *errored?*)
+                       (try (.close os) (catch Throwable _)))
                      ;; Clear the interrupted flag to prevent the thread from
                      ;; carrying stale interrupted state to the next task.
                      (Thread/interrupted)
@@ -266,6 +280,19 @@
   "Does the client accept GZIP-encoded responses?"
   [{{:strs [accept-encoding]} :headers}]
   (some->> accept-encoding (re-find #"gzip|\*")))
+
+(def ^:private already-compressed-content-types
+  #{"application/gzip" "application/x-gzip" "application/zip"})
+
+(defn- already-compressed-content-type?
+  "Is `content-type` already a compressed format? Gzipping it again just makes the client unwrap twice."
+  [content-type]
+  (boolean (some-> content-type
+                   (str/split #";")
+                   first
+                   str/trim
+                   u/lower-case-en
+                   already-compressed-content-types)))
 
 (defn- output-stream-delay [gzip? ^HttpServletResponse response]
   (if gzip?
@@ -392,7 +419,8 @@
                     (onStartAsync [_ _event])))
     (try
       (.setStatus response (or status 202))
-      (let [gzip?   (should-gzip-response? request-map)
+      (let [gzip?   (and (should-gzip-response? request-map)
+                         (not (already-compressed-content-type? content-type)))
             headers (cond-> (assoc (merge headers (:headers response-map))
                                    "Content-Type" content-type
                                    ;; Very important: connections which serve streaming responses SHOULD NOT be reused
@@ -453,7 +481,9 @@
     this))
 
 (defn- render [^StreamingResponse streaming-response gzip?]
-  (let [{:keys [headers content-type], :as options} (.options streaming-response)]
+  (let [{:keys [headers content-type], :as options} (.options streaming-response)
+        gzip?                                       (and gzip?
+                                                         (not (already-compressed-content-type? content-type)))]
     (assoc (response/response (if gzip?
                                 (StreamingResponse. (.f streaming-response)
                                                     (assoc options :gzip? true)

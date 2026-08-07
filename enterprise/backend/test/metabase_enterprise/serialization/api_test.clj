@@ -525,3 +525,30 @@
       (is (= "real_dir"
              (.getName ^File (#'api.serialization/find-serialization-dir dst))))
       (run! io/delete-file (reverse (file-seq dst))))))
+
+(deftest export-gzip-encoded-archive-is-complete-test
+  (testing "a gzip-encoded export download is a complete, non-truncated archive"
+    ;; Global (with-redefs) mode so the real Jetty handler threads see the feature, otherwise 402.
+    (mt/test-helpers-set-global-values!
+      (mt/with-premium-features #{:serialization}
+        ;; Needs a real request: the mock client hands the handler a plain ByteArrayOutputStream, so it
+        ;; never builds the GZIPOutputStream whose trailer is missing.
+        (let [resp (mt/user-real-request :crowberto :post 200 "ee/serialization/export"
+                                         {:request-options {:headers {"accept-encoding" "gzip"}
+                                                            :as      :byte-array}})]
+          (is (seq (entry-names resp))))))))
+
+(deftest export-is-not-gzipped-twice-test
+  (testing "the export is already a .tar.gz, so it is not gzip-encoded again at the transport layer"
+    (mt/test-helpers-set-global-values!
+      (mt/with-premium-features #{:serialization}
+        ;; Raw bytes off the wire, i.e. what `curl -H 'Accept-Encoding: gzip' -o export.tar.gz` saves.
+        (let [resp (mt/user-real-request-full-response
+                    :crowberto :post 200 "ee/serialization/export"
+                    {:request-options {:headers         {"accept-encoding" "gzip"}
+                                       :as              :byte-array
+                                       :decompress-body false}})]
+          (testing "no transport-level Content-Encoding is applied"
+            (is (nil? (get-in resp [:headers "content-encoding"]))))
+          (testing "the bytes on the wire are the archive itself, not another gzip layer around it"
+            (is (seq (entry-names (:body resp))))))))))
