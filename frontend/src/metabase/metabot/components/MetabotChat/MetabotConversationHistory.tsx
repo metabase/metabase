@@ -2,7 +2,7 @@ import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useListMetabotConversationsQuery } from "metabase/api";
+import { useListMetabotConversationsQuery } from "metabase/metabot/api";
 import {
   ActionIcon,
   Box,

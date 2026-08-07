@@ -1,15 +1,59 @@
 import { Api } from "metabase/api/api";
-import type { ForkMetabotConversationRequest } from "metabase-types/api";
+import { idTag, invalidateTags, listTag } from "metabase/api/tags";
+import type {
+  Card,
+  DeleteSuggestedMetabotPromptRequest,
+  ForkMetabotConversationRequest,
+  ListMetabotConversationsRequest,
+  ListMetabotConversationsResponse,
+  MetabotConversationTitleResponse,
+  MetabotFeedback,
+  MetabotGenerateContentRequest,
+  MetabotGenerateContentResponse,
+  MetabotId,
+  MetabotInfo,
+  MetabotProvider,
+  MetabotSettingsResponse,
+  MetabotSlackSettings,
+  MetabotSourceFeedback,
+  RegenerateSuggestedMetabotPromptsResponse,
+  SaveMetabotEntityRequest,
+  SuggestedMetabotPromptsRequest,
+  SuggestedMetabotPromptsResponse,
+  UpdateMetabotSettingsRequest,
+  UserMetabotPermissionsResponse,
+} from "metabase-types/api";
 
 import type { MetabotConversationDetail } from "./utils/normalize-fetched-chat-messages";
 
 /**
- * Metabot's conversation endpoints live here rather than in metabase/api:
- * their response type is this module's own chat-message shape, which the api
- * module (a layer below) must not import.
+ * Metabot's endpoints live here rather than in metabase/api: some of their
+ * response types are this module's own shapes (e.g. the chat-message union),
+ * which the api module (a layer below) must not import.
  */
-export const metabotConversationApi = Api.injectEndpoints({
+export const metabotApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    listMetabots: builder.query<{ items: MetabotInfo[] }, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/metabot/metabot",
+      }),
+      providesTags: (result) => [
+        listTag("metabot"),
+        ...(result?.items || []).map((metabot) => idTag("metabot", metabot.id)),
+      ],
+    }),
+    listMetabotConversations: builder.query<
+      ListMetabotConversationsResponse,
+      ListMetabotConversationsRequest | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/metabot/conversations",
+        params,
+      }),
+      providesTags: () => [listTag("metabot-conversations")],
+    }),
     getMetabotConversation: builder.query<MetabotConversationDetail, string>({
       query: (conversationId) => ({
         method: "GET",
@@ -26,10 +70,166 @@ export const metabotConversationApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getMetabotConversationTitle: builder.query<
+      MetabotConversationTitleResponse,
+      string
+    >({
+      query: (conversationId) => ({
+        method: "GET",
+        url: `/api/metabot/conversations/${conversationId}/title`,
+      }),
+    }),
+    getMetabotSettings: builder.query<
+      MetabotSettingsResponse,
+      { provider: MetabotProvider }
+    >({
+      query: ({ provider }) => ({
+        method: "GET",
+        url: "/api/metabot/settings",
+        params: { provider },
+      }),
+      providesTags: () => [listTag("llm-models")],
+    }),
+    updateMetabotSettings: builder.mutation<
+      MetabotSettingsResponse,
+      UpdateMetabotSettingsRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/metabot/settings",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, ["session-properties"]),
+    }),
+    updateMetabot: builder.mutation<
+      MetabotInfo,
+      { id: MetabotId } & Partial<
+        Pick<MetabotInfo, "use_verified_content" | "collection_id">
+      >
+    >({
+      query: ({ id, ...updates }) => ({
+        method: "PUT",
+        url: `/api/metabot/metabot/${id}`,
+        body: updates,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          listTag("metabot"),
+          idTag("metabot", id),
+          idTag("metabot-prompt-suggestions", id),
+        ]),
+    }),
+    getSuggestedMetabotPrompts: builder.query<
+      SuggestedMetabotPromptsResponse,
+      SuggestedMetabotPromptsRequest
+    >({
+      query: ({ metabot_id, ...params }) => ({
+        method: "GET",
+        url: `/api/metabot/metabot/${metabot_id}/prompt-suggestions`,
+        params,
+      }),
+      providesTags: (_, __, { metabot_id }) => [
+        idTag("metabot-prompt-suggestions", metabot_id),
+      ],
+    }),
+    deleteSuggestedMetabotPrompt: builder.mutation<
+      void,
+      DeleteSuggestedMetabotPromptRequest
+    >({
+      query: ({ metabot_id, prompt_id }) => ({
+        method: "DELETE",
+        url: `/api/metabot/metabot/${metabot_id}/prompt-suggestions/${prompt_id}`,
+      }),
+      invalidatesTags: (_, error, { metabot_id }) =>
+        invalidateTags(error, [
+          idTag("metabot-prompt-suggestions", metabot_id),
+        ]),
+    }),
+    regenerateSuggestedMetabotPrompts: builder.mutation<
+      RegenerateSuggestedMetabotPromptsResponse,
+      MetabotId
+    >({
+      query: (metabot_id) => ({
+        method: "POST",
+        url: `/api/metabot/metabot/${metabot_id}/prompt-suggestions/regenerate`,
+      }),
+      invalidatesTags: (_, error, metabot_id) =>
+        invalidateTags(error, [
+          idTag("metabot-prompt-suggestions", metabot_id),
+        ]),
+    }),
+    metabotGenerateContent: builder.query<
+      MetabotGenerateContentResponse,
+      MetabotGenerateContentRequest
+    >({
+      query: (params) => ({
+        method: "POST",
+        url: "/api/metabot/document/generate-content",
+        body: params,
+      }),
+    }),
+    saveMetabotEntity: builder.mutation<Card, SaveMetabotEntityRequest>({
+      query: ({ conversation_id, ...body }) => ({
+        method: "POST",
+        url: `/api/metabot/conversations/${conversation_id}/saved-entity`,
+        body,
+      }),
+      invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
+    }),
+    submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
+      query: (params) => ({
+        method: "POST",
+        url: "/api/metabot/feedback",
+        body: params,
+      }),
+    }),
+    submitMetabotSourceFeedback: builder.mutation<void, MetabotSourceFeedback>({
+      query: (params) => ({
+        method: "POST",
+        url: "/api/metabot/source-feedback",
+        body: params,
+      }),
+    }),
+    updateMetabotSlackSettings: builder.mutation<
+      { ok: boolean },
+      MetabotSlackSettings
+    >({
+      query: (settings) => ({
+        method: "PUT",
+        url: "/api/metabot/slack/settings",
+        body: settings,
+      }),
+      invalidatesTags: ["session-properties"],
+    }),
+    getUserMetabotPermissions: builder.query<
+      UserMetabotPermissionsResponse,
+      void
+    >({
+      query: () => ({
+        method: "GET",
+        url: "/api/metabot/permissions/user-permissions",
+      }),
+      providesTags: () => [listTag("metabot-permissions")],
+    }),
   }),
 });
 
 export const {
+  useGetMetabotSettingsQuery,
   useGetMetabotConversationQuery,
   useForkMetabotConversationMutation,
-} = metabotConversationApi;
+  useListMetabotConversationsQuery,
+  useListMetabotsQuery,
+  useUpdateMetabotSettingsMutation,
+  useUpdateMetabotMutation,
+  useGetSuggestedMetabotPromptsQuery,
+  useDeleteSuggestedMetabotPromptMutation,
+  useRegenerateSuggestedMetabotPromptsMutation,
+  useLazyMetabotGenerateContentQuery,
+  useSaveMetabotEntityMutation,
+  useSubmitMetabotFeedbackMutation,
+  useSubmitMetabotSourceFeedbackMutation,
+  useUpdateMetabotSlackSettingsMutation,
+  useGetUserMetabotPermissionsQuery,
+} = metabotApi;

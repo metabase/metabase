@@ -3,8 +3,8 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useGetSuggestedMetabotPromptsQuery } from "metabase/metabot/api";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";

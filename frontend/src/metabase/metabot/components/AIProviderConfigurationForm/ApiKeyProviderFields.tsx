@@ -1,10 +1,10 @@
 import { type ChangeEvent, useEffect, useState } from "react";
 import { c, t } from "ttag";
 
-import { useUpdateMetabotSettingsMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { useUpdateMetabotSettingsMutation } from "metabase/metabot/api";
 import { useAdminSettings } from "metabase/settings";
 import { Text, TextInput } from "metabase/ui";
 

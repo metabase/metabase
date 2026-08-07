@@ -11,8 +11,8 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { useLazyMetabotGenerateContentQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
+import { useLazyMetabotGenerateContentQuery } from "metabase/metabot/api";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";

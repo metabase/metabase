@@ -6,7 +6,6 @@ import * as Yup from "yup";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useUpdateMetabotSlackSettingsMutation } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -17,6 +16,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { useUpdateMetabotSlackSettingsMutation } from "metabase/metabot/api";
 import {
   useAdminSetting,
   useAdminSettings,

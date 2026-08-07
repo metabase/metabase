@@ -4,7 +4,7 @@ import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
+import { useGetSuggestedMetabotPromptsQuery } from "metabase/metabot/api";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";

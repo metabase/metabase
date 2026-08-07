@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getErrorMessage } from "metabase/api/utils";
+import { useToast } from "metabase/common/hooks";
 import {
   useGetMetabotSettingsQuery,
   useUpdateMetabotSettingsMutation,
-} from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils";
-import { useToast } from "metabase/common/hooks";
+} from "metabase/metabot/api";
 import { type ComboboxItem, Select } from "metabase/ui";
 import type {
   MetabotProvider,

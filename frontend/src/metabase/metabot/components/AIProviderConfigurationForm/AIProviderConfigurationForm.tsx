@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useUpdateMetabotSettingsMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useToast } from "metabase/common/hooks";
+import { useUpdateMetabotSettingsMutation } from "metabase/metabot/api";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   useAdminSetting,

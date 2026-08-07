@@ -13,10 +13,9 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
-import { metabotApi } from "metabase/api/metabot";
 import { listTag } from "metabase/api/tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { metabotConversationApi } from "metabase/metabot/api";
+import { metabotApi } from "metabase/metabot/api";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
@@ -904,13 +903,10 @@ export const loadConversation = createAsyncThunk(
     // as we do not want to record it as an aborted response.
 
     const { data: detail, error } = await dispatch(
-      metabotConversationApi.endpoints.getMetabotConversation.initiate(
-        conversationId,
-        {
-          forceRefetch: true,
-          subscribe: false,
-        },
-      ),
+      metabotApi.endpoints.getMetabotConversation.initiate(conversationId, {
+        forceRefetch: true,
+        subscribe: false,
+      }),
     );
 
     if (error || !detail) {
@@ -950,7 +946,7 @@ export const forkConversation = createAsyncThunk(
     { dispatch },
   ) => {
     const conversation = await dispatch(
-      metabotConversationApi.endpoints.forkMetabotConversation.initiate({
+      metabotApi.endpoints.forkMetabotConversation.initiate({
         conversation_id: conversationId,
         message_id: messageId,
       }),
