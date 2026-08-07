@@ -96,12 +96,26 @@ describe("onReplaceAllVisualizationSettings", () => {
     expectRun(false);
   });
 
-  it("re-runs when a dynamic range is retargeted to a different column", async () => {
+  it("re-runs when a dynamic range is retargeted to a different entity", async () => {
     await dispatchWith(
       DYNAMIC_SEGMENTS,
       onReplaceAllVisualizationSettings({
         "gauge.segments": [
           { min: 0, max: { type: "card", id: 2, column: "avg" }, color: "red" },
+        ],
+      }),
+    );
+    expectRun(true);
+  });
+
+  // results are narrowed to the requested columns, so another column of the
+  // same entity still has to be fetched
+  it("re-runs when a dynamic range is retargeted to another column of the same entity", async () => {
+    await dispatchWith(
+      DYNAMIC_SEGMENTS,
+      onReplaceAllVisualizationSettings({
+        "gauge.segments": [
+          { min: 0, max: { type: "card", id: 1, column: "avg" }, color: "red" },
         ],
       }),
     );

@@ -2,9 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import {
   type KeyboardEvent,
-  type ReactNode,
-  type Ref,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -17,16 +16,12 @@ import {
   useGetMeasureQuery,
   useLazyGetCardQuery,
   useLazyGetMeasureQuery,
-  useListRecentsQuery,
-  useSearchQuery,
 } from "metabase/api";
 import {
   EntityPickerModal,
   MiniPicker,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   ActionIcon,
   Box,
@@ -34,8 +29,6 @@ import {
   Icon,
   Loader,
   Menu,
-  NumberInput,
-  Text,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
@@ -46,35 +39,21 @@ import type {
   DatasetData,
   GoalValue,
   ReferencedEntityType,
-  SearchRequest,
 } from "metabase-types/api";
 import {
   isGoalForeignColumnRef,
   isGoalSelfColumnRef,
 } from "metabase-types/guards";
 
+import { GoalColumnMenuItem } from "./GoalColumnMenuItem";
 import S from "./GoalValueInput.module.css";
+import { StaticGoalValueInput } from "./StaticGoalValueInput";
+import { useEntityPickerSearch } from "./use-entity-picker-search";
 
-const MENU_MIN_WIDTH = 225;
+const ROOT_MENU_MIN_WIDTH = 225;
+const COLUMN_MENU_MIN_WIDTH = 256;
 const ICON_BUTTON_SIZE = 24;
-const TRIGGER_INSET = 8;
-// NumberInput sizes its right section to fit the increment controls (27px),
-// which leaves the trigger touching the input's border.
-const TRIGGER_SECTION_WIDTH = `${ICON_BUTTON_SIZE + 2 * TRIGGER_INSET}px`;
-const SEARCH_RESULTS_LIMIT = 5;
 
-// Model lists are module constants because MiniPicker re-runs its search
-// whenever the `models` array changes identity.
-// Saved questions are reachable through Browse all only.
-const ENTITY_PICKER_MODELS: MiniPickerPickableItem["model"][] = [
-  "metric",
-  "measure",
-];
-// shown instead when the instance has no metrics or measures at all
-const QUESTION_FALLBACK_MODELS: MiniPickerPickableItem["model"][] = [
-  "card",
-  "dataset",
-];
 const BROWSE_ALL_MODELS: OmniPickerItem["model"][] = [
   "metric",
   "measure",
@@ -104,8 +83,14 @@ export type GoalValueInputProps = {
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
   data: DatasetData;
+  /**
+   * False where another entity's value could never be resolved, e.g. on a
+   * dashcard, whose query is driven by its saved settings. Columns of this
+   * question come straight out of `data`, so they stay pickable either way.
+   */
+  canReferenceOtherEntities?: boolean;
   placeholder?: string;
-  "aria-label"?: string;
+  ariaLabel?: string;
 };
 
 export const GoalValueInput = ({
@@ -113,8 +98,9 @@ export const GoalValueInput = ({
   value,
   onChange,
   data,
+  canReferenceOtherEntities = true,
   placeholder,
-  "aria-label": ariaLabel,
+  ariaLabel,
 }: GoalValueInputProps) => {
   const [isMenuOpen, menu] = useDisclosure(false);
   const [menuLevel, setMenuLevel] = useState<MenuLevel>("root");
@@ -141,6 +127,7 @@ export const GoalValueInput = ({
     isGoalSelfColumnRef(value) &&
     selfColumns.some((column) => column.name === value);
   const hasRef = foreignRef != null || isSelfRef;
+  const hasSourceOptions = selfColumns.length > 0 || canReferenceOtherEntities;
 
   const entity: Pick<PickedEntity, "type" | "id"> | null =
     pickedEntity ?? foreignRef;
@@ -192,13 +179,22 @@ export const GoalValueInput = ({
       : foreignColumnLabel
     : selfColumnLabel;
 
+  // A pick resolves asynchronously; bumping the token abandons whatever is in
+  // flight so it can't commit a value the user has already navigated away from.
+  const pickTokenRef = useRef(0);
+  const abandonPendingPick = useCallback(() => {
+    pickTokenRef.current += 1;
+  }, []);
+  useEffect(() => abandonPendingPick, [abandonPendingPick]);
+
   // An entity picked but never committed must not outlive the menu, or the pill
   // would describe an entity the value doesn't come from.
   const closeMenu = useCallback(() => {
+    abandonPendingPick();
     menu.close();
     setMenuLevel("root");
     setPickedEntity(null);
-  }, [menu]);
+  }, [abandonPendingPick, menu]);
 
   const commitValue = useCallback(
     (newValue: GoalValue | null) => {
@@ -223,11 +219,17 @@ export const GoalValueInput = ({
   };
 
   const openMenuFromPill = () => {
-    const sourceColumns = isSelfRef ? selfColumns : entityColumns;
-    if (sourceColumns.length > 1) {
-      setMenuLevel(isSelfRef ? "self" : "entity");
-    } else {
+    if (isSelfRef) {
+      setMenuLevel(selfColumns.length > 1 ? "self" : "root");
+    } else if (!canReferenceOtherEntities) {
+      // its columns are unresolvable here, so there is nothing to list
       setMenuLevel("root");
+    } else {
+      // Until the entity's metadata lands we don't know its column count, so
+      // open the column list - it renders a loader while we wait.
+      setMenuLevel(
+        isEntityMetadataLoading || entityColumns.length > 1 ? "entity" : "root",
+      );
     }
     menu.open();
   };
@@ -246,6 +248,25 @@ export const GoalValueInput = ({
     entityPicker.open();
   };
 
+  /** The picked entity's only numeric column, or null when the user has to choose. */
+  const fetchSoleColumn = async (
+    type: ReferencedEntityType,
+    entityId: number,
+  ): Promise<string | null> => {
+    try {
+      if (type === "measure") {
+        const measure = await fetchMeasure(entityId, true).unwrap();
+        return measure.result_column_name ?? null;
+      }
+      const card = await fetchCard({ id: entityId }, true).unwrap();
+      const numericColumns = (card.result_metadata ?? []).filter(isNumeric);
+      return numericColumns.length === 1 ? numericColumns[0].name : null;
+    } catch {
+      // metadata failed to load - fall through to the column list, which says so
+      return null;
+    }
+  };
+
   // Committing here rather than from an effect on `pickedEntity` keeps the
   // settings update out of React's nested-update chain.
   const handleEntityPicked = async (item: {
@@ -258,33 +279,24 @@ export const GoalValueInput = ({
     }
     const type: ReferencedEntityType =
       item.model === "measure" ? "measure" : "card";
+    const pickToken = ++pickTokenRef.current;
     entityPicker.close();
     browseModal.close();
+
+    // Resolving the column before touching the menu keeps a single-column pick
+    // from flashing a column list open and immediately shut.
+    const soleColumn = await fetchSoleColumn(type, item.id);
+    if (pickToken !== pickTokenRef.current) {
+      return;
+    }
+
+    if (soleColumn != null) {
+      commitValue({ type, id: item.id, column: soleColumn });
+      return;
+    }
     setPickedEntity({ type, id: item.id, name: item.name });
     setMenuLevel("entity");
     menu.open();
-
-    // Skip column selection when the picked entity has only one column
-    try {
-      if (type === "measure") {
-        const measure = await fetchMeasure(item.id, true).unwrap();
-        if (measure.result_column_name) {
-          commitValue({
-            type,
-            id: item.id,
-            column: measure.result_column_name,
-          });
-        }
-      } else {
-        const card = await fetchCard({ id: item.id }, true).unwrap();
-        const numericColumns = (card.result_metadata ?? []).filter(isNumeric);
-        if (numericColumns.length === 1) {
-          commitValue({ type, id: item.id, column: numericColumns[0].name });
-        }
-      }
-    } catch {
-      // metadata failed to load - leave the menu open on the entity level
-    }
   };
 
   const handleShellKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -324,7 +336,9 @@ export const GoalValueInput = ({
                   onClick={openMenuFromPill}
                 >
                   <Icon name="hexagon" size={12} c="text-secondary" />
-                  {resolved.isResolving ? (
+                  {/* nothing here will re-run the query when other entities
+                      can't be referenced, so a spinner would never stop */}
+                  {resolved.isResolving && canReferenceOtherEntities ? (
                     <Loader size="xs" data-testid="goal-value-loader" />
                   ) : (
                     <span className={S.pillValue}>
@@ -356,37 +370,49 @@ export const GoalValueInput = ({
                 ariaLabel={ariaLabel}
                 onCommit={onChange}
                 rightSection={
-                  <ActionIcon
-                    className={S.trigger}
-                    data-open={isMenuOpen || isEntityPickerOpen}
-                    size={ICON_BUTTON_SIZE}
-                    aria-label={t`Pick a dynamic value`}
-                    onClick={openMenuFromTrigger}
-                  >
-                    <Icon name="hexagon" size={16} />
-                  </ActionIcon>
+                  hasSourceOptions ? (
+                    <ActionIcon
+                      className={S.trigger}
+                      data-open={isMenuOpen || isEntityPickerOpen}
+                      size={ICON_BUTTON_SIZE}
+                      aria-label={t`Pick a dynamic value`}
+                      onClick={openMenuFromTrigger}
+                    >
+                      <Icon name="hexagon" size={16} />
+                    </ActionIcon>
+                  ) : undefined
                 }
               />
             </Box>
           )}
         </Menu.Target>
-        <Menu.Dropdown miw={MENU_MIN_WIDTH}>
+        <Menu.Dropdown
+          miw={
+            menuLevel === "root" ? ROOT_MENU_MIN_WIDTH : COLUMN_MENU_MIN_WIDTH
+          }
+        >
           {menuLevel === "root" && (
             <>
               {selfColumns.length > 0 && (
                 <Menu.Item
+                  leftSection={<ActiveSourceCheck isActive={isSelfRef} />}
                   rightSection={<Icon name="chevronright" />}
                   onClick={selectSelfOption}
                 >
                   {t`Value from this question`}
                 </Menu.Item>
               )}
-              <Menu.Item
-                rightSection={<Icon name="chevronright" />}
-                onClick={openEntityPicker}
-              >
-                {t`Value from another question`}
-              </Menu.Item>
+              {canReferenceOtherEntities && (
+                <Menu.Item
+                  leftSection={
+                    <ActiveSourceCheck isActive={foreignRef != null} />
+                  }
+                  rightSection={<Icon name="chevronright" />}
+                  onClick={openEntityPicker}
+                >
+                  {t`Value from another question`}
+                </Menu.Item>
+              )}
             </>
           )}
 
@@ -425,7 +451,7 @@ export const GoalValueInput = ({
               </Menu.Item>
               <Menu.Divider />
               {hasEntityMetadataError ? (
-                <Menu.Item disabled>{t`Couldn't load this question`}</Menu.Item>
+                <Menu.Item disabled>{t`Couldn't load this source`}</Menu.Item>
               ) : isEntityMetadataLoading ? (
                 <Group justify="center" p="md">
                   <Loader size="sm" />
@@ -473,9 +499,7 @@ export const GoalValueInput = ({
           browseModal.open();
         }}
         menuProps={{ position: "bottom-start" }}
-      >
-        <Box />
-      </MiniPicker>
+      />
 
       {isBrowseModalOpen && (
         <EntityPickerModal
@@ -504,144 +528,18 @@ export const GoalValueInput = ({
   );
 };
 
-// Searches metrics and measures, scoping the empty query to the Library
-// metrics collection when one exists. When the instance has no metrics or
-// measures at all, falls back to questions, with the most recent ones shown
-// for the empty query.
-function useEntityPickerSearch(enabled: boolean) {
-  const { data: libraryMetricsCollection } =
-    PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
-      type: "library-metrics",
-      skip: !enabled,
-    });
-
-  const { data: probe } = useSearchQuery(
-    enabled
-      ? { models: ["metric", "measure"], limit: 1, context: "entity-picker" }
-      : skipToken,
-  );
-  const shouldFallBackToQuestions = probe?.total === 0;
-
-  const { data: recentItems } = useListRecentsQuery(
-    { context: ["selections", "views"] },
-    { skip: !shouldFallBackToQuestions },
-  );
-  const recentQuestionIds = useMemo(
-    () =>
-      (recentItems ?? [])
-        .filter((item) => item.model === "card" || item.model === "dataset")
-        .slice(0, SEARCH_RESULTS_LIMIT)
-        .map((item) => item.id),
-    [recentItems],
-  );
-
-  const getSearchParams = useCallback(
-    (params: SearchRequest): Partial<SearchRequest> => {
-      if (shouldFallBackToQuestions) {
-        const showRecents = !params.q && recentQuestionIds.length > 0;
-        return {
-          limit: SEARCH_RESULTS_LIMIT,
-          ...(showRecents ? { ids: recentQuestionIds } : {}),
-        };
-      }
-
-      const scopeToLibraryMetrics =
-        libraryMetricsCollection !== undefined &&
-        (libraryMetricsCollection.here?.includes("metric") ||
-          libraryMetricsCollection.below?.includes("metric")) &&
-        !params.q;
-
-      return {
-        limit: SEARCH_RESULTS_LIMIT,
-        ...(scopeToLibraryMetrics
-          ? { collection: libraryMetricsCollection.id }
-          : {}),
-      };
-    },
-    [shouldFallBackToQuestions, recentQuestionIds, libraryMetricsCollection],
-  );
-
-  return {
-    models: shouldFallBackToQuestions
-      ? QUESTION_FALLBACK_MODELS
-      : ENTITY_PICKER_MODELS,
-    getSearchParams,
-  };
-}
-
-type GoalColumnMenuItemProps = {
-  label: string;
-  resolvedValue: number | null;
-  isSelected: boolean;
-  onClick: () => void;
-};
-
-function GoalColumnMenuItem({
-  label,
-  resolvedValue,
-  isSelected,
-  onClick,
-}: GoalColumnMenuItemProps) {
+/**
+ * Marks the source the current value comes from. Decorative: keeping it out of
+ * the a11y tree stops it from prefixing the menu item's name, and it always
+ * occupies its slot so labels line up whether or not it is shown.
+ */
+function ActiveSourceCheck({ isActive }: { isActive: boolean }) {
   return (
-    <Menu.Item
-      className={cx({ [S.selectedItem]: isSelected })}
-      rightSection={
-        resolvedValue != null ? (
-          <Text c="text-secondary" fz="md">
-            {formatValue(resolvedValue)}
-          </Text>
-        ) : undefined
-      }
-      onClick={onClick}
-    >
-      {label}
-    </Menu.Item>
-  );
-}
-
-export type StaticGoalValueInputProps = {
-  id: string;
-  value: GoalValue | null;
-  placeholder?: string;
-  ariaLabel?: string;
-  onCommit: (value: number | null) => void;
-  rightSection?: ReactNode;
-  inputRef?: Ref<HTMLInputElement>;
-};
-
-export function StaticGoalValueInput({
-  id,
-  value,
-  placeholder,
-  ariaLabel,
-  onCommit,
-  rightSection,
-  inputRef,
-}: StaticGoalValueInputProps) {
-  // A reference we can't render here (e.g. its column disappeared from the
-  // results) still shows an empty input; committing on blur would delete it.
-  const numericValue = typeof value === "number" ? value : null;
-
-  return (
-    <NumberInput
-      id={id}
-      ref={inputRef}
-      aria-label={ariaLabel}
-      placeholder={placeholder}
-      w="100%"
-      value={numericValue ?? ""}
-      rightSection={rightSection}
-      rightSectionPointerEvents="all"
-      rightSectionWidth={
-        rightSection == null ? undefined : TRIGGER_SECTION_WIDTH
-      }
-      onBlur={(event) => {
-        const rawValue = event.target.value;
-        const newValue = rawValue === "" ? null : parseFloat(rawValue);
-        if (newValue !== numericValue) {
-          onCommit(newValue);
-        }
-      }}
+    <Icon
+      name="check"
+      size={12}
+      className={cx({ [S.invisible]: !isActive })}
+      aria-hidden
     />
   );
 }

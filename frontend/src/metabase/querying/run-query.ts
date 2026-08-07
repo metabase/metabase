@@ -10,6 +10,7 @@ import {
   shouldUsePivotEndpoint,
 } from "metabase/api/query-endpoints";
 import type { Dispatch } from "metabase/redux/store";
+import { getReferencedEntitiesFromVizSettings } from "metabase/visualizations/lib/dynamic-goals";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -22,8 +23,6 @@ import type {
   DatasetQuery,
   ReferencedEntity,
 } from "metabase-types/api";
-
-import { getReferencedEntitiesFromVizSettings } from "./referenced-entities";
 
 type RunQuestionQueryOptions = {
   dispatch: Dispatch;

@@ -5,7 +5,8 @@ import type { GoalRefError } from "metabase/visualizations/lib/dynamic-goals";
 import { resolveGoalValue } from "metabase/visualizations/lib/dynamic-goals";
 import type { DatasetData, GoalValue } from "metabase-types/api";
 
-import { GoalValueInput, StaticGoalValueInput } from "./GoalValueInput";
+import { GoalValueInput } from "./GoalValueInput";
+import { StaticGoalValueInput } from "./StaticGoalValueInput";
 
 export type SegmentBoundInputProps = {
   id: string;
@@ -14,6 +15,7 @@ export type SegmentBoundInputProps = {
   value: GoalValue | null;
   /** Present only when this bound may reference another column or entity. */
   data?: DatasetData;
+  canReferenceOtherEntities?: boolean;
   onChange: (value: GoalValue | null) => void;
 };
 
@@ -24,6 +26,7 @@ export function SegmentBoundInput({
   placeholder,
   value,
   data,
+  canReferenceOtherEntities = true,
   onChange,
 }: SegmentBoundInputProps) {
   const error = data != null ? resolveGoalValue(value, data).error : undefined;
@@ -33,10 +36,11 @@ export function SegmentBoundInput({
       {data != null ? (
         <GoalValueInput
           id={id}
-          aria-label={ariaLabel}
+          ariaLabel={ariaLabel}
           placeholder={placeholder}
           value={value}
           data={data}
+          canReferenceOtherEntities={canReferenceOtherEntities}
           onChange={onChange}
         />
       ) : (
@@ -57,10 +61,10 @@ export function SegmentBoundInput({
   );
 }
 
-function getGoalErrorMessage({ reason }: GoalRefError): string {
+function getGoalErrorMessage({ reason, message }: GoalRefError): string {
   switch (reason) {
     case "query-failed":
-      return t`Couldn't load this value`;
+      return message ?? t`Couldn't load this value`;
     case "column-not-found":
       return t`This column no longer exists`;
     case "not-a-number":

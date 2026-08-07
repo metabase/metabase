@@ -3,7 +3,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color as colorHex } from "metabase/ui/colors";
-import { resolveGoalSegments } from "metabase/visualizations/lib/dynamic-goals";
+import {
+  getGoalSegmentErrors,
+  resolveGoalSegments,
+} from "metabase/visualizations/lib/dynamic-goals";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,
@@ -21,13 +24,15 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
   isSensible: ({ cols, rows }) => {
     return rows.length === 1 && cols.length === 1;
   },
-  checkRenderable: ([
-    {
-      data: { cols },
-    },
-  ]) => {
-    if (!isNumeric(cols[0]) || isDate(cols[0])) {
+  checkRenderable: ([{ data }], settings) => {
+    if (!isNumeric(data.cols[0]) || isDate(data.cols[0])) {
       throw new Error(t`Gauge visualization requires a number.`);
+    }
+    // Rendering the ranges that did resolve would silently rescale the gauge.
+    if (getGoalSegmentErrors(settings["gauge.segments"], data).length > 0) {
+      throw new Error(
+        t`Couldn't load a value one of this gauge's ranges depends on.`,
+      );
     }
   },
   settings: {
@@ -82,9 +87,12 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "segmentsEditor",
       persistDefault: true,
-      getProps: ([{ data }]) => ({
+      getProps: ([{ data }], _vizSettings, _onChange, extra) => ({
         data,
-        allowQuestionReference: true,
+        // A dashcard's query is driven by its *saved* viz settings, so another
+        // entity picked here couldn't be run until the dashboard is saved.
+        // Columns of this question come out of `data` and stay pickable.
+        canReferenceOtherEntities: !extra?.isDashboard,
       }),
       getWrapperStyle: () => ({
         marginLeft: 0,

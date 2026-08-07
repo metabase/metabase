@@ -2,7 +2,6 @@ import type {
   GoalForeignColumnRef,
   GoalSelfColumnRef,
   GoalStaticValue,
-  GoalValue,
 } from "metabase-types/api";
 
 import { isObject } from "./common";
@@ -25,13 +24,5 @@ export function isGoalForeignColumnRef(
     (value.type === "card" || value.type === "measure") &&
     typeof value.id === "number" &&
     typeof value.column === "string"
-  );
-}
-
-export function isGoalValue(value: unknown): value is GoalValue {
-  return (
-    isGoalStaticValue(value) ||
-    isGoalSelfColumnRef(value) ||
-    isGoalForeignColumnRef(value)
   );
 }

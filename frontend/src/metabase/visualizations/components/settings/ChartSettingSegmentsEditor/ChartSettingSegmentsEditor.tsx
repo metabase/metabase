@@ -25,16 +25,18 @@ const REMOVE_BUTTON_SIZE = 24;
 const ARROW_TOP_OFFSET = 14;
 
 export type ChartSettingSegmentsEditorProps = {
-  allowQuestionReference?: boolean;
+  /** Present only for charts whose bounds may reference a column or another entity. */
   data?: DatasetData;
+  /** False where another entity's value could never be resolved, e.g. on a dashcard. */
+  canReferenceOtherEntities?: boolean;
   value: GoalSegment[];
   onChange: (value: GoalSegment[]) => void;
   canRemoveAll?: boolean;
 };
 
 export const ChartSettingSegmentsEditor = ({
-  allowQuestionReference = false,
   data,
+  canReferenceOtherEntities = true,
   value: segments,
   onChange,
   canRemoveAll = false,
@@ -47,7 +49,6 @@ export const ChartSettingSegmentsEditor = ({
     ]);
 
   const canRemove = segments.length > 1 || canRemoveAll;
-  const canReferenceEntities = allowQuestionReference && data != null;
 
   return (
     <Stack px="lg" gap="lg">
@@ -93,7 +94,8 @@ export const ChartSettingSegmentsEditor = ({
                   ariaLabel={t`Range ${index + 1} minimum`}
                   placeholder={t`Min`}
                   value={segment.min}
-                  data={canReferenceEntities ? data : undefined}
+                  data={data}
+                  canReferenceOtherEntities={canReferenceOtherEntities}
                   onChange={(min) => updateSegment(index, { min })}
                 />
                 <Icon
@@ -107,7 +109,8 @@ export const ChartSettingSegmentsEditor = ({
                   ariaLabel={t`Range ${index + 1} maximum`}
                   placeholder={t`Max`}
                   value={segment.max}
-                  data={canReferenceEntities ? data : undefined}
+                  data={data}
+                  canReferenceOtherEntities={canReferenceOtherEntities}
                   onChange={(max) => updateSegment(index, { max })}
                 />
               </Group>

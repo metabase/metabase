@@ -57,7 +57,6 @@ describe("ChartSettingSegmentsEditor", () => {
       <ChartSettingSegmentsEditor
         value={DEFAULT_VALUE}
         onChange={jest.fn()}
-        allowQuestionReference
         data={createMockDatasetData({
           cols: [createMockColumn({ name: "count" })],
           rows: [[10]],
@@ -93,7 +92,6 @@ describe("ChartSettingSegmentsEditor", () => {
         <ChartSettingSegmentsEditor
           value={[createMockSegment({ min })]}
           onChange={jest.fn()}
-          allowQuestionReference
           data={data}
         />,
       );
@@ -112,14 +110,12 @@ describe("ChartSettingSegmentsEditor", () => {
       ).toBeInTheDocument();
     });
 
-    it("reports a referenced query that failed", () => {
+    it("reports a referenced query that failed without saying why", () => {
       renderWithBound(
         { type: "card", id: 9, column: "total" },
         createMockDatasetData({
           ...DATA,
-          referenced_entities: {
-            card: { 9: { status: "failed", error: "boom" } },
-          },
+          referenced_entities: { card: { 9: { status: "failed" } } },
         }),
       );
 
@@ -146,6 +142,27 @@ describe("ChartSettingSegmentsEditor", () => {
       );
 
       expect(screen.getByText("This value isn't a number")).toBeInTheDocument();
+    });
+
+    it("surfaces the server's explanation for a referenced query that failed", () => {
+      renderWithBound(
+        { type: "card", id: 9, column: "total" },
+        createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            card: {
+              9: {
+                status: "failed",
+                error: "Referenced card 9 returned 3 rows",
+              },
+            },
+          },
+        }),
+      );
+
+      expect(
+        screen.getByText("Referenced card 9 returned 3 rows"),
+      ).toBeInTheDocument();
     });
 
     it("stays quiet while a reference is still resolving", () => {
@@ -180,6 +197,35 @@ describe("ChartSettingSegmentsEditor", () => {
       expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
       expect(screen.queryByText(/isn't a number/)).not.toBeInTheDocument();
     });
+  });
+
+  it("keeps the bounds editable where another entity could never be resolved", async () => {
+    renderWithProviders(
+      <ChartSettingSegmentsEditor
+        value={DEFAULT_VALUE}
+        onChange={jest.fn()}
+        canReferenceOtherEntities={false}
+        data={createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "count", base_type: "type/Integer" }),
+          ],
+          rows: [[10]],
+        })}
+      />,
+    );
+
+    expect(screen.getByLabelText("Range 1 minimum")).toHaveValue("0");
+
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Pick a dynamic value" })[0],
+    );
+
+    expect(
+      await screen.findByRole("menuitem", { name: /Value from this question/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Value from another question/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("Should pass back a new array of segments on change", async () => {

@@ -1,0 +1,123 @@
+import type { Series, VisualizationSettings } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDatasetData,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
+
+import { GAUGE_CHART_DEFINITION } from "./definition";
+
+const COLS = [createMockColumn({ name: "count", base_type: "type/Integer" })];
+
+const createSeries = (
+  data: Partial<Parameters<typeof createMockDatasetData>[0]> = {},
+): Series => [
+  createMockSingleSeries(createMockCard({ display: "gauge" }), {
+    data: createMockDatasetData({ cols: COLS, rows: [[50]], ...data }),
+  }),
+];
+
+const checkRenderable = (
+  series: Series,
+  settings: VisualizationSettings = {},
+) => GAUGE_CHART_DEFINITION.checkRenderable(series, settings);
+
+describe("GAUGE_CHART_DEFINITION", () => {
+  describe("checkRenderable", () => {
+    it("accepts static ranges", () => {
+      expect(() =>
+        checkRenderable(createSeries(), {
+          "gauge.segments": [{ min: 0, max: 100, color: "red" }],
+        }),
+      ).not.toThrow();
+    });
+
+    it("accepts a range that is still resolving", () => {
+      expect(() =>
+        checkRenderable(createSeries(), {
+          "gauge.segments": [
+            {
+              min: 0,
+              max: { type: "card", id: 9, column: "goal" },
+              color: "red",
+            },
+          ],
+        }),
+      ).not.toThrow();
+    });
+
+    // dropping the range and rendering the rest would silently rescale the gauge
+    it("refuses to render when a range's bound will never resolve", () => {
+      const series = createSeries({
+        referenced_entities: {
+          card: { 9: { status: "failed", error: "boom" } },
+        },
+      });
+
+      expect(() =>
+        checkRenderable(series, {
+          "gauge.segments": [
+            { min: 0, max: 100, color: "red" },
+            {
+              min: 100,
+              max: { type: "card", id: 9, column: "goal" },
+              color: "green",
+            },
+          ],
+        }),
+      ).toThrow("Couldn't load a value one of this gauge's ranges depends on.");
+    });
+
+    it("still requires a numeric column", () => {
+      const series = [
+        createMockSingleSeries(createMockCard({ display: "gauge" }), {
+          data: createMockDatasetData({
+            cols: [createMockColumn({ name: "name", base_type: "type/Text" })],
+            rows: [["nope"]],
+          }),
+        }),
+      ];
+
+      expect(() => checkRenderable(series, {})).toThrow(
+        "Gauge visualization requires a number.",
+      );
+    });
+  });
+
+  describe("gauge.range default", () => {
+    it("spans the resolved bounds of every range", () => {
+      const series = createSeries({
+        referenced_entities: {
+          card: {
+            9: {
+              status: "completed",
+              data: {
+                cols: [createMockColumn({ name: "goal" })],
+                rows: [[250]],
+              },
+            },
+          },
+        },
+      });
+      const settings: VisualizationSettings = {
+        "gauge.segments": [
+          { min: 0, max: 100, color: "red" },
+          {
+            min: 100,
+            max: { type: "card", id: 9, column: "goal" },
+            color: "green",
+          },
+        ],
+      };
+
+      expect(
+        GAUGE_CHART_DEFINITION.settings?.["gauge.range"]?.getDefault?.(
+          series,
+          settings,
+          {},
+        ),
+      ).toEqual([0, 250]);
+    });
+  });
+});

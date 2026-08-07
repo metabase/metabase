@@ -3,7 +3,12 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import { resolveGoalSegments, resolveGoalValue } from "./dynamic-goals";
+import {
+  getGoalSegmentErrors,
+  getReferencedEntitiesFromVizSettings,
+  resolveGoalSegments,
+  resolveGoalValue,
+} from "./dynamic-goals";
 
 const cols = [
   createMockColumn({ name: "value" }),
@@ -92,7 +97,7 @@ describe("resolveGoalValue", () => {
     });
   });
 
-  it("errors when the referenced query failed", () => {
+  it("errors with the server's explanation when the referenced query failed", () => {
     const data = createMockDatasetData({
       cols,
       rows,
@@ -117,6 +122,7 @@ describe("resolveGoalValue", () => {
         id: 7,
         column: "total",
         reason: "query-failed",
+        message: "boom",
       },
     });
   });
@@ -266,5 +272,100 @@ describe("resolveGoalSegments", () => {
     );
 
     expect(segments).toEqual([]);
+  });
+});
+
+describe("getGoalSegmentErrors", () => {
+  const DATA = createMockDatasetData({
+    cols: [createMockColumn({ name: "value" })],
+    rows: [[50]],
+  });
+
+  it("reports nothing when every bound resolves", () => {
+    expect(
+      getGoalSegmentErrors([{ min: 0, max: 100, color: "red" }], DATA),
+    ).toEqual([]);
+  });
+
+  it("reports nothing while a reference is still resolving", () => {
+    const errors = getGoalSegmentErrors(
+      [{ min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" }],
+      DATA,
+    );
+
+    expect(errors).toEqual([]);
+  });
+
+  it("reports a bound that will never resolve", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: { 9: { status: "failed", error: "boom" } },
+      },
+    });
+
+    const errors = getGoalSegmentErrors(
+      [{ min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" }],
+      data,
+    );
+
+    expect(errors).toEqual([
+      {
+        type: "card",
+        id: 9,
+        column: "goal",
+        reason: "query-failed",
+        message: "boom",
+      },
+    ]);
+  });
+});
+
+describe("getReferencedEntitiesFromVizSettings", () => {
+  it("returns no referenced entities when there are no settings", () => {
+    expect(getReferencedEntitiesFromVizSettings({})).toEqual([]);
+  });
+
+  it("returns no referenced entities when there are no foreign references", () => {
+    const referencedEntities = getReferencedEntitiesFromVizSettings({
+      "gauge.segments": [{ min: 0, max: "goal", color: "red" }],
+    });
+
+    expect(referencedEntities).toEqual([]);
+  });
+
+  it("collects and dedupes referenced columns per entity", () => {
+    const referencedEntities = getReferencedEntitiesFromVizSettings({
+      "gauge.segments": [
+        {
+          min: { type: "card", id: 1, column: "sum" },
+          max: 100,
+          color: "red",
+        },
+        {
+          min: 100,
+          max: { type: "card", id: 1, column: "total" },
+          color: "yellow",
+        },
+        {
+          min: { type: "measure", id: 1, column: "avg" },
+          max: { type: "card", id: 1, column: "sum" },
+          color: "green",
+        },
+      ],
+    });
+
+    expect(referencedEntities).toEqual([
+      { type: "card", id: 1, columns: ["sum", "total"] },
+      { type: "measure", id: 1, columns: ["avg"] },
+    ]);
+  });
+
+  it("ignores segments with empty bounds", () => {
+    const referencedEntities = getReferencedEntitiesFromVizSettings({
+      "gauge.segments": [{ min: null, max: null, color: "red" }],
+    });
+
+    expect(referencedEntities).toEqual([]);
   });
 });

@@ -1,5 +1,5 @@
-import { getReferencedEntitiesFromVizSettings } from "metabase/querying/referenced-entities";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { getReferencedEntitiesFromVizSettings } from "metabase/visualizations/lib/dynamic-goals";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -41,16 +41,14 @@ export const onUpdateVisualizationSettings =
 
     const updatedQuestion = question.updateSettings(settings);
 
-    const hasNewForeignColumnRefs = hasNewForeignColumnRefsAdded(
-      question.settings(),
-      updatedQuestion.settings(),
-    );
-
     // The check allows users without data permission to resize/rearrange columns
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     await dispatch(
       updateQuestion(updatedQuestion, {
-        run: hasNewForeignColumnRefs,
+        run: referencesNewColumn(
+          question.settings(),
+          updatedQuestion.settings(),
+        ),
         shouldUpdateUrl: isEditable,
       }),
     );
@@ -66,46 +64,44 @@ export const onReplaceAllVisualizationSettings =
       const { isEditable } = Lib.queryDisplayInfo(updatedQuestion.query());
       const hasWritePermissions = isEditable;
 
-      const hasNewForeignColumnRefs =
-        currentQuestion != null &&
-        hasNewForeignColumnRefsAdded(
-          currentQuestion.settings(),
-          updatedQuestion.settings(),
-        );
-
       await dispatch(
         updateQuestion(updatedQuestion, {
           // rerun the query when it is changed alongside settings, or when a new
           // dynamic goal reference appears
           run:
             hasWritePermissions &&
-            (newQuestion != null || hasNewForeignColumnRefs),
+            (newQuestion != null ||
+              (currentQuestion != null &&
+                referencesNewColumn(
+                  currentQuestion.settings(),
+                  updatedQuestion.settings(),
+                ))),
           shouldUpdateUrl: hasWritePermissions,
         }),
       );
     }
   };
 
-// Dynamic goals referencing another question's column are resolved by the
-// backend during query execution. We only need to re-run the query when a *new*
-// foreign reference appears.
-function hasNewForeignColumnRefsAdded(
+// Dynamic goals referencing another entity's column are resolved by the backend
+// during query execution, and each entity comes back narrowed to the columns
+// that were asked for. So a bound retargeted to another column of the same
+// entity needs a re-run just as much as a brand new entity does.
+function referencesNewColumn(
   previousSettings: VisualizationSettings,
   nextSettings: VisualizationSettings,
 ): boolean {
-  const previousKeys = getForeignColumnRefsKeys(previousSettings);
-  const nextKeys = Array.from(getForeignColumnRefsKeys(nextSettings));
+  const previousKeys = getReferencedColumnKeys(previousSettings);
 
-  return nextKeys.some((key) => !previousKeys.has(key));
+  return Array.from(getReferencedColumnKeys(nextSettings)).some(
+    (key) => !previousKeys.has(key),
+  );
 }
 
-function getForeignColumnRefsKeys(
-  settings: VisualizationSettings,
-): Set<string> {
+function getReferencedColumnKeys(settings: VisualizationSettings): Set<string> {
   return new Set(
-    getReferencedEntitiesFromVizSettings(settings).flatMap((ref) => {
-      const columns = ref.columns ?? [];
-      return columns.map((column) => `${ref.type}:${ref.id}:${column}`);
-    }),
+    getReferencedEntitiesFromVizSettings(settings).flatMap(
+      ({ type, id, columns = [] }) =>
+        columns.map((column) => `${type}:${id}:${column}`),
+    ),
   );
 }

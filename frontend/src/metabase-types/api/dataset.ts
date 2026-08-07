@@ -306,6 +306,7 @@ export type ReferencedEntitiesResults = {
 
 export interface ReferencedEntityResult {
   status: "completed" | "failed";
+  /** Why the entity's query failed. Server-authored, safe to show to the user. */
   error?: string;
   /** Narrowed to the columns the request asked for. */
   data?: {
