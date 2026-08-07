@@ -171,10 +171,9 @@ describe("MetabaseAIProviderSetup", () => {
       setup();
 
       expect(
-        await screen.findByText("About Metabase AI service"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/The simplest way to get started with AI in Metabase/),
+        await screen.findByText(
+          /The simplest way to get started with AI in Metabase/,
+        ),
       ).toBeInTheDocument();
       expect(
         await screen.findByText("Price per token - $3.00 per 1M tokens"),
@@ -185,7 +184,9 @@ describe("MetabaseAIProviderSetup", () => {
       setup({ pauseAddOnsResponse: true });
 
       expect(screen.queryByText(/Price per token/i)).not.toBeInTheDocument();
-      expect(screen.getByText("About Metabase AI service")).toBeInTheDocument();
+      expect(
+        screen.getByText(/The simplest way to get started with AI in Metabase/),
+      ).toBeInTheDocument();
     });
 
     it("shows the Terms of Service checkbox when no managed AI feature is enabled", async () => {
@@ -234,7 +235,9 @@ describe("MetabaseAIProviderSetup", () => {
       setup({ hasManagedAi: true });
 
       expect(
-        await screen.findByText("About Metabase AI service"),
+        await screen.findByText(
+          /The simplest way to get started with AI in Metabase/,
+        ),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("checkbox", {
@@ -250,7 +253,9 @@ describe("MetabaseAIProviderSetup", () => {
       });
 
       expect(
-        await screen.findByText("About Metabase AI service"),
+        await screen.findByText(
+          /The simplest way to get started with AI in Metabase/,
+        ),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("checkbox", {
@@ -533,10 +538,9 @@ describe("MetabasePricingText", () => {
       <MetabasePricingText pricing={{ ...PRICING, freeUnits: "1M" }} />,
     );
 
+    expect(screen.getByText("You get 1M tokens for free.")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "You get 1M tokens for free. Price per token afterward - $3.00 per 1M tokens",
-      ),
+      screen.getByText("Price per token afterward - $3.00 per 1M tokens"),
     ).toBeInTheDocument();
   });
 

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
@@ -23,7 +24,6 @@ import {
   Skeleton,
   Stack,
   Text,
-  Title,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
@@ -154,19 +154,15 @@ export function MetabaseAIProviderSetup({
       ) : (
         <>
           <Stack gap="md">
-            <Title order={4}>{
-              // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
-              t`About Metabase AI service`
-            }</Title>
             <Text>{
               // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
               t`The simplest way to get started with AI in Metabase. We pick a benchmarked, cost effective model for you, and billing is managed through your Metabase account.`
             }</Text>
             {isLoadingMetabaseManagedAiPricing ? (
-              <Group gap="xs" align="center">
+              <PricingCallout>
                 <Skeleton h="1rem" w="14rem" />
-                <Skeleton h={14} w={14} circle />
-              </Group>
+                <Skeleton h="1rem" w="18rem" />
+              </PricingCallout>
             ) : metabaseManagedAiPricing ? (
               <MetabasePricingText pricing={metabaseManagedAiPricing} />
             ) : null}
@@ -433,32 +429,47 @@ function MetabasePricingRow({
   );
 }
 
+function PricingCallout({ children }: { children: ReactNode }) {
+  return (
+    <Stack gap="xs" bg="background-secondary" p="md" bdrs="md">
+      {children}
+    </Stack>
+  );
+}
+
 export function MetabasePricingText({
   pricing,
 }: {
   pricing: MetabaseManagedAiPricing;
 }) {
   return (
-    <Group gap="xs" align="center">
-      <Text lh="1">
-        {pricing.freeUnits
-          ? t`You get ${pricing.freeUnits} tokens for free. Price per token afterward - ${pricing.price} per ${pricing.unit} tokens`
-          : t`Price per token - ${pricing.price} per ${pricing.unit} tokens`}
-      </Text>
-      <Tooltip
-        label={t`Tokens are chunks of text used by AI models. Usage includes both prompts and responses.`}
-        multiline
-        maw="20rem"
-      >
-        <UnstyledButton
-          aria-label={t`AI pricing details`}
-          data-testid="metabase-ai-pricing-details"
-          style={{ lineHeight: 0 }}
+    <PricingCallout>
+      {pricing.freeUnits && (
+        <Text fw="bold" lh="1">
+          {t`You get ${pricing.freeUnits} tokens for free.`}
+        </Text>
+      )}
+      <Group gap="xs" align="center">
+        <Text lh="1">
+          {pricing.freeUnits
+            ? t`Price per token afterward - ${pricing.price} per ${pricing.unit} tokens`
+            : t`Price per token - ${pricing.price} per ${pricing.unit} tokens`}
+        </Text>
+        <Tooltip
+          label={t`Tokens are chunks of text used by AI models. Usage includes both prompts and responses.`}
+          multiline
+          maw="20rem"
         >
-          <Icon name="info" size={14} c="text-secondary" />
-        </UnstyledButton>
-      </Tooltip>
-    </Group>
+          <UnstyledButton
+            aria-label={t`AI pricing details`}
+            data-testid="metabase-ai-pricing-details"
+            style={{ lineHeight: 0 }}
+          >
+            <Icon name="info" size={14} c="text-secondary" />
+          </UnstyledButton>
+        </Tooltip>
+      </Group>
+    </PricingCallout>
   );
 }
 

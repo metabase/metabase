@@ -52,7 +52,7 @@ const ANTHROPIC_TYPE = createMockLlmProviderType({
 
 const METABASE_TYPE = createMockLlmProviderType({
   type: "metabase",
-  label: "Metabase",
+  label: "Metabase AI service",
   managed: true,
   singleton: true,
   fields: [],

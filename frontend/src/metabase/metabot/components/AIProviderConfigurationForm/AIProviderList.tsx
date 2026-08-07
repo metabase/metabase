@@ -15,6 +15,7 @@ import { useToast } from "metabase/common/hooks";
 import { useLlmConnectionModels } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
+  ActionIcon,
   Box,
   Button,
   Collapse,
@@ -288,12 +289,9 @@ function ProviderConnectionRow({
           {!isEnvManaged && (
             <Menu position="bottom-end">
               <Menu.Target>
-                <Button
-                  variant="subtle"
-                  p="xs"
-                  aria-label={t`Provider options`}
-                  leftSection={<Icon name="ellipsis" />}
-                />
+                <ActionIcon aria-label={t`Provider options`}>
+                  <Icon name="ellipsis" />
+                </ActionIcon>
               </Menu.Target>
               <Menu.Dropdown>
                 {isEditable && (

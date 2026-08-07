@@ -75,7 +75,7 @@ function setup({
   setupLlmProviderTypesEndpoint([
     createMockLlmProviderType({
       type: "metabase",
-      label: "Metabase",
+      label: "Metabase AI service",
       managed: true,
       singleton: true,
       fields: [],
@@ -86,7 +86,7 @@ function setup({
     createMockLlmProviderConnection({
       key: "metabase",
       type: "metabase",
-      name: "Metabase",
+      name: "Metabase AI service",
     }),
     createMockLlmProviderConnection(),
   ]);
@@ -147,7 +147,7 @@ describe("AIProviderList managed provider usage", () => {
     const row = await screen.findByTestId("provider-metabase");
     expect(await within(row).findByText("Current billing cycle")).toBeVisible();
 
-    await userEvent.click(within(row).getByText("Metabase"));
+    await userEvent.click(within(row).getByText("Metabase AI service"));
 
     expect(within(row).getByText("Current billing cycle")).not.toBeVisible();
   });
