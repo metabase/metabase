@@ -1,6 +1,6 @@
 (ns metabase.query-processor.api
   "/api/dataset endpoints."
-  (:refer-clojure :exclude [not-empty get-in])
+  (:refer-clojure :exclude [not-empty get-in some])
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -33,7 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :refer [not-empty get-in]]
+   [metabase.util.performance :refer [not-empty get-in some]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
@@ -170,6 +170,12 @@
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
+(def ^:private QueryMetadataQuery
+  [:map
+   [:database ms/PositiveInt]
+   [:settings {:optional true} [:maybe [:map
+                                        [:include_sensitive_fields {:optional true} :boolean]]]]])
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -178,20 +184,26 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/query_metadata"
-  "Get all of the required query metadata for an ad-hoc query.
+  "Get all of the required query metadata for one or more ad-hoc queries.
 
-  You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with
-  visibility_type :sensitive in the response."
+  The body is either a single query, or `{:queries [...]}` to fetch metadata for several queries at
+  once. Batching is cheaper than one request per query: tables shared between queries are hydrated
+  and serialized once rather than once per query.
+
+  You can pass `{:settings {:include-sensitive-fields true}}` in a query to include fields with
+  visibility_type :sensitive in the response. The option applies to the whole response, so when
+  several queries are batched it is enabled if any one of them asks for it."
   [_route-params
    _query-params
-   query :- [:map
-             [:database ms/PositiveInt]
-             [:settings {:optional true} [:maybe [:map
-                                                  [:include_sensitive_fields {:optional true} :boolean]]]]]]
-  (queries/batch-fetch-query-metadata
-   [query]
-   (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
-     {:include-sensitive-fields? include-sensitive-fields})))
+   body :- [:multi {:dispatch #(if (and (map? %) (contains? % :queries)) :batch :single)}
+            [:batch  [:map [:queries [:sequential QueryMetadataQuery]]]]
+            [:single QueryMetadataQuery]]]
+  (let [queries         (or (:queries body) [body])
+        sensitive-flags (keep #(get-in % [:settings :include_sensitive_fields]) queries)]
+    (queries/batch-fetch-query-metadata
+     queries
+     (when (seq sensitive-flags)
+       {:include-sensitive-fields? (boolean (some true? sensitive-flags))}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
+  setupAdhocQueryMetadataEndpoint,
   setupGroupsEndpoint,
   setupMetabotConversationEndpoint,
   setupPermissionMembershipEndpoint,
@@ -11,8 +13,18 @@ import * as Urls from "metabase/urls";
 import type {
   ConversationDetail,
   ConversationFeedback,
+  GeneratedQuery,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockCardQueryMetadata,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { ConversationDetailPage } from "./ConversationDetailPage";
 
@@ -78,9 +90,29 @@ function toolCallMessage(id: string, parentId: string): ConversationMessage {
   };
 }
 
+function notebookQuery(id: string, tableId: number): GeneratedQuery {
+  return {
+    tool: "construct_notebook_query",
+    call_id: id,
+    message_id: 1,
+    query_id: id,
+    query_type: "notebook",
+    sql: null,
+    mbql: {
+      type: "query",
+      database: SAMPLE_DB_ID,
+      query: { "source-table": tableId },
+    },
+    display: "table",
+    database_id: SAMPLE_DB_ID,
+    tables: [],
+  };
+}
+
 function createConversation(
   messages: ConversationMessage[],
   feedback: ConversationFeedback[] = [],
+  queries: GeneratedQuery[] = [],
 ): ConversationDetail {
   return {
     conversation_id: "convo-1",
@@ -92,7 +124,7 @@ function createConversation(
     profile_id: "internal",
     slack_permalink: null,
     messages,
-    queries: [],
+    queries,
     search_count: 0,
     query_count: 0,
     ip_address: null,
@@ -107,9 +139,17 @@ function createConversation(
 }
 
 function setup(conversation: ConversationDetail) {
+  const sampleDatabase = createSampleDatabase();
   setupMetabotConversationEndpoint(conversation);
   setupGroupsEndpoint([]);
   setupPermissionMembershipEndpoint({});
+  setupAdhocQueryMetadataEndpoint(
+    createMockCardQueryMetadata({
+      databases: [sampleDatabase],
+      tables: sampleDatabase.tables,
+      fields: sampleDatabase.tables?.flatMap((table) => table.fields ?? []),
+    }),
+  );
   return renderWithProviders(
     <Route
       path="/conversations/:convoId"
@@ -401,5 +441,45 @@ describe("ConversationDetailPage", () => {
     expect(
       screen.queryByTestId("tool-call-details-sidebar"),
     ).not.toBeInTheDocument();
+  });
+
+  it("fetches metadata for every generated notebook query in a single request", async () => {
+    setup(
+      createConversation(
+        [userMessage("u1", null, "count orders")],
+        [],
+        [
+          notebookQuery("q1", ORDERS_ID),
+          notebookQuery("q2", PRODUCTS_ID),
+          notebookQuery("q3", ORDERS_ID),
+        ],
+      ),
+    );
+
+    expect(await screen.findByText("Queries generated")).toBeInTheDocument();
+
+    const calls = fetchMock.callHistory.calls(
+      "path:/api/dataset/query_metadata",
+    );
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(String(calls[0].options.body))).toEqual({
+      queries: [
+        {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: { "source-table": ORDERS_ID },
+        },
+        {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: { "source-table": PRODUCTS_ID },
+        },
+        {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: { "source-table": ORDERS_ID },
+        },
+      ],
+    });
   });
 });

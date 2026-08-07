@@ -1176,4 +1176,34 @@
                                                   :settings {:include_sensitive_fields true}))]
           (is (some #(= (:id %) (mt/id :venues :price))
                     (->> result :tables (mapcat :fields)))
-              "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))
+              "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true")))
+      (testing "sensitive fields are included when any query in a batch asks for them"
+        (let [result (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                           {:queries [(mt/mbql-query checkins)
+                                                      (assoc (mt/mbql-query venues)
+                                                             :settings {:include_sensitive_fields true})]})]
+          (is (some #(= (:id %) (mt/id :venues :price))
+                    (->> result :tables (mapcat :fields)))))))))
+
+(deftest query-metadata-batch-test
+  (testing "POST /api/dataset/query_metadata"
+    (let [queries [(mt/mbql-query venues) (mt/mbql-query checkins) (mt/mbql-query users)]]
+      (testing "a batch returns the same metadata as fetching each query separately"
+        (let [separate (mapv #(mt/user-http-request :crowberto :post 200 "dataset/query_metadata" %) queries)
+              batched  (mt/user-http-request :crowberto :post 200 "dataset/query_metadata" {:queries queries})]
+          (is (= (set (mapcat #(map :id (:tables %)) separate))
+                 (set (map :id (:tables batched)))))
+          (is (= (set (mapcat #(map :id (:databases %)) separate))
+                 (set (map :id (:databases batched)))))
+          (testing "a table reachable from more than one query is returned once"
+            (is (apply distinct? (map :id (:tables batched))))))))
+    (testing "a single query is still accepted unwrapped"
+      (is (seq (:tables (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                              (mt/mbql-query venues))))))
+    (testing "an empty batch returns no tables"
+      (is (empty? (:tables (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                                 {:queries []})))))
+    (testing "a batch containing a query with no database is rejected"
+      (is (=? {:errors {:queries {:database "value must be an integer greater than zero."}}}
+              (mt/user-http-request :crowberto :post 400 "dataset/query_metadata"
+                                    {:queries [{:type :query}]}))))))
