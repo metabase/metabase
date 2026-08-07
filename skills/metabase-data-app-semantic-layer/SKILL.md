@@ -113,7 +113,18 @@ export const RevenueQuery = defineQuery({ source: schema.tables.orders });
 
 Run `npm run sync-queries` (the template wrapper for `embedding-sdk-react data-apps sync-queries`) after adding, changing, renaming, or removing one of these definitions. The command loads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, creates or reconciles the saved questions, injects `savedQuestionSourceId`, and updates `queries_metadata.json`. Commit both generated changes. Production builds fail when these files are stale.
 
-Keep fixed permission-boundary filters, aggregations, and breakouts inside the `defineQuery` definition. Synchronization materializes that authored table query as a saved question. Don't replace its source with `savedQuestionSourceId` or apply the same clauses again outside it. When the UI needs interactive filters or grouping on top of a saved question's results, build a saved-question query from that question's generated `columns` as described in [Saved question query recipes](#saved-question-query-recipes).
+Keep fixed permission-boundary filters, aggregations, and breakouts inside the `defineQuery` definition. Synchronization materializes that authored table query as a saved question. Don't apply the same clauses again outside it.
+
+For end-to-end prototypes, source swapping is manual. After synchronization injects `savedQuestionSourceId`, build a separate card-source query for interactive filters, aggregations, breakouts, ordering, or limits:
+
+```ts
+const { data } = useMetabaseQuery({
+  source: { type: "card", id: RevenueQuery.savedQuestionSourceId },
+  filters: [filter(RevenueQuery.source.fields.status, "=", selectedStatus)],
+});
+```
+
+Use the same shape with `useMetabaseQueryObject`. Reuse a generated table field only when the inner saved question returns that field unchanged; card-source clauses resolve columns by result name. For renamed, computed, or aggregated results, use the exact saved-question result column instead of guessing. Don't spread `RevenueQuery` and add dynamic clauses: that keeps its table source and bypasses the saved-question permission boundary. Replace this manual pattern when automatic source swapping is implemented.
 
 If synchronization fails, surface the exact error and stop. Fix local shape, serialization, duplicate-ID, or lockfile errors before retrying. A confirmed `404` is recovered automatically; authentication, permission, network, server, collection-ownership, and Card-type failures must not trigger manual Card creation, deletion, ID replacement, or lockfile editing.
 
