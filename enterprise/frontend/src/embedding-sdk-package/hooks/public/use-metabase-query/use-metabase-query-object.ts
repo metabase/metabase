@@ -28,7 +28,7 @@ type QueryObjectState = {
  * Resolves a data app query into a query object that can be passed to SDK question components.
  */
 export function useMetabaseQueryObject(
-  query: MetabaseQueryOptions,
+  query: MetabaseQueryOptions<undefined>,
 ): UseMetabaseQueryObjectResult {
   const { loadingState } = useSdkLoadingState();
 
