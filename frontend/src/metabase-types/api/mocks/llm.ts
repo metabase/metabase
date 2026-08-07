@@ -54,6 +54,7 @@ export const createMockLlmActiveModel = (
 ): LlmActiveModel => ({
   model_ref: "anthropic/claude-sonnet-4-6",
   model: "claude-sonnet-4-6",
+  model_name: "Claude Sonnet 4.6",
   connection_key: "anthropic",
   connection_name: "Anthropic",
   selected_model_ref: "anthropic/claude-sonnet-4-6",

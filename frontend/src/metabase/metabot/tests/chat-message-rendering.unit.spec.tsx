@@ -248,7 +248,7 @@ describe("AgentMessage", () => {
           type: "data-model_fallback",
           data: {
             model: "openai/gpt-5.4",
-            model_name: "gpt-5.4",
+            model_name: "GPT-5.4",
             provider_name: "OpenAI",
             previous_model: "anthropic/claude-sonnet-4-6",
             previous_provider_name: "Anthropic",
@@ -259,8 +259,11 @@ describe("AgentMessage", () => {
       expect(
         await screen.findByTestId("model-fallback-message"),
       ).toHaveTextContent(
-        "Anthropic isn't responding, so this answer is coming from OpenAI using gpt-5.4.",
+        "Anthropic isn't responding, so this answer is coming from OpenAI using GPT-5.4.",
       );
+      expect(
+        screen.getByTestId("metabot-chat-message-turn-alert"),
+      ).toBeInTheDocument();
     });
   });
 
