@@ -13,9 +13,11 @@ jobs:
       - name: Format issue title (escape quotes)
         uses: actions/github-script@v9
         id: vars
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
         with:
           script: |
-            core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
+            core.setOutput('issue_title', process.env.ISSUE_TITLE.replaceAll(/"/g, '\\"'));
       - name: Send escalated issue ${{ github.event.issue.number }} to Slack
         id: slack
         uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3

@@ -79,7 +79,7 @@ jobs:
       - name: ls mba
         run: ls -latr mba-src
       - name: Symlink mba
-        run: cd mba-src && sudo ln -s $(pwd)/src/main.clj /usr/local/bin/mba && chmod +x /usr/local/bin/mba && cd ..
+        run: cd mba-src && sudo ln -s "$(pwd)/src/main.clj" /usr/local/bin/mba && chmod +x /usr/local/bin/mba && cd ..
 
       - name: Ensure mba
         run: which mba
