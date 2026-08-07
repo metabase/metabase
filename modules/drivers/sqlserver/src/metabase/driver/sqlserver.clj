@@ -46,6 +46,15 @@
 
 (driver/register! :sqlserver, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
+(defmethod driver/host-carrying-parameters :sqlserver
+  [_driver]
+  ["serverName" "failoverPartner" "enclaveAttestationUrl"])
+
+(defmethod driver/non-host-parameters :sqlserver
+  [_driver]
+  ["hostNameInCertificate" "iPAddressPreference" "instanceName" "integratedSecurity" "serverCertificate"
+   "serverNameAsACE" "serverPreparedStatementDiscardThreshold" "serverSpn" "trustServerCertificate"])
+
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
                               :connection-impersonation-requires-role true
