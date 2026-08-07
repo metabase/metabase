@@ -341,6 +341,30 @@ describe("nav > containers > MainNavbar > lazy collection tree", () => {
     ).toBeInTheDocument();
   });
 
+  it("should stay collapsed after toggling a revealed collection shut on a small instance", async () => {
+    // The same gesture as the large-instance case, on the branch where the whole tree arrives at once. Revealing
+    // the selected collection must not spring it back open once the reader has closed it.
+    await setup({
+      pathname: Urls.collection(TEST_COLLECTION),
+      route: "/collection/:slug",
+    });
+
+    const collection = await screen.findByRole("treeitem", {
+      name: /Test collection/i,
+    });
+    expect(
+      await screen.findByRole("treeitem", { name: /Nested collection/i }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(collection);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("treeitem", { name: /Nested collection/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("should stay collapsed after the revealed collection is toggled shut", async () => {
     await setup({
       pathname: Urls.collection(TEST_COLLECTION),
