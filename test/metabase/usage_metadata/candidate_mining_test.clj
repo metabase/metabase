@@ -10,7 +10,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
    [metabase.usage-metadata.models.source-segment-composite-daily]
-   [metabase.usage-metadata.query-source :as query-source]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -20,11 +19,6 @@
 (defn- orders-base-query []
   (let [mp (lib-be/application-database-metadata-provider (mt/id))]
     (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
-
-(defn- selected-cards-source
-  [& card-ids]
-  (reify query-source/CandidateQuerySource
-    (card-ids [_] (set card-ids))))
 
 (deftest predicate-candidates-canonicalize-source-atom-order-test
   (let [mp          (lib-be/application-database-metadata-provider (mt/id))
@@ -138,7 +132,7 @@
                                (candidate-mining/candidate-source-cards {:min-view-count 10}))
             explicit-ids (into #{} (map :id)
                                (candidate-mining/candidate-source-cards
-                                {:query-source (apply selected-cards-source all-ids)
+                                {:card-ids (apply hash-set all-ids)
                                  :min-view-count 10}))
             qualified-ids (set (candidate-mining/qualified-card-ids 1 90))]
         (doseq [ids [default-ids explicit-ids qualified-ids]]
@@ -147,7 +141,7 @@
           (is (not (contains? ids personal-card-id)))
           (is (not (contains? ids personal-child-card-id))))))))
 
-(deftest candidate-source-cards-accept-custom-query-source-test
+(deftest candidate-source-cards-accept-explicit-card-ids-test
   (let [query (orders-base-query)]
     (mt/with-temp [:model/Card {selected-id :id} {:name          "candidate mining explicitly selected"
                                                   :type          :question
@@ -157,11 +151,9 @@
                                                     :type          :question
                                                     :dataset_query query
                                                     :view_count    1000000}]
-      (let [source (reify query-source/CandidateQuerySource
-                     (card-ids [_] #{selected-id}))
-            cards  (candidate-mining/candidate-source-cards {:query-source source :min-view-count 10})
+      (let [cards  (candidate-mining/candidate-source-cards {:card-ids #{selected-id} :min-view-count 10})
             by-id  (into {} (map (juxt :id identity)) cards)]
-        (testing "the source controls inclusion instead of the default curation/popularity gate"
+        (testing "the explicit IDs control inclusion instead of the default curation/popularity gate"
           (is (contains? by-id selected-id))
           (is (not (contains? by-id unselected-id))))
         (testing "curation and popularity are still recorded as ranking evidence"

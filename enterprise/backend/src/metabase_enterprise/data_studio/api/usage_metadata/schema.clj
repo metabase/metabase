@@ -1,13 +1,13 @@
 (ns metabase-enterprise.data-studio.api.usage-metadata.schema
   "Request and response contracts for the usage-metadata cleanup API."
   (:require
+   [metabase.lib.schema :as lib.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (def ^{:doc "Maximum cleanup-list search length."} max-search-length 254)
 (def ^{:doc "Maximum candidate name override length."} max-name-length 254)
 (def ^{:doc "Maximum candidate description override length."} max-description-length 10000)
-(def ^{:doc "Maximum dismissal reason length."} max-dismissal-reason-length 1000)
 
 (mr/def ::snapshot-summary
   [:map [:table_count ms/IntGreaterThanOrEqualToZero]])
@@ -75,36 +75,8 @@
    [:is_published :boolean]
    [:database ::database]])
 
-(mr/def ::candidate-clause [:sequential :any])
-
-(mr/def ::candidate-join
-  [:map
-   [:lib/type [:= "mbql/join"]]
-   [:stages [:sequential {:min 1} [:ref ::candidate-stage]]]
-   [:conditions [:sequential {:min 1} ::candidate-clause]]
-   [:alias ms/NonBlankString]
-   [:fields {:optional true}
-    [:or [:= "all"] [:= "none"] [:sequential ::candidate-clause]]]
-   [:strategy {:optional true} :string]])
-
-(mr/def ::candidate-stage
-  [:map
-   [:lib/type [:= "mbql.stage/mbql"]]
-   [:source-table ms/PositiveInt]
-   [:aggregation {:optional true} [:sequential ::candidate-clause]]
-   [:breakout {:optional true} [:sequential ::candidate-clause]]
-   [:expressions {:optional true} [:map-of :string ::candidate-clause]]
-   [:filters {:optional true} [:sequential ::candidate-clause]]
-   [:joins {:optional true} [:sequential [:ref ::candidate-join]]]])
-
-(mr/def ::candidate-query
-  [:map
-   [:database ms/PositiveInt]
-   [:lib/type [:= "mbql/query"]]
-   [:stages [:sequential {:min 1} ::candidate-stage]]])
-
 (mr/def ::candidate-definition
-  [:or ::candidate-query [:map [:table_id ms/PositiveInt]]])
+  [:or ::lib.schema/query [:map [:table_id ms/PositiveInt]]])
 
 (mr/def ::candidate-summary
   [:map
@@ -126,8 +98,6 @@
 
 (mr/def ::candidate-source
   [:map
-   [:id ms/PositiveInt]
-   [:candidate_id ms/PositiveInt]
    [:card_id ms/PositiveInt]
    [:card_name [:maybe :string]]
    [:card_type [:enum :question :model]]
@@ -147,15 +117,7 @@
    [:entity [:map
              [:id ms/PositiveInt]
              [:name :string]
-             [:description [:maybe :string]]
-             [:archived :boolean]]]])
-
-(mr/def ::candidate-dismissal
-  [:map
-   [:id ms/PositiveInt]
-   [:dismissed_by ms/PositiveInt]
-   [:dismissed_at :any]
-   [:reason [:maybe :string]]])
+             [:description [:maybe :string]]]]])
 
 (mr/def ::candidate-detail
   [:merge
@@ -167,7 +129,6 @@
     [:required_tables [:sequential ::table-reference]]
     [:definition ::candidate-definition]
     [:creation_blockers [:sequential ::creation-blocker]]
-    [:dismissal [:maybe ::candidate-dismissal]]
     [:sources [:sequential ::candidate-source]]
     [:matches [:sequential ::candidate-match]]]])
 
@@ -192,7 +153,7 @@
    [:id ms/PositiveInt]
    [:name ms/NonBlankString]
    [:table_id {:optional true} ms/PositiveInt]
-   [:definition {:optional true} ::candidate-query]
+   [:definition {:optional true} ::lib.schema/query]
    [:description {:optional true} [:maybe :string]]
    [:archived {:optional true} :boolean]])
 
@@ -223,11 +184,6 @@
 
 (def ^{:doc "Candidate identifier route schema."} candidate-id
   [:map [:id ms/PositiveInt]])
-
-(def ^{:doc "Candidate dismissal request body schema."} dismiss-body
-  [:map
-   [:reason {:optional true}
-    [:maybe [:string {:max max-dismissal-reason-length}]]]])
 
 (def ^{:doc "Candidate creation override request body schema."} create-body
   [:map

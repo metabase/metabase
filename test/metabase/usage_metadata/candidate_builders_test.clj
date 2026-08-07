@@ -10,7 +10,6 @@
    [metabase.usage-metadata.candidate-builders :as candidate-builders]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
    [metabase.usage-metadata.models.source-segment-composite-daily]
-   [metabase.usage-metadata.query-source :as query-source]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -169,11 +168,6 @@
         subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
     (lib/aggregate (orders-implicit-join-query) (lib/sum subtotal))))
 
-(defn- selected-cards-source
-  [& card-ids]
-  (reify query-source/CandidateQuerySource
-    (card-ids [_] (set card-ids))))
-
 (defn- candidates-from-card
   [card-id candidates]
   (filterv (fn [candidate]
@@ -229,7 +223,7 @@
                                                    :type :question
                                                    :dataset_query (orders-multi-stage-query)
                                                    :view_count 0}]
-    (let [opts       {:query-source (selected-cards-source joined-id implicit-id multi-stage-id)}
+    (let [opts       {:card-ids (hash-set joined-id implicit-id multi-stage-id)}
           report     (candidate-builders/candidate-table-observations (assoc opts :limit 1))
           candidates (into {} (map (juxt #(get-in % [:table :id]) identity)) (:candidates report))
           orders     (candidates (mt/id :orders))
@@ -274,7 +268,7 @@
                                 :moderator_id (mt/user->id :crowberto)
                                 :status "verified"})
     (let [report    (candidate-builders/candidate-tables
-                     {:query-source (selected-cards-source verified-id official-id)
+                     {:card-ids (hash-set verified-id official-id)
                       :limit 1000})
           candidate (first (filter #(= (mt/id :orders) (get-in % [:table :id]))
                                    (:candidates report)))
@@ -339,7 +333,7 @@
                                                   :dataset_query {}
                                                   :view_count 0}]
     (let [report (candidate-builders/candidate-tables
-                  {:query-source (selected-cards-source native-id unreadable-id)})]
+                  {:card-ids (hash-set native-id unreadable-id)})]
       (is (empty? (:candidates report)))
       (is (= [{:id native-id
                :name "candidate table native question"
@@ -442,7 +436,7 @@
                  :model/Card {second-id :id} {:name "Second filtered metric"
                                               :type :question
                                               :dataset_query (orders-filtered-metric-query 900002)}]
-    (let [opts         {:query-source (selected-cards-source first-id second-id), :limit 1}
+    (let [opts         {:card-ids (hash-set first-id second-id), :limit 1}
           observations (candidate-builders/candidate-metric-observations opts)]
       (is (= 2 (count observations))
           "the persistence producer ignores presentation limits")
@@ -456,7 +450,7 @@
                                             :dataset_query (orders-temporal-metric-query)
                                             :view_count 0}]
     (let [candidates (candidate-builders/candidate-metrics
-                      {:query-source (selected-cards-source card-id), :limit 1000})
+                      {:card-ids (hash-set card-id), :limit 1000})
           candidate  (first candidates)
           definition (:definition candidate)
           validated  (lib/query (lib-be/application-database-metadata-provider (mt/id)) definition)]
@@ -478,7 +472,7 @@
                :source-items (get-in candidate [:evidence :source-items])}))
       (is (= candidates
              (candidate-builders/candidate-metrics
-              {:query-source (selected-cards-source card-id), :limit 1000}))
+              {:card-ids (hash-set card-id), :limit 1000}))
           "the canonical result is deterministic across repeated runs"))))
 
 (deftest candidate-metrics-include-filtered-count-test
@@ -487,7 +481,7 @@
                                             :dataset_query (orders-filtered-count-metric-query)
                                             :view_count 0}]
     (let [candidate (first (candidate-builders/candidate-metrics
-                            {:query-source (selected-cards-source card-id), :limit 1000}))]
+                            {:card-ids (hash-set card-id), :limit 1000}))]
       (is (= :count (first (:aggregation candidate))))
       (is (seq (get-in candidate [:definition :stages 0 :filters])))
       (is (nil? (:temporal-breakout candidate))))))
@@ -510,7 +504,7 @@
                                 :moderator_id        (mt/user->id :crowberto)
                                 :status              "verified"})
     (let [candidate (first (candidate-builders/candidate-metrics
-                            {:query-source (selected-cards-source official-id verified-id)
+                            {:card-ids (hash-set official-id verified-id)
                              :min-view-count 10
                              :limit 1000}))]
       (is (= "Verified metric name" (:suggested-name candidate)))
@@ -528,7 +522,7 @@
                                             :dataset_query (orders-joined-query)
                                             :view_count 0}]
     (let [candidate (first (candidate-builders/candidate-metrics
-                            {:query-source (selected-cards-source card-id), :limit 1000}))]
+                            {:card-ids (hash-set card-id), :limit 1000}))]
       (is (= #{(mt/id :orders) (mt/id :products)}
              (into #{} (map :id) (:required-tables candidate))))
       (is (seq (get-in candidate [:definition :stages 0 :joins])))
@@ -540,7 +534,7 @@
                                             :dataset_query (orders-implicit-join-metric-query)
                                             :view_count 0}]
     (let [candidate (first (candidate-builders/candidate-metrics
-                            {:query-source (selected-cards-source card-id), :limit 1000}))]
+                            {:card-ids (hash-set card-id), :limit 1000}))]
       (is (= #{(mt/id :orders) (mt/id :products)}
              (into #{} (map :id) (:required-tables candidate))))
       (is (true? (get-in candidate [:evidence :source-items 0 :joined?]))))))
@@ -551,7 +545,7 @@
                                             :dataset_query (orders-expression-metric-query)
                                             :view_count 0}]
     (let [candidate (first (candidate-builders/candidate-metrics
-                            {:query-source (selected-cards-source card-id), :limit 1000}))]
+                            {:card-ids (hash-set card-id), :limit 1000}))]
       (is (some? candidate))
       (is (seq (get-in candidate [:definition :stages 0 :expressions])))
       (is (= [(mt/id :orders)] (mapv :id (:required-tables candidate)))))))
@@ -570,7 +564,7 @@
                                                 :dataset_query (orders-breakout-only-query)
                                                 :view_count 0}]
     (is (empty? (candidate-builders/candidate-metrics
-                 {:query-source (selected-cards-source sum-id count-id breakout-id), :limit 1000})))))
+                 {:card-ids (hash-set sum-id count-id breakout-id), :limit 1000})))))
 
 (deftest candidate-metrics-rewrite-transparent-card-lineage-test
   (let [mp         (lib-be/application-database-metadata-provider (mt/id))
@@ -593,7 +587,7 @@
                                                                  (lib/aggregate (lib/sum subtotal)))
                                               :view_count 0}]
       (let [candidate (first (candidate-builders/candidate-metrics
-                              {:query-source (selected-cards-source card-id), :limit 1000}))]
+                              {:card-ids (hash-set card-id), :limit 1000}))]
         (is (= (mt/id :orders) (get-in candidate [:definition :stages 0 :source-table])))
         (is (nil? (get-in candidate [:definition :stages 0 :source-card])))
         (is (= [{:id base-model-id, :name "metric base model"}
@@ -616,7 +610,7 @@
                                                                  (lib/aggregate (lib/sum subtotal)))
                                               :view_count 0}]
       (is (empty? (candidate-builders/candidate-metrics
-                   {:query-source (selected-cards-source card-id), :limit 1000}))))))
+                   {:card-ids (hash-set card-id), :limit 1000}))))))
 
 (deftest candidate-metrics-protect-against-card-lineage-cycles-test
   (let [mp         (lib-be/application-database-metadata-provider (mt/id))
@@ -635,7 +629,7 @@
                                       (lib/filter (lib/= product-id 1))
                                       (lib/aggregate (lib/sum subtotal)))})
       (is (empty? (candidate-builders/candidate-metrics
-                   {:query-source (selected-cards-source card-a-id), :limit 1000}))))))
+                   {:card-ids (hash-set card-a-id), :limit 1000}))))))
 
 (deftest candidate-metrics-exclude-unsupported-query-shapes-test
   (let [native-query  (lib/native-query (lib-be/application-database-metadata-provider (mt/id)) "select 1")
@@ -678,14 +672,14 @@
                                                    :dataset_query {}
                                                    :view_count 0}]
       (is (empty? (candidate-builders/candidate-metrics
-                   {:query-source (selected-cards-source native-id
-                                                         multi-stage-id
-                                                         multi-aggregation-id
-                                                         limited-id
-                                                         paginated-id
-                                                         categorical-breakout-id
-                                                         pivot-id
-                                                         malformed-id)
+                   {:card-ids (hash-set native-id
+                                        multi-stage-id
+                                        multi-aggregation-id
+                                        limited-id
+                                        paginated-id
+                                        categorical-breakout-id
+                                        pivot-id
+                                        malformed-id)
                     :limit 1000}))))))
 
 (deftest candidate-metrics-deduplicate-existing-full-definitions-test
@@ -699,13 +693,13 @@
                                           :dataset_query (orders-filtered-metric-query 1)}]
       (testing "a different filter remains a distinct Metric definition"
         (is (= 1 (count (candidate-builders/candidate-metrics
-                         {:query-source (selected-cards-source card-id), :limit 1000})))))
+                         {:card-ids (hash-set card-id), :limit 1000})))))
       (mt/with-temp [:model/Card _same {:name "existing identical metric"
                                         :type :metric
                                         :dataset_query candidate-query}]
         (testing "the complete identical definition is excluded"
           (is (empty? (candidate-builders/candidate-metrics
-                       {:query-source (selected-cards-source card-id), :limit 1000}))))))))
+                       {:card-ids (hash-set card-id), :limit 1000}))))))))
 
 (deftest candidate-metrics-keep-different-temporal-grains-distinct-test
   (mt/with-temp [:model/Card {card-id :id} {:name "monthly candidate metric"
@@ -716,7 +710,7 @@
                                         :type :metric
                                         :dataset_query (orders-temporal-metric-query :year)}]
     (is (= 1 (count (candidate-builders/candidate-metrics
-                     {:query-source (selected-cards-source card-id), :limit 1000}))))))
+                     {:card-ids (hash-set card-id), :limit 1000}))))))
 
 (deftest candidate-measures-return-valid-definition-and-skip-existing-test
   (let [query (orders-measure-query)]

@@ -13,13 +13,13 @@
    [metabase.usage-metadata.candidate-definitions :as candidate-definitions]
    [metabase.usage-metadata.candidate-family :as candidate-family]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
-   [metabase.usage-metadata.candidate-mutations :as candidate-mutations]
    [metabase.usage-metadata.candidate-refresh :as candidate-refresh]
+   [metabase.usage-metadata.candidate-repository :as candidate-repository]
    [metabase.usage-metadata.candidate-snapshot :as candidate-snapshot]
-   [metabase.usage-metadata.query-source :as query-source]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -39,6 +39,7 @@
 (def ^:private candidate-families candidate-family/candidate-families)
 (def ^:private prune-old-candidate-snapshots! candidate-snapshot/prune-old-candidate-snapshots!)
 (def ^:private reconcile-candidate! candidate-snapshot/reconcile-candidate!)
+(def ^:private reconcile-candidates! candidate-snapshot/reconcile-candidates!)
 
 (defn- candidate-row
   [run-id table-id]
@@ -154,18 +155,34 @@
                                                            :finished_at       (mi/now)}
                  :model/UsageMetadataCandidate candidate (candidate-row (:id run) (mt/id :orders))]
     (is (= (:id run) (:id (candidate-refresh/latest-successful-run))))
-    (is (candidate-mutations/candidate-current? candidate))
-    (let [dismissal (candidate-mutations/dismiss! candidate (mt/user->id :crowberto) "not useful")]
-      (is (= "not useful" (:reason dismissal)))
+    (is (candidate-refresh/candidate-current? candidate))
+    (let [dismissal (candidate-repository/dismiss! candidate (mt/user->id :crowberto))]
+      (is (= (mt/user->id :crowberto) (:dismissed_by dismissal)))
       (is (= 1 (t2/count :model/UsageMetadataCandidateDismissal
                          :candidate_type :segment
                          :table_id (mt/id :orders)
                          :signature_hash (:signature_hash candidate))))
-      (candidate-mutations/restore! candidate)
+      (candidate-repository/restore! candidate)
       (is (zero? (t2/count :model/UsageMetadataCandidateDismissal
                            :candidate_type :segment
                            :table_id (mt/id :orders)
                            :signature_hash (:signature_hash candidate)))))))
+
+(deftest candidate-query-definitions-are-serialized-at-the-model-boundary-test
+  (let [metadata-provider (lib-be/application-database-metadata-provider (mt/id))
+        table             (lib.metadata/table metadata-provider (mt/id :orders))
+        query             (lib/query metadata-provider table)]
+    (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                         :trigger           :manual
+                                                         :algorithm_version 1
+                                                         :source_config     {}
+                                                         :finished_at       (mi/now)}
+                   :model/UsageMetadataCandidate candidate
+                   (assoc (candidate-row (:id run) (mt/id :orders)) :definition query)]
+      (let [persisted-definition (:definition (t2/select-one :model/UsageMetadataCandidate :id (:id candidate)))]
+        (is (not (contains? persisted-definition :lib/metadata)))
+        (is (= (lib/prepare-for-serialization query)
+               (lib/prepare-for-serialization persisted-definition)))))))
 
 (deftest candidate-reconciliation-round-trips-mined-signatures-test
   (let [metadata-provider (lib-be/application-database-metadata-provider (mt/id))
@@ -177,7 +194,7 @@
                                               :dataset_query query
                                               :view_count 100}]
       (let [mined (-> (candidate-builders/cleanup-candidates
-                       {:query-source (query-source/card-id-set [card-id])
+                       {:card-ids #{card-id}
                         :include-ineligible? true})
                       :measures
                       first)]
@@ -211,11 +228,10 @@
                                                 :signature (:signature mined))
                                          true)))
             (is (= {:relation        :exact
-                    :measure_id      (:id measure)
-                    :entity_name     "Revenue"
-                    :entity_archived false}
+                    :entity_id       (:id measure)
+                    :entity_name     "Revenue"}
                    (t2/select-one [:model/UsageMetadataCandidateMatch
-                                   :relation :measure_id :entity_name :entity_archived]
+                                   :relation :entity_id :entity_name]
                                   :candidate_id (:id published-candidate)))))
           (testing "entities on an unpublished table are not treated as Library matches"
             (is (= :missing
@@ -225,6 +241,76 @@
                                          false)))
             (is (zero? (t2/count :model/UsageMetadataCandidateMatch
                                  :candidate_id (:id unpublished-candidate))))))))))
+
+(deftest snapshot-reconciliation-reuses-prepared-library-entities-test
+  (let [metadata-provider (lib-be/application-database-metadata-provider (mt/id))
+        table-id          (mt/id :orders)
+        table             (lib.metadata/table metadata-provider table-id)
+        subtotal          (lib.metadata/field metadata-provider (mt/id :orders :subtotal))
+        base-query        (lib/query metadata-provider table)
+        measure-definition (lib/aggregate base-query (lib/sum subtotal))
+        conditional-definition (lib/aggregate base-query
+                                              (lib/sum-where subtotal (lib/> subtotal 10)))
+        exact-signature   (candidate-definitions/existing-signature
+                           :measure table-id measure-definition)
+        original-aggregation-clause candidate-definitions/aggregation-clause
+        original-existing-entity-index candidate-repository/existing-entity-index
+        original-insert!   t2/insert!
+        normalization-count (atom 0)
+        index-load-count   (atom 0)
+        match-insert-count (atom 0)]
+    (mt/with-temp-vals-in-db :model/Table table-id {:is_published true}
+      (mt/with-temp [:model/Measure _ {:name "Revenue"
+                                       :creator_id (mt/user->id :crowberto)
+                                       :definition measure-definition}
+                     :model/UsageMetadataCandidateRun run {:status :running
+                                                           :trigger :manual
+                                                           :algorithm_version 1
+                                                           :source_config {}}
+                     :model/UsageMetadataCandidate exact-candidate
+                     (merge (candidate-row (:id run) table-id)
+                            {:candidate_type :measure
+                             :signature exact-signature
+                             :definition measure-definition
+                             :semantic_details {:type :sum}})
+                     :model/UsageMetadataCandidate related-candidate
+                     (merge (candidate-row (:id run) table-id)
+                            {:candidate_type :measure
+                             :signature_hash (apply str (repeat 64 "b"))
+                             :signature "conditional-revenue"
+                             :definition conditional-definition
+                             :semantic_details {:type :sum-where}})]
+        (mt/with-dynamic-fn-redefs
+          [candidate-definitions/aggregation-clause
+           (fn [definition]
+             (swap! normalization-count inc)
+             (original-aggregation-clause definition))
+           candidate-repository/existing-entity-index
+           (fn [candidate-keys]
+             (swap! index-load-count inc)
+             (original-existing-entity-index candidate-keys))
+           t2/insert!
+           (fn [model & rows]
+             (when (= model :model/UsageMetadataCandidateMatch)
+               (swap! match-insert-count inc))
+             (apply original-insert! model rows))]
+          (reconcile-candidates! (:id run)))
+        (testing "Library entities are indexed once and each definition is normalized once"
+          (is (= {:index-loads 1, :normalizations 3}
+                 {:index-loads @index-load-count, :normalizations @normalization-count})))
+        (testing "match rows are inserted as one batch"
+          (is (= 1 @match-insert-count)))
+        (testing "all reconciliation results and matches are persisted"
+          (is (= {(:id exact-candidate)   :modeled
+                  (:id related-candidate) :partially-modeled}
+                 (t2/select-fn->fn :id :modeling_status :model/UsageMetadataCandidate
+                                   :id [:in [(:id exact-candidate) (:id related-candidate)]])))
+          (is (= #{[(:id exact-candidate) :exact]
+                   [(:id related-candidate) :same-base]}
+                 (into #{}
+                       (map (juxt :candidate_id :relation))
+                       (t2/select [:model/UsageMetadataCandidateMatch :candidate_id :relation]
+                                  :candidate_id [:in [(:id exact-candidate) (:id related-candidate)]])))))))))
 
 (deftest old-candidate-snapshots-are-deleted-in-batches-test
   (let [pages   (atom [#{1 2} #{3} #{}])
@@ -346,6 +432,49 @@
         (is (= (:id old-run) (:id (candidate-refresh/latest-successful-run))))
         (is (t2/exists? :model/UsageMetadataCandidate :id (:id old-candidate)))))))
 
+(deftest abnormal-refresh-termination-marks-run-failed-and-rethrows-original-test
+  (let [failure (AssertionError. "Injected assertion failure")
+        run     (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
+    (mt/with-dynamic-fn-redefs [candidate-snapshot/materialize! (fn [_run]
+                                                                  (t2/update! :model/UsageMetadataCandidateRun
+                                                                              (:id run)
+                                                                              {:status :running
+                                                                               :started_at (mi/now)})
+                                                                  (throw failure))]
+      (is (identical? failure
+                      (try
+                        (candidate-refresh/run-refresh! run)
+                        (catch AssertionError error
+                          error))))
+      (is (= :failed
+             (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id (:id run))))
+      (is (re-find #"Injected assertion failure"
+                   (t2/select-one-fn :error :model/UsageMetadataCandidateRun :id (:id run))))
+      (is (not (contains? @locally-running-run-ids (:id run)))))))
+
+(deftest interrupted-refresh-marks-run-failed-and-restores-interrupt-flag-test
+  (let [failure (InterruptedException. "Injected interrupt")
+        run     (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
+    (try
+      (mt/with-dynamic-fn-redefs [candidate-snapshot/materialize! (fn [_run]
+                                                                    (t2/update! :model/UsageMetadataCandidateRun
+                                                                                (:id run)
+                                                                                {:status :running
+                                                                                 :started_at (mi/now)})
+                                                                    (throw failure))]
+        (let [{:keys [error interrupted?]}
+              (try
+                (candidate-refresh/run-refresh! run)
+                (catch InterruptedException error
+                  ;; Read and clear the flag before test reporting or database work can observe it.
+                  {:error error, :interrupted? (Thread/interrupted)}))]
+          (is (identical? failure error))
+          (is (true? interrupted?)))
+        (is (= :failed
+               (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id (:id run)))))
+      (finally
+        (Thread/interrupted)))))
+
 (deftest persisted-refresh-uses-recent-view-source-configuration-test
   (let [cleanup-opts (atom nil)
         table-opts   (atom nil)
@@ -453,7 +582,7 @@
             (is (= [{:card-id (:id card)
                      :dependency-paths [{:direct? true, :models []}]}]
                    (get-in (by-type :table) [:semantic_details :source-dependencies])))
-            (is (= (json/decode+kw (json/encode definition))
+            (is (= (dissoc (lib/normalize definition) :lib/metadata)
                    (:definition (by-type :metric))))))))))
 
 (deftest fixed-candidate-evidence-cutoffs-test
@@ -723,22 +852,20 @@
       (t2/insert! :model/UsageMetadataCandidateMatch
                   {:candidate_id       (:id candidate)
                    :relation           :exact
-                   :measure_id         (:id measure)
+                   :entity_id          (:id measure)
                    :entity_name        (:name measure)
-                   :entity_description (:description measure)
-                   :entity_archived    false})
+                   :entity_description (:description measure)})
       (t2/delete! :model/Card :id (:id source-card))
       (t2/delete! :model/Measure :id (:id measure))
       (is (= {:card_id (:id source-card), :card_name "Revenue by region", :view_count 42}
              (t2/select-one [:model/UsageMetadataCandidateSource :card_id :card_name :view_count]
                             :candidate_id (:id candidate))))
       (is (= {:relation           :exact
-              :measure_id         (:id measure)
+              :entity_id          (:id measure)
               :entity_name        "Revenue"
-              :entity_description "Recognized revenue"
-              :entity_archived    false}
+              :entity_description "Recognized revenue"}
              (t2/select-one [:model/UsageMetadataCandidateMatch
-                             :relation :measure_id :entity_name :entity_description :entity_archived]
+                             :relation :entity_id :entity_name :entity_description]
                             :candidate_id (:id candidate))))
       (is (= :modeled
              (t2/select-one-fn :modeling_status :model/UsageMetadataCandidate :id (:id candidate)))))))

@@ -4,20 +4,17 @@
    [metabase-enterprise.data-studio.api.usage-metadata.queries :as queries]
    [metabase-enterprise.data-studio.api.usage-metadata.representations :as representations]
    [metabase-enterprise.data-studio.api.usage-metadata.schema :as schema]
+   [metabase-enterprise.data-studio.usage-metadata.service :as service]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.measures.api :as measures.api]
    [metabase.premium-features.core :as premium-features]
-   [metabase.segments.api :as segments.api]
-   [metabase.usage-metadata.candidate-mutations :as candidate-mutations]
    [metabase.usage-metadata.candidate-refresh :as candidate-refresh]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
-   [ring.util.response :as response]
-   [toucan2.core :as t2]))
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +24,7 @@
   (u.jvm/in-virtual-thread*
    (try
      (candidate-refresh/run-refresh! run)
-     (catch Exception e
+     (catch Throwable e
        (log/error e "Manual usage-metadata candidate refresh failed")
        (throw e)))))
 
@@ -35,12 +32,14 @@
   [message reason & [data]]
   (throw (ex-info message (merge {:status-code 409, :reason reason} data))))
 
-(defn- require-current-candidate
+(defn- current-candidate!
   [id]
-  (let [candidate (api/check-404 (candidate-mutations/candidate id))]
-    (when-not (candidate-mutations/candidate-current? candidate)
-      (conflict! "Candidate belongs to an obsolete snapshot" :obsolete-snapshot))
-    candidate))
+  (api/check-404 (service/current-candidate id)))
+
+(defn- candidate-detail-response
+  [candidate]
+  (let [{candidate-table :table :as detail} (queries/candidate-detail candidate)]
+    (representations/candidate-detail detail (service/creation-blockers candidate candidate-table))))
 
 (api.macros/defendpoint :get "/candidates" :- ::schema/candidate-page
   "List mined Library cleanup candidates."
@@ -51,7 +50,7 @@
     (let [{:keys [rows total limit offset]} (queries/candidate-page run opts)
           dismissals (queries/dismissal-index rows)]
       (representations/page
-       (mapv #(representations/candidate-summary % dismissals) rows)
+       (mapv #(representations/candidate-summary % (queries/dismissed? dismissals %)) rows)
        total limit offset run))
     (let [{:keys [limit offset]} (queries/paging)]
       (representations/page [] 0 limit offset nil))))
@@ -77,48 +76,23 @@
   "Return full provenance and Library reconciliation for one candidate."
   [{:keys [id]} :- schema/candidate-id]
   (api/check-superuser)
-  (queries/candidate-detail (require-current-candidate id)))
+  (candidate-detail-response (current-candidate! id)))
 
 (api.macros/defendpoint :post "/candidates/:id/dismiss" :- ::schema/candidate-detail
   "Globally dismiss a semantic candidate."
-  [{:keys [id]} :- schema/candidate-id
-   _query
-   {:keys [reason]} :- schema/dismiss-body]
+  [{:keys [id]} :- schema/candidate-id]
   (api/check-superuser)
-  (let [candidate (require-current-candidate id)]
-    (candidate-mutations/dismiss! candidate api/*current-user-id* reason)
-    (queries/candidate-detail candidate)))
+  (let [candidate (current-candidate! id)]
+    (service/dismiss! candidate api/*current-user-id*)
+    (candidate-detail-response candidate)))
 
 (api.macros/defendpoint :delete "/candidates/:id/dismissal" :- ::schema/candidate-detail
   "Restore a globally dismissed semantic candidate."
   [{:keys [id]} :- schema/candidate-id]
   (api/check-superuser)
-  (let [candidate (require-current-candidate id)]
-    (candidate-mutations/restore! candidate)
-    (queries/candidate-detail candidate)))
-
-(defn- create-candidate!
-  [candidate {:keys [name description] :as overrides}]
-  (when-not (contains? #{:measure :segment} (:candidate_type candidate))
-    (conflict! "This recommendation does not support direct creation" :unsupported-candidate-action))
-  (let [table (api/check-404 (t2/select-one :model/Table :id (:table_id candidate)))]
-    (when-not (:active table)
-      (conflict! "Candidate table is inactive" :table-inactive))
-    (when-not (:is_published table)
-      (conflict! "Candidate table is not published in the Library" :table-not-published))
-    (when-not (representations/table-editable-for-candidate? candidate table)
-      (conflict! "Candidate table cannot be edited" :table-uneditable))
-    (if-let [existing (candidate-mutations/exact-existing-entity candidate)]
-      (candidate-mutations/mark-modeled! candidate existing)
-      (let [body   {:name        (or name (:suggested_name candidate))
-                    :description (if (contains? overrides :description)
-                                   description
-                                   (:suggested_description candidate))
-                    :definition  (:definition candidate)}
-            entity (case (:candidate_type candidate)
-                     :measure (measures.api/create-measure! body)
-                     :segment (segments.api/create-segment! body))]
-        (candidate-mutations/mark-modeled! candidate entity)))))
+  (let [candidate (current-candidate! id)]
+    (service/restore! candidate)
+    (candidate-detail-response candidate)))
 
 (api.macros/defendpoint :post "/candidates/:id/create" :- ::schema/create-response
   "Create a Measure or Segment from a persisted candidate definition."
@@ -126,14 +100,12 @@
    _query
    body :- schema/create-body]
   (api/check-superuser)
-  (t2/with-transaction [_conn]
-    (let [candidate (api/check-404
-                     (t2/select-one :model/UsageMetadataCandidate :id id {:for :update}))
-          _         (when-not (candidate-mutations/candidate-current? candidate)
-                      (conflict! "Candidate belongs to an obsolete snapshot" :obsolete-snapshot))
-          entity    (create-candidate! candidate body)]
-      {:candidate (queries/candidate-detail (candidate-mutations/candidate id))
-       :entity    (representations/created-entity entity)})))
+  ;; Measure and Segment creation publishes synchronous domain events that perform database work. Keep it outside a
+  ;; surrounding transaction so those events retain the same semantics as their normal REST creation endpoints.
+  (let [candidate (current-candidate! id)
+        entity    (service/create! candidate body)]
+    {:candidate (candidate-detail-response (current-candidate! id))
+     :entity    (representations/created-entity entity)}))
 
 (api.macros/defendpoint :get "/refresh" :- ::schema/refresh-status
   "Return candidate refresh and snapshot status."

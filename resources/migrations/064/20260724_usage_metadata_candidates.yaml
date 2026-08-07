@@ -211,18 +211,14 @@ databaseChangeLog:
                   constraints: {nullable: false, referencedTableName: usage_metadata_candidate, referencedColumnNames: id, foreignKeyName: fk_um_candidate_match_candidate, deleteCascade: true}
               - column: {name: relation, type: varchar(32), remarks: Exact same-base subset superset or overlap, constraints: {nullable: false}}
               - column:
-                  name: measure_id
+                  name: entity_id
                   type: int
-                  remarks: Related Measure ID retained as snapshot data after Measure deletion
-                  # Intentionally no Measure FK: completed analysis snapshots must remain internally consistent.
-              - column:
-                  name: segment_id
-                  type: int
-                  remarks: Related Segment ID retained as snapshot data after Segment deletion
-                  # Intentionally no Segment FK: completed analysis snapshots must remain internally consistent.
+                  remarks: Related Measure or Segment ID retained as snapshot data after entity deletion
+                  # Candidate type identifies the entity model. Intentionally no entity FK: completed analysis
+                  # snapshots must remain internally consistent after the Measure or Segment is deleted.
+                  constraints: {nullable: false}
               - column: {name: entity_name, type: varchar(254), remarks: Related entity name at refresh time, constraints: {nullable: false}}
               - column: {name: entity_description, type: "${text.type}", remarks: Related entity description at refresh time}
-              - column: {name: entity_archived, type: "${boolean.type}", remarks: Whether the related entity was archived at refresh time, constraints: {nullable: false}}
 
   - changeSet:
       id: v64.um-candidate-match-index
@@ -243,43 +239,14 @@ databaseChangeLog:
       rollback: []
 
   - changeSet:
-      id: v64.um-candidate-match-measure-unique
+      id: v64.um-candidate-match-entity-unique
       author: retro
-      comment: Keep one Measure relationship per usage metadata candidate
+      comment: Keep one entity relationship per usage metadata candidate
       changes:
         - addUniqueConstraint:
             tableName: usage_metadata_candidate_match
-            columnNames: candidate_id, relation, measure_id
-            constraintName: uq_um_candidate_match_measure
-
-  - changeSet:
-      id: v64.um-candidate-match-segment-unique
-      author: retro
-      comment: Keep one Segment relationship per usage metadata candidate
-      changes:
-        - addUniqueConstraint:
-            tableName: usage_metadata_candidate_match
-            columnNames: candidate_id, relation, segment_id
-            constraintName: uq_um_candidate_match_segment
-
-  - changeSet:
-      id: v64.um-candidate-match-one-entity
-      author: retro
-      comment: Require each candidate relationship to target exactly one Library entity
-      changes:
-        - sql:
-            sql: >-
-              ALTER TABLE usage_metadata_candidate_match
-              ADD CONSTRAINT ck_um_candidate_match_one_entity
-              CHECK (
-                (measure_id IS NULL AND segment_id IS NOT NULL)
-                OR (measure_id IS NOT NULL AND segment_id IS NULL)
-              )
-      rollback:
-        - sql:
-            sql: >-
-              ALTER TABLE usage_metadata_candidate_match
-              DROP CONSTRAINT ck_um_candidate_match_one_entity
+            columnNames: candidate_id, relation, entity_id
+            constraintName: uq_um_candidate_match_entity
 
   - changeSet:
       id: v64.um-candidate-dismissal
@@ -299,10 +266,8 @@ databaseChangeLog:
                   constraints: {nullable: false, referencedTableName: metabase_table, referencedColumnNames: id, foreignKeyName: fk_um_candidate_dismissal_table, deleteCascade: true}
               - column: {name: signature_version, type: int, remarks: Canonical signature format version, constraints: {nullable: false}}
               - column: {name: signature_hash, type: char(64), remarks: SHA-256 semantic identity, constraints: {nullable: false}}
-              - column: {name: signature, type: "${text.type}", remarks: Canonical semantic identity, constraints: {nullable: false}}
               # Intentionally no User FK so the dismissal remains durable after the administrator is deleted.
               - column: {name: dismissed_by, type: int, remarks: Dismissing user ID retained without a foreign key so the durable dismissal survives user deletion, constraints: {nullable: false}}
-              - column: {name: reason, type: "${text.type}", remarks: Optional dismissal reason}
               - column: {name: dismissed_at, type: "${timestamp_type}", remarks: Time the candidate was dismissed, defaultValueComputed: current_timestamp, constraints: {nullable: false}}
 
   - changeSet:

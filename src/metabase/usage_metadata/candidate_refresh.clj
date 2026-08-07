@@ -26,6 +26,11 @@
                  :status :succeeded
                  {:order-by [[:finished_at :desc] [:id :desc]]}))
 
+(defn candidate-current?
+  "Whether `candidate` belongs to the latest successful snapshot."
+  [candidate]
+  (= (:run_id candidate) (:id (latest-successful-run))))
+
 (defn active-run
   "Return the newest queued or running candidate refresh."
   []
@@ -114,19 +119,22 @@
   (swap! locally-running-run-ids conj run-id)
   (try
     (cluster-lock/with-cluster-lock {:lock ::candidate-refresh, :timeout-seconds 1}
-      (try
-        (snapshot/materialize! run)
-        (catch InterruptedException e
-          (.interrupt (Thread/currentThread))
-          (fail-run! run e)
-          (throw e))
-        (catch Exception e
-          (log/error e "Usage metadata candidate refresh failed")
-          (fail-run! run e)
-          (throw e))))
-    (catch Exception e
-      (when (= :queued (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id run-id))
-        (fail-run! run e))
-      (throw e))
+      (snapshot/materialize! run))
+    (catch Throwable failure
+      (let [interrupted? (instance? InterruptedException failure)]
+        (when-not interrupted?
+          (log/error failure "Usage metadata candidate refresh failed"))
+        (try
+          (when (contains? #{:queued :running}
+                           (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id run-id))
+            (fail-run! run failure)
+            nil)
+          (catch Throwable marking-failure
+            ;; Preserve the materialization failure as the one callers observe even if recording it also fails.
+            (.addSuppressed ^Throwable failure marking-failure)
+            (log/error marking-failure "Failed to record usage metadata candidate refresh failure")))
+        (when interrupted?
+          (.interrupt (Thread/currentThread)))
+        (throw failure)))
     (finally
       (swap! locally-running-run-ids disj run-id))))

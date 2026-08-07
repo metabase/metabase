@@ -1,4 +1,4 @@
-(ns metabase.usage-metadata.rollups-test
+(ns metabase.usage-metadata.insights-test
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
@@ -9,8 +9,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
+   [metabase.usage-metadata.insights :as insights]
    [metabase.usage-metadata.models.source-segment-composite-daily]
-   [metabase.usage-metadata.rollups :as rollups]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -59,7 +59,7 @@
    :bucket-end   composite-test-bucket-date})
 
 (defn- clear-existing-segment-cache! []
-  (memoize/memo-clear! @#'rollups/existing-segment-facts*-memo))
+  (memoize/memo-clear! @#'insights/existing-segment-facts*-memo))
 
 (deftest suggested-segments-for-owner-happy-path-test
   (cleanup-composite-rows!)
@@ -68,7 +68,7 @@
         opts (composite-opts (mt/id :orders))]
     (try
       (seed-composite-row! fact 3)
-      (let [results (rollups/suggested-segments-for-owner opts)]
+      (let [results (insights/suggested-segments-for-owner opts)]
         (testing "candidate is returned when no saved Segment matches"
           (is (seq results)))
         (testing "top candidate is a valid :and MBQL clause attributed to the right source"
@@ -89,11 +89,11 @@
     (try
       (seed-composite-row! fact 3)
       (testing "precondition: candidate is present without a saved Segment"
-        (is (seq (rollups/suggested-segments-for-owner opts))))
+        (is (seq (insights/suggested-segments-for-owner opts))))
       (clear-existing-segment-cache!)
       (mt/with-temp [:model/Segment _seg {:table_id   (mt/id :orders)
                                           :definition (composite-orders-query)}]
-        (let [results (rollups/suggested-segments-for-owner opts)]
+        (let [results (insights/suggested-segments-for-owner opts)]
           (testing "candidate is filtered out when a saved Segment has the same atom-set"
             (is (not-any? (fn [{:keys [source itemset-size]}]
                             (and (= :table (:type source))
@@ -108,9 +108,7 @@
   (cleanup-composite-rows!)
   (clear-existing-segment-cache!)
   (try
-    (is (= [] (rollups/suggested-segments-for-owner
+    (is (= [] (insights/suggested-segments-for-owner
                (composite-opts (mt/id :orders)))))
     (finally
       (clear-existing-segment-cache!))))
-
-;;; ---------- deterministic candidate mining tests ----------
