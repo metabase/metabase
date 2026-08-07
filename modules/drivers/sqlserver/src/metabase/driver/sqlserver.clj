@@ -514,6 +514,44 @@
 (defmethod sql.qp/datetime-diff [:sqlserver :minute] [_driver _unit x y] (date-diff :minute x y))
 (defmethod sql.qp/datetime-diff [:sqlserver :second] [_driver _unit x y] (date-diff :second x y))
 
+(defn- comparison-lhs-datetimeoffset?
+  "True when [[sql.qp/*parent-honeysql-col-type-info*]] indicates the LHS of the enclosing comparison is a
+  `datetimeoffset` column."
+  [parent-info]
+  (or (= "datetimeoffset" (:database-type parent-info))
+      (isa? (:effective-type parent-info) :type/DateTimeWithZoneOffset)
+      (isa? (:base-type parent-info) :type/DateTimeWithZoneOffset)))
+
+(defn- maybe-attach-report-timezone
+  "Wrap `rhs` in `AT TIME ZONE '<report-tz-windows-name>'` when:
+
+    - the LHS of the enclosing comparison is a `datetimeoffset` column,
+    - a report timezone is configured, and
+    - `rhs` is a naive `datetime`/`datetime2` (nothing to preserve).
+
+  Otherwise return `rhs` unchanged. This restores the report-timezone offset that date bucketing drops.
+  Without it, SQL Server implicitly treats a naive `datetime2` as offset +00:00 when comparing against
+  `datetimeoffset`, shifting the filter window by the report tz offset (#78612)."
+  [rhs]
+  (let [report-windows-tz (some-> (driver-api/requested-timezone-id) zone-id->windows-zone)
+        rhs-naive?        (contains? #{"datetime" "datetime2"}
+                                     (h2x/type-info->db-type (h2x/type-info rhs)))]
+    (cond-> rhs
+      (and report-windows-tz
+           rhs-naive?
+           (comparison-lhs-datetimeoffset? sql.qp/*parent-honeysql-col-type-info*))
+      (h2x/at-time-zone report-windows-tz))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :relative-datetime]
+  [driver clause]
+  (maybe-attach-report-timezone
+   ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :absolute-datetime]
+  [driver clause]
+  (maybe-attach-report-timezone
+   ((get-method sql.qp/->honeysql [:sql :absolute-datetime]) driver clause)))
+
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
   (h2x/->datetime expr))
