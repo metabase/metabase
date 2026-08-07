@@ -472,6 +472,22 @@
         (request/with-current-user user-id
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
 
+(deftest user-local-settings-corrupted-column-test
+  (testing "user-local-settings falls back to {} instead of returning a non-map value when the `settings`
+           column can't be parsed back into JSON, e.g. after an encryption key rotation (metabase#76900)"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      ;; `json-in` passes strings through unchanged (assuming they're already-encoded JSON), so writing a
+      ;; non-JSON string here reproduces a `settings` column that fails to decrypt/parse on read: the `:out`
+      ;; transform's `encrypted-json-out` catches that failure and falls back to returning the raw string
+      ;; instead of a map.
+      (t2/update! :model/User user-id {:settings "not valid json"})
+      (is (= "not valid json" (t2/select-one-fn :settings :model/User :id user-id))
+          "sanity check: the column transform really does surface a raw string here")
+      (is (= {} (user/user-local-settings user-id))
+          "int-id arity guards against the non-map fallback")
+      (is (= {} (user/user-local-settings (t2/select-one :model/User :id user-id)))
+          "user-map arity guards against the non-map fallback"))))
+
 (deftest common-name-test
   (testing "common_name should be present depending on what is selected"
     (mt/with-temp [:model/User user {:first_name "John"
