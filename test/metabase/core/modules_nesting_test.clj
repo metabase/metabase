@@ -182,15 +182,32 @@
               deps (assoc-in base-config ['parent :api] '#{metabase.parent.internal}) 'parent))))))
 
 (deftest default-dependency-helpers-use-configured-prefixes-test
-  (let [config '{parent       {}
-                 parent.child {:ns-prefix metabase.special-child}}
-        seen-prefixes (promise)]
-    (with-redefs [dev.deps-graph/kondo-config (constantly config)
-                  dev.deps-graph/dependencies (fn [prefix->module]
-                                                (deliver seen-prefixes prefix->module)
-                                                [])]
-      (is (= [] (dev.deps-graph/external-usages 'parent)))
-      (is (= (dev.deps-graph/build-prefix->module config) @seen-prefixes)))))
+  (testing (str "Helpers reach `dependencies` through the arity that resolves against the current "
+                "module config, not by passing `nil`, which would select the flat pre-nesting "
+                "extraction and silently attribute nested namespaces to their top-level parent.")
+    (let [config '{parent       {}
+                   parent.child {:ns-prefix "metabase.special-child"}}
+          seen-args (promise)]
+      (with-redefs [dev.deps-graph/kondo-config (constantly config)
+                    ;; variadic: the helpers call the no-arg arity, and capturing the argument
+                    ;; vector is what distinguishes it from an explicit `nil` (flat resolution).
+                    dev.deps-graph/dependencies (fn [& args]
+                                                  (deliver seen-args (vec args))
+                                                  [])]
+        (is (= [] (dev.deps-graph/external-usages 'parent)))
+        ;; Timed deref: the promise is delivered only from inside the redef, so if `external-usages`
+        ;; ever stops calling `dependencies` a bare `@` would hang forever instead of failing, which
+        ;; is much harder to diagnose in CI than a red assertion.
+        (let [seen (deref seen-args 5000 ::not-delivered)]
+          (is (not= ::not-delivered seen)
+              "external-usages never called dependencies at all")
+          (is (= [] seen)
+              "external-usages must use the config-resolving no-arg arity, never (dependencies nil)")))))
+  (testing "and that no-arg arity builds its prefix map from the configured modules"
+    (let [config '{parent       {}
+                   parent.child {:ns-prefix "metabase.special-child"}}]
+      (is (= {"metabase.parent" 'parent, "metabase.special-child" 'parent.child}
+             (dev.deps-graph/build-prefix->module config))))))
 
 (deftest ^:parallel simulate-rename-preserves-nested-module-ownership-test
   (let [prefix->module {"metabase.parent" 'parent
