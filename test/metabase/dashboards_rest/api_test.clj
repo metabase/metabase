@@ -2262,7 +2262,6 @@
                                                                    :size_y                 4
                                                                    :parameter_mappings     [{:parameter_id "abc"
                                                                                              :card_id      123
-                                                                                             :hash         "abc"
                                                                                              :target       [:dimension [:template-tag "foo"]]}]
                                                                    :visualization_settings {}}]
                                                       :tabs      []}))]
@@ -2275,7 +2274,7 @@
                    :row                        4
                    :series                     []
                    :dashboard_tab_id           nil
-                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target ["dimension" ["template-tag" "foo"]]}]
+                   :parameter_mappings         [{:parameter_id "abc" :card_id 123, :target ["dimension" ["template-tag" "foo"]]}]
                    :visualization_settings     {}
                    :created_at                 true
                    :updated_at                 true
@@ -2289,7 +2288,7 @@
                    :size_y                 4
                    :col                    4
                    :row                    4
-                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target [:dimension [:template-tag "foo"]]}]
+                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :target [:dimension [:template-tag "foo"]]}]
                    :visualization_settings {}}]
                  (map (partial into {})
                       (t2/select [:model/DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
@@ -2445,7 +2444,6 @@
                                                          :size_y                 4
                                                          :parameter_mappings     [{:parameter_id "abc"
                                                                                    :card_id      123
-                                                                                   :hash         "abc"
                                                                                    :target       [:dimension [:template-tag "foo"]]}]
                                                          :visualization_settings {}}]
                                             :tabs      []}))))))

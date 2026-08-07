@@ -4,6 +4,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
@@ -69,7 +70,8 @@
   (mu/with-api-error-message
    [:and
     [:map
-     [:id ms/NonBlankString]]
+     [:id ms/NonBlankString]
+     [::mc/default [:map-of :keyword :any]]]
     [:map-of :keyword :any]]
    (deferred-tru "value must be a parameter map with an ''id'' key")))
 
@@ -1141,6 +1143,7 @@
    [:position                {:optional true} [:maybe ms/PositiveInt]]
    [:width                   {:optional true} [:enum "fixed" "full"]]
    [:archived                {:optional true} [:maybe :boolean]]
+   [:auto_apply_filters      {:optional true} [:maybe :boolean]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position     {:optional true} [:maybe ms/PositiveInt]]
    [:cache_ttl               {:optional true} [:maybe ms/PositiveInt]]

@@ -84,6 +84,7 @@
                                                     [:sequential [:ref ::parameter-mapping]]
                                                     [:set [:ref ::parameter-mapping]]]]]
    [:name                 {:optional true} :string]
+   [:required             {:optional true} [:maybe :boolean]]
    ;; ok now I know you're trying to mess with me with this camelCase key
    [:sectionId            {:optional true} ::lib.schema.common/non-blank-string]
    [:slug                 {:optional true} :string]
