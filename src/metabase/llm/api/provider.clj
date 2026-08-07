@@ -13,6 +13,7 @@
    [metabase.llm.health :as llm.health]
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.catalog :as catalog]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -78,6 +79,7 @@
   [:map
    [:model_ref [:maybe :string]]
    [:model [:maybe :string]]
+   [:model_name [:maybe :string]]
    [:connection_key [:maybe :string]]
    [:connection_name [:maybe :string]]
    [:selected_model_ref [:maybe :string]]
@@ -586,6 +588,7 @@
         conn-key                                        (llm.provider/model-ref->connection-key model-ref)]
     {:model_ref          model-ref
      :model              (llm.provider/model-ref->model model-ref)
+     :model_name         (catalog/model-name model-ref)
      :connection_key     conn-key
      :connection_name    (:name (llm.provider/connection conn-key))
      :selected_model_ref selected-model-ref

@@ -490,7 +490,7 @@
   (try
     (thunk)
     (finally
-      (llm.health/forget! conn-key))))
+      (llm.health/record-success! conn-key))))
 
 (defmacro ^:private with-failing-connection
   [conn-key & body]
@@ -513,6 +513,7 @@
           (is (=? {:model-ref          "openai/gpt-5.4"
                    :selected-model-ref "anthropic/claude-sonnet-4-6"
                    :fallback           {:model                  "openai/gpt-5.4"
+                                        :model_name             "GPT-5.4"
                                         :provider_name          "openai"
                                         :previous_model         "anthropic/claude-sonnet-4-6"
                                         :previous_provider_name "anthropic"}}

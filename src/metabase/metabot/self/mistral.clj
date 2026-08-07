@@ -45,6 +45,12 @@
   [model]
   (get-in supported-models [model :context-window]))
 
+(defn model-display-name
+  "What the model picker calls `model`, or nil when it is not one of the [[supported-models]] — the caller shows the
+  id itself rather than inventing a name for it."
+  [model]
+  (get supported-models model))
+
 (defn- whitelisted-id
   "The [[supported-models]] id a `/models` catalog entry resolves to, or nil when unsupported.
   Mistral models have a generic `:id` like `mistral-medium-latest` but `:aliases` contains version specific aliases

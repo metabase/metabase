@@ -1124,7 +1124,7 @@
             (is (=? [{:type      :data
                       :data-type "model_fallback"
                       :data      {:model                  "anthropic/claude-sonnet-4-6"
-                                  :model_name             "claude-sonnet-4-6"
+                                  :model_name             "Claude Sonnet 4.6"
                                   :provider_name          "anthropic"
                                   :previous_model         test-provider
                                   :previous_provider_name "openrouter"}}]
