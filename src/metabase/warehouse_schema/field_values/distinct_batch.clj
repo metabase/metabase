@@ -29,6 +29,7 @@
   (:require
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -123,8 +124,12 @@
   [table fields]
   (let [db-id          (:db_id table)
         driver         (:engine (t2/select-one :model/Database :id db-id))
-        hsql           (build-union driver table fields)
-        [sql & params] (sql.qp/format-honeysql driver hsql)
+        ;; Some drivers (e.g. BigQuery, to prefix table identifiers with the project id) need an
+        ;; active metadata provider for this database while resolving identifiers below -- unlike
+        ;; a normal MBQL query, this hand-built HoneySQL is compiled before `qp/process-query`
+        ;; (which would otherwise set this up) ever sees it (metabase#78525).
+        [sql & params] (qp.store/with-metadata-provider db-id
+                         (sql.qp/format-honeysql driver (build-union driver table fields)))
         result         (qp/process-query
                         {:database db-id
                          :type     :native
