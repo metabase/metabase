@@ -108,16 +108,16 @@ describe("AI Auditing routes", () => {
     },
   );
 
-  it("renders Usage stats at the canonical route", () => {
+  it("renders Usage stats at the canonical route", async () => {
     setup({ route: Urls.monitorAiAuditingUsage() });
 
-    expect(screen.getByText("Usage stats page")).toBeInTheDocument();
+    expect(await screen.findByText("Usage stats page")).toBeInTheDocument();
   });
 
-  it("renders full Metabot analytics when enabled and configured", () => {
+  it("renders full Metabot analytics when enabled and configured", async () => {
     setup({ route: "/monitor/ai-auditing/conversations" });
 
-    expect(screen.getByText("Conversations page")).toBeInTheDocument();
+    expect(await screen.findByText("Conversations page")).toBeInTheDocument();
   });
 
   it("blocks MCP analytics when MCP is disabled", () => {
@@ -127,7 +127,7 @@ describe("AI Auditing routes", () => {
     expect(screen.queryByText("MCP analytics page")).not.toBeInTheDocument();
   });
 
-  it("keeps the license upsell ahead of AI configuration", () => {
+  it("keeps the license upsell ahead of AI configuration", async () => {
     setup({
       route: Urls.monitorAiAuditingUsage(),
       upsell: true,
@@ -135,7 +135,7 @@ describe("AI Auditing routes", () => {
       isConfigured: false,
     });
 
-    expect(screen.getByText("Usage stats upsell")).toBeInTheDocument();
+    expect(await screen.findByText("Usage stats upsell")).toBeInTheDocument();
     expect(
       screen.queryByText("AI features are disabled"),
     ).not.toBeInTheDocument();
@@ -143,7 +143,7 @@ describe("AI Auditing routes", () => {
 
   it.each([false, true])(
     "renders CLI analytics unconditionally when upsell is %s",
-    (upsell) => {
+    async (upsell) => {
       setup({
         route: Urls.monitorAiAuditingCli(),
         upsell,
@@ -152,7 +152,7 @@ describe("AI Auditing routes", () => {
         mcpEnabled: false,
       });
 
-      expect(screen.getByText("CLI analytics page")).toBeInTheDocument();
+      expect(await screen.findByText("CLI analytics page")).toBeInTheDocument();
     },
   );
 

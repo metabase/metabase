@@ -1,15 +1,72 @@
+import { type ComponentType, Suspense, lazy } from "react";
+
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Route, redirect } from "metabase/router";
 
-import { CliAnalyticsPage } from "./cli-analytics/components/CliAnalyticsPage";
 import {
   McpAnalyticsAvailabilityLayout,
   MetabotAnalyticsAvailabilityLayout,
 } from "./components/AvailabilityLayouts";
-import { McpAnalyticsPage } from "./mcp-analytics/components/McpAnalyticsPage";
-import { ConversationDetailPage } from "./metabot-analytics/components/ConversationDetailPage";
-import { ConversationStatsPage } from "./metabot-analytics/components/ConversationStatsPage";
-import { ConversationsPage } from "./metabot-analytics/components/ConversationsPage";
-import { MetabotAnalyticsUpsellPage } from "./metabot-analytics/components/MetabotAnalyticsUpsellPage/MetabotAnalyticsUpsellPage";
+
+/**
+ * An AI auditing page, fetched the first time its route renders.
+ *
+ * The plugin registry assigns these routes on every page load, so whatever they
+ * name is in the initial bundle. The pages carry the charting and data grid
+ * stack, which no other page needs on first paint. Deferring them keeps the
+ * route shape eager, so matching and the availability gates are unaffected.
+ */
+function lazyPage(load: () => Promise<{ default: ComponentType }>) {
+  const Page = lazy(load);
+
+  return function SuspendedPage() {
+    return (
+      <Suspense
+        fallback={<DelayedLoadingAndErrorWrapper loading error={null} />}
+      >
+        <Page />
+      </Suspense>
+    );
+  };
+}
+
+const CliAnalyticsPage = lazyPage(() =>
+  import("./cli-analytics/components/CliAnalyticsPage").then(
+    ({ CliAnalyticsPage }) => ({ default: CliAnalyticsPage }),
+  ),
+);
+
+const McpAnalyticsPage = lazyPage(() =>
+  import("./mcp-analytics/components/McpAnalyticsPage").then(
+    ({ McpAnalyticsPage }) => ({ default: McpAnalyticsPage }),
+  ),
+);
+
+const ConversationDetailPage = lazyPage(() =>
+  import("./metabot-analytics/components/ConversationDetailPage").then(
+    ({ ConversationDetailPage }) => ({ default: ConversationDetailPage }),
+  ),
+);
+
+const ConversationStatsPage = lazyPage(() =>
+  import("./metabot-analytics/components/ConversationStatsPage").then(
+    ({ ConversationStatsPage }) => ({ default: ConversationStatsPage }),
+  ),
+);
+
+const ConversationsPage = lazyPage(() =>
+  import("./metabot-analytics/components/ConversationsPage").then(
+    ({ ConversationsPage }) => ({ default: ConversationsPage }),
+  ),
+);
+
+const MetabotAnalyticsUpsellPage = lazyPage(() =>
+  import("./metabot-analytics/components/MetabotAnalyticsUpsellPage/MetabotAnalyticsUpsellPage").then(
+    ({ MetabotAnalyticsUpsellPage }) => ({
+      default: MetabotAnalyticsUpsellPage,
+    }),
+  ),
+);
 
 export function getAiAuditingRoutes() {
   return (
