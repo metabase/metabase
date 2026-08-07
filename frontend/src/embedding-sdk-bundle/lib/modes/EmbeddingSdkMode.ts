@@ -15,11 +15,16 @@ import type {
   LegacyDrill,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
-import type { DashboardTabId, ParameterValueOrArray } from "metabase-types/api";
+import type {
+  CardId,
+  DashboardId,
+  DashboardTabId,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 
 export type ClickBehaviorTarget = {
   type: "dashboard" | "question";
-  id: number;
+  id: CardId | DashboardId;
   name: string;
   parameters: ParameterValues;
   /**
@@ -46,6 +51,13 @@ const getClickBehaviorTarget = (
     return null;
   }
 
+  if (targetId == null) {
+    console.warn(
+      `[SDK Navigation] Could not find ${linkType} with id ${targetId}`,
+    );
+    return null;
+  }
+
   const parameters = parameterMapping
     ? getParameterValuesBySlug(parameterMapping, {
         data,
@@ -54,16 +66,13 @@ const getClickBehaviorTarget = (
       })
     : {};
 
-  // Unjustified type cast. FIXME
-  const parameterIdValuePairs = (
-    parameterMapping
-      ? getParameterIdValuePairs(parameterMapping, {
-          data,
-          extraData,
-          clickBehavior,
-        })
-      : []
-  ) as [string, ParameterValueOrArray | null][];
+  const parameterIdValuePairs = parameterMapping
+    ? getParameterIdValuePairs(parameterMapping, {
+        data,
+        extraData,
+        clickBehavior,
+      })
+    : [];
 
   const entitiesMap =
     linkType === "dashboard" ? extraData?.dashboards : extraData?.questions;
