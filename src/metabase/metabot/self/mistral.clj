@@ -51,6 +51,8 @@
 
 (defn- list-all-models
   "Fetch the full Mistral model catalog (`GET /models`).
+  A 2xx whose body isn't a recognizable catalog throws rather than yielding an empty picker — see
+  [[chat-completions/models-catalog]].
   `:ai-proxy?` is not supported for Mistral and throws when true."
   [{:keys [credentials ai-proxy?]}]
   (when ai-proxy?
@@ -66,7 +68,7 @@
                                    :url     "/models"
                                    :as      :json
                                    :headers {"Content-Type" "application/json"}})]
-      (get-in res [:body :data]))
+      (chat-completions/models-catalog "Mistral" res))
     (catch Exception e
       (core/rethrow-api-error! "mistral" mistral-error-msg e))))
 

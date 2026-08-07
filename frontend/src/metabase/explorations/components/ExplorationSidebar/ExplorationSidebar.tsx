@@ -34,12 +34,14 @@ import type { ExplorationSortOrder } from "../../sidebar-preferences";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 
 import S from "./ExplorationSidebar.module.css";
+import { ExplorationSidebarSkeleton } from "./ExplorationSidebarSkeleton";
 import {
   ExplorationTreeContext,
   type ExplorationTreeContextValue,
   ExplorationTreeNode,
 } from "./ExplorationTreeNode";
 import {
+  type ExplorationSidebarContentMode,
   type ExplorationSidebarTabsInfo,
   type ExplorationTreeNode as ExplorationTreeNodeDataType,
   flattenTree,
@@ -61,6 +63,7 @@ interface ExplorationSidebarProps {
   onToggleShowHidden: () => void;
   sortOrder: ExplorationSortOrder;
   onChangeSortOrder: (sortOrder: ExplorationSortOrder) => void;
+  contentMode: ExplorationSidebarContentMode;
 }
 
 export function ExplorationSidebar({
@@ -79,6 +82,7 @@ export function ExplorationSidebar({
   onToggleShowHidden,
   sortOrder,
   onChangeSortOrder,
+  contentMode,
 }: ExplorationSidebarProps) {
   const navigate = useNavigate();
   const treeController = useTree({
@@ -204,9 +208,6 @@ export function ExplorationSidebar({
     ],
   );
 
-  const isEmptyDueToHidden =
-    !showHidden && tree.every((node) => !node.children?.length);
-
   if (!isOpen) {
     // we still want keyboard shortcuts to work, so the component should still be mounted
     return null;
@@ -214,6 +215,56 @@ export function ExplorationSidebar({
 
   const emptyTreeMessage =
     explorationSidebarTabsInfo[selectedSidebarTab].emptyTreeMessage;
+
+  let treeContent: React.ReactNode;
+  switch (contentMode) {
+    case "loading":
+      treeContent = <ExplorationSidebarSkeleton />;
+      break;
+    case "forbidden":
+      treeContent = (
+        <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
+          <Text fz="lg">
+            {t`You don't have permission to view these results.`}
+          </Text>
+        </Center>
+      );
+      break;
+    case "all-hidden":
+      treeContent = (
+        <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
+          <Text
+            c="text-secondary"
+            fs="italic"
+            data-testid="exploration-all-hidden"
+          >
+            {t`All items have been hidden.`}
+          </Text>
+        </Center>
+      );
+      break;
+    case "tree":
+      treeContent = (
+        <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
+          <ExplorationTreeContext.Provider value={treeContextValue}>
+            <Tree
+              role="tree"
+              tree={treeController}
+              TreeNode={ExplorationTreeNode}
+              wrapNodesInListItem
+            />
+          </ExplorationTreeContext.Provider>
+        </Box>
+      );
+      break;
+    case "empty":
+      treeContent = (
+        <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
+          <Text fz="lg">{emptyTreeMessage}</Text>
+        </Center>
+      );
+      break;
+  }
 
   return (
     <Stack h="100%" w="20%" miw="20.5rem" flex="none" mr="2rem">
@@ -248,27 +299,7 @@ export function ExplorationSidebar({
           onChangeSortOrder={onChangeSortOrder}
         />
       </Group>
-      {tree.length > 0 ? (
-        <Box flex={1} data-testid="exploration-page-sidebar" className={S.tree}>
-          <ExplorationTreeContext.Provider value={treeContextValue}>
-            <Tree
-              role="tree"
-              tree={treeController}
-              TreeNode={ExplorationTreeNode}
-              wrapNodesInListItem
-            />
-          </ExplorationTreeContext.Provider>
-          {isEmptyDueToHidden && (
-            <Text c="text-secondary" fs="italic" px="0.5rem" pl="1.75rem">
-              {t`All items have been hidden.`}
-            </Text>
-          )}
-        </Box>
-      ) : (
-        <Center flex={1} pl="0.5rem" pr="1rem" pb="3rem">
-          <Text fz="lg">{emptyTreeMessage}</Text>
-        </Center>
-      )}
+      {treeContent}
     </Stack>
   );
 }

@@ -121,7 +121,7 @@
    _query-params
    {query :query, lens-params :lens_params}
    :- [:map
-       [:query [:map [:database {:optional true} [:maybe :int]]]]
+       [:query ms/Map]
        [:lens_params {:optional true} [:maybe [:map-of :keyword :any]]]]]
   (let [transform (api/read-check :model/Transform id)]
     (transforms.core/check-feature-enabled! transform)

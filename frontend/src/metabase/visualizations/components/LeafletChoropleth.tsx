@@ -9,7 +9,7 @@ import type { GeoJSONData, Series } from "metabase-types/api";
 import { CardRenderer } from "./CardRenderer";
 import { computeMinimalBounds } from "./leaflet-bounds";
 
-type FeatureInteraction = {
+export type FeatureInteraction = {
   feature: Feature;
   event: MouseEvent;
 };
