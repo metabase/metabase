@@ -321,6 +321,43 @@
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
         (mt/user-http-request :crowberto :put 404 "llm/providers/anthropic" {:name "Anthropic"})))))
 
+(deftest update-follows-the-deployment-an-azure-connection-now-serves-test
+  (testing (str "Azure's model reference bakes in the deployment name, so renaming the deployment of the connection "
+                "Metabot is pointed at has to move the selection with it — otherwise the next request resolves a "
+                "deployment that no longer exists.")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "azure" "azure"
+                                                                    {:api-key         "azure-key"
+                                                                     :base-url        "https://r.services.ai.azure.com/openai"
+                                                                     :model-family    "openai"
+                                                                     :deployment-name "gpt-4.1-mini"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "azure/openai/gpt-4.1-mini"]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
+                                {:config {:deployment-name "gpt-4.1"}})
+          (is (= "azure/openai/gpt-4.1" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest update-leaves-a-selection-it-does-not-compose-alone-test
+  (testing "a type whose model is chosen independently of its credentials keeps the model the admin selected"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-opus-4-1"]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic" {:config {:api-key "sk-ant-rotated"}})
+          (is (= "anthropic/claude-opus-4-1" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest update-leaves-a-selection-on-another-connection-alone-test
+  (testing "editing an Azure connection Metabot is not pointed at does not steal the selection"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})
+                                                        (connection "azure" "azure"
+                                                                    {:api-key         "azure-key"
+                                                                     :base-url        "https://r.services.ai.azure.com/openai"
+                                                                     :model-family    "openai"
+                                                                     :deployment-name "gpt-4.1-mini"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-opus-4-1"]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
+                                {:config {:deployment-name "gpt-4.1"}})
+          (is (= "anthropic/claude-opus-4-1" (metabot.settings/llm-metabot-provider))))))))
+
 (deftest delete-removes-the-connection-test
   (mt/with-temporary-raw-setting-values [llm-metabot-provider "openai/gpt-4.1-mini"]
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})
@@ -377,6 +414,18 @@
         (mt/user-http-request :crowberto :delete 204 "llm/providers/anthropic")
         (is (= "openai/gpt-5.4" (metabot.settings/llm-metabot-provider)))))))
 
+(deftest delete-falls-back-to-a-connection-that-composes-its-own-model-test
+  (testing "an Azure connection that names its deployment is a usable fallback, even though its type has no default"
+    (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-opus-4-1"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})
+                                                        (connection "azure" "azure"
+                                                                    {:api-key         "azure-key"
+                                                                     :base-url        "https://r.services.ai.azure.com/openai"
+                                                                     :model-family    "openai"
+                                                                     :deployment-name "gpt-4.1-mini"})]]
+        (mt/user-http-request :crowberto :delete 204 "llm/providers/anthropic")
+        (is (= "azure/openai/gpt-4.1-mini" (metabot.settings/llm-metabot-provider)))))))
+
 (deftest delete-unknown-connection-is-a-404-test
   (mt/with-temporary-setting-values [llm-providers []]
     (mt/user-http-request :crowberto :delete 404 "llm/providers/nope")))
@@ -409,9 +458,9 @@
     (mt/user-http-request :rasta :delete 403 "llm/providers/anthropic")
     (mt/user-http-request :rasta :get 403 "llm/models")))
 
-(deftest models-are-grouped-by-connection-test
-  (mt/with-temporary-setting-values [llm-providers [(connection "grouped-anthropic" "anthropic" {:api-key "sk-ant-a"})
-                                                    (connection "grouped-openai" "openai" {:api-key "sk-o"})]]
+(deftest models-are-listed-per-connection-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "listed-anthropic" "anthropic" {:api-key "sk-ant-a"})
+                                                    (connection "listed-openai" "openai" {:api-key "sk-o"})]]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                 (fn [provider _opts]
                                   (case provider
@@ -419,18 +468,34 @@
                                                           {:id "claude-haiku-4-5" :display_name "Claude Haiku 4.5"}]}
                                     "openai"    {:models [{:id "gpt-5.4" :display_name "gpt-5.4"}
                                                           {:id "gpt-4.1-mini" :display_name "gpt-4.1-mini"}]}))]
-      (testing "each connection reports its own models, sorted into picker groups"
-        (is (= [{:key    "grouped-anthropic"
-                 :name   "grouped-anthropic"
+      (testing "each connection reports its own models, in the order the provider lists them"
+        (is (= [{:key    "listed-anthropic"
+                 :name   "listed-anthropic"
                  :type   "anthropic"
-                 :models [{:id "claude-haiku-4-5" :display_name "Claude Haiku 4.5" :group "Haiku"}
-                          {:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6" :group "Sonnet"}]}
-                {:key    "grouped-openai"
-                 :name   "grouped-openai"
+                 :models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
+                          {:id "claude-haiku-4-5" :display_name "Claude Haiku 4.5"}]}
+                {:key    "listed-openai"
+                 :name   "listed-openai"
                  :type   "openai"
-                 :models [{:id "gpt-4.1-mini" :display_name "gpt-4.1-mini" :group "GPT-4.1"}
-                          {:id "gpt-5.4" :display_name "gpt-5.4" :group "GPT-5.4"}]}]
+                 :models [{:id "gpt-5.4" :display_name "gpt-5.4"}
+                          {:id "gpt-4.1-mini" :display_name "gpt-4.1-mini"}]}]
                (mt/user-http-request :crowberto :get 200 "llm/models")))))))
+
+(deftest models-are-refetched-when-a-credential-changes-test
+  (testing "a rotated key gets a cache entry of its own rather than the model list the old key produced"
+    (let [keys-seen (atom [])]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                             (swap! keys-seen conj (:api-key credentials))
+                                                             {:models [{:id "claude-sonnet-4-6"
+                                                                        :display_name "Claude Sonnet 4.6"}]})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "cache-keying" "anthropic"
+                                                                      {:api-key "sk-ant-first"})]]
+          (mt/user-http-request :crowberto :get 200 "llm/models")
+          (mt/user-http-request :crowberto :get 200 "llm/models"))
+        (mt/with-temporary-setting-values [llm-providers [(connection "cache-keying" "anthropic"
+                                                                      {:api-key "sk-ant-rotated"})]]
+          (mt/user-http-request :crowberto :get 200 "llm/models"))
+        (is (= ["sk-ant-first" "sk-ant-rotated"] @keys-seen))))))
 
 (deftest models-for-a-connection-that-names-its-own-model-test
   (testing "Azure serves a deployment its listing endpoint never returns, so the connection's own model is reported"
@@ -469,7 +534,7 @@
                 {:key    "working-openai"
                  :name   "working-openai"
                  :type   "openai"
-                 :models [{:id "gpt-5.4" :display_name "gpt-5.4" :group "GPT-5.4"}]}]
+                 :models [{:id "gpt-5.4" :display_name "gpt-5.4"}]}]
                (mt/user-http-request :crowberto :get 200 "llm/models")))))))
 
 (deftest models-isolate-provider-outages-test

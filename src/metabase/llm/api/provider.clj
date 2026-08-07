@@ -5,7 +5,8 @@
   these endpoints present it as a collection of rows so secrets can be masked on the way out and preserved on the
   way back in, and so a connection is only saved once its credentials have been shown to work."
   (:require
-   [clojure.core.memoize :as memoize]
+   [clojure.core.cache :as cache]
+   [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -59,8 +60,7 @@
 (def ^:private llm-model-response-schema
   [:map
    [:id :string]
-   [:display_name :string]
-   [:group {:optional true} [:maybe :string]]])
+   [:display_name :string]])
 
 (def ^:private models-response-schema
   [:sequential
@@ -115,64 +115,6 @@
 
 ;;; ------------------------------------------------ Model listing -------------------------------------------------
 
-(defn- title-case-token
-  [token]
-  (case token
-    "openai" "OpenAI"
-    "claude" "Claude"
-    (str/capitalize token)))
-
-(defn- anthropic-model-group
-  [{:keys [id]}]
-  (let [tokens (str/split id #"-")]
-    (or (some->> tokens
-                 (filter #{"haiku" "sonnet" "opus"})
-                 first
-                 title-case-token)
-        (some->> tokens
-                 (take 2)
-                 seq
-                 (map title-case-token)
-                 (str/join " ")))))
-
-(defn- bedrock-model-group
-  [{:keys [id]}]
-  (cond
-    (str/starts-with? id "anthropic.") "Anthropic"
-    (str/starts-with? id "openai.")    "OpenAI"
-    :else                              nil))
-
-(defn- openai-model-group
-  [{:keys [id]}]
-  (when-let [version (second (re-find #"^gpt-(\d+(?:\.\d+)?)" id))]
-    (str "GPT-" version)))
-
-(defn- openrouter-model-group
-  [{:keys [display_name id]}]
-  (cond
-    (and display_name (str/includes? display_name ": "))
-    (-> display_name (str/split #": " 2) first)
-
-    (and id (str/includes? id "/"))
-    (-> id (str/split #"/" 2) first title-case-token)))
-
-(defn- decorate-provider-model
-  [provider model]
-  (case provider
-    "anthropic"  (assoc model :group (anthropic-model-group model))
-    "bedrock"    (assoc model :group (bedrock-model-group model))
-    "openai"     (assoc model :group (openai-model-group model))
-    "openrouter" (assoc model :group (openrouter-model-group model))
-    model))
-
-(defn- decorate-provider-models
-  [provider models]
-  (let [decorated (map #(decorate-provider-model provider %) models)]
-    (if (contains? #{"anthropic" "bedrock" "openai" "openrouter"} provider)
-      (let [grouped (group-by :group decorated)]
-        (->> grouped keys sort (mapcat #(get grouped %)) vec))
-      (vec decorated))))
-
 (defn- provider-client-error?
   "Whether a provider api-error is a client-side 4xx we should surface rather than treat as an outage. Covers
   rejected or missing credentials (401/403) and a request the provider refused outright."
@@ -202,23 +144,33 @@
                                                                model (assoc :model model))))]
           {:models (if configured-model
                      [{:id configured-model :display_name (last (str/split configured-model #"/"))}]
-                     (decorate-provider-models type listed))})
+                     (vec listed))})
         (catch clojure.lang.ExceptionInfo e
           (if (provider-client-error? e)
             {:models [] :error (.getMessage e)}
             (throw e)))))))
 
-(def ^:private list-connection-models
-  (memoize/ttl
-   (fn [conn config-override model]
-     (list-connection-models* conn config-override model))
-   :ttl/threshold 60000))
+(def ^:private models-cache-ttl-ms
+  "How long a connection's model list is reused. Long enough that an admin page load does not fan out to every
+  provider on every render, short enough that a model a provider has just granted shows up without a restart."
+  60000)
+
+(defonce ^:private models-cache
+  (atom (cache/ttl-cache-factory {} :ttl models-cache-ttl-ms)))
+
+(defn- models-cache-key
+  "What a cached model list is filed under. The config is reduced to a hash rather than held as-is: it carries the
+  connection's API key, and a cache entry outlives the connection that produced it. Hashing it also retires the
+  entry the moment a credential is rotated, instead of serving the old list until the TTL runs out."
+  [{conn-key :key :keys [type config]}]
+  [conn-key type (hash config)])
 
 (defn- connection-models-response
   [{conn-key :key conn-name :name :keys [type] :as conn}]
   (merge {:key conn-key :name conn-name :type type}
          (try
-           (list-connection-models conn nil nil)
+           (cache.wrapped/lookup-or-miss models-cache (models-cache-key conn)
+                                         (fn [_] (list-connection-models* conn nil nil)))
            (catch Exception e
              (log/warn e "Failed to list models for LLM provider connection" {:connection conn-key})
              {:models [] :error (.getMessage e)}))))
@@ -250,14 +202,20 @@
       (when error
         (throw (ex-info error {:status-code 400 :api-error true}))))))
 
+(defn- connection-model-ref
+  "The `connection-key/model` reference that points Metabot at `conn`: the model the connection's own config names
+  (Azure's deployment) when it has one, and the type's default model otherwise. Nil when the type neither names nor
+  defaults to a model."
+  [{conn-key :key :keys [type config]}]
+  (when-let [model (or (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
+                       (llm.provider/default-model type))]
+    (str conn-key "/" model)))
+
 (defn- fallback-model-ref
   "A model reference to fall back to once the connection Metabot was pointed at is gone: the first remaining
-  connection that has a default model, or nil to leave Metabot unconfigured."
+  connection that names a model, or nil to leave Metabot unconfigured."
   []
-  (some (fn [{:keys [key type]}]
-          (when-let [model (llm.provider/default-model type)]
-            (str key "/" model)))
-        (llm.provider/connections)))
+  (some connection-model-ref (llm.provider/connections)))
 
 (defenterprise cancel-managed-ai-subscription!
   "Cancel the Metabase Cloud add-on that backs the Metabase-managed provider, called when its connection is
@@ -278,11 +236,25 @@
   "Point Metabot at a freshly created connection when it had nothing usable to run on, so connecting the first
   provider leaves the instance working rather than connected-but-with-no-model-selected. An existing selection that
   still resolves is left alone — adding a second provider must not silently switch Metabot over to it."
-  [{conn-key :key :keys [type config]} requested-model]
-  (when-let [model (or (not-empty requested-model)
-                       (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
-                       (llm.provider/default-model type))]
-    (setting/set! :llm-metabot-provider (str conn-key "/" model))))
+  [{conn-key :key :as conn} requested-model]
+  (when-let [model-ref (if (not-empty requested-model)
+                         (str conn-key "/" requested-model)
+                         (connection-model-ref conn))]
+    (setting/set! :llm-metabot-provider model-ref)))
+
+(defn- follow-edited-connection-model!
+  "Keep `llm-metabot-provider` on the model an edited connection actually serves.
+
+  A model reference stores the model as a string rather than as a live lookup, so for a type whose model comes from
+  its own config — Azure, whose reference bakes in `{family}/{deployment-name}` — editing the connection can leave
+  the selection naming a deployment that no longer exists. The connection still reports usable, and the next
+  request fails at the provider. Types whose model is chosen independently of their credentials are left alone."
+  [{conn-key :key :keys [type config] :as conn}]
+  (when (and (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
+             (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider))))
+    (let [model-ref (connection-model-ref conn)]
+      (when-not (= model-ref (metabot.settings/llm-metabot-provider))
+        (setting/set! :llm-metabot-provider model-ref)))))
 
 ;;; -------------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -366,6 +338,7 @@
     (llm.provider/validate-config! (:type merged) (:config merged))
     (verify-credentials! merged (:config merged) model)
     (llm.provider/set-connections! (assoc stored idx merged))
+    (follow-edited-connection-model! merged)
     (connection-response (assoc merged :source :db))))
 
 (api.macros/defendpoint :delete "/providers/:key" :- :nil
