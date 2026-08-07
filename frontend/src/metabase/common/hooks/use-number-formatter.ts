@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import {
   type FormatNumberOptions,
   formatNumber,

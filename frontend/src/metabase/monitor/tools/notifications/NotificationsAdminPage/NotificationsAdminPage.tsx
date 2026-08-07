@@ -23,7 +23,7 @@ import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { push, useLocation, useParams } from "metabase/router";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NotificationId, UserId } from "metabase-types/api";
@@ -57,6 +57,7 @@ export const NotificationsAdminPage = () => {
   const notificationId = Urls.extractEntityId(notificationIdParam);
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const clearSelected = useCallback(() => setRowSelection({}), []);
@@ -161,7 +162,7 @@ export const NotificationsAdminPage = () => {
 
   const handleRowClick = (id: NotificationId) => {
     trackAlertsManagementAlertOpened(id, "table_row");
-    dispatch(push(Urls.monitorNotificationDetail(id)));
+    navigate(Urls.monitorNotificationDetail(id));
   };
 
   const handleSearchChange = (query: string) => {
@@ -172,8 +173,8 @@ export const NotificationsAdminPage = () => {
   };
 
   const handleSidebarClose = useCallback(() => {
-    dispatch(push(Urls.monitorNotifications()));
-  }, [dispatch]);
+    navigate(Urls.monitorNotifications());
+  }, [navigate]);
 
   const deleteNotifications = useCallback(
     async (
@@ -198,7 +199,7 @@ export const NotificationsAdminPage = () => {
           notificationId !== undefined &&
           notificationIds.includes(notificationId)
         ) {
-          dispatch(push(Urls.monitorNotifications()));
+          navigate(Urls.monitorNotifications());
         }
       } catch {
         trackAlertsManagementAlertsDeleted(triggeredFrom, "failure", count);
@@ -210,7 +211,7 @@ export const NotificationsAdminPage = () => {
         );
       }
     },
-    [bulkAction, clearSelected, dispatch, notificationId],
+    [bulkAction, clearSelected, dispatch, notificationId, navigate],
   );
 
   const handleDeleteBulk = useCallback(() => {
@@ -337,7 +338,6 @@ export const NotificationsAdminPage = () => {
           <Flex gap="md" align="center">
             <NotificationsSearchInput
               value={urlState.query}
-              isLoading={isFetching}
               onChange={handleSearchChange}
             />
             <NotificationsFilters state={urlState} onChange={patchUrlState} />

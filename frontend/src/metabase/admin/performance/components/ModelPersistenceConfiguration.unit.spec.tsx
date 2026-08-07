@@ -7,8 +7,8 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { useGetSettingsQuery } from "metabase/api";
 import { createMockState } from "metabase/redux/store/mocks";
+import { useGetSettingsQuery } from "metabase/settings";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { ModelPersistenceConfiguration } from "./ModelPersistenceConfiguration";

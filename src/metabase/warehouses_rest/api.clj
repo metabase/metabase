@@ -134,7 +134,7 @@
     (assoc db
            :native_permissions
            (if (= :query-builder-and-native
-                  (perms/full-db-permission-for-user
+                  (perms/full-database-permission-for-user
                    api/*current-user-id*
                    :perms/create-queries
                    (u/the-id db)))
@@ -351,7 +351,7 @@
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})
         ;; everything below walks the list one database at a time
-        _   (perms/prime-db-perms-cache {:db-ids (into #{} (map :id) dbs)})]
+        _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query? :can-write-metadata? can-write-metadata?)
       include-schemas?             add-schemas
@@ -984,7 +984,7 @@
    {{:keys [engine details]} :details} :- [:map
                                            [:details [:map
                                                       [:engine  DBEngineString]
-                                                      [:details :map]]]]]
+                                                      [:details ms/Map]]]]]
   (api/check-superuser)
   (let [details-or-error (warehouses/test-connection-details engine details)]
     ;; details that come back without a `:valid` key at all are... valid!
@@ -1083,6 +1083,8 @@
        [:details            {:optional true} [:maybe ms/Map]]
        [:write_data_details {:optional true} [:maybe ms/Map]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+       [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
+       [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
        [:description        {:optional true} [:maybe :string]]
        [:caveats            {:optional true} [:maybe :string]]
        [:points_of_interest {:optional true} [:maybe :string]]
@@ -1411,6 +1413,7 @@
         filter-schemas-by-tables (fn [schemas]
                                    (if (or can-query? can-write-metadata?)
                                      (let [tables (t2/select :model/Table :db_id id :active true)
+                                           _ (perms/prime-table-perms-cache {:db-ids #{id}})
                                            filtered-tables (cond->> tables
                                                              can-query?          (filter mi/can-query?)
                                                              can-write-metadata? (filter mi/can-write?))

@@ -316,3 +316,50 @@ describe("bounded entry size", () => {
     expect(message).toContain("truncated");
   });
 });
+
+describe("build stamping", () => {
+  // The collector is a singleton, so an id set here would follow the module
+  // into every later test.
+  afterEach(() => devDiagnostics.setBuildId(0));
+
+  it("stamps entries with the bundle generation that was loaded", () => {
+    devDiagnostics.setBuildId(2);
+    console.error("from build two");
+
+    // What lets a reader drop errors an earlier, half-finished edit produced
+    // without dropping the ones the app is failing with now.
+    expect(getLastEntry(devDiagnostics.getEntries()).buildId).toBe(2);
+  });
+
+  it("re-stamps as the preview rebuilds", () => {
+    devDiagnostics.setBuildId(2);
+    console.error("from build two");
+    devDiagnostics.setBuildId(3);
+    console.error("from build three");
+
+    expect(devDiagnostics.getEntries().map((entry) => entry.buildId)).toEqual([
+      2, 3,
+    ]);
+  });
+
+  it("leaves entries unstamped until a bundle has loaded", () => {
+    console.error("thrown by the preview page itself");
+
+    // Nothing about the app's own code, so no build owns it: it stays visible
+    // however many times the bundle is rebuilt.
+    expect(getLastEntry(devDiagnostics.getEntries()).buildId).toBeNull();
+  });
+
+  it("treats a missing or unbuilt id as no build at all", () => {
+    // `Number(null)` for an absent response header, and 0 from a dev server
+    // that has not finished a build — neither may pass as a real generation,
+    // or every entry would be filtered as stale.
+    devDiagnostics.setBuildId(Number.NaN);
+    console.error("no header");
+    expect(getLastEntry(devDiagnostics.getEntries()).buildId).toBeNull();
+
+    devDiagnostics.setBuildId(0);
+    console.error("nothing built yet");
+    expect(getLastEntry(devDiagnostics.getEntries()).buildId).toBeNull();
+  });
+});

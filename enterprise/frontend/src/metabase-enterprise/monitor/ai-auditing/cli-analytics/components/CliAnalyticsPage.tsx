@@ -2,11 +2,11 @@ import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { useLocation } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { Flex, Loader, SimpleGrid, Stack, Tabs, Title } from "metabase/ui";
 import {
   VIEW_AGENT_API_CALLS,

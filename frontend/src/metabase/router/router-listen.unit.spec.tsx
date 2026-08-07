@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { Outlet, Route, push, subscribeLocation } from "metabase/router";
+import { Outlet, Route, navigate, subscribeLocation } from "metabase/router";
 
 // `subscribeLocation` fires a callback on every location change and returns an
 // unsubscribe function, standing in for v3's `router.listen`.
@@ -30,14 +30,14 @@ const tree = (
 
 describe("subscribeLocation", () => {
   it("fires the callback on navigation and stops after unsubscribe", async () => {
-    const { store } = renderWithProviders(tree, {
+    renderWithProviders(tree, {
       withRouter: true,
       initialRoute: "/",
     });
 
     await screen.findByTestId("seen");
 
-    store.dispatch(push("/other"));
+    navigate("/other");
 
     await screen.findByText("other");
     expect(screen.getByTestId("seen")).toHaveTextContent("/other");

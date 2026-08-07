@@ -1,10 +1,13 @@
+import type { SkipToken } from "@reduxjs/toolkit/query";
 import dayjs from "dayjs";
-import type { LocationSensorState } from "react-use/lib/useLocation";
-import { match } from "ts-pattern";
 
-import type { DispatchFn } from "metabase/redux";
-import { replace } from "metabase/router";
-import type { Comment, CommentEntityType, EntityId } from "metabase-types/api";
+import { skipToken } from "metabase/api";
+import { isWithinIframe } from "metabase/utils/iframe";
+import type {
+  Comment,
+  CommentTarget,
+  ListCommentsRequest,
+} from "metabase-types/api";
 
 import type { CommentThread } from "./types";
 
@@ -75,30 +78,6 @@ export function getCommentNodeId(comment: Comment) {
   return `comment-${comment.id}`;
 }
 
-export function getCommentsUrl({
-  childTargetId,
-  targetId,
-  targetType,
-  comment,
-}: {
-  childTargetId: EntityId | null;
-  targetId: EntityId;
-  targetType: CommentEntityType;
-  comment: Comment | undefined;
-}) {
-  return match(targetType)
-    .with("document", () => {
-      const childTargetUrl = `/document/${targetId}/comments/${childTargetId}`;
-
-      if (comment) {
-        return `${childTargetUrl}#${getCommentNodeId(comment)}`;
-      }
-
-      return childTargetUrl;
-    })
-    .exhaustive();
-}
-
 export function formatCommentDate(dateOrString: string | Date) {
   const date =
     dateOrString instanceof Date ? dateOrString : new Date(dateOrString);
@@ -123,17 +102,12 @@ export function formatCommentDate(dateOrString: string | Date) {
   }).format(date);
 }
 
-export function deleteNewParamFromURLIfNeeded(
-  location: LocationSensorState,
-  dispatch: DispatchFn,
-) {
-  const search = new URLSearchParams(location.search);
-
-  if (search.get("new") == null) {
-    return;
+export function getListCommentsQuery(
+  target: CommentTarget | null | undefined,
+): ListCommentsRequest | SkipToken {
+  if (!target || isWithinIframe()) {
+    return skipToken;
   }
 
-  search.delete("new");
-  const newSearch = search.toString();
-  dispatch(replace({ pathname: location.pathname, search: newSearch }));
+  return target;
 }

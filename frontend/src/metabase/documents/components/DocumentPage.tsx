@@ -1,7 +1,6 @@
 import { useForceUpdate } from "@mantine/hooks";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import dayjs from "dayjs";
 import {
   type ReactNode,
   useCallback,
@@ -28,6 +27,7 @@ import {
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyModal } from "metabase/common/components/CopyModal";
+import { getFormattedTime } from "metabase/common/components/DateTime";
 import {
   LeaveConfirmModal,
   LeaveRouteConfirmModal,
@@ -38,7 +38,7 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import { Outlet, push, replace, useLocation, useParams } from "metabase/router";
+import { Outlet, useLocation, useNavigate, useParams } from "metabase/router";
 import { Box } from "metabase/ui";
 import { extractEntityId } from "metabase/urls";
 import * as Urls from "metabase/urls";
@@ -121,6 +121,7 @@ export const DocumentPage = () => {
   const previousLocationKey = usePrevious(location.key);
   const forceUpdate = useForceUpdate();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
@@ -347,7 +348,7 @@ export const DocumentPage = () => {
         const documentAst = editorInstance.getJSON();
         const name =
           documentTitle ||
-          t`Untitled document - ${dayjs().local().format("MMMM D, YYYY")}`;
+          t`Untitled document - ${getFormattedTime(new Date(), "day", { local: true })}`;
 
         const newDocumentData = {
           name,
@@ -362,7 +363,7 @@ export const DocumentPage = () => {
                   const _document = response.data;
                   trackDocumentUpdated(_document);
                   scheduleNavigation(() => {
-                    dispatch(push(Urls.document(_document)));
+                    navigate(Urls.document(_document));
                   });
                 }
                 return response;
@@ -376,7 +377,7 @@ export const DocumentPage = () => {
                 const _document = response.data;
                 trackDocumentCreated(_document);
                 scheduleNavigation(() => {
-                  dispatch(replace(Urls.document(_document)));
+                  navigate(Urls.document(_document), { replace: true });
                 });
               }
               return response;
@@ -414,6 +415,7 @@ export const DocumentPage = () => {
       scheduleNavigation,
       dispatch,
       sendToast,
+      navigate,
     ],
   );
 
@@ -584,7 +586,7 @@ export const DocumentPage = () => {
                 onSaved={(document) => {
                   setDuplicateModalMode(null);
                   scheduleNavigation(() => {
-                    dispatch(push(Urls.document(document)));
+                    navigate(Urls.document(document));
                   });
                 }}
                 entityObject={documentData}

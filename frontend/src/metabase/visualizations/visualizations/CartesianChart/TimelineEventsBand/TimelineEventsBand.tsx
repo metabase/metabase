@@ -31,6 +31,7 @@ interface TimelineEventsBandProps {
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
+  onSeeAllEvents?: (events: TimelineEvent[]) => void;
 }
 
 export const TimelineEventsBand = ({
@@ -44,6 +45,7 @@ export const TimelineEventsBand = ({
   onOpenTimelines,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
+  onSeeAllEvents,
 }: TimelineEventsBandProps) => {
   const gridBottom = chartSize.height - chartLayout.padding.bottom;
   const trackTop = gridBottom + TIMELINE_EVENTS_BAND.marginY;
@@ -123,6 +125,7 @@ export const TimelineEventsBand = ({
           onOpenTimelines={onOpenTimelines}
           onSelectTimelineEvents={onSelectTimelineEvents}
           onDeselectTimelineEvents={onDeselectTimelineEvents}
+          onSeeAllEvents={onSeeAllEvents}
         />
       ))}
     </div>

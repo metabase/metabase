@@ -43,7 +43,6 @@ export const CollectionPickerModal = ({
   title = t`Choose a collection`,
   entityType,
   isDisabledItem: isDisabledItemProp,
-  isHiddenItem: isHiddenItemProp,
   isSelectableItem: isSelectableItemProp,
   onChange,
   ...props

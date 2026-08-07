@@ -2,7 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
+import { useUserSetting } from "metabase/settings";
 import {
   Button,
   Flex,

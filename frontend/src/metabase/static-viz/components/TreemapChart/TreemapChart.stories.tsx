@@ -7,13 +7,12 @@ import {
 import { color } from "metabase/ui/colors";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
+import { data } from "metabase/visualizations/visualizations/TreemapChart/stories-data";
 
 import {
   type StaticChartProps,
   StaticVisualization,
 } from "../StaticVisualization";
-
-import { data } from "./stories-data";
 
 export default {
   title: "Viz/Static Viz/TreemapChart",

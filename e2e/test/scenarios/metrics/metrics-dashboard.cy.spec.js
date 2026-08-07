@@ -177,8 +177,8 @@ describe("scenarios > metrics > dashboard", () => {
           cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
           cy.findByTestId("visualization-root")
             .should("be.visible")
-            .and("have.attr", "data-viz-ui-name", "Line");
-          H.echartsContainer().should("be.visible");
+            .and("have.attr", "data-viz-ui-name", "Number");
+          cy.findByTestId("scalar-value").should("have.text", "18,760");
         });
 
         cy.log("Assert we can save the dashboard with the metric");
@@ -188,8 +188,8 @@ describe("scenarios > metrics > dashboard", () => {
           cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
           cy.findByTestId("visualization-root")
             .should("be.visible")
-            .and("have.attr", "data-viz-ui-name", "Line");
-          H.echartsContainer().should("be.visible");
+            .and("have.attr", "data-viz-ui-name", "Number");
+          cy.findByTestId("scalar-value").should("have.text", "18,760");
         });
       },
     );
@@ -226,7 +226,7 @@ describe("scenarios > metrics > dashboard", () => {
       curateMetricDimension(metric.id, "Category");
       H.visitDashboard(dashboard.id);
     });
-    H.getDashboardCard().findByTestId("chart-container").should("be.visible");
+    H.getDashboardCard().findByText("18,760").should("be.visible");
     cy.findByTestId("dashboard-header").within(() => {
       cy.findByLabelText("Edit dashboard").click();
       cy.findByLabelText("Add a filter or parameter").click();

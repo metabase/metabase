@@ -7,11 +7,11 @@ import {
 } from "@tiptap/pm/model";
 import { match } from "ts-pattern";
 
+import { mbProtocolModelToSuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import {
   METABSE_PROTOCOL_MD_LINK,
   createMetabaseProtocolLink,
-} from "metabase/metabot/utils/links";
-import { mbProtocolModelToSuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
+} from "metabase/urls";
 
 function serializeNodes(nodes: JSONContent[]): string {
   return nodes

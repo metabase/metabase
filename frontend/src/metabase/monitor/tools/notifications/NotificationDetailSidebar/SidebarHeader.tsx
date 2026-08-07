@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   ActionIcon,
   Flex,
@@ -39,6 +39,7 @@ export const SidebarHeader = ({
 }: SidebarHeaderProps) => {
   const cardName = notification?.payload?.card?.name ?? t`Untitled question`;
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const isEditDisabled =
     notification == null || isQuestionLoading || isBulkLoading;
 
@@ -52,7 +53,7 @@ export const SidebarHeader = ({
   const handleNavigate = (id: NotificationId | undefined) => {
     if (id !== undefined) {
       trackAlertsManagementAlertOpened(id, "sidebar_navigation");
-      dispatch(push(Urls.monitorNotificationDetail(id)));
+      navigate(Urls.monitorNotificationDetail(id));
     }
   };
 

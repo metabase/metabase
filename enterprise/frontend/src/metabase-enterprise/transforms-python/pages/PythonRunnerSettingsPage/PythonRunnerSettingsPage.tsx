@@ -5,7 +5,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 
 export function PythonRunnerSettingsPage() {
   const isHosted = useSetting("is-hosted?");

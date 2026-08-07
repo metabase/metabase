@@ -208,11 +208,8 @@ const elements = [
     mode: "full",
     enforceSharedTiers: false,
   }),
-  createElement({
-    type: "shared",
-    name: "selectors",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "selectors" }),
+  createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "status" }),
   createElement({
@@ -307,6 +304,7 @@ const elements = [
     pattern: "enterprise/frontend/src/metabase-enterprise/**",
     mode: "full",
   }),
+  createElement({ type: "feature", name: "explorations" }),
   createElement({ type: "feature", name: "metrics" }),
   createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),

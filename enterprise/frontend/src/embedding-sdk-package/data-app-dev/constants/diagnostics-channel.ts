@@ -7,6 +7,8 @@ export const DATA_APP_DIAGNOSTICS_URL = "/__data-app/diagnostics";
 
 export const START_EVENT_ID_PARAM = "startEventId";
 
+export const INCLUDE_STALE_PARAM = "includeStale";
+
 export const DATA_APP_DIAGNOSTICS_LIMIT = 200;
 
 // Requests outrun every other kind by orders of magnitude, so under one shared

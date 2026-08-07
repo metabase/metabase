@@ -80,7 +80,9 @@
                              :archived false
                              {:order-by [[:%lower.name :asc]]})
         table-ids (into #{} (keep :table_id) segments)]
-    (perms/prime-table-perms-cache {:table-ids table-ids})
+    (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
+                                                 (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
+                                    :table-ids table-ids})
     (-> (filterv mi/can-read? segments)
         (t2/hydrate :creator :definition_description))))
 
@@ -119,7 +121,7 @@
    _query-params
    body :- [:map
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
-            [:definition              {:optional true} [:maybe :map]]
+            [:definition              {:optional true} [:maybe ms/Map]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:caveats                 {:optional true} [:maybe :string]]
