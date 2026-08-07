@@ -1,27 +1,22 @@
-import cx from "classnames";
-
 import { Menu, Text } from "metabase/ui";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 
-import S from "./GoalValueInput.module.css";
-
-export type GoalColumnMenuItemProps = {
+type Props = {
+  isSelected: boolean;
   label: string;
   resolvedValue: number | null;
-  isSelected: boolean;
   onClick: () => void;
 };
 
-/** One column of a goal's source, with the value it currently resolves to. */
 export function GoalColumnMenuItem({
+  isSelected,
   label,
   resolvedValue,
-  isSelected,
   onClick,
-}: GoalColumnMenuItemProps) {
+}: Props) {
   return (
     <Menu.Item
-      className={cx({ [S.selectedItem]: isSelected })}
+      bg={isSelected ? "background-selected" : undefined}
       rightSection={
         resolvedValue != null ? (
           <Text c="text-secondary" fz="md">
