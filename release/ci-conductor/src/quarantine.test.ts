@@ -47,8 +47,6 @@ describe("compareFailedToQuarantine", () => {
     expect(unquarantined).toEqual(failures);
   });
 
-  // A matched failure comes back as its *quarantine entry*, not as the failure
-  // itself — that's what carries the permalink the report links to.
   it("puts every failure in `quarantined` when all are listed, as list entries", () => {
     const entries = [quarantined("a"), quarantined("b")];
 
@@ -75,7 +73,6 @@ describe("compareFailedToQuarantine", () => {
     expect(unquarantined).toEqual([b]);
   });
 
-  // The failure's order wins: `quarantined` follows the run, not the list.
   it("returns matches in the order the failures came in", () => {
     const entryA = quarantined("a");
     const entryB = quarantined("b");
