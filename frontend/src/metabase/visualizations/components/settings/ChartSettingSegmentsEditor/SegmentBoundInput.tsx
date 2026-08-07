@@ -15,7 +15,6 @@ export type SegmentBoundInputProps = {
   value: GoalValue | null;
   /** Present only when this bound may reference another column or entity. */
   data?: DatasetData;
-  canReferenceOtherEntities?: boolean;
   onChange: (value: GoalValue | null) => void;
 };
 
@@ -26,7 +25,6 @@ export function SegmentBoundInput({
   placeholder,
   value,
   data,
-  canReferenceOtherEntities = true,
   onChange,
 }: SegmentBoundInputProps) {
   const error = data != null ? resolveGoalValue(data, value).error : undefined;
@@ -40,7 +38,6 @@ export function SegmentBoundInput({
           placeholder={placeholder}
           value={value}
           data={data}
-          canReferenceOtherEntities={canReferenceOtherEntities}
           onChange={onChange}
         />
       ) : (

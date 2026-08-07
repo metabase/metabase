@@ -87,13 +87,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "segmentsEditor",
       persistDefault: true,
-      getProps: ([{ data }], _vizSettings, _onChange, extra) => ({
-        data,
-        // A dashcard's query is driven by its *saved* viz settings, so another
-        // entity picked here couldn't be run until the dashboard is saved.
-        // Columns of this question come out of `data` and stay pickable.
-        canReferenceOtherEntities: !extra?.isDashboard,
-      }),
+      getProps: ([{ data }]) => ({ data }),
       getWrapperStyle: () => ({
         marginLeft: 0,
         marginRight: 0,

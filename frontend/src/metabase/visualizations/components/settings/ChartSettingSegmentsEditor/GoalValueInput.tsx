@@ -83,12 +83,6 @@ export type GoalValueInputProps = {
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
   data: DatasetData;
-  /**
-   * False where another entity's value could never be resolved, e.g. on a
-   * dashcard, whose query is driven by its saved settings. Columns of this
-   * question come straight out of `data`, so they stay pickable either way.
-   */
-  canReferenceOtherEntities?: boolean;
   placeholder?: string;
   ariaLabel?: string;
 };
@@ -98,7 +92,6 @@ export const GoalValueInput = ({
   value,
   onChange,
   data,
-  canReferenceOtherEntities = true,
   placeholder,
   ariaLabel,
 }: GoalValueInputProps) => {
@@ -127,7 +120,6 @@ export const GoalValueInput = ({
     isGoalSelfColumnRef(value) &&
     selfColumns.some((column) => column.name === value);
   const hasRef = foreignRef != null || isSelfRef;
-  const hasSourceOptions = selfColumns.length > 0 || canReferenceOtherEntities;
 
   const entity: Pick<PickedEntity, "type" | "id"> | null =
     pickedEntity ?? foreignRef;
@@ -221,9 +213,6 @@ export const GoalValueInput = ({
   const openMenuFromPill = () => {
     if (isSelfRef) {
       setMenuLevel(selfColumns.length > 1 ? "self" : "root");
-    } else if (!canReferenceOtherEntities) {
-      // its columns are unresolvable here, so there is nothing to list
-      setMenuLevel("root");
     } else {
       // Until the entity's metadata lands we don't know its column count, so
       // open the column list - it renders a loader while we wait.
@@ -336,9 +325,7 @@ export const GoalValueInput = ({
                   onClick={openMenuFromPill}
                 >
                   <Icon name="hexagon" size={12} c="text-secondary" />
-                  {/* nothing here will re-run the query when other entities
-                      can't be referenced, so a spinner would never stop */}
-                  {resolved.isResolving && canReferenceOtherEntities ? (
+                  {resolved.isResolving ? (
                     <Loader size="xs" data-testid="goal-value-loader" />
                   ) : (
                     <span className={S.pillValue}>
@@ -370,17 +357,15 @@ export const GoalValueInput = ({
                 ariaLabel={ariaLabel}
                 onCommit={onChange}
                 rightSection={
-                  hasSourceOptions ? (
-                    <ActionIcon
-                      className={S.trigger}
-                      data-open={isMenuOpen || isEntityPickerOpen}
-                      size={ICON_BUTTON_SIZE}
-                      aria-label={t`Pick a dynamic value`}
-                      onClick={openMenuFromTrigger}
-                    >
-                      <Icon name="hexagon" size={16} />
-                    </ActionIcon>
-                  ) : undefined
+                  <ActionIcon
+                    className={S.trigger}
+                    data-open={isMenuOpen || isEntityPickerOpen}
+                    size={ICON_BUTTON_SIZE}
+                    aria-label={t`Pick a dynamic value`}
+                    onClick={openMenuFromTrigger}
+                  >
+                    <Icon name="hexagon" size={16} />
+                  </ActionIcon>
                 }
               />
             </Box>
@@ -402,17 +387,15 @@ export const GoalValueInput = ({
                   {t`Value from this question`}
                 </Menu.Item>
               )}
-              {canReferenceOtherEntities && (
-                <Menu.Item
-                  leftSection={
-                    <ActiveSourceCheck isActive={foreignRef != null} />
-                  }
-                  rightSection={<Icon name="chevronright" />}
-                  onClick={openEntityPicker}
-                >
-                  {t`Value from another question`}
-                </Menu.Item>
-              )}
+              <Menu.Item
+                leftSection={
+                  <ActiveSourceCheck isActive={foreignRef != null} />
+                }
+                rightSection={<Icon name="chevronright" />}
+                onClick={openEntityPicker}
+              >
+                {t`Value from another question`}
+              </Menu.Item>
             </>
           )}
 

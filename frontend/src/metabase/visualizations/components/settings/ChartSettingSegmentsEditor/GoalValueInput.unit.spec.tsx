@@ -477,38 +477,17 @@ describe("GoalValueInput", () => {
     expect(within(item).getByText("12")).toBeInTheDocument();
   });
 
-  it("still offers this question's columns when other entities cannot be referenced", async () => {
-    setup({ value: 5, canReferenceOtherEntities: false });
+  it("offers another question as a source when this question has no numeric columns", async () => {
+    setup(
+      { value: 5 },
+      { data: createMockDatasetData({ cols: [], rows: [] }) },
+    );
 
     await openMenu();
 
     expect(
-      screen.getByRole("menuitem", { name: /Value from this question/ }),
+      screen.getByRole("menuitem", { name: /Value from another question/ }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("menuitem", { name: /Value from another question/ }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("offers no menu at all when neither source is available", () => {
-    setup(
-      { value: 5, canReferenceOtherEntities: false },
-      { data: createMockDatasetData({ cols: [], rows: [] }) },
-    );
-
-    expect(
-      screen.queryByRole("button", { name: "Pick a dynamic value" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("does not spin on an unresolvable reference when other entities cannot be referenced", () => {
-    setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
-    setup({
-      value: { type: "card", id: 9, column: "total" },
-      canReferenceOtherEntities: false,
-    });
-
-    expect(screen.queryByTestId("goal-value-loader")).not.toBeInTheDocument();
   });
 
   it("does not clear a reference it cannot render when the static input is blurred", () => {

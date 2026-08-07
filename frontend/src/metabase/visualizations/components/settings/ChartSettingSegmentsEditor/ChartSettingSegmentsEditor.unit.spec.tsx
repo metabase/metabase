@@ -199,12 +199,11 @@ describe("ChartSettingSegmentsEditor", () => {
     });
   });
 
-  it("keeps the bounds editable where another entity could never be resolved", async () => {
+  it("offers both value sources for a bound", async () => {
     renderWithProviders(
       <ChartSettingSegmentsEditor
         value={DEFAULT_VALUE}
         onChange={jest.fn()}
-        canReferenceOtherEntities={false}
         data={createMockDatasetData({
           cols: [
             createMockColumn({ name: "count", base_type: "type/Integer" }),
@@ -224,8 +223,8 @@ describe("ChartSettingSegmentsEditor", () => {
       await screen.findByRole("menuitem", { name: /Value from this question/ }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("menuitem", { name: /Value from another question/ }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("menuitem", { name: /Value from another question/ }),
+    ).toBeInTheDocument();
   });
 
   it("Should pass back a new array of segments on change", async () => {

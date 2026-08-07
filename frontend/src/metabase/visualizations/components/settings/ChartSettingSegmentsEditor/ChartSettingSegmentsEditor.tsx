@@ -24,8 +24,6 @@ const REMOVE_BUTTON_SIZE = 24;
 
 export type ChartSettingSegmentsEditorProps = {
   data?: DatasetData;
-  /** False where another entity's value could never be resolved, e.g. on a dashcard. */
-  canReferenceOtherEntities?: boolean;
   value: GoalSegment[];
   onChange: (value: GoalSegment[]) => void;
   canRemoveAll?: boolean;
@@ -33,7 +31,6 @@ export type ChartSettingSegmentsEditorProps = {
 
 export const ChartSettingSegmentsEditor = ({
   data,
-  canReferenceOtherEntities = true,
   value: segments,
   onChange,
   canRemoveAll = false,
@@ -92,7 +89,6 @@ export const ChartSettingSegmentsEditor = ({
                   placeholder={t`Min`}
                   value={segment.min}
                   data={data}
-                  canReferenceOtherEntities={canReferenceOtherEntities}
                   onChange={(min) => updateSegment(index, { min })}
                 />
 
@@ -104,7 +100,6 @@ export const ChartSettingSegmentsEditor = ({
                   placeholder={t`Max`}
                   value={segment.max}
                   data={data}
-                  canReferenceOtherEntities={canReferenceOtherEntities}
                   onChange={(max) => updateSegment(index, { max })}
                 />
               </Group>
