@@ -5,6 +5,7 @@ import {
   buildCollectionMap,
   getBlockedCollectionIds,
   getBlockedCollections,
+  getBlockedReason,
   getCollectionIdsBlockedByPersonalContent,
   getCollectionPathSegments,
   getRequiredCollectionIds,
@@ -410,6 +411,37 @@ describe("remote_sync utils", () => {
 
       it("is false when no dependency asks for the Library", () => {
         expect(requiresLibrarySync([FAILURES[1]])).toBe(false);
+      });
+    });
+
+    describe("getBlockedReason", () => {
+      const PERSONAL_FAILURE: RemoteSyncDependencyFailure = {
+        collection: { id: 31, name: "Drafts" },
+        dependencies: [
+          {
+            model: "card",
+            id: 1,
+            name: "Draft",
+            remedy: {
+              type: "collection",
+              collection: { id: 5, name: "Personal", personal: true },
+            },
+          },
+        ],
+      };
+
+      it("is linked-collections when every remedy is a collection the admin can sync", () => {
+        expect(getBlockedReason([FAILURES[1]])).toBe("linked-collections");
+      });
+
+      it("is library when a dependency needs the Library and none is personal", () => {
+        expect(getBlockedReason(FAILURES)).toBe("library");
+      });
+
+      it("outranks the other reasons when any remedy is a personal collection", () => {
+        expect(getBlockedReason([...FAILURES, PERSONAL_FAILURE])).toBe(
+          "personal-content",
+        );
       });
     });
   });

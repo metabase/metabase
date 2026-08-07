@@ -26,13 +26,7 @@ interface CollectionSyncListProps {
    * When true and no library collection exists, show a placeholder row for library.
    */
   showLibraryPlaceholder?: boolean;
-  /** Ids of collections the last save was refused for, flagged in the list. */
-  blockedCollectionIds?: Set<number>;
-  /** Ids of collections that must also be switched on for that save to succeed. */
-  requiredCollectionIds?: Set<number>;
 }
-
-const NO_COLLECTION_IDS = new Set<number>();
 
 export const CollectionSyncList = ({
   collections,
@@ -41,8 +35,6 @@ export const CollectionSyncList = ({
   isLoading,
   showTransformsRow,
   showLibraryPlaceholder,
-  blockedCollectionIds = NO_COLLECTION_IDS,
-  requiredCollectionIds = NO_COLLECTION_IDS,
 }: CollectionSyncListProps) => {
   const { values, setFieldValue, initialValues } =
     useFormikContext<RemoteSyncConfigurationSettings>();
@@ -75,8 +67,6 @@ export const CollectionSyncList = ({
         isChecked={syncMap[collection.id] ?? false}
         onToggle={handleToggle}
         isReadOnly={isReadOnly}
-        isBlocked={blockedCollectionIds.has(Number(collection.id))}
-        isRequired={requiredCollectionIds.has(Number(collection.id))}
       />
     ));
 
@@ -113,8 +103,6 @@ export const CollectionSyncList = ({
     showTransformsRow,
     values,
     showLibraryPlaceholder,
-    blockedCollectionIds,
-    requiredCollectionIds,
   ]);
 
   if (isLoading) {

@@ -10,10 +10,6 @@ interface CollectionSyncRowProps {
   isChecked: boolean;
   onToggle: (collection: CollectionItem, checked: boolean) => void;
   isReadOnly: boolean;
-  /** The last save was refused for this collection — it depends on unsynced content. */
-  isBlocked?: boolean;
-  /** Switching this collection on is what would unblock that save. */
-  isRequired?: boolean;
 }
 
 export const CollectionSyncRow = ({
@@ -21,8 +17,6 @@ export const CollectionSyncRow = ({
   isChecked,
   onToggle,
   isReadOnly,
-  isBlocked = false,
-  isRequired = false,
 }: CollectionSyncRowProps) => {
   const getIcon = PLUGIN_COLLECTIONS.useGetIcon();
   const canWrite = collection.can_write ?? false;
@@ -40,8 +34,6 @@ export const CollectionSyncRow = ({
           <Text fw="medium">{collection.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">
-          {isBlocked && <Icon name="warning" color="error" />}
-          {isRequired && <Icon name="info" color="brand" />}
           <Switch
             size="sm"
             checked={isChecked}

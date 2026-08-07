@@ -14,16 +14,10 @@ interface TopLevelCollectionsListProps {
    * Useful for modal variant where only these options should be shown.
    */
   skipCollections?: boolean;
-  /** Ids of collections the last save was refused for, flagged in the list. */
-  blockedCollectionIds?: Set<number>;
-  /** Ids of collections that must also be switched on for that save to succeed. */
-  requiredCollectionIds?: Set<number>;
 }
 
 export const TopLevelCollectionsList = ({
   skipCollections,
-  blockedCollectionIds,
-  requiredCollectionIds,
 }: TopLevelCollectionsListProps = {}) => {
   const { data, isLoading, error } = useListCollectionItemsQuery(
     {
@@ -69,8 +63,6 @@ export const TopLevelCollectionsList = ({
       isLoading={isLoading || isLoadingLibrary}
       showTransformsRow={PLUGIN_TRANSFORMS.isEnabled}
       showLibraryPlaceholder={skipCollections && !libraryCollection}
-      blockedCollectionIds={blockedCollectionIds}
-      requiredCollectionIds={requiredCollectionIds}
     />
   );
 };

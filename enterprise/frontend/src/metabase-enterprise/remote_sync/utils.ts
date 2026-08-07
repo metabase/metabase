@@ -242,6 +242,42 @@ export const requiresLibrarySync = (
     ),
   );
 
+/** Which situation the admin is actually in, and so what we can offer them. */
+export type BlockedReason =
+  | "personal-content"
+  | "library"
+  | "linked-collections";
+
+/**
+ * Ordered by how much each situation constrains the admin: content they can't sync at all outranks
+ * content they can, so we never tell them to fix something that wouldn't be enough on its own.
+ */
+export const getBlockedReason = (
+  failures: RemoteSyncDependencyFailure[],
+): BlockedReason => {
+  if (getCollectionIdsBlockedByPersonalContent(failures).size > 0) {
+    return "personal-content";
+  }
+  if (requiresLibrarySync(failures)) {
+    return "library";
+  }
+  return "linked-collections";
+};
+
+/** What to tell the admin about the refused save, per [[getBlockedReason]]. */
+export const getBlockedMessage = (
+  failures: RemoteSyncDependencyFailure[],
+): string => {
+  switch (getBlockedReason(failures)) {
+    case "personal-content":
+      return t`Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue.`;
+    case "library":
+      return t`Dashboards or questions in this collection rely on snippets, which sync with the Library. Sync the Library as well to continue.`;
+    case "linked-collections":
+      return t`Dashboards or questions in this collection rely on data saved elsewhere. To continue, sync those linked collections as well.`;
+  }
+};
+
 export const buildCollectionMap = (
   collectionTree: Collection[],
 ): Map<number, Collection> => {
