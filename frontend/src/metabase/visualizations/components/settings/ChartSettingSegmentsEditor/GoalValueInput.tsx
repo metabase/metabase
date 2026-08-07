@@ -57,6 +57,10 @@ import S from "./GoalValueInput.module.css";
 
 const MENU_MIN_WIDTH = 225;
 const ICON_BUTTON_SIZE = 24;
+const TRIGGER_INSET = 8;
+// NumberInput sizes its right section to fit the increment controls (27px),
+// which leaves the trigger touching the input's border.
+const TRIGGER_SECTION_WIDTH = `${ICON_BUTTON_SIZE + 2 * TRIGGER_INSET}px`;
 const SEARCH_RESULTS_LIMIT = 5;
 
 // Model lists are module constants because MiniPicker re-runs its search
@@ -628,6 +632,9 @@ export function StaticGoalValueInput({
       value={numericValue ?? ""}
       rightSection={rightSection}
       rightSectionPointerEvents="all"
+      rightSectionWidth={
+        rightSection == null ? undefined : TRIGGER_SECTION_WIDTH
+      }
       onBlur={(event) => {
         const rawValue = event.target.value;
         const newValue = rawValue === "" ? null : parseFloat(rawValue);
