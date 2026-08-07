@@ -241,6 +241,7 @@ config:
     llm-openai-model: gpt-5.4
     llm-openrouter-api-base-url: https://openrouter.ai/api
     llm-openrouter-api-key: null
+    llm-provider-fallback-enabled: true
     llm-providers: []
     llm-rate-limit-per-ip: 100
     llm-rate-limit-per-user: 20
