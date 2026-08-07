@@ -408,6 +408,28 @@
                       child
                       (dev.deps-graph/module-parent declared child))))))))
 
+(deftest ^:parallel rest-children-are-exported-by-their-parent-test
+  (testing (str "Every `<parent>.rest` module is listed in its parent's `:module-exports`. These "
+                "children exist to hold API routes that `api-routes` names from outside the "
+                "subtree, so a parent that does not export one encapsulates it and the boundary "
+                "lint rejects the reference. That lint is the only thing that catches this today, "
+                "and it is a full kondo pass; this assertion catches a recurrence here instead.")
+    (let [config   (dev.deps-graph/kondo-config)
+          declared (declared-modules-set config)
+          rest-children (filter #(str/ends-with? (name %) ".rest") (keys config))]
+      ;; Guard against the assertion going quiet if the naming convention ever changes.
+      (is (seq rest-children)
+          "no `.rest` children found, so the assertions below would hold vacuously")
+      (doseq [child (sort rest-children)]
+        (testing (format "\n%s" child)
+          (let [parent (dev.deps-graph/module-parent declared child)]
+            (is (some? parent)
+                (format "%s looks like a nested child but has no declared parent." child))
+            (is (contains? (set (get-in config [parent :module-exports])) child)
+                (format "%s is not in %s's :module-exports, so it is private to its parent's subtree and cross-module references to it will fail the boundary lint."
+                        child
+                        parent))))))))
+
 (deftest ^:parallel module-boundary-config-values-have-valid-types-test
   (testing "Module boundary keys use the values understood by the linter"
     (doseq [[module config] (dev.deps-graph/kondo-config)]
@@ -481,7 +503,7 @@
           ;; A trigger module's own entry is also meaningful: mage strips exemptions from the
           ;; changed set before computing what is affected, so it suppresses self-triggering.
           triggers  '[driver transforms query-processor
-                      enterprise/transforms enterprise/transforms-python]
+                      enterprise/transforms enterprise/transforms.python]
           upstream  (into (set triggers) (mapcat #(get full %)) triggers)
           overrides (:exempt-modules (dev.deps-graph/driver-test-overrides))]
       (doseq [m (sort overrides)]
