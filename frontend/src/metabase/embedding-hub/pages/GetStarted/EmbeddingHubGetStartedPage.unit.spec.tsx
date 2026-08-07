@@ -12,7 +12,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { EmbeddingHubChecklist } from "metabase/api/embedding-hub";
+import type { SetupGuideChecklist } from "metabase/embedding/setup-guide/api/setup-guide";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import {
@@ -36,7 +36,7 @@ interface SetupOpts {
   hasSsoJwt?: boolean;
   hasTenants?: boolean;
   hasMetabot?: boolean;
-  checklist?: Partial<EmbeddingHubChecklist>;
+  checklist?: Partial<SetupGuideChecklist>;
   isLlmConfigured?: boolean;
   isEmbeddedMetabotEnabled?: boolean;
 }

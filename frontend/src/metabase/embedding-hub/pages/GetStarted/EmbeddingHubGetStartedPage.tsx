@@ -6,8 +6,8 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import {
   useCompletedSetupGuideSteps,
-  useSetupGuideModals,
   useGetSetupGuideSteps,
+  useSetupGuideModals,
 } from "metabase/embedding/setup-guide";
 import type {
   SetupGuideAction,

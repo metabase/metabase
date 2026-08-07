@@ -5,8 +5,8 @@ import { t } from "ttag";
 import {
   type SetupGuideUrls,
   useCompletedSetupGuideSteps,
-  useSetupGuideModals,
   useGetSetupGuideSteps,
+  useSetupGuideModals,
 } from "../hooks";
 import type { SetupGuideStepId } from "../types/setup-guide";
 
