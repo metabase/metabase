@@ -1294,17 +1294,21 @@ The array of last two ISO8601 dates when an admin dismissed the license token mi
 
 - Type: string
 - Default: `https://api.anthropic.com`
-- [Configuration file name](./config-file.md): `llm-anthropic-api-base-url`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The Anthropic API base URL.
+
+The Anthropic API base URL used by the connection configured from the environment.
 
 ### `MB_LLM_ANTHROPIC_API_KEY`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-anthropic-api-key`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The Anthropic API Key.
+
+Sets up the Anthropic provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.
 
 ### `MB_LLM_ANTHROPIC_MODEL`
 
@@ -1318,67 +1322,81 @@ The Anthropic model to use.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-azure-api-base-url`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The base URL of the Azure resource's OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.
+
+The Azure API base URL used by the connection configured from the environment.
 
 ### `MB_LLM_AZURE_API_KEY`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-azure-api-key`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The API key for the Azure resource hosting your models.
+
+Sets up the Azure provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.
 
 ### `MB_LLM_AZURE_DEPLOYMENT_NAME`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-azure-deployment-name`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The name of the model deployment served by the Azure connection configured from the environment.
 
-Azure's listing endpoint returns the regional catalog rather than your deployments, so there is nothing to discover and the deployment has to be named. Optional: an instance that already names its deployment in `MB_LLM_METABOT_PROVIDER` (`azure/<family>/<deployment>`) keeps working without it, but setting it is what lets the deployment be picked from the model dropdown.
+The deployment the Azure connection configured from the environment serves. Azure's listing endpoint returns the regional catalog rather than your deployments, so there is nothing to discover and the deployment has to be named. Optional: an instance that already names its deployment in `MB_LLM_METABOT_PROVIDER` (`azure/<family>/<deployment>`) keeps working without it, but setting it is what lets the deployment be picked from the model dropdown.
 
 ### `MB_LLM_AZURE_MODEL_FAMILY`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-azure-model-family`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Whether the Azure deployment configured from the environment serves an `openai` or an `anthropic` model. Defaults to `openai`.
+
+The wire protocol the Azure deployment speaks, `openai` or `anthropic`. Only read when the Azure connection is configured from the environment.
 
 ### `MB_LLM_BEDROCK_ACCESS_KEY_ID`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-bedrock-access-key-id`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The AWS Access Key ID for Amazon Bedrock.
+
+Sets up the Amazon Bedrock provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.
 
 ### `MB_LLM_BEDROCK_REGION`
 
 - Type: string
 - Default: `us-east-1`
-- [Configuration file name](./config-file.md): `llm-bedrock-region`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The AWS region for Amazon Bedrock (e.g. us-east-1).
+
+The AWS region used by the Amazon Bedrock connection configured from the environment.
 
 ### `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-bedrock-secret-access-key`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The AWS Secret Access Key for Amazon Bedrock.
+
+The AWS secret access key used by the Amazon Bedrock connection configured from the environment.
 
 ### `MB_LLM_BEDROCK_SESSION_TOKEN`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-bedrock-session-token`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials.
+
+The AWS session token used by the Amazon Bedrock connection configured from the environment. Only needed for temporary credentials.
 
 ### `MB_LLM_CONNECTION_TIMEOUT_MS`
 
@@ -1448,33 +1466,61 @@ The AI provider connection and model for Metabot. Format: connection-key/model-n
 
 - Type: string
 - Default: `https://api.mistral.ai/v1`
-- [Configuration file name](./config-file.md): `llm-mistral-api-base-url`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The Mistral API base URL used for Chat Completions.
+
+The Mistral API base URL used by the connection configured from the environment.
 
 ### `MB_LLM_MISTRAL_API_KEY`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-mistral-api-key`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The Mistral API Key.
+
+Sets up the Mistral provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.
+
+### `MB_LLM_MOONSHOT_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.moonshot.ai/v1`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+The Moonshot AI API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.
+
+The Moonshot AI API base URL used by the connection configured from the environment.
+
+### `MB_LLM_MOONSHOT_API_KEY`
+
+- Type: string
+- Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+The Moonshot AI API Key.
+
+Sets up the Moonshot AI provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.
 
 ### `MB_LLM_OPENAI_API_BASE_URL`
 
 - Type: string
 - Default: `https://api.openai.com`
-- [Configuration file name](./config-file.md): `llm-openai-api-base-url`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The OpenAI API base URL.
+
+The OpenAI API base URL used by the connection configured from the environment.
 
 ### `MB_LLM_OPENAI_API_KEY`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-openai-api-key`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The OpenAI API Key.
+
+Sets up the OpenAI provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.
 
 ### `MB_LLM_OPENAI_MODEL`
 
@@ -1488,17 +1534,21 @@ The OpenAI Model (e.g. 'gpt-5.5', 'gpt-5.4-mini').
 
 - Type: string
 - Default: `https://openrouter.ai/api`
-- [Configuration file name](./config-file.md): `llm-openrouter-api-base-url`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The OpenRouter API base URL used for Chat Completions.
+
+The OpenRouter API base URL used by the connection configured from the environment.
 
 ### `MB_LLM_OPENROUTER_API_KEY`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-openrouter-api-key`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The OpenRouter API Key.
+
+Sets up the OpenRouter provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.
 
 ### `MB_LLM_PROVIDERS`
 
@@ -1510,7 +1560,7 @@ JSON array of configured LLM provider connections. Each entry has a `key` (a URL
 
 Connections are normally managed from the admin AI settings page. Setting this environment variable puts the whole list under environment control and makes it read-only in the UI.
 
-The single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) keep working, and each configures one read-only connection whose key is the provider type.
+Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.
 
 ### `MB_LLM_RATE_LIMIT_PER_IP`
 
@@ -1540,17 +1590,21 @@ Socket (inter-byte read) timeout in milliseconds for LLM API requests. For strea
 
 - Type: string
 - Default: `https://api.z.ai/api/paas/v4`
-- [Configuration file name](./config-file.md): `llm-zai-api-base-url`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The Z.AI API base URL used for Chat Completions.
+
+The Z.AI API base URL used by the connection configured from the environment.
 
 ### `MB_LLM_ZAI_API_KEY`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-zai-api-key`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The Z.AI API Key.
+
+Sets up the Z.AI provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.
 
 ### `MB_LOAD_ANALYTICS_CONTENT`
 
