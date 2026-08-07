@@ -2872,3 +2872,26 @@
                   entity (get by-model m)]
             (is (not (contains? entity :metabase_version))
                 (str m " should not carry a :metabase_version"))))))))
+
+(deftest dashboard-dynamic-goal-descendants-test
+  (testing "selecting a dashboard pulls in the card a dashcard's dynamic goal references"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection    {coll-id :id}                 {:name "Goals"}
+                         :model/Card          {goal-id :id goal-eid :entity_id} {:name "Goal Source"
+                                                                                 :collection_id coll-id}
+                         :model/Card          {shown-id :id}                {:name "Shown" :collection_id coll-id}
+                         :model/Dashboard     {dash-id :id}                 {:name "D" :collection_id coll-id}
+                         :model/DashboardCard _                             {:dashboard_id dash-id
+                                                                             :card_id      shown-id
+                                                                             :visualization_settings
+                                                                             {:graph.goal_value {:id     goal-id
+                                                                                                 :type   "card"
+                                                                                                 :column "total"}}}]
+        (is (contains? (->> (extract/extract {:targets       [["Dashboard" dash-id]]
+                                              :no-settings   true
+                                              :no-data-model true
+                                              :no-transforms true})
+                            (filter #(= "Card" (-> % :serdes/meta last :model)))
+                            (map :entity_id)
+                            set)
+                       goal-eid))))))

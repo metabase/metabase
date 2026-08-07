@@ -313,3 +313,66 @@
                                        :values_source_type   :card
                                        :values_source_config {:card_id 1, :value_field [:field 53 nil]}
                                        :position             0}])))))
+
+;;; ------------------------------------------- Dynamic goals -------------------------------------------
+
+(def ^:private card-eid "card00000000000000001")
+(def ^:private measure-eid "meas00000000000000007")
+
+(def ^:private goal-viz-settings
+  {:graph.goal_value {:id 1 :type "card" :column "total"}
+   :progress.goal    {:id 7 :type "measure" :column "avg"}
+   :gauge.segments   [{:min 0 :max {:id 1 :type "card" :column "total"} :color "#fff"}]
+   :scalar.segments  [{:min {:id 7 :type "measure" :column "avg"} :max "self-col"}]})
+
+(def ^:private exported-goal-viz-settings
+  {:graph.goal_value {:id card-eid :type "card" :column "total"}
+   :progress.goal    {:id measure-eid :type "measure" :column "avg"}
+   :gauge.segments   [{:min 0 :max {:id card-eid :type "card" :column "total"} :color "#fff"}]
+   :scalar.segments  [{:min {:id measure-eid :type "measure" :column "avg"} :max "self-col"}]})
+
+(defn- export-goals
+  "Exports `settings`, dropping the `:column_settings` key [[serdes/export-visualization-settings]] always adds."
+  [settings]
+  (binding [serdes/*export-fk* (fn [id model]
+                                 (case [(name model) id]
+                                   ["Card" 1]    card-eid
+                                   ["Measure" 7] measure-eid))]
+    (dissoc (serdes/export-visualization-settings settings) :column_settings)))
+
+(deftest ^:parallel export-viz-dynamic-goals-test
+  (testing "card and measure goal refs export as entity ids, in scalar settings and segment bounds"
+    (is (= exported-goal-viz-settings (export-goals goal-viz-settings))))
+  (testing "literal goals and self-column names are untouched"
+    (is (= {:graph.goal_value 100 :progress.goal "self-col"}
+           (export-goals {:graph.goal_value 100 :progress.goal "self-col"})))))
+
+(deftest ^:parallel import-viz-dynamic-goals-test
+  (testing "entity ids resolve back to numeric ids"
+    (binding [serdes/*import-fk* (fn [eid _model] (condp = eid card-eid 1, measure-eid 7))]
+      (is (= goal-viz-settings
+             (dissoc (serdes/import-visualization-settings exported-goal-viz-settings)
+                     :column_settings))))))
+
+(deftest ^:parallel export-viz-dynamic-goals-deleted-target-test
+  (testing "a goal pointing at a deleted entity exports as no goal rather than a dangling ref"
+    (binding [serdes/*export-fk* (fn [_id model]
+                                   (throw (ex-info "FK target not found"
+                                                   {:model model ::serdes/type :target-not-found})))]
+      (is (= {:graph.goal_value nil
+              :progress.goal    nil
+              :gauge.segments   [{:min 0 :max nil :color "#fff"}]
+              :scalar.segments  [{:min nil :max "self-col"}]}
+             (dissoc (serdes/export-visualization-settings goal-viz-settings) :column_settings))))))
+
+(deftest ^:parallel viz-dynamic-goals-deps-test
+  (testing "export deps use the raw numeric ids"
+    (is (= #{[{:model "Card" :id 1}] [{:model "Measure" :id 7}]}
+           (serdes/visualization-settings-deps true goal-viz-settings))))
+  (testing "import deps use the portable entity ids"
+    (is (= #{[{:model "Card" :id card-eid}] [{:model "Measure" :id measure-eid}]}
+           (serdes/visualization-settings-deps false exported-goal-viz-settings))))
+  (testing "numeric ids are not treated as refs at load time"
+    (is (= #{} (serdes/visualization-settings-deps false goal-viz-settings))))
+  (testing "literal goals produce no deps"
+    (is (= #{} (serdes/visualization-settings-deps true {:graph.goal_value 100})))))
