@@ -48,7 +48,17 @@
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
-(driver/register! :starburst, :parent #{::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+;; `:sql-jdbc` is also declared as the parent in the plugin manifest, so production has it either way; naming it here
+;; too keeps the hierarchy right when the namespace is loaded without the manifest (source-classpath test runs).
+(driver/register! :starburst, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/host-carrying-parameters :starburst
+  [_driver]
+  ["httpProxy" "socksProxy"])
+
+(defmethod driver/non-host-parameters :starburst
+  [_driver]
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
 
 (set! *warn-on-reflection* true)
 
