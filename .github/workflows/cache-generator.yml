@@ -51,6 +51,7 @@ jobs:
       node-cache-key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
       eslint-cache-key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
       cypress-cache-key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
+      embedder-models-cache-key: ${{ steps.get-cache-keys.outputs.embedder-models-cache-key }}
 
   generate-caches:
     # Prevent a workflow_dispatch triggered from any branch besides master. This would overwrite the default
@@ -65,6 +66,7 @@ jobs:
       NODE_CACHE_KEY: ${{ needs.get-cache-keys.outputs.node-cache-key }}
       CYPRESS_CACHE_KEY: ${{ needs.get-cache-keys.outputs.cypress-cache-key }}
       ESLINT_CACHE_KEY: ${{ needs.get-cache-keys.outputs.eslint-cache-key }}
+      EMBEDDER_MODELS_CACHE_KEY: ${{ needs.get-cache-keys.outputs.embedder-models-cache-key }}
     steps:
       - uses: actions/checkout@v6
 
@@ -128,6 +130,20 @@ jobs:
             ~/.deps.clj
             bin/bb
           key: ${{ env.M2_CACHE_KEY }}
+
+      # Embedder plugin model downloads (~1.1 GB from HuggingFace).
+      # The downloader is content-addressed: files already present with a matching
+      # SHA-256 are kept, anything else is re-fetched, so a stale cache only costs
+      # the delta download.
+      - name: Download pinned embedder models
+        shell: bash
+        run: clojure -X:build build.embedder-model/fetch-model!
+
+      - name: Update embedder models cache
+        uses: ./.github/actions/update-cache
+        with:
+          path: modules/embedder/target/model-download
+          key: ${{ env.EMBEDDER_MODELS_CACHE_KEY }}
 
       # Frontend preparation and caches
       # `prepare-frontend` action (1) prepares Node.js and (2) fetches the node_modules cache if it exists.
