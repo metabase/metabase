@@ -361,7 +361,11 @@
 (defn- invalid-params-specific-errors [explanation]
   (-> explanation
       (update :value redact-files)
-      (update :errors (partial mapv #(update % :value redact-files)))
+      ;; `:in` and `:path` come back lazy for some schemas (`:multi`, for one) and spell checking `peek`s them
+      (update :errors (partial mapv #(-> %
+                                         (update :value redact-files)
+                                         (m/update-existing :in vec)
+                                         (m/update-existing :path vec))))
       me/with-spell-checking
       (me/humanize {:wrap mu/humanize-include-value})))
 
