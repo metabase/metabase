@@ -1,4 +1,5 @@
 name: Create Backport PR
+description: Cherry-picks a commit onto a release branch and opens the backport pull request.
 
 inputs:
   target-version: # major version number like 34 or 86
@@ -42,7 +43,7 @@ runs:
           git cherry-pick --abort
 
           echo "Could not cherry pick because of a conflict"
-          echo "has-conflicts=true" >> $GITHUB_OUTPUT
+          echo "has-conflicts=true" >> "$GITHUB_OUTPUT"
 
           # Add a shell script for resolving conflicts
           echo "git reset HEAD~1" > ./backport.sh
@@ -66,7 +67,7 @@ runs:
         END
           )
         else
-          echo "has-conflicts=false" >> $GITHUB_OUTPUT
+          echo "has-conflicts=false" >> "$GITHUB_OUTPUT"
           PR_BODY="#${ORIGINAL_PULL_REQUEST_NUMBER}"
         fi
 
@@ -80,7 +81,7 @@ runs:
         BACKPORT_PR_URL=$(gh pr create "${PR_ARGS[@]}")
         BACKPORT_PR_NUMBER=${BACKPORT_PR_URL##*/}
 
-        echo "backport_pr_number=$BACKPORT_PR_NUMBER" >> $GITHUB_OUTPUT
+        echo "backport_pr_number=$BACKPORT_PR_NUMBER" >> "$GITHUB_OUTPUT"
         echo "New PR has been created: #${BACKPORT_PR_NUMBER}"
 
         git checkout ${{ github.sha }}
