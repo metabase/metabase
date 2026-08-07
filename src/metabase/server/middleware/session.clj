@@ -112,6 +112,9 @@
     :mysql    [:date_add :%now
                [:raw (format "INTERVAL -%d %s" amount (name unit))]]))
 
+(def ^:private mfa-supported-methods
+  (descendants :metabase.auth-identity.provider/supports-mfa))
+
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required])} session-with-id-query
   (memoize
    (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required]
@@ -144,7 +147,7 @@
                                             (map (fn [mfa-supporting-provider]
                                                    [:not= :auth_identity.provider
                                                     [:raw (str "'" (name mfa-supporting-provider) "'")]])
-                                                 (descendants :metabase.auth-identity.provider/supports-mfa)))]])
+                                                 mfa-supported-methods))]])
                                   (when session-timeout-seconds
                                     [[:> [:coalesce :session.last_active_at :session.created_at]
                                       (oldest-allowed-expr db-type session-timeout-seconds :second)]])])
