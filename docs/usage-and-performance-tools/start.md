@@ -14,4 +14,4 @@ See how people are using your Metabase.
 
 ## [Monitor](../monitor/start.md)
 
-View erroring questions, logs, and other troubleshooting tools
+View erroring questions, logs, and other troubleshooting tools.

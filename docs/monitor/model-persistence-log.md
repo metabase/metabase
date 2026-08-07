@@ -1,4 +1,3 @@
-
 ---
 title: Model persistence log
 summary: View the status of persisted models and refresh their cached results.
@@ -23,4 +22,4 @@ For each persisted model, Metabase shows the:
 
 Click a model's name to open the model, or its collection to open the collection.
 
-To rerun a model's query and update its results, click the **refresh** icon at the end of the model's.
+To rerun a model's query and update its results, click the **refresh** icon at the end of the model's row.
