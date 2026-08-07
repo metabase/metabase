@@ -54,6 +54,10 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (actions-rest.db/public-actions))
 
+;; Not tagged `data-apps:base`, though the two execute routes below are: the SDK's `useAction`
+;; runs an action by id and never fetches its definition, and a dashboard action button reads
+;; its own from the `:dashcard/action` hydration on the dashboard response. Fetching an action
+;; definition is the action-editor flow, which a data app does not render.
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
   [{:keys [action-id]} :- [:map {:closed true}
