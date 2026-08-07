@@ -1,9 +1,11 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import { ActionMenu } from "metabase/common/collections/components/ActionMenu";
 import type {
   CreateBookmark,
   DeleteBookmark,
+  OnToggleSelectedWithItem,
 } from "metabase/common/collections/types";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
@@ -11,7 +13,7 @@ import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Box, Card, Ellipsified, Group } from "metabase/ui";
+import { Box, Card, Checkbox, Ellipsified, Group } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -54,6 +56,9 @@ export type CompactPinnedItemCardProps = {
   onCopy?: (items: CollectionItem[]) => void;
   onMove?: (items: CollectionItem[]) => void;
   onClick?: () => void;
+  isSelectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelected?: OnToggleSelectedWithItem;
 };
 
 const isCollectionItem = (
@@ -72,6 +77,9 @@ export function CompactPinnedItemCard({
   onCopy,
   onMove,
   onClick,
+  isSelectMode,
+  isSelected,
+  onToggleSelected,
 }: CompactPinnedItemCardProps) {
   const getIcon = useGetIcon();
   const icon = getIcon({
@@ -84,59 +92,114 @@ export function CompactPinnedItemCard({
   const hasActionHandlers = Boolean(
     onCopy || onMove || createBookmark || deleteBookmark || collection,
   );
+  const handleToggleSelected =
+    isSelectMode && onToggleSelected && isCollectionItem(item)
+      ? () => onToggleSelected(item)
+      : undefined;
+  const showAsSelected = handleToggleSelected != null && Boolean(isSelected);
 
-  return (
-    <Link className={S.link} to={modelToUrl(item)} onClick={onClick}>
-      <Card className={S.card} h="5rem" p={0} pos="relative" withBorder>
-        <div className={S.body}>
+  const card = (
+    <Card
+      className={cx(S.card, {
+        [S.cardSelectable]: handleToggleSelected != null,
+        [S.cardSelected]: showAsSelected,
+      })}
+      data-testid="pinned-item-card"
+      h="5rem"
+      p={0}
+      pos="relative"
+      withBorder
+    >
+      <div className={S.body}>
+        {showAsSelected ? (
+          <Checkbox
+            aria-hidden
+            checked
+            className={S.selectCheckbox}
+            readOnly
+            size="sm"
+            style={{ pointerEvents: "none" }}
+            tabIndex={-1}
+          />
+        ) : (
           <EntityIcon
             {...icon}
             className={S.icon}
             size="1.25rem"
             color="core-brand"
           />
-          <div className={S.content}>
-            <Group className={S.titleRow} gap="sm" miw={0} wrap="nowrap">
-              <Ellipsified
-                fw="bold"
-                fz="md"
-                lh="1rem"
-                tooltipProps={{ maw: TOOLTIP_MAX_WIDTH, position: "bottom" }}
-              >
-                {item.name}
-              </Ellipsified>
-              <PLUGIN_MODERATION.ModerationStatusIcon
-                status={item.moderated_status}
-                filled
-                size={14}
-              />
-            </Group>
-            <MarkdownPreview
-              className={S.description}
-              tooltipMaxWidth={TOOLTIP_MAX_WIDTH}
-            >
-              {description}
-            </MarkdownPreview>
-          </div>
-        </div>
-        {actionMenuItem && hasActionHandlers && (
-          <Box className={S.actions}>
-            {/* Used within a `<Link>`, so we must prevent events from triggering the link */}
-            <EventSandbox preventDefault sandboxedEvents={["onClick"]}>
-              <ActionMenu
-                item={actionMenuItem}
-                collection={collection}
-                databases={databases}
-                bookmarks={bookmarks}
-                createBookmark={createBookmark}
-                deleteBookmark={deleteBookmark}
-                onCopy={onCopy}
-                onMove={onMove}
-              />
-            </EventSandbox>
-          </Box>
         )}
-      </Card>
+        <div className={S.content}>
+          <Group className={S.titleRow} gap="sm" miw={0} wrap="nowrap">
+            <Ellipsified
+              fw="bold"
+              fz="md"
+              lh="1rem"
+              tooltipProps={{ maw: TOOLTIP_MAX_WIDTH, position: "bottom" }}
+            >
+              {item.name}
+            </Ellipsified>
+            <PLUGIN_MODERATION.ModerationStatusIcon
+              status={item.moderated_status}
+              filled
+              size={14}
+            />
+          </Group>
+          <MarkdownPreview
+            className={S.description}
+            tooltipMaxWidth={TOOLTIP_MAX_WIDTH}
+          >
+            {description}
+          </MarkdownPreview>
+        </div>
+      </div>
+      {actionMenuItem && hasActionHandlers && (
+        <Box className={S.actions}>
+          {/* Used within a `<Link>`, so we must prevent events from triggering the link */}
+          <EventSandbox preventDefault sandboxedEvents={["onClick"]}>
+            <ActionMenu
+              item={actionMenuItem}
+              collection={collection}
+              databases={databases}
+              bookmarks={bookmarks}
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
+              onCopy={onCopy}
+              onMove={onMove}
+            />
+          </EventSandbox>
+        </Box>
+      )}
+    </Card>
+  );
+
+  if (handleToggleSelected) {
+    return (
+      <div
+        aria-checked={showAsSelected}
+        aria-label={item.name}
+        className={S.link}
+        role="checkbox"
+        tabIndex={0}
+        onClick={handleToggleSelected}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) {
+            return;
+          }
+          if (event.key === " " || event.key === "Enter") {
+            event.preventDefault();
+            handleToggleSelected();
+          }
+        }}
+      >
+        {card}
+      </div>
+    );
+  }
+
+  return (
+    <Link className={S.link} to={modelToUrl(item)} onClick={onClick}>
+      {card}
     </Link>
   );
 }

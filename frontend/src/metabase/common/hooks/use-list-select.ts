@@ -1,9 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export type UseListSelectReturnValue<T> = {
   clear: () => void;
   getIsSelected: (item: T) => boolean;
   selected: T[];
+  selectItems: (items: T[]) => void;
   selectOnlyTheseItems: (items: T[]) => void;
   toggleItem: (item: T) => void;
 };
@@ -11,49 +12,68 @@ export type UseListSelectReturnValue<T> = {
 export function useListSelect<T>(
   keyFn: (item: T) => string,
 ): UseListSelectReturnValue<T> {
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
-  const [selected, setSelected] = useState<T[]>([]);
+  const [selectedByKey, setSelectedByKey] = useState<ReadonlyMap<string, T>>(
+    new Map(),
+  );
 
   const getIsSelected = useCallback(
-    (item: T) => selectedKeys.has(keyFn(item)),
-    [keyFn, selectedKeys],
+    (item: T) => selectedByKey.has(keyFn(item)),
+    [keyFn, selectedByKey],
   );
 
   const selectOnlyTheseItems = useCallback(
     (items: T[]) => {
-      const newSelected = items;
-      const newSelectedKeys = new Set(newSelected.map(keyFn));
+      setSelectedByKey(new Map(items.map((item) => [keyFn(item), item])));
+    },
+    [keyFn],
+  );
 
-      setSelectedKeys(newSelectedKeys);
-      setSelected(newSelected);
+  const selectItems = useCallback(
+    (items: T[]) => {
+      setSelectedByKey((previous) => {
+        const next = new Map(previous);
+        items.forEach((item) => {
+          const key = keyFn(item);
+          if (!next.has(key)) {
+            next.set(key, item);
+          }
+        });
+        return next;
+      });
     },
     [keyFn],
   );
 
   const toggleItem = useCallback(
-    (itemBeingToggled: T) => {
-      const isItemSelected = getIsSelected(itemBeingToggled);
-
-      const newSelected = isItemSelected
-        ? selected.filter((item) => keyFn(item) !== keyFn(itemBeingToggled))
-        : [...selected, itemBeingToggled];
-      const newSelectedKeys = new Set(newSelected.map(keyFn));
-
-      setSelectedKeys(newSelectedKeys);
-      setSelected(newSelected);
+    (item: T) => {
+      setSelectedByKey((previous) => {
+        const key = keyFn(item);
+        const next = new Map(previous);
+        if (next.has(key)) {
+          next.delete(key);
+        } else {
+          next.set(key, item);
+        }
+        return next;
+      });
     },
-    [keyFn, selected, getIsSelected],
+    [keyFn],
   );
 
   const clear = useCallback(() => {
-    setSelectedKeys(new Set());
-    setSelected([]);
+    setSelectedByKey(new Map());
   }, []);
+
+  const selected = useMemo(
+    () => Array.from(selectedByKey.values()),
+    [selectedByKey],
+  );
 
   return {
     clear,
     getIsSelected,
     selected,
+    selectItems,
     selectOnlyTheseItems,
     toggleItem,
   };

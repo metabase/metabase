@@ -1,5 +1,8 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
@@ -52,7 +55,16 @@ const defaultItems = [dashboardItem, metricItem, questionItem, modelItem];
 function setup({
   items,
   collection,
-}: { items?: CollectionItem[]; collection?: Collection } = {}) {
+  selected,
+  getIsSelected,
+  onToggleSelected,
+}: {
+  items?: CollectionItem[];
+  collection?: Collection;
+  selected?: CollectionItem[];
+  getIsSelected?: (item: CollectionItem) => boolean;
+  onToggleSelected?: OnToggleSelectedWithItem;
+} = {}) {
   items = items || defaultItems;
   collection = collection || defaultCollection;
 
@@ -69,6 +81,9 @@ function setup({
       onMove={mockOnMove}
       createBookmark={jest.fn()}
       deleteBookmark={jest.fn()}
+      selected={selected}
+      getIsSelected={getIsSelected}
+      onToggleSelected={onToggleSelected}
     />,
     {
       withDND: true,
@@ -110,5 +125,56 @@ describe("PinnedItemsGrid", () => {
       "Question Baz",
       "Model Qux",
     ]);
+  });
+
+  it("should make all cards selectable when an item is selected", async () => {
+    const onToggleSelected = jest.fn();
+    const getIsSelected = (item: CollectionItem) =>
+      item.id === dashboardItem.id && item.model === dashboardItem.model;
+
+    setup({
+      selected: [dashboardItem],
+      getIsSelected,
+      onToggleSelected,
+    });
+
+    const section = within(await screen.findByTestId("pinned-items"));
+    expect(section.getAllByRole("checkbox")).toHaveLength(defaultItems.length);
+    expect(
+      section.getByRole("checkbox", { name: dashboardItem.name }),
+    ).toBeChecked();
+    expect(
+      section.getByRole("checkbox", { name: metricItem.name }),
+    ).not.toBeChecked();
+
+    await userEvent.click(
+      section.getByRole("checkbox", { name: metricItem.name }),
+    );
+
+    expect(onToggleSelected).toHaveBeenCalledWith(metricItem);
+  });
+
+  it("should keep cards as links in a read-only collection", async () => {
+    setup({
+      collection: createMockCollection({
+        ...defaultCollection,
+        can_write: false,
+      }),
+      selected: [dashboardItem],
+      getIsSelected: () => true,
+      onToggleSelected: jest.fn(),
+    });
+
+    await screen.findByTestId("pinned-items");
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(defaultItems.length);
+  });
+
+  it("should keep cards as links when selection props are omitted", async () => {
+    setup();
+
+    await screen.findByTestId("pinned-items");
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(defaultItems.length);
   });
 });

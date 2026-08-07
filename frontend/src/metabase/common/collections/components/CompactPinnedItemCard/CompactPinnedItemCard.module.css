@@ -61,3 +61,23 @@
 .card:hover .actions {
   visibility: visible;
 }
+
+.cardSelectable:hover {
+  border-color: var(--mb-color-core-brand);
+}
+
+.cardSelected,
+.cardSelected:hover {
+  border: 2px solid var(--mb-color-core-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
+}
+
+.cardSelected .body {
+  padding: calc(var(--mantine-spacing-lg) - 1px)
+    calc(var(--mantine-spacing-xl) - 1px) calc(var(--mantine-spacing-md) - 1px)
+    calc(1.25rem - 1px);
+}
+
+.selectCheckbox {
+  flex: 0 0 auto;
+}

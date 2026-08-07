@@ -8,8 +8,10 @@ import PinDropZone from "metabase/common/collections/components/PinDropZone";
 import type {
   CreateBookmark,
   DeleteBookmark,
+  OnToggleSelectedWithItem,
 } from "metabase/common/collections/types";
 import { isRootTrashCollection } from "metabase/common/collections/utils";
+import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import { Box, SimpleGrid, rem } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -29,6 +31,9 @@ type Props = {
   collection: Collection;
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
+  selected?: CollectionItem[];
+  getIsSelected?: (item: CollectionItem) => boolean;
+  onToggleSelected?: OnToggleSelectedWithItem;
 };
 
 export function PinnedItemsGrid({
@@ -40,6 +45,9 @@ export function PinnedItemsGrid({
   collection,
   onCopy,
   onMove,
+  selected,
+  getIsSelected,
+  onToggleSelected,
 }: Props) {
   // Trashed items keep their pin position, but the trash never shows a pinned section.
   const showPinnedItems = !isRootTrashCollection(collection);
@@ -68,6 +76,9 @@ export function PinnedItemsGrid({
     );
   }
 
+  const canSelect = canSelectItems(collection, onToggleSelected);
+  const isSelectMode = canSelect && (selected?.length ?? 0) > 0;
+
   return (
     <Box mb={rem(48)} pos="relative" data-testid="pinned-items">
       <PinDropZone variant="pin" />
@@ -86,6 +97,8 @@ export function PinnedItemsGrid({
               <ItemDragSource
                 item={{ ...item, collection_position: pinIndex }}
                 collection={collection}
+                isSelected={getIsSelected?.(item) ?? false}
+                selected={selected}
               >
                 {/* ItemDragSource needs a native DOM element to attach its drag ref */}
                 <div data-drag-source-node>
@@ -98,6 +111,9 @@ export function PinnedItemsGrid({
                     deleteBookmark={deleteBookmark}
                     onCopy={onCopy}
                     onMove={onMove}
+                    isSelectMode={isSelectMode}
+                    isSelected={getIsSelected?.(item) ?? false}
+                    onToggleSelected={canSelect ? onToggleSelected : undefined}
                   />
                 </div>
               </ItemDragSource>
