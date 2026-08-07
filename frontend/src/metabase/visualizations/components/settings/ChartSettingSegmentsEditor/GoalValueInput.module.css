@@ -40,7 +40,8 @@
   cursor: pointer;
   display: flex;
   gap: 6px;
-  max-width: 100%;
+  /* lets the value ellipsize instead of pushing the remove button out of the shell */
+  min-width: 0;
   padding: 0.25rem 0.5rem 0.25rem 0.75rem;
 
   &:hover {
