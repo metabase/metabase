@@ -28,7 +28,8 @@
                 [:saml-attribute-email               {:optional true} [:maybe :string]]
                 [:saml-attribute-firstname           {:optional true} [:maybe :string]]
                 [:saml-attribute-group               {:optional true} [:maybe :string]]
-                [:saml-group-mappings                {:optional true} [:maybe ms/Map]]
+                ;; SAML group name -> the Metabase group ids it maps to, like `ldap-group-mappings`
+                [:saml-group-mappings                {:optional true} [:maybe [:map-of :keyword [:sequential ms/PositiveInt]]]]
                 [:saml-attribute-tenant              {:optional true} [:maybe :string]]
                 [:saml-attribute-lastname            {:optional true} [:maybe :string]]
                 [:saml-enabled                       {:optional true} [:maybe :boolean]]

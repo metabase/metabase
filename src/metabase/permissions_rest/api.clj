@@ -90,11 +90,31 @@
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]
                                   [:force      {:default false} [:maybe ms/BooleanValue]]]
    body :- [:map
-            [:groups                          ms/Map]
+            ;; keyed by group id, then by database id -- `::permissions-rest.schema/strict-api-permissions-graph`
+            ;; below turns both back into the ints the graph is stored under, and checks the per-database
+            ;; permissions, so the value stays open here
+            [:groups                          [:map-of :keyword [:maybe ms/Map]]]
             [:revision       {:optional true} [:maybe ms/Int]]
             [:force          {:optional true} [:maybe :boolean]]
-            [:sandboxes      {:optional true} [:maybe [:sequential ms/Map]]]
-            [:impersonations {:optional true} [:maybe [:sequential ms/Map]]]]]
+            ;; sandboxes without an `:id` are created, ones with an `:id` are updated -- and only in the keys the
+            ;; request actually carries, so `:card_id`/`:attribute_remappings` have to keep their present/absent
+            ;; distinction
+            [:sandboxes      {:optional true}
+             [:maybe [:sequential
+                      [:map
+                       [:id                   {:optional true} ms/PositiveInt]
+                       [:group_id             {:optional true} ms/PositiveInt]
+                       [:table_id             {:optional true} ms/PositiveInt]
+                       [:card_id              {:optional true} [:maybe ms/PositiveInt]]
+                       ;; user attribute name -> the parameter target it is remapped to
+                       [:attribute_remappings {:optional true} [:maybe ms/Map]]
+                       [:permission_id        {:optional true} [:maybe ms/PositiveInt]]]]]]
+            [:impersonations {:optional true}
+             [:maybe [:sequential
+                      [:map
+                       [:group_id  ms/PositiveInt]
+                       [:db_id     ms/PositiveInt]
+                       [:attribute ms/NonBlankString]]]]]]]
   (api/check-superuser)
   (let [new-graph (mc/decode ::permissions-rest.schema/strict-api-permissions-graph
                              body
