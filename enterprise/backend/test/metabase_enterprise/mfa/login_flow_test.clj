@@ -239,7 +239,7 @@
                   (is (true? (:success resp)))
                   (is (nil? (:session_id resp))))
                 (testing "the new password works through the normal, gated login"
-                  (let [login #p (mt/client :post 200 "session" {:username email :password new-password})]
+                  (let [login (mt/client :post 200 "session" {:username email :password new-password})]
                     (is (true? (:mfa_required login)))))))))))))
 
 (deftest password-reset-when-required-and-unenrolled-issues-no-session-test
@@ -259,7 +259,5 @@
                 (is (true? (:success resp)))
                 (is (nil? (:session_id resp))))
               (testing "the new password works through the normal, gated login"
-                (let [login #p (mt/client :post 200 "session" {:username email :password new-password})]
-                  (is (true? (:mfa_required login))))))))))))
-
-;; XXX: The above test is failing as expected since I haven't implemented this feature yet!
+                (let [login (mt/client :post 200 "session" {:username email :password new-password})]
+                  (is (true? (:mfa_enrollment login))))))))))))

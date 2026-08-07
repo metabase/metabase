@@ -50,20 +50,48 @@
         fall back to email here."
   [provider login-result]
   (b/cond
-    ;; Unsuccessful login: just return the error.
+    ;; Pass through the first factor's `login-result` in two cases:
+    ;; 1. First factor login failed
     (not (and (true? (:success? login-result))
-              (:user login-result)))             login-result
+              (:user login-result)))                              login-result
+    ;; 2. MFA is not enabled at all
+    (not (mfa.settings/mfa-enabled?))                             login-result
+    ;; 3. First factor does not need MFA (e.g. SSO, Google)
+    (and (not (challenged-provider? provider))
+         (not (contains? session-suppressed-providers provider))) login-result
 
-    ;; MFA disabled: return the first factor's `login-result`.
-    (not (mfa.settings/mfa-enabled?))            login-result
-
+    ;; At this point, we could plausibly require an MFA challenge or enrollment.
     :let [user-id (get-in login-result [:user :id])
           method  (when user-id (enrollment/enrolled-method user-id))]
 
-    ;; Unenrolled and MFA is *required*! Signal to `login!` that enrollment is required, and prevent it minting a
-    ;; session for now.
+    ;; MFA configured and the provider supports MFA challenges: issue a challenge.
+    ;; This signals `login!` not to mint a session yet.
+    (and method (challenged-provider? provider))
+    (assoc login-result
+           :success?         :mfa-required
+           :mfa/pending?     true
+           :mfa/methods      (available-methods)
+           :mfa/first-factor provider)
+
+    ;; If MFA is not enrolled, but not required, pass through the first factor.
     (and (nil? method)
-         (mfa.settings/mfa-required?))
+         (not (mfa.settings/mfa-required?)))                      login-result
+
+    ;; If the first factor is a special case (e.g. :provider/emailed-secret-password-reset) we don't log them in
+    ;; directly after the new password is accepted, when MFA is in play. Instead, they get redirected to the regular
+    ;; login page to re-enter their password and then answer an MFA challenge (or enroll).
+    ;; This signals the `login!` flow accordingly.
+    (contains? session-suppressed-providers provider)
+    (assoc login-result :mfa/pending? true)
+
+    ;; At this point, we know:
+    ;; - First factor is a [[challenged-provider?]]
+    ;; - User does not have MFA enrolled
+    ;; - MFA is enabled
+    ;; That leaves two cases.
+
+    ;; 1. If MFA is *required*, they must immediately enroll.
+    (mfa.settings/mfa-required?)
     (assoc login-result
            :success?         :mfa-required
            :mfa/pending?     true
@@ -71,26 +99,5 @@
            :mfa/methods      ["totp"]
            :mfa/first-factor provider)
 
-    ;; Unenrolled, but MFA is optional: just return the first factor's `login-result`.
-    (nil? method) login-result
-
-    ;; First factor needs an MFA challenge and MFA is enrolled: Signal `login!` to require MFA and not mint a session.
-    (challenged-provider? provider)
-    (assoc login-result
-           :success?         :mfa-required
-           :mfa/pending?     true
-           :mfa/methods      (available-methods)
-           :mfa/first-factor provider)
-
-    ;; First factor is a special case that requires a fresh login with a different provider. Signal that no session
-    ;; should be minted; the FE will redirect to a regular login.
-    ;; This is intended for flows like `:provider/emailed-secret-password-reset`, which needs a full login when MFA
-    ;; is enrolled, rather than directly logging the user in on a successful password reset.
-    (contains? session-suppressed-providers provider)
-    (assoc login-result
-           :mfa/pending? true)
-
-    ;; Fallback: accept the first factor (e.g. SSO) by itself without an MFA challenge, even though MFA is configured.
-    ;; For example, if you have a password and MFA but also have Google OAuth, Google logins are accepted without a
-    ;; Metabase OTP. (Set up your Google Workspace to require MFA and rely on that.)
+    ;; 2. MFA is enabled, but neither enrolled nor required: regular login.
     :else login-result))
