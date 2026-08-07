@@ -1,9 +1,9 @@
-import { registerJsxFormatting } from "metabase/visualizations/lib/register-jsx-formatting";
 import {
   registerSettingWidgets,
   registerVisualization,
   setDefaultVisualization,
 } from "metabase/visualizations";
+import { registerJsxFormatting } from "metabase/visualizations/lib/register-jsx-formatting";
 
 import { ChartNestedSettingColumns } from "./components/settings/ChartNestedSettingColumns";
 import ChartNestedSettingSeries from "./components/settings/ChartNestedSettingSeries";
