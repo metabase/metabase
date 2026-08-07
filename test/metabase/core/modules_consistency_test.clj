@@ -88,6 +88,14 @@
   []
   (some? (force babashka-executable)))
 
+(defn- missing-babashka-failure
+  "Message for a cross-check that cannot run because babashka is absent. These assertions are the only
+  thing binding the mage mirror to the other two resolvers, so a missing `bb` fails loudly rather than
+  passing silently: a tripwire that quietly degrades from three-way to two-way is worse than a red test."
+  []
+  (str "Cannot cross-check the mage resolver mirror: no working babashka at ./bin/bb or on PATH. "
+       "Run any ./bin/mage task once to install it."))
+
 (deftest babashka-executable-falls-back-to-path-test
   (with-redefs [working-executable? #(= % "bb")]
     (is (= "bb" (find-babashka-executable)))))
@@ -260,10 +268,7 @@
               (is (= (hook-module config ns)
                      (dev-module dev-prefix->module ns)
                      mage-result)))
-            (is false (str "Cannot cross-check the mage resolver mirror: no working babashka at "
-                           "./bin/bb or on PATH. Run any ./bin/mage task once to install it. "
-                           "Skipping silently would let the mage mirror drift out of sync "
-                           "unnoticed, which is what this test exists to prevent."))))))))
+            (is false (missing-babashka-failure))))))))
 
 (deftest ^:parallel visibility-behavior-agrees-test
   (testing (str "The dev mirror of the namability rule agrees with the canonical hook. This file "
@@ -301,53 +306,67 @@
               (is (= (boolean (hook-namable {:metabase/modules config} caller target))
                      (boolean (dev-namable config caller target)))))))))))
 
-;; The tests below assert against real on-disk test files rather than fixtures, because the point is
-;; that resolution lands on paths that actually exist. That couples them to files they do not own:
-;; `actions_rest/api_test.clj`, `lib/schema/util_test.cljc`, `lib/schema_test.cljc`,
-;; `cache_backend/db_test.clj` and `lib/js_test.cljs`. Renaming or deleting any of those breaks these
-;; tests without the resolution logic having changed. If that happens, repoint the path rather than
-;; assuming a resolver regression.
+;; The path tests below run against the real test tree rather than fixtures, because the property under
+;; test is that resolution lands on paths that actually exist. They assert on the DIRECTORY a module's
+;; tests resolve into, never on individual filenames, so renaming or adding a test file cannot break
+;; them. What does break them is resolution moving a file to the wrong module, which is the point.
+
+(defn- all-under?
+  "True if `paths` is non-empty and every path is the module's own `<dir>_test.<ext>` file or sits
+  under `<dir>/`. Non-emptiness matters: an empty set would satisfy `every?` vacuously and the
+  assertion would prove nothing."
+  [dir paths]
+  (and (seq paths)
+       (every? (fn [^String p]
+                 (or (re-matches (re-pattern (str "\\Q" dir "\\E_test\\.\\w+")) p)
+                     (.startsWith p (str dir "/"))))
+               paths)))
+
 (deftest ^:parallel dotted-module-test-paths-test
   (testing "Dotted modules resolve to the actual on-disk test paths for both default and explicit prefixes"
     (let [modules-config {'actions.rest {:ns-prefix "metabase.actions-rest"}
                           'lib.schema   {}}
           module->test-files (private-fn 'dev.deps-graph 'module->test-files)]
       (testing "dev.deps-graph finds both explicit-prefix and default nested-module tests"
-        (is (contains? (module->test-files modules-config 'actions.rest)
-                       "test/metabase/actions_rest/api_test.clj"))
-        (is (contains? (module->test-files modules-config 'lib.schema)
-                       "test/metabase/lib/schema/util_test.cljc"))
-        (is (contains? (module->test-files modules-config 'lib.schema)
-                       "test/metabase/lib/schema_test.cljc")))
+        (is (all-under? "test/metabase/actions_rest"
+                        (module->test-files modules-config 'actions.rest))
+            "an explicit :ns-prefix resolves into the prefix's directory")
+        (is (all-under? "test/metabase/lib/schema"
+                        (module->test-files modules-config 'lib.schema))
+            "a default-derived prefix resolves into the dotted module's directory"))
       (if (babashka-available?)
-        (testing "mage.modules emits exact files owned by each module"
-          (is (contains? (set (bb-mage-module->test-paths modules-config 'actions.rest))
-                         "test/metabase/actions_rest/api_test.clj"))
-          (is (contains? (set (bb-mage-module->test-paths modules-config 'lib.schema))
-                         "test/metabase/lib/schema/util_test.cljc"))
-          (is (contains? (set (bb-mage-module->test-paths modules-config 'lib.schema))
-                         "test/metabase/lib/schema_test.cljc")))
-        (is true "Skipping mage.modules path assertions because `bb` is unavailable")))))
+        (testing "mage.modules emits the same directories"
+          (is (all-under? "test/metabase/actions_rest"
+                          (bb-mage-module->test-paths modules-config 'actions.rest)))
+          (is (all-under? "test/metabase/lib/schema"
+                          (bb-mage-module->test-paths modules-config 'lib.schema))))
+        (is false (missing-babashka-failure))))))
 
 (deftest ^:parallel parent-test-discovery-excludes-declared-child-tests-test
-  (let [child-test "test/metabase/query_processor/middleware/cache_backend/db_test.clj"
+  (let [child-dir "test/metabase/query_processor/middleware/cache_backend"
         modules-config {'query-processor               {}
                         'query-processor.cache-backend {:ns-prefix "metabase.query-processor.middleware.cache-backend"}}
         module->test-files (private-fn 'dev.deps-graph 'module->test-files)]
     (testing "dev dependency tooling assigns a nested test only to its exact owner"
-      (is (not (contains? (module->test-files modules-config 'query-processor) child-test)))
-      (is (contains? (module->test-files modules-config 'query-processor.cache-backend) child-test)))
+      (let [parent (module->test-files modules-config 'query-processor)
+            child  (module->test-files modules-config 'query-processor.cache-backend)]
+        (is (all-under? child-dir child)
+            "the declared child owns the tests under its own prefix")
+        (is (empty? (filter #(.startsWith ^String % (str child-dir "/")) parent))
+            "and the parent claims none of them")))
     (if (babashka-available?)
       (testing "Mage affected-test paths assign a nested test only to its exact owner"
-        (is (not (contains? (set (bb-mage-module->test-paths modules-config 'query-processor)) child-test)))
-        (is (contains? (set (bb-mage-module->test-paths modules-config 'query-processor.cache-backend)) child-test)))
-      (is true "Skipping mage.modules path assertions because `./bin/bb` is unavailable"))))
+        (let [parent (bb-mage-module->test-paths modules-config 'query-processor)
+              child  (bb-mage-module->test-paths modules-config 'query-processor.cache-backend)]
+          (is (all-under? child-dir child))
+          (is (empty? (filter #(.startsWith ^String % (str child-dir "/")) parent)))))
+      (is false (missing-babashka-failure)))))
 
 (deftest ^:parallel mage-affected-tests-are-jvm-loadable-test
   (if (babashka-available?)
     (let [paths (set (bb-mage-module->test-paths {'lib {}} 'lib))]
       (is (not (contains? paths "test/metabase/lib/js_test.cljs"))))
-    (is true "Skipping mage.modules path assertions because Babashka is unavailable")))
+    (is false (missing-babashka-failure))))
 
 (deftest ^:parallel explicit-prefix-map-overloads-remain-pure-test
   (testing "dev.deps-graph path helpers honor caller-supplied prefix->module maps instead of recomputing live config"
@@ -391,7 +410,7 @@
                  (bb-mage-updated-files->updated-modules {'lib.schema {}
                                                           'lib        {}}
                                                          [test-file]))))
-        (is true "Skipping mage.modules exact-file assertions because `bb` is unavailable")))))
+        (is false (missing-babashka-failure))))))
 
 (deftest ^:parallel canonical-comments-present-test
   (testing "Each of the three mapping sites must carry a comment pointing at the others"
