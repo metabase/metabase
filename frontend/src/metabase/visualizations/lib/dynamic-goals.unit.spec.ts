@@ -209,6 +209,7 @@ describe("resolveGoalValue", () => {
         id: 7,
         column: "total",
         reason: "not-a-number",
+        message: "Column value is not a number",
       },
     });
   });
@@ -230,7 +231,7 @@ describe("resolveGoalSegments", () => {
     ]);
   });
 
-  it("resolves a foreign reference from referenced_entities", () => {
+  it("resolves a foreign card reference from referenced_entities", () => {
     const data = createMockDatasetData({
       ...DATA,
       referenced_entities: {
@@ -256,7 +257,33 @@ describe("resolveGoalSegments", () => {
     ]);
   });
 
-  it("drops segments that fail to resolve", () => {
+  it("resolves a foreign measure reference from referenced_entities", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        measure: {
+          4: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
+          },
+        },
+      },
+    });
+
+    const segments = resolveGoalSegments(data, [
+      {
+        min: 0,
+        max: { type: "measure", id: 4, column: "goal" },
+        color: "green",
+      },
+    ]);
+
+    expect(segments).toEqual([
+      { min: 0, max: 250, color: "green", label: undefined },
+    ]);
+  });
+
+  it("drops segments with a card reference that fail to resolve", () => {
     const data = createMockDatasetData({
       ...DATA,
       referenced_entities: {
@@ -267,6 +294,24 @@ describe("resolveGoalSegments", () => {
       {
         min: 0,
         max: { type: "card", id: 9, column: "goal" },
+        color: "green",
+      },
+    ]);
+
+    expect(segments).toEqual([]);
+  });
+
+  it("drops segments with a measure reference that fails to resolve", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        measure: { 4: { status: "failed", error: "boom" } },
+      },
+    });
+    const segments = resolveGoalSegments(data, [
+      {
+        min: 0,
+        max: { type: "measure", id: 4, column: "goal" },
         color: "green",
       },
     ]);
