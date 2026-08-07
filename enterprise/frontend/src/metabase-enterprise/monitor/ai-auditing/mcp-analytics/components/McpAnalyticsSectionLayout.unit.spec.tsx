@@ -45,6 +45,7 @@ const GROUP_MEMBERS_TABLE_ID = 2002;
 // match the field order of the `v_mcp_tool_calls` table defined further down.
 const TOOL_CALL_ID_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 0;
 const CREATED_AT_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 1;
+const TOOL_NAME_FIELD_ID = MCP_TOOL_CALLS_TABLE_ID * 100 + 2;
 
 const BASE_TYPE = {
   text: "type/Text",
@@ -391,10 +392,18 @@ describe("McpAnalyticsSectionLayout", () => {
     );
 
     await waitFor(() => {
-      const sortedAscending = eventsDatasetStages().some(
+      const sortedStage = eventsDatasetStages().find(
         (stage) => stage.page != null && stage["order-by"]?.[0]?.[0] === "asc",
       );
-      expect(sortedAscending).toBe(true);
+      expect(
+        sortedStage?.["order-by"]?.map(([direction, , [, , fieldId]]) => [
+          direction,
+          fieldId,
+        ]),
+      ).toEqual([
+        ["asc", TOOL_NAME_FIELD_ID],
+        ["desc", TOOL_CALL_ID_FIELD_ID],
+      ]);
     });
   });
 

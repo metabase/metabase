@@ -1,6 +1,7 @@
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import type * as Router from "metabase/router";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 
@@ -24,7 +25,7 @@ jest.mock(
 // The section layouts render their sub-route through an outlet, so the mocks do too — otherwise
 // the leaf routes below would never render and a missing/misspelled child route would go unnoticed.
 jest.mock("./mcp-analytics/components/McpAnalyticsSectionLayout", () => {
-  const { Outlet } = jest.requireActual("metabase/router");
+  const { Outlet } = jest.requireActual<typeof Router>("metabase/router");
   return {
     McpAnalyticsSectionLayout: () => (
       <div>
@@ -35,7 +36,7 @@ jest.mock("./mcp-analytics/components/McpAnalyticsSectionLayout", () => {
   };
 });
 jest.mock("./cli-analytics/components/CliAnalyticsSectionLayout", () => {
-  const { Outlet } = jest.requireActual("metabase/router");
+  const { Outlet } = jest.requireActual<typeof Router>("metabase/router");
   return {
     CliAnalyticsSectionLayout: () => (
       <div>

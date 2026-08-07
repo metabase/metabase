@@ -45,6 +45,7 @@ const GROUP_MEMBERS_TABLE_ID = 2002;
 // match the field order of the `v_agent_api_calls` table defined further down.
 const CALL_ID_FIELD_ID = AGENT_API_CALLS_TABLE_ID * 100 + 0;
 const CREATED_AT_FIELD_ID = AGENT_API_CALLS_TABLE_ID * 100 + 1;
+const OPERATION_FIELD_ID = AGENT_API_CALLS_TABLE_ID * 100 + 2;
 
 const BASE_TYPE = {
   text: "type/Text",
@@ -366,10 +367,18 @@ describe("CliAnalyticsSectionLayout", () => {
     );
 
     await waitFor(() => {
-      const sortedAscending = eventsDatasetStages().some(
+      const sortedStage = eventsDatasetStages().find(
         (stage) => stage.page != null && stage["order-by"]?.[0]?.[0] === "asc",
       );
-      expect(sortedAscending).toBe(true);
+      expect(
+        sortedStage?.["order-by"]?.map(([direction, , [, , fieldId]]) => [
+          direction,
+          fieldId,
+        ]),
+      ).toEqual([
+        ["asc", OPERATION_FIELD_ID],
+        ["desc", CALL_ID_FIELD_ID],
+      ]);
     });
   });
 
