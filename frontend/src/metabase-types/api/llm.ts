@@ -40,6 +40,7 @@ export type LlmProviderTypeName =
   | "mistral"
   | "zai"
   | "moonshot"
+  | "google"
   | "azure"
   | "bedrock"
   | "metabase";

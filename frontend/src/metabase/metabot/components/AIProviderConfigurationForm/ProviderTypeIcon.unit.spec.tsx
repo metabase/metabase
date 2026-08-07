@@ -29,6 +29,7 @@ describe("ProviderTypeIcon", () => {
     "mistral",
     "zai",
     "moonshot",
+    "google",
     "azure",
     "bedrock",
   ] as const)("renders the vendor logo for %s", (type) => {

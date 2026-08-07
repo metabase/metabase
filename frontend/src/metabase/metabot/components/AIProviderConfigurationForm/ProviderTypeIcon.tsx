@@ -8,6 +8,7 @@ import S from "./ProviderTypeIcon.module.css";
 import AnthropicMark from "./logos/anthropic.svg?component";
 import AzureMark from "./logos/azure.svg?component";
 import BedrockMark from "./logos/bedrock.svg?component";
+import GoogleMark from "./logos/google.svg?component";
 import MistralMark from "./logos/mistral.svg?component";
 import MoonshotMark from "./logos/moonshot.svg?component";
 import OpenAiMark from "./logos/openai.svg?component";
@@ -30,6 +31,7 @@ const PROVIDER_LOGOS: Record<
   mistral: MistralMark,
   zai: ZaiMark,
   moonshot: MoonshotMark,
+  google: GoogleMark,
   azure: AzureMark,
   metabase: null,
 };

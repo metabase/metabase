@@ -94,10 +94,9 @@ Sets the maximum number of days Metabase preserves rows for the following applic
 - `ai_usage_log`
 - `metabot_conversation`
 - `metabot_message`
-- `agent_api_call_log`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
-If set to 0, Metabase will keep all rows. If you don't set this variable, Metabase keeps rows for 180 days.
+If set to 0, Metabase will keep all rows.
 
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
@@ -332,6 +331,13 @@ When using the default binning strategy for a field of type Coordinate (such as 
 - [Configuration file name](./config-file.md): `breakout-bins-num`
 
 When using the default binning strategy and a number of bins is not provided, this number will be used as the default.
+
+### `MB_CAN_RUN_ADHOC_QUERY_CHECK_THRESHOLD`
+
+- Type: integer
+- Default: `250`
+
+Maximum number of cards to compute can_run_adhoc_query for. When the number of cards exceeds this threshold, can_run_adhoc_query will return true for all cards without computing actual permissions. Set to 0 to always compute permissions. This only affects how cards are displayed in the query builder and does not affect actual permission enforcement.
 
 ### `MB_CHECK_FOR_UPDATES`
 
@@ -1410,41 +1416,51 @@ TCP connection timeout in milliseconds for LLM API requests. A provider that is 
 
 - Type: string
 - Default: `https://aiplatform.googleapis.com`
-- [Configuration file name](./config-file.md): `llm-google-api-base-url`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The Gemini Enterprise Agent Platform API base URL. Leave unset to derive it from the location.
+
+The Gemini Enterprise Agent Platform API base URL used by the connection configured from the environment.
 
 ### `MB_LLM_GOOGLE_LOCATION`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-google-location`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The Google Cloud location for the Gemini Enterprise Agent Platform (e.g. us-central1). Defaults to global.
+
+The Google Cloud location used by the Gemini Enterprise Agent Platform connection configured from the environment.
 
 ### `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-google-oauth-access-token`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 A short-lived OAuth2 access token for the Gemini Enterprise Agent Platform (e.g. from `gcloud auth print-access-token`). Useful for testing.
+
+The OAuth2 access token used by the Gemini Enterprise Agent Platform connection configured from the environment, when it carries no service account key.
 
 ### `MB_LLM_GOOGLE_PROJECT_ID`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-google-project-id`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 The Google Cloud project ID for the Gemini Enterprise Agent Platform.
+
+The Google Cloud project used by the Gemini Enterprise Agent Platform connection configured from the environment.
 
 ### `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `llm-google-service-account-key`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set.
+
+Sets up the Gemini Enterprise Agent Platform provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.
 
 ### `MB_LLM_MAX_TOKENS`
 

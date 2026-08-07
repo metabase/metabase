@@ -352,7 +352,7 @@
                 "so a type without a decided logo fails to compile. Nothing links the two, so adding a type here "
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
-    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "azure" "bedrock" "metabase"}
+    (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "google" "azure" "bedrock" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 
 (deftest ^:parallel provider-types-test
@@ -377,6 +377,8 @@
             "mistral"    "mistral-medium-3-5"
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
+            ;; google's model is the connection's own, like azure's deployment
+            "google"     nil
             ;; azure's models are deployment names the admin chooses, so there is nothing to default to
             "azure"      nil
             "bedrock"    "anthropic.claude-opus-4-8"

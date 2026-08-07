@@ -18,7 +18,9 @@
    :llm-azure-api-key :llm-azure-api-base-url
    :llm-azure-model-family :llm-azure-deployment-name
    :llm-bedrock-access-key-id :llm-bedrock-secret-access-key
-   :llm-bedrock-session-token :llm-bedrock-region])
+   :llm-bedrock-session-token :llm-bedrock-region
+   :llm-google-service-account-key :llm-google-oauth-access-token
+   :llm-google-project-id :llm-google-location :llm-google-api-base-url])
 
 (deftest per-provider-credential-settings-are-read-only-test
   (testing (str "These configure a connection only from an environment variable, which is resolved on every read. A "
@@ -41,136 +43,44 @@
     (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
       (is (true? (llm.settings/llm-anthropic-api-key-configured?))))))
 
-;;; ------------------------------------------- llm-google-project-id Setter Tests -------------------------------------------
+;;; ------------------------------------------- Google credential validation -------------------------------------------
 
-(deftest llm-google-project-id-setter-accepts-valid-id-test
-  (testing "accepts a project ID and trims whitespace"
-    (mt/with-temp-env-var-value! [mb-llm-google-project-id nil]
-      (mt/discard-setting-changes [llm-google-project-id]
-        (llm.settings/llm-google-project-id! "  my-project-123  ")
-        (is (= "my-project-123" (llm.settings/llm-google-project-id)))))))
-
-(deftest llm-google-project-id-setter-accepts-length-boundaries-test
-  (testing "accepts the shortest and longest project IDs Google allows"
-    (mt/with-temp-env-var-value! [mb-llm-google-project-id nil]
-      (mt/discard-setting-changes [llm-google-project-id]
-        (doseq [project-id ["abc123" (apply str "a" (repeat 29 "b"))]]
-          (llm.settings/llm-google-project-id! project-id)
-          (is (= project-id (llm.settings/llm-google-project-id))))))))
-
-(deftest llm-google-project-id-setter-rejects-malformed-id-test
-  (testing "rejects a value that is not a project ID"
-    (doseq [project-id ["My Project"                                    ; spaces and uppercase
-                        "MY-PROJECT"                                    ; uppercase
-                        "1234567890"                                    ; the project number
-                        "abc"                                           ; shorter than 6 characters
-                        (apply str "a" (repeat 30 "b"))                 ; longer than 30 characters
-                        "-my-project"                                   ; does not start with a letter
-                        "my-project-"                                   ; ends with a hyphen
-                        "my_project"                                    ; underscores are not allowed
-                        "projects/my-project"                           ; the resource name
+(deftest valid-google-project-id?-test
+  (testing "accepts a project ID, trimmed of nothing it does not carry"
+    (doseq [project-id ["my-project-123" "abcdef" (apply str (repeat 30 "a"))]]
+      (testing project-id
+        (is (true? (llm.settings/valid-google-project-id? project-id))))))
+  (testing "rejects anything that is not one"
+    (doseq [project-id [""
+                        "My Project"                              ; the project name
+                        "123456789012"                            ; the project number
+                        "-leading-hyphen"
+                        "trailing-hyphen-"
+                        "abcde"                                   ; one short
+                        (apply str (repeat 31 "a"))               ; one long
                         "https://console.cloud.google.com/my-project"]] ; a pasted URL
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"is not a valid Google Cloud project ID"
-           (llm.settings/llm-google-project-id! project-id))))))
+      (testing project-id
+        (is (false? (llm.settings/valid-google-project-id? project-id))))))
+  (testing "rejects a non-string"
+    (is (false? (llm.settings/valid-google-project-id? nil)))))
 
-(deftest llm-google-project-id-setter-rejected-value-not-stored-test
-  (testing "a rejected value leaves the stored project ID alone"
-    (mt/with-temp-env-var-value! [mb-llm-google-project-id nil]
-      (mt/discard-setting-changes [llm-google-project-id]
-        (llm.settings/llm-google-project-id! "my-project-123")
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"\"My Project\" is not a valid Google Cloud project ID"
-             (llm.settings/llm-google-project-id! "My Project")))
-        (is (= "my-project-123" (llm.settings/llm-google-project-id)))))))
-
-(deftest llm-google-project-id-setter-clears-on-blank-test
-  (testing "a whitespace-only value clears the setting"
-    (mt/with-temp-env-var-value! [mb-llm-google-project-id nil]
-      (mt/discard-setting-changes [llm-google-project-id]
-        (llm.settings/llm-google-project-id! "my-project-123")
-        (llm.settings/llm-google-project-id! "   ")
-        (is (nil? (llm.settings/llm-google-project-id)))))))
-
-;;; ------------------------------------------- llm-google-location Setter Tests -------------------------------------------
-
-(deftest llm-google-location-setter-accepts-served-locations-test
-  (testing "accepts the location spellings the platform serves, and trims whitespace"
-    (mt/with-temp-env-var-value! [mb-llm-google-location nil]
-      (mt/discard-setting-changes [llm-google-location]
-        (doseq [location ["global" "us" "eu" "us-central1" "europe-west4" "asia-northeast1"]]
-          (llm.settings/llm-google-location! (str "  " location "  "))
-          (is (= location (llm.settings/llm-google-location))))))))
-
-(deftest llm-google-location-setter-rejects-malformed-location-test
-  (testing "rejects a value that cannot be a request host"
-    (doseq [location ["us central1"                                     ; a space
-                      "us\tcentral1"                                    ; a tab
-                      "us\ncentral1"                                    ; a newline
-                      "US-CENTRAL1"                                     ; uppercase
-                      "us-central1/"                                    ; a slash
-                      "us_central1"                                     ; an underscore
-                      "locations/us-central1"                           ; the resource name
-                      "https://us-central1-aiplatform.googleapis.com"]] ; a pasted URL
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"is not a valid Google Cloud location"
-           (llm.settings/llm-google-location! location))))))
-
-(deftest llm-google-location-setter-rejects-malformed-dns-label-test
-  (testing "rejects a value that is not a well-formed DNS label"
-    (doseq [location ["-us-central1"                      ; a leading hyphen
-                      "us-central1-"                      ; a trailing hyphen
-                      "-"                                 ; a lone hyphen
-                      "us--central1"                      ; consecutive hyphens
-                      "1us-central"]]                     ; a leading digit
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"is not a valid Google Cloud location"
-           (llm.settings/llm-google-location! location))))))
-
-(deftest llm-google-location-setter-rejects-overlong-location-test
-  (testing "rejects a value too long to be a DNS label once the -aiplatform suffix is added"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"is not a valid Google Cloud location"
-         (llm.settings/llm-google-location! (apply str (repeat 53 "a")))))))
-
-(deftest llm-google-location-setter-rejected-value-not-stored-test
-  (testing "a rejected value leaves the stored location alone"
-    (mt/with-temp-env-var-value! [mb-llm-google-location nil]
-      (mt/discard-setting-changes [llm-google-location]
-        (llm.settings/llm-google-location! "us-central1")
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"\"us central1\" is not a valid Google Cloud location"
-             (llm.settings/llm-google-location! "us central1")))
-        (is (= "us-central1" (llm.settings/llm-google-location)))))))
-
-(deftest llm-google-location-setter-clears-on-blank-test
-  (testing "a whitespace-only value clears the setting, falling back to the global location"
-    (mt/with-temp-env-var-value! [mb-llm-google-location nil]
-      (mt/discard-setting-changes [llm-google-location]
-        (llm.settings/llm-google-location! "us-central1")
-        (llm.settings/llm-google-location! "   ")
-        (is (nil? (llm.settings/llm-google-location)))))))
-
-;;; ------------------------------------------- llm-google-api-base-url Setter Tests -------------------------------------------
-
-(deftest llm-google-api-base-url-setter-test
-  (testing "trims whitespace and trailing slashes"
-    (mt/with-temp-env-var-value! [mb-llm-google-api-base-url nil]
-      (mt/discard-setting-changes [llm-google-api-base-url]
-        (llm.settings/llm-google-api-base-url! "  https://proxy.example.com/aiplatform/  ")
-        (is (= "https://proxy.example.com/aiplatform" (llm.settings/llm-google-api-base-url))))))
-  (testing "blank restores the default global host"
-    (mt/with-temp-env-var-value! [mb-llm-google-api-base-url nil]
-      (mt/discard-setting-changes [llm-google-api-base-url]
-        (llm.settings/llm-google-api-base-url! "https://proxy.example.com/aiplatform")
-        (llm.settings/llm-google-api-base-url! "   ")
-        (is (= "https://aiplatform.googleapis.com" (llm.settings/llm-google-api-base-url)))))))
+(deftest valid-google-location?-test
+  (testing "accepts the locations the platform serves"
+    (doseq [location ["global" "us" "eu" "us-central1" "europe-west2"]]
+      (testing location
+        (is (true? (llm.settings/valid-google-location? location))))))
+  (testing "rejects anything that cannot be spliced into a request host"
+    (doseq [location [""
+                      "us central1"
+                      "US-CENTRAL1"
+                      "us_central1"
+                      "-us-central1"
+                      "us-central1-"
+                      "https://us-central1-aiplatform.googleapis.com"
+                      ;; a DNS label holds 63 characters and `-aiplatform` takes 11 of them
+                      (apply str (repeat 53 "a"))]]
+      (testing location
+        (is (false? (llm.settings/valid-google-location? location)))))))
 
 ;;; ------------------------------------------- llm-bedrock credential Setter Tests -------------------------------------------
 

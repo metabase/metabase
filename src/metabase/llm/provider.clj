@@ -126,6 +126,50 @@
                      :advanced? true
                      :default   "https://api.moonshot.ai/v1"
                      :help      (deferred-tru "Point this at the .cn platform to use it instead; keys are not interchangeable between the two.")}]}
+   {:type          "google"
+    :label         (deferred-tru "Google Gemini")
+    :default-model nil
+    ;; The Gemini Enterprise Agent Platform has no listing endpoint we can trust — the one it exposes reports models
+    ;; that are not really available and omits ones that are — so, as with Azure, the connection names the model it
+    ;; serves and connecting validates it with a free `countTokens` probe.
+    :model-fields  [:model]
+    :fields        [{:key         :project-id
+                     :label       (deferred-tru "Project ID")
+                     :type        :text
+                     :required?   true
+                     :placeholder (deferred-tru "my-project")
+                     :help        (deferred-tru "The Google Cloud project the platform bills and serves requests for. Taken from the service account key when left blank.")
+                     :docs-url    "https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects"}
+                    {:key         :service-account-key
+                     :label       (deferred-tru "Service account key")
+                     :type        :password
+                     :placeholder (deferred-tru "Paste the service account key JSON")
+                     :help        (deferred-tru "The JSON key of a service account with access to the platform. Preferred over an OAuth token, which expires.")
+                     :docs-url    "https://docs.cloud.google.com/iam/docs/keys-create-delete"}
+                    {:key       :model
+                     :label     (deferred-tru "Model")
+                     :type      :text
+                     :required? true
+                     :default   "google/gemini-3.5-flash"
+                     :help      (deferred-tru "Publisher-qualified, e.g. google/gemini-3.5-flash.")}
+                    {:key         :oauth-access-token
+                     :label       (deferred-tru "OAuth access token")
+                     :type        :password
+                     :advanced?   true
+                     :placeholder "ya29..."
+                     :help        (deferred-tru "A short-lived token, e.g. from gcloud auth print-access-token. Useful for testing; the service account key wins when both are set.")}
+                    {:key         :location
+                     :label       (deferred-tru "Location")
+                     :type        :text
+                     :advanced?   true
+                     :placeholder "global"
+                     :help        (deferred-tru "The Google Cloud location serving the requests. Leave blank for the global one.")}
+                    {:key       :base-url
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   llm.settings/google-global-api-base-url
+                     :help      (deferred-tru "Derived from the location when left at the global host.")}]}
    {:type          "azure"
     :label         (deferred-tru "Microsoft Azure")
     :default-model nil
@@ -336,6 +380,12 @@
    "moonshot"   {:type     "moonshot"
                  :settings {:api-key  {:setting :llm-moonshot-api-key :credential? true}
                             :base-url {:setting :llm-moonshot-api-base-url}}}
+   "google"     {:type     "google"
+                 :settings {:service-account-key {:setting :llm-google-service-account-key :credential? true}
+                            :oauth-access-token  {:setting :llm-google-oauth-access-token :credential? true}
+                            :project-id          {:setting :llm-google-project-id}
+                            :location            {:setting :llm-google-location}
+                            :base-url            {:setting :llm-google-api-base-url}}}
    "azure"      {:type     "azure"
                  :settings {:api-key         {:setting :llm-azure-api-key :credential? true}
                             :base-url        {:setting :llm-azure-api-base-url :credential? true}

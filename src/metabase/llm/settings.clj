@@ -204,14 +204,16 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :setter      (partial set-trimmed-string! :llm-google-service-account-key))
+  :setter      :none
+  :doc         "Sets up the Gemini Enterprise Agent Platform provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
 
 (defsetting llm-google-oauth-access-token
   (deferred-tru "A short-lived OAuth2 access token for the Gemini Enterprise Agent Platform (e.g. from `gcloud auth print-access-token`). Useful for testing.")
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :setter      (partial set-trimmed-string! :llm-google-oauth-access-token))
+  :setter      :none
+  :doc         "The OAuth2 access token used by the Gemini Enterprise Agent Platform connection configured from the environment, when it carries no service account key.")
 
 (def ^:private google-project-id-pattern
   "Matches a Google Cloud project ID: 6 to 30 characters of lowercase letters, digits and hyphens, starting with a
@@ -243,39 +245,21 @@
   (boolean (and (<= (count location) google-location-max-length)
                 (re-matches google-location-pattern location))))
 
-(defn- set-google-project-id!
-  [new-value]
-  (let [project-id (trimmed-string new-value)]
-    (when (and project-id (not (valid-google-project-id? project-id)))
-      (throw (ex-info (tru (str "{0} is not a valid Google Cloud project ID. Use the project ID — 6 to 30 lowercase "
-                                "letters, digits and hyphens — rather than the project name or number.")
-                           (pr-str project-id))
-                      {:status-code 400})))
-    (setting/set-value-of-type! :string :llm-google-project-id project-id)))
-
 (defsetting llm-google-project-id
   (deferred-tru "The Google Cloud project ID for the Gemini Enterprise Agent Platform.")
   :encryption  :no
   :visibility  :settings-manager
   :export?     false
-  :setter      set-google-project-id!)
-
-(defn- set-google-location!
-  [new-value]
-  (let [location (trimmed-string new-value)]
-    (when (and location (not (valid-google-location? location)))
-      (throw (ex-info (tru (str "{0} is not a valid Google Cloud location. Use a location ID like \"us-central1\", "
-                                "or leave it blank to use the global location.")
-                           (pr-str location))
-                      {:status-code 400})))
-    (setting/set-value-of-type! :string :llm-google-location location)))
+  :setter      :none
+  :doc         "The Google Cloud project used by the Gemini Enterprise Agent Platform connection configured from the environment.")
 
 (defsetting llm-google-location
   (deferred-tru "The Google Cloud location for the Gemini Enterprise Agent Platform (e.g. us-central1). Defaults to global.")
   :encryption  :no
   :visibility  :settings-manager
   :export?     false
-  :setter      set-google-location!)
+  :setter      :none
+  :doc         "The Google Cloud location used by the Gemini Enterprise Agent Platform connection configured from the environment.")
 
 (def google-global-api-base-url
   "Google's global Gemini Enterprise Agent Platform host, and the default for [[llm-google-api-base-url]].
@@ -289,7 +273,8 @@
   :visibility  :settings-manager
   :default     google-global-api-base-url
   :export?     false
-  :setter      (partial set-normalized-base-url! :llm-google-api-base-url))
+  :setter      :none
+  :doc         "The Gemini Enterprise Agent Platform API base URL used by the connection configured from the environment.")
 
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
