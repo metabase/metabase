@@ -23,6 +23,7 @@ const COLUMNS = [
 
 const setup = (props: Partial<ChartSettingGoalInputProps> = {}) => {
   const onChange = jest.fn();
+
   renderWithProviders(
     <ChartSettingGoalInput
       id="goal-input"
@@ -31,6 +32,7 @@ const setup = (props: Partial<ChartSettingGoalInputProps> = {}) => {
       {...props}
     />,
   );
+
   return { onChange };
 };
 
