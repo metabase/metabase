@@ -406,6 +406,26 @@ describe("resolveDatasetQuery", () => {
     ]);
   });
 
+  // Ordering alone does not group a query, so the orderBy does not have to
+  // match a breakout — `isGroupedQuery` must ignore `orderBys`.
+  it("orders an ungrouped saved question query by any result column", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.questions.ordersQuestion,
+      orderBys: [
+        orderBy(TEST_SCHEMA.questions.ordersQuestion.columns[1], "desc"),
+      ],
+      limit: 5,
+    });
+
+    expect(stagesOf(datasetQuery)[0]).toMatchObject({
+      "source-card": 41,
+      "order-by": [
+        ["desc", expect.anything(), ["field", expect.anything(), "AMOUNT"]],
+      ],
+      limit: 5,
+    });
+  });
+
   it("applies filters to id-only saved question sources", async () => {
     const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
       source: { type: "card", id: 41 },

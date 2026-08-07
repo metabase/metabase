@@ -111,7 +111,7 @@ function validateQuestionScopedInputs(input: QuestionQueryInput) {
         input.source,
         "Saved question query orderBys",
       ),
-    true,
+    { matchBreakoutsByName: true },
   );
 }
 
@@ -196,7 +196,7 @@ function validateOrderBys(
   input: GroupedQueryClauses,
   context: string,
   validateDimension: (orderBy: unknown) => void,
-  resolvesDimensionsByName = false,
+  { matchBreakoutsByName = false } = {},
 ) {
   input.orderBys?.forEach((orderBy) => {
     if (isAggregationResultReference(input.aggregations, orderBy)) {
@@ -205,7 +205,7 @@ function validateOrderBys(
 
     if (
       isGroupedQuery(input) &&
-      !isBreakoutReference(input.breakouts, orderBy, resolvesDimensionsByName)
+      !isBreakoutReference(input.breakouts, orderBy, matchBreakoutsByName)
     ) {
       throw new Error(
         `${context} for grouped queries must use query breakouts or aggregations included in the query.`,
@@ -262,13 +262,17 @@ function isCountAggregation(value: unknown) {
   );
 }
 
-type GroupedQueryClauses = {
+type GroupingClauses = {
   aggregations?: readonly unknown[];
   breakouts?: readonly unknown[];
+};
+
+type GroupedQueryClauses = GroupingClauses & {
   orderBys?: readonly unknown[];
 };
 
-function isGroupedQuery(input: GroupedQueryClauses) {
+// Only aggregations and breakouts group a query; `orderBy` is not.
+function isGroupedQuery(input: GroupingClauses) {
   return Boolean(input.aggregations?.length || input.breakouts?.length);
 }
 
@@ -318,7 +322,7 @@ function getColumns(value: unknown) {
 function isBreakoutReference(
   breakouts: readonly unknown[] | undefined,
   value: unknown,
-  matchByNameOnly: boolean,
+  matchByName: boolean,
 ) {
   if (!isObject(value)) {
     return false;
@@ -326,8 +330,9 @@ function isBreakoutReference(
 
   return (breakouts ?? []).some(
     (breakout) =>
-      fieldsMatch(breakout, value, matchByNameOnly) &&
-      bucketOptionsMatch(breakout, value),
+      (matchByName
+        ? namesMatch(breakout, value)
+        : fieldsMatch(breakout, value)) && bucketOptionsMatch(breakout, value),
   );
 }
 
@@ -388,21 +393,12 @@ function getMetricAllowedTableIds(metric: MetricSchema) {
   return null;
 }
 
-function fieldsMatch(
-  left: unknown,
-  right: Record<string, unknown>,
-  matchByNameOnly: boolean,
-) {
+const namesMatch = (left: unknown, right: Record<string, unknown>) =>
+  isObject(left) && left.name === right.name;
+
+function fieldsMatch(left: unknown, right: Record<string, unknown>) {
   if (!isObject(left)) {
     return false;
-  }
-
-  // A card stage resolves its dimensions by name, so one clause can name a
-  // column through the question's result column and another through the
-  // generated table field it came from. Comparing table-scoped ids would then
-  // reject an order-by that does match the breakout.
-  if (matchByNameOnly) {
-    return left.name === right.name;
   }
 
   const leftTableId = getTableId(left);

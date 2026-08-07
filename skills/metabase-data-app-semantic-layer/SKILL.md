@@ -245,17 +245,11 @@ A metric aggregation must belong to the table source. Do not use source-card met
 
 ## Saved question query recipes
 
-For a saved question query, pass the generated question object as `source`:
+A saved question source takes the same clauses as a table source — `filters`, `aggregations`, `breakouts`, `orderBys`, `limit` — applied on top of the question's results, with three differences:
 
-```ts
-const ordersQuestion = schema.questions.ordersQuestion;
-
-const { data } = useMetabaseQuery({
-  source: ordersQuestion,
-});
-```
-
-A saved question source also accepts `filters`, `aggregations`, `breakouts`, `orderBys`, and `limit`, applied on top of the question's results:
+- Dimensions come from `schema.questions.<question>.columns`, a positional array in the order the question returns them, not a keyed `fields` record. Read the generated schema for that order.
+- Segments, Measures, and Metrics are rejected; they are scoped to a table source. A generated table field still resolves when its name matches a result column, but prefer the question's `columns` — a renamed or computed column has no matching field.
+- `fields` is not supported: a question query returns the question's columns.
 
 ```ts
 const ordersQuestion = schema.questions.ordersQuestion;
@@ -266,15 +260,10 @@ const { data } = useMetabaseQuery({
   filters: [filter(status, "=", "paid")],
   aggregations: [aggregations.sum(amount)],
   breakouts: [breakout(createdAt, { unit: "month" })],
-  limit: 12,
 });
 ```
 
-Take every dimension in those clauses from `schema.questions.<question>.columns` — the columns the question returns, in the order it returns them. That array is positional, so read the generated schema for the order rather than guessing it.
-
-A question stage sees only its own result columns, not the tables underneath it, so Segments, Measures, and Metrics are rejected — they are scoped to a table source. A generated table field still resolves when its name matches one of the question's result columns, but prefer the question's `columns`: they are the reference the types and validation actually check, and a renamed or computed column has no matching field. `fields` is not supported at all — a question query returns the question's columns. For reusable query objects, use `satisfies MetabaseQueryOptions<typeof ordersQuestion>`.
-
-Adding `aggregations` or `breakouts` replaces the question's result columns with the query's own, so `data.rows` is keyed by the breakout and aggregation column names rather than by the question's columns.
+Adding `aggregations` or `breakouts` replaces the question's result columns with the query's own, so `data.rows` is keyed by the breakout and aggregation column names. For reusable query objects, use `satisfies MetabaseQueryOptions<typeof ordersQuestion>`.
 
 SQL parameters stay on the existing `questionId` query path. Do not pass SQL parameter values through `source: schema.questions.<question>`.
 

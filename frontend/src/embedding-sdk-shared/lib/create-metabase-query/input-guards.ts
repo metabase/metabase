@@ -1,7 +1,6 @@
 import type {
-  TestBreakoutSpec,
   TestExpressionSpec,
-  TestOrderBySpec,
+  TestStageSpec,
   TestStageWithSourceSpec,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
@@ -20,16 +19,13 @@ export type TableQueryInput = Omit<TestStageWithSourceSpec, "source"> & {
   enabled?: boolean;
 };
 
-export type QuestionQueryInput = {
+export type QuestionQueryInput = Pick<
+  TestStageSpec,
+  "breakouts" | "orderBys" | "limit"
+> & {
   source: QuestionSchema;
-
-  // Segments, Measures, and Metrics belong to a table source, so a card stage
-  // only accepts expressions over the saved question's own result columns.
   filters?: readonly TestExpressionSpec[];
   aggregations?: readonly TestExpressionSpec[];
-  breakouts?: readonly TestBreakoutSpec[];
-  orderBys?: readonly TestOrderBySpec[];
-  limit?: number;
   enabled?: boolean;
 };
 
