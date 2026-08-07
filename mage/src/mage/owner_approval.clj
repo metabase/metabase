@@ -184,15 +184,24 @@
                       (get-in node [:reviews :nodes]))}))
 
 (defn- fetch-batch!
-  "Fetch reviews for a batch of PR numbers via one GraphQL call, writing each to the cache. Throws on a
-  failed request (non-zero exit, GraphQL errors, or no repository) so a transient failure can't poison the
-  cache with false `:missing` entries; existing cache files are left untouched. Warns per PR whose review
-  count exceeds the page size, since its later approvals may be unread."
+  "Fetch reviews for a batch of PR numbers via one GraphQL call, writing each to the cache. Throws when
+  the request failed as a whole, so a transient failure can't poison the cache with false `:missing`
+  entries; existing cache files are left untouched. Warns per PR whose review count exceeds the page
+  size, since its later approvals may be unread.
+
+  A `NOT_FOUND` entry in `:errors` is not a failed request. GitHub answers with partial data, and `gh`
+  exits non-zero, when one queried number doesn't resolve to a live PR: a deleted or transferred PR, or
+  a subject whose trailing `(#N)` was never a PR number. Treating that as fatal threw before any of the
+  batch reached the cache, and because only uncached PRs are re-fetched, every later run hit the same
+  batch and threw again, wedging the audit for that range with no way to make progress. Such nodes come
+  back null and become `{:missing true}` below, which is the honest answer. Exit status alone is not a
+  signal either, since `gh` returns non-zero for exactly this benign case."
   [prs]
   (let [{:keys [exit out]} (shell/sh* {:quiet? true} "gh" "api" "graphql" "-f" (str "query=" (graphql-query prs)))
         body   (json/parse-string (str/join "\n" out) true)
-        by-pr  (get-in body [:data :repository])]
-    (when (or (not (zero? exit)) (:errors body) (nil? by-pr))
+        by-pr  (get-in body [:data :repository])
+        fatal  (remove #(= "NOT_FOUND" (:type %)) (:errors body))]
+    (when (or (nil? by-pr) (seq fatal))
       (throw (ex-info "GraphQL review fetch failed; leaving cache untouched"
                       {:exit exit, :errors (:errors body), :prs (vec prs)})))
     (doseq [n prs
@@ -332,10 +341,15 @@
 
 (defn- split-teams [s] (if (str/blank? s) [] (str/split s #";")))
 
+(def ^:private unassessable-statuses
+  "Statuses that mean we could not judge the PR at all, rather than a judgement of poor. Both the
+  `assessable` row filter and the assessable rail/chart derive from this, so the two cannot drift."
+  #{"no-owner" "n/a"})
+
 (defn- assessable
   "Rows we could actually judge: they have an owner team whose membership was known at merge."
   [rows]
-  (remove #(#{"no-owner" "n/a"} (:status %)) rows))
+  (remove #(unassessable-statuses (:status %)) rows))
 
 ;;; Every status, in stacking order (green at the bottom, no-owner grey on top), with its color.
 (def ^:private status-cats
@@ -586,7 +600,7 @@
         assess     (assessable rows)
         n-assess   (count assess)
         all-counts (frequencies (map :status rows))
-        assess-cats (take 3 status-cats)
+        assess-cats (remove (comp unassessable-statuses first) status-cats)
         {:keys [teams no-team summary]} ownership
         {:keys [owned-ns enforced-ns owned-mod enforced-mod
                 no-handle-teams no-handle-ns actionable-no-team-ns]} summary
