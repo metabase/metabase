@@ -431,3 +431,32 @@
       (is (str/includes? once "# hand-maintained"))
       (is (str/includes? once "foo/bar @team"))
       (is (= once twice)))))
+
+(deftest codeowners-block-orders-children-after-parents
+  (testing (str "Stanzas sort by source path so a nested child's dirs come after its parent's. "
+                "CODEOWNERS applies the LAST matching pattern, so reversing this would let the "
+                "parent's module-wide rule swallow its child's ownership.")
+    ;; `lib` and `lib.schema` are used because the generator only emits directories that exist on
+    ;; disk, so an invented nested path would silently drop its stanza and the ordering assertion
+    ;; would pass on a one-element list.
+    (let [config    '{lib        {:team "Querying Platform"}
+                      lib.schema {:team "Querying Platform"}}
+          assignees {"Querying Platform" "@metabase/querying-platform"}
+          block     (#'mage.modules/codeowners-block config assignees)
+          lines     (->> (clojure.string/split-lines block)
+                         (filter #(clojure.string/starts-with? % "src/metabase/lib")))]
+      (is (= 2 (count lines)) "both parent and child stanzas are emitted")
+      (is (= ["src/metabase/lib @metabase/querying-platform"
+              "src/metabase/lib/schema @metabase/querying-platform"]
+             lines)))))
+
+(deftest codeowners-block-comments-out-unknown-teams
+  (testing (str "A module whose :team has no matching team.json entry degrades to a commented "
+                "stanza rather than emitting a bad handle or being dropped silently.")
+    (let [config    '{lib {:team "Nonexistent Team"}}
+          block     (#'mage.modules/codeowners-block config {"Querying Platform" "@metabase/querying-platform"})
+          src-lines (->> (clojure.string/split-lines block)
+                         (filter #(clojure.string/includes? % "src/metabase/lib")))]
+      (is (seq src-lines) "the module still appears in the block")
+      (is (every? #(clojure.string/starts-with? % "#") src-lines)
+          "but every one of its path lines is commented out"))))

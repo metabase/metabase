@@ -1,5 +1,7 @@
 (ns mage.modules
   (:require
+   ^:clj-kondo/ignore
+   [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.set :as set]

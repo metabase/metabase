@@ -183,6 +183,7 @@ enterprise/backend/test/metabase_enterprise/dependencies @metabase/graphy
 
 # search.embeddings (Metabot, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/embeddings
+# enterprise/backend/test/metabase_enterprise/embeddings
 
 # search.entity-retrieval (Metabot, no :assignee in team.json)
 # enterprise/backend/src/metabase_enterprise/entity_retrieval
@@ -480,6 +481,10 @@ enterprise/backend/test/metabase_enterprise/mfa @metabase/graphy
 # embedding.rest (Embedding, no :assignee in team.json)
 # src/metabase/embedding_rest
 # test/metabase/embedding_rest
+
+# embeddings (Metabot, no :assignee in team.json)
+# src/metabase/embeddings
+# test/metabase/embeddings
 
 # search.entity-retrieval (Metabot, no :assignee in team.json)
 # src/metabase/entity_retrieval
