@@ -19,6 +19,7 @@ export class DevDiagnosticsCollector {
   private entries: DevDiagnosticEntry[] = [];
   private connectionStatus: InstanceConnectionStatus | null = null;
   private nextEntryId = 1;
+  private buildId: number | null = null;
   private uncapturedConsoleError: typeof console.error | null = null;
   private readonly listeners = new Set<() => void>();
 
@@ -63,10 +64,15 @@ export class DevDiagnosticsCollector {
     });
   }
 
+  setBuildId(buildId: number): void {
+    this.buildId = Number.isFinite(buildId) && buildId > 0 ? buildId : null;
+  }
+
   record(event: DevDiagnosticEvent): void {
     const newEntry = {
       id: this.nextEntryId++,
       time: Date.now(),
+      buildId: this.buildId,
       ...this.truncateEventText(event),
     };
 
