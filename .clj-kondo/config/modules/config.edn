@@ -340,6 +340,7 @@
   api-scope
   {:team "Metabot"
    :api  #{metabase.api-scope.core
+           metabase.api-scope.data-app
            metabase.api-scope.init}
    :uses #{util}}
 
@@ -2172,6 +2173,7 @@
            analytics-interface
            api
            api-keys
+           api-scope
            app-db
            appearance
            config

@@ -69,6 +69,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/namespace/:namespace/key/:key"
   "Deletes a KV-pair for the user"
+  {:scope "data-app"}
   [{nmspace :namespace, k :key} :- [:map
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]]

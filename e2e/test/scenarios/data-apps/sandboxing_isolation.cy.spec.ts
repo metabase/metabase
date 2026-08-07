@@ -12,7 +12,7 @@ describe("scenarios > data apps > sandbox isolation", () => {
     H.activateToken("bleeding-edge");
   });
 
-  const setUp = () => {
+  const setup = () => {
     const instanceUrl = Cypress.config("baseUrl") ?? "";
     const testEnv: IsolationTestEnv = { instanceUrl };
 
@@ -63,117 +63,117 @@ describe("scenarios > data apps > sandbox isolation", () => {
   };
 
   it("keeps a document.createElement about:blank iframe within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-create-element");
   });
 
   it("gates a host-React about:blank iframe", () => {
-    setUp();
+    setup();
     runProbeExpectingGuard("isolation-react-about-blank");
   });
 
   it("gates an iframe pointing at Metabase itself", () => {
-    setUp();
+    setup();
     runProbeExpectingGuard("isolation-react-src");
   });
 
   it("gates a srcdoc iframe", () => {
-    setUp();
+    setup();
     runProbeExpectingGuard("isolation-react-srcdoc");
   });
 
   it("keeps a window.open realm within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-window-open");
   });
 
   it("gates the Worker constructor", () => {
-    setUp();
+    setup();
     runProbe("isolation-worker");
   });
 
   it("gates the SharedWorker constructor", () => {
-    setUp();
+    setup();
     runProbe("isolation-shared-worker");
   });
 
   it("gates the service worker registration API", () => {
-    setUp();
+    setup();
     runProbe("isolation-service-worker");
   });
 
   it("gates dynamic import", () => {
-    setUp();
+    setup();
     runProbe("isolation-dynamic-import");
   });
 
   it("keeps a dangerouslySetInnerHTML iframe within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-inner-html");
   });
 
   it("keeps a Function-constructor fetch gated", () => {
-    setUp();
+    setup();
     runProbe("isolation-function-constructor");
   });
 
   it("keeps a DOMParser iframe within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-dom-parser");
   });
 
   it("keeps a raw API out of the SDK endowments", () => {
-    setUp();
+    setup();
     runProbe("isolation-endowment-api");
   });
 
   it("gates document.cookie on the parent realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-parent-cookie");
   });
 
   it("gates localStorage on the parent realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-parent-local-storage");
   });
 
   it("gates sessionStorage on the parent realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-parent-session-storage");
   });
 
   it("gates indexedDB on the parent realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-parent-indexeddb");
   });
 
   it("gates caches on the parent realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-parent-caches");
   });
 
   it("gates FontFace.load", () => {
-    setUp();
+    setup();
     runProbe("isolation-font-face");
   });
 
   it("gates cookieStore", () => {
-    setUp();
+    setup();
     runProbe("isolation-cookie-store");
   });
 
   it("gates performance resource timing", () => {
-    setUp();
+    setup();
     runProbe("isolation-perf-resource-timing");
   });
 
   it("keeps a Range.createContextualFragment iframe within the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-range-fragment-iframe");
   });
 
   it("keeps a custom element's upgrade callback in the gated realm", () => {
-    setUp();
+    setup();
     runProbe("isolation-custom-element");
   });
 
@@ -211,44 +211,38 @@ describe("scenarios > data apps > sandbox isolation", () => {
 
     runProbe("isolation-allowed-host-redirect");
   });
-});
 
-describe("scenarios > data apps > sandbox isolation > backend scope", () => {
-  const AS_DATA_APP = { "X-Metabase-Client": "data-app" };
+  // The 403s the marker produces are backend behaviour, covered by
+  // `data_app_scope_test.clj`. What only e2e can prove is the premise those 403s rest
+  // on: that the real transport stamps `X-Metabase-Client: data-app` on the requests the
+  // SDK makes from inside the sandbox. The header cannot be spoofed to gain access —
+  // host-realm code the membraned guest can't reach sets it, and it only ever narrows —
+  // but if it ever stopped being sent, the confinement would silently stop applying.
+  it("marks the requests the SDK makes from inside the sandbox as data-app", () => {
+    const markedPaths = new Set<string>();
 
-  const BLOCKED_ENDPOINTS = ["permissions/graph", "setting"];
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("reaches the blocked endpoints when the request is not marked as a data app", () => {
-    BLOCKED_ENDPOINTS.forEach((endpoint) => {
-      cy.request(`/api/${endpoint}`).its("status").should("eq", 200);
+    cy.intercept("/api/**", (req) => {
+      if (req.headers["x-metabase-client"] === "data-app") {
+        markedPaths.add(new URL(req.url).pathname);
+      }
     });
-  });
 
-  it("refuses the write/admin endpoints once the request is marked as a data app", () => {
-    BLOCKED_ENDPOINTS.forEach((endpoint) => {
-      cy.request({
-        url: `/api/${endpoint}`,
-        headers: AS_DATA_APP,
-        failOnStatusCode: false,
-      }).then(({ status, body }) => {
-        expect(status, `${endpoint} status`).to.eq(403);
-        expect(body.error, `${endpoint} error`).to.eq("scope_not_permitted");
-      });
+    setup();
+
+    // Wait for the guest bundle to have rendered — the SDK's bootstrap requests are
+    // still in flight while it loads, so asserting earlier races them.
+    H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+      cy.findByTestId("isolation-result", { timeout: 30000 }).should("exist");
     });
-  });
 
-  it("serves the data-app read/query and SDK-bootstrap surface to a marked request", () => {
-    ["collection/root", "user/current", "session/properties"].forEach(
-      (endpoint) => {
-        cy.request({ url: `/api/${endpoint}`, headers: AS_DATA_APP })
-          .its("status")
-          .should("eq", 200);
-      },
-    );
+    cy.then(() => {
+      cy.task(
+        "log",
+        `marked as data-app: ${[...markedPaths].sort().join(", ")}`,
+      );
+      expect([...markedPaths], "requests marked as data-app").to.include(
+        "/api/user/current",
+      );
+    });
   });
 });
