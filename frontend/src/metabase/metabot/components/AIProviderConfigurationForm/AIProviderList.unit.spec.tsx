@@ -13,6 +13,7 @@ import {
   setupLlmProvidersEndpoint,
   setupReorderLlmProvidersEndpoint,
 } from "__support__/server-mocks/metabot";
+import { findRequests } from "__support__/server-mocks/util";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type {
@@ -260,18 +261,23 @@ describe("AIProviderList", () => {
     const toggle = await screen.findByLabelText(
       "Fall back to the next provider",
     );
+    // The switch stays disabled until the setting definitions land, and clicking it before then does nothing.
+    await waitFor(() => expect(toggle).toBeEnabled());
     expect(toggle).toBeChecked();
 
     await userEvent.click(toggle);
 
-    await waitFor(() =>
-      expect(
-        fetchMock.callHistory.called(
-          "path:/api/setting/llm-provider-fallback-enabled%3F",
-          { method: "PUT", body: { value: false }, matchPartialBody: true },
-        ),
-      ).toBe(true),
-    );
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(puts).toEqual([
+        expect.objectContaining({
+          url: expect.stringContaining(
+            "/setting/llm-provider-fallback-enabled%3F",
+          ),
+          body: { value: false },
+        }),
+      ]);
+    });
   });
 
   it("names the provider and model in use while the fallback is carrying requests", async () => {
@@ -279,13 +285,14 @@ describe("AIProviderList", () => {
       activeModel: createMockLlmActiveModel({
         connection_name: "OpenAI",
         model: "gpt-5.4",
+        model_name: "GPT-5.4",
         is_fallback: true,
       }),
     });
 
     const notice = await screen.findByTestId("active-provider-notice");
     expect(notice).toHaveTextContent(
-      "Metabot is currently running on OpenAI using gpt-5.4.",
+      "Metabot is currently running on OpenAI using GPT-5.4.",
     );
   });
 
