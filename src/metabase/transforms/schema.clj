@@ -1,5 +1,6 @@
 (ns metabase.transforms.schema
   (:require
+   [clojure.string :as str]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
@@ -62,19 +63,30 @@
    ["append" ::append-config]
    ["merge"  ::merge-config]])
 
+(mr/def ::table-name
+  "A single, unqualified table name for a transform target. Rejects `.` -- the rename-tables strategy
+  (`driver/rename-tables!*`, e.g. the Postgres/MySQL implementations) turns the name into a keyword and hands it to
+  HoneySQL, which treats an unescaped `.` as a schema-qualifier separator. A name like `target.table` silently gets
+  treated as schema `target`, table `table` instead of a single identifier containing a literal dot, and the rename
+  fails outright on drivers that don't have a `target` schema (metabase#75973)."
+  [:and
+   ms/NonBlankString
+   [:fn {:error/message "must not contain \".\""}
+    #(not (str/includes? % "."))]])
+
 (mr/def ::table-target
   [:map
    [:database {:optional true} :int]
    [:type [:= "table"]]
    [:schema {:optional true} [:maybe ms/NonBlankString]]
-   [:name :string]])
+   [:name ::table-name]])
 
 (mr/def ::table-incremental-target
   [:map
    [:database {:optional true} :int]
    [:type [:= "table-incremental"]]
    [:schema {:optional true} [:maybe ms/NonBlankString]]
-   [:name :string]
+   [:name ::table-name]
    [:target-incremental-strategy ::target-incremental-strategy]])
 
 (mr/def ::transform-target

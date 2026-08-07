@@ -154,6 +154,24 @@
                       (let [response (mt/user-http-request :lucky :post 200 "transform" (request nil))]
                         (is (some? (:id response)))))))))))))))
 
+(deftest create-transform-with-dot-in-target-name-test
+  (testing "Creating a transform whose target table name contains a `.` is rejected (#75973)"
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+              (let [query    (make-query "Gadget")
+                    schema   (get-test-schema)
+                    response (mt/user-http-request :lucky :post 400 "transform"
+                                                   {:name   "Dotted Target"
+                                                    :source {:type  "query"
+                                                             :query query}
+                                                    :target {:type   "table"
+                                                             :schema schema
+                                                             :name   "target.products"}})]
+                (is (nil? (:id response)))))))))))
+
 (deftest create-transform-with-param-test
   (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
