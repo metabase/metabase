@@ -3,6 +3,10 @@ run-name: Auto Backport ${{ github.event.pull_request.title }}
 on:
   pull_request:
     types: [closed, labeled]
+    # TESTING ONLY — remove before merge. Restricts this workflow to PRs whose
+    # base is the test branch, so trial PRs don't fire the real backport jobs.
+    branches:
+      - dev-2428-remove-double-backport-and-triple-backport-labels
 
 jobs:
   # --- Primary path: backport to every supported release line --------------
@@ -85,7 +89,6 @@ jobs:
   legacy-backport:
     if:
       | # triggered only by the legacy depth labels, at merge or when added afterwards
-      github.event.pull_request.merged == true && (
         github.event.action == 'closed' && (
           contains(github.event.pull_request.labels.*.name, 'single-backport') ||
           contains(github.event.pull_request.labels.*.name, 'double-backport') ||
@@ -96,13 +99,11 @@ jobs:
           github.event.label.name == 'double-backport' ||
           github.event.label.name == 'triple-backport'
         )
-      )
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: "!! double-backport and triple-backport label deprecation warning !!"
         if:
           |
-          github.event.pull_request.merged == true && (
             github.event.action == 'closed' && (
               contains(github.event.pull_request.labels.*.name, 'double-backport') ||
               contains(github.event.pull_request.labels.*.name, 'triple-backport')
@@ -111,7 +112,6 @@ jobs:
               github.event.label.name == 'double-backport' ||
               github.event.label.name == 'triple-backport'
             )
-          )
         env:
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
