@@ -34,6 +34,7 @@ export function createMockContentDiagnosticsCollection(
   return {
     id: 1,
     name: "First collection",
+    namespace: null,
     effective_ancestors: [],
     ...opts,
   };

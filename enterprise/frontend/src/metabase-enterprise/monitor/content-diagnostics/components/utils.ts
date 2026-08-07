@@ -151,8 +151,11 @@ export function getCollectionName(
 
 function getCollectionBreadcrumbUrl(
   entry: ContentDiagnosticsCollectionBreadcrumbEntry,
+  namespace: string | null,
 ): string {
-  return Urls.collection({ id: entry.id, name: entry.name });
+  return namespace === "transforms"
+    ? Urls.transformList({ collectionId: entry.id })
+    : Urls.collection({ id: entry.id, name: entry.name });
 }
 
 export function getBreadcrumbLinks(
@@ -171,7 +174,7 @@ export function getBreadcrumbLinks(
       [...collection.effective_ancestors, collection].map((entry, index) => ({
         id: String(entry.id),
         label: entry.name,
-        url: getCollectionBreadcrumbUrl(entry),
+        url: getCollectionBreadcrumbUrl(entry, collection.namespace),
         icon: index === 0 ? ("folder" as const) : undefined,
       })),
     );

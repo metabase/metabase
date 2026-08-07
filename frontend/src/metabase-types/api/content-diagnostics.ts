@@ -120,6 +120,7 @@ export type ContentDiagnosticsUser =
 export type ContentDiagnosticsCollection = {
   id: CollectionId;
   name: string;
+  namespace: string | null;
   effective_ancestors: Array<{ id: CollectionId; name: string }>;
 };
 

@@ -73,7 +73,7 @@
 (def ^:private CollectionBreadcrumb
   "A finding's `collection`: the entity's parent-collection breadcrumb, or nil (unreadable parent /
   entity deleted post-scan). `namespace` is the collection tree's namespace - nil for the default tree;
-  `transforms` and `shared-tenant-collections` are the namespaced trees findings can live in."
+  `transforms` and `shared-tenant-collection` are the namespaced trees findings can live in."
   [:maybe [:map {:closed true}
            [:id                  BreadcrumbId]
            [:name                BreadcrumbName]
