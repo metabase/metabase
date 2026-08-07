@@ -40,11 +40,13 @@ const SHARED_UTILS_LEVELS = [
 ];
 
 const SHARED_PLATFORM_LEVELS = [
-  // P0 — independent peers: chart rendering and database metadata/forms.
+  // P0 — the value-formatting engine, a leaf (see the narrowing rule below).
+  ["shared/value-formatting"],
+  // P1 — independent peers: chart rendering and database metadata/forms.
   ["shared/visualizations", "shared/databases"],
-  // P1 — query editing composes visualizations.
+  // P2 — query editing composes visualizations.
   ["shared/querying"],
-  // P2 — building blocks over querying; mutually independent.
+  // P3 — building blocks over querying; mutually independent.
   [
     "shared/metadata",
     "shared/parameters",
@@ -140,6 +142,19 @@ const sharedRules = [
   {
     from: ["shared/notifications", "shared/pulse"],
     allow: ["shared/notifications", "shared/pulse"],
+  },
+  // value-formatting is stricter than its level: a leaf that imports no shared
+  // code at all, tiered or not. The JSX rendering it needs is injected at app
+  // boot (see visualizations/lib/register-jsx-formatting).
+  {
+    from: ["shared/value-formatting"],
+    disallow: ["shared/*"],
+    message:
+      "value-formatting is a leaf module - it must not depend on app code (JSX rendering is injected via the registry at app boot)",
+  },
+  {
+    from: ["shared/value-formatting"],
+    allow: ["shared/value-formatting"],
   },
 ];
 
