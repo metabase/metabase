@@ -29,9 +29,12 @@
 (mr/def ::binning
   "Schema for `:binning` options passed to a `:field` clause."
   [:and
-   [:map
-    {:decode/normalize lib.schema.common/normalize-map}
-    [:strategy [:ref ::strategy]]]
+   ;; `:strategy` is normalized and checked by each branch of the `:multi` below rather than by a sibling
+   ;; `[:map [:strategy ...]]` guard, which would strip whichever of `:bin-width`/`:num-bins` goes with it.
+   {:decode/normalize (fn [binning]
+                        (when-some [binning (lib.schema.common/normalize-map binning)]
+                          (cond-> binning
+                            (:strategy binning) (update :strategy lib.schema.common/normalize-keyword))))}
    [:multi {:dispatch (fn [x]
                         (keyword (some #(get x %) [:strategy "strategy"])))
             :error/fn (fn [{:keys [value]} _]
