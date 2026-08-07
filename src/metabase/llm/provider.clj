@@ -17,8 +17,10 @@
   A *model reference* is the `connection-key/model` string stored in `llm-metabot-provider` and friends;
   [[resolve-model-ref]] turns one into the provider type, model, and credentials an adapter needs.
 
-  The list is ordered, and the order is the fallback order: [[first-model-ref]] walks it to find something that can
-  serve a request when the connection Metabot is pointed at cannot."
+  The list is ordered, and the order is the fallback order: [[first-model-ref]] walks it from the top to find
+  something that can serve a request when the connection Metabot is pointed at cannot. It is a priority list, not a
+  rotation — nothing is load-balanced across connections, and requests go back to the preferred one the moment it
+  stops failing."
   (:require
    [clojure.string :as str]
    [metabase.llm.health :as llm.health]
