@@ -1611,6 +1611,19 @@ The OpenRouter API Key.
 
 Backed by the openrouter connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
+### `MB_LLM_PROVIDER_FALLBACK_ENABLED`
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `llm-provider-fallback-enabled`.
+- [Configuration file name](./config-file.md): `llm-provider-fallback-enabled`
+
+Whether Metabot switches to the next connected provider when the one it is set to use is failing.
+
+When a provider rejects Metabase's requests, Metabase records the failure and — with this on — runs on the default model of the next connection in `llm-providers` instead, until the original one works again. Turn it off to have requests fail on the selected provider rather than move to another one.
+
+`llm-providers` is a priority list, not a rotation: requests always go to the highest connection in it that is working, so they return to the selected provider as soon as it stops failing. Nothing is load balanced across connections.
+
 ### `MB_LLM_PROVIDERS`
 
 - Type: json
