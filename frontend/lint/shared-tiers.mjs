@@ -129,9 +129,11 @@ const sharedRules = [
       "shared/visualizer",
     ],
   },
+  // metabot and comments still build on the rich-text editor, one-directional
+  // since #79295. Delete when the edges sever or rte re-tiers below domain.
   {
-    from: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
-    allow: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
+    from: ["shared/metabot", "shared/comments"],
+    allow: ["shared/rich_text_editing"],
   },
   {
     from: ["shared/nav", "shared/palette"],
