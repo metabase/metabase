@@ -421,6 +421,14 @@
 ;;; the app DB would not reach the connection serving requests, so a write is rejected rather than silently ignored.
 ;;; Connections are managed through the `/api/llm/providers` endpoints instead.
 
+(defsetting llm-provider-fallback-enabled?
+  (deferred-tru "Whether Metabot switches to the next connected provider when the one it is set to use is failing.")
+  :type       :boolean
+  :default    true
+  :visibility :settings-manager
+  :export?    true
+  :doc        "When a provider rejects Metabase's requests, Metabase records the failure and — with this on — runs on the default model of the next connection in `llm-providers` instead, until the original one works again. Turn it off to have requests fail on the selected provider rather than move to another one.")
+
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
 (defsetting ai-service-base-url
