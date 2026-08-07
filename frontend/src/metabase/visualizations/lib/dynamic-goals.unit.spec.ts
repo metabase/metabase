@@ -32,7 +32,7 @@ describe("resolveGoalValue", () => {
     expect(goalValue).toEqual({ value: 42 });
   });
 
-  it("returns null for a self-column reference that does not exist", () => {
+  it("errors for a self-column reference that does not exist", () => {
     const data = createMockDatasetData({ cols, rows });
     const goalValue = resolveGoalValue(data, "missing");
 
@@ -156,9 +156,7 @@ describe("resolveGoalValue", () => {
     expect(goalValue).toEqual({ value: null, isResolving: true });
   });
 
-  // The server projects each entity down to the requested columns, so getting
-  // back a different column means these results predate the current reference.
-  it("is resolving, not erroring, when the reference was retargeted to another column of the same entity", () => {
+  it("errors for a foreign column reference that does not exist", () => {
     const data = createMockDatasetData({
       cols,
       rows,
@@ -177,7 +175,16 @@ describe("resolveGoalValue", () => {
       column: "total",
     });
 
-    expect(goalValue).toEqual({ value: null, isResolving: true });
+    expect(goalValue).toEqual({
+      value: null,
+      error: {
+        column: "total",
+        id: 7,
+        message: "Column not found",
+        reason: "column-not-found",
+        type: "card",
+      },
+    });
   });
 
   it("errors when the referenced value is not a number", () => {
