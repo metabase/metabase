@@ -354,12 +354,7 @@
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.api.key=test-api-key"
                  ;; Test warehouses live on localhost, so the network policy has to be off by default or every test
-                 ;; that creates one breaks. It is not off because tests are exempt from the policy: it is off because
-                 ;; `warehouse-allowed-networks` otherwise defaults to `external-only` whenever `is-hosted?` is true,
-                 ;; and `mt/with-premium-features #{:hosting}` makes that true in a great many tests that have nothing
-                 ;; to do with networking. Tests that exercise the policy set the value themselves with
-                 ;; `mt/with-temp-env-var-value!`, including to nil to reach the hosted default -- see
-                 ;; `metabase.driver.util-test/warehouse-allowed-networks-default-test`.
+                 ;; that creates one breaks.
                  "-Dmb.warehouse.allowed.networks=allow-all"
                  ;; Port 0 tells the OS to assign a random free port, allowing parallel test runs.
                  ;; The actual port is read from the running Jetty server via server.instance/server-port.
