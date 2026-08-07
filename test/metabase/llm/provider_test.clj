@@ -390,8 +390,11 @@
   (testing "a per-provider credential setting stored in the app DB implies a connection keyed by its provider type"
     (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil
                                   mb-llm-openai-api-key    nil]
-      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-stored"
-                                         llm-openai-api-key    nil]
+      ;; the base URL is pinned as unset because it has a default: a test elsewhere that binds it leaves that
+      ;; default stored in the app DB, and the adoption below would then have a base URL to carry over
+      (mt/with-temporary-setting-values [llm-anthropic-api-key      "sk-ant-stored"
+                                         llm-anthropic-api-base-url nil
+                                         llm-openai-api-key         nil]
         (is (= [{:key    "anthropic"
                  :type   "anthropic"
                  :name   "Anthropic"
