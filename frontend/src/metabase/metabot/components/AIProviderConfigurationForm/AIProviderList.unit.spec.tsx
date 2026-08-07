@@ -4,50 +4,82 @@ import fetchMock from "fetch-mock";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import {
+  setupLlmActiveModelEndpoint,
   setupLlmModelsEndpoint,
   setupLlmProviderTypesEndpoint,
   setupLlmProvidersEndpoint,
+  setupReorderLlmProvidersEndpoint,
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import type { LlmConnectionModels } from "metabase-types/api";
+import type {
+  LlmActiveModel,
+  LlmConnectionModels,
+  LlmProviderConnection,
+} from "metabase-types/api";
 import {
+  createMockLlmActiveModel,
   createMockLlmConnectionModels,
   createMockLlmProviderConnection,
   createMockLlmProviderType,
+  createMockSettingDefinition,
   createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
 
 import { AIProviderList } from "./AIProviderList";
 
+type SetupOpts = {
+  usable?: boolean;
+  models?: LlmConnectionModels[];
+  connections?: LlmProviderConnection[];
+  activeModel?: LlmActiveModel;
+  isFallbackEnabled?: boolean;
+};
+
 const setup = ({
   usable = true,
   models = [],
-}: { usable?: boolean; models?: LlmConnectionModels[] } = {}) => {
+  connections,
+  activeModel = createMockLlmActiveModel(),
+  isFallbackEnabled = true,
+}: SetupOpts = {}) => {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
 
-  const sessionProperties = createMockSettings();
+  const sessionProperties = createMockSettings({
+    "llm-provider-fallback-enabled?": isFallbackEnabled,
+  });
   setupPropertiesEndpoints(sessionProperties);
-  setupSettingsEndpoints([]);
-  setupLlmProviderTypesEndpoint([createMockLlmProviderType()]);
-  setupLlmProvidersEndpoint([
-    createMockLlmProviderConnection({
-      key: "anthropic",
-      type: "anthropic",
-      name: "Anthropic",
-      usable,
-    }),
-    createMockLlmProviderConnection({
-      key: "openai",
-      type: "openai",
-      name: "OpenAI",
+  setupSettingsEndpoints([
+    createMockSettingDefinition({
+      key: "llm-provider-fallback-enabled?",
+      value: isFallbackEnabled,
     }),
   ]);
+  setupUpdateSettingEndpoint();
+  setupLlmProviderTypesEndpoint([createMockLlmProviderType()]);
+  setupLlmProvidersEndpoint(
+    connections ?? [
+      createMockLlmProviderConnection({
+        key: "anthropic",
+        type: "anthropic",
+        name: "Anthropic",
+        usable,
+      }),
+      createMockLlmProviderConnection({
+        key: "openai",
+        type: "openai",
+        name: "OpenAI",
+      }),
+    ],
+  );
   setupLlmModelsEndpoint(models);
+  setupLlmActiveModelEndpoint(activeModel);
+  setupReorderLlmProvidersEndpoint([]);
 
   renderWithProviders(<AIProviderList />, {
     storeInitialState: {
@@ -148,6 +180,123 @@ describe("AIProviderList", () => {
       ).toBeInTheDocument();
     },
   );
+
+  it("shows the stored failure the backend reports for a provider", async () => {
+    setup({
+      connections: [
+        createMockLlmProviderConnection({
+          key: "anthropic",
+          type: "anthropic",
+          name: "Anthropic",
+          error: { message: "invalid x-api-key", fatal: true },
+        }),
+        createMockLlmProviderConnection({
+          key: "openai",
+          type: "openai",
+          name: "OpenAI",
+        }),
+      ],
+    });
+
+    expect(
+      await within(await screen.findByTestId("provider-anthropic")).findByText(
+        "invalid x-api-key",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("provider-openai")).queryByText(
+        "invalid x-api-key",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers a drag handle for every connection whose position can be saved", async () => {
+    setup({
+      connections: [
+        createMockLlmProviderConnection({
+          key: "anthropic",
+          name: "Anthropic",
+        }),
+        createMockLlmProviderConnection({
+          key: "openai",
+          type: "openai",
+          name: "OpenAI",
+        }),
+        createMockLlmProviderConnection({
+          key: "mistral",
+          type: "mistral",
+          name: "Mistral",
+          source: "env",
+          reorderable: false,
+        }),
+      ],
+    });
+
+    expect(await screen.findByTestId("provider-anthropic")).toBeInTheDocument();
+    expect(screen.getByLabelText("Reorder Anthropic")).toBeInTheDocument();
+    expect(screen.getByLabelText("Reorder OpenAI")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Reorder Mistral")).not.toBeInTheDocument();
+  });
+
+  it("does not offer reordering for a single connection", async () => {
+    setup({
+      connections: [
+        createMockLlmProviderConnection({
+          key: "anthropic",
+          name: "Anthropic",
+        }),
+      ],
+    });
+
+    expect(await screen.findByTestId("provider-anthropic")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("provider-drag-handle"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("turns the fallback off through the setting", async () => {
+    setup();
+
+    const toggle = await screen.findByLabelText(
+      "Fall back to the next provider",
+    );
+    expect(toggle).toBeChecked();
+
+    await userEvent.click(toggle);
+
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.called(
+          "path:/api/setting/llm-provider-fallback-enabled%3F",
+          { method: "PUT", body: { value: false }, matchPartialBody: true },
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("names the provider and model in use while the fallback is carrying requests", async () => {
+    setup({
+      activeModel: createMockLlmActiveModel({
+        connection_name: "OpenAI",
+        model: "gpt-5.4",
+        is_fallback: true,
+      }),
+    });
+
+    const notice = await screen.findByTestId("active-provider-notice");
+    expect(notice).toHaveTextContent(
+      "Metabot is currently running on OpenAI using gpt-5.4.",
+    );
+  });
+
+  it("says nothing about the model in use while the selected provider is serving requests", async () => {
+    setup({ activeModel: createMockLlmActiveModel({ is_fallback: false }) });
+
+    expect(await screen.findByTestId("provider-anthropic")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("active-provider-notice"),
+    ).not.toBeInTheDocument();
+  });
 
   it("shows the skeleton until the connections have loaded", async () => {
     setup();
