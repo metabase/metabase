@@ -6,7 +6,7 @@
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.usage-metadata.batch]
-   [metabase.usage-metadata.candidate-service :as candidate-service]
+   [metabase.usage-metadata.candidate-refresh :as candidate-refresh]
    [metabase.usage-metadata.task.process :as usage-metadata.task.process]))
 
 (set! *warn-on-reflection* true)
@@ -32,7 +32,7 @@
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [metabase.usage-metadata.batch/run-batch! (fn []
                                                                (deliver ran? true))
-                    candidate-service/queue-refresh! (constantly nil)]
+                    candidate-refresh/queue-refresh! (constantly nil)]
         (mt/with-temporary-setting-values [usage-metadata-enabled? false]
           (task/trigger-now! (jobs/key "metabase.task.usage-metadata-process.job"))
           (Thread/sleep 200)
@@ -49,10 +49,10 @@
           submitted-run   (promise)]
       (with-redefs [premium-features/has-feature?              (constantly true)
                     metabase.usage-metadata.batch/run-batch!   (constantly nil)
-                    candidate-service/queue-refresh!   (fn [trigger requested-by]
+                    candidate-refresh/queue-refresh!   (fn [trigger requested-by]
                                                          (deliver queued-args [trigger requested-by])
                                                          replacement-run)
-                    candidate-service/run-refresh!     #(deliver submitted-run %)]
+                    candidate-refresh/run-refresh!     #(deliver submitted-run %)]
         (task/trigger-now! (jobs/key "metabase.task.usage-metadata-process.job"))
         (is (= [:scheduled nil] (deref queued-args 5000 ::timeout)))
         (is (= replacement-run (deref submitted-run 5000 ::timeout)))))))
@@ -64,10 +64,10 @@
           submitted-run (promise)]
       (with-redefs [premium-features/has-feature?              (constantly true)
                     metabase.usage-metadata.batch/run-batch!   (constantly nil)
-                    candidate-service/queue-refresh!   (fn [trigger requested-by]
+                    candidate-refresh/queue-refresh!   (fn [trigger requested-by]
                                                          (deliver queued-args [trigger requested-by])
                                                          nil)
-                    candidate-service/run-refresh!     #(deliver submitted-run %)]
+                    candidate-refresh/run-refresh!     #(deliver submitted-run %)]
         (task/trigger-now! (jobs/key "metabase.task.usage-metadata-process.job"))
         (is (= [:scheduled nil] (deref queued-args 5000 ::timeout)))
         (is (= ::timeout (deref submitted-run 100 ::timeout)))))))
@@ -78,7 +78,7 @@
     (let [queued-args (promise)]
       (with-redefs [premium-features/has-feature?            (constantly true)
                     metabase.usage-metadata.batch/run-batch! #(throw (ex-info "rollup failed" {}))
-                    candidate-service/queue-refresh! (fn [trigger requested-by]
+                    candidate-refresh/queue-refresh! (fn [trigger requested-by]
                                                        (deliver queued-args [trigger requested-by])
                                                        nil)]
         (mt/with-temporary-setting-values [usage-metadata-enabled? true]

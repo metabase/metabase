@@ -10,7 +10,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
-   [metabase.usage-metadata.candidate-service :as candidate-service]
+   [metabase.usage-metadata.candidate-refresh :as candidate-refresh]
+   [metabase.usage-metadata.candidate-snapshot :as candidate-snapshot]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -57,7 +58,7 @@
     {:run_id                run-id
      :candidate_type        :segment
      :table_id              (mt/id :orders)
-     :signature_version     candidate-service/signature-version
+     :signature_version     candidate-snapshot/signature-version
      :signature_hash        (apply str (repeat 64 "b"))
      :signature             "[\"segment-api\"]"
      :definition            {:database (mt/id)
@@ -87,7 +88,7 @@
   (let [run       {:id 42, :status :queued}
         started   (promise)
         completed (promise)]
-    (mt/with-dynamic-fn-redefs [candidate-service/run-refresh! (fn [submitted-run]
+    (mt/with-dynamic-fn-redefs [candidate-refresh/run-refresh! (fn [submitted-run]
                                                                  (deliver started submitted-run)
                                                                  (deliver completed true))]
       (run-refresh-async! run)
@@ -98,7 +99,7 @@
   (mt/with-premium-features #{:library}
     (let [run     {:id 42, :status :queued}
           started (promise)]
-      (with-redefs-fn {#'candidate-service/queue-refresh!                 (fn [_trigger _requested-by] run)
+      (with-redefs-fn {#'candidate-refresh/queue-refresh!                 (fn [_trigger _requested-by] run)
                        #'usage-metadata.api/run-refresh-async! #(deliver started %)}
         (fn []
           (let [response (mt/user-http-request :crowberto :post 202
@@ -241,7 +242,7 @@
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
                                                          :trigger           :manual
-                                                         :algorithm_version candidate-service/algorithm-version
+                                                         :algorithm_version candidate-refresh/algorithm-version
                                                          :source_config     {}
                                                          :finished_at       (mi/now)}
                    :model/UsageMetadataCandidate table-candidate
@@ -354,7 +355,7 @@
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
                                                          :trigger           :manual
-                                                         :algorithm_version candidate-service/algorithm-version
+                                                         :algorithm_version candidate-refresh/algorithm-version
                                                          :source_config     {}
                                                          :finished_at       (mi/now)}
                    :model/UsageMetadataCandidate root
