@@ -1321,9 +1321,6 @@
    ["add_heading" [:map {:closed true}
                    [:action [:= "add_heading"]]
                    [:text   ms/NonBlankString]
-                   ;; Named rather than left out: request decoding drops keys a schema doesn't declare, so
-                   ;; leaving it out would silently ignore it. `:nil` accepts only an explicit null, so any
-                   ;; real size is a 400 telling the LLM that headings are always full-width.
                    [:display_size {:optional true} [:nil {:error/message "headings are always full-width"}]]
                    [:tab_id {:optional true} [:maybe ms/PositiveInt]]]]
    ["add_text"    [:map {:closed true}

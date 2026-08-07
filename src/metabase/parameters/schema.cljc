@@ -138,6 +138,8 @@
   [:map
    {:description "parameter must be a map with an :id key"}
    [:id      ::lib.schema.common/non-blank-string]
+   ;; the name of the template tag this value is for, when it can't be inferred from `:target`
+   [:name    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:type    {:optional true} [:maybe [:ref ::lib.schema.parameter/type]]]
    [:value   {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
    [:default {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
