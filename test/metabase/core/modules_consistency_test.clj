@@ -331,9 +331,17 @@
         (is (all-under? "test/metabase/actions_rest"
                         (module->test-files modules-config 'actions.rest))
             "an explicit :ns-prefix resolves into the prefix's directory")
-        (is (all-under? "test/metabase/lib/schema"
-                        (module->test-files modules-config 'lib.schema))
-            "a default-derived prefix resolves into the dotted module's directory"))
+        (let [schema-tests (module->test-files modules-config 'lib.schema)]
+          (is (all-under? "test/metabase/lib/schema" schema-tests)
+              "a default-derived prefix resolves into the dotted module's directory")
+          ;; Completeness signal. `all-under?` alone would still pass if discovery silently stopped
+          ;; surfacing nested files and returned only the module's own `schema_test.cljc`, which is
+          ;; the regression the old per-file assertions caught. Checking that both shapes appear
+          ;; keeps that signal without pinning any filename.
+          (is (some #(re-matches #"test/metabase/lib/schema_test\.\w+" %) schema-tests)
+              "the module's own test file is discovered")
+          (is (some #(.startsWith ^String % "test/metabase/lib/schema/") schema-tests)
+              "and so are tests nested beneath it")))
       (if (babashka-available?)
         (testing "mage.modules emits the same directories"
           (is (all-under? "test/metabase/actions_rest"
@@ -365,7 +373,11 @@
 (deftest ^:parallel mage-affected-tests-are-jvm-loadable-test
   (if (babashka-available?)
     (let [paths (set (bb-mage-module->test-paths {'lib {}} 'lib))]
-      (is (not (contains? paths "test/metabase/lib/js_test.cljs"))))
+      ;; Assert the property, not one filename: naming `lib/js_test.cljs` meant the check silently
+      ;; became a no-op the moment that file was renamed or deleted.
+      (is (seq paths) "no paths resolved, so the exclusion below would hold vacuously")
+      (is (empty? (filter #(str/ends-with? ^String % ".cljs") paths))
+          "mage affected-test paths feed a JVM runner, so ClojureScript-only tests must not appear"))
     (is false (missing-babashka-failure))))
 
 (deftest ^:parallel explicit-prefix-map-overloads-remain-pure-test

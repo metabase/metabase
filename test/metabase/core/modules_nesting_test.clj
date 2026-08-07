@@ -744,9 +744,15 @@
       (testing "a mutual dependency across two top-level subtrees counts once, not twice"
         (is (= 1 (count-pairs (deps '{alpha [beta] beta [alpha]})
                               '{alpha {} beta {}}))))
-      (testing "nested children in different subtrees still count, and are not collapsed to roots"
+      (testing "nested children in different subtrees still count"
         (is (= 1 (count-pairs (deps '{alpha.leaf [beta.leaf] beta.leaf [alpha.leaf]})
                               '{alpha {} alpha.leaf {} beta {} beta.leaf {}}))))
+      ;; The case above passes under a collapse-to-roots implementation too, since the pair is
+      ;; between the same two leaves. This one does not: there is no mutual pair between any two
+      ;; modules, but collapsing each side to its root would fabricate `alpha` <-> `beta`.
+      (testing "one-way edges between different children of two subtrees are not a root cycle"
+        (is (zero? (count-pairs (deps '{alpha.a [beta] beta [alpha.b] alpha.b []})
+                                '{alpha {} alpha.a {} alpha.b {} beta {}}))))
       (testing "a one-way dependency is not a cycle"
         (is (zero? (count-pairs (deps '{alpha [beta] beta []})
                                 '{alpha {} beta {}}))))
