@@ -8,9 +8,9 @@ import {
 import { useDispatch } from "metabase/redux";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 
-import type { EmbeddingHubStep } from "../types";
+import type { SetupGuideStep } from "../types";
 
-export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
+export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
   const dispatch = useDispatch();
 
   const openEmbedModal = useCallback(
@@ -28,7 +28,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
   return useMemo(() => {
     const isTenantsFeatureAvailable = PLUGIN_TENANTS.isEnabled;
 
-    const TEST_EMBED: EmbeddingHubStep = {
+    const TEST_EMBED: SetupGuideStep = {
       id: "create-test-embed",
       title: t`Create embed`,
       actions: [
@@ -43,7 +43,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ],
     };
 
-    const ADD_DATA: EmbeddingHubStep = {
+    const ADD_DATA: SetupGuideStep = {
       id: "add-data",
       title: t`Add your data`,
       actions: [
@@ -56,7 +56,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ],
     };
 
-    const CREATE_DASHBOARD: EmbeddingHubStep = {
+    const CREATE_DASHBOARD: SetupGuideStep = {
       id: "create-dashboard",
       title: t`Prepare data`,
       actions: [
@@ -69,7 +69,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ],
     };
 
-    const DATA_PERMISSIONS_AND_ENABLE_TENANTS: EmbeddingHubStep = {
+    const DATA_PERMISSIONS_AND_ENABLE_TENANTS: SetupGuideStep = {
       id: "data-permissions-and-enable-tenants",
       title: t`Pick a strategy for users and permissions`,
       actions: [
@@ -83,7 +83,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ],
     };
 
-    const SSO_CONFIGURED: EmbeddingHubStep = {
+    const SSO_CONFIGURED: SetupGuideStep = {
       id: "sso-configured",
       title: t`Set up authentication`,
       actions: [
@@ -97,7 +97,7 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
       ],
     };
 
-    const EMBED_PRODUCTION: EmbeddingHubStep = {
+    const EMBED_PRODUCTION: SetupGuideStep = {
       id: "embed-production",
       title: t`Deployment`,
       actions: [

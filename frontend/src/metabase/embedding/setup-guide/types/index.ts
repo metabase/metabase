@@ -1,6 +1,6 @@
 export type {
-  EmbeddingHubStep,
-  EmbeddingHubStepId,
-  EmbeddingHubAction,
-  EmbeddingHubModalToTrigger,
-} from "./embedding-checklist";
+  SetupGuideStep,
+  SetupGuideStepId,
+  SetupGuideAction,
+  SetupGuideModalToTrigger,
+} from "./setup-guide";

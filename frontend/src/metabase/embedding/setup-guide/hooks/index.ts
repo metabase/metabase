@@ -1,3 +1,3 @@
-export { useCompletedEmbeddingHubSteps } from "./use-completed-embedding-hub-steps";
-export { useGetEmbeddingHubSteps } from "./use-get-embedding-hub-steps";
+export { useCompletedSetupGuideSteps } from "./use-completed-setup-guide-steps";
+export { useGetSetupGuideSteps } from "./use-get-setup-guide-steps";
 export { useHelpUrl } from "./use-help-url";

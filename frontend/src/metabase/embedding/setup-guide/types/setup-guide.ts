@@ -1,6 +1,6 @@
 import type { AddDataTab } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/utils";
 
-export type EmbeddingHubStepId =
+export type SetupGuideStepId =
   | "create-test-embed"
   | "add-data"
   | "create-dashboard"
@@ -9,21 +9,21 @@ export type EmbeddingHubStepId =
   | "embed-production"
   | "data-permissions-and-enable-tenants";
 
-export interface EmbeddingHubStep {
-  id: EmbeddingHubStepId;
+export interface SetupGuideStep {
+  id: SetupGuideStepId;
   title: string;
 
-  actions: EmbeddingHubAction[];
+  actions: SetupGuideAction[];
 }
 
-export type EmbeddingHubModalToTrigger =
+export type SetupGuideModalToTrigger =
   | { type: "add-data"; initialTab: AddDataTab }
   | { type: "new-dashboard" }
   | { type: "xray-dashboard" }
   | { type: "user-strategy" };
 
-export interface EmbeddingHubAction {
-  stepId?: EmbeddingHubStepId;
+export interface SetupGuideAction {
+  stepId?: SetupGuideStepId;
 
   title: string;
   description: string;
@@ -46,7 +46,7 @@ export interface EmbeddingHubAction {
   variant?: "outline" | "subtle" | "filled";
 
   /** Which modal to trigger? */
-  modal?: EmbeddingHubModalToTrigger;
+  modal?: SetupGuideModalToTrigger;
 
   optional?: boolean;
 }

@@ -6,14 +6,11 @@ import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDash
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 
-import {
-  useCompletedEmbeddingHubSteps,
-  useGetEmbeddingHubSteps,
-} from "../hooks";
+import { useCompletedSetupGuideSteps, useGetSetupGuideSteps } from "../hooks";
 import type {
-  EmbeddingHubModalToTrigger,
-  EmbeddingHubStepId,
-} from "../types/embedding-checklist";
+  SetupGuideModalToTrigger,
+  SetupGuideStepId,
+} from "../types/setup-guide";
 
 import { SetupGuideXrayPickerModal } from "./SetupGuideXrayPickerModal";
 import {
@@ -23,15 +20,15 @@ import {
 } from "./StepperWithCards/StepperWithCards";
 
 export const SetupGuide = () => {
-  const embeddingSteps = useGetEmbeddingHubSteps();
-  const { data: completedSteps } = useCompletedEmbeddingHubSteps();
+  const embeddingSteps = useGetSetupGuideSteps();
+  const { data: completedSteps } = useCompletedSetupGuideSteps();
 
   const [openedModal, setOpenedModal] =
-    useState<EmbeddingHubModalToTrigger | null>(null);
+    useState<SetupGuideModalToTrigger | null>(null);
 
   const closeModal = () => setOpenedModal(null);
 
-  const lockedSteps: Partial<Record<EmbeddingHubStepId, boolean>> = useMemo(
+  const lockedSteps: Partial<Record<SetupGuideStepId, boolean>> = useMemo(
     () => ({
       "embed-production": !completedSteps?.["sso-configured"],
     }),

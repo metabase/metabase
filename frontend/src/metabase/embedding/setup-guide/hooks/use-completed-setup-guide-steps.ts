@@ -2,13 +2,13 @@ import { useMemo } from "react";
 
 import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
 
-import type { EmbeddingHubStepId } from "../types";
+import type { SetupGuideStepId } from "../types";
 
 /**
- * Embedding Hub completion steps should be derived by the instance state at the time, or tracked manually in instance settings for some of them.
+ * Setup guide completion steps should be derived by the instance state at the time, or tracked manually in instance settings for some of them.
  */
-export const useCompletedEmbeddingHubSteps = (): {
-  data: Record<EmbeddingHubStepId, boolean>;
+export const useCompletedSetupGuideSteps = (): {
+  data: Record<SetupGuideStepId, boolean>;
   isLoading: boolean;
 } => {
   const { data: checklistResponse, isLoading } =
@@ -40,7 +40,7 @@ export const useCompletedEmbeddingHubSteps = (): {
       };
     }
 
-    // For the main embedding hub, the SSO step is only complete if both
+    // For the main setup guide, the SSO step is only complete if both
     // SSO is configured AND the user has manually acknowledged it works
     return {
       ...checklist,

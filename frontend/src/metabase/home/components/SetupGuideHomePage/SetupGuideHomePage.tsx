@@ -11,9 +11,9 @@ import { dismissEmbeddingHomepage } from "../EmbedHomepage/actions";
 import { MetabotGreeting } from "../HomeGreeting";
 
 /**
- * Embedding Hub shown in the embedding home page for admins in EE instances.
+ * Setup guide shown in the embedding home page for admins in EE instances.
  */
-export const EmbeddingHubHomePage = (): ReactNode => {
+export const SetupGuideHomePage = (): ReactNode => {
   const [
     isCustomHomePageModalOpened,
     { open: openCustomHomePageModal, close: closeCustomHomePageModal },
