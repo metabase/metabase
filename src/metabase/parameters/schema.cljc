@@ -157,8 +157,7 @@
     :description "parameter_mapping must be a map with :parameter_id and :target keys"}
    [:parameter_id ::lib.schema.parameter/id]
    [:target       ::lib.schema.parameter/target]
-   [:card_id      {:optional true} [:maybe ::lib.schema.id/card]]
-   [:dashcard     {:optional true} :map]])
+   [:card_id      {:optional true} [:maybe ::lib.schema.id/card]]])
 
 (mu/defn normalize-parameter-mapping :- ::parameter-mapping
   "Normalize `parameter-mappings` when coming out of the application database or in via an API request."
@@ -179,3 +178,12 @@
      "Toucan 2 transform for columns that are sequences of Card/Dashboard parameter mappings."
      {:in  (comp mi/json-in normalize-parameter-mappings)
       :out (comp (mi/catch-normalization-exceptions normalize-parameter-mappings) mi/json-out-with-keywordization)}))
+
+(mr/def ::parameter-mapping-with-dashcard
+  "A `::parameter-mapping` resolved against the DashboardCard that carries it. The `:dashcard` is attached server-side
+  by the `:resolved-params` hydration, so it is deliberately not part of `::parameter-mapping`: no client ever sends
+  one."
+  [:merge
+   [:ref ::parameter-mapping]
+   [:map
+    [:dashcard :map]]])

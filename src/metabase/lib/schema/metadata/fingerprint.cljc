@@ -60,7 +60,9 @@
   "Schema for type-specific fingerprint information."
   [:and
    {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-   [:map-of ::lib.schema.common/base-type :map]
+   ;; this branch only constrains the *keys* to base types -- the per-type values are typed by the branch below, so it
+   ;; has to leave them as they came in
+   [:map-of ::lib.schema.common/base-type [:map {:closed false}]]
    [:map
     [:type/Number   {:optional true} [:ref ::fingerprint.number]]
     [:type/Text     {:optional true} [:ref ::fingerprint.text]]

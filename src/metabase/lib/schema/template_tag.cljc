@@ -64,8 +64,12 @@
     [:dimension   {:optional true} [:ref :mbql.clause/field]]]])
 
 (mr/def ::field-filter.options
+  "Options appended to the filter clause a Field Filter template tag generates. These get merged into the parameter
+  value the QP builds for the tag, so they are the same options as `:metabase.lib.schema.parameter/parameter.options`."
   [:map
-   {:decode/normalize common/normalize-map-no-kebab-case}])
+   {:decode/normalize common/normalize-map-no-kebab-case}
+   [:case-sensitive  {:optional true} :boolean]
+   [:include-current {:optional true} :boolean]])
 
 ;; Example:
 ;;
