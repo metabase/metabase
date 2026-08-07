@@ -1,13 +1,22 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupCardEndpoints } from "__support__/server-mocks";
+import {
+  setupCardEndpoints,
+  setupMeasureEndpoint,
+} from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
-import type { DatasetData, GoalSegment, GoalValue } from "metabase-types/api";
+import type {
+  DatasetData,
+  GoalSegment,
+  GoalValue,
+  ReferencedEntityResult,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockMeasure,
 } from "metabase-types/api/mocks";
 
 import {
@@ -25,9 +34,11 @@ const DEFAULT_VALUE = [
 ];
 
 const CARD_ID = 9;
+const MEASURE_ID = 4;
 
 function setup(props: Partial<ChartSettingSegmentsEditorProps> = {}) {
   setupCardEndpoints(createMockCard({ id: CARD_ID, name: "Orders" }));
+  setupMeasureEndpoint(createMockMeasure({ id: MEASURE_ID, name: "Revenue" }));
 
   const onChange = jest.fn();
 
@@ -103,92 +114,98 @@ describe("ChartSettingSegmentsEditor", () => {
       ).toBeInTheDocument();
     });
 
-    it("reports a referenced query that failed without saying why", () => {
-      setupBound(
-        { type: "card", id: CARD_ID, column: "total" },
-        createMockDatasetData({
-          ...DATA,
-          referenced_entities: { card: { [CARD_ID]: { status: "failed" } } },
+    const REFERENCES = [
+      {
+        type: "card",
+        id: CARD_ID,
+        createReferencedEntities: (result: ReferencedEntityResult) => ({
+          card: { [CARD_ID]: result },
         }),
-      );
+      },
+      {
+        type: "measure",
+        id: MEASURE_ID,
+        createReferencedEntities: (result: ReferencedEntityResult) => ({
+          measure: { [MEASURE_ID]: result },
+        }),
+      },
+    ] as const;
 
-      expect(screen.getByText("Couldn't load this value")).toBeInTheDocument();
-    });
+    describe.each(REFERENCES)(
+      "$type reference",
+      ({ type, id, createReferencedEntities }) => {
+        function setupReference(
+          column: string,
+          result?: ReferencedEntityResult,
+        ) {
+          return setupBound(
+            { type, id, column },
+            createMockDatasetData({
+              ...DATA,
+              referenced_entities:
+                result != null ? createReferencedEntities(result) : undefined,
+            }),
+          );
+        }
 
-    it("reports a referenced value that isn't a number", () => {
-      setupBound(
-        { type: "card", id: CARD_ID, column: "total" },
-        createMockDatasetData({
-          ...DATA,
-          referenced_entities: {
-            card: {
-              [CARD_ID]: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "total" })],
-                  rows: [["nope"]],
-                },
-              },
+        it("reports a referenced query that failed without saying why", () => {
+          setupReference("total", { status: "failed" });
+
+          expect(
+            screen.getByText("Couldn't load this value"),
+          ).toBeInTheDocument();
+        });
+
+        it("reports a referenced value that isn't a number", () => {
+          setupReference("total", {
+            status: "completed",
+            data: {
+              cols: [createMockColumn({ name: "total" })],
+              rows: [["nope"]],
             },
-          },
-        }),
-      );
+          });
 
-      expect(screen.getByText("This value isn't a number")).toBeInTheDocument();
-    });
+          expect(
+            screen.getByText("This value isn't a number"),
+          ).toBeInTheDocument();
+        });
 
-    it("surfaces the server's explanation for a referenced query that failed", () => {
-      setupBound(
-        { type: "card", id: CARD_ID, column: "total" },
-        createMockDatasetData({
-          ...DATA,
-          referenced_entities: {
-            card: {
-              [CARD_ID]: {
-                status: "failed",
-                error: "Referenced card 9 returned 3 rows",
-              },
+        it("surfaces the server's explanation for a referenced query that failed", () => {
+          setupReference("total", {
+            status: "failed",
+            error: "Referenced query returned 3 rows",
+          });
+
+          expect(
+            screen.getByText("Referenced query returned 3 rows"),
+          ).toBeInTheDocument();
+        });
+
+        it("stays quiet while a reference is still resolving", () => {
+          setupReference("total");
+
+          expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+          expect(screen.queryByText(/Couldn't load/)).not.toBeInTheDocument();
+          expect(
+            screen.queryByText(/no longer exists/),
+          ).not.toBeInTheDocument();
+        });
+
+        it("reports a referenced column that no longer exists", () => {
+          setupReference("avg", {
+            status: "completed",
+            data: {
+              cols: [createMockColumn({ name: "total" })],
+              rows: [[250]],
             },
-          },
-        }),
-      );
+          });
 
-      expect(
-        screen.getByText("Referenced card 9 returned 3 rows"),
-      ).toBeInTheDocument();
-    });
-
-    it("stays quiet while a reference is still resolving", () => {
-      setupBound({ type: "card", id: CARD_ID, column: "total" }, DATA);
-
-      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-      expect(screen.queryByText(/Couldn't load/)).not.toBeInTheDocument();
-      expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
-    });
-
-    it("reports a column of another question that no longer exists", () => {
-      setupBound(
-        { type: "card", id: CARD_ID, column: "avg" },
-        createMockDatasetData({
-          ...DATA,
-          referenced_entities: {
-            card: {
-              [CARD_ID]: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "total" })],
-                  rows: [[250]],
-                },
-              },
-            },
-          },
-        }),
-      );
-
-      expect(
-        screen.getByText("This column no longer exists"),
-      ).toBeInTheDocument();
-    });
+          expect(
+            screen.getByText("This column no longer exists"),
+          ).toBeInTheDocument();
+        });
+      },
+    );
   });
 
   it("offers both value sources for a bound", async () => {
