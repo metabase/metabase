@@ -18,11 +18,6 @@
   Used to validate [[llm-bedrock-region]]."
   (into #{} (map str) (Region/regions)))
 
-(defn- trimmed-string
-  [value]
-  (when (string? value)
-    (not-empty (str/trim value))))
-
 (def ^:private loopback-hosts
   "Hostnames that resolve to the local machine. `URL.getHost` returns IPv6 hosts
   wrapped in brackets, e.g. `[::1]`."
@@ -241,8 +236,8 @@
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(boolean (and (trimmed-string (llm-bedrock-access-key-id))
-                             (trimmed-string (llm-bedrock-secret-access-key))))
+  :getter     #(boolean (and (u/trimmed-string (llm-bedrock-access-key-id))
+                             (u/trimmed-string (llm-bedrock-secret-access-key))))
   :doc        false)
 
 ;;; ----------------------------------------------- Microsoft Azure ---------------------------------------------

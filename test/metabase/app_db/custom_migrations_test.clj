@@ -2966,3 +2966,125 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(defn- llm-setting-values
+  [setting-keys]
+  (into {}
+        (map (fn [{:keys [key value]}] [key (encryption/maybe-decrypt value)]))
+        (t2/query {:select [:key :value] :from :setting :where [:in :key setting-keys]})))
+
+(defn- insert-llm-settings!
+  [settings]
+  (t2/insert! :setting (for [[k v] settings]
+                         {:key k :value (encryption/maybe-encrypt v)})))
+
+(defn- llm-connections
+  []
+  (some-> (llm-setting-values ["llm-providers"]) (get "llm-providers") json/decode+kw))
+
+(deftest migrate-llm-provider-settings-test
+  (testing "v64.7qmx3p : per-provider credential settings move onto llm-providers and are deleted"
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+      (impl/test-migrations ["v64.7qmx3p"] [migrate!]
+        (insert-llm-settings! {"llm-anthropic-api-key"      "sk-ant-stored"
+                               "llm-anthropic-api-base-url" "https://self-hosted.example"
+                               "llm-openai-api-key"         "sk-stored"
+                               ;; an access key with no secret is not a configured provider
+                               "llm-bedrock-access-key-id"  "AKIAIOSFODNN7EXAMPLE"
+                               "llm-metabot-provider"       "anthropic/claude-opus-4-1"})
+        (migrate!)
+        (is (= [{:key    "anthropic"
+                 :type   "anthropic"
+                 :name   "Anthropic"
+                 :config {:api-key "sk-ant-stored" :base-url "https://self-hosted.example"}}
+                {:key    "openai"
+                 :type   "openai"
+                 :name   "OpenAI"
+                 :config {:api-key "sk-stored"}}]
+               (llm-connections)))
+        (testing "the credentials they came from are gone, so nothing is left holding a stale copy"
+          (is (= {} (llm-setting-values ["llm-anthropic-api-key" "llm-anthropic-api-base-url"
+                                         "llm-openai-api-key" "llm-bedrock-access-key-id"]))))
+        (testing "and the model reference that already named the provider by type still resolves"
+          (is (= {"llm-metabot-provider" "anthropic/claude-opus-4-1"}
+                 (llm-setting-values ["llm-metabot-provider"]))))))))
+
+(deftest migrate-llm-provider-settings-azure-test
+  (testing "v64.7qmx3p : Azure's deployment is recovered from the model reference it used to live in"
+    (impl/test-migrations ["v64.7qmx3p"] [migrate!]
+      (insert-llm-settings! {"llm-azure-api-key"      "azure-key"
+                             "llm-azure-api-base-url" "https://r.services.ai.azure.com/openai"
+                             "llm-metabot-provider"   "azure/openai/gpt-4.1-mini"})
+      (migrate!)
+      (is (= [{:key    "azure"
+               :type   "azure"
+               :name   "Microsoft Azure"
+               :config {:api-key         "azure-key"
+                        :base-url        "https://r.services.ai.azure.com/openai"
+                        :model-family    "openai"
+                        :deployment-name "gpt-4.1-mini"}}]
+             (llm-connections))))))
+
+(deftest migrate-llm-provider-settings-managed-test
+  (testing "v64.7qmx3p : an instance already on the managed provider gets the connection its reference names"
+    (impl/test-migrations ["v64.7qmx3p"] [migrate!]
+      (insert-llm-settings! {"llm-metabot-provider" "metabase/anthropic/claude-sonnet-4-6"})
+      (migrate!)
+      (is (= [{:key "metabase" :type "metabase" :name "Metabase AI service" :config {}}]
+             (llm-connections))))))
+
+(deftest migrate-llm-provider-settings-keeps-an-existing-list-test
+  (testing "v64.7qmx3p : a connection list that already exists is what the instance runs on, and wins"
+    (impl/test-migrations ["v64.7qmx3p"] [migrate!]
+      (insert-llm-settings! {"llm-providers"         (json/encode [{:key    "anthropic-evals"
+                                                                    :type   "anthropic"
+                                                                    :name   "Anthropic (evals)"
+                                                                    :config {:api-key "sk-ant-list"}}])
+                             "llm-anthropic-api-key" "sk-ant-stale"})
+      (migrate!)
+      (is (= [{:key "anthropic-evals" :type "anthropic" :name "Anthropic (evals)"
+               :config {:api-key "sk-ant-list"}}]
+             (llm-connections)))
+      (testing "and the setting it superseded is deleted rather than left behind as a stale credential"
+        (is (= {} (llm-setting-values ["llm-anthropic-api-key"])))))))
+
+(deftest rollback-llm-provider-settings-test
+  (testing "v64.7qmx3p : rolling back writes the connection list back into the settings older code reads"
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+      (impl/test-migrations ["v64.7qmx3p"] [migrate!]
+        (insert-llm-settings! {"llm-anthropic-api-key" "sk-ant-stored"
+                               "llm-metabot-provider"  "anthropic/claude-opus-4-1"})
+        (migrate!)
+        (t2/query {:update :setting
+                   :set    {:value (encryption/maybe-encrypt
+                                    (json/encode [{:key    "anthropic"
+                                                   :type   "anthropic"
+                                                   :name   "Anthropic"
+                                                   :config {:api-key "sk-ant-rotated"}}]))}
+                   :where  [:= :key "llm-providers"]})
+        (migrate! :down 63)
+        (testing "the rotated credential is what older code finds, not the one the upgrade started from"
+          (is (= {"llm-anthropic-api-key" "sk-ant-rotated"}
+                 (llm-setting-values ["llm-anthropic-api-key"]))))
+        (testing "and the list is dropped, so upgrading again re-reads the settings"
+          (is (= {} (llm-setting-values ["llm-providers"]))))))))
+
+(deftest rollback-llm-provider-settings-drops-what-settings-cannot-hold-test
+  (testing "v64.7qmx3p : a connection keyed by anything but its provider type has nowhere to go on rollback"
+    (impl/test-migrations ["v64.7qmx3p"] [migrate!]
+      (insert-llm-settings! {"llm-anthropic-api-key" "sk-ant-stored"})
+      (migrate!)
+      (t2/query {:update :setting
+                 :set    {:value (encryption/maybe-encrypt
+                                  (json/encode [{:key    "anthropic-evals"
+                                                 :type   "anthropic"
+                                                 :name   "Anthropic (evals)"
+                                                 :config {:api-key "sk-ant-evals"}}]))}
+                 :where  [:= :key "llm-providers"]})
+      (insert-llm-settings! {"llm-metabot-provider" "anthropic-evals/claude-opus-4-1"})
+      (migrate! :down 63)
+      (testing "its credentials are not written under a provider they did not belong to"
+        (is (= {} (llm-setting-values ["llm-anthropic-api-key"]))))
+      (testing "and the reference naming it is rewritten to something older code can resolve"
+        (is (= {"llm-metabot-provider" "anthropic/claude-opus-4-1"}
+               (llm-setting-values ["llm-metabot-provider"])))))))

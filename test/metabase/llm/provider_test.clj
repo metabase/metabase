@@ -386,25 +386,3 @@
   (testing "every type other than the managed one is always available"
     (is (true? (llm.provider/type-available? "anthropic")))
     (is (false? (llm.provider/type-available? "evilai")))))
-
-(deftest db-stored-single-provider-connections-test
-  (testing "a per-provider credential setting stored in the app DB implies a connection keyed by its provider type"
-    (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil
-                                  mb-llm-openai-api-key    nil]
-      ;; the base URL is pinned as unset because it has a default: a test elsewhere that binds it leaves that
-      ;; default stored in the app DB, and the adoption below would then have a base URL to carry over
-      (mt/with-temporary-setting-values [llm-anthropic-api-key      "sk-ant-stored"
-                                         llm-anthropic-api-base-url nil
-                                         llm-openai-api-key         nil]
-        (is (= [{:key    "anthropic"
-                 :type   "anthropic"
-                 :name   "Anthropic"
-                 :config {:api-key "sk-ant-stored"}}]
-               (llm.provider/db-stored-single-provider-connections))))))
-  (testing "an incomplete per-provider credential set does not imply a connection"
-    (mt/with-temp-env-var-value! [mb-llm-bedrock-access-key-id     nil
-                                  mb-llm-bedrock-secret-access-key nil]
-      (mt/with-temporary-setting-values [llm-anthropic-api-key         nil
-                                         llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
-                                         llm-bedrock-secret-access-key nil]
-        (is (= [] (llm.provider/db-stored-single-provider-connections)))))))
