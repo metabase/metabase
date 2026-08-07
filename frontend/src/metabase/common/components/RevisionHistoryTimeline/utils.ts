@@ -18,10 +18,13 @@ export function getTimelineEvents({
     // If only one field is changed, we just show everything in the title
     // like "John added a description"
     const titleText = r.has_multiple_changes ? t`edited this.` : r.description;
+    // A revision's user can come back empty (e.g. seeded example content has no
+    // real author, or the user was since deleted) -- fall back rather than
+    // interpolating a literal "undefined" (metabase#77942).
+    const actorName =
+      r.user.id === currentUser?.id ? t`You` : r.user.common_name || t`Unknown`;
     return {
-      title: `${
-        r.user.id === currentUser?.id ? t`You` : r.user.common_name
-      } ${titleText}`,
+      title: `${actorName} ${titleText}`,
       description: r.description,
       timestamp: r.timestamp,
       icon: "pencil" as const,
