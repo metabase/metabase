@@ -13,6 +13,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
@@ -128,8 +129,13 @@
 
   Chat Completions has no explicit start/stop events per content block like
   Claude or OpenAI Responses do — we infer transitions from the delta shape.
-  Parallel tool calls arrive with different `index` values; when a new index
-  appears the previous tool is complete."
+
+  Parallel tool calls are tracked by tool-call `id`, not by `index`, which is
+  never read: a tool-call delta whose `id` differs from the open one closes the
+  previous block and opens a new one. That relies on providers sending `id` only
+  on a tool call's opening chunk — one that repeated it on continuation chunks
+  would lose their arguments, since neither the start branch (needs `:name`) nor
+  the argument-delta branch (needs no `:id`) would fire."
   []
   (fn [rf]
     (let [current-type (volatile! nil) ;; :text | :function_call | nil
@@ -246,3 +252,27 @@
                                         :else       "auto"))
       temperature (assoc :temperature temperature)
       max-tokens  (assoc :max_tokens max-tokens))))
+
+;;; Model catalog
+
+(defn models-catalog
+  "Extract the model list from an OpenAI-compatible `GET /models` response, failing closed.
+
+  `(get-in res [:body :data])` yields nil for any body shape we don't recognize — a base URL pointing at
+  something that isn't a model endpoint, an HTML error page, a provider that renamed the key. Returning nil
+  leaves the caller's whitelist intersection empty, so the admin Connect flow succeeds against a provider we
+  never actually reached and leaves an empty model picker with no diagnostic. Throw instead.
+
+  `provider-name` is the display name, used in the message. The exception is tagged `:api-error` so the
+  adapter's surrounding [[metabase.metabot.self.core/rethrow-api-error!]] rethrows it unchanged, and carries
+  no `:status`: this isn't a credentials problem, and `metabase.metabot.api`'s `provider-client-error?`
+  renders any 4xx under the admin API-key field, which would attach the wrong message to the wrong input.
+
+  A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes."
+  [provider-name res]
+  (let [data (get-in res [:body :data])]
+    (when-not (sequential? data)
+      (throw (ex-info (tru "{0} returned an unexpected model list response" provider-name)
+                      {:api-error  true
+                       :error-code :malformed-model-catalog})))
+    data))
