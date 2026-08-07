@@ -120,6 +120,7 @@ jobs:
           msg="🚨🚨 Backport failed because \`double-backport\` and \`triple-backport\` labels are **deprecated**! Use the \`backport\` label to port changes to all supported releases instead. 🚨🚨"
 
           gh api \
+            --silent \
             --method POST \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2026-03-10" \
