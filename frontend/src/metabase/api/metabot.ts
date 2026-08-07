@@ -1,8 +1,6 @@
-import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
   Card,
   DeleteSuggestedMetabotPromptRequest,
-  ForkMetabotConversationRequest,
   ListMetabotConversationsRequest,
   ListMetabotConversationsResponse,
   MetabotConversationTitleResponse,
@@ -56,12 +54,6 @@ export const metabotApi = Api.injectEndpoints({
       query: (conversationId) => ({
         method: "GET",
         url: `/api/metabot/conversations/${conversationId}/title`,
-      }),
-    }),
-    getMetabotConversation: builder.query<MetabotConversationDetail, string>({
-      query: (conversationId) => ({
-        method: "GET",
-        url: `/api/metabot/conversations/${conversationId}`,
       }),
     }),
     getMetabotSettings: builder.query<
@@ -162,16 +154,6 @@ export const metabotApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),
-    forkMetabotConversation: builder.mutation<
-      MetabotConversationDetail,
-      ForkMetabotConversationRequest
-    >({
-      query: ({ conversation_id, ...body }) => ({
-        method: "POST",
-        url: `/api/metabot/conversations/${conversation_id}/fork`,
-        body,
-      }),
-    }),
     submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
       query: (params) => ({
         method: "POST",
@@ -212,7 +194,6 @@ export const metabotApi = Api.injectEndpoints({
 
 export const {
   useGetMetabotSettingsQuery,
-  useGetMetabotConversationQuery,
   useListMetabotConversationsQuery,
   useListMetabotsQuery,
   useUpdateMetabotSettingsMutation,
@@ -222,7 +203,6 @@ export const {
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
   useSaveMetabotEntityMutation,
-  useForkMetabotConversationMutation,
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,

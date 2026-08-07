@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import { useGetMetabotConversationQuery } from "metabase/api/metabot";
 import { GenericError } from "metabase/common/components/ErrorPages";
+import { useGetMetabotConversationQuery } from "metabase/metabot/api";
 import { MetabotAsk } from "metabase/metabot/components/MetabotAsk";
 import {
   useMetabotAgent,

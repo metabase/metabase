@@ -16,12 +16,13 @@ import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-st
 import { metabotApi } from "metabase/api/metabot";
 import { listTag } from "metabase/api/tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { metabotConversationApi } from "metabase/metabot/api";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { navigate } from "metabase/router";
+import { push } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
@@ -599,7 +600,8 @@ export const sendAgentRequest = createAsyncThunk<
                   return;
                 }
 
-                navigate(path);
+                // Unjustified type cast. FIXME
+                dispatchToConvo(push(path) as UnknownAction);
               })
               .with({ type: "data-entity_saved" }, (part) => {
                 dispatch(
@@ -778,7 +780,7 @@ export const sendAgentRequest = createAsyncThunk<
 
       const handled = handleResponseError(
         error,
-        getSetting(getState(), "metabot-name"),
+        getSetting(getState(), "metabot-name") || "Metabot",
       );
       return rejectWithValue({
         type: "error" as const,
@@ -841,13 +843,12 @@ export const retryPrompt = createAsyncThunk<
     context: MetabotChatContext;
     metabot_id?: string;
     agentId: MetabotAgentId;
-    profile?: MetabotProfileId;
     isTransformsPage?: boolean;
   }
 >(
   "metabase/metabot/retryPrompt",
   async (
-    { messageId, context, metabot_id, agentId, profile, isTransformsPage },
+    { messageId, context, metabot_id, agentId, isTransformsPage },
     { getState, dispatch },
   ) => {
     const state = getState();
@@ -874,7 +875,6 @@ export const retryPrompt = createAsyncThunk<
         message: prompt.message,
         context,
         metabot_id,
-        profile,
         retryMessageId: prompt.externalId,
         isTransformsPage,
       }),
@@ -903,10 +903,13 @@ export const loadConversation = createAsyncThunk(
     // as we do not want to record it as an aborted response.
 
     const { data: detail, error } = await dispatch(
-      metabotApi.endpoints.getMetabotConversation.initiate(conversationId, {
-        forceRefetch: true,
-        subscribe: false,
-      }),
+      metabotConversationApi.endpoints.getMetabotConversation.initiate(
+        conversationId,
+        {
+          forceRefetch: true,
+          subscribe: false,
+        },
+      ),
     );
 
     if (error || !detail) {
@@ -946,7 +949,7 @@ export const forkConversation = createAsyncThunk(
     { dispatch },
   ) => {
     const conversation = await dispatch(
-      metabotApi.endpoints.forkMetabotConversation.initiate({
+      metabotConversationApi.endpoints.forkMetabotConversation.initiate({
         conversation_id: conversationId,
         message_id: messageId,
       }),
@@ -966,7 +969,7 @@ export const forkConversation = createAsyncThunk(
     );
 
     if (agentId === "ask") {
-      navigate(Urls.metabotConversation(conversation.conversation_id));
+      dispatch(push(Urls.metabotConversation(conversation.conversation_id)));
     }
 
     return conversation;
