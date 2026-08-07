@@ -100,9 +100,9 @@ When the app needs saved questions, include `question-collections=<id-or-entity-
 
 If schema generation fails while building a selected saved question, model, or model action, do not hide, paraphrase away, or retry past the error. Surface the typed-schema error to the user, including the failing `card-id` / `card-name` / `card-type`, `model-id` / `model-name`, dropped action ids, and message when present. This usually means a selected model/question/action was readable enough to select, but its details could not be built, often because its source table, source card, or action details are not published, accessible, valid, or resolvable in the fetch context. The schema would otherwise omit the entire `schema.models.<model>` or `schema.questions.<question>` entry, or return a model whose `actions` map silently omits an action, so the user needs to curate or publish the missing dependency before regenerating.
 
-## Synchronize saved-question-backed queries
+## Synchronize every end-to-end prototype query
 
-Put each query that needs the data app's saved-question permission boundary in `queries/` as a named export whose initializer is a direct `defineQuery({...})` call. Import that definition into React instead of duplicating the query inline.
+For end-to-end prototype data apps, treat every Metabase query as permission-bound. Before using a query in React, define its fixed source and clauses in `queries/<name>.query.ts` as a named export whose initializer is a direct `defineQuery({...})` call. Import that definition into React. Do not pass an inline table-source query directly to `useMetabaseQuery` or `useMetabaseQueryObject`, even for read-only, filter-option, or helper queries.
 
 ```ts
 import { defineQuery } from "@metabase/embedding-sdk-react/data-app";
@@ -111,7 +111,22 @@ import schema from "../src/metabase.data";
 export const RevenueQuery = defineQuery({ source: schema.tables.orders });
 ```
 
-Run `npm run sync-queries` (the template wrapper for `embedding-sdk-react data-apps sync-queries`) after adding, changing, renaming, or removing one of these definitions. The command loads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, creates or reconciles the saved questions, injects `savedQuestionSourceId`, and updates `queries_metadata.json`. Commit both generated changes. Production builds fail when these files are stale.
+Ensure `package.json` defines `"sync-queries": "embedding-sdk-react data-apps sync-queries"`. Run `npm run sync-queries` after adding, changing, renaming, or removing a query definition. The command loads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, creates or reconciles the saved questions, injects `savedQuestionSourceId`, and updates `queries_metadata.json`.
+
+Do not build, test, or hand off the app until synchronization succeeds, every live definition contains a positive `savedQuestionSourceId`, and `queries_metadata.json` contains its matching entry. Commit both generated changes. Production builds fail when these files are stale.
+
+Keep fixed permission-boundary filters, aggregations, and breakouts inside the `defineQuery` definition. Synchronization materializes that authored table query as a saved question. Don't apply the same clauses again outside it.
+
+For end-to-end prototypes, swap the source manually. After synchronization injects `savedQuestionSourceId`, build a separate card-source query for interactive filters, aggregations, breakouts, ordering, or limits:
+
+```ts
+const { data } = useMetabaseQuery({
+  source: { type: "card", id: RevenueQuery.savedQuestionSourceId },
+  filters: [filter(RevenueQuery.source.fields.status, "=", selectedStatus)],
+});
+```
+
+Use the same shape with `useMetabaseQueryObject`. Reuse a generated table field only when the inner saved question returns that field unchanged; card-source clauses resolve columns by result name. For renamed, computed, or aggregated results, use the exact saved-question result column instead of guessing. Don't spread `RevenueQuery` and add dynamic clauses: that keeps its table source and bypasses the saved-question permission boundary. Replace this manual pattern when automatic source swapping is implemented.
 
 If synchronization fails, surface the exact error and stop. Fix local shape, serialization, duplicate-ID, or lockfile errors before retrying. A confirmed `404` is recovered automatically; authentication, permission, network, server, collection-ownership, and Card-type failures must not trigger manual Card creation, deletion, ID replacement, or lockfile editing.
 
@@ -459,8 +474,7 @@ import type { MetabaseQueryOptions } from "@metabase/embedding-sdk-react/data-ap
 type SortKey = "revenue" | "orders";
 type ScorecardTable = typeof scorecardTable;
 
-type ScorecardField =
-  ScorecardTable["fields"][keyof ScorecardTable["fields"]];
+type ScorecardField = ScorecardTable["fields"][keyof ScorecardTable["fields"]];
 
 const sortFields = {
   revenue: scorecardTable.fields.netRevenue,
