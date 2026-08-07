@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [update-keys #?@(:clj [some])])
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.types.core]
    [metabase.util :as u]
@@ -279,7 +280,10 @@
     [:semantic-type  {:optional true} [:maybe ::semantic-or-relation-type]]
     [:database-type  {:optional true} [:maybe ::non-blank-string]]
     [:name           {:optional true} [:maybe ::non-blank-string]]
-    [:display-name   {:optional true} [:maybe ::non-blank-string]]]
+    [:display-name   {:optional true} [:maybe ::non-blank-string]]
+    ;; options are an open bag: individual clauses and lib itself add their own keys (`:lib/expression-name`,
+    ;; `:join-alias`, `:temporal-unit` ...), and the ones this schema doesn't name still have to survive decoding.
+    [::mc/default    :any]]
    (disallowed-keys
     {:ident ":ident is deprecated and should not be included in options maps"})])
 
