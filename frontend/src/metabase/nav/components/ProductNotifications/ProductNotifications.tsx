@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 
 import { Markdown } from "metabase/common/components/Markdown";
-import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
+import { useSetting, useUserSetting } from "metabase/settings";
 import { Icon, isValidIconName } from "metabase/ui";
 
 export const useDismissNotification = () => {
