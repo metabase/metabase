@@ -6,6 +6,7 @@ import { mockSettings } from "__support__/settings";
 import { render, screen } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import { registerJsxFormatting } from "metabase/visualizations/lib/formatting/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -397,6 +398,51 @@ describe("formatUrl", () => {
         column: null,
       }),
     ).toEqual("foobar");
+  });
+
+  describe("when the site is deployed under a base path (metabase#77352)", () => {
+    beforeEach(() => {
+      mockSettings({ "site-url": "http://localhost/insights" });
+    });
+
+    it("renders an absolute same-origin url outside the base path as an external link, not a mangled in-app one", () => {
+      // Same host as site-url, but "/api/assets/1" isn't under "/insights" --
+      // routing this through the in-app <Link> (which prepends the base
+      // path) would turn it into "/insights/api/assets/1", not the
+      // link the user actually configured.
+      const formatted = formatUrl("http://localhost/api/assets/1", {
+        jsx: true,
+        rich: true,
+        view_as: "link",
+      }) as ReactElement;
+
+      expect(isElementOfType(formatted, ExternalLink)).toBe(true);
+      expect(formatted.props.href).toEqual("http://localhost/api/assets/1");
+    });
+
+    it("still renders an absolute same-origin url under the base path as an in-app link", () => {
+      // Unjustified type cast. FIXME
+      const formatted = formatUrl("http://localhost/insights/dashboard/5", {
+        jsx: true,
+        rich: true,
+        view_as: "link",
+      }) as ReactElement;
+
+      expect(isElementOfType(formatted, Link)).toBe(true);
+    });
+
+    it("still renders a plain relative url as an in-app link", () => {
+      // Unjustified type cast. FIXME
+      const formatted = formatUrl("Dashboard 5", {
+        jsx: true,
+        rich: true,
+        view_as: "link",
+        link_url: "/dashboard/5",
+        clicked: {},
+      }) as ReactElement;
+
+      expect(isElementOfType(formatted, Link)).toBe(true);
+    });
   });
 
   describe("slugify", () => {
