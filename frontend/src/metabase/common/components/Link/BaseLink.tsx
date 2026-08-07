@@ -11,6 +11,7 @@ import {
   type NavLinkRenderProps,
   Link as RouterLink,
   type To,
+  prefetchPage,
   useInRouterContext,
 } from "metabase/router";
 
@@ -92,7 +93,10 @@ export interface BaseLinkProps extends Omit<
  * that need it subscribe to the current route.
  */
 export const BaseLink = forwardRef<HTMLAnchorElement, BaseLinkProps>(
-  function BaseLink({ to, innerRef, className, style, end, ...rest }, ref) {
+  function BaseLink(
+    { to, innerRef, className, style, end, onMouseEnter, onFocus, ...rest },
+    ref,
+  ) {
     const linkRef = ref ?? innerRef;
     const inRouter = useInRouterContext();
 
@@ -112,6 +116,8 @@ export const BaseLink = forwardRef<HTMLAnchorElement, BaseLinkProps>(
         <a
           {...rest}
           href={href}
+          onMouseEnter={onMouseEnter}
+          onFocus={onFocus}
           className={resolveClassName(className, INACTIVE)}
           style={resolveStyle(style, INACTIVE)}
           ref={linkRef}
@@ -121,10 +127,26 @@ export const BaseLink = forwardRef<HTMLAnchorElement, BaseLinkProps>(
 
     const target = anchorTarget(to);
 
+    // Reaching for a link is the earliest reliable sign that the user is about
+    // to follow it, so a target in its own chunk starts loading here instead of
+    // when its route renders. `prefetchPage` does nothing for a target that
+    // registered no loader, which is almost all of them.
+    const prefetchProps = {
+      onMouseEnter: (event: React.MouseEvent<HTMLAnchorElement>) => {
+        onMouseEnter?.(event);
+        prefetchPage(hrefFor(target));
+      },
+      onFocus: (event: React.FocusEvent<HTMLAnchorElement>) => {
+        onFocus?.(event);
+        prefetchPage(hrefFor(target));
+      },
+    };
+
     if (typeof className === "function" || typeof style === "function") {
       return (
         <NavLink
           {...rest}
+          {...prefetchProps}
           to={target}
           end={end}
           // Normalize both to callbacks: given a plain string `NavLink` appends
@@ -139,6 +161,7 @@ export const BaseLink = forwardRef<HTMLAnchorElement, BaseLinkProps>(
     return (
       <RouterLink
         {...rest}
+        {...prefetchProps}
         to={target}
         className={className}
         style={style}

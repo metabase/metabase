@@ -238,14 +238,14 @@
 (defn- refresh-schedule-cache!
   "Given a cache config with the :schedule strategy, preemptively rerun the query (and a fixed number of parameterized
   variants) so that fresh results are cached."
-  [{model       :model
-    model-id    :model_id
-    strategy    :strategy
-    last-run-at :last_run_at
-    created-at  :created_at
-    :as cache-config}]
+  [{model          :model
+    model-id       :model_id
+    strategy       :strategy
+    invalidated-at :invalidated_at
+    created-at     :created_at
+    :as            cache-config}]
   (assert (= strategy :schedule))
-  (let [rerun-cutoff (or last-run-at created-at)
+  (let [rerun-cutoff (or invalidated-at created-at)
         card-ids     (schedule-cache-config->card-ids cache-config)
         dashboard-id (when (= model "dashboard") model-id)
         refresh-defs (distinct
