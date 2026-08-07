@@ -326,7 +326,7 @@ export const GoalValueInput = ({
                 >
                   <Icon name="hexagon" size={12} c="text-secondary" />
                   {resolved.isResolving ? (
-                    <Loader size="xs" data-testid="goal-value-loader" />
+                    <Loader size="xs" />
                   ) : (
                     <span className={S.pillValue}>
                       {resolved.value != null

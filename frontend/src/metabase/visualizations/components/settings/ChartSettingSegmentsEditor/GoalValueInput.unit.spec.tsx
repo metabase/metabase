@@ -199,7 +199,7 @@ describe("GoalValueInput", () => {
     setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
     setup({ value: { type: "card", id: 9, column: "total" } });
 
-    expect(screen.getByTestId("goal-value-loader")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 
   it("clears the reference with the remove button", async () => {

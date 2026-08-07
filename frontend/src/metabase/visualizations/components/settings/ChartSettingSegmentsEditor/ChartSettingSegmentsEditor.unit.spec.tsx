@@ -85,7 +85,6 @@ describe("ChartSettingSegmentsEditor", () => {
 
   describe("bound errors", () => {
     const renderWithBound = (min: GoalValue | null, data: DatasetData) => {
-      // GoalValueInput loads the referenced card to label the pill
       setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
 
       return renderWithProviders(
@@ -168,6 +167,7 @@ describe("ChartSettingSegmentsEditor", () => {
     it("stays quiet while a reference is still resolving", () => {
       renderWithBound({ type: "card", id: 9, column: "total" }, DATA);
 
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
       expect(screen.queryByText(/Couldn't load/)).not.toBeInTheDocument();
       expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
     });
