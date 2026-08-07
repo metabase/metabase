@@ -2,6 +2,7 @@
   "Native query snippet (/api/native-query-snippet) endpoints."
   (:require
    [clojure.data :as data]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
@@ -31,7 +32,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all snippets"
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [archived]} :- [:map
                           [:archived {:default false} [:maybe ms/BooleanValue]]]]

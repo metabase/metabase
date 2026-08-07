@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
@@ -334,7 +335,7 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [_route-params
    query-params :- search-request-schema]
   (api/check-valid-page-params (request/limit) (request/offset))

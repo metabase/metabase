@@ -1,6 +1,7 @@
 (ns metabase.queries-rest.api.card
   "/api/card endpoints."
   (:require
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
@@ -257,7 +258,7 @@
 
   As of v57, returns the MBQL query (`dataset_query`) as MBQL 5; to return the query as MBQL 4 (aka legacy MBQL)
   instead, you can specify `?legacy-mbql=true`."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
@@ -777,7 +778,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]
@@ -905,7 +906,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:card-id/query"
   "Run the query associated with a Card."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [card-id]} :- [:map
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
@@ -945,7 +946,7 @@
   `csv_include_bom`, `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content
   or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use
   HTML `form` actions)."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [card-id export-format]} :- [:map
                                        [:card-id       ms/PositiveInt]
                                        [:export-format ::qp.schema/export-format]]
@@ -1032,7 +1033,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:card-id/query"
   "Run the query associated with a Card."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]
    _query-params
@@ -1061,7 +1062,7 @@
 
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/queries/1/params/abc/values"
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [card-id param-key]} :- [:map
                                    [:card-id   ms/PositiveInt]
                                    [:param-key ::lib.schema.parameter/id]]]
@@ -1079,7 +1080,7 @@
      GET /api/queries/1/params/abc/search/Orange
 
   Currently limited to first 1000 results."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [card-id param-key query]} :- [:map
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
@@ -1096,7 +1097,7 @@
 
     ;; fetch the remapped value for Card 1 parameter 'abc' for value 100
     GET /api/queries/1/params/abc/remapping?value=100"
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [id param-key]} :- [:map
                               [:id ::lib.schema.id/card]
                               [:param-key ::lib.schema.parameter/id]]

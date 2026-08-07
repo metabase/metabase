@@ -126,6 +126,7 @@
    :uses #{actions
            analytics
            api
+           api-scope
            collections
            eid-translation
            lib
@@ -628,6 +629,7 @@
   {:team "UX West"
    :api  #{metabase.collections-rest.api}
    :uses #{api
+           api-scope
            app-db
            collections
            eid-translation
@@ -763,6 +765,7 @@
    :uses #{actions
            analytics
            api
+           api-scope
            app-db
            channel
            collections
@@ -1536,6 +1539,7 @@
    :api  #{metabase.native-query-snippets.api
            metabase.native-query-snippets.core}
    :uses #{api
+           api-scope
            collections
            events
            lib
@@ -1799,6 +1803,7 @@
            metabase.pulse.core
            metabase.pulse.init}
    :uses #{api
+           api-scope
            app-db
            channel
            classloader
@@ -1900,6 +1905,7 @@
   {:team "Querying Platform"
    :api  #{metabase.queries-rest.api}
    :uses #{api
+           api-scope
            collections
            eid-translation
            embedding
@@ -1976,6 +1982,7 @@
            analytics-interface
            analyze
            api
+           api-scope
            app-db
            appearance
            audit-app
@@ -2109,6 +2116,7 @@
    :uses #{analytics
            analytics-interface
            api
+           api-scope
            app-db
            appearance
            audit-app
@@ -2205,6 +2213,7 @@
            metabase.session.init
            metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
+           api-scope
            app-db
            auth-identity
            channel
@@ -2684,6 +2693,7 @@
    :api  #{metabase.user-key-value.api
            metabase.user-key-value.init}
    :uses #{api
+           api-scope
            config
            lib
            util}}
@@ -2724,6 +2734,7 @@
   {:team "UX West"
    :api  #{metabase.users-rest.api}
    :uses #{api
+           api-scope
            appearance
            auth-identity
            collections
@@ -2826,6 +2837,7 @@
    :api  #{metabase.warehouse-schema-rest.api}
    :uses #{analytics
            api
+           api-scope
            app-db
            collections
            database-routing
@@ -2881,6 +2893,7 @@
    :api  #{metabase.warehouses-rest.api}
    :uses #{analytics
            api
+           api-scope
            app-db
            classloader
            collections
@@ -3149,6 +3162,7 @@
   {:team "UX West"
    :api  #{metabase-enterprise.content-translation.routes}
    :uses #{api
+           api-scope
            content-translation
            embedding
            premium-features
@@ -3176,6 +3190,7 @@
            metabase-enterprise.custom-viz-plugin.init
            metabase-enterprise.custom-viz-plugin.settings}
    :uses #{api
+           api-scope
            config
            events
            models
@@ -3196,6 +3211,7 @@
            metabase-enterprise.data-apps.init
            metabase-enterprise.data-apps.sync}
    :uses #{api
+           api-scope
            models
            premium-features
            settings
@@ -3614,6 +3630,7 @@
    :api  #{metabase-enterprise.sandbox.api.routes
            metabase-enterprise.sandbox.api.util}
    :uses #{api
+           api-scope
            app-db
            audit-app
            driver

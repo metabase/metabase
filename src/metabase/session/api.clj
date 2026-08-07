@@ -2,6 +2,7 @@
   "/api/session endpoints"
   (:require
    [java-time.api :as t]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
@@ -395,7 +396,7 @@
 (api.macros/defendpoint :get "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 

@@ -6,6 +6,7 @@
   (:require
    [clojure.set :refer [difference]]
    [medley.core :as m]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
@@ -329,7 +330,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   []
   (perms/check-has-application-permission :subscription false)
   (let [chan-types (-> pulse-channel/channel-types

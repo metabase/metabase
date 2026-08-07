@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -177,7 +178,7 @@
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
    `If-None-Match` against the content-hash ETag with a 304."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
    _query-params
    _body

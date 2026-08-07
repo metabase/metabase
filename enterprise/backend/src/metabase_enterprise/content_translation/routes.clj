@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.content-translation.dictionary :as dictionary]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.content-translation.models :as ct]
@@ -105,7 +106,7 @@
 
 (api.macros/defendpoint :get "/dictionary" :- DictionaryResponse
   "Fetch the content translation dictionary for authenticated users (auth-based embedding flows)."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [locale]} :- [:map [:locale :string]]]
   (api/check api/*current-user-id* 401 "Unauthenticated")

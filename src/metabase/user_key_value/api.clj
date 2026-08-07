@@ -3,6 +3,7 @@
    [malli.core :as mc]
    [malli.experimental.time.transform :as mett]
    [malli.transform :as mtx]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.literal]
@@ -16,7 +17,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/namespace/:namespace/key/:key"
   "Upsert a KV-pair for the user"
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{nmspace :namespace, k :key} :- [:map
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]
@@ -47,7 +48,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/namespace/:namespace/key/:key"
   "Get a value for the user"
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{nmspace :namespace, k :key} :- [:map
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]]
@@ -69,7 +70,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/namespace/:namespace/key/:key"
   "Deletes a KV-pair for the user"
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{nmspace :namespace, k :key} :- [:map
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]]

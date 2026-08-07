@@ -4,6 +4,7 @@
    [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
@@ -189,7 +190,7 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map
                            [:action-id ms/PositiveInt]]
    _query-params
@@ -232,7 +233,7 @@
   "Execute the Action.
 
    `parameters` should be the mapped dashboard parameters with values."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params

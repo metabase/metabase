@@ -235,11 +235,10 @@ describe("scenarios > data apps > sandbox isolation", () => {
       cy.findByTestId("isolation-result", { timeout: 30000 }).should("exist");
     });
 
+    // `/api/user/current` is the whole marked surface this fixture produces — it renders
+    // isolation probes, not questions, and the SDK's bootstrap takes site settings from
+    // the auth prefetch rather than refetching `/api/session/properties`.
     cy.then(() => {
-      cy.task(
-        "log",
-        `marked as data-app: ${[...markedPaths].sort().join(", ")}`,
-      );
       expect([...markedPaths], "requests marked as data-app").to.include(
         "/api/user/current",
       );
