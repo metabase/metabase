@@ -6,6 +6,7 @@
 // other side: how `navigate` drives the router.
 
 import { createMockEntitiesState } from "__support__/store";
+import { SET_CURRENT_STATE } from "metabase/redux/query-builder";
 import {
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
@@ -26,7 +27,6 @@ import {
 
 import { getTableUrlForPristineQuestion } from "../utils";
 
-import { SET_CURRENT_STATE } from "./state";
 import { updateUrl } from "./url";
 
 registerVisualizations();
