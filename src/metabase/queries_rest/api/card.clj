@@ -912,7 +912,8 @@
    :- [:map
        [:ignore_cache       {:default false} :boolean]
        [:collection_preview {:optional true} [:maybe :boolean]]
-       [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
+       [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
+       [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
         card             (api/check-404 (t2/select-one :model/Card resolved-card-id))]
     (when dashboard_id
