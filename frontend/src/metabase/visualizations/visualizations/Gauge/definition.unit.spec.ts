@@ -8,20 +8,9 @@ import {
 
 import { GAUGE_CHART_DEFINITION } from "./definition";
 
+const { checkRenderable } = GAUGE_CHART_DEFINITION;
+
 const COLS = [createMockColumn({ name: "count", base_type: "type/Integer" })];
-
-const createSeries = (
-  data: Partial<Parameters<typeof createMockDatasetData>[0]> = {},
-): Series => [
-  createMockSingleSeries(createMockCard({ display: "gauge" }), {
-    data: createMockDatasetData({ cols: COLS, rows: [[50]], ...data }),
-  }),
-];
-
-const checkRenderable = (
-  series: Series,
-  settings: VisualizationSettings = {},
-) => GAUGE_CHART_DEFINITION.checkRenderable(series, settings);
 
 describe("GAUGE_CHART_DEFINITION", () => {
   describe("checkRenderable", () => {
@@ -47,7 +36,6 @@ describe("GAUGE_CHART_DEFINITION", () => {
       ).not.toThrow();
     });
 
-    // dropping the range and rendering the rest would silently rescale the gauge
     it("refuses to render when a range's bound will never resolve", () => {
       const series = createSeries({
         referenced_entities: {
@@ -69,7 +57,7 @@ describe("GAUGE_CHART_DEFINITION", () => {
       ).toThrow("Couldn't load a value one of this gauge's ranges depends on.");
     });
 
-    it("still requires a numeric column", () => {
+    it("requires a numeric column", () => {
       const series = [
         createMockSingleSeries(createMockCard({ display: "gauge" }), {
           data: createMockDatasetData({
@@ -121,3 +109,13 @@ describe("GAUGE_CHART_DEFINITION", () => {
     });
   });
 });
+
+function createSeries(
+  data: Partial<Parameters<typeof createMockDatasetData>[0]> = {},
+): Series {
+  return [
+    createMockSingleSeries(createMockCard({ display: "gauge" }), {
+      data: createMockDatasetData({ cols: COLS, rows: [[50]], ...data }),
+    }),
+  ];
+}
