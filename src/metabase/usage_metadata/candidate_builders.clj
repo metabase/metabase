@@ -678,7 +678,7 @@
 (mu/defn candidate-measures :- [:sequential ::usage-metadata.schema/candidate-measure]
   "Creation-ready Measure candidates mined from selected questions and models.
 
-  `:query-source`, when supplied, controls which saved queries are analyzed. Otherwise a source qualifies
+  `:card-ids`, when supplied, controls which saved queries are analyzed. Otherwise a Card qualifies
   when it is verified, directly in an official collection, or has at least `:min-view-count` lifetime views.
   Primitive aggregations over one physical-table field are considered.
   Bare row counts seed conditional count Measures but are not returned as standalone candidates.
@@ -706,7 +706,7 @@
 (mu/defn candidate-segments :- [:sequential ::usage-metadata.schema/candidate-segment]
   "Creation-ready Segment candidates mined from selected questions and models.
 
-  `:query-source`, when supplied, controls which saved queries are analyzed. Otherwise verified,
+  `:card-ids`, when supplied, controls which saved queries are analyzed. Otherwise verified,
   official-collection, or popular questions and models are analyzed. Each eligible direct-table filter
   becomes an atomic candidate. Queries with two to five eligible
   atoms also contribute every multi-atom subset. A composite is retained when it recurs across at

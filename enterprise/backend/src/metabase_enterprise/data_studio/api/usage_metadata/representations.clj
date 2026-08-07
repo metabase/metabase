@@ -1,8 +1,5 @@
 (ns metabase-enterprise.data-studio.api.usage-metadata.representations
-  "JSON response representations for persisted usage-metadata candidates."
-  (:require
-   [metabase.models.interface :as mi]
-   [metabase.util :as u]))
+  "JSON response representations for persisted usage-metadata candidates.")
 
 (defn snapshot
   "Represent a successful snapshot for API responses."
@@ -18,28 +15,6 @@
   [run]
   (when run
     (select-keys run [:id :status])))
-
-(defn dismissal-key
-  "Return the durable identity shared by candidates and dismissals."
-  [candidate]
-  (mapv candidate [:candidate_type :table_id :signature_version :signature_hash]))
-
-(defn- dismissed?
-  [dismissals candidate]
-  (contains? dismissals (dismissal-key candidate)))
-
-(defn- candidate-entity-model
-  [candidate]
-  (case (:candidate_type candidate)
-    :measure :model/Measure
-    :segment :model/Segment
-    nil))
-
-(defn table-editable-for-candidate?
-  "Whether the current user may create this candidate type on the table."
-  [candidate table]
-  (when-let [model (candidate-entity-model candidate)]
-    (mi/can-create? model {:table table, :table_id (:id table)})))
 
 (defn table
   "Represent a physical table for cleanup API responses."
@@ -76,69 +51,67 @@
       (= candidate_type :measure)
       (assoc :aggregation {:display_name (:base-name semantic_details)}))))
 
-(defn- json-response-value
-  [value]
-  (cond
-    (map? value)        (update-vals value json-response-value)
-    (vector? value)     (mapv json-response-value value)
-    (sequential? value) (mapv json-response-value value)
-    (keyword? value)    (u/qualified-name value)
-    :else               value))
-
-(defn- query-definition
-  [definition]
-  (json-response-value (dissoc definition :lib/metadata)))
-
-(defn candidate-definition
-  "Represent a candidate definition without internal Lib metadata."
+(defn- candidate-definition
   [{:keys [candidate_type definition]}]
   (if (= candidate_type :table)
     {:table_id (:table-id definition)}
-    (query-definition definition)))
+    definition))
 
 (defn created-entity
   "Represent a Measure or Segment returned after candidate creation."
   [entity]
-  (cond-> (select-keys entity [:id :name :table_id :description :archived])
-    (:definition entity) (assoc :definition (query-definition (:definition entity)))))
+  (select-keys entity [:id :name :table_id :definition :description :archived]))
 
 (defn candidate-summary
   "Represent one candidate in list responses."
-  [candidate dismissals]
+  [candidate dismissed?]
   {:id              (:id candidate)
    :candidate_type  (:candidate_type candidate)
    :display_name    (:display_name candidate)
    :presentation    (candidate-presentation candidate)
    :modeling_status (:modeling_status candidate)
-   :dismissed       (dismissed? dismissals candidate)
+   :dismissed       dismissed?
    :evidence        {:verified_source_count (:verified_source_count candidate)
                      :official_source_count (:official_source_count candidate)
                      :popular_source_count  (:popular_source_count candidate)
                      :distinct_source_count (:distinct_source_count candidate)
                      :total_view_count      (:total_view_count candidate)}})
 
-(defn candidate-detail-summary
-  "Represent the shared detail fields and current creation blockers."
-  [candidate candidate-table dismissals]
-  (let [creation-candidate? (contains? #{:measure :segment} (:candidate_type candidate))
-        editable?           (and creation-candidate?
-                                 (table-editable-for-candidate? candidate candidate-table))]
-    (assoc (candidate-summary candidate dismissals)
-           :table (table candidate-table)
-           :suggested_name (:suggested_name candidate)
-           :suggested_description (:suggested_description candidate)
-           :required_tables (mapv required-table
-                                  (:required-tables (:semantic_details candidate)))
-           :definition (candidate-definition candidate)
-           :creation_blockers (cond-> []
-                                (and creation-candidate? (not (:is_published candidate-table)))
-                                (conj :table-not-published)
+(defn- candidate-detail-summary
+  [candidate candidate-table dismissed? creation-blockers]
+  (assoc (candidate-summary candidate dismissed?)
+         :table (table candidate-table)
+         :suggested_name (:suggested_name candidate)
+         :suggested_description (:suggested_description candidate)
+         :required_tables (mapv required-table
+                                (:required-tables (:semantic_details candidate)))
+         :definition (candidate-definition candidate)
+         :creation_blockers creation-blockers))
 
-                                (and creation-candidate? (not (:active candidate-table)))
-                                (conj :table-inactive)
-
-                                (and creation-candidate? (not editable?))
-                                (conj :table-uneditable)))))
+(defn candidate-detail
+  "Represent complete candidate provenance and Library matches."
+  [{:keys [candidate table dismissed? sources matches]} creation-blockers]
+  (let [dependency-paths (into {}
+                               (map (juxt :card-id :dependency-paths))
+                               (get-in candidate [:semantic_details :source-dependencies]))]
+    (assoc (candidate-detail-summary candidate table dismissed? creation-blockers)
+           :sources (mapv (fn [source]
+                            (cond-> (select-keys source [:card_id :card_name :card_type :verified :official
+                                                         :popular :view_count :joined
+                                                         :stage_numbers :model_lineage])
+                              (contains? dependency-paths (:card_id source))
+                              (assoc :dependency_paths
+                                     (mapv (fn [{:keys [direct? models]}]
+                                             {:direct direct?, :models models})
+                                           (dependency-paths (:card_id source))))))
+                          sources)
+           :matches (mapv (fn [{:keys [relation entity_id entity_name entity_description]}]
+                            {:relation relation
+                             :entity_type (:candidate_type candidate)
+                             :entity {:id entity_id
+                                      :name entity_name
+                                      :description entity_description}})
+                          matches))))
 
 (defn page
   "Build the standard paginated cleanup response envelope."

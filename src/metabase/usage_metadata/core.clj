@@ -2,7 +2,7 @@
   "Public API for usage-metadata rollups and deterministic candidate mining."
   (:require
    [metabase.usage-metadata.candidate-builders :as candidate-builders]
-   [metabase.usage-metadata.rollups :as rollups]
+   [metabase.usage-metadata.insights :as insights]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.malli :as mu]))
 
@@ -24,14 +24,14 @@
 
 (mu/defn candidate-measures :- [:sequential ::usage-metadata.schema/candidate-measure]
   "Deterministically mine creation-ready Measure candidates from questions and models selected by
-  `:query-source`. Without one, verified, official-collection, or popular items are used. Bare row
+  `:card-ids`. Without them, verified, official-collection, or popular items are used. Bare row
   counts are excluded; existing Measures are excluded by semantic definition."
   [opts :- ::usage-metadata.schema/candidate-opts]
   (candidate-builders/candidate-measures opts))
 
 (mu/defn candidate-segments :- [:sequential ::usage-metadata.schema/candidate-segment]
   "Deterministically mine creation-ready atomic and recurring small conjunctive Segment candidates
-  from questions and models selected by `:query-source`. Without one, verified,
+  from questions and models selected by `:card-ids`. Without them, verified,
   official-collection, or popular items are used. Existing Segments are excluded by exact definition."
   [opts :- ::usage-metadata.schema/candidate-opts]
   (candidate-builders/candidate-segments opts))
@@ -40,19 +40,19 @@
   "Filter predicates users have run ad-hoc that aren't already saved as Segments — surface candidates
   for promotion to first-class Segments."
   [opts :- ::usage-metadata.schema/opts]
-  (rollups/implicit-segments opts))
+  (insights/implicit-segments opts))
 
 (mu/defn implicit-metrics :- [:sequential ::usage-metadata.schema/implicit-metric]
   "Aggregation patterns users have run ad-hoc that aren't already saved as Metric cards — surface
   candidates for promotion to first-class Metrics."
   [opts :- ::usage-metadata.schema/opts]
-  (rollups/implicit-metrics opts))
+  (insights/implicit-metrics opts))
 
 (mu/defn implicit-dimensions :- [:sequential ::usage-metadata.schema/implicit-dimension]
   "Columns users have grouped by (breakouts) across the window — surface candidates for promotion
   to first-class dimensions or pre-aggregations."
   [opts :- ::usage-metadata.schema/opts]
-  (rollups/implicit-dimensions opts))
+  (insights/implicit-dimensions opts))
 
 (mu/defn suggested-segments :- [:sequential ::usage-metadata.schema/suggested-segment]
   "Composite (`:and`) segment definitions that recur across a source's query history. Mined via
@@ -60,11 +60,11 @@
   `:and`. Itemsets whose atom-set matches a saved Segment's definition are filtered out, so the
   results are genuinely ad-hoc."
   [opts :- ::usage-metadata.schema/opts]
-  (rollups/suggested-segments-for-owner opts))
+  (insights/suggested-segments-for-owner opts))
 
 (mu/defn profile-observations :- [:sequential ::usage-metadata.schema/profile-observation]
   "Profile observations recorded for dimensions surfaced by usage-metadata — `:single-value`,
   `:all-null`, `:low-cardinality` — useful for spotting low-value columns or columns whose
   cardinality makes them suitable as facets."
   [opts :- ::usage-metadata.schema/opts]
-  (rollups/profile-observations opts))
+  (insights/profile-observations opts))

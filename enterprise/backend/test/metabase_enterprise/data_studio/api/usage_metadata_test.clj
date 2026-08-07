@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-studio.api.usage-metadata :as usage-metadata.api]
-   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.measures.test-util :as measures.tu]
@@ -95,6 +94,16 @@
       (is (= run (deref started 1000 ::timeout)))
       (is (true? (deref completed 1000 ::timeout))))))
 
+(deftest manual-refresh-async-rethrows-non-exception-failure-test
+  (let [failure (AssertionError. "Injected manual refresh failure")]
+    (mt/with-dynamic-fn-redefs [candidate-refresh/run-refresh! (fn [_run]
+                                                                 (throw failure))]
+      (is (identical? failure
+                      (try
+                        (.get ^java.util.concurrent.Future (run-refresh-async! {:id 42, :status :queued}))
+                        (catch java.util.concurrent.ExecutionException error
+                          (.getCause error))))))))
+
 (deftest manual-refresh-api-starts-direct-run-test
   (mt/with-premium-features #{:library}
     (let [run     {:id 42, :status :queued}
@@ -170,7 +179,7 @@
         (is (=? {:dismissed true}
                 (mt/user-http-request :crowberto :post 200
                                       (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/dismiss")
-                                      {:reason "not useful"})))
+                                      {})))
         (is (= 0 (:total (mt/user-http-request :crowberto :get 200
                                                "ee/data-studio/usage-metadata/candidates"))))
         (is (=? {:dismissed false}
@@ -190,16 +199,14 @@
       (t2/insert! :model/UsageMetadataCandidateMatch
                   {:candidate_id       (:id candidate)
                    :relation           :exact
-                   :measure_id         123456789
+                   :entity_id          123456789
                    :entity_name        "Deleted revenue"
-                   :entity_description "Snapshot description"
-                   :entity_archived    false})
+                   :entity_description "Snapshot description"})
       (is (=? {:matches [{:relation "exact"
                           :entity_type "measure"
                           :entity {:id          123456789
                                    :name        "Deleted revenue"
-                                   :description "Snapshot description"
-                                   :archived    false}}]}
+                                   :description "Snapshot description"}}]}
               (mt/user-http-request :crowberto :get 200
                                     (str "ee/data-studio/usage-metadata/candidates/" (:id candidate))))))))
 
@@ -485,34 +492,27 @@
                                        :suggested_description "A persisted Segment candidate"})]
           (mt/with-temp-vals-in-db :model/Table table-id {:is_published true}
             (mt/user->id :crowberto)
-            (let [after-commit-callbacks (atom [])
-                  published-events      (atom [])]
+            (let [published-events (atom [])]
               (binding [*published-candidate-create-events* published-events]
-                (mt/with-dynamic-fn-redefs [mdb/do-after-commit
-                                            (fn [callback]
-                                              (swap! after-commit-callbacks conj callback))]
-                  (doseq [[candidate model expected-name]
-                          [[measure-candidate :model/Measure "Created order subtotal"]
-                           [segment-candidate :model/Segment "Created large orders"]]]
-                    (testing (str "creates " (name (:candidate_type candidate)) " from its persisted definition")
-                      (let [path     (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/create")
-                            response (mt/user-http-request :crowberto :post 200 path
-                                                           {:name expected-name
-                                                            :description "Admin override"})
-                            entity   (:entity response)]
-                        (is (= expected-name (:name entity)))
-                        (is (= "Admin override" (:description entity)))
-                        (is (= (dissoc (:definition candidate) :lib/metadata)
-                               (:definition entity)))
-                        (is (= "modeled" (get-in response [:candidate :modeling_status])))
-                        (is (= 1 (count (get-in response [:candidate :matches]))))
-                        (is (= (:id entity)
-                               (get-in (mt/user-http-request :crowberto :post 200 path {}) [:entity :id])))
-                        (is (= 1 (t2/count model :name expected-name)))))))
-                (is (empty? @published-events)
-                    "creation events are deferred until the candidate transaction commits")
-                (is (= 2 (count @after-commit-callbacks)))
-                (run! (fn [callback] (callback)) @after-commit-callbacks)
+                (doseq [[candidate model expected-name]
+                        [[measure-candidate :model/Measure "Created order subtotal"]
+                         [segment-candidate :model/Segment "Created large orders"]]]
+                  (testing (str "creates " (name (:candidate_type candidate)) " from its persisted definition")
+                    (let [path     (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/create")
+                          response (mt/user-http-request :crowberto :post 200 path
+                                                         {:name expected-name
+                                                          :description "Admin override"})
+                          entity   (:entity response)]
+                      (is (= expected-name (:name entity)))
+                      (is (= "Admin override" (:description entity)))
+                      (is (= (lib/normalize (:definition candidate))
+                             (lib/normalize (:definition entity))))
+                      (is (= "modeled" (get-in response [:candidate :modeling_status])))
+                      (is (= 1 (count (get-in response [:candidate :matches]))))
+                      (is (= (:id entity)
+                             (get-in (mt/user-http-request :crowberto :post 200 path {}) [:entity :id])))
+                      (is (= 1 (t2/count model :name expected-name))))))
                 (is (= [{:topic :event/measure-create, :visible? true}
                         {:topic :event/segment-create, :visible? true}]
-                       @published-events))))))))))
+                       @published-events)
+                    "creation publishes synchronously after the entity is visible")))))))))

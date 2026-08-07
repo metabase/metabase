@@ -2,9 +2,9 @@
   "Read queries and detail assembly for the usage-metadata cleanup API."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.data-studio.api.usage-metadata.representations :as representations]
    [metabase.api.common :as api]
    [metabase.request.core :as request]
+   [metabase.usage-metadata.candidate-repository :as candidate-repository]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -24,9 +24,14 @@
   (let [table-ids (into #{} (map :table_id) candidates)]
     (if (seq table-ids)
       (into {}
-            (map (juxt representations/dismissal-key identity))
+            (map (juxt candidate-repository/dismissal-key identity))
             (t2/select :model/UsageMetadataCandidateDismissal :table_id [:in table-ids]))
       {})))
+
+(defn dismissed?
+  "Whether `candidate` has an entry in `dismissal-index`."
+  [dismissal-index candidate]
+  (contains? dismissal-index (candidate-repository/dismissal-key candidate)))
 
 (defn table-index
   "Load table response dependencies and index them by table id."
@@ -148,39 +153,21 @@
     {:rows rows, :total total, :limit limit, :offset offset}))
 
 (defn candidate-detail
-  "Load and represent complete provenance, matches, and dismissal state."
+  "Load the table, provenance, matches, and dismissal state needed to represent a candidate detail."
   [candidate]
   (let [candidate-table ((table-index #{(:table_id candidate)}) (:table_id candidate))
         dismissals      (dismissal-index [candidate])
-        sources         (t2/select :model/UsageMetadataCandidateSource
+        sources         (t2/select [:model/UsageMetadataCandidateSource
+                                    :card_id :card_name :card_type :verified :official :popular
+                                    :view_count :joined :stage_numbers :model_lineage]
                                    :candidate_id (:id candidate)
                                    {:order-by [[:card_id :asc]]})
-        matches         (t2/select :model/UsageMetadataCandidateMatch
+        matches         (t2/select [:model/UsageMetadataCandidateMatch
+                                    :relation :entity_id :entity_name :entity_description]
                                    :candidate_id (:id candidate)
-                                   {:order-by [[:id :asc]]})
-        dismissal       (dismissals (representations/dismissal-key candidate))
-        dependency-paths (into {}
-                               (map (juxt :card-id :dependency-paths))
-                               (get-in candidate [:semantic_details :source-dependencies]))]
-    (assoc (representations/candidate-detail-summary candidate candidate-table dismissals)
-           :dismissal (some-> dismissal
-                              (select-keys [:id :dismissed_by :dismissed_at :reason]))
-           :sources (mapv (fn [source]
-                            (cond-> (select-keys source [:id :candidate_id :card_id :card_name :card_type
-                                                         :verified :official :popular :view_count :joined
-                                                         :stage_numbers :model_lineage])
-                              (contains? dependency-paths (:card_id source))
-                              (assoc :dependency_paths
-                                     (mapv (fn [{:keys [direct? models]}]
-                                             {:direct direct?, :models models})
-                                           (dependency-paths (:card_id source))))))
-                          sources)
-           :matches (mapv (fn [{:keys [relation measure_id segment_id entity_name entity_description
-                                       entity_archived]}]
-                            {:relation relation
-                             :entity_type (if measure_id :measure :segment)
-                             :entity {:id (or measure_id segment_id)
-                                      :name entity_name
-                                      :description entity_description
-                                      :archived entity_archived}})
-                          matches))))
+                                   {:order-by [[:id :asc]]})]
+    {:candidate candidate
+     :table candidate-table
+     :dismissed? (dismissed? dismissals candidate)
+     :sources sources
+     :matches matches}))

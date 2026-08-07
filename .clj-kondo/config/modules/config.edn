@@ -1348,7 +1348,6 @@
   {:team "Graphy"
    :api  #{metabase.measures.api}
    :uses #{api
-           app-db
            events
            lib
            lib-be
@@ -2146,7 +2145,6 @@
    :api  #{metabase.segments.api
            metabase.segments.schema}
    :uses #{api
-           app-db
            events
            lib
            lib-be
@@ -2662,9 +2660,7 @@
 
   usage-metadata
   {:team "UX West"
-   :api  #{metabase.usage-metadata.candidate-mutations
-           metabase.usage-metadata.candidate-refresh
-           metabase.usage-metadata.init}
+   :api  #{metabase.usage-metadata.candidate-refresh metabase.usage-metadata.candidate-repository metabase.usage-metadata.init}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
@@ -3247,6 +3243,7 @@
    :uses #{api
            collections
            events
+           lib
            measures
            models
            permissions

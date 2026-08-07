@@ -1,5 +1,6 @@
 (ns metabase.usage-metadata.models.candidate
   (:require
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -22,9 +23,35 @@
    :source_config mi/transform-json
    :summary       mi/transform-json})
 
+(defn- query-definition?
+  [definition]
+  (and (map? definition)
+       (or (contains? definition :stages)
+           (contains? definition "stages"))))
+
+(defn- definition-in
+  [definition]
+  (mi/json-in
+   (if (query-definition? definition)
+     (lib/prepare-for-serialization (lib/normalize definition))
+     definition)))
+
+(defn- definition-out
+  [definition]
+  (let [definition (mi/json-out-with-keywordization definition)]
+    (if (query-definition? definition)
+      (dissoc (lib/normalize definition) :lib/metadata)
+      definition)))
+
+(def ^:private transform-candidate-definition
+  "Persist MBQL definitions in their canonical serializable form.
+
+  Table candidates store a small non-query definition and pass through unchanged."
+  {:in definition-in, :out definition-out})
+
 (t2/deftransforms :model/UsageMetadataCandidate
   {:candidate_type   mi/transform-keyword
-   :definition       mi/transform-json
+   :definition       transform-candidate-definition
    :semantic_details mi/transform-json
    :modeling_status  mi/transform-keyword})
 

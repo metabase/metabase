@@ -5,7 +5,6 @@
   enforced by the underlying candidate and rollup producers."
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.usage-metadata.query-source :as query-source]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::source-type [:enum :table :card])
@@ -25,8 +24,8 @@
 
 (mr/def ::candidate-opts
   [:map {:closed true}
-   [:query-source   {:optional true, :description "Saved-query producer that controls which questions and models are analyzed."}
-    [:maybe [:fn {:error/message "expected a candidate query source"} query-source/candidate-query-source?]]]
+   [:card-ids       {:optional true, :description "Explicit Card IDs controlling which questions and models are analyzed."}
+    [:maybe [:set pos-int?]]]
    [:min-view-count {:optional true, :description "Lifetime Card view_count used by the default source and as popularity evidence."}
     [:maybe nat-int?]]
    [:view-count-window-days {:optional true, :description "When set, use Card views within this many days instead of lifetime view_count."}

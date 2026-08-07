@@ -4,7 +4,7 @@
    [metabase.test :as mt]
    [metabase.usage-metadata.candidate-builders :as candidate-builders]
    [metabase.usage-metadata.core :as usage-metadata]
-   [metabase.usage-metadata.rollups :as rollups]))
+   [metabase.usage-metadata.insights :as insights]))
 
 (def ^:private sample-segment
   {:predicate [:= [:field 1 nil] 1]
@@ -119,9 +119,9 @@
              (usage-metadata/candidate-metrics {:limit 3})))
       (is (= {:limit 3} @captured-args)))))
 
-(deftest ^:parallel implicit-segments-delegate-to-rollups-test
+(deftest ^:parallel implicit-segments-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (mt/with-dynamic-fn-redefs [rollups/implicit-segments
+    (mt/with-dynamic-fn-redefs [insights/implicit-segments
                                 (fn [opts]
                                   (reset! captured-args opts)
                                   [sample-segment])]
@@ -130,9 +130,9 @@
       (is (= {:source-type :card, :source-id 99, :limit 3}
              @captured-args)))))
 
-(deftest ^:parallel implicit-metrics-delegate-to-rollups-test
+(deftest ^:parallel implicit-metrics-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (mt/with-dynamic-fn-redefs [rollups/implicit-metrics
+    (mt/with-dynamic-fn-redefs [insights/implicit-metrics
                                 (fn [opts]
                                   (reset! captured-args opts)
                                   [sample-metric])]
@@ -141,9 +141,9 @@
       (is (= {:source-type :table, :source-id 42, :limit 7}
              @captured-args)))))
 
-(deftest ^:parallel implicit-dimensions-delegate-to-rollups-test
+(deftest ^:parallel implicit-dimensions-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (mt/with-dynamic-fn-redefs [rollups/implicit-dimensions
+    (mt/with-dynamic-fn-redefs [insights/implicit-dimensions
                                 (fn [opts]
                                   (reset! captured-args opts)
                                   [sample-dimension])]
@@ -152,9 +152,9 @@
       (is (= {:source-type :table, :source-id 42, :limit 9}
              @captured-args)))))
 
-(deftest ^:parallel suggested-segments-delegate-to-rollups-test
+(deftest ^:parallel suggested-segments-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (mt/with-dynamic-fn-redefs [rollups/suggested-segments-for-owner
+    (mt/with-dynamic-fn-redefs [insights/suggested-segments-for-owner
                                 (fn [opts]
                                   (reset! captured-args opts)
                                   [sample-suggested-segment])]
@@ -163,9 +163,9 @@
       (is (= {:source-type :table, :source-id 42, :limit 5}
              @captured-args)))))
 
-(deftest ^:parallel profile-observations-delegate-to-rollups-test
+(deftest ^:parallel profile-observations-delegate-to-insights-test
   (let [captured-args (atom nil)]
-    (mt/with-dynamic-fn-redefs [rollups/profile-observations
+    (mt/with-dynamic-fn-redefs [insights/profile-observations
                                 (fn [opts]
                                   (reset! captured-args opts)
                                   [sample-profile-observation])]

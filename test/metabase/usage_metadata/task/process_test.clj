@@ -75,7 +75,7 @@
     (task/init! ::usage-metadata.task.process/UsageMetadataProcess)
     (let [queued-args (promise)]
       (with-redefs [premium-features/has-feature?            (constantly true)
-                    metabase.usage-metadata.batch/run-batch! #(throw (ex-info "rollup failed" {}))
+                    metabase.usage-metadata.batch/run-batch! #(throw (AssertionError. "rollup failed"))
                     candidate-refresh/queue-refresh! (fn [trigger requested-by]
                                                        (deliver queued-args [trigger requested-by])
                                                        nil)]

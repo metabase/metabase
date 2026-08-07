@@ -12,10 +12,8 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.usage-metadata.query-source :as query-source]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -234,25 +232,23 @@
           (partition-all candidate-query-batch-size card-ids))))
 
 (defn- select-candidate-source-cards
-  [source columns]
+  [card-ids columns]
   (exclude-personal-collection-cards
-   (if source
-     (let [card-ids (set (query-source/card-ids source))]
-       (mu/validate-throw [:set pos-int?] card-ids)
-       (select-candidate-cards-by-id columns card-ids))
+   (if card-ids
+     (select-candidate-cards-by-id columns card-ids)
      (t2/select columns
                 :archived false
                 :type [:in [:question :model]]))))
 
 (defn- candidate-card-population
-  [{:keys [card-columns min-view-count query-source view-count-window-days]}]
+  [{:keys [card-columns card-ids min-view-count view-count-window-days]}]
   (let [min-view-count     (or min-view-count candidate-default-min-view-count)
-        cards              (select-candidate-source-cards query-source card-columns)
-        card-ids           (into #{} (map :id) cards)
+        cards              (select-candidate-source-cards card-ids card-columns)
+        selected-card-ids  (into #{} (map :id) cards)
         collection-ids     (into #{} (keep :collection_id) cards)
         recent-view-counts (when view-count-window-days
-                             (recent-card-view-counts card-ids view-count-window-days))
-        verified-ids       (verified-card-ids card-ids)
+                             (recent-card-view-counts selected-card-ids view-count-window-days))
+        verified-ids       (verified-card-ids selected-card-ids)
         official-ids       (official-collection-ids collection-ids)]
     (cond->> cards
       true
@@ -266,9 +262,9 @@
                       :popular?             (>= view-count min-view-count)
                       :view-count           view-count))))
 
-      ;; With no explicit source, preserve the original curated-or-popular default universe.
-      ;; An explicit source controls inclusion; these signals remain evidence used by ranking.
-      (nil? query-source)
+      ;; With no explicit IDs, preserve the original curated-or-popular default universe.
+      ;; Explicit IDs control inclusion; these signals remain evidence used by ranking.
+      (nil? card-ids)
       (filter (some-fn :verified? :official-collection? :popular?))
 
       true
@@ -283,9 +279,9 @@
 
 (defn candidate-source-cards
   "Load selected Cards and attach deterministic curation and usage evidence."
-  [{:keys [min-view-count query-source view-count-window-days] :as opts}]
+  [{:keys [card-ids min-view-count view-count-window-days] :as opts}]
   (cached-candidate-batch-analysis
-   [::candidate-source-cards min-view-count query-source view-count-window-days]
+   [::candidate-source-cards min-view-count card-ids view-count-window-days]
    #(candidate-source-cards* opts)))
 
 (defn qualified-card-ids

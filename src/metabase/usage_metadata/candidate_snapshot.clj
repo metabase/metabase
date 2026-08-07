@@ -9,8 +9,8 @@
    [metabase.usage-metadata.candidate-definitions :as definitions]
    [metabase.usage-metadata.candidate-family :as candidate-family]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
+   [metabase.usage-metadata.candidate-repository :as candidate-repository]
    [metabase.usage-metadata.models.candidate]
-   [metabase.usage-metadata.query-source :as query-source]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2])
@@ -38,6 +38,8 @@
 
 (def ^:private retained-run-count 20)
 (def ^:private source-card-batch-size 100)
+(def ^:private reconciliation-query-batch-size 200)
+(def ^:private reconciliation-write-batch-size 1000)
 
 (defn- sha256
   ^String [^String value]
@@ -164,28 +166,84 @@
    :stage_numbers (:stage-numbers source)
    :model_lineage (:model-lineage source)})
 
-(defn reconcile-candidate!
-  "Reconcile one persisted candidate with active Library entities."
-  [{:keys [id candidate_type table_id] :as candidate} published?]
+(defn- candidate-reconciliation
+  [{:keys [candidate_type table_id] :as candidate} published? existing-entities]
   (if-let [relation-fn (case candidate_type
                          :measure definitions/relation-for-measure
                          :segment definitions/relation-for-segment
                          nil)]
-    (let [matches (when published?
-                    (keep (fn [entity]
-                            (when-let [relation (relation-fn candidate entity)]
-                              {:relation relation, :entity entity}))
-                          (definitions/existing-entities candidate_type table_id)))
-          status  (cond
-                    (some #(= :exact (:relation %)) matches) :modeled
-                    (seq matches)                            :partially-modeled
-                    :else                                    :missing)]
-      (doseq [{:keys [relation entity]} matches]
-        (t2/insert! :model/UsageMetadataCandidateMatch
-                    (definitions/candidate-match-row candidate entity relation)))
-      (t2/update! :model/UsageMetadataCandidate id {:modeling_status status})
-      status)
-    :missing))
+    (let [candidate (if (and published? (seq existing-entities))
+                      (definitions/reconciliation-entity candidate_type table_id candidate)
+                      candidate)
+          matches   (when (and published? (seq existing-entities))
+                      (keep (fn [entity]
+                              (when-let [relation (relation-fn candidate entity)]
+                                {:relation relation, :entity entity}))
+                            existing-entities))
+          status    (cond
+                      (some #(= :exact (:relation %)) matches) :modeled
+                      (seq matches)                            :partially-modeled
+                      :else                                    :missing)]
+      {:candidate candidate
+       :status status
+       :match-rows (mapv (fn [{:keys [relation entity]}]
+                           (candidate-repository/candidate-match-row candidate entity relation))
+                         matches)})
+    {:candidate candidate, :status :missing, :match-rows []}))
+
+(defn reconcile-candidate!
+  "Reconcile one persisted candidate with active Library entities."
+  [{:keys [id candidate_type table_id] :as candidate} published?]
+  (let [{:keys [status match-rows]}
+        (candidate-reconciliation candidate published?
+                                  (when published?
+                                    (candidate-repository/existing-entities candidate_type table_id)))]
+    (when (seq match-rows)
+      (t2/insert! :model/UsageMetadataCandidateMatch match-rows))
+    (t2/update! :model/UsageMetadataCandidate id {:modeling_status status})
+    status))
+
+(defn- published-table-ids
+  [table-ids]
+  (into #{}
+        (mapcat (fn [ids]
+                  (map :id (t2/select [:model/Table :id]
+                                      :id [:in ids]
+                                      :is_published true))))
+        (partition-all reconciliation-query-batch-size table-ids)))
+
+(defn reconcile-candidates!
+  "Reconcile all Measure and Segment candidates in `run-id` using one indexed Library-entity population.
+
+  Existing definitions are selected and normalized once per `[candidate-type table-id]`. Match rows and status updates
+  are written in bounded batches."
+  [run-id]
+  (let [candidates          (t2/select [:model/UsageMetadataCandidate
+                                        :id :candidate_type :table_id :signature :definition]
+                                       :run_id run-id
+                                       :candidate_type [:in [:measure :segment]])
+        published-table-ids (published-table-ids (into #{} (map :table_id) candidates))
+        candidate-keys      (into #{}
+                                  (comp (filter #(contains? published-table-ids (:table_id %)))
+                                        (map (juxt :candidate_type :table_id)))
+                                  candidates)
+        existing-index      (candidate-repository/existing-entity-index candidate-keys)
+        reconciliations     (mapv (fn [{:keys [candidate_type table_id] :as candidate}]
+                                    (candidate-reconciliation
+                                     candidate
+                                     (contains? published-table-ids table_id)
+                                     (get existing-index [candidate_type table_id] [])))
+                                  candidates)]
+    (doseq [match-rows (->> reconciliations
+                            (mapcat :match-rows)
+                            (partition-all reconciliation-write-batch-size))]
+      (t2/insert! :model/UsageMetadataCandidateMatch match-rows))
+    (doseq [[status status-reconciliations] (group-by :status reconciliations)
+            candidate-ids (->> status-reconciliations
+                               (map (comp :id :candidate))
+                               (partition-all reconciliation-write-batch-size))]
+      (t2/update! :model/UsageMetadataCandidate :id [:in candidate-ids] {:modeling_status status}))
+    nil))
 
 (defn- merged-source-dependencies
   [candidate observation]
@@ -213,7 +271,7 @@
                     :source-dependencies (merged-source-dependencies candidate observation))))))
 
 (defn- persist-observation!
-  [run-id observation table]
+  [run-id observation]
   (let [row       (observation-row run-id observation)
         existing  (t2/select-one :model/UsageMetadataCandidate
                                  :run_id run-id
@@ -229,20 +287,15 @@
     (when-let [source-rows (not-empty (mapv #(source-row (:id candidate) %)
                                             (get-in observation [:evidence :source-items])))]
       (t2/insert! :model/UsageMetadataCandidateSource source-rows))
-    (if existing
+    (when existing
       (t2/update! :model/UsageMetadataCandidate (:id candidate)
-                  (merged-evidence candidate observation))
-      (reconcile-candidate! (assoc candidate
-                                   :definition (:definition observation)
-                                   :signature (:signature observation))
-                            (:is_published table)))))
+                  (merged-evidence candidate observation)))))
 
 (defn- persist-card-batch!
   [run-id card-ids]
   (candidate-mining/with-candidate-batch-cache
     #(lib-be/with-metadata-provider-cache
-       (let [query-source (query-source/card-id-set card-ids)
-             opts         {:query-source query-source
+       (let [opts         {:card-ids (set card-ids)
                            :min-view-count (:minimum-recent-view-count source-config)
                            :view-count-window-days (:usage-window-days source-config)}
              {:keys [measures segments]}
@@ -257,7 +310,7 @@
          (doseq [observation observations
                  :let [table (tables (observation-table-id observation))]
                  :when table]
-           (persist-observation! run-id observation table))))))
+           (persist-observation! run-id observation))))))
 
 (defn globally-eligible?
   "Whether an aggregated persisted candidate meets semantic and evidence cutoffs."
@@ -374,21 +427,22 @@
 
 (defn- run-summary
   [run-id]
-  (let [measure-count (t2/count :model/UsageMetadataCandidate :run_id run-id :candidate_type :measure)
-        segment-count (t2/count :model/UsageMetadataCandidate :run_id run-id :candidate_type :segment)
-        metric-count  (t2/count :model/UsageMetadataCandidate :run_id run-id :candidate_type :metric)
-        publish-table-count (t2/count :model/UsageMetadataCandidate :run_id run-id :candidate_type :table)
-        table-count   (:total
-                       (t2/query-one
-                        {:select [[[:count [:distinct :table_id]] :total]]
-                         :from   [(t2/table-name :model/UsageMetadataCandidate)]
-                         :where  [:= :run_id run-id]}))]
-    {:candidate-count (+ measure-count segment-count metric-count publish-table-count)
-     :measure-count measure-count
-     :segment-count segment-count
-     :metric-count metric-count
-     :publish-table-count publish-table-count
-     :table-count table-count}))
+  (let [{:keys [candidate_count measure_count segment_count metric_count publish_table_count table_count]}
+        (t2/query-one
+         {:select [[[:count :*] :candidate_count]
+                   [[:count [:case [:= :candidate_type "measure"] [:inline 1]]] :measure_count]
+                   [[:count [:case [:= :candidate_type "segment"] [:inline 1]]] :segment_count]
+                   [[:count [:case [:= :candidate_type "metric"] [:inline 1]]] :metric_count]
+                   [[:count [:case [:= :candidate_type "table"] [:inline 1]]] :publish_table_count]
+                   [[:count [:distinct :table_id]] :table_count]]
+          :from   [(t2/table-name :model/UsageMetadataCandidate)]
+          :where  [:= :run_id run-id]})]
+    {:candidate-count candidate_count
+     :measure-count measure_count
+     :segment-count segment_count
+     :metric-count metric_count
+     :publish-table-count publish_table_count
+     :table-count table_count}))
 
 (defn prune-old-candidate-snapshots!
   "Delete candidate payloads belonging to older runs in bounded batches."
@@ -425,6 +479,7 @@
     (prune-ineligible-candidates! run-id)
     (prune-non-closed-segment-candidates! run-id)
     (prune-non-closed-measure-candidates! run-id)
+    (reconcile-candidates! run-id)
     (candidate-family/materialize! run-id)
     (let [summary (run-summary run-id)]
       (t2/with-transaction [_conn]

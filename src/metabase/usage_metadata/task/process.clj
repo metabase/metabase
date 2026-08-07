@@ -36,7 +36,7 @@
     (catch InterruptedException e
       (.interrupt (Thread/currentThread))
       (throw e))
-    (catch Exception e
+    (catch Throwable e
       (log/error e message)
       e)))
 

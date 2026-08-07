@@ -1,12 +1,14 @@
 (ns metabase.usage-metadata.candidate-definitions
-  "Pure semantic operations shared by candidate persistence, reconciliation, and presentation."
+  "Pure semantic operations shared by candidate mining and Library reconciliation."
   (:require
    [clojure.set :as set]
    [metabase.lib.core :as lib]
-   [metabase.usage-metadata.candidate-mining :as candidate-mining]
-   [toucan2.core :as t2]))
+   [metabase.usage-metadata.candidate-mining :as candidate-mining]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private reconciliation-segment-atoms ::reconciliation-segment-atoms)
+(def ^:private reconciliation-measure-base ::reconciliation-measure-base)
 
 (defn aggregation-clause
   "Return the first normalized aggregation clause in a persisted definition."
@@ -18,15 +20,18 @@
   (when (lib/clause-of-type? clause :field)
     (nth clause 2 nil)))
 
+(defn- measure-base-from-aggregation
+  [[tag _opts & args]]
+  (case tag
+    :count-where    [:count nil]
+    :distinct-where [:distinct (field-id (first args))]
+    :sum-where      [:sum (field-id (first args))]
+    [tag (field-id (first args))]))
+
 (defn measure-base
   "Return the base operation and field that identify a Measure family."
   [definition]
-  (when-let [[tag _opts & args] (aggregation-clause definition)]
-    (case tag
-      :count-where    [:count nil]
-      :distinct-where [:distinct (field-id (first args))]
-      :sum-where      [:sum (field-id (first args))]
-      [tag (field-id (first args))])))
+  (some-> (aggregation-clause definition) measure-base-from-aggregation))
 
 (defn segment-atoms
   "Return canonical signatures for the atomic predicates in a Segment definition."
@@ -55,8 +60,10 @@
 (defn relation-for-segment
   "Classify the structural relationship between a candidate and existing Segment."
   [candidate existing]
-  (let [candidate-atoms (segment-atoms (:definition candidate))
-        existing-atoms  (segment-atoms (:definition existing))
+  (let [candidate-atoms (or (get candidate reconciliation-segment-atoms)
+                            (segment-atoms (:definition candidate)))
+        existing-atoms  (or (get existing reconciliation-segment-atoms)
+                            (segment-atoms (:definition existing)))
         overlap         (set/intersection candidate-atoms existing-atoms)]
     (cond
       (= (:signature candidate) (:signature existing)) :exact
@@ -70,8 +77,10 @@
   [candidate existing]
   (cond
     (= (:signature candidate) (:signature existing)) :exact
-    (= (measure-base (:definition candidate))
-       (measure-base (:definition existing)))        :same-base
+    (= (or (get candidate reconciliation-measure-base)
+           (measure-base (:definition candidate)))
+       (or (get existing reconciliation-measure-base)
+           (measure-base (:definition existing))))   :same-base
     :else                                             nil))
 
 (defn existing-signature
@@ -88,26 +97,32 @@
       (when (seq atoms)
         (candidate-mining/canonical-signature [table-id (vec (sort atoms))])))))
 
-(defn existing-entities
-  "Return active Measure or Segment entities on a table with canonical signatures."
-  [type table-id]
-  (let [model (case type :measure :model/Measure :segment :model/Segment)]
-    (mapv (fn [{:keys [definition] :as entity}]
-            (assoc entity :signature (existing-signature type table-id definition)))
-          (t2/select [model :id :table_id :name :description :archived :definition]
-                     :table_id table-id
-                     :archived false))))
+(defn reconciliation-entity
+  "Attach canonical identity and structural data used while reconciling an entity.
 
-(defn candidate-match-row
-  "Build a persisted match row for a candidate and Library entity."
-  [candidate entity relation]
-  (cond-> {:candidate_id       (:id candidate)
-           :relation           relation
-           :entity_name        (:name entity)
-           :entity_description (:description entity)
-           :entity_archived    (boolean (:archived entity))}
-    (= (:candidate_type candidate) :measure) (assoc :measure_id (:id entity))
-    (= (:candidate_type candidate) :segment) (assoc :segment_id (:id entity))))
+  Preparing candidates and existing Library entities once prevents Lib normalization from being repeated for every
+  candidate/entity comparison."
+  [type table-id entity]
+  (case type
+    :measure
+    (let [aggregation (aggregation-clause (:definition entity))]
+      (cond-> (assoc entity reconciliation-measure-base
+                     (some-> aggregation measure-base-from-aggregation))
+        (not (contains? entity :signature))
+        (assoc :signature
+               (when aggregation
+                 (candidate-mining/canonical-signature
+                  [table-id (candidate-mining/canonical-signature aggregation)])))))
+
+    :segment
+    (let [atoms (segment-atoms (:definition entity))]
+      (cond-> (assoc entity reconciliation-segment-atoms atoms)
+        (not (contains? entity :signature))
+        (assoc :signature
+               (when (seq atoms)
+                 (candidate-mining/canonical-signature [table-id (vec (sort atoms))])))))
+
+    entity))
 
 (defn candidate-row->observation
   "Normalize a database-shaped candidate row for shared mining rules."
