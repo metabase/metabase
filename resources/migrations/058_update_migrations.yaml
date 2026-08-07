@@ -1218,6 +1218,94 @@ databaseChangeLog:
             tableName: pulse
             columnName: disable_links
 
+  # data_permissions had no unique constraint on (group_id, perm_type, db_id, table_id), so nothing
+  # prevented duplicate rows for the same scope. Duplicate DB-level rows caused a sandbox data leak:
+  # the going-granular path for newly-synced tables deleted only one of them, and the survivor
+  # out-voted the new table's :blocked row at enforcement time (most-permissive coalesce). The three
+  # changesets below delete existing duplicates (keeping the most restrictive value, lowest id as
+  # tie-break), then make the duplicate state unrepresentable with a unique constraint. Because
+  # table_id is nullable and all three app DBs treat NULLs as distinct in unique indexes (and H2 has
+  # no partial indexes, MariaDB no functional indexes), the constraint goes through a generated
+  # column that coalesces NULL table_id to -1 — same approach as metabase_table's
+  # unique_table_helper (v55.2025-05-19). Unlike that precedent our base column (table_id) carries an
+  # ON DELETE CASCADE foreign key, and MySQL rejects STORED generated columns on such base columns
+  # (errno 1215), so MySQL/MariaDB use a VIRTUAL generated column instead — unique indexes on virtual
+  # columns are supported by both, and the cascade still fires (verified on MySQL 8.0 and
+  # MariaDB 10.6). Postgres has no virtual generated columns and no such FK restriction, so it keeps
+  # STORED.
+  - changeSet:
+      id: v58.2026-07-31T00:00:00
+      author: johnswanson
+      comment: Delete duplicate data_permissions rows, keeping the most restrictive value per scope
+      changes:
+        - sql:
+            # The CASE ranks perm_value from most to least restrictive; rows within a partition always
+            # share a perm_type, so only the ordering within each perm_type's value set matters.
+            # Unknown values sort last and lose to any known value.
+            sql: >-
+              DELETE FROM data_permissions WHERE id IN (
+                SELECT id FROM (
+                  SELECT id,
+                         ROW_NUMBER() OVER (
+                           PARTITION BY group_id, perm_type, db_id, COALESCE(table_id, -1)
+                           ORDER BY
+                             CASE perm_value
+                               WHEN 'blocked' THEN 0
+                               WHEN 'no' THEN 0
+                               WHEN 'legacy-no-self-service' THEN 1
+                               WHEN 'query-builder' THEN 1
+                               WHEN 'ten-thousand-rows' THEN 1
+                               ELSE 2
+                             END,
+                             id
+                         ) AS row_num
+                  FROM data_permissions
+                ) x
+                WHERE x.row_num > 1
+              );
+      rollback: # nothing to restore; deleting duplicate rows is intentionally irreversible
+
+  - changeSet:
+      id: v58.2026-07-31T00:00:01
+      author: johnswanson
+      comment: Add data_permissions.unique_perms_helper for a NULL-safe unique constraint on table_id
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE data_permissions ADD COLUMN unique_perms_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(table_id, -1)
+              ) STORED;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE data_permissions ADD COLUMN unique_perms_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(table_id, -1)
+              ) VIRTUAL;
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE data_permissions ADD COLUMN unique_perms_helper INTEGER GENERATED ALWAYS AS (
+                COALESCE(table_id, -1)
+              );
+      rollback:
+        - sql:
+            sql: ALTER TABLE data_permissions DROP COLUMN unique_perms_helper;
+
+  - changeSet:
+      id: v58.2026-07-31T00:00:02
+      author: johnswanson
+      comment: Add unique constraint on data_permissions(group_id, perm_type, db_id, unique_perms_helper)
+      changes:
+        - addUniqueConstraint:
+            tableName: data_permissions
+            constraintName: idx_unique_data_permissions
+            columnNames: group_id, perm_type, db_id, unique_perms_helper
+      rollback:
+        - dropUniqueConstraint:
+            tableName: data_permissions
+            constraintName: idx_unique_data_permissions
+
   - changeSet:
       id: v58.2026-08-25T00:00:00
       author: ranquild
