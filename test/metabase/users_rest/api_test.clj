@@ -1,6 +1,7 @@
 (ns metabase.users-rest.api-test
   "Tests for /api/user endpoints."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
    [metabase.collections.models.collection :as collection]
@@ -1086,28 +1087,26 @@
 
 (deftest login-attributes-cannot-start-with-at-symbol
   (testing "PUT /api/user/:id"
-    (testing "A login attribute starting with `@` is dropped rather than stored"
+    (testing "We can't create login attributes starting with `@`"
       (mt/with-temp [:model/User {user-id :id} {:first_name   "Test"
                                                 :last_name    "User"
                                                 :email        "testuser@metabase.com"
                                                 :is_superuser true}]
-        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
-                              {:email            "testuser@metabase.com"
-                               :login_attributes {"@foo" "foo", "ok" "bar"}})
-        (is (= {"ok" "bar"}
-               (t2/select-one-fn :login_attributes :model/User :id user-id))))))
+        (is (=? {:errors {:login_attributes #(str/includes? % "must not start with `@`")}}
+               (mt/user-http-request :crowberto :put 400 (str "user/" user-id)
+                                     {:email            "testuser@metabase.com"
+                                      :login_attributes {"@foo" "foo"}}))))))
   (testing "POST /api/user"
     (let [user-name (mt/random-name)
           email     (mt/random-email)]
       (mt/with-model-cleanup [:model/User]
         (mt/with-fake-inbox
-          (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "user"
-                                                   {:first_name       user-name
-                                                    :last_name        user-name
-                                                    :email            email
-                                                    :login_attributes {"@foo" "bar", "ok" "baz"}})]
-            (is (= {"ok" "baz"}
-                   (t2/select-one-fn :login_attributes :model/User :id id)))))))))
+          (is (=? {:errors {:login_attributes #(str/includes? % "must not start with `@`")}}
+                 (mt/user-http-request :crowberto :post 400 "user"
+                                       {:first_name       user-name
+                                        :last_name        user-name
+                                        :email            email
+                                        :login_attributes {"@foo" "bar"}}))))))))
 
 (deftest ^:parallel updated-user-name-test
   (testing "Test that `metabase.users-rest.api/updated-user-name` works as intended."
