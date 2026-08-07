@@ -349,6 +349,50 @@ const describeResult = (
   data &&
   `[${data.columns.map((column) => column.name).join(",")}] ${JSON.stringify(data.rawRows)}`;
 
+/**
+ * A static query published as a card, with dynamic clauses on top. In this
+ * (non-dev) host the hook runs the card, so the result must still match the same
+ * clauses applied to the table the card was published from.
+ */
+function PublishedSource() {
+  const { savedQuestionSourceId, tableSource, filterField, filterValue } =
+    getTestEnv().publishedSource!;
+
+  const countAgg = aggregations.count();
+  const dynamic = {
+    filters: [filter(filterField, ">", filterValue)],
+    aggregations: [countAgg],
+  };
+
+  const fromCard = useMetabaseQuery(
+    { source: tableSource, savedQuestionSourceId },
+    dynamic,
+  );
+  const fromTable = useMetabaseQuery({ source: tableSource }, dynamic);
+
+  const failure = fromCard.error ?? fromTable.error;
+  const cardResult = describeResult(fromCard.data);
+  const tableResult = describeResult(fromTable.data);
+
+  const status = failure
+    ? `error: ${describeError(failure)}`
+    : cardResult === null || tableResult === null
+      ? "loading"
+      : cardResult === tableResult
+        ? "match"
+        : `mismatch: card=${cardResult} table=${tableResult}`;
+
+  return (
+    <div data-testid="data-app-published-source" style={{ padding: 24 }}>
+      <h1>Published source</h1>
+      <div data-testid="published-source-status">{status}</div>
+      <div data-testid="published-source-total">
+        {String(fromCard.data?.rawRows?.[0]?.[0] ?? "")}
+      </div>
+    </div>
+  );
+}
+
 function Actions() {
   const { actionId, actionParams } = getTestEnv();
   const action = useAction(actionId ?? null);
@@ -578,6 +622,7 @@ const ROUTES: Record<string, ComponentType> = {
   "/custom-viz": CustomVizPage,
   "/combinators": Combinators,
   "/card-source": CardSource,
+  "/published-source": PublishedSource,
   "/actions": Actions,
   "/clipboard": Clipboard,
   "/missing-question": MissingQuestion,

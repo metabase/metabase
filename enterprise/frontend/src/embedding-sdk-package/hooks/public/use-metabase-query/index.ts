@@ -14,6 +14,8 @@ export { useMetabaseQueryObject } from "./use-metabase-query-object";
 export type {
   LocalFieldReference,
   MetabaseBreakout,
+  MetabaseDynamicColumn,
+  MetabaseDynamicQuery,
   MetabaseOrderBy,
   MetabaseQueryOptions,
   OrderByDirection,

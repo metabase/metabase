@@ -71,6 +71,16 @@ export type DataAppTestEnv = {
     breakoutColumn: QuestionColumnReference;
   };
   /**
+   * `/published-source` page: a static query carrying `savedQuestionSourceId`,
+   * plus the dynamic clauses layered on top of it.
+   */
+  publishedSource?: {
+    savedQuestionSourceId: number;
+    tableSource: TableSource;
+    filterField: LocalFieldReference;
+    filterValue: number;
+  };
+  /**
    * `/actions` page: the id of the action the spec creates and `useAction`
    * executes, so it can't be hard-coded in the app. Left out to exercise the "no
    * action id" path, where the hook must not request anything.

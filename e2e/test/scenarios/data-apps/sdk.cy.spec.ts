@@ -16,6 +16,10 @@ const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
+type DatasetRequest = {
+  request: { body?: { stages?: { "source-card"?: number }[] } };
+};
+
 describe("scenarios > data apps > SDK runtime", () => {
   beforeEach(() => {
     H.restore();
@@ -186,6 +190,58 @@ describe("scenarios > data apps > SDK runtime", () => {
           cy.findByTestId(`card-source-case-${clause}`, {
             timeout: 30000,
           }).should("have.text", "match");
+        });
+      });
+    });
+  });
+
+  describe("published saved-question sources", () => {
+    it("swaps a static query for its published card and keeps the dynamic clauses", () => {
+      cy.intercept("POST", "/api/dataset").as("datasetQuery");
+
+      H.createQuestion({
+        name: "Orders published for a data app",
+        query: { "source-table": ORDERS_ID },
+      }).then(({ body: card }) => {
+        H.mockDataApp(APP_NAME, {
+          displayName: APP_DISPLAY_NAME,
+          testEnv: {
+            ...TEST_ENV,
+            publishedSource: {
+              savedQuestionSourceId: card.id,
+              tableSource: { type: "table", id: ORDERS_ID },
+              filterField: numericField(ORDERS.TOTAL, "TOTAL"),
+              filterValue: 50,
+            },
+          },
+        });
+
+        visitAppRoute("published-source");
+
+        H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+          cy.findByTestId("published-source-status", {
+            timeout: 30000,
+          }).should("have.text", "match");
+
+          // A match on two empty results would be vacuous.
+          cy.findByTestId("published-source-total").should(($el) => {
+            expect(Number($el.text())).to.be.greaterThan(0);
+          });
+        });
+
+        // The match alone cannot tell the two sources apart, so assert the swap
+        // actually happened: one of the requests must run the card.
+        cy.get<DatasetRequest[]>("@datasetQuery.all").should((requests) => {
+          const stages = requests.map(({ request }) => request.body?.stages);
+
+          expect(
+            stages.some((stage) => stage?.[0]?.["source-card"] === card.id),
+            "a request ran the published card",
+          ).to.equal(true);
+          expect(
+            stages.some((stage) => stage?.length === 2),
+            "the dynamic clauses ran as their own stage",
+          ).to.equal(true);
         });
       });
     });
