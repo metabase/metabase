@@ -133,7 +133,7 @@
                                      [:export-format ::qp.schema/export-format]]
    {format-rows? :format_rows
     pivot? :pivot_results
-    :as query-params} :- [:map {:closed false}
+    :as query-params} :- [:map
                           [:format_rows {:default false} :boolean]
                           [:pivot_results {:default false} :boolean]
                           [::mc/default api.embed.common/QueryParams]]]
@@ -240,7 +240,7 @@
                                                          [:export-format ::qp.schema/export-format]]
    {format-rows? :format_rows
     pivot? :pivot_results
-    :as query-params} :- [:map {:closed false}
+    :as query-params} :- [:map
                           [:format_rows {:default false} :boolean]
                           [:pivot_results {:default false} :boolean]
                           [::mc/default api.embed.common/QueryParams]]]

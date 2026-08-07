@@ -5,6 +5,7 @@
    [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.oauth-server.consent-page :as consent-page]
@@ -192,7 +193,7 @@
   [_route-params
    _query-params
    body :- [:maybe {:decode/api {:enter (fn [body] (when (map? body) body))}}
-            [:map {:closed false}
+            [:map
              [:application_type {:optional true} [:maybe :string]]
              [:client_name      {:optional true} [:maybe :string]]
              [:grant_types      {:optional true} [:maybe [:sequential :string]]]
@@ -267,7 +268,7 @@
   :- [:map [:status [:enum 200 302 400 404]] [:body [:or :string :map]]]
   "Handles the authorization endpoint (GET /oauth/authorize)."
   [_route-params
-   query-params :- [:map {:closed false}
+   query-params :- [:map
                     [:client_id             {:optional true} [:maybe :string]]
                     [:response_type         {:optional true} [:maybe :string]]
                     [:redirect_uri          {:optional true} [:maybe :string]]
@@ -276,7 +277,8 @@
                     [:code_challenge        {:optional true} [:maybe :string]]
                     [:code_challenge_method {:optional true} [:maybe :string]]
                     [:nonce                 {:optional true} [:maybe :string]]
-                    [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]]
+                    [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]
+                    [::mc/default [:map-of :keyword :string]]]
    _body
    request]
   (if-not (:metabase-user-id request)
@@ -313,8 +315,7 @@
   "Handles the authorization decision (POST /oauth/authorize/decision)."
   [_route-params
    _query-params
-   body :- [:map {:closed false
-                  :decode/api {:enter (fn [body] (if (map? body) body {}))}}
+   body :- [:map {:decode/api {:enter (fn [body] (if (map? body) body {}))}}
             [:csrf_token            {:optional true} [:maybe :string]]
             [:params_sig            {:optional true} [:maybe :string]]
             [:approved              {:optional true} [:maybe :string]]
@@ -326,7 +327,8 @@
             [:code_challenge        {:optional true} [:maybe :string]]
             [:code_challenge_method {:optional true} [:maybe :string]]
             [:nonce                 {:optional true} [:maybe :string]]
-            [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]]
+            [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]
+            [::mc/default [:map-of :keyword :string]]]
    request]
   (if-not (:metabase-user-id request)
     {:status  401
@@ -371,8 +373,7 @@
   "Handles the token endpoint (POST /oauth/token)."
   [_route-params
    _query-params
-   body :- [:map {:closed false
-                  :decode/api {:enter (fn [body] (if (map? body) body {}))}}
+   body :- [:map {:decode/api {:enter (fn [body] (if (map? body) body {}))}}
             [:grant_type    {:optional true} [:maybe :string]]
             [:code          {:optional true} [:maybe :string]]
             [:redirect_uri  {:optional true} [:maybe :string]]
@@ -381,7 +382,8 @@
             [:client_secret {:optional true} [:maybe :string]]
             [:scope         {:optional true} [:maybe :string]]
             [:code_verifier {:optional true} [:maybe :string]]
-            [:resource      {:optional true} [:maybe [:or :string [:sequential :string]]]]]
+            [:resource      {:optional true} [:maybe [:or :string [:sequential :string]]]]
+            [::mc/default [:map-of :keyword :string]]]
    request]
   (let [ip-address (request/ip-address request)
         ;; Fall back to IP when client_id isn't in the body (e.g. confidential clients using
