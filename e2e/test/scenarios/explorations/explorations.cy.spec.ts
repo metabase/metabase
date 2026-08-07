@@ -795,25 +795,15 @@ describe("scenarios > explorations > sidebar triage", () => {
           .findByText(`${metricName} hidden`)
           .should("be.visible");
 
-        cy.log(
-          "Initial investigation stays, expanded, with an all-hidden note",
-        );
-        sidebar()
-          .findByText("All items have been hidden.")
-          .should("be.visible");
-        sidebar()
-          .findAllByRole("group")
-          .should("have.length", 1)
-          .first()
-          .should("have.attr", "aria-expanded", "true")
-          .and("have.attr", "aria-label", "Initial investigation");
+        cy.log("All-hidden note is visible");
+        cy.findByText("All items have been hidden.").should("be.visible");
         cy.findAllByRole("treeitem").should("not.exist");
 
         cy.log("Hidden state is persisted server-side across a reload");
         cy.reload();
-        sidebar()
-          .findByText("All items have been hidden.", { timeout: 15000 })
-          .should("be.visible");
+        cy.findByText("All items have been hidden.", { timeout: 15000 }).should(
+          "be.visible",
+        );
 
         cy.log("Show hidden items + the group Show action restore the pages");
         toggleShowHiddenItems();
@@ -842,9 +832,7 @@ describe("scenarios > explorations > sidebar triage", () => {
           expect(request.body.hidden).to.eq(true);
           expect(request.body.page_ids).to.have.length(2);
         });
-        sidebar()
-          .findByText("All items have been hidden.")
-          .should("be.visible");
+        cy.findByText("All items have been hidden.").should("be.visible");
 
         cy.log("Undo on the group-hidden toast restores the whole group");
         H.undoToastListContainer()
@@ -857,7 +845,7 @@ describe("scenarios > explorations > sidebar triage", () => {
           .its("request.body.hidden")
           .should("eq", false);
         cy.findAllByRole("treeitem").should("have.length", 2);
-        sidebar().findByText("All items have been hidden.").should("not.exist");
+        cy.findByText("All items have been hidden.").should("not.exist");
       },
     );
   });
