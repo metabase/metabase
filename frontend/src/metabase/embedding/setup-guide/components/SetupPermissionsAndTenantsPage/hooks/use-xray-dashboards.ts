@@ -78,7 +78,7 @@ export const useMoveXrayDashboardToSharedCollection = () => {
         collection_id: targetCollectionId,
       }).unwrap();
 
-      dispatch(Api.util.invalidateTags([listTag("embedding-hub-checklist")]));
+      dispatch(Api.util.invalidateTags([listTag("setup-guide-checklist")]));
     },
     [updateDashboard, dispatch],
   );
@@ -121,7 +121,7 @@ export const useCreateSampleDashboardInSharedCollection = () => {
           dashcards: [dashcard as DashboardCard],
         }).unwrap();
 
-        dispatch(Api.util.invalidateTags([listTag("embedding-hub-checklist")]));
+        dispatch(Api.util.invalidateTags([listTag("setup-guide-checklist")]));
       } finally {
         setIsCreating(false);
       }

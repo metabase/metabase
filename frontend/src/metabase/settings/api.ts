@@ -108,7 +108,7 @@ export const settingsApi = Api.injectEndpoints({
       invalidatesTags: (_, error, settings) =>
         invalidateTags(error, [
           tag("session-properties"),
-          listTag("embedding-hub-checklist"),
+          listTag("setup-guide-checklist"),
           // Saving a custom homepage also changes the current user server-side
           ...("custom-homepage" in settings ||
           "custom-homepage-dashboard" in settings

@@ -100,7 +100,7 @@
         create-tenants?                  (has-user-created-tenants?)
         setup-data-segregation-strategy? (has-configured-data-segregation-strategy?)]
     {"checklist"
-     {;; for the main setup guide checklist
+     {;; for the main checklist
       "add-data"                          (has-user-added-database?)
       "create-dashboard"                  (has-user-created-dashboard?)
       "create-models"                     (has-user-created-models?)

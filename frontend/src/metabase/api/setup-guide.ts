@@ -16,26 +16,24 @@ type CheckListApiStep =
   | "setup-data-segregation-strategy"
   | "data-permissions-and-enable-tenants"
   | "sso-auth-manual-tested";
-export type EmbeddingHubChecklist = Record<CheckListApiStep, boolean>;
+export type SetupGuideChecklist = Record<CheckListApiStep, boolean>;
 
-export type EmbeddingHubChecklistResponse = {
-  checklist: EmbeddingHubChecklist;
+export type SetupGuideChecklistResponse = {
+  checklist: SetupGuideChecklist;
   "data-isolation-strategy": DataSegregationStrategy | null;
 };
 
-export const embeddingHubApi = Api.injectEndpoints({
+export const setupGuideApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    getEmbeddingHubChecklist: builder.query<
-      EmbeddingHubChecklistResponse,
-      void
-    >({
+    getSetupGuideChecklist: builder.query<SetupGuideChecklistResponse, void>({
       query: () => ({
         method: "GET",
+        // The path keeps the old name: renaming it would break the endpoint.
         url: "/api/ee/embedding-hub/checklist",
       }),
-      providesTags: [listTag("embedding-hub-checklist")],
+      providesTags: [listTag("setup-guide-checklist")],
     }),
   }),
 });
 
-export const { useGetEmbeddingHubChecklistQuery } = embeddingHubApi;
+export const { useGetSetupGuideChecklistQuery } = setupGuideApi;

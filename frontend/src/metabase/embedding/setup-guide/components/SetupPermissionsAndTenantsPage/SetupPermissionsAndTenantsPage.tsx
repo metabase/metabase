@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
+import { useGetSetupGuideChecklistQuery } from "metabase/api/setup-guide";
 import { Link } from "metabase/common/components/Link";
 import { OnboardingStepper } from "metabase/embedding/setup-guide/components/OnboardingStepper";
 import type { OnboardingStepperHandle } from "metabase/embedding/setup-guide/components/OnboardingStepper/types";
@@ -34,7 +34,7 @@ const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 export const SetupPermissionsAndTenantsPage = () => {
   const stepperRef = useRef<OnboardingStepperHandle>(null);
 
-  const { data: checklistResponse } = useGetEmbeddingHubChecklistQuery();
+  const { data: checklistResponse } = useGetSetupGuideChecklistQuery();
   const checklist = checklistResponse?.checklist;
 
   // The "Which data segregation strategy does your database use?"

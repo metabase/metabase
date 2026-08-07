@@ -143,7 +143,7 @@ export function useUpdateAllTenantUsersGroupPermissions(): UseUpdateAllTenantUse
       // so subsequent updates can find the newly created sandbox IDs
       dispatch(
         Api.util.invalidateTags([
-          listTag("embedding-hub-checklist"),
+          listTag("setup-guide-checklist"),
           listTag("group-table-access-policy"),
         ]),
       );

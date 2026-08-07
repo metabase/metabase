@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useGetEmbeddingHubChecklistQuery } from "metabase/api/embedding-hub";
+import { useGetSetupGuideChecklistQuery } from "metabase/api/setup-guide";
 
 import type { SetupGuideStepId } from "../types";
 
@@ -11,10 +11,12 @@ export const useCompletedSetupGuideSteps = (): {
   data: Record<SetupGuideStepId, boolean>;
   isLoading: boolean;
 } => {
-  const { data: checklistResponse, isLoading } =
-    useGetEmbeddingHubChecklistQuery(undefined, {
+  const { data: checklistResponse, isLoading } = useGetSetupGuideChecklistQuery(
+    undefined,
+    {
       refetchOnMountOrArgChange: true,
-    });
+    },
+  );
 
   const data = useMemo(() => {
     const checklist = checklistResponse?.checklist;

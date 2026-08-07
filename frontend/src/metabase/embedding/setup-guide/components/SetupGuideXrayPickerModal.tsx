@@ -46,7 +46,7 @@ export const SetupGuideXrayPickerModal = ({
       dispatch(
         Api.util.invalidateTags([
           ...invalidateTags(null, ["collection"]),
-          listTag("embedding-hub-checklist"),
+          listTag("setup-guide-checklist"),
         ]),
       );
 

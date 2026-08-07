@@ -24,7 +24,7 @@ export const TAG_TYPES = [
   "external-transform",
   "public-document",
   "comment",
-  "embedding-hub-checklist",
+  "setup-guide-checklist",
   "exploration",
   "field",
   "field-values",

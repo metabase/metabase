@@ -7,7 +7,7 @@ import {
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { EmbeddingHubChecklist } from "metabase/api/embedding-hub";
+import type { SetupGuideChecklist } from "metabase/api/setup-guide";
 import {
   createMockSettingsState,
   createMockState,
@@ -17,7 +17,7 @@ import { createMockSettings } from "metabase-types/api/mocks";
 
 import { SetupSsoPage } from "./SetupSsoPage";
 
-const defaultChecklist: EmbeddingHubChecklist = {
+const defaultChecklist: SetupGuideChecklist = {
   "add-data": false,
   "configure-row-column-security": false,
   "create-dashboard": false,
@@ -35,7 +35,7 @@ const defaultChecklist: EmbeddingHubChecklist = {
 const setup = ({
   checklist = {},
 }: {
-  checklist?: Partial<EmbeddingHubChecklist>;
+  checklist?: Partial<SetupGuideChecklist>;
 } = {}) => {
   const settings = createMockSettings();
 
