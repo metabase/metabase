@@ -36,6 +36,7 @@ import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
 import { DocumentPageOuter } from "metabase/documents/routes";
+import { getEmbeddingHubRoutes } from "metabase/embedding-hub-app/routes";
 import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
 import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirect";
 import { Onboarding } from "metabase/home/components/Onboarding";
@@ -483,6 +484,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               // MONITOR
               ...toRouteObjects(getMonitorRoutes()),
+
+              // EMBEDDING HUB
+              ...toRouteObjects(getEmbeddingHubRoutes()),
             ],
           },
         ],

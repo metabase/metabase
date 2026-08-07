@@ -1,35 +1,30 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
-import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
-import { PLUGIN_TENANTS } from "metabase/plugins";
-
 import {
+  type SetupGuideUrls,
   useCompletedEmbeddingHubSteps,
+  useEmbeddingHubModals,
   useGetEmbeddingHubSteps,
 } from "../hooks";
-import type {
-  EmbeddingHubModalToTrigger,
-  EmbeddingHubStepId,
-} from "../types/embedding-checklist";
+import type { EmbeddingHubStepId } from "../types/embedding-checklist";
 
-import { EmbeddingHubXrayPickerModal } from "./EmbeddingHubXrayPickerModal";
 import {
   type StepperCardClickAction,
   type StepperStep,
   StepperWithCards,
 } from "./StepperWithCards/StepperWithCards";
 
-export const EmbeddingHub = () => {
-  const embeddingSteps = useGetEmbeddingHubSteps();
+export const EmbeddingHub = ({
+  setupGuideUrls,
+}: {
+  setupGuideUrls?: SetupGuideUrls;
+} = {}) => {
+  const embeddingSteps = useGetEmbeddingHubSteps(setupGuideUrls);
   const { data: completedSteps } = useCompletedEmbeddingHubSteps();
 
-  const [openedModal, setOpenedModal] =
-    useState<EmbeddingHubModalToTrigger | null>(null);
-
-  const closeModal = () => setOpenedModal(null);
+  const { setOpenedModal, modals } = useEmbeddingHubModals();
 
   const lockedSteps: Partial<Record<EmbeddingHubStepId, boolean>> = useMemo(
     () => ({
@@ -99,30 +94,12 @@ export const EmbeddingHub = () => {
         };
       }),
     }));
-  }, [embeddingSteps, completedSteps, lockedSteps]);
+  }, [embeddingSteps, completedSteps, lockedSteps, setOpenedModal]);
 
   return (
     <>
       <StepperWithCards steps={stepperSteps} />
-      <AddDataModal
-        opened={openedModal?.type === "add-data"}
-        onClose={closeModal}
-        initialTab={
-          openedModal?.type === "add-data" ? openedModal?.initialTab : undefined
-        }
-        fromEmbeddingSetupGuide
-      />
-      <CreateDashboardModal
-        opened={openedModal?.type === "new-dashboard"}
-        onClose={closeModal}
-      />
-      <EmbeddingHubXrayPickerModal
-        opened={openedModal?.type === "xray-dashboard"}
-        onClose={closeModal}
-      />
-      {openedModal?.type === "user-strategy" && (
-        <PLUGIN_TENANTS.EditUserStrategyModal onClose={closeModal} />
-      )}
+      {modals}
     </>
   );
 };

@@ -36,9 +36,10 @@ import type {
   RawDataRouteParams,
 } from "../../types";
 import { assertNumericId, parseDataRouteParams } from "../../types";
+import { getPermissionsBasePath } from "../../utils/base-path";
 import {
-  DATABASES_BASE_PATH,
   getDatabaseFocusPermissionsUrl,
+  getDatabasesBasePath,
 } from "../../utils/urls";
 
 export function DatabasesPermissionsPage() {
@@ -73,7 +74,7 @@ export function DatabasesPermissionsPage() {
         (item as DataTreeNodeItem).entityId,
       ),
     );
-  const navigateToDatabaseList = () => navigate(DATABASES_BASE_PATH);
+  const navigateToDatabaseList = () => navigate(getDatabasesBasePath());
 
   const showSplitPermsMessage = useSelector((state) =>
     getSetting(state, "show-updated-permission-banner"),
@@ -87,7 +88,7 @@ export function DatabasesPermissionsPage() {
 
   const handleEntityChange = useCallback(
     (entityType: string) => {
-      navigate(`/admin/permissions/data/${entityType}`);
+      navigate(`${getPermissionsBasePath()}/data/${entityType}`);
     },
     [navigate],
   );

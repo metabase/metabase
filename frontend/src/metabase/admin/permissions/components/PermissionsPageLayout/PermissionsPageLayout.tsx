@@ -13,6 +13,7 @@ import {
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
+import { getPermissionsBasePath } from "metabase/admin/permissions/utils/base-path";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -96,7 +97,7 @@ export function PermissionsPageLayout({
   const navigate = useNavigate();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
-    navigate(`/admin/permissions/${tab}`);
+    navigate(`${getPermissionsBasePath()}/${tab}`);
 
   const clearSaveError = () => {
     dispatch(clearPermissionsSaveError());

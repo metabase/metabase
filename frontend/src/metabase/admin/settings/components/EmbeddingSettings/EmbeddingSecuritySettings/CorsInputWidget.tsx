@@ -1,11 +1,19 @@
 import { jt, t } from "ttag";
 
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
 import { Box, Group, HoverCard, Icon, Text } from "metabase/ui";
 
 export const CorsInputWidget = () => {
   const isLocalhostCorsDisabled = useSetting("disable-cors-on-localhost");
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
+
+  // The paid design names the methods this covers and the API-key caveat;
+  // below the paywall the SDK is not available, so the plain line applies.
+  const corsDescription = hasSimpleEmbedding
+    ? t`Add the website domains where you want to allow Modular embedding and SDK. SDK using API keys can only run on localhost.`
+    : t`Add the website domains where you want to allow embedding.`;
 
   const corsHintText = isLocalhostCorsDisabled
     ? t`Separate values with a space. Localhost is not allowed. Changes will take effect within one minute.`
@@ -17,7 +25,7 @@ export const CorsInputWidget = () => {
       description={
         <Group align="center" gap="sm">
           <Text c="text-secondary" fz="md">
-            {jt`Add the website domains where you want to allow embedding. ${(
+            {jt`${corsDescription} ${(
               <HoverCard key="embedding-cors-hint" position="bottom">
                 <HoverCard.Target>
                   <Icon

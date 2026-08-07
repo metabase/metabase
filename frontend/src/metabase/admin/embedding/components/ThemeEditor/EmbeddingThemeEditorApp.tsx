@@ -11,7 +11,16 @@ import { Flex, Loader, Stack } from "metabase/ui";
 import { EditorPanel } from "./EditorPanel";
 import { PreviewPanel } from "./PreviewPanel";
 
-export function EmbeddingThemeEditorApp() {
+const ADMIN_THEMES_BASE_PATH = "/admin/embedding/themes";
+
+type EmbeddingThemeEditorAppProps = {
+  /** Where the theme listing lives, so the same editor works under the embedding hub. */
+  basePath?: string;
+};
+
+export function EmbeddingThemeEditorApp({
+  basePath = ADMIN_THEMES_BASE_PATH,
+}: EmbeddingThemeEditorAppProps = {}) {
   const { themeId: themeIdParam } = useParams<{ themeId: string }>();
   const themeId =
     themeIdParam === "new" ? "new" : parseInt(themeIdParam ?? "", 10);
@@ -22,7 +31,7 @@ export function EmbeddingThemeEditorApp() {
   const isSavingRef = useRef(false);
 
   const goToThemeList = () => {
-    navigate("/admin/embedding/themes");
+    navigate(basePath);
   };
 
   const {
