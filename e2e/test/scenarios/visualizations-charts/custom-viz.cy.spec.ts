@@ -782,9 +782,7 @@ describe("admin > custom visualizations", () => {
       H.tableInteractive().findByText("37.65").should("be.visible");
     });
 
-    it("switches away from a custom viz that cannot render the drilled data, and restores it when navigating back (metabase#GDGT-2218)", () => {
-      cy.intercept("POST", "/api/dataset").as("drillDataset");
-
+    it("switches away from a custom viz that cannot render the drilled data, and restores it when navigating back and forth (metabase#GDGT-2218)", () => {
       H.createQuestion(
         {
           name: "Custom Viz Drill Question",
@@ -807,7 +805,6 @@ describe("admin > custom visualizations", () => {
         .click();
       H.popover().findByText("Time").click();
       H.popover().findByText("Created At").click();
-      cy.wait("@drillDataset");
 
       H.echartsContainer().should("be.visible");
       H.main()

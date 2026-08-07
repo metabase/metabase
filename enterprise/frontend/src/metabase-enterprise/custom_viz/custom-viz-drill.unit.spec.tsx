@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import type { CustomVisualization } from "custom-viz";
 import fetchMock from "fetch-mock";
 
 import { act, screen, waitFor, within } from "__support__/ui";
@@ -7,9 +6,8 @@ import { setup } from "metabase/query_builder/containers/test-utils";
 import { getCard } from "metabase/query_builder/selectors";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualization } from "metabase/visualizations";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
-import { LineChart } from "metabase/visualizations/visualizations/LineChart";
-import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { CustomVizDisplayType } from "metabase-types/api";
 import {
@@ -32,7 +30,6 @@ import {
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 
 const DISPLAY: CustomVizDisplayType = "custom:drill-demo-viz";
-const DATE_ONLY_DISPLAY: CustomVizDisplayType = "custom:drill-demo-date-viz";
 
 const CREATED_AT_COLUMN = createOrdersCreatedAtDatasetColumn({
   source: "breakout",
@@ -103,82 +100,57 @@ const CARD = createMockCard({
   },
 });
 
-function createDemoVisualization() {
-  return function DemoVisualization({
-    onVisualizationClick,
-  }: VisualizationProps) {
-    const [createdAt, count] = DATASET.data.rows[0];
+function DemoVisualization({ onVisualizationClick }: VisualizationProps) {
+  const [createdAt, count] = DATASET.data.rows[0];
 
-    return (
-      <div>
-        <span>Custom viz rendered</span>
-        <button
-          type="button"
-          onClick={(event) =>
-            onVisualizationClick?.({
-              value: count,
-              column: COUNT_COLUMN,
-              event: event.nativeEvent,
-              element: event.currentTarget,
-              data: [
-                { col: CREATED_AT_COLUMN, value: createdAt },
-                { col: COUNT_COLUMN, value: count },
-              ],
-              dimensions: [{ column: CREATED_AT_COLUMN, value: createdAt }],
-            })
-          }
-        >
-          Click me
-        </button>
-      </div>
-    );
-  };
-}
-
-function registerDemoVisualization({
-  display,
-  checkRenderable,
-}: {
-  display: CustomVizDisplayType;
-  checkRenderable: CustomVisualization<
-    Record<string, unknown>
-  >["checkRenderable"];
-}) {
-  registerVisualization(
-    applyDefaultVisualizationProps(
-      createDemoVisualization(),
-      {
-        id: display,
-        getName: () => "Drill demo viz",
-        checkRenderable,
-        mount: () => ({ update: () => undefined, unmount: () => undefined }),
-        VisualizationComponent: () => null,
-      },
-      {
-        identifier: display,
-        plugin: createMockCustomVizPluginRuntime(),
-        getUiName: () => "Drill demo viz",
-      },
-    ),
+  return (
+    <div>
+      <span>Custom viz rendered</span>
+      <button
+        type="button"
+        onClick={(event) =>
+          onVisualizationClick?.({
+            value: count,
+            column: COUNT_COLUMN,
+            event: event.nativeEvent,
+            element: event.currentTarget,
+            data: [
+              { col: CREATED_AT_COLUMN, value: createdAt },
+              { col: COUNT_COLUMN, value: count },
+            ],
+            dimensions: [{ column: CREATED_AT_COLUMN, value: createdAt }],
+          })
+        }
+      >
+        Click me
+      </button>
+    </div>
   );
 }
 
-registerVisualization(Table);
-registerVisualization(LineChart);
+registerVisualizations();
 
-registerDemoVisualization({
-  display: DISPLAY,
-  checkRenderable: () => undefined,
-});
-
-registerDemoVisualization({
-  display: DATE_ONLY_DISPLAY,
-  checkRenderable: ([{ data }]) => {
-    if (!data?.cols.some(isDate)) {
-      throw new Error("Needs a date column");
-    }
-  },
-});
+registerVisualization(
+  applyDefaultVisualizationProps(
+    DemoVisualization,
+    {
+      id: DISPLAY,
+      getName: () => "Drill demo viz",
+      checkRenderable: ([{ data }]) => {
+        if (!data?.cols.some(isDate)) {
+          throw new Error("Needs a date column");
+        }
+      },
+      mount: () => ({ update: () => undefined, unmount: () => undefined }),
+      VisualizationComponent: () => null,
+    },
+    {
+      identifier: DISPLAY,
+      plugin: createMockCustomVizPluginRuntime(),
+      getUiName: () => "Drill demo viz",
+    },
+  ),
+);
 
 async function drillFromCustomViz(actionName: RegExp) {
   expect(await screen.findByText("Custom viz rendered")).toBeInTheDocument();
@@ -187,6 +159,11 @@ async function drillFromCustomViz(actionName: RegExp) {
 
   const clickActions = await screen.findByTestId("click-actions-view");
   await userEvent.click(within(clickActions).getByText(actionName));
+}
+
+async function expectFallbackChart() {
+  expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
+  expect(screen.queryByText("Custom viz rendered")).not.toBeInTheDocument();
 }
 
 describe("query builder > custom visualization drill-through", () => {
@@ -215,11 +192,7 @@ describe("query builder > custom visualization drill-through", () => {
   });
 
   it("should switch away from a custom visualization that cannot render the drilled data, and back again when navigating back and forth (metabase#GDGT-2218)", async () => {
-    const { router, store } = await setup({
-      card: createMockCard({ ...CARD, display: DATE_ONLY_DISPLAY }),
-      dataset: DATASET,
-    });
-    const getDisplay = () => checkNotNull(getCard(store.getState())).display;
+    const { router } = await setup({ card: CARD, dataset: DATASET });
 
     // the drilled query comes back without a date column, so the custom
     // visualization can no longer render it
@@ -227,18 +200,15 @@ describe("query builder > custom visualization drill-through", () => {
 
     await drillFromCustomViz(/See this month by week/);
 
-    await waitFor(() => expect(getDisplay()).not.toBe(DATE_ONLY_DISPLAY));
-    expect(screen.queryByText("Custom viz rendered")).not.toBeInTheDocument();
+    await expectFallbackChart();
 
     act(() => router.back());
 
     expect(await screen.findByText("Custom viz rendered")).toBeInTheDocument();
-    expect(getDisplay()).toBe(DATE_ONLY_DISPLAY);
 
     act(() => router.forward());
 
-    await waitFor(() => expect(getDisplay()).not.toBe(DATE_ONLY_DISPLAY));
-    expect(screen.queryByText("Custom viz rendered")).not.toBeInTheDocument();
+    await expectFallbackChart();
   });
 
   it("should still switch to a table for the underlying records drill", async () => {
