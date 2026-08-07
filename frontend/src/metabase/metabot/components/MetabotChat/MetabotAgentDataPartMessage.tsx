@@ -11,7 +11,10 @@ import {
   useGetDashboardQuery,
   useGetDocumentQuery,
 } from "metabase/api";
-import type { EntitySavedValue } from "metabase/api/ai-streaming/schemas";
+import type {
+  EntitySavedValue,
+  ModelFallbackValue,
+} from "metabase/api/ai-streaming/schemas";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import type { MetabotAgentDataPartMessage } from "metabase/metabot/state";
@@ -123,6 +126,9 @@ export const AgentDataPartMessage = ({
         <EntitySavedMessage value={part.data} />
       </Stack>
     ))
+    .with({ part: { type: "data-model_fallback" } }, ({ part }) => (
+      <ModelFallbackMessage value={part.data} />
+    ))
     .with({ part: { type: "data-adhoc_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
@@ -215,6 +221,21 @@ const EntitySavedMessage = ({ value }: { value: EntitySavedValue }) => {
         {target
           ? jt`Chart ${chartName} saved to ${target}`
           : jt`Chart ${chartName} saved`}
+      </Text>
+    </Flex>
+  );
+};
+
+const ModelFallbackMessage = ({ value }: { value: ModelFallbackValue }) => {
+  const previousProvider = value.previous_provider_name ?? value.previous_model;
+  const provider = value.provider_name ?? value.model;
+  const model = value.model_name ?? value.model;
+
+  return (
+    <Flex align="center" gap="sm" c="text-secondary">
+      <Icon name="warning" size={14} />
+      <Text c="text-secondary" data-testid="model-fallback-message">
+        {t`${previousProvider} isn't responding, so this answer is coming from ${provider} using ${model}.`}
       </Text>
     </Flex>
   );

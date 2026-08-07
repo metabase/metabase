@@ -244,6 +244,7 @@ export const createMockSettings = (
   "llm-openai-model": "",
   "llm-openai-api-key": "",
   "llm-anthropic-model": "",
+  "llm-provider-fallback-enabled?": true,
   "email-configured?": false,
   "email-smtp-host": null,
   "email-smtp-port": null,
