@@ -608,6 +608,9 @@ export const sendAgentRequest = createAsyncThunk<
                 }
                 pushDataPart({ type: "data_part", part });
               })
+              .with({ type: "data-model_fallback" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
               .with({ type: "data-tool_title" }, (part) => {
                 const { tool_call_id, title } = part.data;
                 dispatch(

@@ -839,6 +839,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-metabot-provider"?: string | null;
   "llm-mini-model"?: string | null;
   "llm-fast-mode"?: boolean | null;
+  "llm-provider-fallback-enabled?": boolean;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
   "llm-proxy-configured?"?: boolean | null;

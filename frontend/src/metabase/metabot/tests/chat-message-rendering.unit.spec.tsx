@@ -238,6 +238,32 @@ describe("AgentMessage", () => {
     });
   });
 
+  describe("model_fallback", () => {
+    it("says which provider the answer came from and why", async () => {
+      setup({
+        id: "s1",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "data-model_fallback",
+          data: {
+            model: "openai/gpt-5.4",
+            model_name: "gpt-5.4",
+            provider_name: "OpenAI",
+            previous_model: "anthropic/claude-sonnet-4-6",
+            previous_provider_name: "Anthropic",
+          },
+        },
+      });
+
+      expect(
+        await screen.findByTestId("model-fallback-message"),
+      ).toHaveTextContent(
+        "Anthropic isn't responding, so this answer is coming from OpenAI using gpt-5.4.",
+      );
+    });
+  });
+
   describe("turn_errored", () => {
     it("shows locked message for metabase_ai_managed_locked errors", () => {
       setup({

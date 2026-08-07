@@ -1,16 +1,24 @@
+import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { useDisclosure } from "@mantine/hooks";
 import type { ReactNode } from "react";
-import { Fragment, useId, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import { t } from "ttag";
 
 import {
   useDeleteLlmProviderMutation,
   useListLlmProviderTypesQuery,
   useListLlmProvidersQuery,
+  useReorderLlmProvidersMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import {
+  type DragEndEvent,
+  Sortable,
+  type SortableDragHandle,
+  SortableList,
+} from "metabase/common/components/Sortable";
 import { useToast } from "metabase/common/hooks";
 import { useLlmConnectionModels } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
@@ -34,7 +42,9 @@ import type {
   LlmProviderType,
 } from "metabase-types/api";
 
+import S from "./AIProviderList.module.css";
 import { ProviderConnectionModal } from "./ProviderConnectionModal";
+import { ProviderFallbackSettings } from "./ProviderFallbackSettings";
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 import { getAddableProviderTypes } from "./addable-provider-types";
 
@@ -44,6 +54,8 @@ const ROW_LINE_HEIGHT = `${PROVIDER_ICON_SIZE / ROW_LINES}px`;
 const PROVIDER_DETAILS_INDENT = "2.5rem";
 // The warning glyph fills its viewBox, so it only sits on the label's cap band at this size.
 const WARNING_ICON_SIZE = 12;
+// Far enough that a click on the row's menu or its expander is never read as the start of a drag.
+const DRAG_ACTIVATION_DISTANCE = 10;
 
 // mirrors a two-connection list: rows the height of PROVIDER_ICON_SIZE plus their py="sm",
 // divided the same way, then the button that follows them
@@ -80,6 +92,7 @@ export function AIProviderList() {
     error: providerTypesError,
   } = useListLlmProviderTypesQuery();
   const [deleteProvider] = useDeleteLlmProviderMutation();
+  const [reorderProviders] = useReorderLlmProvidersMutation();
   const { errorByConnectionKey } = useLlmConnectionModels();
 
   const [isAdding, { open: startAdding, close: stopAdding }] =
@@ -87,6 +100,15 @@ export function AIProviderList() {
   const [editing, setEditing] = useState<LlmProviderConnection | undefined>();
   const [deleting, setDeleting] = useState<LlmProviderConnection | undefined>();
   const [sendToast] = useToast();
+
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE },
+  });
+
+  const getConnectionKey = useCallback(
+    (connection: LlmProviderConnection) => connection.key,
+    [],
+  );
 
   const handleModalClose = () => {
     stopAdding();
@@ -109,6 +131,17 @@ export function AIProviderList() {
     setDeleting(undefined);
   };
 
+  const handleSortEnd = async ({ itemIds }: DragEndEvent) => {
+    const { error } = await reorderProviders({ order: itemIds.map(String) });
+    if (error) {
+      sendToast({
+        message: getErrorMessage(error, t`Unable to reorder your providers.`),
+        icon: "warning",
+        toastColor: "feedback-negative",
+      });
+    }
+  };
+
   if (isLoadingConnections || isLoadingProviderTypes) {
     return <ProviderListSkeleton />;
   }
@@ -123,31 +156,56 @@ export function AIProviderList() {
   }
 
   const hasConnections = connections.length > 0;
+  const canReorder =
+    connections.length > 1 && connections.some((c) => c.reorderable);
 
   const addableProviderTypes = getAddableProviderTypes(
     providerTypes,
     connections,
   );
 
+  const isDraggable = (connection: LlmProviderConnection) =>
+    canReorder && connection.reorderable;
+
   return (
     <Stack gap="lg">
       <Stack gap="xxs">
         {hasConnections && (
           <Stack gap={0}>
-            {connections.map((connection, index) => (
-              <Fragment key={connection.key}>
-                {index > 0 && <Divider />}
-                <ProviderConnectionRow
-                  connection={connection}
-                  providerType={providerTypes.find(
-                    (type) => type.type === connection.type,
+            <SortableList
+              items={connections}
+              getId={getConnectionKey}
+              sensors={[pointerSensor]}
+              onSortEnd={handleSortEnd}
+              // `afterIndex` is matched against an item's index, and the divider renders above it,
+              // so the dividers between rows are the indexes past the first.
+              dividers={connections.slice(1).map((_, index) => ({
+                afterIndex: index + 1,
+                renderFn: () => <Divider />,
+              }))}
+              renderItem={({ item }) => (
+                <Sortable
+                  key={item.key}
+                  id={item.key}
+                  disabled={!isDraggable(item)}
+                  draggingStyle={{ opacity: 0.5 }}
+                  role="listitem"
+                >
+                  {(dragHandle) => (
+                    <ProviderConnectionRow
+                      connection={item}
+                      providerType={providerTypes.find(
+                        (type) => type.type === item.type,
+                      )}
+                      modelsError={errorByConnectionKey[item.key]}
+                      dragHandle={isDraggable(item) ? dragHandle : undefined}
+                      onEdit={() => setEditing(item)}
+                      onDelete={() => setDeleting(item)}
+                    />
                   )}
-                  modelsError={errorByConnectionKey[connection.key]}
-                  onEdit={() => setEditing(connection)}
-                  onDelete={() => setDeleting(connection)}
-                />
-              </Fragment>
-            ))}
+                </Sortable>
+              )}
+            />
           </Stack>
         )}
 
@@ -161,6 +219,8 @@ export function AIProviderList() {
           {hasConnections ? t`Add another provider` : t`Add a provider`}
         </Button>
       </Stack>
+
+      {hasConnections && <ProviderFallbackSettings />}
 
       {(isAdding || editing) && (
         <ProviderConnectionModal
@@ -216,12 +276,14 @@ function ProviderConnectionRow({
   connection,
   providerType,
   modelsError,
+  dragHandle,
   onEdit,
   onDelete,
 }: {
   connection: LlmProviderConnection;
   providerType?: LlmProviderType;
   modelsError?: string;
+  dragHandle?: SortableDragHandle;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -231,6 +293,9 @@ function ProviderConnectionRow({
     providerType && providerType.label !== connection.name
       ? providerType.label
       : undefined;
+  // The stored failure outlives the request that found it, so it is what the row reports; the model listing is
+  // only a fresher source for a connection whose failure has not been recorded yet.
+  const errorMessage = connection.error?.message ?? modelsError;
 
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
   const hasUsageDetails =
@@ -270,9 +335,9 @@ function ProviderConnectionRow({
             {typeLabel}
           </Text>
         )}
-        {modelsError && (
+        {errorMessage && (
           <Text size="sm" c="error" lh={ROW_LINE_HEIGHT}>
-            {modelsError}
+            {errorMessage}
           </Text>
         )}
       </Stack>
@@ -282,6 +347,20 @@ function ProviderConnectionRow({
   return (
     <Stack gap={0} data-testid={`provider-${connection.key}`}>
       <Group justify="space-between" wrap="nowrap" align="flex-start" py="sm">
+        {dragHandle && (
+          <Box
+            component="span"
+            ref={dragHandle.dragHandleRef}
+            className={S.grabber}
+            h={PROVIDER_ICON_SIZE}
+            aria-label={t`Reorder ${connection.name}`}
+            data-testid="provider-drag-handle"
+            {...dragHandle.dragHandleListeners}
+          >
+            <Icon name="grabber" c="text-secondary" />
+          </Box>
+        )}
+
         {hasUsageDetails ? (
           <UnstyledButton
             flex={1}

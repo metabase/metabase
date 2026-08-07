@@ -14,15 +14,15 @@ import {
 
 import S from "./Sortable.module.css";
 
+export interface SortableDragHandle {
+  dragHandleRef: MutableRefObject<HTMLElement | null>;
+  dragHandleListeners: SyntheticListenerMap | undefined;
+}
+
 export interface SortableProps {
   id: UniqueIdentifier;
   as?: ElementType;
-  children:
-    | ReactNode
-    | ((data: {
-        dragHandleRef: MutableRefObject<HTMLElement | null>;
-        dragHandleListeners: SyntheticListenerMap | undefined;
-      }) => ReactNode);
+  children: ReactNode | ((data: SortableDragHandle) => ReactNode);
   disabled?: boolean;
   className?: string;
   style?: CSSProperties;
