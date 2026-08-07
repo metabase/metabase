@@ -435,18 +435,6 @@ describe("getSensibleDisplays with maybeResetDisplay", () => {
     expect(question.display()).not.toBe(DISPLAY);
   });
 
-  it("should switch away from a custom visualization that can no longer render the data when navigating back and forth (metabase#GDGT-2218)", () => {
-    const question = customVizQuestion.maybeResetDisplay(
-      byCategory[0].data,
-      getSensibleDisplays(byCategory),
-      // going back and forth replays the drill with the previous data at hand
-      getSensibleDisplays(byDate),
-    );
-
-    expect(question.displayIsLocked()).toBe(false);
-    expect(question.display()).not.toBe(DISPLAY);
-  });
-
   it("should keep a custom visualization that still renders the data", () => {
     const question = customVizQuestion.maybeResetDisplay(
       byDate[0].data,

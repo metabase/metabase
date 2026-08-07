@@ -782,6 +782,52 @@ describe("admin > custom visualizations", () => {
       H.tableInteractive().findByText("37.65").should("be.visible");
     });
 
+    it("switches away from a custom viz that cannot render the drilled data, and restores it when navigating back (metabase#GDGT-2218)", () => {
+      cy.intercept("POST", "/api/dataset").as("drillDataset");
+
+      H.createQuestion(
+        {
+          name: "Custom Viz Drill Question",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { visitQuestion: true },
+      );
+
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
+      cy.findByTestId("demo-viz-click-target").click();
+      cy.findByTestId("click-actions-view")
+        .findByText(/^Break out by/)
+        .click();
+      H.popover().findByText("Time").click();
+      H.popover().findByText("Created At").click();
+      cy.wait("@drillDataset");
+
+      H.echartsContainer().should("be.visible");
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("not.exist");
+
+      cy.go("back");
+
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
+      cy.go("forward");
+
+      H.echartsContainer().should("be.visible");
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("not.exist");
+    });
+
     it("calls onHover and renders a tooltip", () => {
       H.visitQuestion("@questionId");
       switchToDemoViz();
