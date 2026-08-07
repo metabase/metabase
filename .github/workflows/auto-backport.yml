@@ -99,6 +99,31 @@ jobs:
       )
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
+      - name: "!! double-backport and triple-backport label deprecation warning !!"
+        continue-on-error: true
+        if: 
+          |
+          github.event.pull_request.merged == true && (
+            github.event.action == 'closed' && (
+              contains(github.event.pull_request.labels.*.name, 'double-backport') ||
+              contains(github.event.pull_request.labels.*.name, 'triple-backport')
+            ) ||
+            github.event.action == 'labeled' && (
+              github.event.label.name == 'double-backport' ||
+              github.event.label.name == 'triple-backport'
+            )
+          )
+        env:
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            /repos/"$REPO"/issues/"$PR"/comments \
+            -f 'body=WARNING: double-backport and triple-backport labels are deprecated and will be removed! Use the backport label to port changes to all supported releases.'
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
