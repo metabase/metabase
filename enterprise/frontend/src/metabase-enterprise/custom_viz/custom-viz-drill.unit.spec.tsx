@@ -7,8 +7,9 @@ import { setup } from "metabase/query_builder/containers/test-utils";
 import { getCard } from "metabase/query_builder/selectors";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualization } from "metabase/visualizations";
-import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
+import { LineChart } from "metabase/visualizations/visualizations/LineChart";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { CustomVizDisplayType } from "metabase-types/api";
 import {
@@ -162,7 +163,8 @@ function registerDemoVisualization({
   );
 }
 
-registerVisualizations();
+registerVisualization(Table);
+registerVisualization(LineChart);
 
 registerDemoVisualization({
   display: DISPLAY,
