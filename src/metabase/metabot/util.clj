@@ -47,10 +47,15 @@
    ;; Following should be ideally handled by lib functions. However we have test in place that checks this piece
    ;; is able to handle not-normalized mbql5 with e.g. string value for type. Lib functions throw on such input.
    ;;
-   ;; Try lib/query format (with stages)
-   (get-in query [:stages 0 :native])
+   ;; Try lib/query format (with stages); stage 0 of a multi-stage query would be partial SQL, so fall through
+   (when (= 1 (count (:stages query)))
+     (get-in query [:stages 0 :native]))
    ;; Try legacy format
-   (get-in query [:native :query])))
+   (get-in query [:native :query])
+   ;; orphaned sources skip normalization and keep their JSON string keys
+   (when (= 1 (count (get query "stages")))
+     (get-in query ["stages" 0 "native"]))
+   (get-in query ["native" "query"])))
 
 (defn transform-query->text
   "Render a transform source query for model context: the native SQL when the query

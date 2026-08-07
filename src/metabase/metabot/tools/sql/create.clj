@@ -33,7 +33,7 @@
   (try
     (api/read-check :model/Database database-id)
     (catch clojure.lang.ExceptionInfo e
-      (throw (if (= 403 (:status-code (ex-data e)))
+      (throw (if (contains? #{403 404} (:status-code (ex-data e)))
                (ex-info (ex-message e) (assoc (ex-data e) :agent-error? true) e)
                e)))))
 
