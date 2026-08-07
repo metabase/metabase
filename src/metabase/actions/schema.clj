@@ -14,8 +14,7 @@
 
 (mr/def ::type
   [:enum
-   {:decode/normalize keyword
-    :description      (deferred-tru "Unsupported action type")}
+   {:description (deferred-tru "Unsupported action type")}
    :http
    :implicit
    :query])
@@ -37,13 +36,11 @@
    [:headers            {:optional true} [:maybe string?]]
    [:parameters         {:optional true} [:maybe ::parameters.schema/parameters]]])
 
-(def ^:private http-action-entries
-  [[:template        {:optional true} [:maybe ::http-action.template]]
+(mr/def ::http-action
+  [:map
+   [:template        {:optional true} [:maybe ::http-action.template]]
    [:response_handle {:optional true} [:maybe ::http-action.json-query]]
    [:error_handle    {:optional true} [:maybe ::http-action.json-query]]])
-
-(mr/def ::http-action
-  (into [:map] http-action-entries))
 
 (mr/def ::implicit-action.kind
   [:enum
@@ -56,18 +53,14 @@
    :bulk/update
    :bulk/delete])
 
-(def ^:private implicit-action-entries
-  [[:kind {:optional true} [:maybe ::implicit-action.kind]]])
-
 (mr/def ::implicit-action
-  (into [:map] implicit-action-entries))
-
-(def ^:private query-action-entries
-  [[:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query {:optional true} [:maybe ::queries.schema/query]]])
+  [:map
+   [:kind {:optional true} [:maybe ::implicit-action.kind]]])
 
 (mr/def ::query-action
-  (into [:map] query-action-entries))
+  [:map
+   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
+   [:dataset_query {:optional true} [:maybe ::queries.schema/query]]])
 
 (mu/defn- action-schema [schema-type :- [:enum :select :update :insert]]
   ;; `required-for-insert` = you have to specify this when you insert a row
@@ -76,41 +69,39 @@
   ;; but its value is populated automatically on `INSERT` or `UPDATE`.
   (let [required-for-insert (case schema-type
                               (:select :update) {:optional true}
-                              :insert           {})
-        common              (into
-                             [:map]
-                             cat
-                             [(case schema-type
-                                :select [[:id ::id]]
-                                :update [[:id {:optional true} ::id]]
-                                :insert nil)
-                              [[:name                   required-for-insert :string]
-                               [:type                   required-for-insert ::type]
-                               [:model_id               required-for-insert ::lib.schema.id/card]
-                               [:archived               {:optional true}    :boolean]
-                               [:description            {:optional true}    [:maybe :string]]
-                               [:parameters             {:optional true}    [:maybe ::parameters.schema/parameters]]
-                               [:parameter_mappings     {:optional true}    [:maybe ::parameters.schema/parameter-mappings]]
-                               [:visualization_settings {:optional true}    [:maybe map?]]]
-                              (when (= schema-type :select)
-                                ;; technically these are always required, but they are not always selected.
-                                [[:created_at {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
-                                 [:updated_at {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
-                                 ;; TODO (Cam 10/2/25) -- these are things you can set in updates or inserts but aren't things you can pass in
-                                 ;; via the API... Maybe we need even more versions of this schema e.g. `::action.for-update.api` versus
-                                 ;; `::action.for-update.internal`. or something. Idk.
-                                 [:public_uuid       {:optional true} [:maybe ms/UUIDString]]
-                                 [:made_public_by_id {:optional true} [:maybe ::lib.schema.id/user]]
-                                 [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]])])]
-    ;; each branch carries the common keys rather than being `:and`ed with them: `:and` decodes each child against the
-    ;; whole value, so the two branches strip each other's keys and nothing survives.
-    [:multi
-     ;; dispatch on the normalized type so a JSON string picks the same branch as a keyword
-     {:dispatch (comp keyword :type)}
-     [:http     (into common http-action-entries)]
-     [:implicit (into common implicit-action-entries)]
-     [:query    (into common query-action-entries)]
-     [nil       common]]))
+                              :insert           {})]
+    [:and
+     (into
+      [:map]
+      cat
+      [(case schema-type
+         :select [[:id ::id]]
+         :update [[:id {:optional true} ::id]]
+         :insert nil)
+       [[:name                   required-for-insert :string]
+        [:type                   required-for-insert ::type]
+        [:model_id               required-for-insert ::lib.schema.id/card]
+        [:archived               {:optional true}    :boolean]
+        [:description            {:optional true}    [:maybe :string]]
+        [:parameters             {:optional true}    [:maybe ::parameters.schema/parameters]]
+        [:parameter_mappings     {:optional true}    [:maybe ::parameters.schema/parameter-mappings]]
+        [:visualization_settings {:optional true}    [:maybe map?]]]
+       (when (= schema-type :select)
+         ;; technically these are always required, but they are not always selected.
+         [[:created_at {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
+          [:updated_at {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
+          ;; TODO (Cam 10/2/25) -- these are things you can set in updates or inserts but aren't things you can pass in
+          ;; via the API... Maybe we need even more versions of this schema e.g. `::action.for-update.api` versus
+          ;; `::action.for-update.internal`. or something. Idk.
+          [:public_uuid       {:optional true} [:maybe ms/UUIDString]]
+          [:made_public_by_id {:optional true} [:maybe ::lib.schema.id/user]]
+          [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]])])
+     [:multi
+      {:dispatch :type}
+      [:http     ::http-action]
+      [:implicit ::implicit-action]
+      [:query    ::query-action]
+      [nil       :map]]]))
 
 (mr/def ::action
   "An Action as it should appear when we `SELECT` it from the app DB."

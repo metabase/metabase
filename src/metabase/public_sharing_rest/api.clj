@@ -11,10 +11,10 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
@@ -374,7 +374,7 @@
                                                                                          (fn [x]
                                                                                            (cond-> x
                                                                                              (string? x) json/decode+kw))}
-                                                                                        [:sequential ::lib.schema.parameter/parameter]]]
+                                                                                        [:sequential ::parameters.schema/parameter-with-value]]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
@@ -850,7 +850,7 @@
    _query-params
    {:keys [parameters format_rows pivot_results]} :- [:map
                                                       [:parameters    {:optional true} [:maybe [:or
-                                                                                                [:sequential ::lib.schema.parameter/parameter]
+                                                                                                [:sequential ::parameters.schema/parameter-with-value]
                                                                                                 ms/JSONString]]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]

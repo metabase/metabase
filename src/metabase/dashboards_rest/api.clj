@@ -25,7 +25,6 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.core :as parameters]
@@ -647,7 +646,7 @@
    _query-params
    {:keys [parameters paper_size]} :- [:map
                                        [:parameters {:optional true} [:maybe [:or
-                                                                              [:sequential ::lib.schema.parameter/parameter]
+                                                                              [:sequential ::parameters.schema/parameter-with-value]
                                                                               ;; JSON-string form for <form>-driven
                                                                               ;; downloads, mirroring the dashcard
                                                                               ;; export-format endpoint
@@ -662,7 +661,7 @@
                       (string? parameters) json/decode+kw)
           ;; the array form is validated by the endpoint schema, but a JSON string only proves it's *valid JSON* --
           ;; once decoded it must still be a well-formed parameter list, or it's a 400 (not a 500)
-          _         (api/check-400 (mr/validate [:maybe [:sequential ::lib.schema.parameter/parameter]] params))
+          _         (api/check-400 (mr/validate [:maybe [:sequential ::parameters.schema/parameter-with-value]] params))
           pdf-bytes (channel.render/render-dashboard-to-pdf id api/*current-user-id*
                                                             (or params [])
                                                             (keyword (or paper_size "a4")))
@@ -1443,7 +1442,7 @@
    _query-params
    {:keys [dashboard_load_id], :as body} :- [:map
                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
-                                             [:parameters        {:optional true} [:maybe [:sequential ::lib.schema.parameter/parameter]]]]]
+                                             [:parameters        {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
   (with-dashboard-load-id dashboard_load_id
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
@@ -1473,7 +1472,7 @@
     pivot-results? :pivot_results}
    :- [:map
        [:parameters    {:optional true} [:maybe [:or
-                                                 [:sequential ::lib.schema.parameter/parameter]
+                                                 [:sequential ::parameters.schema/parameter-with-value]
                                                  ;; support <form> encoded params for backwards compatibility... see
                                                  ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
                                                  ms/JSONString]]]
@@ -1510,7 +1509,7 @@
                                                   [:card-id ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:parameters {:optional true} [:maybe [:sequential ::lib.schema.parameter/parameter]]]]]
+            [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body

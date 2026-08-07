@@ -370,6 +370,7 @@
   Note that this is different from the parameter declarations that are saved as part of Dashboards and Cards; for THAT
   schema refer to `:metabase.parameters.schema/parameter`."
   [:and
+   {:description "parameter must be a map with a :type key"}
    [:map
     {:decode/normalize #'normalize-parameter}
     [:type [:ref ::type]]
