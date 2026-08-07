@@ -4,7 +4,10 @@ import type { ColorName } from "metabase/ui/colors/types";
 import type {
   Collection,
   IconName,
+  RemoteSyncCollectionRef,
+  RemoteSyncDependencyFailure,
   RemoteSyncEntityStatus,
+  RemoteSyncRemedyCollection,
   SettingDefinition,
 } from "metabase-types/api";
 
@@ -165,6 +168,79 @@ export const parseSyncError = (exportError: SyncError | null): ParsedError => {
     currentBranch: null,
   };
 };
+
+/**
+ * The collections we asked to sync that the backend refused. One entry per collection — the backend
+ * reports every offending collection in a single pass, so these are already unique.
+ */
+export const getBlockedCollections = (
+  failures: RemoteSyncDependencyFailure[],
+): RemoteSyncCollectionRef[] => failures.map((failure) => failure.collection);
+
+/** [[getBlockedCollections]] reduced to an id set, for per-row lookup in a collection list. */
+export const getBlockedCollectionIds = (
+  failures: RemoteSyncDependencyFailure[],
+): Set<number> =>
+  new Set(getBlockedCollections(failures).map((collection) => collection.id));
+
+/**
+ * Every collection that would also have to be synced for the save to go through, deduped — remedies
+ * point at top-level collections, so many dependencies collapse onto the same one. Snippet
+ * dependencies ask for the Library instead, which `requiresLibrarySync` reports separately.
+ */
+export const getRequiredCollections = (
+  failures: RemoteSyncDependencyFailure[],
+): RemoteSyncRemedyCollection[] => {
+  const collections = failures
+    .flatMap((failure) => failure.dependencies)
+    .flatMap((dependency) =>
+      dependency.remedy.type === "collection"
+        ? [dependency.remedy.collection]
+        : [],
+    );
+
+  const byId = new Map<number, RemoteSyncRemedyCollection>(
+    collections.map((collection) => [collection.id, collection]),
+  );
+
+  return [...byId.values()];
+};
+
+/** [[getRequiredCollections]] reduced to an id set, for per-row lookup in a collection list. */
+export const getRequiredCollectionIds = (
+  failures: RemoteSyncDependencyFailure[],
+): Set<number> =>
+  new Set(getRequiredCollections(failures).map((collection) => collection.id));
+
+/**
+ * Blocked collections that can't be unblocked from this screen, because at least one dependency
+ * resolves to a personal collection. `personal` sits on the remedy — the top-level ancestor — not on
+ * the collection the dependency itself lives in, which may be a sub-collection of it.
+ */
+export const getCollectionIdsBlockedByPersonalContent = (
+  failures: RemoteSyncDependencyFailure[],
+): Set<number> =>
+  new Set(
+    failures
+      .filter((failure) =>
+        failure.dependencies.some(
+          (dependency) =>
+            dependency.remedy.type === "collection" &&
+            dependency.remedy.collection.personal,
+        ),
+      )
+      .map((failure) => failure.collection.id),
+  );
+
+/** Whether any dependency needs the Library synced — snippets key on it, not on their collection. */
+export const requiresLibrarySync = (
+  failures: RemoteSyncDependencyFailure[],
+): boolean =>
+  failures.some((failure) =>
+    failure.dependencies.some(
+      (dependency) => dependency.remedy.type === "library",
+    ),
+  );
 
 export const buildCollectionMap = (
   collectionTree: Collection[],

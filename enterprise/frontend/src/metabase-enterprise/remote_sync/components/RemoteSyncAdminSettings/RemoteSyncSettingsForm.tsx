@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -26,6 +27,7 @@ import { useDisableRemoteSync } from "../../hooks/use-disable-remote-sync";
 import { useRemoteSyncInitialValues } from "../../hooks/use-remote-sync-initial-values";
 import { useRemoteSyncSubmit } from "../../hooks/use-remote-sync-submit";
 import type { RemoteSyncSettingsVariant } from "../../types";
+import { getBlockedCollectionIds } from "../../utils";
 import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 
 import { BranchSwitcherSection } from "./BranchSwitcherSection";
@@ -58,16 +60,28 @@ export const RemoteSyncSettingsForm = ({
   });
   const { initialValues, libraryCollection } =
     useRemoteSyncInitialValues(variant);
-  const { handleSubmit, branchChangeModal, isUpdating, isCreatingLibrary } =
-    useRemoteSyncSubmit({
-      initialValues,
-      libraryCollection,
-      onSaveSuccess,
-      variant,
-    });
+  const {
+    handleSubmit,
+    branchChangeModal,
+    isUpdating,
+    isCreatingLibrary,
+    unsyncedDependenciesError,
+  } = useRemoteSyncSubmit({
+    initialValues,
+    libraryCollection,
+    onSaveSuccess,
+    variant,
+  });
   const { handleDisable, disableModal, isDisabling } = useDisableRemoteSync();
 
   const dirtyEntities = dirtyData?.dirty ?? [];
+  const dependencyFailures = unsyncedDependenciesError?.errors.collections;
+  // The modal variant renders its list directly, so it derives what the section derives for its own.
+  const blockedCollectionIds = useMemo(
+    () => getBlockedCollectionIds(dependencyFailures ?? []),
+    [dependencyFailures],
+  );
+
   const isModalVariant = variant === "settings-modal";
   const isSaving = isUpdating || isDisabling;
   const canDisable =
@@ -99,11 +113,16 @@ export const RemoteSyncSettingsForm = ({
                 )}
                 {isReadOnly && <ReadOnlyBranchSection />}
                 {(isRemoteSyncEnabled || isReadWrite) && !isModalVariant && (
-                  <CollectionsToSyncSection />
+                  <CollectionsToSyncSection
+                    dependencyFailures={dependencyFailures}
+                  />
                 )}
                 {isModalVariant && isReadWrite && (
                   <RemoteSyncSettingsSection title={t`Content to sync`}>
-                    <TopLevelCollectionsList skipCollections />
+                    <TopLevelCollectionsList
+                      skipCollections
+                      blockedCollectionIds={blockedCollectionIds}
+                    />
                   </RemoteSyncSettingsSection>
                 )}
 

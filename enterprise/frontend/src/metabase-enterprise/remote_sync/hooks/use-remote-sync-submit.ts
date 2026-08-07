@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
@@ -11,6 +11,7 @@ import type {
   LibraryCollection,
   RemoteSyncConfigurationSettings,
 } from "metabase-types/api";
+import { isRemoteSyncDependencyError } from "metabase-types/guards";
 
 import {
   trackBranchSwitched,
@@ -47,8 +48,10 @@ export const useRemoteSyncSubmit = ({
 }: UseRemoteSyncSubmitProps) => {
   const isModalVariant = variant === "settings-modal";
   const { data: settingValues } = useGetSettingsQuery();
-  const [updateRemoteSyncSettings, { isLoading: isUpdating }] =
-    useUpdateRemoteSyncSettingsMutation();
+  const [
+    updateRemoteSyncSettings,
+    { isLoading: isUpdating, error: updateError },
+  ] = useUpdateRemoteSyncSettingsMutation();
   const [createLibrary, { isLoading: isCreatingLibrary }] =
     useCreateLibraryMutation();
   const [sendToast] = useToast();
@@ -178,5 +181,18 @@ export const useRemoteSyncSubmit = ({
     ],
   );
 
-  return { handleSubmit, branchChangeModal, isUpdating, isCreatingLibrary };
+  // Held by RTK until the next save, so it survives the re-render the failed submit triggers.
+  const unsyncedDependenciesError = useMemo(
+    () =>
+      isRemoteSyncDependencyError(updateError) ? updateError.data : undefined,
+    [updateError],
+  );
+
+  return {
+    handleSubmit,
+    branchChangeModal,
+    isUpdating,
+    isCreatingLibrary,
+    unsyncedDependenciesError,
+  };
 };

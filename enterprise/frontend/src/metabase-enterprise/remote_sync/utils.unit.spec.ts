@@ -1,9 +1,16 @@
+import type { RemoteSyncDependencyFailure } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import {
   buildCollectionMap,
+  getBlockedCollectionIds,
+  getBlockedCollections,
+  getCollectionIdsBlockedByPersonalContent,
   getCollectionPathSegments,
+  getRequiredCollectionIds,
+  getRequiredCollections,
   isTableChildModel,
+  requiresLibrarySync,
 } from "./utils";
 
 describe("remote_sync utils", () => {
@@ -216,6 +223,194 @@ describe("remote_sync utils", () => {
 
     it("should return false for dashboard model", () => {
       expect(isTableChildModel("dashboard")).toBe(false);
+    });
+  });
+
+  describe("unsynced dependency failures", () => {
+    // Two blocked collections whose dependencies resolve to the same remedy collection, plus a
+    // snippet (Library remedy) and a dependency with no actionable remedy.
+    const FAILURES: RemoteSyncDependencyFailure[] = [
+      {
+        collection: { id: 14, name: "Marketing" },
+        dependencies: [
+          {
+            model: "card",
+            id: 416,
+            name: "Seats over time",
+            collection: { id: 7, name: "Finance" },
+            remedy: {
+              type: "collection",
+              collection: { id: 7, name: "Finance", personal: false },
+            },
+          },
+          {
+            model: "snippet",
+            id: 3,
+            name: "active_users",
+            remedy: { type: "library" },
+          },
+        ],
+      },
+      {
+        collection: { id: 22, name: "Ops" },
+        dependencies: [
+          {
+            model: "dashboard",
+            id: 91,
+            name: "Weekly review",
+            collection: { id: 9, name: "Nested" },
+            // Same top-level remedy as the card above, reached from a different collection.
+            remedy: {
+              type: "collection",
+              collection: { id: 7, name: "Finance", personal: false },
+            },
+          },
+          {
+            model: "card",
+            id: 512,
+            name: "Orphaned",
+            remedy: { type: "none" },
+          },
+        ],
+      },
+    ];
+
+    describe("getBlockedCollections", () => {
+      it("returns the collections we tried to sync", () => {
+        expect(getBlockedCollections(FAILURES)).toEqual([
+          { id: 14, name: "Marketing" },
+          { id: 22, name: "Ops" },
+        ]);
+      });
+
+      it("returns nothing when there are no failures", () => {
+        expect(getBlockedCollections([])).toEqual([]);
+      });
+    });
+
+    describe("getBlockedCollectionIds", () => {
+      it("reduces the blocked collections to an id set", () => {
+        expect(getBlockedCollectionIds(FAILURES)).toEqual(new Set([14, 22]));
+      });
+
+      it("is empty when there are no failures", () => {
+        expect(getBlockedCollectionIds([]).size).toBe(0);
+      });
+    });
+
+    describe("getRequiredCollections", () => {
+      it("flattens remedies across every failure and dedupes by id", () => {
+        expect(getRequiredCollections(FAILURES)).toEqual([
+          { id: 7, name: "Finance", personal: false },
+        ]);
+      });
+
+      it("ignores library and non-actionable remedies", () => {
+        const libraryOnly = [
+          {
+            collection: { id: 14, name: "Marketing" },
+            dependencies: [
+              {
+                model: "snippet" as const,
+                id: 3,
+                name: "active_users",
+                remedy: { type: "library" as const },
+              },
+            ],
+          },
+        ];
+
+        expect(getRequiredCollections(libraryOnly)).toEqual([]);
+      });
+
+      it("keeps personal collections so callers can flag them as unsyncable", () => {
+        const personal = [
+          {
+            collection: { id: 14, name: "Marketing" },
+            dependencies: [
+              {
+                model: "card" as const,
+                id: 1,
+                name: "Draft",
+                remedy: {
+                  type: "collection" as const,
+                  collection: { id: 5, name: "Nick's stuff", personal: true },
+                },
+              },
+            ],
+          },
+        ];
+
+        expect(getRequiredCollections(personal)).toEqual([
+          { id: 5, name: "Nick's stuff", personal: true },
+        ]);
+      });
+    });
+
+    describe("getRequiredCollectionIds", () => {
+      it("reduces the required collections to a deduped id set", () => {
+        expect(getRequiredCollectionIds(FAILURES)).toEqual(new Set([7]));
+      });
+
+      it("is empty when no remedy names a collection", () => {
+        expect(getRequiredCollectionIds([]).size).toBe(0);
+      });
+    });
+
+    describe("getCollectionIdsBlockedByPersonalContent", () => {
+      it("is empty when no remedy is a personal collection", () => {
+        expect(getCollectionIdsBlockedByPersonalContent(FAILURES).size).toBe(0);
+      });
+
+      it("flags the blocked collection, not the personal one", () => {
+        const failures: RemoteSyncDependencyFailure[] = [
+          {
+            collection: { id: 14, name: "Marketing" },
+            dependencies: [
+              {
+                model: "card",
+                id: 1,
+                name: "Draft",
+                // Lives in a sub-collection, but the remedy resolves to the personal root.
+                collection: { id: 88, name: "Drafts" },
+                remedy: {
+                  type: "collection",
+                  collection: { id: 5, name: "Nick's stuff", personal: true },
+                },
+              },
+            ],
+          },
+          {
+            collection: { id: 22, name: "Ops" },
+            dependencies: [
+              {
+                model: "card",
+                id: 2,
+                name: "Shared",
+                collection: { id: 7, name: "Finance" },
+                remedy: {
+                  type: "collection",
+                  collection: { id: 7, name: "Finance", personal: false },
+                },
+              },
+            ],
+          },
+        ];
+
+        expect(getCollectionIdsBlockedByPersonalContent(failures)).toEqual(
+          new Set([14]),
+        );
+      });
+    });
+
+    describe("requiresLibrarySync", () => {
+      it("is true when any dependency asks for the Library", () => {
+        expect(requiresLibrarySync(FAILURES)).toBe(true);
+      });
+
+      it("is false when no dependency asks for the Library", () => {
+        expect(requiresLibrarySync([FAILURES[1]])).toBe(false);
+      });
     });
   });
 });

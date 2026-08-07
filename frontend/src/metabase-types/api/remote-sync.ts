@@ -159,11 +159,13 @@ export type RemoteSyncCollectionRef = {
  * `library` is for entities whose eligibility keys on the Library (snippets); `none` means the
  * dependency lives outside any collection, so there is nothing to offer.
  */
+export type RemoteSyncRemedyCollection = RemoteSyncCollectionRef & {
+  /** Personal collections can't be synced, so this remedy isn't actionable. */
+  personal: boolean;
+};
+
 export type RemoteSyncDependencyRemedy =
-  | {
-      type: "collection";
-      collection: RemoteSyncCollectionRef & { personal: boolean };
-    }
+  | { type: "collection"; collection: RemoteSyncRemedyCollection }
   | { type: "library" }
   | { type: "none" };
 
