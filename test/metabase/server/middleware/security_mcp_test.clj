@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   ;; loading mcp.init registers the MCP CORS origins provider with the security middleware
+   [metabase.mcp.init]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]))
