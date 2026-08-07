@@ -9,6 +9,7 @@ import {
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { renderWithProviders } from "__support__/ui";
 import { DashboardContextProvider } from "metabase/dashboard/context";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type { DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
@@ -41,11 +42,15 @@ const tableDashcard = createMockDashboardCard({
 interface SetupOpts {
   dashcards?: DashboardCard[];
   emailConfigured?: boolean;
+  isDataApp?: boolean;
 }
 const setup = ({
   emailConfigured,
   dashcards = [tableDashcard],
+  isDataApp = false,
 }: SetupOpts = {}) => {
+  EMBEDDING_SDK_CONFIG.isDataApp = isDataApp;
+
   setupNotificationChannelsEndpoints({
     email: {
       configured: emailConfigured,
@@ -65,6 +70,10 @@ const setup = ({
 };
 
 describe("DashboardSubscriptionsButton", () => {
+  afterEach(() => {
+    EMBEDDING_SDK_CONFIG.isDataApp = false;
+  });
+
   it("should render the subscriptions button when email is configured", async () => {
     setup({ emailConfigured: true });
 
@@ -100,6 +109,22 @@ describe("DashboardSubscriptionsButton", () => {
     expect(
       screen.queryByRole("button", { name: "Subscriptions" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("should not render the subscriptions button and should not call pulse/form_input inside a data app", async () => {
+    // A subscription is scheduled email delivered out of band, so it is not part of the
+    // data-app surface. `/api/pulse` is unscoped for data apps, so a subscriptions button
+    // offered here would 403 as soon as it was clicked.
+    setup({ emailConfigured: true, isDataApp: true });
+
+    await waitFor(async () => {
+      expect(await getDashboardRequests()).toHaveLength(1);
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Subscriptions" }),
+    ).not.toBeInTheDocument();
+    expect(await getSubscriptionChannelInfoRequests()).toHaveLength(0);
   });
 });
 

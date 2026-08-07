@@ -7,6 +7,7 @@ import { useQuestionAlertModalContext } from "embedding-sdk-bundle/components/pr
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import { useHasEmailSetup } from "metabase/common/hooks";
+import { isDataApp } from "metabase/embedding-sdk/config";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
 import type { QuestionAlertsButtonProps } from "metabase/plugins";
 import { isInstanceAnalyticsCollection } from "metabase-enterprise/collections/utils";
@@ -25,13 +26,21 @@ export const QuestionAlertsButton = (props: QuestionAlertsButtonProps) => {
   const isModel = question?.type() === "model";
   const isAnalytics = isInstanceAnalyticsCollection(question?.collection());
 
+  // A data app renders a UI; an alert is scheduled email delivered later, out of band. It is
+  // deliberately not part of the data-app surface, so the affordance never appears rather
+  // than appearing and failing on the (unscoped) /api/notification routes behind it.
+  const isDataAppEmbed = isDataApp();
+
   // Skip the pulse/form_input request in guest embed mode (EMB-1525),
   // as the endpoint does not exist for guest embeds.
-  const hasEmailSetup = useHasEmailSetup({ skip: isGuestEmbed });
+  const hasEmailSetup = useHasEmailSetup({
+    skip: isGuestEmbed || isDataAppEmbed,
+  });
 
   const shouldRenderAlertsButton =
     hasEmailSetup &&
     !isGuestEmbed &&
+    !isDataAppEmbed &&
     withAlerts &&
     isSaved &&
     canManageSubscriptions &&
