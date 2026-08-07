@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import { getMainStore } from "__support__/entities-store";
 import { createMockState } from "metabase/redux/store/mocks";
+import { UploadMode } from "metabase/redux/store/upload";
 
 import {
   MAX_UPLOAD_STRING,
@@ -47,19 +48,15 @@ const mockAppendCSV = (valid = true) => {
 // Asserts the matching request was sent as multipart form data — locks down
 // that table.ts hands the FormData through unwrapped (a JSON-stringified
 // `{ formData }` would set Content-Type: application/json instead).
-const expectMultipartBody = (urlSuffix) => {
+const expectMultipartBody = (urlSuffix: string) => {
   const call = fetchMock.callHistory
     .calls()
     .find((c) => c.url.endsWith(urlSuffix));
   expect(call).toBeDefined();
-  const headers = call.options?.headers ?? {};
-  const contentType =
-    headers instanceof Headers
-      ? headers.get("content-type")
-      : (headers["content-type"] ?? headers["Content-Type"]);
+  const headers = new Headers(call?.options?.headers ?? {});
   // Either absent (browser sets it with the multipart boundary) or multipart;
   // application/json would mean FormData got JSON-stringified.
-  expect(contentType ?? "").not.toMatch(/application\/json/);
+  expect(headers.get("content-type") ?? "").not.toMatch(/application\/json/);
 };
 
 const mockReplaceCSV = (valid = true) => {
@@ -100,9 +97,11 @@ describe("csv uploads", () => {
     it("should handle file upload success", async () => {
       mockUploadCSV();
 
-      await uploadFile({ file, collectionId: "root", uploadMode: "create" })(
-        dispatch,
-      );
+      await uploadFile({
+        file,
+        collectionId: "root",
+        uploadMode: UploadMode.create,
+      })(store.dispatch, store.getState);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
@@ -118,7 +117,7 @@ describe("csv uploads", () => {
         type: UPLOAD_FILE_END,
         payload: {
           id: now,
-          uploadMode: "create",
+          uploadMode: UploadMode.create,
           modelId: 3,
         },
       });
@@ -134,7 +133,11 @@ describe("csv uploads", () => {
     it("should handle file append success", async () => {
       mockAppendCSV();
 
-      await uploadFile({ file, tableId: 123, uploadMode: "append" })(dispatch);
+      await uploadFile({
+        file,
+        tableId: 123,
+        uploadMode: UploadMode.append,
+      })(store.dispatch, store.getState);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expectMultipartBody("append-csv");
@@ -153,7 +156,7 @@ describe("csv uploads", () => {
         payload: {
           id: now,
           modelId: 3,
-          uploadMode: "append",
+          uploadMode: UploadMode.append,
         },
       });
 
@@ -168,7 +171,11 @@ describe("csv uploads", () => {
     it("should handle file replace success", async () => {
       mockReplaceCSV();
 
-      await uploadFile({ file, tableId: 123, uploadMode: "replace" })(dispatch);
+      await uploadFile({
+        file,
+        tableId: 123,
+        uploadMode: UploadMode.replace,
+      })(store.dispatch, store.getState);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expectMultipartBody("replace-csv");
@@ -187,7 +194,7 @@ describe("csv uploads", () => {
         payload: {
           id: now,
           modelId: 3,
-          uploadMode: "replace",
+          uploadMode: UploadMode.replace,
         },
       });
 
@@ -202,9 +209,11 @@ describe("csv uploads", () => {
     it("should handle file upload error", async () => {
       mockUploadCSV(false);
 
-      await uploadFile({ file, collectionId: "root", uploadMode: "create" })(
-        dispatch,
-      );
+      await uploadFile({
+        file,
+        collectionId: "root",
+        uploadMode: UploadMode.create,
+      })(store.dispatch, store.getState);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
@@ -231,8 +240,8 @@ describe("csv uploads", () => {
       await uploadFile({
         file: bigFile,
         collectionId: "root",
-        uploadMode: "create",
-      })(dispatch);
+        uploadMode: UploadMode.create,
+      })(store.dispatch, store.getState);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({

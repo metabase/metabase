@@ -1,85 +1,97 @@
+import { createMockMetadata } from "__support__/metadata";
 import {
   getTemplateTagParameters,
   getTemplateTags,
 } from "metabase-lib/v1/parameters/utils/template-tags";
-import { createMockTemplateTag } from "metabase-types/api/mocks";
+import type {
+  Card,
+  DatasetQuery,
+  TemplateTag,
+  TemplateTagType,
+} from "metabase-types/api";
+import {
+  createMockCard,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
+  createMockTemplateTag,
+} from "metabase-types/api/mocks";
+
+const metadata = createMockMetadata({});
+
+const createLegacyCard = (datasetQuery: unknown): Card =>
+  // legacy dataset_query shapes that DatasetQuery cannot express
+  createMockCard({ dataset_query: datasetQuery as DatasetQuery });
 
 describe("parameters/utils/cards", () => {
   describe("getTemplateTags", () => {
     it("should return an empty array for a non-native query", () => {
-      const card = {
-        dataset_query: {
-          type: "query",
-        },
-      };
-      expect(getTemplateTags(card)).toEqual([]);
+      const card = createLegacyCard({ type: "query" });
+      expect(getTemplateTags(card, metadata)).toEqual([]);
     });
 
     it("should return an empty array for an internal query", () => {
-      const card = {
-        dataset_query: {
-          type: "internal",
-          fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
-          args: [],
-        },
-      };
-      expect(getTemplateTags(card)).toEqual([]);
+      const card = createLegacyCard({
+        type: "internal",
+        fn: "metabase-enterprise.audit-app.pages.queries/bad-table",
+        args: [],
+      });
+      expect(getTemplateTags(card, metadata)).toEqual([]);
     });
 
     it("should return an empty array for a non-parameterized query", () => {
-      const card = {
-        dataset_query: {
-          type: "query",
-          native: {
-            query: "select * from PRODUCTS",
-          },
+      const card = createLegacyCard({
+        type: "query",
+        native: {
+          query: "select * from PRODUCTS",
         },
-      };
-      expect(getTemplateTags(card)).toEqual([]);
+      });
+      expect(getTemplateTags(card, metadata)).toEqual([]);
     });
 
     it("should extract the template tags", () => {
-      const card = {
-        dataset_query: {
-          type: "native",
-          native: {
+      const starsTag = createMockTemplateTag({
+        type: "number",
+        name: "stars",
+        id: "xyz777",
+      });
+      const snippetTag = createMockTemplateTag({
+        type: "snippet",
+        id: "abc123",
+        name: "snippet: foo",
+        "snippet-id": 6,
+      });
+      const card = createMockCard({
+        dataset_query: createMockNativeDatasetQuery({
+          native: createMockNativeQuery({
             query: "select * from PRODUCTS where RATING > {{stars}}",
             "template-tags": {
-              stars: {
-                type: "number",
-                name: "stars",
-                id: "xyz777",
-              },
-              "snippet: foo": {
-                type: "snippet",
-                id: "abc123",
-                name: "snippet: foo",
-                "snippet-id": 6,
-              },
+              stars: starsTag,
+              "snippet: foo": snippetTag,
             },
-          },
+          }),
+        }),
+      });
+      expect(getTemplateTags(card, metadata)).toEqual([starsTag, snippetTag]);
+    });
+
+    it("should return minimal legacy tags unmodified", () => {
+      const starsTag = { type: "number", name: "stars", id: "xyz777" };
+      const card = createLegacyCard({
+        type: "native",
+        native: {
+          query: "select * from PRODUCTS where RATING > {{stars}}",
+          "template-tags": { stars: starsTag },
         },
-      };
-      expect(getTemplateTags(card)).toEqual([
-        {
-          type: "number",
-          name: "stars",
-          id: "xyz777",
-        },
-        {
-          id: "abc123",
-          name: "snippet: foo",
-          "snippet-id": 6,
-          type: "snippet",
-        },
-      ]);
+      });
+      expect(getTemplateTags(card, metadata)).toEqual([starsTag]);
     });
   });
 
   describe("getTemplateTagParameters", () => {
-    let tags;
+    let tags: TemplateTag[];
 
     beforeEach(() => {
+      // legacy-shaped tags (numeric ids, retired types) that TemplateTag cannot express
       tags = [
         {
           "widget-type": "foo",
@@ -124,7 +136,7 @@ describe("parameters/utils/cards", () => {
           name: "f",
           "display-name": "F",
         },
-      ];
+      ] as unknown as TemplateTag[];
     });
 
     it("should convert tags into tag parameters with field filter operator types", () => {
@@ -228,7 +240,8 @@ describe("parameters/utils/cards", () => {
     it("should produce string/= for unknown tag types (QUE2-326)", () => {
       const tags = [
         createMockTemplateTag({
-          type: "unknown-type",
+          // not a real TemplateTagType: exercises the string/= fallback
+          type: "unknown-type" as TemplateTagType,
           id: "1",
           name: "x",
           "display-name": "X",
@@ -250,7 +263,8 @@ describe("parameters/utils/cards", () => {
     it("should exclude tags that are not parameters", () => {
       const tags = [
         createMockTemplateTag({
-          type: "string",
+          // legacy tag type value that predates the TemplateTagType union
+          type: "string" as TemplateTagType,
           id: "1",
           name: "a",
           "display-name": "A",

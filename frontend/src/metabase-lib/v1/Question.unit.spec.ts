@@ -1,7 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockField,
+  createMockParameter,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -336,7 +339,9 @@ describe("Question", () => {
 
     describe("setQuery(query)", () => {
       it("updates the dataset_query of card", () => {
-        const rawQuery = native_orders_count_question.legacyNativeQuery();
+        const rawQuery = checkNotNull(
+          native_orders_count_question.legacyNativeQuery(),
+        );
         const newRawQuestion = orders_raw_question.setLegacyQuery(rawQuery);
         expect(newRawQuestion.legacyNativeQuery() instanceof NativeQuery).toBe(
           true,
@@ -402,7 +407,7 @@ describe("Question", () => {
         const question = orders_count_question
           .setDisplay("table")
           .lockDisplay()
-          .maybeResetDisplay(ordersCountData, ["table", "scalar"]);
+          .maybeResetDisplay(ordersCountData, ["table", "scalar"], undefined);
 
         expect(question.display()).toBe("table");
       });
@@ -410,7 +415,7 @@ describe("Question", () => {
       it("should set the display to scalar if a non-scalar was selected and display is locked", () => {
         const question = base_question
           .setDisplay("table")
-          .maybeResetDisplay(ordersCountData, ["table", "scalar"]);
+          .maybeResetDisplay(ordersCountData, ["table", "scalar"], undefined);
 
         expect(question.display()).toBe("scalar");
       });
@@ -418,7 +423,11 @@ describe("Question", () => {
       it("should not set the display to scalar if another scalar display was selected and display is locked", () => {
         const question = base_question
           .setDisplay("gauge")
-          .maybeResetDisplay(ordersCountData, ["table", "scalar", "gauge"]);
+          .maybeResetDisplay(
+            ordersCountData,
+            ["table", "scalar", "gauge"],
+            undefined,
+          );
 
         expect(question.display()).toBe("gauge");
       });
@@ -426,7 +435,7 @@ describe("Question", () => {
       it("switch to table view if we had a scalar and now have more than 1x1 data", () => {
         const question = base_question
           .setDisplay("scalar")
-          .maybeResetDisplay(multipleRowsData, ["table"]);
+          .maybeResetDisplay(multipleRowsData, ["table"], undefined);
 
         expect(question.display()).toBe("table");
       });
@@ -435,7 +444,7 @@ describe("Question", () => {
         const question = orders_count_question
           .setDisplay("funnel")
           .lockDisplay()
-          .maybeResetDisplay(ordersCountData, ["table", "scalar"]);
+          .maybeResetDisplay(ordersCountData, ["table", "scalar"], undefined);
 
         expect(question.display()).toBe("scalar");
       });
@@ -510,7 +519,7 @@ describe("Question", () => {
         const question = base_question
           .setDisplay("scalar")
           .lockDisplay()
-          .maybeResetDisplay(multipleRowsData, sensibleDisplays);
+          .maybeResetDisplay(multipleRowsData, sensibleDisplays, undefined);
 
         expect(question.display()).not.toBe("table");
         expect(question.display()).toBe("scalar");
@@ -520,7 +529,7 @@ describe("Question", () => {
         const sensibleDisplays = ["table", "scalar"];
         const question = base_question
           .setDisplay("scalar")
-          .maybeResetDisplay(multipleRowsData, sensibleDisplays);
+          .maybeResetDisplay(multipleRowsData, sensibleDisplays, undefined);
 
         expect(question.display()).not.toBe("table");
         expect(question.display()).toBe("scalar");
@@ -530,7 +539,7 @@ describe("Question", () => {
         const sensibleDisplays = ["table", "scalar"];
         const question = orders_count_question
           .setDisplay("table")
-          .maybeResetDisplay(ordersCountData, sensibleDisplays);
+          .maybeResetDisplay(ordersCountData, sensibleDisplays, undefined);
 
         expect(question.display()).not.toBe("table");
         expect(question.display()).toBe("scalar");
@@ -582,8 +591,9 @@ describe("Question", () => {
 
   describe("Question.prototype.getResultMetadata", () => {
     it("should return the `result_metadata` property off the underlying card", () => {
-      const question = base_question.setResultsMetadata({ columns: [1, 2, 3] });
-      expect(question.getResultMetadata()).toEqual([1, 2, 3]);
+      const columns = [createMockField({ id: 1 }), createMockField({ id: 2 })];
+      const question = base_question.setResultsMetadata({ columns });
+      expect(question.getResultMetadata()).toEqual(columns);
     });
 
     it("should default to an array", () => {
@@ -611,7 +621,7 @@ describe("Question", () => {
 
   describe("Question.prototype.setParameters", () => {
     it("should set a `parameters` property on the question's card", () => {
-      const parameters = [{ type: "category" }];
+      const parameters = [createMockParameter({ type: "category" })];
       const questionWithParameters = base_question.setParameters(parameters);
 
       expect(base_question).not.toBe(questionWithParameters);
@@ -700,30 +710,29 @@ describe("Question", () => {
     });
 
     it("should return a question's parameters + metadata and the parameter's value if present", () => {
+      // slugs differ from names so parameters() deriving a slug would be caught
+      const fooParameter = createMockParameter({
+        type: "category",
+        name: "foo",
+        slug: "foo_slug",
+        id: "foo_id",
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+      });
+      const barParameter = createMockParameter({
+        type: "category",
+        name: "bar",
+        slug: "bar_slug",
+        id: "bar_id",
+      });
       const question = base_question
-        .setParameters([
-          {
-            type: "category",
-            name: "foo",
-            id: "foo_id",
-            target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-          },
-          {
-            type: "category",
-            name: "bar",
-            id: "bar_id",
-          },
-        ])
+        .setParameters([fooParameter, barParameter])
         .setParameterValues({
           foo_id: "abc",
         });
 
       expect(question.parameters()).toEqual([
         {
-          type: "category",
-          name: "foo",
-          id: "foo_id",
-          target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+          ...fooParameter,
           value: "abc",
           fields: [
             expect.objectContaining({
@@ -733,9 +742,7 @@ describe("Question", () => {
           hasVariableTemplateTagTarget: false,
         },
         {
-          type: "category",
-          name: "bar",
-          id: "bar_id",
+          ...barParameter,
           hasVariableTemplateTagTarget: true,
           value: null,
         },
@@ -826,7 +833,8 @@ describe("Question", () => {
             [
               "aggregation-options",
               ["sum", ["field", 1, null]],
-              { "display-name": "Revenue" },
+              // name differs from display-name to pin which key the description uses
+              { name: "revenue_sum", "display-name": "Revenue" },
             ],
           ],
         },
