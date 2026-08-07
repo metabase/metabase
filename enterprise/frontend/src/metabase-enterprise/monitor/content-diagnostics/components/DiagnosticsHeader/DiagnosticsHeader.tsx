@@ -29,17 +29,17 @@ export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
     {
       label: t`Empty`,
       to: Urls.imbalancedContent("empty"),
-      icon: "document",
+      icon: "unreferenced",
     },
     {
       label: t`Sparse`,
       to: Urls.imbalancedContent("sparse"),
-      icon: "list",
+      icon: "layout_grid",
     },
     {
       label: t`Crowded`,
       to: Urls.imbalancedContent("crowded"),
-      icon: "grid",
+      icon: "grid_bordered",
     },
   ];
 
