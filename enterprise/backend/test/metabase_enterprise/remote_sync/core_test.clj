@@ -101,7 +101,7 @@
                             (core/bulk-set-remote-sync {synced-id true})))]
         (is (=? {:status-code 400
                  :errors      {:collections [{:collection   {:id synced-id :name "Synced"}
-                                              :dependencies [{:model      "Card"
+                                              :dependencies [{:model      "card"
                                                               :id         source-card-id
                                                               :name       "Source Card"
                                                               :collection {:id regular-id :name "Regular"}
@@ -110,6 +110,28 @@
                                                                                         :name     "Regular"
                                                                                         :personal false}}}]}]}}
                 (ex-data ex)))))))
+
+(deftest bulk-set-remote-sync-dependency-model-follows-card-type-test
+  (testing "a Card dependency reports the collection-item model its type implies, not the Toucan name"
+    (doseq [[card-type expected] {:model  "dataset"
+                                  :metric "metric"}]
+      (testing (str "a " card-type " reports as " expected)
+        (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                       :model/Collection {regular-id :id} {:name "Regular" :location "/" :is_remote_synced false}
+                       :model/Card {source-card-id :id} {:name "Source"
+                                                         :type card-type
+                                                         :collection_id regular-id
+                                                         :database_id (mt/id)
+                                                         :dataset_query (mt/mbql-query venues)}
+                       :model/Card _ {:name "Dependent Card"
+                                      :collection_id synced-id
+                                      :database_id (mt/id)
+                                      :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+          (let [ex (is (thrown? clojure.lang.ExceptionInfo
+                                (core/bulk-set-remote-sync {synced-id true})))]
+            (is (=? {:errors {:collections [{:dependencies [{:model expected
+                                                             :id    source-card-id}]}]}}
+                    (ex-data ex)))))))))
 
 (deftest bulk-set-remote-sync-dependency-remedy-is-top-level-ancestor-test
   (testing "the remedy names the top-level collection settings can toggle, not the dependency's sub-collection"
@@ -153,7 +175,7 @@
                                                                       :id           (str (random-uuid))}}})}]
         (let [ex (is (thrown? clojure.lang.ExceptionInfo
                               (core/bulk-set-remote-sync {synced-id true})))]
-          (is (=? {:errors {:collections [{:dependencies [{:model  "NativeQuerySnippet"
+          (is (=? {:errors {:collections [{:dependencies [{:model  "snippet"
                                                            :id     snippet-id
                                                            :name   "active_users"
                                                            :remedy {:type :library}}]}]}}

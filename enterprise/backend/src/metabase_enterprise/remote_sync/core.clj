@@ -184,6 +184,29 @@
               row (t2/select [(keyword "model" model-name) :id :name] :id [:in (map :id group)])]
           [[model-name (:id row)] (:name row)])))
 
+(def ^:private model-name->collection-item-model
+  "Toucan model name -> the model string the collections API uses for the same entity, so clients can
+  reuse their existing icon, label and link handling. Cards refine further in [[card-item-models]]."
+  {"Card"               "card"
+   "Dashboard"          "dashboard"
+   "Document"           "document"
+   "NativeQuerySnippet" "snippet"
+   "Timeline"           "timeline"})
+
+(defn- card-item-models
+  "`{card-id model}` for the Cards in `deps` — only their `type` separates questions from models and
+  metrics, and the eligibility select doesn't carry it."
+  [deps]
+  (when-let [ids (seq (keep #(when (= "Card" (:model %)) (:id %)) deps))]
+    (into {}
+          (map (fn [{:keys [id type]}]
+                 [id (case (keyword type)
+                       :model  "dataset"
+                       :metric "metric"
+                       "card")]))
+          ;; :card_schema is required alongside :type — selecting it runs Card's schema upgrades.
+          (t2/select [:model/Card :id :type :card_schema] :id [:in ids]))))
+
 (defn- sync-remedy
   "What an admin would have to sync for `dep` to be covered: a specific top-level collection, or the
   Library for models whose eligibility keys on it (snippets) rather than on their own collection.
@@ -206,10 +229,13 @@
   lives in, and the collection (or the Library) that would have to be synced to cover it."
   [deps]
   (let [names       (dependency-names deps)
+        card-models (card-item-models deps)
         collections (collections-by-id (map (comp :collection_id :instance) deps))
         top-levels  (collections-by-id (map top-level-ancestor-id (vals collections)))]
     (mapv (fn [{:keys [model id instance] :as dep}]
-            (cond-> {:model  model
+            (cond-> {:model  (if (= "Card" model)
+                               (get card-models id "card")
+                               (model-name->collection-item-model model))
                      :id     id
                      :name   (get names [model id])
                      :remedy (sync-remedy dep collections top-levels)}
@@ -271,6 +297,7 @@
       (when-let [failures (seq (non-remote-synced-dependency-failures sync-on))]
         (throw (ex-info (tru "Uses content that is not remote synced.")
                         {:status-code 400
+                         :error_code  "unsynced-dependencies"
                          :errors      {:collections (vec failures)}})))
       (doseq [collection sync-off]
         (collections/check-remote-synced-dependents collection)))
