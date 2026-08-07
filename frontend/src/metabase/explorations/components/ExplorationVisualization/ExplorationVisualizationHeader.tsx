@@ -5,7 +5,6 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { type Path, useLocation, useNavigate } from "metabase/router";
 import { Ellipsified, Group, Indicator, Stack } from "metabase/ui";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type {
   ExplorationId,
   ExplorationPageNodeId,
@@ -96,13 +95,10 @@ export function ExplorationVisualizationHeader({
 function getExploreFilterPillLabel(
   filter: HydratedExplorationExploreFilter,
 ): string {
-  const value =
-    filter.display_value ??
-    (filter.value == null ? NULL_DISPLAY_VALUE : String(filter.value));
   if (filter.dimension_name) {
-    return `${filter.dimension_name}: ${value}`;
+    return `${filter.dimension_name}: ${filter.display_value}`;
   }
-  return value;
+  return filter.display_value;
 }
 
 function getNextCommentsUrl(location: Pick<Path, "pathname" | "search">) {

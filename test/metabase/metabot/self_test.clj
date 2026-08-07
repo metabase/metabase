@@ -41,7 +41,9 @@
     (is (=? {:provider "zai" :model "glm-5.2" :ai-proxy? false}
             (#'self/parse-provider-model "zai/glm-5.2")))
     (is (=? {:provider "mistral" :model "mistral-medium-3-5" :ai-proxy? false}
-            (#'self/parse-provider-model "mistral/mistral-medium-3-5"))))
+            (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
+    (is (=? {:provider "moonshot" :model "kimi-k2.6" :ai-proxy? false}
+            (#'self/parse-provider-model "moonshot/kimi-k2.6"))))
   (testing "parses metabase/ prefix (AI proxy)"
     (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
             (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
@@ -60,7 +62,8 @@
     (is (fn? (#'self/resolve-adapter "openai")))
     (is (fn? (#'self/resolve-adapter "openrouter")))
     (is (fn? (#'self/resolve-adapter "zai")))
-    (is (fn? (#'self/resolve-adapter "mistral"))))
+    (is (fn? (#'self/resolve-adapter "mistral")))
+    (is (fn? (#'self/resolve-adapter "moonshot"))))
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))
@@ -162,7 +165,7 @@
               (is (not (contains? @captured :prompt_cache_key))))))))))
 
 (deftest call-llm-prompt-cache-key-not-leaked-to-other-providers-test
-  (testing "call-llm hands :prompt-cache-key to every adapter, but only mistral forwards it to the wire"
+  (testing "call-llm hands :prompt-cache-key to every adapter, but only the adapters whose provider accepts it (mistral, moonshot) forward it to the wire"
     (let [captured (atom nil)]
       (mt/with-premium-features #{:metabase-ai-managed}
         ;; `:api-error true` makes `rethrow-api-error!` rethrow as-is, so `::skip` survives on the outer ex-data.

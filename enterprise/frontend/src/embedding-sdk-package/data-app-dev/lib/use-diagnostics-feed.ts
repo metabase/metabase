@@ -128,7 +128,10 @@ export const useDiagnosticsFeed = (
     // Only this page load's entries: after a reload the author is looking at a
     // fresh page, and a persistent error would otherwise stack up a copy per
     // load. The server's buffer keeps every session — a shell reader paging it
-    // with `?startEventId=` still sees what previous pages reported.
+    // with `?startEventId=` still sees what previous pages reported. Entries an
+    // earlier build reported are missing here because the endpoint withholds
+    // them from an ordinary read, not because anything discarded them: they are
+    // still in the buffer, and `?includeStale` returns them.
     entries:
       report?.entries.filter((entry) => entry.sessionId === DEV_SESSION_ID) ??
       EMPTY_ENTRIES,

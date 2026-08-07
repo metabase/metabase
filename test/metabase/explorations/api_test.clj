@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
+   [metabase.explorations.derived-perms :as derived-perms]
    [metabase.explorations.query-plan :as query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
@@ -25,6 +26,22 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+(deftest gate-threads-derived-data-forbidden-status-test
+  (testing "gate-threads-derived-data stamps forbidden when derived data is not visible"
+    (let [gate   #'metabase.explorations.api/gate-threads-derived-data
+          thread {:id       1
+                  :status   "completed"
+                  :queries  [{:id 1}]
+                  :blocks   [{:id 1}]
+                  :name     "Revenue drill-down"}]
+      (mt/with-dynamic-fn-redefs [derived-perms/thread-ids-with-visible-derived-data
+                                  (constantly #{})]
+        (let [gated (first (gate [thread]))]
+          (is (= "forbidden" (:status gated)))
+          (is (nil? (:name gated)))
+          (is (= [] (:queries gated)))
+          (is (= [] (:blocks gated))))))))
 
 (deftest thread-status-test
   (let [status  #'metabase.explorations.api/thread-status
@@ -1382,8 +1399,9 @@
             page-id      (some :id (filter #(str/includes? (:name %) "Price")
                                            (-> created :threads first :blocks first :pages)))
             explore-body {:page_id         page-id
-                          :explore_filters [{:field_ref field-ref
-                                             :value filter-value
+                          :explore_filters [{:operator      "="
+                                             :field_ref     field-ref
+                                             :value         filter-value
                                              :display_value "2"}]}
             hydrated     (explore-further-and-hydrate! u expl-id page-id (:explore_filters explore-body))
             threads      (sort-by :position (:threads hydrated))
@@ -1410,11 +1428,12 @@
         (testing "filtered blocks expose explore_filters on the block node and unprefixed page names"
           (let [price-page (some #(when (str/includes? (:name %) "Price") %) (:pages new-block))]
             (is (some? price-page))
-            (is (= [{:field_ref      field-ref
+            (is (= [{:operator       "="
+                     :field_ref      field-ref
                      :value          filter-value
                      :dimension_name "Price"
                      :display_value  "2"}]
-                   (map #(select-keys % [:field_ref :value :dimension_name :display_value])
+                   (map #(select-keys % [:operator :field_ref :value :dimension_name :display_value])
                         (:explore_filters new-block)))
                 "block node echoes persisted explore_filters")
             (is (str/includes? (:name price-page) "Price")
@@ -1450,8 +1469,10 @@
             page-id   (some :id (filter #(str/includes? (:name %) "Price")
                                         (-> src :blocks first :pages)))
             drill     {:page_id         page-id
-                       :explore_filters [{:field_ref ["field" {} (mt/id :venues :price)]
-                                          :value 2 :display_value "2"}]}]
+                       :explore_filters [{:operator      "="
+                                          :field_ref     ["field" {} (mt/id :venues :price)]
+                                          :value         2
+                                          :display_value "2"}]}]
         (testing "control: drilling a thread the caller can see succeeds"
           (is (map? (mt/user-http-request u :post 200
                                           (format "exploration/%d/explore-further" expl-id) drill))))
@@ -1483,10 +1504,11 @@
             page-id  (some :id (filter #(str/includes? (:name %) "Price")
                                        (-> created :threads first :blocks first :pages)))
             enqueued (atom [])]
-        (with-redefs [explorations.queues/start-thread! (fn [tid] (swap! enqueued conj tid))]
+        (mt/with-dynamic-fn-redefs [explorations.queues/start-thread! (fn [tid] (swap! enqueued conj tid))]
           (mt/user-http-request u :post 200 (format "exploration/%d/explore-further" expl-id)
                                 {:page_id         page-id
-                                 :explore_filters [{:field_ref     ["field" {} (mt/id :venues :price)]
+                                 :explore_filters [{:operator      "="
+                                                    :field_ref     ["field" {} (mt/id :venues :price)]
                                                     :value         2
                                                     :display_value "2"}]}))
         (let [new-thread-id (->> (t2/select :model/ExplorationThread
@@ -1509,7 +1531,10 @@
             expl-id (:id resp)
             page-id (-> resp :threads first :blocks first :pages first :id)
             body    {:page_id         page-id
-                     :explore_filters [{:field_ref ["field" {} (mt/id :venues :category_id)] :value 1}]}]
+                     :explore_filters [{:operator      "="
+                                        :field_ref     ["field" {} (mt/id :venues :category_id)]
+                                        :value         1
+                                        :display_value "1"}]}]
         (mt/user-http-request other :post 403 (format "exploration/%d/explore-further" expl-id) body)
         (mt/user-http-request owner :post 404 (format "exploration/%d/explore-further" expl-id)
                               (assoc body :page_id 9999999))
@@ -1632,11 +1657,13 @@
 
 (deftest blocks-tree-explore-further-naming-test
   (testing "filtered blocks expose explore_filters on the block node with unprefixed page names"
-    (let [filters [{:field_ref      ["field" {} 1]
+    (let [filters [{:operator       "="
+                    :field_ref      ["field" {} 1]
                     :value          "texas"
                     :dimension_name "State"
                     :display_value  "Texas"}
-                   {:field_ref      ["field" {} 2]
+                   {:operator       "="
+                    :field_ref      ["field" {} 2]
                     :value          "2024"
                     :dimension_name "Year"
                     :display_value  "2024"}]
@@ -2118,8 +2145,10 @@
                       :metrics      [{:card_id (:id metric)}]}
               a       (insert-explore-fixture! common)
               b       (insert-explore-fixture! common)
-              body    {:explore_filters [{:field_ref ["field" {} (mt/id :venues :name)]
-                                          :value     "Texas"}]}]
+              body    {:explore_filters [{:operator      "="
+                                          :field_ref     ["field" {} (mt/id :venues :name)]
+                                          :value         "Texas"
+                                          :display_value "Texas"}]}]
           (testing "cross-exploration page is rejected"
             (mt/user-http-request :crowberto :post 404
                                   (str "exploration/" (:exploration-id a) "/explore-further")
@@ -2128,6 +2157,48 @@
             (mt/user-http-request :crowberto :post 200
                                   (str "exploration/" (:exploration-id a) "/explore-further")
                                   (assoc body :page_id (:page-id a)))))))))
+
+(deftest explore-further-with-between-filter-test
+  (testing "POST /:id/explore-further accepts a between explore filter and persists it"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Card       metric {:name          "Number of venues"
+                                             :type          :metric
+                                             :dataset_query (lib/->legacy-MBQL
+                                                             (let [mp (mt/metadata-provider)]
+                                                               (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                   (lib/aggregate (lib/count)))))}]
+      (let [src         (insert-explore-fixture!
+                         {:creator-id    (mt/user->id :crowberto)
+                          :collection-id (:id coll)
+                          :card-id       (:id metric)
+                          :database-id   (mt/id)
+                          :dimension-id  "price"
+                          :metrics       [{:card_id (:id metric)
+                                           :dimension_mappings (venues-dimension-mappings)}]
+                          :dimensions    [{:dimension_id "price" :display_name "Price"}]})
+            filter-spec {:operator      "between"
+                         :field_ref     ["field" {} (mt/id :venues :price)]
+                         :values        [1 3]
+                         :display_value "1 - 3"}
+            hydrated    (explore-further-and-hydrate! :crowberto
+                                                      (:exploration-id src)
+                                                      (:page-id src)
+                                                      [filter-spec])
+            new-thread  (->> hydrated :threads (sort-by :position) last)
+            new-block   (-> new-thread :blocks first)
+            persisted   (t2/select-one :model/ExplorationBlock
+                                       :exploration_thread_id (:id new-thread))]
+        (is (= "Number of venues → Price: 1 - 3" (:name new-thread)))
+        (is (= [{:operator       "between"
+                 :field_ref      ["field" {} (mt/id :venues :price)]
+                 :values         [1 3]
+                 :display_value  "1 - 3"
+                 :dimension_name "Price"}]
+               (map #(select-keys % [:operator :field_ref :values :display_value :dimension_name])
+                    (:explore_filters new-block))))
+        (testing "the operator survives the round-trip to the persisted block"
+          (is (= "between"
+                 (get-in persisted [:metrics 0 :explore_filters 0 :operator]))))))))
 
 (deftest explore-further-preserves-prior-filter-on-compound-drill-test
   (testing "POST /:id/explore-further keeps the source block's existing explore filters and appends the new one —"
@@ -2139,8 +2210,14 @@
                                                                (let [mp (mt/metadata-provider)]
                                                                  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                                      (lib/aggregate (lib/count)))))}]
-        (let [prior  {:field_ref ["field" {} (mt/id :venues :name)]  :value "Texas"}
-              new-f  {:field_ref ["field" {} (mt/id :venues :price)] :value 2}
+        (let [prior  {:operator      "="
+                      :field_ref     ["field" {} (mt/id :venues :name)]
+                      :value         "Texas"
+                      :display_value "Texas"}
+              new-f  {:operator      "="
+                      :field_ref     ["field" {} (mt/id :venues :price)]
+                      :value         2
+                      :display_value "2"}
               src    (insert-explore-fixture!
                       {:creator-id    (mt/user->id :crowberto)
                        :collection-id (:id coll)
@@ -2161,7 +2238,7 @@
                              first)
               filters (:explore_filters (first (:metrics new-block)))]
           (is (= [prior new-f]
-                 (mapv #(select-keys % [:field_ref :value]) filters))
+                 (mapv #(select-keys % [:operator :field_ref :value :display_value]) filters))
               "both the prior (Texas) and the newly clicked (price) filter are present, in drill order"))))))
 
 (deftest explore-further-nested-thread-name-omits-metric-prefix-test
@@ -2188,8 +2265,9 @@
         (mt/user-http-request :crowberto :post 200
                               (str "exploration/" (:exploration-id src) "/explore-further")
                               {:page_id         (:page-id src)
-                               :explore_filters [{:field_ref ["field" {} (mt/id :venues :price)]
-                                                  :value     2
+                               :explore_filters [{:operator      "="
+                                                  :field_ref     ["field" {} (mt/id :venues :price)]
+                                                  :value         2
                                                   :display_value "2"}]})
         (let [new-thread (t2/select-one :model/ExplorationThread
                                         :exploration_id (:exploration-id src)
@@ -2220,10 +2298,14 @@
           (mt/user-http-request :crowberto :post 200
                                 (str "exploration/" (:exploration-id src) "/explore-further")
                                 {:page_id         (:page-id src)
-                                 :explore_filters [{:field_ref ["field" {} (mt/id :venues :category_id)]
-                                                    :value     "gadget"}
-                                                   {:field_ref ["field" {} (mt/id :venues :price)]
-                                                    :value     2}]})
+                                 :explore_filters [{:operator      "="
+                                                    :field_ref     ["field" {} (mt/id :venues :category_id)]
+                                                    :value         "gadget"
+                                                    :display_value "gadget"}
+                                                   {:operator      "="
+                                                    :field_ref     ["field" {} (mt/id :venues :price)]
+                                                    :value         2
+                                                    :display_value "2"}]})
           (let [new-thread (t2/select-one :model/ExplorationThread
                                           :exploration_id (:exploration-id src)
                                           {:order-by [[:position :desc] [:id :desc]]})]
@@ -2254,23 +2336,23 @@
                                          :target ["field" {} orders-field]}]}]
                          :dimensions [{:dimension_id users-created  :display_name "Created At"}
                                       {:dimension_id orders-created :display_name "Created At"}]}
-              created   (create-exploration! u body)
-              expl-id   (:id created)
+              created     (create-exploration! u body)
+              expl-id     (:id created)
               ;; Pages for the two same-named dims share the short name "Created At"; pick the
               ;; users-created page via its queries' :dimension_id.
-              page-id   (let [queries-by-id (into {} (map (juxt :id identity)
-                                                          (-> created :threads first :queries)))]
-                          (->> created :threads first :blocks first :pages
-                               (some (fn [page]
-                                       (when (some #(= users-created
-                                                       (:dimension_id (get queries-by-id %)))
-                                                   (:query_ids page))
-                                         (:id page))))))
-              _         (is (some? page-id) "find the users-created page")
-              filter    {:field_ref ["field" {} users-field] :value 40.7 :display_value "40.7"}
-              hydrated  (explore-further-and-hydrate! u expl-id page-id [filter])
-              new-thread (->> hydrated :threads (sort-by :position) last)
-              persisted  (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id new-thread))]
+              page-id     (let [queries-by-id (into {} (map (juxt :id identity)
+                                                            (-> created :threads first :queries)))]
+                            (->> created :threads first :blocks first :pages
+                                 (some (fn [page]
+                                         (when (some #(= users-created
+                                                         (:dimension_id (get queries-by-id %)))
+                                                     (:query_ids page))
+                                           (:id page))))))
+              _           (is (some? page-id) "find the users-created page")
+              filter-spec {:operator "=" :field_ref ["field" {} users-field] :value 40.7 :display_value "40.7"}
+              hydrated    (explore-further-and-hydrate! u expl-id page-id [filter-spec])
+              new-thread  (->> hydrated :threads (sort-by :position) last)
+              persisted   (t2/select-one :model/ExplorationBlock :exploration_thread_id (:id new-thread))]
           (is (= "Revenue → Created At: 40.7" (:name new-thread))
               "thread name uses the curated filter dimension label")
           (is (= "Created At"
@@ -2337,8 +2419,10 @@
             expl-id        (:id resp)
             page-id        (-> resp :threads first :blocks first :pages first :id)
             body           {:page_id         page-id
-                            :explore_filters [{:field_ref ["field" {} (mt/id :venues :category_id)]
-                                               :value     1}]}
+                            :explore_filters [{:operator      "="
+                                               :field_ref     ["field" {} (mt/id :venues :category_id)]
+                                               :value         1
+                                               :display_value "1"}]}
             threads-before (t2/count :model/ExplorationThread :exploration_id expl-id)]
         (perms/revoke-collection-permissions! (perms-group/all-users) (:id hidden))
         (testing "an unreadable card is a 403"

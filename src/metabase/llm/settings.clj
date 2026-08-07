@@ -58,6 +58,21 @@
       (throw (ex-info (str deferred-message) {:status-code 400})))
     (setting/set-value-of-type! :string setting-key trimmed)))
 
+(defn normalize-llm-base-url
+  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
+  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
+  [value]
+  (some-> (trimmed-string value)
+          (str/replace #"/+$" "")
+          not-empty))
+
+(defn- set-normalized-base-url!
+  "Set a base-URL setting to `new-value` with trailing slashes trimmed; blank values are stored as nil.
+  Adapters build request URLs as `(str base-url path)`, so a pasted trailing slash would otherwise
+  produce `//models`."
+  [setting-key new-value]
+  (setting/set-value-of-type! :string setting-key (normalize-llm-base-url new-value)))
+
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
 
 (defsetting llm-anthropic-api-key
@@ -160,7 +175,8 @@
   :encryption :no
   :visibility :settings-manager
   :default    "https://api.z.ai/api/paas/v4"
-  :export?    false)
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-zai-api-base-url))
 
 (defsetting llm-zai-api-key
   (deferred-tru "The Z.AI API Key.")
@@ -178,7 +194,8 @@
   :encryption :no
   :visibility :settings-manager
   :default    "https://api.mistral.ai/v1"
-  :export?    false)
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-mistral-api-base-url))
 
 (defsetting llm-mistral-api-key
   (deferred-tru "The Mistral API Key.")
@@ -186,6 +203,23 @@
   :visibility :settings-manager
   :export?    false
   :setter     (partial set-trimmed-string! :llm-mistral-api-key))
+
+;;; ------------------------------------------------- Moonshot --------------------------------------------------
+
+(defsetting llm-moonshot-api-base-url
+  (deferred-tru "The Moonshot AI API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.moonshot.ai/v1"
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-moonshot-api-base-url))
+
+(defsetting llm-moonshot-api-key
+  (deferred-tru "The Moonshot AI API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-moonshot-api-key))
 
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
@@ -245,21 +279,12 @@
   :export?     false
   :setter      (partial set-trimmed-string! :llm-azure-api-key))
 
-(defn normalize-llm-base-url
-  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
-  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
-  [value]
-  (some-> (trimmed-string value)
-          (str/replace #"/+$" "")
-          not-empty))
-
 (defsetting llm-azure-api-base-url
   (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.")
   :encryption  :no
   :visibility  :settings-manager
   :export?     false
-  :setter      (fn [new-value]
-                 (setting/set-value-of-type! :string :llm-azure-api-base-url (normalize-llm-base-url new-value))))
+  :setter      (partial set-normalized-base-url! :llm-azure-api-base-url))
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 

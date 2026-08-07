@@ -1,5 +1,6 @@
 // Shared quarantine gate for all three suites: given a run's failed tests, pass
-// iff every failure is on ci-conductor's quarantine list.
+// iff a suite-level rule covers the whole suite, or every failure is on
+// ci-conductor's per-test quarantine list.
 
 import type { NormalizedTest } from "./contract.ts";
 import { fetchWithRetry } from "./fetchWithRetry.ts";
@@ -20,6 +21,16 @@ export type QuarantineEntry = {
   test_suite: string;
   test_path: string;
   file_path: string;
+};
+
+/**
+ * What `/api/quarantine` tells a CI job: the individual tests that don't gate,
+ * plus the suite-level glob rules. `suites` is served whole regardless of the
+ * `?suite=` filter — the job matches its own suite name against the rules.
+ */
+export type QuarantineList = {
+  tests: QuarantineEntry[];
+  suites: string[];
 };
 
 /**
@@ -91,6 +102,68 @@ export function compareFailedToQuarantine(
   return { quarantined, unquarantined };
 }
 
+/** Regex-escape a literal glob character. */
+function escapeLiteral(char: string): string {
+  return /[.+^$()|[\]\\]/.test(char) ? `\\${char}` : char;
+}
+
+/**
+ * Compile a suite-quarantine glob to a RegExp: `*` is any run, `?` is one
+ * character, `{a,b}` is an alternation, everything else is literal, and the
+ * whole thing matches UNANCHORED (as a substring) and case-insensitively — so
+ * `athena` catches `be-tests-athena-ee` without a trailing `*`.
+ *
+ * This is a deliberate subset of the minimatch semantics ci-conductor validates
+ * globs against (server repo `shared/suiteGlob.ts`), covering everything that
+ * makes sense for suite names, which have no path separators. `release/ci-conductor`
+ * carries no runtime dependencies and CI runs it straight from the checkout, so
+ * pulling in minimatch itself isn't on the table. Brace depth is tracked, so an
+ * unbalanced `{` closes itself rather than compiling to an invalid pattern.
+ *
+ * The pattern is left unanchored because `RegExp.test` already searches anywhere
+ * in the string — that IS the substring semantics.
+ */
+function globToRegExp(glob: string): RegExp {
+  let source = "";
+  let depth = 0;
+  for (const char of glob) {
+    if (char === "*") {
+      source += ".*";
+    } else if (char === "?") {
+      source += ".";
+    } else if (char === "{") {
+      source += "(";
+      depth += 1;
+    } else if (char === "}" && depth > 0) {
+      source += ")";
+      depth -= 1;
+    } else if (char === "," && depth > 0) {
+      source += "|";
+    } else {
+      source += escapeLiteral(char);
+    }
+  }
+  return new RegExp(source + ")".repeat(depth), "i");
+}
+
+/** Does one suite-quarantine glob cover this suite name? */
+export function suiteMatchesGlob(suite: string, glob: string): boolean {
+  const trimmed = glob.trim();
+  // An empty rule would compile to the empty pattern and match every suite.
+  return trimmed !== "" && globToRegExp(trimmed).test(suite);
+}
+
+/**
+ * The first glob rule that quarantines `suite`, or undefined when none does.
+ * Returning the rule itself lets the gate name it in the verdict.
+ */
+export function quarantinedSuiteGlob(
+  suite: string,
+  globs: string[],
+): string | undefined {
+  return globs.find((glob) => suiteMatchesGlob(suite, glob));
+}
+
 /**
  * Adapt the JUnit suites' normalized failures to the gate's `FailedTest` shape.
  * `parseJunit` only emits failing/erroring testcases, but we filter on `status`
@@ -112,17 +185,18 @@ export function junitFailuresToFailedTests(
  * Fetch the quarantine list for `suite` from ci-conductor. The reporter POSTs to
  * `.../webhooks/failed-tests`; the list lives at `.../api/quarantine` on the same
  * host. Transport errors, timeouts, 429s and 5xx are retried with backoff; a 4xx
- * is the request's own fault and returns straight away. Returns null (not [])
- * when it can't be retrieved, so the caller can tell "nothing quarantined" from
- * "couldn't check". Never throws. Logs the path and suite only — never the host
- * (public repo) or the secret. The retry policy is fixed rather than injectable:
- * the tests drive it on fake timers, so there's nothing to shorten for them.
+ * is the request's own fault and returns straight away. Returns null (not an
+ * empty list) when it can't be retrieved, so the caller can tell "nothing
+ * quarantined" from "couldn't check". Never throws. Logs the path and suite only
+ * — never the host (public repo) or the secret. The retry policy is fixed rather
+ * than injectable: the tests drive it on fake timers, so there's nothing to
+ * shorten for them.
  */
-export async function fetchQuarantineList(opts: {
+export async function fetchQuarantine(opts: {
   baseUrl: string;
   suite: string;
   secret?: string;
-}): Promise<QuarantineEntry[] | null> {
+}): Promise<QuarantineList | null> {
   const { baseUrl, suite, secret } = opts;
   const base = baseUrl.replace(/\/+$/, "");
   const url = `${base}/api/quarantine?suite=${encodeURIComponent(suite)}`;
@@ -153,8 +227,10 @@ export async function fetchQuarantineList(opts: {
       return null;
     }
     // `json()` is `any`; this names the wire shape we read (and only read).
-    const body = (await response.json()) as { tests?: QuarantineEntry[] };
-    return body.tests ?? [];
+    // Both keys are optional so a server that predates suite-level rules — or
+    // one that starts serving them — needs no lockstep deploy with this script.
+    const body = (await response.json()) as Partial<QuarantineList>;
+    return { tests: body.tests ?? [], suites: body.suites ?? [] };
   } catch (error) {
     console.error("[ci-conductor] failed to fetch the quarantine list", error);
     return null;
@@ -237,7 +313,7 @@ export async function checkQuarantineGate(opts: {
     });
   }
 
-  const list = await fetchQuarantineList({ baseUrl, suite, secret });
+  const list = await fetchQuarantine({ baseUrl, suite, secret });
   if (list === null) {
     // Couldn't read the list ⇒ can't confirm everything is quarantined.
     return finish({
@@ -248,9 +324,24 @@ export async function checkQuarantineGate(opts: {
     });
   }
 
-  const { quarantined, unquarantined } = compareFailedToQuarantine(failures, list);
+  // A suite-level rule quarantines the whole suite, so its failures never gate
+  // and there's nothing to compare test by test.
+  const suiteGlob = quarantinedSuiteGlob(suite, list.suites);
+  if (suiteGlob) {
+    log(`🏷️  suite rule "${suiteGlob}" covers this suite — no failure here gates.`);
+    return finish({
+      shouldFail: false,
+      reason: `suite "${suite}" is quarantined by the rule "${suiteGlob}"`,
+      dryRun,
+    });
+  }
 
-  log(`📋 quarantine list: ${list.length} test(s) registered for "${suite}"`);
+  const { quarantined, unquarantined } = compareFailedToQuarantine(
+    failures,
+    list.tests,
+  );
+
+  log(`📋 quarantine list: ${list.tests.length} test(s) registered for "${suite}"`);
   log(`💥 this run: ${failures.length} failure(s) to evaluate`);
   for (const test of quarantined) {
     log(`  🔒 quarantined      ${title(test)}`);

@@ -3,6 +3,7 @@ import _ from "underscore";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import {
+  UPDATE_QUESTION,
   onCloseQuestionInfo,
   setUIControls,
 } from "metabase/redux/query-builder";
@@ -77,7 +78,6 @@ export type UpdateQuestionOpts = {
 /**
  * Replaces the currently active question with the given Question object.
  */
-export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
 export const updateQuestion = (
   newQuestion: Question,
   {
