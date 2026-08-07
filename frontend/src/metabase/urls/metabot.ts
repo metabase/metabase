@@ -34,8 +34,19 @@ export function generatedEntity(entity: GeneratedEntity) {
   }
 }
 
+export const CONVERSATION_BASE_PATH = "metabot/conversation";
+
 export function metabotConversation(conversationId: string) {
-  return `/metabot/conversation/${conversationId}`;
+  return `/${CONVERSATION_BASE_PATH}/${conversationId}`;
+}
+
+// react-router matches the route with or without a trailing slash.
+const CONVERSATION_URL_REGEX = new RegExp(
+  `^/${CONVERSATION_BASE_PATH}/[^/]+/?$`,
+);
+
+export function isMetabotConversationUrl(pathname: string): boolean {
+  return CONVERSATION_URL_REGEX.test(pathname);
 }
 
 export type ConversationChart = {
