@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.self.catalog :as catalog]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.vllm :as vllm]
@@ -186,7 +187,10 @@
   incomplete, or [[metabase.llm.health]] has it recorded as failing — and `llm-provider-fallback-enabled?` is on,
   this is the default model of the next connection in the list that can. With nothing to fall back to, `model-ref`
   is returned unchanged so the request fails against the provider the admin chose rather than silently doing
-  nothing."
+  nothing.
+
+  Resolved per request against the current record, so this is not a rotation: it reads as `model-ref` again the
+  moment that connection stops failing, without anything having to switch back."
   [model-ref]
   (or (when (and (llm.settings/llm-provider-fallback-enabled?)
                  (not (llm.provider/connection-serviceable?
@@ -201,7 +205,7 @@
   [model-ref effective-ref]
   (when (not= model-ref effective-ref)
     {:model                  effective-ref
-     :model_name             (llm.provider/model-ref->model effective-ref)
+     :model_name             (catalog/model-name effective-ref)
      :provider_name          (connection-display-name effective-ref)
      :previous_model         model-ref
      :previous_provider_name (connection-display-name model-ref)}))

@@ -39,6 +39,12 @@
   `list-models` returns the intersection of this map with the `/models` catalog."
   {"glm-5.2" "GLM-5.2"})
 
+(defn model-display-name
+  "What the model picker calls `model`, or nil when it is not one of the [[supported-models]] — the caller shows the
+  id itself rather than inventing a name for it."
+  [model]
+  (get supported-models model))
+
 (defn- supported-model?
   "Whether a `/models` catalog entry is one of the [[supported-models]]."
   [{:keys [id]}]

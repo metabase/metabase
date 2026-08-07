@@ -262,6 +262,12 @@
    "gpt-5.4-pro"   "GPT-5.4 Pro"
    "gpt-5.4-mini"  "GPT-5.4 Mini"})
 
+(defn model-display-name
+  "What the model picker calls `model`, or nil when it is not one of the [[supported-models]] — the caller shows the
+  id itself rather than inventing a name for it."
+  [model]
+  (get supported-models model))
+
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
   [{:keys [id]}]

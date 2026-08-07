@@ -186,6 +186,12 @@
    "openai.gpt-5.5"             "GPT-5.5"
    "openai.gpt-5.5-2026-04-23"  "GPT-5.5 (2026-04-23)"})
 
+(defn model-display-name
+  "What the model picker calls `model`, or nil when it is not one of the [[supported-models]] — the caller shows the
+  id itself rather than inventing a name for it."
+  [model]
+  (get supported-models model))
+
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
   [{:keys [id]}]
