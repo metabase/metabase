@@ -70,6 +70,7 @@
    "openai/gpt-5.4"                  "GPT-5.4"
    "openai/gpt-5.4-pro"              "GPT-5.4 Pro"
    "openai/gpt-5.4-mini"             "GPT-5.4 Mini"
+   "qwen/qwen3.8-max"                "Qwen3.8 Max"
    "z-ai/glm-5.2"                    "GLM-5.2"})
 
 (defn- supported-model?

@@ -280,6 +280,7 @@
                                     :body   {:data [{:id "openai/gpt-5.6-sol"          :name "OpenAI: GPT-5.6 Sol"          :created 50}
                                                     {:id "openai/gpt-5.6-terra"        :name "OpenAI: GPT-5.6 Terra"        :created 49}
                                                     {:id "openai/gpt-5.6-luna"         :name "OpenAI: GPT-5.6 Luna"         :created 48}
+                                                    {:id "qwen/qwen3.8-max"            :name "Qwen: Qwen3.8 Max"            :created 41}
                                                     {:id "qwen/qwen3.7-max"            :name "Qwen: Qwen3.7 Max"            :created 40}
                                                     {:id "openai/gpt-5.4"              :name "OpenAI: GPT-5.4"              :created 30}
                                                     {:id "openai/gpt-oss-120b:free"    :name "OpenAI: gpt-oss-120b (free)"  :created 28}
@@ -294,7 +295,8 @@
                 {:id "openai/gpt-5.4"              :display_name "OpenAI: GPT-5.4"}
                 {:id "openai/gpt-5.6-luna"         :display_name "OpenAI: GPT-5.6 Luna"}
                 {:id "openai/gpt-5.6-sol"          :display_name "OpenAI: GPT-5.6 Sol"}
-                {:id "openai/gpt-5.6-terra"        :display_name "OpenAI: GPT-5.6 Terra"}]
+                {:id "openai/gpt-5.6-terra"        :display_name "OpenAI: GPT-5.6 Terra"}
+                {:id "qwen/qwen3.8-max"            :display_name "Qwen: Qwen3.8 Max"}]
                (:models (openrouter/list-models {:credentials byok-credentials}))))))))
 
 (deftest openrouter-raw-explicit-credentials-test
