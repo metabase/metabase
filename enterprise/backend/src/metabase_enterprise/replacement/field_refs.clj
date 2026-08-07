@@ -4,8 +4,8 @@
    [metabase-enterprise.replacement.walk :as replacement.walk]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.models.visualization-settings :as vs]
    [metabase.source-swap.core :as source-swap]
+   [metabase.visualization-settings.core :as vs]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

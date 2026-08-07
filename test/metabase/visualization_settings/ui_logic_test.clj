@@ -1,7 +1,7 @@
-(ns metabase.util.ui-logic-test
+(ns metabase.visualization-settings.ui-logic-test
   (:require
    [clojure.test :refer :all]
-   [metabase.util.ui-logic :as ui-logic]))
+   [metabase.visualization-settings.ui-logic :as ui-logic]))
 
 (deftest ^:parallel find-goal-value-with-numeric-goal-test
   (testing "Progress chart goal value extraction with numeric goal"
@@ -52,6 +52,36 @@
                   :result {:data {:cols []
                                   :rows []}}}]
       (is (= 0 (ui-logic/find-goal-value result))))))
+
+(deftest ^:parallel find-goal-value-with-card-ref-test
+  (testing "a {:card_id N :column ...} goal resolves against [:result :data :referenced_cards]"
+    (let [referenced-cards {"42" {:status "completed"
+                                  :data   {:cols [{:name "total"}]
+                                           :rows [[75]]}}}]
+      (testing "graph goal line"
+        (let [result {:card   {:display :bar
+                               :visualization_settings {:graph.goal_value {:card_id 42 :column "total"}}}
+                      :result {:data {:cols []
+                                      :rows []
+                                      :referenced_cards referenced-cards}}}]
+          (is (= 75 (ui-logic/find-goal-value result)))))
+      (testing "progress goal"
+        (let [result {:card   {:display :progress
+                               :visualization_settings {:progress.goal {:card_id 42 :column "total"}}}
+                      :result {:data {:cols []
+                                      :rows []
+                                      :referenced_cards referenced-cards}}}]
+          (is (= 75 (ui-logic/find-goal-value result))))))))
+
+(deftest ^:parallel find-goal-value-with-failed-card-ref-test
+  (testing "a card ref whose referenced query failed throws"
+    (let [result {:card   {:display :bar
+                           :visualization_settings {:graph.goal_value {:card_id 42 :column "total"}}}
+                  :result {:data {:cols []
+                                  :rows []
+                                  :referenced_cards {"42" {:status "failed" :error "boom"}}}}}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
+                            (ui-logic/find-goal-value result))))))
 
 (deftest ^:parallel extract-goal-value-from-column-with-valid-data-test
   (testing "Extract goal value from column with valid column and data"

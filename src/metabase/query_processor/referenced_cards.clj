@@ -18,7 +18,8 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 ;;; ---------------------------------------------------------------------------------------------------------
 ;;; Running the specs. Generic: a spec is `{:card_id, :columns, :max_rows}`, whatever produced it.
@@ -139,23 +140,14 @@
     (inject-referenced-cards rff result)
     rff))
 
-(defn- ->goal-source
-  [goal-value]
-  (when (and (map? goal-value) (:card_id goal-value) (:column goal-value))
-    (perf/select-keys goal-value [:card_id :column])))
-
 (defn viz-settings->goal-specs
   "Extract referenced-card specs from merged viz settings; nil when there are none."
   [viz]
-  (let [segments (concat (:gauge.segments viz) (:scalar.segments viz))
-        sources  (keep ->goal-source
-                       (cons (:graph.goal_value viz)
-                             (mapcat (juxt :min :max) segments)))]
-    (when (seq sources)
-      (perf/mapv (fn [[card-id ss]]
-                   {:card_id card-id
-                    :columns (vec (distinct (map :column ss)))})
-                 (group-by :card_id sources)))))
+  (when-let [sources (seq (keep dynamic-goals/card-ref (dynamic-goals/goal-values viz)))]
+    (perf/mapv (fn [[card-id ss]]
+                 {:card_id card-id
+                  :columns (vec (distinct (map :column ss)))})
+               (group-by :card_id sources))))
 
 (defn maybe-wrap-qp-for-goals
   "Derive specs from a card's merged `viz` settings and wrap `qp` to inject their values."
