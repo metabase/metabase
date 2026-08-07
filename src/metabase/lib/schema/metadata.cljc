@@ -637,8 +637,10 @@
 (mr/def ::card.query
   "Saved query. This is possibly still a legacy query, but should already be normalized.
   Call [[metabase.lib.convert/->mbql5]] on it as needed."
+  ;; open: this is whatever query the card holds, in any MBQL version, and it is passed on as it arrived
   [:map
-   {:decode/normalize normalize-card-query}])
+   {:closed           false
+    :decode/normalize normalize-card-query}])
 
 (defn- normalize-card [card]
   (when card
@@ -725,8 +727,10 @@
 (mr/def ::measure.definition
   "Measure definition query. This should be an MBQL5 query with a single stage and one aggregation.
    Strict validation via :metabase.lib.schema.measure/definition happens in metabase.measures.models.measure."
+  ;; open: strict validation happens in `metabase.measures.models.measure`, this only normalizes
   [:map
-   {:decode/normalize normalize-measure-definition}])
+   {:closed           false
+    :decode/normalize normalize-measure-definition}])
 
 (defn- mock-measure [measure]
   (cond-> measure

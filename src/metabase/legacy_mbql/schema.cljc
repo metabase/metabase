@@ -1754,9 +1754,9 @@
   "Schema for a valid value for a `:source-query`."
   [:and
    ;; normalize the keys in the map first so we can check for the presence of `:native` versus `:mbql` in the `:multi`
-   ;; schema below
-   [:map
-    {:decode/normalize lib.schema.common/normalize-map}]
+   ;; schema below. Carried on the `:and` rather than on a keyless `[:map ...]` sibling, which would declare no keys
+   ;; and so strip the whole query while decoding.
+   {:decode/normalize lib.schema.common/normalize-map}
    [:multi
     {:dispatch (fn [x]
                  (if ((every-pred map? :native) x)
@@ -2087,9 +2087,10 @@
    ;;    {:aggregation "ROWS"} => {:aggregation nil}
    ;;
    ;; but not actually remove that key; so we need this second pass to remove it.
+   ;; open: this only exists to run a second normalization pass, so it must not constrain (or strip) any keys
    [:schema
     {:decode/normalize #'remove-empty-keys-from-mbql-inner-query}
-    :map]
+    [:map {:closed false}]]
    ;;
    ;; CONSTRAINTS
    ;;
@@ -2198,8 +2199,9 @@
 
 (mr/def ::Query
   [:and
-   [:map
-    {:decode/normalize #'normalize-query}]
+   ;; carried here rather than on a keyless `[:map ...]` sibling, which would declare no keys and so strip the whole
+   ;; query while decoding
+   {:decode/normalize #'normalize-query}
    ;; need to move source metadata to the correct location FIRST so it gets normalized by the schema below
    [:ref ::CheckQueryDoesNotHaveSourceMetadata]
    [:map
