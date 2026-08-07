@@ -87,7 +87,6 @@ export interface LlmProviderConnection {
 export interface LlmModel {
   id: string;
   display_name: string;
-  group?: string | null;
 }
 
 export interface LlmConnectionModels {
