@@ -37,7 +37,7 @@ describe("scenarios > models > create", () => {
     cy.location("pathname").should("match", /^\/model\/\d+-.*$/);
     cy.findByTestId("question-row-count").should("have.text", "Showing 1 row");
 
-    checkIfPinned(modelName);
+    checkIfNotPinned(modelName);
   });
 
   // This covers creating a GUI model from the browse page + nocollection permissions (2 in 1)
@@ -106,14 +106,10 @@ function navigateToNewModelPage(queryType = "native") {
   }
 }
 
-function checkIfPinned(modelName) {
+function checkIfNotPinned(modelName) {
   cy.findByTestId("app-bar").findByText("Our analytics").click();
   cy.location("pathname").should("eq", "/collection/root");
 
-  cy.findByText(modelName)
-    .closest("a")
-    .find(".Icon-ellipsis")
-    .click({ force: true });
-
-  H.popover().findByText("Unpin").should("be.visible");
+  H.getUnpinnedSection().findByText(modelName).should("be.visible");
+  H.getPinnedSection().should("not.exist");
 }

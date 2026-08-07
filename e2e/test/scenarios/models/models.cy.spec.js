@@ -87,7 +87,7 @@ describe("scenarios > models", () => {
         .findAllByText("Our analytics")
         .first()
         .click();
-      getCollectionItemCard("Products Model").icon("model");
+      getCollectionItemRow("Products Model").icon("model");
       getCollectionItemRow("Q1").icon("table2");
 
       cy.url().should("not.include", "/question/" + id);
@@ -167,9 +167,7 @@ describe("scenarios > models", () => {
     });
 
     cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
-    getCollectionItemCard("Product Model").within(() => {
-      cy.icon("model");
-    });
+    getCollectionItemRow("Product Model").icon("model");
     getCollectionItemRow("Q1").icon("table2");
 
     cy.location("pathname").should("eq", "/collection/root");
@@ -647,10 +645,6 @@ describe("scenarios > models", () => {
 
 function getCollectionItemRow(itemName) {
   return cy.findByText(itemName).closest("tr");
-}
-
-function getCollectionItemCard(itemName) {
-  return cy.findByText(itemName).closest("a");
 }
 
 function getResults() {
