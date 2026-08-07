@@ -17,6 +17,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -181,7 +182,7 @@
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-       [:parameters          {:optional true} [:maybe [:sequential ms/Map]]]]
+       [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]
    request]
   (create-pulse-with-perm-checks!
    cards
@@ -253,7 +254,7 @@
                                           [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                           [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                           [:archived      {:default false} [:maybe :boolean]]
-                                          [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]
+                                          [:parameters    {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]]
   ;; do various perms checks
   (try
     (perms/check-has-application-permission :monitoring)
@@ -345,7 +346,7 @@
                                          [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                          [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-                                         [:parameters          {:optional true} [:maybe [:sequential ms/Map]]]
+                                         [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
                                          [:alert_condition     {:optional true} [:maybe models.pulse/AlertConditions]]
                                          [:alert_first_only    {:optional true} [:maybe :boolean]]
                                          [:alert_above_goal    {:optional true} [:maybe :boolean]]]

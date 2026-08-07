@@ -1793,6 +1793,7 @@
            lib
            models
            notification
+           parameters
            permissions
            premium-features
            query-processor

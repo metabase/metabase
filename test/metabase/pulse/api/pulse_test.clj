@@ -481,7 +481,7 @@
                    :model/PulseChannel          pc    {:pulse_id (u/the-id pulse)}
                    :model/PulseChannelRecipient _     {:pulse_channel_id (u/the-id pc) :user_id (mt/user->id :rasta)}
                    :model/Card                  card  {}]
-      (let [filter-params [{:id "123abc", :name "species", :type "string"}]]
+      (let [filter-params [{:id "123abc", :name "species", :type "string/="}]]
         (with-pulses-in-writeable-collection! [pulse]
           (api.card-test/with-cards-in-readable-collection! [card]
             (is (= (merge

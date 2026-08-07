@@ -131,6 +131,23 @@
      {:in  (comp mi/json-in normalize-parameters)
       :out (comp (mi/catch-normalization-exceptions normalize-parameters) mi/json-out-with-keywordization)}))
 
+(mr/def ::parameter-options
+  "Options the frontend attaches to a parameter value."
+  [:map
+   [:case-sensitive {:optional true} :boolean]])
+
+(mr/def ::parameter-with-value
+  "A parameter *value* supplied when running a query, as opposed to a stored parameter declaration. These are the keys
+  the frontend's `normalizeParameters` sends."
+  [:map
+   {:description "parameter must be a map with an :id key"}
+   [:id      ::lib.schema.common/non-blank-string]
+   [:type    {:optional true} [:maybe [:ref ::lib.schema.parameter/type]]]
+   [:value   {:optional true} :any]
+   [:default {:optional true} :any]
+   [:target  {:optional true} [:maybe [:ref ::lib.schema.parameter/target]]]
+   [:options {:optional true} [:maybe [:ref ::parameter-options]]]])
+
 (mr/def ::parameter-mapping
   "Schema for a valid Parameter Mapping"
   [:map
