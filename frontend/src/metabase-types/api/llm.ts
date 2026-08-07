@@ -39,6 +39,7 @@ export type LlmProviderTypeName =
   | "openrouter"
   | "mistral"
   | "zai"
+  | "moonshot"
   | "azure"
   | "bedrock"
   | "metabase";

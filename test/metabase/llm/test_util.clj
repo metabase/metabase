@@ -13,6 +13,7 @@
    "openrouter" {:api-key "sk-or-v1-test"}
    "mistral"    {:api-key "mistral-test-key"}
    "zai"        {:api-key "zai-test-key"}
+   "moonshot"   {:api-key "sk-moonshot-test-key"}
    "azure"      {:api-key         "azure-test-key"
                  :base-url        azure-base-url
                  :model-family    "openai"
@@ -32,7 +33,7 @@
     :config (merge (get dummy-configs type-name) config-overrides)}))
 
 (def default-connections
-  (mapv connection ["anthropic" "openai" "openrouter" "mistral" "zai" "azure" "bedrock" "metabase"]))
+  (mapv connection ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "azure" "bedrock" "metabase"]))
 
 (defn do-with-connections!
   [connections thunk]

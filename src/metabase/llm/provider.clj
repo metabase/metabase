@@ -111,6 +111,21 @@
                      :type      :text
                      :advanced? true
                      :default   "https://api.z.ai/api/paas/v4"}]}
+   {:type          "moonshot"
+    :label         (deferred-tru "Moonshot AI")
+    :default-model "kimi-k3"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     :required?   true
+                     :placeholder "sk-..."
+                     :docs-url    "https://platform.kimi.ai/console/api-keys"}
+                    {:key       :base-url
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.moonshot.ai/v1"
+                     :help      (deferred-tru "Point this at the .cn platform to use it instead; keys are not interchangeable between the two.")}]}
    {:type          "azure"
     :label         (deferred-tru "Microsoft Azure")
     :default-model nil
@@ -323,6 +338,9 @@
    "zai"        {:type     "zai"
                  :settings {:api-key  {:setting :llm-zai-api-key :credential? true}
                             :base-url {:setting :llm-zai-api-base-url}}}
+   "moonshot"   {:type     "moonshot"
+                 :settings {:api-key  {:setting :llm-moonshot-api-key :credential? true}
+                            :base-url {:setting :llm-moonshot-api-base-url}}}
    "azure"      {:type     "azure"
                  :settings {:api-key         {:setting :llm-azure-api-key :credential? true}
                             :base-url        {:setting :llm-azure-api-base-url :credential? true}
