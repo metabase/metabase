@@ -77,13 +77,18 @@
    {:description      "parameter must be a map with :id and :type keys"
     :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:default              {:optional true} :any]
+   [:display-name         {:optional true} [:maybe :string]]
    ;; TODO (Cam 9/18/25) -- why are we mixing `camelCase` and `snake_case` here? Is this to make me sad?
    [:filteringParameters  {:optional true} [:maybe [:sequential ::lib.schema.parameter/id]]]
    [:id                   ::lib.schema.parameter/id]
+   ;; whether the widget lets you pick more than one value. Saved on the parameter by the "A single value"/"Multiple
+   ;; values" picker, and read back by the frontend to choose the widget, so it has to survive a round trip.
+   [:isMultiSelect        {:optional true} [:maybe :boolean]]
    [:mappings             {:optional true} [:maybe [:or
                                                     [:sequential [:ref ::parameter-mapping]]
                                                     [:set [:ref ::parameter-mapping]]]]]
    [:name                 {:optional true} :string]
+   [:options              {:optional true} [:maybe [:ref ::lib.schema.parameter/parameter.options]]]
    [:required             {:optional true} [:maybe :boolean]]
    ;; ok now I know you're trying to mess with me with this camelCase key
    [:sectionId            {:optional true} ::lib.schema.common/non-blank-string]
@@ -91,6 +96,8 @@
    [:target               {:optional true} [:ref ::lib.schema.parameter/target]]
    [:temporal_units       {:optional true} [:maybe [:sequential ::lib.schema.temporal-bucketing/unit]]]
    [:type                 [:ref ::lib.schema.parameter/type]]
+   ;; the currently selected value. Dashboard subscriptions save their filter values on the parameter itself.
+   [:value                {:optional true} :any]
    [:values_query_type    {:optional true} [:maybe ::values-query-type]]
    [:values_source_config {:optional true} [:maybe ::values-source-config]]
    [:values_source_type   {:optional true} [:maybe ::values-source-type]]])

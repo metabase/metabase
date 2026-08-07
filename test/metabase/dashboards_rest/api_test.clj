@@ -5474,6 +5474,26 @@
               (is (= (set (map :id original-param-cards))
                      (set (map :id updated-param-cards)))))))))))
 
+(deftest dashboard-update-preserves-widget-shape-parameter-keys-test
+  (testing "PUT /api/dashboard/:id round-trips the parameter keys that decide how the widget renders"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (let [parameter {:name          "Title"
+                         :display-name  "Title"
+                         :slug          "title"
+                         :id            "_TITLE_"
+                         :type          "string/contains"
+                         :sectionId     "string"
+                         :isMultiSelect false
+                         :options       {:case-sensitive false}
+                         :value         ["Awesome"]}]
+          (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                {:parameters [parameter]})
+          (is (= [(-> parameter
+                      (update :type keyword)
+                      (assoc :sectionId "string"))]
+                 (:parameters (t2/select-one :model/Dashboard :id dashboard-id)))))))))
+
 (deftest dashboard-update-mixed-parameter-changes-test
   (testing "PUT /api/dashboard/:id correctly handles mix of unchanged and changed parameters"
     (mt/with-temp [:model/Card {source-card-id-1 :id} {:database_id   (mt/id)

@@ -338,6 +338,10 @@
   [_route-params
    _query-params
    {:keys [cards channels] :as body} :- [:map
+                                         ;; the saved subscription this is a test send of, when there is one.
+                                         ;; `send-pulse!` builds the non-user unsubscribe link out of it, and the
+                                         ;; email template drops the whole "Unsubscribe" footer without a link
+                                         [:id                  {:optional true} [:maybe ms/PositiveInt]]
                                          [:name                ms/NonBlankString]
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
                                          [:channels            [:+ PulseChannel]]
