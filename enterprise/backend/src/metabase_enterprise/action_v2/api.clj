@@ -150,8 +150,8 @@
    :- [:map
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
-       [:params {:optional true} :map]
-       [:input {:optional true} :map]]]
+       [:params {:optional true} ms/Map]
+       [:input {:optional true} ms/Map]]]
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
@@ -188,7 +188,7 @@
    :- [:map
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
-       [:inputs [:sequential {:min 1} :map]]
+       [:inputs [:sequential {:min 1} ms/Map]]
        [:params {:optional true} [:map-of :keyword :any]]]]
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.

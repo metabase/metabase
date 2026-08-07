@@ -413,12 +413,13 @@
 (mr/def ::NotificationCard
   "Schema for :model/NotificationCard."
   [:map
-   [:card_id                         ms/PositiveInt]
-   [:id             {:optional true} ms/PositiveInt]
-   [:notification_id {:optional true} ms/PositiveInt]
-   [:card           {:optional true} [:maybe :map]]
-   [:send_condition {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
-   [:send_once      {:optional true} :boolean]])
+   [:card_id                          ms/PositiveInt]
+   ;; nil on an unsaved notification, e.g. the one POST /api/pulse/test builds to send a test alert
+   [:id              {:optional true} [:maybe ms/PositiveInt]]
+   [:notification_id {:optional true} [:maybe ms/PositiveInt]]
+   [:card            {:optional true} [:maybe :map]]
+   [:send_condition  {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
+   [:send_once       {:optional true} :boolean]])
 
 (t2/define-before-insert :model/NotificationCard
   [instance]
