@@ -254,11 +254,12 @@
           (is (= want (hook-module config ns)))
           (is (= want (dev-module dev-prefix->module ns)))
           (if (babashka-available?)
-            (do
-              (is (= want (bb-mage-file->module modules-config file)))
+            ;; one subprocess per case, not one per assertion
+            (let [mage-result (bb-mage-file->module modules-config file)]
+              (is (= want mage-result))
               (is (= (hook-module config ns)
                      (dev-module dev-prefix->module ns)
-                     (bb-mage-file->module modules-config file))))
+                     mage-result)))
             (is false (str "Cannot cross-check the mage resolver mirror: no working babashka at "
                            "./bin/bb or on PATH. Run any ./bin/mage task once to install it. "
                            "Skipping silently would let the mage mirror drift out of sync "
@@ -300,6 +301,12 @@
               (is (= (boolean (hook-namable {:metabase/modules config} caller target))
                      (boolean (dev-namable config caller target)))))))))))
 
+;; The tests below assert against real on-disk test files rather than fixtures, because the point is
+;; that resolution lands on paths that actually exist. That couples them to files they do not own:
+;; `actions_rest/api_test.clj`, `lib/schema/util_test.cljc`, `lib/schema_test.cljc`,
+;; `cache_backend/db_test.clj` and `lib/js_test.cljs`. Renaming or deleting any of those breaks these
+;; tests without the resolution logic having changed. If that happens, repoint the path rather than
+;; assuming a resolver regression.
 (deftest ^:parallel dotted-module-test-paths-test
   (testing "Dotted modules resolve to the actual on-disk test paths for both default and explicit prefixes"
     (let [modules-config {'actions.rest {:ns-prefix "metabase.actions-rest"}
