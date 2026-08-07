@@ -55,8 +55,12 @@
 (defn transform-query->text
   "Render a transform source query for model context: the native SQL when the query
   has any, otherwise the EDN of the query with its metadata provider stripped so the
-  provider is never printed into the context window."
+  provider is never printed into the context window. String queries (legacy data and
+  orphaned sources, which skip normalization) pass through verbatim."
   [query]
   (when query
-    (or (extract-sql-content query)
-        (pr-str (dissoc query :lib/metadata)))))
+    (cond
+      (string? query) query
+      (map? query)    (or (extract-sql-content query)
+                          (pr-str (dissoc query :lib/metadata)))
+      :else           (pr-str query))))
