@@ -89,6 +89,7 @@ export function CleanupTablePage() {
     },
     { skip: tableId == null },
   );
+  const hasCandidateData = candidatesQuery.data != null;
   const snapshotId = candidatesQuery.data?.snapshot?.id ?? null;
 
   const scrollToPanel = useCallback((element: HTMLDivElement | null) => {
@@ -156,6 +157,9 @@ export function CleanupTablePage() {
   };
 
   useEffect(() => {
+    if (!hasCandidateData) {
+      return;
+    }
     if (
       previousSnapshotId.current !== undefined &&
       previousSnapshotId.current !== snapshotId &&
@@ -167,7 +171,7 @@ export function CleanupTablePage() {
     // Only react to the snapshot identity; params are intentionally read from
     // the current render so a completed refresh closes an obsolete report.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshotId]);
+  }, [hasCandidateData, snapshotId]);
 
   if (tableId == null) {
     return (

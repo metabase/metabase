@@ -61,10 +61,9 @@ export const usageMetadataApi = EnterpriseApi.injectEndpoints({
       UsageMetadataCandidateDetail,
       DismissUsageMetadataCandidateRequest
     >({
-      query: ({ id, ...body }) => ({
+      query: ({ id }) => ({
         method: "POST",
         url: `${BASE_URL}/candidates/${id}/dismiss`,
-        body,
       }),
       invalidatesTags: (response, error, { id }) =>
         invalidateTags(error, [

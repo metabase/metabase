@@ -125,7 +125,7 @@ export function CandidatePanelBody({
           <Text fw="bold">{t`Used by saved content`}</Text>
           {candidate.sources.map((source) => (
             <SourceRow
-              key={source.id}
+              key={source.card_id}
               source={source}
               candidateType={candidate.candidate_type}
             />
