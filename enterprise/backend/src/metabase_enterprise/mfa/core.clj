@@ -33,7 +33,8 @@
   `mfa-enforcement` to a non-`:off` value and (in later PRs) starting new enrollments."
   :feature :none
   [provider login-result]
-  (gate/apply-mfa-gate provider login-result))
+  (doto (gate/apply-mfa-gate provider login-result)
+    (log/error)))
 
 (defenterprise verify-second-factor!
   "Verify a second-factor code (TOTP, recovery, or emailed one-time code) for user-id, atomically
