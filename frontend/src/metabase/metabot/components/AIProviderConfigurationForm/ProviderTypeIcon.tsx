@@ -9,6 +9,7 @@ import AnthropicMark from "./logos/anthropic.svg?component";
 import AzureMark from "./logos/azure.svg?component";
 import BedrockMark from "./logos/bedrock.svg?component";
 import MistralMark from "./logos/mistral.svg?component";
+import MoonshotMark from "./logos/moonshot.svg?component";
 import OpenAiMark from "./logos/openai.svg?component";
 import OpenRouterMark from "./logos/openrouter.svg?component";
 import ZaiMark from "./logos/zai.svg?component";
@@ -28,6 +29,7 @@ const PROVIDER_LOGOS: Record<
   bedrock: BedrockMark,
   mistral: MistralMark,
   zai: ZaiMark,
+  moonshot: MoonshotMark,
   azure: AzureMark,
   metabase: null,
 };

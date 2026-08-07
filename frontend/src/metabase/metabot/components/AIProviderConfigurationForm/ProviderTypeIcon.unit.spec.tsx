@@ -28,6 +28,7 @@ describe("ProviderTypeIcon", () => {
     "openrouter",
     "mistral",
     "zai",
+    "moonshot",
     "azure",
     "bedrock",
   ] as const)("renders the vendor logo for %s", (type) => {
