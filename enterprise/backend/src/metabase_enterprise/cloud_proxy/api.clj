@@ -22,15 +22,14 @@
   Parameters are named in kebab-case only, which is both what the FE sends (see
   `frontend/src/metabase/api/cloud-proxy.ts`) and what the Store client expects. Callers that spell them
   snake_case (`new_plan_alias`) are normalized by the `:decode/api` hook before validation, so the decoded
-  body is forwarded as-is. The alternatives span operations rather than being keyed by them because a body
-  schema cannot dispatch on the `:operation-id` route param -- the operation itself rejects parameters that
-  don't belong to it. Adding an operation to the allowlists above means adding its parameters here."
-  [:or {:decode/api {:enter m.util/deep-kebab-keys}}
-   [:map {:closed true}]
-   [:map [:plan-alias ms/NonBlankString]]
-   [:map
-    [:new-plan-alias  ms/NonBlankString]
-    [:force-end-trial {:optional true} :boolean]]])
+  body is forwarded as-is. The parameters span operations rather than being keyed by them because a body
+  schema cannot dispatch on the `:operation-id` route param, and each is therefore optional -- the operation
+  itself rejects parameters that don't belong to it, or are missing. Adding an operation to the allowlists
+  above means adding its parameters here."
+  [:map {:decode/api {:enter m.util/deep-kebab-keys}}
+   [:plan-alias      {:optional true} ms/NonBlankString]
+   [:new-plan-alias  {:optional true} ms/NonBlankString]
+   [:force-end-trial {:optional true} :boolean]])
 
 (def ^:private non-superuser-operation-allowlist
   #{"list-plans"
