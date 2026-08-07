@@ -190,8 +190,6 @@
 (mr/def ::template-tag
   [:and
    {:decode/normalize common/normalize-map}
-   [:map
-    [:type [:ref ::type]]]
    [:multi {:dispatch #(keyword (:type %))}
     [:temporal-unit [:ref ::temporal-unit]]
     [:dimension     [:ref ::field-filter]]
