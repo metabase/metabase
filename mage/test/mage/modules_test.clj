@@ -430,7 +430,26 @@
           twice (splice once block)]
       (is (str/includes? once "# hand-maintained"))
       (is (str/includes? once "foo/bar @team"))
-      (is (= once twice)))))
+      (is (= once twice))))
+  (testing "text on BOTH sides of the marked region survives, with the block still between them"
+    ;; This is the normal layout: the generated block sits above the hand-maintained rules, so the
+    ;; trailing-content branch of the in-place splice is load-bearing. The idempotence case above
+    ;; leaves an empty tail and would not notice it being dropped.
+    (let [begin  @#'mage.modules/codeowners-begin-marker
+          end    @#'mage.modules/codeowners-end-marker
+          splice @#'mage.modules/splice-codeowners
+          base   (str "# header\n" begin "\nold/path @old\n" end "\n\n# exceptions\nsrc/a.clj @owner\n")
+          block  (str begin "\nnew/path @new\n" end)
+          out    (splice base block)]
+      (is (str/includes? out "# header") "leading content survives")
+      (is (str/includes? out "src/a.clj @owner") "trailing content survives")
+      (is (str/includes? out "new/path @new") "the block was replaced")
+      (is (not (str/includes? out "old/path @old")) "the previous block is gone")
+      (is (< (str/index-of out "# header")
+             (str/index-of out "new/path @new")
+             (str/index-of out "src/a.clj @owner"))
+          "and the block still sits between the two")
+      (is (= out (splice out block)) "still idempotent with content on both sides"))))
 
 (deftest codeowners-block-orders-children-after-parents
   (testing (str "Stanzas sort by source path so a nested child's dirs come after its parent's. "
@@ -443,8 +462,8 @@
                       lib.schema {:team "Querying Platform"}}
           assignees {"Querying Platform" "@metabase/querying-platform"}
           block     (#'mage.modules/codeowners-block config assignees)
-          lines     (->> (clojure.string/split-lines block)
-                         (filter #(clojure.string/starts-with? % "src/metabase/lib")))]
+          lines     (->> (str/split-lines block)
+                         (filter #(str/starts-with? % "src/metabase/lib")))]
       (is (= 2 (count lines)) "both parent and child stanzas are emitted")
       (is (= ["src/metabase/lib @metabase/querying-platform"
               "src/metabase/lib/schema @metabase/querying-platform"]
@@ -455,8 +474,8 @@
                 "stanza rather than emitting a bad handle or being dropped silently.")
     (let [config    '{lib {:team "Nonexistent Team"}}
           block     (#'mage.modules/codeowners-block config {"Querying Platform" "@metabase/querying-platform"})
-          src-lines (->> (clojure.string/split-lines block)
-                         (filter #(clojure.string/includes? % "src/metabase/lib")))]
+          src-lines (->> (str/split-lines block)
+                         (filter #(str/includes? % "src/metabase/lib")))]
       (is (seq src-lines) "the module still appears in the block")
-      (is (every? #(clojure.string/starts-with? % "#") src-lines)
+      (is (every? #(str/starts-with? % "#") src-lines)
           "but every one of its path lines is commented out"))))
