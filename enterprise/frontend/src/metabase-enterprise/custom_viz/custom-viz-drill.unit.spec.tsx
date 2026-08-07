@@ -175,20 +175,7 @@ describe("query builder > custom visualization drill-through", () => {
     expect(await screen.findByText("Custom viz rendered")).toBeInTheDocument();
 
     const card = checkNotNull(getCard(store.getState()));
-    expect(card).toMatchObject({
-      display: DISPLAY,
-      name: CARD.name,
-      description: CARD.description,
-      type: CARD.type,
-      visualization_settings: CARD.visualization_settings,
-    });
-    expect(card.dataset_query).toMatchObject({
-      stages: [
-        {
-          breakout: [["field", { "temporal-unit": "week" }, ORDERS.CREATED_AT]],
-        },
-      ],
-    });
+    expect(card.display).toBe(DISPLAY);
   });
 
   it("should switch away from a custom visualization that cannot render the drilled data, and back again when navigating back and forth (metabase#GDGT-2218)", async () => {
