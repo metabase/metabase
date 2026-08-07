@@ -106,6 +106,20 @@ function getSearchCalls(collectionId: CollectionId = collection.id) {
   );
 }
 
+function getItemsSearchParams() {
+  return getItemsCalls().map((call) => new URL(call.url).searchParams);
+}
+
+function findItemsSearchParamsByModels(models: string[]) {
+  const sortedModels = [...models].sort();
+
+  return getItemsSearchParams().find(
+    (searchParams) =>
+      JSON.stringify(searchParams.getAll("models").sort()) ===
+      JSON.stringify(sortedModels),
+  );
+}
+
 function setupUserWithFakeTimers() {
   jest.useFakeTimers();
   return userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -162,6 +176,11 @@ describe("CollectionItemsTable", () => {
     expect(
       screen.queryByTestId("collection-items-toolbar"),
     ).not.toBeInTheDocument();
+    expect(
+      getItemsCalls().some((call) =>
+        new URL(call.url).searchParams.has("include_available_models"),
+      ),
+    ).toBe(false);
   });
 
   it("keeps the table mounted without showing a loader during a refetch with no search", async () => {
@@ -474,7 +493,116 @@ describe("CollectionItemsTable", () => {
     expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
   });
 
-  it("does not send the previous search to a new collection", async () => {
+  it("shows filter options for the available item types", async () => {
+    setup();
+
+    await waitFor(() => {
+      expect(
+        getItemsSearchParams().some(
+          (searchParams) =>
+            searchParams.get("include_available_models") === "true",
+        ),
+      ).toBe(true);
+    });
+    await userEvent.click(
+      await screen.findByTestId("collection-type-filter-button"),
+    );
+    const popover = screen.getByTestId("collection-type-filter-popover");
+
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(3);
+    expect(within(popover).getByLabelText("Dashboard")).toBeChecked();
+    expect(within(popover).getByLabelText("Model")).toBeChecked();
+    expect(within(popover).getByLabelText("Question")).toBeChecked();
+    expect(within(popover).queryByLabelText("Metric")).not.toBeInTheDocument();
+  });
+
+  it("filters by type and resets pagination", async () => {
+    setup({ pageSize: 1 });
+
+    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+    expect(await screen.findByText("Customer 360")).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByTestId("collection-type-filter-button"),
+    );
+    await userEvent.click(screen.getByLabelText("Dashboard"));
+
+    await waitFor(() => {
+      expect(
+        findItemsSearchParamsByModels(["dataset", "card"])?.get("offset"),
+      ).toBe("0");
+    });
+    expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+    expect(screen.getByText("Customer 360")).toBeInTheDocument();
+    expect(screen.queryByText("Orders model")).not.toBeInTheDocument();
+  });
+
+  it("uses no_models and shows no results when every type is unchecked", async () => {
+    setup();
+
+    await userEvent.click(
+      await screen.findByTestId("collection-type-filter-button"),
+    );
+    const popover = screen.getByTestId("collection-type-filter-popover");
+    await userEvent.click(within(popover).getByLabelText("Dashboard"));
+    await userEvent.click(within(popover).getByLabelText("Model"));
+    await userEvent.click(within(popover).getByLabelText("Question"));
+
+    await waitFor(() => {
+      expect(findItemsSearchParamsByModels(["no_models"])).toBeDefined();
+    });
+    expect(await screen.findByText("Didn't find anything")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("collection-filter-empty-state"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("No items of the selected types."),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("collection-table")).not.toBeInTheDocument();
+    expect(popover).toBeInTheDocument();
+    expect(
+      within(popover).queryByRole("button", { name: "Apply" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps all type options while search has no results", async () => {
+    const user = setupUserWithFakeTimers();
+    setup();
+
+    await user.click(
+      await screen.findByTestId("collection-type-filter-button"),
+    );
+    let popover = screen.getByTestId("collection-type-filter-popover");
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(3);
+    expect(within(popover).getByLabelText("Dashboard")).toBeChecked();
+    expect(within(popover).getByLabelText("Model")).toBeChecked();
+    expect(within(popover).getByLabelText("Question")).toBeChecked();
+    within(popover).getByLabelText("Dashboard").focus();
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("collection-type-filter-popover"),
+      ).not.toBeInTheDocument();
+    });
+
+    await user.type(
+      await screen.findByPlaceholderText("Search by name or editor..."),
+      "not found",
+    );
+    advanceSearchDebounce();
+    expect(
+      await screen.findByTestId("collection-filter-empty-state"),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("collection-type-filter-button"));
+    popover = screen.getByTestId("collection-type-filter-popover");
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(3);
+    expect(within(popover).getByLabelText("Dashboard")).toBeChecked();
+    expect(within(popover).getByLabelText("Model")).toBeChecked();
+    expect(within(popover).getByLabelText("Question")).toBeChecked();
+  });
+
+  it("resets search and type filters before requesting a new collection", async () => {
     const nextCollection = createMockCollection({ id: 2, can_write: false });
     const nextCollectionItems = [
       createMockCollectionItem({
@@ -490,6 +618,16 @@ describe("CollectionItemsTable", () => {
       <CollectionNavigationTest nextCollection={nextCollection} />,
       { withRouter: true, withDND: true },
     );
+
+    await user.click(
+      await screen.findByTestId("collection-type-filter-button"),
+    );
+    await user.click(screen.getByLabelText("Dashboard"));
+    expect(
+      screen.getByRole("button", { name: "Filter, filters applied" }),
+    ).toBeInTheDocument();
+    screen.getByLabelText("Dashboard").focus();
+    await user.keyboard("{Escape}");
 
     await user.type(
       await screen.findByPlaceholderText("Search by name or editor..."),
@@ -508,12 +646,23 @@ describe("CollectionItemsTable", () => {
       screen.getByRole("button", { name: "Open next collection" }),
     );
 
+    expect(await screen.findByText("Inventory overview")).toBeInTheDocument();
     expect(
       screen.getByPlaceholderText("Search by name or editor..."),
     ).toHaveValue("");
-    expect(await screen.findByText("Inventory overview")).toBeInTheDocument();
     expect(getItemsCalls(nextCollection.id).length).toBeGreaterThan(0);
     expect(getSearchCalls(nextCollection.id)).toHaveLength(0);
+    expect(
+      getItemsCalls(nextCollection.id).every((call) =>
+        new URL(call.url).searchParams.getAll("models").includes("dashboard"),
+      ),
+    ).toBe(true);
+
+    expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
+    await user.click(screen.getByTestId("collection-type-filter-button"));
+    const popover = screen.getByTestId("collection-type-filter-popover");
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(1);
+    expect(within(popover).getByLabelText("Dashboard")).toBeChecked();
 
     advanceSearchDebounce();
     expect(getSearchCalls(nextCollection.id)).toHaveLength(0);
@@ -528,5 +677,47 @@ describe("CollectionItemsTable", () => {
     expect(
       screen.queryByTestId("collection-items-toolbar"),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps official collections in the generic Collection filter", async () => {
+    const regularCollection = createMockCollectionItem({
+      id: 4,
+      collection_id: collection.id,
+      model: "collection",
+      name: "Regular collection",
+      authority_level: null,
+    });
+    const officialCollection = createMockCollectionItem({
+      id: 5,
+      collection_id: collection.id,
+      model: "collection",
+      name: "Official collection",
+      authority_level: "official",
+    });
+    setup({
+      collectionItems: [
+        collectionItems[0],
+        regularCollection,
+        officialCollection,
+      ],
+    });
+
+    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+    expect(screen.getByText("Regular collection")).toBeInTheDocument();
+    expect(screen.getByText("Official collection")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("collection-type-filter-button"));
+    await userEvent.click(screen.getByLabelText("Dashboard"));
+
+    await waitFor(() => {
+      const searchParams = findItemsSearchParamsByModels(["collection"]);
+      expect(searchParams).toBeDefined();
+      expect(searchParams?.has("authority_level")).toBe(false);
+    });
+    expect(screen.getByText("Regular collection")).toBeInTheDocument();
+    expect(screen.getByText("Official collection")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+    });
   });
 });

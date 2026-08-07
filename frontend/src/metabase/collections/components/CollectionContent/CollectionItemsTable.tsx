@@ -69,6 +69,19 @@ const getDefaultSortingOptions = (
       };
 };
 
+const getQueryFilters = (
+  models: CollectionItemModel[],
+  selectedFilters: CollectionItemModel[] | null,
+): Pick<ListCollectionItemsRequest, "models"> => {
+  if (selectedFilters == null) {
+    return { models };
+  }
+
+  return {
+    models: selectedFilters.length > 0 ? selectedFilters : ["no_models"],
+  };
+};
+
 export type CollectionItemsTableProps = {
   collectionId?: CollectionId;
 } & Partial<{
@@ -109,11 +122,15 @@ const DefaultEmptyContentComponent = ({
   );
 };
 
-const CollectionNoResults = () => (
+const CollectionNoResults = ({ hasSearchText }: { hasSearchText: boolean }) => (
   <Box my="4rem" data-testid="collection-filter-empty-state">
     <EmptyState
       title={t`Didn't find anything`}
-      message={t`There weren't any results for your search.`}
+      message={
+        hasSearchText
+          ? t`There weren't any results for your search.`
+          : t`No items of the selected types.`
+      }
       illustrationElement={<img src={NoResultsImg} alt={t`No results`} />}
     />
   </Box>
@@ -145,6 +162,14 @@ export const CollectionItemsTable = ({
 }: CollectionItemsTableProps) => {
   const [search, setSearch] = useState({ collectionId, value: "" });
   const searchText = search.collectionId === collectionId ? search.value : "";
+  const [filterSelection, setFilterSelection] = useState<{
+    collectionId?: CollectionId;
+    value: CollectionItemModel[] | null;
+  }>({ collectionId, value: null });
+  const selectedFilters =
+    filterSelection.collectionId === collectionId
+      ? filterSelection.value
+      : null;
   const debouncedSearchText = useDebouncedValue(
     searchText,
     SEARCH_DEBOUNCE_DURATION,
@@ -163,11 +188,20 @@ export const CollectionItemsTable = ({
   useEffect(() => {
     resetPage();
     setSearch({ collectionId, value: "" });
+    setFilterSelection({ collectionId, value: null });
   }, [collectionId, resetPage]);
 
   const handleSearchTextChange = useCallback(
     (value: string) => {
       setSearch({ collectionId, value });
+      setPage(0);
+    },
+    [collectionId, setPage],
+  );
+
+  const handleSelectedFiltersChange = useCallback(
+    (nextFilters: CollectionItemModel[] | null) => {
+      setFilterSelection({ collectionId, value: nextFilters });
       setPage(0);
     },
     [collectionId, setPage],
@@ -201,6 +235,7 @@ export const CollectionItemsTable = ({
       page={page}
       pageSize={pageSize}
       searchText={searchText}
+      selectedFilters={selectedFilters}
       selected={selected}
       selectOnlyTheseItems={selectOnlyTheseItems}
       showFilterBar={showFilterBar}
@@ -211,7 +246,8 @@ export const CollectionItemsTable = ({
           ? skipToken
           : {
               id: collectionId,
-              models,
+              ...getQueryFilters(models, selectedFilters),
+              ...(showFilterBar ? { include_available_models: true } : {}),
               limit: pageSize,
               offset: pageSize * page,
               ...(showAllItems
@@ -226,6 +262,7 @@ export const CollectionItemsTable = ({
       onNextPage={handleNextPage}
       onPreviousPage={handlePreviousPage}
       onSearchTextChange={handleSearchTextChange}
+      onSelectedFiltersChange={handleSelectedFiltersChange}
       onUnpinnedItemsSortingChange={handleUnpinnedItemsSortingChange}
     />
   );
@@ -234,11 +271,13 @@ export const CollectionItemsTable = ({
 type CollectionItemsTableContentProps = CollectionItemsTableProps & {
   page: number;
   searchText: string;
+  selectedFilters: CollectionItemModel[] | null;
   unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
   unpinnedQuery: ListCollectionItemsRequest | typeof skipToken;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onSearchTextChange: (searchText: string) => void;
+  onSelectedFiltersChange: (filters: CollectionItemModel[] | null) => void;
   onUnpinnedItemsSortingChange: (
     unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>,
   ) => void;
@@ -261,6 +300,7 @@ const CollectionItemsTableContent = ({
   page,
   pageSize = COLLECTION_PAGE_SIZE,
   searchText,
+  selectedFilters,
   selected,
   selectOnlyTheseItems,
   showFilterBar,
@@ -272,12 +312,14 @@ const CollectionItemsTableContent = ({
   onNextPage,
   onPreviousPage,
   onSearchTextChange,
+  onSelectedFiltersChange,
   onUnpinnedItemsSortingChange,
 }: CollectionItemsTableContentProps) => {
   const { data, isFetching: fetchingUnpinnedItems } =
     useListCollectionItemsQuery(unpinnedQuery);
 
   const unpinnedItems = data?.data ?? [];
+  const availableModels = data?.available_models ?? [];
   const total = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
@@ -298,7 +340,8 @@ const CollectionItemsTableContent = ({
   const loading = loadingPinnedItems || fetchingUnpinnedItems;
   const hasSearchQuery =
     unpinnedQuery !== skipToken && Boolean(unpinnedQuery.q?.trim());
-  const hasActiveFilters = searchText.trim().length > 0 || hasSearchQuery;
+  const hasSearchText = searchText.trim().length > 0 || hasSearchQuery;
+  const hasActiveFilters = hasSearchText || selectedFilters != null;
   const isSearching = fetchingUnpinnedItems && hasSearchQuery;
   const isEmpty =
     !loading &&
@@ -319,12 +362,15 @@ const CollectionItemsTableContent = ({
       {showFilterBar && (
         <CollectionItemsToolbar
           searchText={searchText}
+          availableModels={availableModels}
+          selectedFilters={selectedFilters}
           onSearchTextChange={onSearchTextChange}
+          onSelectedFiltersChange={onSelectedFiltersChange}
           hasPinnedItems={hasPinnedItems}
           isSearching={isSearching}
         />
       )}
-      {showNoResults && <CollectionNoResults />}
+      {showNoResults && <CollectionNoResults hasSearchText={hasSearchText} />}
       {showTable && (
         <CollectionTable data-testid="collection-table">
           <ItemsTable

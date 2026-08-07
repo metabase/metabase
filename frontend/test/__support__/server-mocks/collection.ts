@@ -167,12 +167,12 @@ function handleCollectionItemsResponse({
   const url = new URL(call.url);
   const models = modelsParam ?? url.searchParams.getAll("models");
 
-  // When the models filter is an empty array, return all items.
-  // In the API, omitting the `models` param returns all collection items.
-  const matchedItems =
-    models.length === 0
-      ? collectionItems
-      : collectionItems.filter(({ model }) => models.includes(model));
+  // As in the API, requesting no models at all returns every item.
+  const matchedItems: CollectionItem[] = models.includes("no_models")
+    ? []
+    : collectionItems.filter(
+        ({ model }) => models.length === 0 || models.includes(model),
+      );
 
   const q = url.searchParams.get("q")?.toLowerCase().trim();
   const searchedItems = q
@@ -182,12 +182,23 @@ function handleCollectionItemsResponse({
   const limit = Number(url.searchParams.get("limit")) || searchedItems.length;
   const offset = Number(url.searchParams.get("offset")) || 0;
 
-  return {
+  const response = {
     data: searchedItems.slice(offset, offset + limit),
     total: searchedItems.length,
     models,
     limit,
     offset,
+  };
+
+  if (url.searchParams.get("include_available_models") !== "true") {
+    return response;
+  }
+
+  return {
+    ...response,
+    available_models: Array.from(
+      new Set(collectionItems.map((item) => item.model)),
+    ),
   };
 }
 

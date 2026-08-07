@@ -1,19 +1,28 @@
 import { t } from "ttag";
 
 import { Flex, Icon, Input, Loader, TextInput } from "metabase/ui";
+import type { CollectionItemModel } from "metabase-types/api";
+
+import { CollectionTypeFilter } from "./CollectionTypeFilter";
 
 type CollectionItemsToolbarProps = {
   searchText: string;
+  availableModels: string[];
+  selectedFilters: CollectionItemModel[] | null;
   onSearchTextChange: (searchText: string) => void;
   hasPinnedItems?: boolean;
   isSearching: boolean;
+  onSelectedFiltersChange: (filters: CollectionItemModel[] | null) => void;
 };
 
 export function CollectionItemsToolbar({
   searchText,
+  availableModels,
+  selectedFilters,
   onSearchTextChange,
   hasPinnedItems,
   isSearching,
+  onSelectedFiltersChange,
 }: CollectionItemsToolbarProps) {
   const clearButton =
     searchText.length > 0 ? (
@@ -42,6 +51,11 @@ export function CollectionItemsToolbar({
         rightSectionPointerEvents={isSearching ? "none" : "all"}
         rightSection={rightSection}
         aria-label={t`Search items in this collection`}
+      />
+      <CollectionTypeFilter
+        availableModels={availableModels}
+        selectedFilters={selectedFilters}
+        onSelectedFiltersChange={onSelectedFiltersChange}
       />
     </Flex>
   );
