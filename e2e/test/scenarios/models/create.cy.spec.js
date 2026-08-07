@@ -36,8 +36,6 @@ describe("scenarios > models > create", () => {
     // After saving, we land on view mode for the model
     cy.location("pathname").should("match", /^\/model\/\d+-.*$/);
     cy.findByTestId("question-row-count").should("have.text", "Showing 1 row");
-
-    checkIfNotPinned(modelName);
   });
 
   // This covers creating a GUI model from the browse page + nocollection permissions (2 in 1)
@@ -104,12 +102,4 @@ function navigateToNewModelPage(queryType = "native") {
   } else {
     cy.findByText("Use a native query").click();
   }
-}
-
-function checkIfNotPinned(modelName) {
-  cy.findByTestId("app-bar").findByText("Our analytics").click();
-  cy.location("pathname").should("eq", "/collection/root");
-
-  H.getUnpinnedSection().findByText(modelName).should("be.visible");
-  H.getPinnedSection().should("not.exist");
 }

@@ -22,8 +22,6 @@ export const useCreateQuestion = ({
 
   return useCallback(
     async (newQuestion: Question, options?: OnCreateOptions) => {
-      // Duplicating a pinned card copies its collection_position; new cards
-      // always start unpinned.
       const createdQuestion = await dispatch(
         apiCreateQuestion(newQuestion.setPinned(false), options),
       );

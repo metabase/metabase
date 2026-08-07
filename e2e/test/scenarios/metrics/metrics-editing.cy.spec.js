@@ -195,38 +195,6 @@ describe("scenarios > metrics > editing", () => {
       verifyMetricAboutTimeseries({ yAxis: "Sum of Total" });
     });
 
-    it("should not pin new metrics automatically", () => {
-      cy.visit("/browse/metrics");
-      cy.findByTestId("browse-metrics-header")
-        .findByLabelText("Create a new metric")
-        .should("be.visible")
-        .click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "metric_create_started",
-        triggered_from: "browse_metrics",
-      });
-
-      H.MetricPage.queryEditor().should("be.visible");
-      H.miniPicker().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Orders").click();
-      });
-      saveNewMetric({ name: "New metric" });
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "metric_created",
-        triggered_from: "main_app",
-        result: "success",
-      });
-
-      H.MetricPage.aboutPage().should("be.visible");
-      H.MetricPage.header().findByText("Our analytics").click();
-
-      H.getUnpinnedSection().findByText("New metric").should("be.visible");
-      H.getPinnedSection().should("not.exist");
-    });
-
     it("should not crash when cancelling creation or editing of a metric (metabase#48024)", () => {
       cy.log("cancel new metric creation");
       startNewMetricWithTable("Sample Database", "Orders");

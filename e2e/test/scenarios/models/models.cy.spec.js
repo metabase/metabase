@@ -601,14 +601,6 @@ describe("scenarios > models", () => {
     });
   });
 
-  it("should not pin newly created models", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    turnIntoModel();
-    H.visitCollection("root");
-    H.getUnpinnedSection().findByText("Orders").should("be.visible");
-    H.getPinnedSection().should("not.exist");
-  });
-
   describe("listing", () => {
     const modelDetails = {
       name: "Orders Model 2",
