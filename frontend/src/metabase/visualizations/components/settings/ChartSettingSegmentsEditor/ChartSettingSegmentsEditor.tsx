@@ -21,11 +21,8 @@ import { ChartSettingInput } from "../ChartSettingInput";
 import { SegmentBoundInput } from "./SegmentBoundInput";
 
 const REMOVE_BUTTON_SIZE = 24;
-// centers the 12px arrow against the 40px bound inputs next to it
-const ARROW_TOP_OFFSET = 14;
 
 export type ChartSettingSegmentsEditorProps = {
-  /** Present only for charts whose bounds may reference a column or another entity. */
   data?: DatasetData;
   /** False where another entity's value could never be resolved, e.g. on a dashcard. */
   canReferenceOtherEntities?: boolean;
@@ -88,7 +85,7 @@ export const ChartSettingSegmentsEditor = ({
                 }
               />
 
-              <Group gap="sm" wrap="nowrap" align="flex-start">
+              <Group align="center" gap="sm" wrap="nowrap">
                 <SegmentBoundInput
                   id={`segment-min-${index}`}
                   ariaLabel={t`Range ${index + 1} minimum`}
@@ -98,12 +95,9 @@ export const ChartSettingSegmentsEditor = ({
                   canReferenceOtherEntities={canReferenceOtherEntities}
                   onChange={(min) => updateSegment(index, { min })}
                 />
-                <Icon
-                  name="arrow_right"
-                  size={12}
-                  c="text-secondary"
-                  mt={ARROW_TOP_OFFSET}
-                />
+
+                <Icon name="arrow_right" size={12} c="text-secondary" />
+
                 <SegmentBoundInput
                   id={`segment-max-${index}`}
                   ariaLabel={t`Range ${index + 1} maximum`}
