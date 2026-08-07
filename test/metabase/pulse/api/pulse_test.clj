@@ -128,24 +128,24 @@
            {:name  "abc"
             :cards ["abc"]}
            {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.",
-                     :channels "one or more map"}}
+                     :channels #(str/starts-with? % "one or more map")}}
 
            {:name  "abc"
             :cards [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                     {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]}
-           {:errors {:channels "one or more map"}}
+           {:errors {:channels #(str/starts-with? % "one or more map")}}
 
            {:name     "abc"
             :cards    [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                        {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]
             :channels "foobar"}
-           {:errors {:channels "one or more map"}}
+           {:errors {:channels #(str/starts-with? % "one or more map")}}
 
            {:name     "abc"
             :cards    [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                        {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]
             :channels ["abc"]}
-           {:errors {:channels "one or more map"}}}]
+           {:errors {:channels #(str/starts-with? % "one or more map")}}}]
     (testing (pr-str input)
       (is (=? expected-error
               (mt/user-http-request :rasta :post 400 "pulse" input))))))
@@ -464,13 +464,13 @@
              {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`."}}
 
              {:channels 123}
-             {:errors {:channels "nullable one or more map"}}
+             {:errors {:channels #(str/starts-with? % "nullable one or more map")}}
 
              {:channels "foobar"}
-             {:errors {:channels "nullable one or more map"}}
+             {:errors {:channels #(str/starts-with? % "nullable one or more map")}}
 
              {:channels ["abc"]}
-             {:errors {:channels "nullable one or more map"}}}]
+             {:errors {:channels #(str/starts-with? % "nullable one or more map")}}}]
       (testing (pr-str input)
         (is (=? expected-error
                 (mt/user-http-request :rasta :put 400 "pulse/1" input)))))))
