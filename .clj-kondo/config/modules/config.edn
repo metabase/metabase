@@ -2662,7 +2662,9 @@
 
   usage-metadata
   {:team "UX West"
-   :api  #{metabase.usage-metadata.candidate-service metabase.usage-metadata.init}
+   :api  #{metabase.usage-metadata.candidate-mutations
+           metabase.usage-metadata.candidate-refresh
+           metabase.usage-metadata.init}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Database

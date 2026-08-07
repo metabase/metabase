@@ -10,8 +10,12 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.candidate-builders :as candidate-builders]
+   [metabase.usage-metadata.candidate-definitions :as candidate-definitions]
+   [metabase.usage-metadata.candidate-family :as candidate-family]
    [metabase.usage-metadata.candidate-mining :as candidate-mining]
-   [metabase.usage-metadata.candidates :as candidates]
+   [metabase.usage-metadata.candidate-mutations :as candidate-mutations]
+   [metabase.usage-metadata.candidate-refresh :as candidate-refresh]
+   [metabase.usage-metadata.candidate-snapshot :as candidate-snapshot]
    [metabase.usage-metadata.query-source :as query-source]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -19,29 +23,29 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(def ^:private relation-for-measure @#'candidates/relation-for-measure)
-(def ^:private relation-for-segment @#'candidates/relation-for-segment)
-(def ^:private segment-atoms @#'candidates/segment-atoms)
-(def ^:private globally-eligible? @#'candidates/globally-eligible?)
-(def ^:private prune-ineligible-candidates! @#'candidates/prune-ineligible-candidates!)
-(def ^:private source-provenance-index @#'candidates/source-provenance-index)
-(def ^:private locally-running-run-ids @#'candidates/locally-running-run-ids)
-(def ^:private candidate-refresh-lock-timeout? @#'candidates/candidate-refresh-lock-timeout?)
+(def ^:private relation-for-measure candidate-definitions/relation-for-measure)
+(def ^:private relation-for-segment candidate-definitions/relation-for-segment)
+(def ^:private segment-atoms candidate-definitions/segment-atoms)
+(def ^:private globally-eligible? candidate-snapshot/globally-eligible?)
+(def ^:private prune-ineligible-candidates! candidate-snapshot/prune-ineligible-candidates!)
+(def ^:private source-provenance-index candidate-snapshot/source-provenance-index)
+(def ^:private locally-running-run-ids candidate-refresh/locally-running-run-ids)
+(def ^:private candidate-refresh-lock-timeout? candidate-refresh/candidate-refresh-lock-timeout?)
 (def ^:private non-closed-segment-candidate-ids
-  @#'candidates/non-closed-segment-candidate-ids)
+  candidate-snapshot/non-closed-segment-candidate-ids)
 (def ^:private non-closed-measure-candidate-ids
-  @#'candidates/non-closed-measure-candidate-ids)
-(def ^:private candidate-family-parent-index @#'candidates/candidate-family-parent-index)
-(def ^:private candidate-families @#'candidates/candidate-families)
-(def ^:private prune-old-candidate-snapshots! @#'candidates/prune-old-candidate-snapshots!)
-(def ^:private reconcile-candidate! @#'candidates/reconcile-candidate!)
+  candidate-snapshot/non-closed-measure-candidate-ids)
+(def ^:private candidate-family-parent-index candidate-family/candidate-family-parent-index)
+(def ^:private candidate-families candidate-family/candidate-families)
+(def ^:private prune-old-candidate-snapshots! candidate-snapshot/prune-old-candidate-snapshots!)
+(def ^:private reconcile-candidate! candidate-snapshot/reconcile-candidate!)
 
 (defn- candidate-row
   [run-id table-id]
   {:run_id                 run-id
    :candidate_type         :segment
    :table_id               table-id
-   :signature_version      candidates/signature-version
+   :signature_version      candidate-snapshot/signature-version
    :signature_hash         (apply str (repeat 64 "a"))
    :signature              "[\"segment\"]"
    :definition             {:lib/type :mbql/query}
@@ -149,15 +153,15 @@
                                                            :source_config     {}
                                                            :finished_at       (mi/now)}
                  :model/UsageMetadataCandidate candidate (candidate-row (:id run) (mt/id :orders))]
-    (is (= (:id run) (:id (candidates/latest-successful-run))))
-    (is (candidates/candidate-current? candidate))
-    (let [dismissal (candidates/dismiss! candidate (mt/user->id :crowberto) "not useful")]
+    (is (= (:id run) (:id (candidate-refresh/latest-successful-run))))
+    (is (candidate-mutations/candidate-current? candidate))
+    (let [dismissal (candidate-mutations/dismiss! candidate (mt/user->id :crowberto) "not useful")]
       (is (= "not useful" (:reason dismissal)))
       (is (= 1 (t2/count :model/UsageMetadataCandidateDismissal
                          :candidate_type :segment
                          :table_id (mt/id :orders)
                          :signature_hash (:signature_hash candidate))))
-      (candidates/restore! candidate)
+      (candidate-mutations/restore! candidate)
       (is (zero? (t2/count :model/UsageMetadataCandidateDismissal
                            :candidate_type :segment
                            :table_id (mt/id :orders)
@@ -242,18 +246,18 @@
                                                        :trigger           :manual
                                                        :algorithm_version 1
                                                        :source_config     {}}]
-    (is (nil? (candidates/queue-refresh! :manual (mt/user->id :crowberto))))
-    (is (= (:id run) (:id (candidates/active-run))))))
+    (is (nil? (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))))
+    (is (= (:id run) (:id (candidate-refresh/active-run))))))
 
 (deftest candidate-refresh-lock-timeout-detection-test
   (testing "cluster-lock reports keyword locks as namespace/name strings"
     (is (true? (candidate-refresh-lock-timeout?
                 (ex-info "Timed out"
-                         {:lock-names ["metabase.usage-metadata.candidates/candidate-refresh"]})))))
+                         {:lock-names ["metabase.usage-metadata.candidate-refresh/candidate-refresh"]})))))
   (testing "an unrelated lock timeout must still be rethrown"
     (is (false? (candidate-refresh-lock-timeout?
                  (ex-info "Timed out"
-                          {:lock-names ["metabase.usage-metadata.candidates/another-lock"]}))))))
+                          {:lock-names ["metabase.usage-metadata.candidate-refresh/another-lock"]}))))))
 
 (deftest refresh-queue-recovers-run-interrupted-before-worker-start-test
   (mt/with-temp [:model/UsageMetadataCandidateRun interrupted-run {:status            :queued
@@ -261,14 +265,14 @@
                                                                    :algorithm_version 1
                                                                    :source_config     {}
                                                                    :created_at        (t/minus (t/offset-date-time) (t/minutes 10))}]
-    (let [replacement-run (candidates/queue-refresh! :manual (mt/user->id :crowberto))
+    (let [replacement-run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))
           interrupted-run (t2/select-one :model/UsageMetadataCandidateRun :id (:id interrupted-run))]
       (try
         (is (= :failed (:status interrupted-run)))
         (is (some? (:finished_at interrupted-run)))
         (is (re-find #"before processing started" (:error interrupted-run)))
         (is (= :queued (:status replacement-run)))
-        (is (= (:id replacement-run) (:id (candidates/active-run))))
+        (is (= (:id replacement-run) (:id (candidate-refresh/active-run))))
         (finally
           (t2/delete! :model/UsageMetadataCandidateRun :id (:id replacement-run)))))))
 
@@ -278,14 +282,14 @@
                                                                    :algorithm_version 1
                                                                    :source_config     {}
                                                                    :started_at        (mi/now)}]
-    (let [replacement-run (candidates/queue-refresh! :manual (mt/user->id :crowberto))
+    (let [replacement-run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))
           interrupted-run (t2/select-one :model/UsageMetadataCandidateRun :id (:id interrupted-run))]
       (try
         (is (= :failed (:status interrupted-run)))
         (is (some? (:finished_at interrupted-run)))
         (is (re-find #"interrupted" (:error interrupted-run)))
         (is (= :queued (:status replacement-run)))
-        (is (= (:id replacement-run) (:id (candidates/active-run))))
+        (is (= (:id replacement-run) (:id (candidate-refresh/active-run))))
         (finally
           (t2/delete! :model/UsageMetadataCandidateRun :id (:id replacement-run)))))))
 
@@ -297,7 +301,7 @@
                                                        :started_at        (mi/now)}]
     (swap! locally-running-run-ids conj (:id run))
     (try
-      (is (nil? (candidates/queue-refresh! :manual (mt/user->id :crowberto))))
+      (is (nil? (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))))
       (is (= :running
              (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id (:id run))))
       (finally
@@ -315,9 +319,9 @@
                                 candidate-builders/candidate-table-observations (constantly {:candidates []
                                                                                              :unsupported-source-items []})
                                 candidate-builders/candidate-metric-observations (constantly [])]
-      (let [run (candidates/queue-refresh! :manual (mt/user->id :crowberto))]
-        (is (= :succeeded (:status (candidates/run-refresh! run))))
-        (is (= (:id run) (:id (candidates/latest-successful-run))))
+      (let [run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
+        (is (= :succeeded (:status (candidate-refresh/run-refresh! run))))
+        (is (= (:id run) (:id (candidate-refresh/latest-successful-run))))
         (is (t2/exists? :model/UsageMetadataCandidateRun :id (:id old-run)))
         (is (not (t2/exists? :model/UsageMetadataCandidate :id (:id old-candidate))))))))
 
@@ -329,17 +333,17 @@
                                                            :finished_at       (mi/now)}
                  :model/UsageMetadataCandidate old-candidate (candidate-row (:id old-run) (mt/id :orders))]
     (mt/with-dynamic-fn-redefs [candidate-mining/qualified-card-ids (constantly [])]
-      (let [run (candidates/queue-refresh! :manual (mt/user->id :crowberto))]
-        (with-redefs-fn {#'candidates/prune-old-snapshots!
+      (let [run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
+        (with-redefs-fn {#'candidate-snapshot/prune-old-snapshots!
                          (fn [_current-run-id]
                            (t2/delete! :model/UsageMetadataCandidate :id (:id old-candidate))
                            (throw (ex-info "Injected snapshot pruning failure" {})))}
           #(is (thrown-with-msg? Exception
                                  #"Injected snapshot pruning failure"
-                                 (candidates/run-refresh! run))))
+                                 (candidate-refresh/run-refresh! run))))
         (is (= :failed
                (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id (:id run))))
-        (is (= (:id old-run) (:id (candidates/latest-successful-run))))
+        (is (= (:id old-run) (:id (candidate-refresh/latest-successful-run))))
         (is (t2/exists? :model/UsageMetadataCandidate :id (:id old-candidate)))))))
 
 (deftest persisted-refresh-uses-recent-view-source-configuration-test
@@ -360,8 +364,8 @@
        candidate-builders/candidate-metric-observations (fn [opts]
                                                           (reset! metric-opts opts)
                                                           [])]
-      (let [run (candidates/queue-refresh! :manual (mt/user->id :crowberto))]
-        (is (= :succeeded (:status (candidates/run-refresh! run))))
+      (let [run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
+        (is (= :succeeded (:status (candidate-refresh/run-refresh! run))))
         (is (= {:kind                      "qualified-cards"
                 :usage-window-days         90
                 :minimum-recent-view-count 10
@@ -433,8 +437,8 @@
                                     :official-source-count 0
                                     :popular-source-count 1
                                     :total-view-count 20}}])]
-          (let [run     (candidates/queue-refresh! :manual (mt/user->id :crowberto))
-                result  (candidates/run-refresh! run)
+          (let [run     (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))
+                result  (candidate-refresh/run-refresh! run)
                 rows    (t2/select :model/UsageMetadataCandidate :run_id (:id run))
                 by-type (u/index-by :candidate_type rows)]
             (is (= :succeeded (:status result)))
@@ -501,7 +505,7 @@
 (deftest persisted-candidates-are-pruned-by-the-fixed-evidence-cutoffs-test
   (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :running
                                                        :trigger           :manual
-                                                       :algorithm_version candidates/algorithm-version
+                                                       :algorithm_version candidate-refresh/algorithm-version
                                                        :source_config     {}}
                  :model/UsageMetadataCandidate weak-candidate
                  (assoc (candidate-row (:id run) (mt/id :orders))
@@ -609,7 +613,7 @@
                                              10))]
     (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :running
                                                          :trigger           :manual
-                                                         :algorithm_version candidates/algorithm-version
+                                                         :algorithm_version candidate-refresh/algorithm-version
                                                          :source_config     {}}
                    :model/UsageMetadataCandidate candidate
                    (assoc (candidate-row (:id run) (mt/id :orders))
