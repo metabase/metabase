@@ -251,24 +251,19 @@
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
-(defn- non-blank
-  [value]
-  (when (string? value)
-    (not-empty (str/trim value))))
-
 (defn connection-model
   "The model `config` names, composed from its type's [[model-fields]] — Azure's `{family}/{deployment}` comes from
   two inputs so the admin picks the family rather than typing it as a prefix. Returns nil for types that list their
   models, and for a connection that has not filled every part in yet."
   [type-name config]
   (when-let [field-keys (seq (model-fields type-name))]
-    (let [parts (map #(non-blank (get config %)) field-keys)]
+    (let [parts (map #(u/trimmed-string (get config %)) field-keys)]
       (when (every? some? parts)
         (str/join "/" parts)))))
 
 (defn- validate-field!
   [type-name {:keys [key label required? prefix default]} config]
-  (let [value (non-blank (get config key))]
+  (let [value (u/trimmed-string (get config key))]
     (when (and required? (not value) (not default))
       (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
                       {:status-code 400 :field key})))
@@ -302,7 +297,7 @@
               (or (not required?)
                   default
                   (contains? model-keys key)
-                  (non-blank (get config key))))
+                  (u/trimmed-string (get config key))))
             (:fields (provider-type type-name)))))
 
 (defn config-complete?
@@ -356,7 +351,7 @@
   [settings value-fn]
   (into {}
         (keep (fn [[config-key {:keys [setting]}]]
-                (when-let [value (non-blank (value-fn setting))]
+                (when-let [value (u/trimmed-string (value-fn setting))]
                   [config-key value])))
         settings))
 
@@ -386,21 +381,6 @@
   []
   (into []
         (keep (fn [[conn-key spec]] (env-configured-connection conn-key spec)))
-        single-provider-settings))
-
-(defn db-stored-single-provider-connections
-  "Connections implied by per-provider credential settings whose values live in the application database rather than
-  coming from an env var. Used once, at startup, to fold those app-DB values into [[llm-providers]]; values that come
-  from an env var need no such move, because [[env-connections]] resolves them on every read."
-  []
-  (into []
-        (keep (fn [[conn-key {:keys [type settings]}]]
-                (let [config (single-provider-setting-values settings #(setting/db-stored-value %))]
-                  (when (config-complete? type config)
-                    {:key    conn-key
-                     :type   type
-                     :name   (str (:label (provider-type type)))
-                     :config config}))))
         single-provider-settings))
 
 ;;; --------------------------------------------------- Connections -------------------------------------------------
@@ -524,7 +504,7 @@
   [type-name config]
   (reduce (fn [config {:keys [key default]}]
             (cond-> config
-              (and default (not (non-blank (get config key))))
+              (and default (not (u/trimmed-string (get config key))))
               (assoc key default)))
           (or config {})
           (:fields (provider-type type-name))))
@@ -566,7 +546,7 @@
           (fn [config]
             (reduce (fn [config field-key]
                       (cond-> config
-                        (non-blank (get config field-key))
+                        (u/trimmed-string (get config field-key))
                         (update field-key setting/obfuscate-value)))
                     (or config {})
                     (secret-field-keys type)))))
