@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.measure
   "Schema definitions for Measure definitions. A Measure is a saved MBQL aggregation expression tied to a table."
   (:require
+   [malli.core :as mc]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -25,7 +26,11 @@
    A measure stage must have exactly one aggregation and no other query clauses."
   [:and
    ::lib.schema/stage.mbql
-   [:map [:source-table ::lib.schema.id/table]]
+   ;; `::mc/default` because this conjunct only narrows `:source-table` -- every other key of the stage is the
+   ;; sibling `::lib.schema/stage.mbql`'s business, and would otherwise be stripped here before reaching it
+   [:map
+    [::mc/default :any]
+    [:source-table ::lib.schema.id/table]]
    [:fn
     {:error/message "A measure stage must have exactly one aggregation"}
     #(= (count (:aggregation %)) 1)]
@@ -52,4 +57,5 @@
     {:error/message "A measure must have exactly one stage"}
     #(= (-> % :stages count) 1)]
    [:map
+    [::mc/default :any]
     [:stages [:sequential [:ref ::stage]]]]])
