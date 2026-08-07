@@ -168,10 +168,10 @@ function toNumberOrNull(raw: RowValue | undefined): number | null {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 }
 
-export const resolveGoalSegments = (
+export function resolveGoalSegments(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
-): ResolvedGoalSegment[] => {
+): ResolvedGoalSegment[] {
   if (!Array.isArray(segments)) {
     return [];
   }
@@ -186,12 +186,12 @@ export const resolveGoalSegments = (
 
     return [{ color: segment.color, label: segment.label, min, max }];
   });
-};
+}
 
-export const getGoalSegmentErrors = (
+export function getGoalSegmentErrors(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
-): GoalRefError[] => {
+): GoalRefError[] {
   if (!Array.isArray(segments)) {
     return [];
   }
@@ -202,15 +202,15 @@ export const getGoalSegmentErrors = (
       return error ? [error] : [];
     });
   });
-};
+}
 
 type ReferencedEntityColumns =
   | { type: "card"; id: CardId; columns: Set<string> }
   | { type: "measure"; id: MeasureId; columns: Set<string> };
 
-export const getReferencedEntitiesFromVizSettings = (
+export function getReferencedEntitiesFromVizSettings(
   settings: VisualizationSettings,
-): ReferencedEntity[] => {
+): ReferencedEntity[] {
   const foreignColumnRefs = getGoalForeignColumnRefs(settings);
 
   const columnsByEntity = foreignColumnRefs.reduce((map, ref) => {
@@ -230,7 +230,7 @@ export const getReferencedEntitiesFromVizSettings = (
     id,
     columns: Array.from(columns),
   }));
-};
+}
 
 function getGoalForeignColumnRefs(
   settings: VisualizationSettings,
