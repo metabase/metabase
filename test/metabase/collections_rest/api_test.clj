@@ -1034,6 +1034,20 @@
             (is (= #{["card" "Question"]}
                    (set (map (juxt :model :name) (:data models-response)))))))))))
 
+(deftest collection-items-available-models-exploration-test
+  (testing "GET /api/collection/:id/items"
+    (mt/with-temp [:model/User        owner      {}
+                   :model/Collection  collection {}
+                   :model/Card        _          {:name "Question" :collection_id (u/the-id collection)}
+                   :model/Exploration _          {:name          "Exploration"
+                                                  :creator_id    (u/the-id owner)
+                                                  :collection_id (u/the-id collection)}]
+      (testing "reports explorations so they can be filtered on"
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (str "collection/" (u/the-id collection) "/items")
+                                             :include_available_models true)]
+          (is (= ["card" "exploration"] (:available_models response))))))))
+
 (deftest collection-items-available-models-library-test
   (testing "GET /api/collection/:id/items"
     (mt/with-temp [:model/Collection collection {:type "library-data"}
