@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Box, Text } from "metabase/ui";
@@ -10,45 +11,44 @@ import { StaticGoalValueInput } from "./StaticGoalValueInput";
 
 export type SegmentBoundInputProps = {
   "aria-label"?: string;
+  data: DatasetData | undefined;
   id: string;
   placeholder: string;
   value: GoalValue | null;
-  /** Present only when this bound may reference another column or entity. */
-  data?: DatasetData;
   onChange: (value: GoalValue | null) => void;
 };
 
-/** One end of a color range, with the reason it couldn't be resolved below it. */
 export function SegmentBoundInput({
   "aria-label": ariaLabel,
+  data,
   id,
   placeholder,
   value,
-  data,
   onChange,
 }: SegmentBoundInputProps) {
   const error = data != null ? resolveGoalValue(data, value).error : undefined;
 
   return (
     <Box flex={1} miw={0}>
-      {data != null ? (
-        <GoalValueInput
-          id={id}
-          ariaLabel={ariaLabel}
-          placeholder={placeholder}
-          value={value}
-          data={data}
-          onChange={onChange}
-        />
-      ) : (
+      {data == null ? (
         <StaticGoalValueInput
-          id={id}
           ariaLabel={ariaLabel}
+          id={id}
           placeholder={placeholder}
           value={value}
           onCommit={onChange}
         />
+      ) : (
+        <GoalValueInput
+          ariaLabel={ariaLabel}
+          data={data}
+          id={id}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+        />
       )}
+
       {error != null && (
         <Text c="error" fz="sm" mt="xs">
           {getGoalErrorMessage(error)}
@@ -59,12 +59,9 @@ export function SegmentBoundInput({
 }
 
 function getGoalErrorMessage({ reason, message }: GoalRefError): string {
-  switch (reason) {
-    case "query-failed":
-      return message ?? t`Couldn't load this value`;
-    case "column-not-found":
-      return t`This column no longer exists`;
-    case "not-a-number":
-      return t`This value isn't a number`;
-  }
+  return match(reason)
+    .with("query-failed", () => message ?? t`Couldn't load this value`)
+    .with("column-not-found", () => t`This column no longer exists`)
+    .with("not-a-number", () => t`This value isn't a number`)
+    .exhaustive();
 }
