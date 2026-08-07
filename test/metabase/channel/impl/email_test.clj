@@ -167,6 +167,27 @@
                                     {:template-type :email/handlebars-resource
                                      :channel-type  :channel/email})))))))
 
+(deftest render-message-body-multipart-type-test
+  (testing "tags the body :related (-> multipart/related) when it has an inline attachment, so mail
+            clients that require it (e.g. Thunderbird) resolve cid: references and render the image
+            inline instead of showing it as broken/attached (metabase#56844)"
+    (let [template {:details {:type :email/handlebars-text, :subject "Test", :body "hello"}}
+          html-part {:type "text/html; charset=utf-8", :content "hello"}
+          inline-part {:type :inline, :content-id "logo", :content-type "image/png", :content "<url>"}
+          csv-part {:type :attachment, :content-type "text/csv", :content "a,b"}]
+      (testing "no attachments -- untagged"
+        (is (= [html-part]
+               (#'email.impl/render-message-body template {} []))))
+      (testing "only non-inline attachments -- still untagged"
+        (is (= [html-part csv-part]
+               (#'email.impl/render-message-body template {} [csv-part]))))
+      (testing "an inline attachment -- tagged :related"
+        (is (= [:related html-part inline-part]
+               (#'email.impl/render-message-body template {} [inline-part]))))
+      (testing "an inline attachment alongside a regular one -- still tagged :related"
+        (is (= [:related html-part csv-part inline-part]
+               (#'email.impl/render-message-body template {} [csv-part inline-part])))))))
+
 (deftest notification-recipients-skips-api-key-users-test
   (testing "API-key users are filtered out of notification recipients (GDGT-2402)"
     (let [recipients [{:type :notification-recipient/group
