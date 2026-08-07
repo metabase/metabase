@@ -182,11 +182,13 @@ describe("setup (EE build, but no token)", () => {
       await userEvent.click(screen.getByText("Continue with sample data"));
       await startAiConfigStep();
       await userEvent.click(
-        await screen.findByRole("button", { name: "Metabase" }),
+        await screen.findByRole("button", { name: "Metabase AI service" }),
       );
 
       expect(
-        await screen.findByText("About Metabase AI service"),
+        await screen.findByText(
+          /The simplest way to get started with AI in Metabase/,
+        ),
       ).toBeInTheDocument();
       expect(
         await screen.findByRole("checkbox", {

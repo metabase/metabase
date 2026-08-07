@@ -644,7 +644,7 @@ describe("scenarios > setup > AI config step", () => {
     const managedConnection = {
       key: "metabase",
       type: "metabase",
-      name: "Metabase",
+      name: "Metabase AI service",
       source: "db",
       usable: true,
       env_vars: [],
@@ -744,7 +744,9 @@ describe("scenarios > setup > AI config step", () => {
 
     cy.findByLabelText("Connect to an AI provider").within(() => {
       cy.findByRole("button", { name: /Metabase/ }).click();
-      cy.findByText("About Metabase AI service").should("be.visible");
+      cy.findByText(
+        /The simplest way to get started with AI in Metabase/,
+      ).should("be.visible");
       cy.findByText(/You get 1M tokens for free/).should("be.visible");
       cy.button("Connect").click();
     });
@@ -752,7 +754,7 @@ describe("scenarios > setup > AI config step", () => {
     cy.wait("@connectManaged")
       .its("request.body")
       .should("deep.equal", { type: "metabase" });
-    cy.findByLabelText("Connected to Metabase").should("be.visible");
+    cy.findByLabelText("Connected to Metabase AI service").should("be.visible");
   });
 
   it("should not offer the step when AI features are disabled", () => {

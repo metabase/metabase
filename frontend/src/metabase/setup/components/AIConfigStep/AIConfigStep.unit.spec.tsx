@@ -66,7 +66,7 @@ const OPENAI_TYPE = createMockLlmProviderType({
 
 const METABASE_TYPE = createMockLlmProviderType({
   type: "metabase",
-  label: "Metabase",
+  label: "Metabase AI service",
   managed: true,
   singleton: true,
   fields: [],
@@ -81,7 +81,7 @@ const ANTHROPIC_CONNECTION = createMockLlmProviderConnection({
 const METABASE_CONNECTION = createMockLlmProviderConnection({
   key: "metabase",
   type: "metabase",
-  name: "Metabase",
+  name: "Metabase AI service",
 });
 
 interface SetupOpts {
@@ -191,7 +191,7 @@ describe("AIConfigStep", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "OpenAI" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Metabase" }),
+      screen.queryByRole("button", { name: "Metabase AI service" }),
     ).not.toBeInTheDocument();
   });
 
@@ -203,11 +203,13 @@ describe("AIConfigStep", () => {
     });
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Metabase" }),
+      await screen.findByRole("button", { name: "Metabase AI service" }),
     );
 
     expect(
-      await screen.findByText("About Metabase AI service"),
+      await screen.findByText(
+        /The simplest way to get started with AI in Metabase/,
+      ),
     ).toBeInTheDocument();
     expect(
       await screen.findByRole("checkbox", {
@@ -278,17 +280,19 @@ describe("AIConfigStep", () => {
     });
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Metabase" }),
+      await screen.findByRole("button", { name: "Metabase AI service" }),
     );
     expect(
-      await screen.findByText("About Metabase AI service"),
+      await screen.findByText(
+        /The simplest way to get started with AI in Metabase/,
+      ),
     ).toBeInTheDocument();
 
     setupLlmProvidersEndpoint([METABASE_CONNECTION]);
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
 
     expect(
-      await screen.findByText("Connected to Metabase"),
+      await screen.findByText("Connected to Metabase AI service"),
     ).toBeInTheDocument();
     expect(
       fetchMock.callHistory.called("path:/api/llm/providers", {

@@ -104,7 +104,7 @@
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
           (with-entitlements true false false
             (llm.startup/check-and-sync-settings-on-startup!)
-            (is (= [{:key "metabase" :type "metabase" :name "Metabase" :config {}}]
+            (is (= [{:key "metabase" :type "metabase" :name "Metabase AI service" :config {}}]
                    (vec (llm.settings/llm-providers))))
             (testing "and the reference it just wrote resolves against it"
               (is (=? {:connection-key "metabase" :type "anthropic" :ai-proxy? true}

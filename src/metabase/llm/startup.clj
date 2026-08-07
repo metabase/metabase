@@ -15,7 +15,7 @@
   []
   {:key    llm.provider/managed-connection-key
    :type   llm.provider/managed-connection-key
-   :name   "Metabase"
+   :name   (str (:label (llm.provider/provider-type llm.provider/managed-connection-key)))
    :config {}})
 
 (defn- ensure-managed-connection!

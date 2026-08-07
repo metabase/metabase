@@ -167,7 +167,7 @@
                      :advanced? true
                      :help      (deferred-tru "Only needed for temporary credentials.")}]}
    {:type          "metabase"
-    :label         (deferred-tru "Metabase")
+    :label         (deferred-tru "Metabase AI service")
     :managed?      true
     :singleton?    true
     :default-model "anthropic/claude-sonnet-4-6"
