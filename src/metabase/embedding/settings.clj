@@ -293,6 +293,8 @@
   :export?    true
   :visibility :admin)
 
+;; The next three settings track the Setup guide checklist, not the embedding hub section.
+;; The names stay: renaming persisted keys would cost a migration for three booleans and change nothing users see.
 (defsetting embedding-hub-test-embed-snippet-created
   (deferred-tru "Indicates if a test embed snippet has been created for tracking in the embedding hub")
   :type       :boolean

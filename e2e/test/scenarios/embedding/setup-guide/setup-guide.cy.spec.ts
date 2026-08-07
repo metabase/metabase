@@ -6,7 +6,7 @@ const { H } = cy;
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 const NON_SAMPLE_DB_NAME = "QA Postgres12";
 
-describe("scenarios - embedding hub", () => {
+describe("scenarios - setup guide", () => {
   describe("checklist", () => {
     beforeEach(() => {
       H.restore("setup");

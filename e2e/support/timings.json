@@ -745,7 +745,7 @@
       "duration": 119846
     },
     {
-      "spec": "../test/scenarios/embedding/embedding-hub/embedding-hub.cy.spec.ts",
+      "spec": "../test/scenarios/embedding/setup-guide/setup-guide.cy.spec.ts",
       "duration": 83374
     },
     {

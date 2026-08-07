@@ -1,4 +1,6 @@
 (ns metabase-enterprise.embedding-hub.api
+  "Checklist state for the Setup guide. Named for the embedding hub because that is the API path
+  (`/api/ee/embedding-hub/checklist`); the UI it serves is the Setup guide."
   (:require
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.macros :as api.macros]
