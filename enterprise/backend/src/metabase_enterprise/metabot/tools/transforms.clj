@@ -1,10 +1,11 @@
 (ns metabase-enterprise.metabot.tools.transforms
   "Enterprise implementations of Python transform tools."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.metabot.tools.transforms.write :as transforms-write-tools]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.transforms :as tools.transforms]
-   [metabase.metabot.util :as metabot.u]
    [metabase.premium-features.core :refer [defenterprise-schema]]))
 
 (set! *warn-on-reflection* true)
@@ -13,11 +14,16 @@
 ;;; Formatting helpers
 ;;; ──────────────────────────────────────────────────────────────────
 
+;; Hand-built, not clojure.data.xml: escaping the source breaks `old_string` matching
+;; (see [[metabase.metabot.tools.transforms/format-transform-details-output]]).
 (defn- format-python-library-output
-  [{:keys [path] :as lib}]
-  (metabot.u/xml
-   [:python-library {:path path}
-    (when-let [content (:content lib)] [:content content])]))
+  [{:keys [path content]}]
+  (->> [(str "<python-library path=\"" (llm-shape/escape-xml path) "\">")
+        (when content
+          (str "  <content>" content "</content>"))
+        "</python-library>"]
+       (remove nil?)
+       (str/join "\n")))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Tool definitions
