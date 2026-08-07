@@ -1,7 +1,7 @@
 (ns metabase.metabot.context
   (:require
    [clojure.java.io :as io]
-   [malli.core]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
@@ -82,18 +82,24 @@
 (def DefaultItemSchema
   "Default schema of viewing context item."
   [:map
+   ;; `::mc/default` because the rest of the item is forwarded to the model as the client sent it -- the FE grows
+   ;; these fields (`:id`, `:name`, `:source`, `:sql_engine`, ...) faster than this schema could name them, and
+   ;; dropping one degrades Metabot silently rather than erroring.
+   [::mc/default :any]
    [:type item-type-schema]
    [:query {:optional true} ItemQuerySchema]])
 
 (def QcItemSchema
   "Schema viewing context item with query and charts."
   [:map
+   [::mc/default :any]
    [:type (into [:enum] item-types-qc)]
    [:query {:optional true} ItemQuerySchema]
    [:chart_configs
     {:optional true}
     [:vector
      [:map
+      [::mc/default :any]
       [:query {:optional true} ItemQuerySchema]]]]])
 
 (def ViewingItemSchema
@@ -104,6 +110,7 @@
   [:and
    [:map-of :keyword :any]
    [:map
+    [::mc/default :any]
     [:user_is_viewing {:optional true} [:vector ViewingItemSchema]]]])
 
 (defn- query-for-sql-parsing
