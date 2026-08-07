@@ -822,9 +822,20 @@ describe("scenarios > collection defaults", () => {
           assertSelectAllIsIndeterminate(true);
           getRowCheckbox("Orders").should("be.checked");
 
+          // pinned cards join the same selection
+          H.getPinnedSection()
+            .findByRole("checkbox", { name: "Orders, Count" })
+            .click();
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+          cy.findByText("2 items selected").should("be.visible");
+          assertSelectAllIsIndeterminate(true);
+
           // Select all
           cy.findByLabelText("Select all items").click();
           assertSelectAllIsIndeterminate(false);
+          H.getPinnedSection()
+            .findByRole("checkbox", { name: "Orders, Count" })
+            .should("have.attr", "aria-checked", "true");
           cy.findByTestId("toast-card").findByText(/\d+ items selected/);
 
           // Deselect all
