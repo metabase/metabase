@@ -492,7 +492,7 @@ describe("NativeQuery", () => {
   describe("updateCardTemplateTagNames", () => {
     it("should update the query text with new tag names", () => {
       const query = makeQuery().setQueryText("{{#123-foo}} {{#1234-bar}}");
-      const newCards = [createMockCard({ id: 123, name: "Foo New" })]; // newCards is deliberately missing a the bar card
+      const newCards = [createMockCard({ id: 123, name: "Foo New" })]; // newCards is deliberately missing the bar card
       const templateTagsMap = updateCardTemplateTagNames(
         query,
         newCards,
