@@ -807,7 +807,6 @@ describe("ExplorationTreeNode", () => {
               getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
               tree={getTree()}
               selectedPageId={String(PAGE_ID)}
-              setSelectedPageId={jest.fn()}
               getSelectedPageUrl={() => path}
               shouldScrollSelectionRef={shouldScrollSelectionRef}
               isOpen
@@ -817,6 +816,9 @@ describe("ExplorationTreeNode", () => {
               sortOrder={DEFAULT_SORT_ORDER}
               onChangeSortOrder={jest.fn()}
               contentMode="tree"
+              onPreviousPage={jest.fn()}
+              onNextPage={jest.fn()}
+              onPrefetchPage={jest.fn()}
             />
           }
         />,
