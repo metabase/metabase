@@ -54,7 +54,8 @@
    [clojure.java.shell :as shell]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [dev.deps-graph]))
+   [dev.deps-graph]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -438,3 +439,24 @@
       (is (str/includes? (slurp (io/file mage-modules-path)) "MIRROR")
           (str "The mage `file->module` function should include a MIRROR comment "
                "pointing at the canonical site.")))))
+
+(deftest ^:parallel log-team-attribution-agrees-with-deps-graph-test
+  (testing (str "`metabase.util.log`'s team attribution is a FOURTH copy of namespace-to-module "
+                "resolution, alongside the kondo hook, `dev.deps-graph` and `mage.modules`. It resolves "
+                "a namespace to its module and then climbs to the nearest ancestor declaring `:team`. "
+                "It cannot take an injected config, so the inheritance climb cannot be exercised on a "
+                "fixture; what can be pinned is that it agrees with `dev.deps-graph` on the real "
+                "config, so this copy cannot drift from the source of truth unnoticed.")
+    (let [config      (dev.deps-graph/kondo-config)
+          prefix->mod (dev.deps-graph/build-prefix->module config)
+          ;; One namespace per module, derived from the config rather than hard-coded, so this cannot
+          ;; rot against a rename and cannot quietly shrink to a handful of modules.
+          samples     (for [m (sort (keys config))]
+                        [m (symbol (dev.deps-graph/module-ns-prefix config m))])]
+      (is (< 100 (count samples))
+          "sampling every declared module, so a shrunken sample would mean the config failed to load")
+      (doseq [[module ns-sym] samples]
+        (testing (format "\n%s (%s)" ns-sym module)
+          ;; log resolves the namespace itself, so compare against deps-graph doing both steps.
+          (is (= (dev.deps-graph/module-team config ((private-fn 'dev.deps-graph 'module) prefix->mod ns-sym))
+                 (log/ns->team* ns-sym))))))))
