@@ -1803,7 +1803,6 @@
            metabase.pulse.core
            metabase.pulse.init}
    :uses #{api
-           api-scope
            app-db
            channel
            classloader
