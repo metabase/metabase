@@ -52,7 +52,7 @@ describe("ChartSettingSegmentsEditor", () => {
     expect(maxInputs[1]).toHaveValue("200");
   });
 
-  it("uses the goal-value widget for min/max when question references are allowed", () => {
+  it("uses the goal-value widget for min/max", () => {
     renderWithProviders(
       <ChartSettingSegmentsEditor
         value={DEFAULT_VALUE}
@@ -172,9 +172,7 @@ describe("ChartSettingSegmentsEditor", () => {
       expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
     });
 
-    // the results still carry the column the reference pointed at before the
-    // re-run this settings change kicked off
-    it("stays quiet while a retargeted reference is still resolving", () => {
+    it("reports a column of another question that no longer exists", () => {
       renderWithBound(
         { type: "card", id: 9, column: "avg" },
         createMockDatasetData({
@@ -193,9 +191,9 @@ describe("ChartSettingSegmentsEditor", () => {
         }),
       );
 
-      expect(screen.queryByText(/Couldn't load/)).not.toBeInTheDocument();
-      expect(screen.queryByText(/no longer exists/)).not.toBeInTheDocument();
-      expect(screen.queryByText(/isn't a number/)).not.toBeInTheDocument();
+      expect(
+        screen.getByText("This column no longer exists"),
+      ).toBeInTheDocument();
     });
   });
 
