@@ -633,6 +633,7 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - subscription-unsubscribe
 - subscription-unsubscribe-undo
 - subscription-update
+- table-data-edit
 - table-manual-scan
 - table-manual-sync
 - table-publish
@@ -712,4 +713,5 @@ The Entity Type column on the [View log](#view-log) model takes one of:
 - card
 - collection
 - dashboard
+- document
 - table

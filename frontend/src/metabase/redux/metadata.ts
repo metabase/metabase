@@ -12,6 +12,7 @@ import type {
   Database,
   DatabaseId,
   Field,
+  GetDatabaseMetadataRequest,
   Segment,
   SegmentId,
   Table,
@@ -52,7 +53,7 @@ export const fetchDatabaseMetadata =
   (id: DatabaseId, options: { reload?: boolean } = {}) =>
   (dispatch: Dispatch): Promise<unknown> =>
     runRtkEndpoint(
-      { id },
+      { id, skip_fields: true } satisfies GetDatabaseMetadataRequest,
       dispatch,
       databaseApi.endpoints.getDatabaseMetadata,
       { forceRefetch: options.reload ?? false },

@@ -17,36 +17,37 @@
   (let [sent          (atom 0)
         dropped       (atom 0)
         skipped       (atom 0)
-        realtime-fn   (fn []
-                        (let [id (rand-int 1000)]
-                          (doseq [e realtime-events]
-                            (case (queue/maybe-put! queue {:thread (str "real-" id) :payload e})
-                              true  (swap! sent inc)
-                              false (swap! dropped inc)
-                              nil   (swap! skipped inc)))))
-        background-fn (fn []
-                        (doseq [e backfill-events]
-                          (queue/blocking-put! queue timeout-ms {:thread "back", :payload e})))
-        run!          (fn [f]
-                        (future (f)))]
-    (run! background-fn)
+        realtime-done (atom false)
+        backfill-done (atom false)]
+    ;; Backfill thread
     (future
-      (dotimes [_ realtime-threads]
-        (run! realtime-fn)))
-    (let [processed (volatile! [])]
-      (try
-        (while true
+      (doseq [e backfill-events]
+        (queue/blocking-put! queue timeout-ms {:thread "back", :payload e}))
+      (reset! backfill-done true))
+    ;; Realtime threads
+    (dotimes [_ realtime-threads]
+      (future
+        (let [id (rand-int 1000)]
+          (doseq [e realtime-events]
+            (case (queue/maybe-put! queue {:thread (str "real-" id) :payload e})
+              true  (swap! sent inc)
+              false (swap! dropped inc)
+              nil   (swap! skipped inc)))))
+      (reset! realtime-done true))
+    ;; Consumer
+    (let [processed (atom [])]
+      (u/with-timeout timeout-ms
+        (try
           ;; Stop the consumer once we are sure that there are no more events coming.
-          (u/with-timeout timeout-ms
-            (vswap! processed conj (:payload (queue/blocking-take! queue timeout-ms)))
+          (while (not (and @realtime-done @backfill-done))
+            (swap! processed conj (:payload (queue/blocking-take! queue timeout-ms)))
             ;; Sleep to provide some backpressure
-            (Thread/sleep 1)))
-        (assert false "this is never reached")
-        (catch Exception _
-          {:processed @processed
-           :sent      @sent
-           :dropped   @dropped
-           :skipped   @skipped})))))
+            (Thread/sleep 1))
+          (catch Exception _)))
+      {:processed @processed
+       :sent      @sent
+       :dropped   @dropped
+       :skipped   @skipped})))
 
 (deftest bounded-transfer-queue-test
   (let [realtime-event-count 500

@@ -230,10 +230,27 @@
     [:temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]])
 
 (mbql-clause/define-mbql-clause :expression
-  [:tuple
-   [:= {:decode/normalize common/normalize-keyword} :expression]
-   [:ref ::expression.options]
-   [:ref #_expression-name ::common/non-blank-string]])
+  [:and
+   ;; legacy `:expression` refs carry the expression name in the slot MBQL 5 uses for options, the
+   ;; same way legacy `:field` refs carry the ID there. Reorder them before validation so the name
+   ;; survives (see the `:field` clause above).
+   {:decode/normalize (fn [x]
+                        (when (sequential? x)
+                          (cond
+                            (= (count x) 2)
+                            [:expression {} (second x)]
+
+                            (and (= (count x) 3)
+                                 (string? (second x))
+                                 ((some-fn map? nil?) (last x)))
+                            [:expression (or (last x) {}) (second x)]
+
+                            :else
+                            x)))}
+   [:tuple
+    [:= {:decode/normalize common/normalize-keyword} :expression]
+    [:ref ::expression.options]
+    [:ref #_expression-name ::common/non-blank-string]]])
 
 (defmethod expression/type-of-method :expression
   [[_tag opts _expression-name]]

@@ -29,6 +29,8 @@ describe("scenarios > metrics > dimensions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.resetSnowplow();
+    H.enableTracking();
 
     // Dimension ids are UUIDs, which keeps this from also matching the
     // fixed-word routes below.
@@ -56,10 +58,20 @@ describe("scenarios > metrics > dimensions", () => {
     });
   });
 
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
   it("curates the dimension list: seeded columns, add, rename, set default, and remove", () => {
     H.visitMetric(metricId);
     H.MetricPage.dimensionsTab().click();
     H.MetricPage.dimensionsPage().should("be.visible");
+
+    cy.log("opening the tab is tracked");
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_dimensions_tab_viewed",
+      target_id: metricId,
+    });
 
     cy.log(
       "seeding added the metric's own table columns, but none from connected tables",
@@ -78,6 +90,11 @@ describe("scenarios > metrics > dimensions", () => {
     addDimensionsPanel().should("contain", "Product").and("contain", "User");
     addDimensionsPanel().findByText("Category").click();
     cy.wait("@addDimensions");
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_dimension_added",
+      target_id: metricId,
+      result: "success",
+    });
     dimensionRow("Product - Category").scrollIntoView().should("be.visible");
     addDimensionsPanel().findByRole("button", { name: "Done" }).click();
     allDimensionRows().should("have.length", SEEDED_DIMENSIONS_COUNT + 1);
@@ -92,6 +109,11 @@ describe("scenarios > metrics > dimensions", () => {
       .type("Product type")
       .blur();
     cy.wait("@updateDimension");
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_dimension_updated",
+      target_id: metricId,
+      result: "success",
+    });
     dimensionRow("Product type").scrollIntoView().should("be.visible");
     settingsPanel().should("contain", "Settings for Product type");
 
@@ -101,18 +123,50 @@ describe("scenarios > metrics > dimensions", () => {
       .type("Category of the ordered product")
       .blur();
     cy.wait("@updateDimension");
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "metric_dimension_updated",
+        target_id: metricId,
+        result: "success",
+      },
+      2,
+    );
+
+    cy.log("seeding leaves the metric without a default dimension");
+    dimensionList().findByText("Default").should("not.exist");
 
     cy.log("make it the default dimension");
-    dimensionRow("Created At").findByText("Default").should("be.visible");
-    dimensionList().findAllByText("Default").should("have.length", 1);
     settingsPanel().findByRole("button", { name: "Set as default" }).click();
     cy.wait("@setDefaultDimension");
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_dimension_set_default",
+      target_id: metricId,
+      result: "success",
+    });
     dimensionRow("Product type")
       .scrollIntoView()
       .findByText("Default")
       .should("be.visible");
     dimensionRow("Created At").findByText("Default").should("not.exist");
     settingsPanel().findByText("Default dimension").should("be.visible");
+    dimensionList().findAllByText("Default").should("have.length", 1);
+
+    cy.log("removing the default leaves the metric without one (UXW-4988)");
+    settingsPanel().findByRole("button", { name: "Remove default" }).click();
+    cy.wait("@setDefaultDimension").then(({ request }) => {
+      expect(request.body).to.deep.equal({ dimension_id: null });
+    });
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_dimension_remove_default",
+      target_id: metricId,
+      result: "success",
+    });
+    dimensionList().findByText("Default").should("not.exist");
+    settingsPanel().findByText("Default dimension").should("not.exist");
+
+    cy.log("make it the default again");
+    settingsPanel().findByRole("button", { name: "Set as default" }).click();
+    cy.wait("@setDefaultDimension");
     dimensionList().findAllByText("Default").should("have.length", 1);
 
     cy.log("the edits are persisted");
@@ -135,6 +189,15 @@ describe("scenarios > metrics > dimensions", () => {
       .should("be.disabled");
     dimensionList().findByLabelText("Remove").click();
     cy.wait("@removeDimensions");
+    cy.log("both removed dimensions are tracked individually");
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "metric_dimension_removed",
+        target_id: metricId,
+        result: "success",
+      },
+      2,
+    );
     allDimensionRows().should("have.length", SEEDED_DIMENSIONS_COUNT - 1);
     dimensionList()
       .should("not.contain", "Product type")
@@ -176,6 +239,11 @@ describe("scenarios > metrics > dimensions", () => {
         });
       });
     cy.wait("@reorderDimensions");
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_dimensions_reordered",
+      target_id: metricId,
+      result: "success",
+    });
     allDimensionRows().first().should("contain", "Quantity");
 
     cy.log("the new order is persisted");
@@ -191,14 +259,6 @@ describe("scenarios > metrics > dimensions", () => {
     cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
     cy.visit(`/metric/${metricId}/dimensions`);
     cy.wait("@listDimensions");
-
-    cy.log("make another dimension the default so Created At can be selected");
-    dimensionRow("Quantity").findByText("Quantity").click();
-    cy.wait("@getMetric");
-    settingsPanel().findByRole("button", { name: "Set as default" }).click();
-    cy.wait("@setDefaultDimension");
-    cy.wait("@listDimensions");
-    cy.wait("@getMetric");
 
     cy.log("configure Created At to use weekly buckets");
     dimensionRow("Created At").findByText("Created At").click();

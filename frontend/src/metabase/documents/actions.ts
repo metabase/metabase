@@ -1,13 +1,12 @@
 import { openUrl } from "metabase/redux/app";
 import { NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import type { Dispatch } from "metabase/redux/store";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 import type { Document } from "metabase-types/api";
 
-export const navigateBackToDocument =
-  (documentId: number) => (dispatch: Dispatch) => {
-    dispatch(push(`/document/${documentId}`));
-  };
+export const navigateBackToDocument = (documentId: number) => () => {
+  navigate(`/document/${documentId}`);
+};
 
 export const navigateToCardFromDocument =
   (url: string, document?: Document | null) => (dispatch: Dispatch) => {

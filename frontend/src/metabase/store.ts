@@ -8,14 +8,12 @@ import {
 import { Api } from "metabase/api";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { type RouterNavigator, routerMiddleware } from "metabase/router";
 
 // Each app passes its own reducer map, so per-slice types can't be known here.
 type AnySliceReducer = Reducer<any, any>;
 
 export function getStore(
   reducers: Record<string, AnySliceReducer>,
-  navigator?: RouterNavigator | null,
   initialState?: Partial<State> | Record<string, unknown>,
   extraMiddlewares: Middleware[] = [],
 ) {
@@ -28,7 +26,6 @@ export function getStore(
 
   const middlewares: Middleware[] = [
     Api.middleware,
-    ...(navigator ? [routerMiddleware(navigator)] : []),
     ...PLUGIN_REDUX_MIDDLEWARES,
     ...extraMiddlewares,
   ];

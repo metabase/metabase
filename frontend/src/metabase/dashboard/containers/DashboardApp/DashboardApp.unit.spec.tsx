@@ -97,7 +97,7 @@ async function setup({ dashboard }: Options = {}) {
     );
   };
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route path="/" element={<TestHome />} />
       <Route path="/dashboard/:slug" element={<DashboardAppContainer />} />
@@ -119,7 +119,7 @@ async function setup({ dashboard }: Options = {}) {
 
   return {
     dashboardId,
-    history: checkNotNull(history),
+    router: checkNotNull(router),
     mockEventListener,
   };
 }
@@ -160,11 +160,11 @@ describe("DashboardApp", () => {
     });
 
     it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
-      const { dashboardId, history } = await setup();
+      const { dashboardId, router } = await setup();
 
       act(() => {
-        history.push("/");
-        history.push(`/dashboard/${dashboardId}`);
+        router.navigate("/");
+        router.navigate(`/dashboard/${dashboardId}`);
       });
 
       await waitForLoaderToBeRemoved();
@@ -172,7 +172,7 @@ describe("DashboardApp", () => {
       await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
       act(() => {
-        history.goBack();
+        router.back();
       });
 
       expect(
@@ -181,11 +181,11 @@ describe("DashboardApp", () => {
     });
 
     it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
-      const { dashboardId, history } = await setup();
+      const { dashboardId, router } = await setup();
 
       act(() => {
-        history.push("/");
-        history.push(`/dashboard/${dashboardId}`);
+        router.navigate("/");
+        router.navigate(`/dashboard/${dashboardId}`);
       });
 
       await waitForLoaderToBeRemoved();
@@ -196,7 +196,7 @@ describe("DashboardApp", () => {
       await userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
       act(() => {
-        history.goBack();
+        router.back();
       });
 
       expect(

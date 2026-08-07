@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
@@ -12,6 +12,7 @@ import {
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
 

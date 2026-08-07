@@ -16539,6 +16539,31 @@
         "tags" : [ "/api/apps" ]
       }
     },
+    "/api/apps/sandbox-host" : {
+      "get" : {
+        "operationId" : "get-api-apps-sandbox-host",
+        "summary" : "GET /api/apps/sandbox-host",
+        "description" : "Serve the document used as the `src` of the Near-Membrane realm iframe, carrying a\n   per-document CSP that confines `'unsafe-eval'` to that realm. See [[sandbox-host-csp]].",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      }
+    },
     "/api/apps/{slug}" : {
       "put" : {
         "operationId" : "put-api-apps-slug",
@@ -26295,6 +26320,18 @@
                         "type" : "null"
                       } ]
                     },
+                    "warnings" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "type" ]
+                      }
+                    },
                     "dev_bundle_url" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -26317,7 +26354,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "warnings", "created_at", "updated_at" ]
                 }
               }
             }
@@ -26412,6 +26449,18 @@
                           "type" : "null"
                         } ]
                       },
+                      "warnings" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "type" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "type" ]
+                        }
+                      },
                       "dev_bundle_url" : {
                         "oneOf" : [ {
                           "type" : "string"
@@ -26434,7 +26483,7 @@
                         } ]
                       }
                     },
-                    "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                    "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "warnings", "created_at", "updated_at" ]
                   }
                 }
               }
@@ -26508,6 +26557,18 @@
                         "type" : "null"
                       } ]
                     },
+                    "warnings" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "type" ]
+                      }
+                    },
                     "dev_bundle_url" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -26530,7 +26591,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "warnings", "created_at", "updated_at" ]
                 }
               }
             }
@@ -26573,7 +26634,7 @@
       "get" : {
         "operationId" : "get-api-ee-custom-viz-plugin-list",
         "summary" : "GET /api/ee/custom-viz-plugin/list",
-        "description" : "List active and enabled custom visualization plugins. Available to any authenticated user.\n   Plugins with incompatible Metabase version requirements are excluded.\n   Dev-only plugins are excluded when dev mode is disabled.",
+        "description" : "List active and enabled custom visualization plugins. Available to any authenticated user.\n   Plugins with version mismatches are included, with soft `warnings` attached.\n   Dev-only plugins are excluded when dev mode is disabled.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -26585,34 +26646,9 @@
                   "items" : {
                     "type" : "object",
                     "properties" : {
-                      "bundle_hash" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      },
                       "bundle_url" : {
                         "type" : "string",
                         "minLength" : 1
-                      },
-                      "dev_bundle_url" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      },
-                      "display_name" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      },
-                      "icon" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
                       },
                       "id" : {
                         "description" : "value must be an integer greater than zero.",
@@ -26623,13 +26659,50 @@
                         "type" : "string",
                         "minLength" : 1
                       },
+                      "display_name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "bundle_hash" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "manifest" : {
                         "oneOf" : [ { }, {
                           "type" : "null"
                         } ]
+                      },
+                      "warnings" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "type" : {
+                              "type" : "string"
+                            }
+                          },
+                          "required" : [ "type" ]
+                        }
+                      },
+                      "dev_bundle_url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "icon" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
                       }
                     },
-                    "required" : [ "id", "identifier", "display_name", "bundle_url" ]
+                    "required" : [ "id", "identifier", "display_name", "bundle_url", "warnings" ]
                   }
                 }
               }
@@ -26649,7 +26722,7 @@
       "get" : {
         "operationId" : "get-api-ee-custom-viz-plugin-sandbox-host",
         "summary" : "GET /api/ee/custom-viz-plugin/sandbox-host",
-        "description" : "Serve a minimal HTML document used as the iframe `src` for the near-membrane custom-viz\n   sandbox. The response carries a per-document `Content-Security-Policy` that permits\n   `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict\n   nonce-based CSP.",
+        "description" : "Serve a minimal HTML document used as the iframe `src` for the near-membrane custom-viz\n   sandbox. The response carries a per-document `Content-Security-Policy` that permits\n   `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict\n   nonce-based CSP. 404s unless the custom-viz kill switch is on and the request passes the\n   fetch-metadata gate (see [[donor-load-allowed?]]).",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -26771,6 +26844,18 @@
                         "type" : "null"
                       } ]
                     },
+                    "warnings" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "type" ]
+                      }
+                    },
                     "dev_bundle_url" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -26793,7 +26878,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "warnings", "created_at", "updated_at" ]
                 }
               }
             }
@@ -26935,6 +27020,18 @@
                         "type" : "null"
                       } ]
                     },
+                    "warnings" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "type" ]
+                      }
+                    },
                     "dev_bundle_url" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -26957,7 +27054,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "warnings", "created_at", "updated_at" ]
                 }
               }
             }
@@ -27192,6 +27289,18 @@
                         "type" : "null"
                       } ]
                     },
+                    "warnings" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "type" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "type" ]
+                      }
+                    },
                     "dev_bundle_url" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -27214,7 +27323,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "created_at", "updated_at" ]
+                  "required" : [ "id", "display_name", "identifier", "status", "enabled", "dev_only", "warnings", "created_at", "updated_at" ]
                 }
               }
             }
@@ -28586,7 +28695,7 @@
           "schema" : {
             "oneOf" : [ {
               "type" : "string",
-              "enum" : [ "created_at", "message_count", "total_tokens", "cache_read_tokens", "user", "profile_id", "ip_address" ]
+              "enum" : [ "created_at", "title", "message_count", "total_tokens", "cache_read_tokens", "user", "profile_id", "ip_address" ]
             }, {
               "type" : "null"
             } ]
@@ -28799,9 +28908,18 @@
                             }, {
                               "type" : "null"
                             } ]
+                          },
+                          "forked_from_conversation_id" : {
+                            "oneOf" : [ {
+                              "description" : "value must be a valid UUID.",
+                              "type" : "string",
+                              "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                            }, {
+                              "type" : "null"
+                            } ]
                           }
                         },
-                        "required" : [ "conversation_id", "created_at", "title", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "cache_read_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "user" ]
+                        "required" : [ "conversation_id", "created_at", "title", "message_count", "user_message_count", "assistant_message_count", "total_tokens", "cache_read_tokens", "last_message_at", "profile_id", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "forked_from_conversation_id", "user" ]
                       }
                     },
                     "limit" : {
@@ -28946,6 +29064,13 @@
                       } ]
                     },
                     "slack_permalink" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "fork_boundary_message_id" : {
                       "oneOf" : [ {
                         "type" : "string"
                       }, {
@@ -29161,9 +29286,18 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "forked_from_conversation_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be a valid UUID.",
+                        "type" : "string",
+                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
-                  "required" : [ "conversation_id", "created_at", "title", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "feedback" ]
+                  "required" : [ "conversation_id", "created_at", "title", "user", "message_count", "total_tokens", "profile_id", "slack_permalink", "messages", "queries", "search_count", "query_count", "ip_address", "embedding_hostname", "embedding_path", "user_agent", "sanitized_user_agent", "forked_from_conversation_id", "fork_boundary_message_id", "feedback" ]
                 }
               }
             }
@@ -29227,6 +29361,122 @@
           }
         },
         "tags" : [ "/api/ee/metabot" ]
+      }
+    },
+    "/api/ee/mfa/admin/enrolled-users" : {
+      "get" : {
+        "operationId" : "get-api-ee-mfa-admin-enrolled-users",
+        "summary" : "GET /api/ee/mfa/admin/enrolled-users",
+        "description" : "Admin: users who have a confirmed second factor. Never feature-gated, for the same reason\n  `/admin/remove` isn't — after a licence lapse an admin must still be able to find and unlock a\n  locked-out user.\n\n  Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "sso_source" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "is_active" : {
+                            "type" : "boolean"
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "email" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "is_superuser" : {
+                            "type" : "boolean"
+                          },
+                          "last_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "first_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "enrolled_at" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "format" : "date-time"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "common_name" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "email", "first_name", "last_name", "common_name", "sso_source", "is_active", "is_superuser", "enrolled_at" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "limit" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "offset" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
       }
     },
     "/api/ee/mfa/admin/overview" : {
@@ -29300,6 +29550,114 @@
                 "required" : [ "user_id" ]
               }
             }
+          }
+        },
+        "tags" : [ "/api/ee/mfa" ]
+      }
+    },
+    "/api/ee/mfa/admin/unenrolled-users" : {
+      "get" : {
+        "operationId" : "get-api-ee-mfa-admin-unenrolled-users",
+        "summary" : "GET /api/ee/mfa/admin/unenrolled-users",
+        "description" : "Admin: active users who have not set up a second factor. Matches `unenrolled_count` from\n  `/admin/overview`, so people who sign in through SSO are included even though the login gate never\n  challenges them — their identity provider owns MFA. Never feature-gated, as above.\n\n  Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "common_name" : {
+                            "type" : "string"
+                          },
+                          "email" : {
+                            "type" : "string",
+                            "minLength" : 1
+                          },
+                          "first_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "is_active" : {
+                            "type" : "boolean"
+                          },
+                          "is_superuser" : {
+                            "type" : "boolean"
+                          },
+                          "last_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "sso_source" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "id", "email", "first_name", "last_name", "common_name", "sso_source", "is_active", "is_superuser" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "limit" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "offset" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/ee/mfa" ]
@@ -36896,6 +37254,15 @@
                             "type" : "string",
                             "format" : "date-time"
                           },
+                          "forked_from_conversation_id" : {
+                            "oneOf" : [ {
+                              "description" : "value must be a valid UUID.",
+                              "type" : "string",
+                              "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "last_message_at" : {
                             "oneOf" : [ {
                               "type" : "string",
@@ -36933,7 +37300,7 @@
                             } ]
                           }
                         },
-                        "required" : [ "conversation_id", "created_at", "title", "user_id", "profile_id", "message_count", "last_message_at" ]
+                        "required" : [ "conversation_id", "created_at", "title", "user_id", "profile_id", "message_count", "last_message_at", "forked_from_conversation_id" ]
                       }
                     },
                     "limit" : {
@@ -36999,6 +37366,15 @@
                       "type" : "string",
                       "format" : "date-time"
                     },
+                    "forked_from_conversation_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be a valid UUID.",
+                        "type" : "string",
+                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "messages" : {
                       "type" : "array",
                       "items" : {
@@ -37051,7 +37427,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "conversation_id", "created_at", "title", "user_id", "saved_entities", "messages" ]
+                  "required" : [ "conversation_id", "created_at", "title", "user_id", "forked_from_conversation_id", "saved_entities", "messages" ]
                 }
               }
             }
@@ -37061,6 +37437,131 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metabot/conversations" ]
+      }
+    },
+    "/api/metabot/conversations/{id}/fork" : {
+      "post" : {
+        "operationId" : "post-api-metabot-conversations-id-fork",
+        "summary" : "POST /api/metabot/conversations/{id}/fork",
+        "description" : "Fork a conversation at an assistant message, returning a brand-new conversation\n  that copies the thread from the start up to and including that message.\n\n  Only the conversation's originator may fork it, for now. `message_id` is the\n  `external_id` of the message to fork at, which must be a live, finished,\n  non-errored assistant message. The clone gets fresh conversation/message ids,\n  fresh timestamps, the current user as owner, and zeroed token usage so the fork\n  does not double-count tokens in the analytics views.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "created_at" : {
+                      "type" : "string",
+                      "format" : "date-time"
+                    },
+                    "forked_from_conversation_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be a valid UUID.",
+                        "type" : "string",
+                        "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "messages" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    },
+                    "saved_entities" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "card_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "chart_id" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
+                        },
+                        "required" : [ "card_id", "chart_id" ]
+                      }
+                    },
+                    "state" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.metabot.schema.state"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "title" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "user_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "conversation_id", "created_at", "title", "user_id", "forked_from_conversation_id", "saved_entities", "messages" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "message_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  }
+                },
+                "required" : [ "message_id" ]
+              }
+            }
           }
         },
         "tags" : [ "/api/metabot/conversations" ]
@@ -37824,7 +38325,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "anthropic", "openai", "azure", "bedrock", "metabase", "openrouter" ]
+            "enum" : [ "anthropic", "openai", "mistral", "azure", "bedrock", "zai", "metabase", "openrouter" ]
           }
         } ],
         "responses" : {
@@ -38021,7 +38522,7 @@
                   },
                   "provider" : {
                     "type" : "string",
-                    "enum" : [ "anthropic", "openai", "azure", "bedrock", "metabase", "openrouter" ]
+                    "enum" : [ "anthropic", "openai", "mistral", "azure", "bedrock", "zai", "metabase", "openrouter" ]
                   }
                 },
                 "required" : [ "provider" ]
@@ -38740,7 +39241,7 @@
       "post" : {
         "operationId" : "post-api-metric-id-dimension-set-default",
         "summary" : "POST /api/metric/{id}/dimension/set-default",
-        "description" : "Mark exactly one dimension as the metric's default, clearing any previous default. Returns the\n  updated list of added dimensions. (It is legal for a metric to have no default; this always leaves\n  exactly one.)",
+        "description" : "Mark exactly one dimension as the metric's default, clearing any previous default. A null\n  `dimension_id` clears the default without setting a new one, so the metric renders as a scalar.\n  Returns the updated list of added dimensions.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -38780,8 +39281,12 @@
                 "type" : "object",
                 "properties" : {
                   "dimension_id" : {
-                    "type" : "string",
-                    "minLength" : 1
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
                   }
                 },
                 "required" : [ "dimension_id" ]
@@ -38796,7 +39301,7 @@
       "post" : {
         "operationId" : "post-api-metric-id-dimension-dimension-key",
         "summary" : "POST /api/metric/{id}/dimension/{dimension-key}",
-        "description" : "Update a metric dimension's `display_name`, `description`, and/or source column.\n\n  `source` is a `{type, field-id}`; the new column must have the same effective type.",
+        "description" : "Update a metric dimension's `display_name`, `description`, `default_temporal_unit`, and/or source\n  column.\n\n  `source` is a `{type, field-id}`; the new column must have the same effective type.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -38841,6 +39346,10 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "default_temporal_unit" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
                   "description" : {
                     "oneOf" : [ {
                       "type" : "string"
@@ -53317,31 +53826,8 @@
             }, {
               "type" : "null"
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "database-name",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "library",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
+          },
+          "description" : "Scopes the schema to a database by numeric id or name."
         }, {
           "in" : "query",
           "name" : "library-collections",
@@ -53353,19 +53839,8 @@
             }, {
               "type" : "null"
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "collections",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
+          },
+          "description" : "Comma-separated library collection ids or entity ids. Limits tables and metrics to those library collections."
         }, {
           "in" : "query",
           "name" : "question-collections",
@@ -53377,7 +53852,8 @@
             }, {
               "type" : "null"
             } ]
-          }
+          },
+          "description" : "Comma-separated collection ids or entity ids. Includes saved questions from those collections."
         }, {
           "in" : "query",
           "name" : "include-data-library",
@@ -53388,7 +53864,8 @@
             }, {
               "type" : "null"
             } ]
-          }
+          },
+          "description" : "Whether to include the entire data library."
         }, {
           "in" : "query",
           "name" : "include-metric-library",
@@ -53399,7 +53876,8 @@
             }, {
               "type" : "null"
             } ]
-          }
+          },
+          "description" : "Whether to include the entire metric library."
         }, {
           "in" : "query",
           "name" : "include-models",
@@ -53410,18 +53888,8 @@
             }, {
               "type" : "null"
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "questions",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
+          },
+          "description" : "Whether to include all readable models with executable actions. Database scope applies when provided."
         } ],
         "responses" : {
           "2XX" : {

@@ -16,11 +16,12 @@ import { UpsellGem } from "metabase/common/components/upsells/components/UpsellG
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Outlet, useRouter } from "metabase/router";
+import { Outlet, useLocation } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
@@ -115,11 +116,13 @@ const globalFilterFn = (
 };
 
 export const TransformListPage = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
   const targetCollectionId =
-    Urls.extractEntityId(location.query?.collectionId) ?? null;
+    Urls.extractEntityId(
+      new URLSearchParams(location.search).get("collectionId") ?? undefined,
+    ) ?? null;
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
   const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");

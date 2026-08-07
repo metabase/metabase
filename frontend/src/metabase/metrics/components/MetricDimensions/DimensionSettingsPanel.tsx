@@ -5,8 +5,13 @@ import {
   useSetDefaultMetricDimensionMutation,
   useUpdateMetricDimensionMutation,
 } from "metabase/api/metric";
-import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import {
+  trackMetricDimensionRemoveDefault,
+  trackMetricDimensionSetDefault,
+  trackMetricDimensionUpdated,
+} from "metabase/metrics/analytics";
 import {
   Button,
   Group,
@@ -65,7 +70,9 @@ export function DimensionSettingsPanel({
   const { sendErrorToast } = useMetadataToasts();
 
   const sourceColumnLabel = getSourceColumnLabel(dimension, queryMetadata);
-  const showSetAsDefaultButton = !isOrphaned(dimension) && !dimension.default;
+  // An orphaned dimension can't be made the default, but one that already is
+  // still needs a way out.
+  const showDefaultButton = !isOrphaned(dimension) || dimension.default;
 
   useEffect(() => {
     setDefaultTemporalUnit(dimension.default_temporal_unit);
@@ -78,8 +85,10 @@ export function DimensionSettingsPanel({
         dimensionId: dimension.id,
         ...changes,
       }).unwrap();
+      trackMetricDimensionUpdated(metricId, dimension.id, "success");
       return true;
     } catch {
+      trackMetricDimensionUpdated(metricId, dimension.id, "failure");
       sendErrorToast(t`Couldn't update ${dimension.display_name}`);
       return false;
     }
@@ -122,8 +131,22 @@ export function DimensionSettingsPanel({
         metricId,
         dimension_id: dimension.id,
       }).unwrap();
+      trackMetricDimensionSetDefault(metricId, dimension.id, "success");
     } catch {
+      trackMetricDimensionSetDefault(metricId, dimension.id, "failure");
       sendErrorToast(t`Couldn't make ${dimension.display_name} the default`);
+    }
+  };
+
+  const handleRemoveDefault = async () => {
+    try {
+      await setDefaultDimension({ metricId, dimension_id: null }).unwrap();
+      trackMetricDimensionRemoveDefault(metricId, dimension.id, "success");
+    } catch {
+      trackMetricDimensionRemoveDefault(metricId, dimension.id, "failure");
+      sendErrorToast(
+        t`Couldn't remove ${dimension.display_name} as the default`,
+      );
     }
   };
 
@@ -141,14 +164,14 @@ export function DimensionSettingsPanel({
         wrap="nowrap"
       >
         <Title order={4}>{t`Settings for ${dimension.display_name}`}</Title>
-        {showSetAsDefaultButton && (
+        {showDefaultButton && (
           <Button
             loading={isSettingDefault || isFetching}
-            onClick={handleSetDefault}
+            onClick={dimension.default ? handleRemoveDefault : handleSetDefault}
             size="sm"
             variant="default"
           >
-            {t`Set as default`}
+            {dimension.default ? t`Remove default` : t`Set as default`}
           </Button>
         )}
       </Group>

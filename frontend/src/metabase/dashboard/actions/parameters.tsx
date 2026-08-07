@@ -24,7 +24,6 @@ import { createAction, createThunkAction } from "metabase/redux";
 import { selectTab, setParameterValues } from "metabase/redux/dashboard";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
-import type { Query } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
@@ -42,6 +41,7 @@ import type {
   Parameter,
   ParameterId,
   ParameterTarget,
+  ParameterValuesMap,
   TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
@@ -1070,7 +1070,7 @@ export const setOrUnsetParameterValues =
   };
 
 export const setParameterValuesFromQueryParams =
-  (queryParams: Query = {}) =>
+  (queryParams: ParameterValuesMap = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
     const parameters = getParameters(getState());
     const parameterValues = getParameterValuesByIdFromQueryParams(

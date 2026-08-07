@@ -113,6 +113,14 @@
     (when-let [role (and api/*current-user-id* (connection-impersonation-role db-id))]
       {:impersonation-role role})))
 
+(defenterprise impersonation-token-for-db
+  "Connection-impersonation fingerprint for the current user on `db-id` (the resolved database
+  role), or nil when not impersonated (including admins)."
+  :feature :none
+  [db-id]
+  (when-let [role (and api/*current-user-id* (connection-impersonation-role db-id))]
+    {:role role}))
+
 (def ^:dynamic *impersonation-role*
   "Set by Impersonation middleware, via the query processor, to define the role that should be used by
   `set-role-if-supported!`. If not set (for example, when we're not in the context of a query) we'll compute it

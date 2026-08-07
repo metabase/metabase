@@ -1,9 +1,7 @@
 import { MemoryRouter } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
-
-import { Route } from "./route";
-import { useLocation } from "./use-location";
+import { Route, useLocation } from "metabase/router";
 
 function LocationProbe() {
   const location = useLocation();

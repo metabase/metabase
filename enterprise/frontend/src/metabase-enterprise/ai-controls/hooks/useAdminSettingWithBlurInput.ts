@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
+import { useAdminSetting } from "metabase/settings";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,

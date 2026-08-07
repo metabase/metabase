@@ -255,9 +255,7 @@
   [header-and-rows]
   (let [header (first header-and-rows)
         auto-pk-indices (auto-pk-column-indices header)]
-    (cond->> header-and-rows
-      auto-pk-indices
-      (map (partial remove-indices auto-pk-indices)))))
+    (map (partial remove-indices auto-pk-indices) header-and-rows)))
 
 (defn- file-size-mb [csv-file]
   (/ (.length ^File csv-file) 1048576.0))

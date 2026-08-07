@@ -642,7 +642,7 @@ type NestedCardPayloadAction = {
 const handleQueryCompleted = (
   state: Card | null,
   action: NestedCardPayloadAction,
-) => {
+): Card | null => {
   if (!state) {
     return state;
   }

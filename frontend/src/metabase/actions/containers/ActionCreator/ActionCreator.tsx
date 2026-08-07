@@ -15,7 +15,6 @@ import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import type { Route } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Modal } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -40,7 +39,11 @@ interface OwnProps {
   databaseId?: DatabaseId;
 
   action?: WritebackAction;
-  route?: Route;
+  /**
+   * Whether the creator is mounted as its own route. A routed creator guards
+   * leaving with `LeaveRouteConfirmModal`; an inline one only has `beforeunload`.
+   */
+  isRouted?: boolean;
 
   onSubmit?: (action: WritebackAction) => void;
   onClose?: () => void;
@@ -62,7 +65,7 @@ const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
 });
 
-function ActionCreator({ model, onSubmit, onClose, route }: Props) {
+function ActionCreator({ model, onSubmit, onClose, isRouted }: Props) {
   const [createAction] = useCreateActionMutation();
   const [updateAction] = useUpdateActionMutation();
   const [sendToast] = useToast();
@@ -90,7 +93,7 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
   const showUnsavedChangesWarning =
     isEditable && isDirty && !isCallbackScheduled;
 
-  useBeforeUnload(!route && showUnsavedChangesWarning);
+  useBeforeUnload(!isRouted && showUnsavedChangesWarning);
 
   const handleCreate = async (values: CreateActionFormValues) => {
     if (action.type !== "query") {
@@ -186,11 +189,8 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
         />
       </Modal>
 
-      {route && (
-        <LeaveRouteConfirmModal
-          isEnabled={showUnsavedChangesWarning}
-          route={route}
-        />
+      {isRouted && (
+        <LeaveRouteConfirmModal isEnabled={showUnsavedChangesWarning} />
       )}
     </>
   );

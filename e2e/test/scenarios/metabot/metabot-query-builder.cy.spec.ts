@@ -46,15 +46,6 @@ describe("Metabot Query Builder", () => {
     cy.findByTestId("metabot-chat").should("not.exist");
   });
 
-  it("should not show AI exploration in new button when metabot is disabled", () => {
-    H.updateSetting("metabot-enabled?", false);
-    cy.visit("/");
-
-    cy.log("'AI exploration' option should not appear in new button");
-    H.newButton().click();
-    H.popover().findByText("AI exploration").should("not.exist");
-  });
-
   it("should render the agent's reply inline without leaving the page", () => {
     cy.visit("/question/ask");
     H.metabotChatInput().should("be.visible");
