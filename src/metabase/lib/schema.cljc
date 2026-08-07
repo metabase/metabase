@@ -373,8 +373,6 @@
                                ;; it's supposed to be added to the top level. Investigate whether this was just a
                                ;; mistake or what.
                                :middleware)}
-   [:map
-    [:lib/type [:ref ::stage.type]]]
    [:multi {:dispatch      lib-type
             :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
     [:mbql.stage/native [:ref ::stage.native]]
