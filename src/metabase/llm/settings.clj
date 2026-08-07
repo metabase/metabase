@@ -427,7 +427,9 @@
   :default    true
   :visibility :settings-manager
   :export?    true
-  :doc        "When a provider rejects Metabase's requests, Metabase records the failure and — with this on — runs on the default model of the next connection in `llm-providers` instead, until the original one works again. Turn it off to have requests fail on the selected provider rather than move to another one.")
+  :doc        "When a provider rejects Metabase's requests, Metabase records the failure and — with this on — runs on the default model of the next connection in `llm-providers` instead, until the original one works again. Turn it off to have requests fail on the selected provider rather than move to another one.
+
+`llm-providers` is a priority list, not a rotation: requests always go to the highest connection in it that is working, so they return to the selected provider as soon as it stops failing. Nothing is load balanced across connections.")
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
