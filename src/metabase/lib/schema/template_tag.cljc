@@ -189,7 +189,10 @@
 
 (mr/def ::template-tag
   [:and
-   {:decode/normalize common/normalize-map}
+   {:decode/normalize (fn [tag]
+                        (when-some [tag (common/normalize-map tag)]
+                          (cond-> tag
+                            (:type tag) (update :type common/normalize-keyword))))}
    [:multi {:dispatch #(keyword (:type %))}
     [:temporal-unit [:ref ::temporal-unit]]
     [:dimension     [:ref ::field-filter]]
