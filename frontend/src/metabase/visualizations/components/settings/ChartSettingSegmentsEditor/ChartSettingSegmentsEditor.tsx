@@ -48,7 +48,7 @@ export const ChartSettingSegmentsEditor = ({
   const canRemove = segments.length > 1 || canRemoveAll;
 
   return (
-    <Stack px="lg" gap="lg">
+    <Stack gap="lg">
       {segments.length > 0 ? (
         <Stack gap="lg">
           {segments.map((segment, index) => (
