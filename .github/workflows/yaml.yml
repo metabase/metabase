@@ -24,6 +24,7 @@ jobs:
           filters: .github/file-paths.yaml
 
   yaml-linter:
+    needs: files-changed
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     if: needs.files-changed.outputs.yaml == 'true'
     timeout-minutes: 10

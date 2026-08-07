@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
@@ -177,14 +178,16 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+                            [:parameters   {:optional true} [:maybe ms/JSONString]]
+                            [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -204,7 +207,8 @@
    {:keys [parameters format_rows pivot_results]} :- [:map
                                                       [:format_rows   {:default false} :boolean]
                                                       [:pivot_results {:default false} :boolean]
-                                                      [:parameters    {:optional true} [:maybe ms/JSONString]]]]
+                                                      [:parameters    {:optional true} [:maybe ms/JSONString]]
+                                                      [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (process-query-for-card-with-public-uuid
    uuid
    export-format
@@ -274,11 +278,14 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid"
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
-                      [:uuid ms/UUIDString]]]
+                      [:uuid ms/UUIDString]]
+   _query-params :- [:map
+                     [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (u/prog1 (dashboard-with-uuid uuid)
     (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*})))
@@ -324,7 +331,8 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
@@ -333,7 +341,8 @@
                                           [:dashcard-id ms/PositiveInt]
                                           [:card-id     ms/PositiveInt]]
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+                            [:parameters   {:optional true} [:maybe ms/JSONString]]
+                            [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
         dashboard (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
@@ -365,9 +374,10 @@
                                                                                          (fn [x]
                                                                                            (cond-> x
                                                                                              (string? x) json/decode+kw))}
-                                                                                        [:sequential :map]]]
+                                                                                        [:sequential ::parameters.schema/parameter-with-value]]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
-                                                      [:pivot_results {:default false} ms/BooleanValue]]]
+                                                      [:pivot_results {:default false} ms/BooleanValue]
+                                                      [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
         dashboard (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
@@ -383,6 +393,12 @@
                               :format-rows?          format_rows
                               :pivot?                pivot_results}))))
 
+(def ^:private ActionParameterValue
+  "A value submitted for an action execution parameter, keyed by parameter id. The FE types these as
+  `string | number | boolean | null` (`ParametersForActionExecution` in `metabase-types/api/actions.ts`); dates and
+  other rich types are submitted in their string form."
+  [:maybe [:or :string number? :boolean]])
+
 (api.macros/defendpoint :post "/dashboard/:uuid/dashcard/:dashcard-id/execute/values" :- [:map-of :string :any]
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
@@ -392,7 +408,7 @@
                                   [:dashcard-id ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map
-                            [:parameters [:map-of :string :any]]]]
+                            [:parameters [:map-of :string ActionParameterValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid :archived false))]
     (api/check-404 (t2/select-one-pk :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
@@ -415,7 +431,8 @@
                                   [:dashcard-id ms/PositiveInt]]
    _query-params
    {:keys [parameters], :as _body} :- [:map
-                                       [:parameters {:optional true} [:maybe [:map-of :keyword :any]]]]]
+                                       [:parameters {:optional true} [:maybe [:map-of :keyword ActionParameterValue]]]
+                                       [:modelId    {:optional true} [:maybe ms/PositiveInt]]]]
   (let [throttle-message (try
                            (throttle/check dashcard-execution-throttle dashcard-id)
                            nil
@@ -528,7 +545,7 @@
   [{:keys [uuid param-key]} :- [:map
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
-   {:keys [value]}          :- [:map [:value :any]]]
+   {:keys [value]}          :- [:map [:value :string]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card (t2/select-one :model/Card :public_uuid uuid, :archived false)]
     (request/as-admin
@@ -560,7 +577,7 @@
                                       [:uuid      ms/UUIDString]
                                       [:param-key ms/NonBlankString]
                                       [:query     ms/NonBlankString]]
-   constraint-param-key->value]
+   constraint-param-key->value :- [:map-of string? any?]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard (dashboard-with-uuid-for-param-values uuid)]
     (request/as-admin
@@ -576,7 +593,7 @@
   [{:keys [uuid param-key]} :- [:map
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
-   {:keys [value]}          :- [:map [:value :any]]]
+   {:keys [value]}          :- [:map [:value :string]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard (dashboard-with-uuid-for-param-values uuid)]
     (request/as-admin
@@ -590,21 +607,24 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+                            [:parameters   {:optional true} [:maybe ms/JSONString]]
+                            [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)
                                            :qp qp.pivot/run-pivot-query))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
   sharing must be enabled."
@@ -613,7 +633,8 @@
                                           [:card-id     ms/PositiveInt]
                                           [:dashcard-id ms/PositiveInt]]
    {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+                            [:parameters   {:optional true} [:maybe ms/JSONString]]
+                            [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
         dashboard (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
@@ -829,10 +850,11 @@
    _query-params
    {:keys [parameters format_rows pivot_results]} :- [:map
                                                       [:parameters    {:optional true} [:maybe [:or
-                                                                                                [:sequential ms/Map]
+                                                                                                [:sequential ::parameters.schema/parameter-with-value]
                                                                                                 ms/JSONString]]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
-                                                      [:pivot_results {:default false} ms/BooleanValue]]]
+                                                      [:pivot_results {:default false} ms/BooleanValue]
+                                                      [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card (validate-card-in-public-document uuid card-id)]
     (process-query-for-card-with-id

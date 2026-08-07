@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
@@ -25,7 +26,7 @@
    [metabase.sync.core :as sync]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -459,6 +460,21 @@
                              (tru "There was an error uploading the file"))}})
     (finally (io/delete-file (:file options) :silently))))
 
+(def ^:private CsvUploadParts
+  "The multipart parts a CSV upload may carry. A part under any other name is rejected rather than dropped, so a second
+  file cannot be smuggled past the upload: `::mc/default` keeps the extra parts, and the check below refuses them."
+  [:and
+   [:map
+    ["file"
+     [:map
+      [:filename :string]
+      [:tempfile (ms/InstanceOfClass java.io.File)]]]
+    ["collection_id" {:optional true} :string]
+    [::mc/default [:map-of :string :any]]]
+   (mu/with-api-error-message
+    [:fn (fn [parts] (every? #{"file" "collection_id"} (keys parts)))]
+    (deferred-tru "unexpected multipart part"))])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -474,16 +490,8 @@
                     [:id ms/PositiveInt]]
    _query-params
    _body
-   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
-   ;; frontend sends alongside the file.
    {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params
-                                                 [:map {:closed true}
-                                                  ["file"
-                                                   [:map
-                                                    [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]
-                                                  ["collection_id" {:optional true} :string]]]]]
+                                                [:multipart-params CsvUploadParts]]]
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
@@ -504,16 +512,8 @@
                     [:id ms/PositiveInt]]
    _query-params
    _body
-   ;; Closed so a file part smuggled under another part name is rejected; collection_id is the text field the
-   ;; frontend sends alongside the file.
    {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params
-                                                 [:map {:closed true}
-                                                  ["file"
-                                                   [:map
-                                                    [:filename :string]
-                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]
-                                                  ["collection_id" {:optional true} :string]]]]]
+                                                [:multipart-params CsvUploadParts]]]
   (update-csv! {:table-id id
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])

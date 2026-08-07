@@ -22,7 +22,7 @@
    [:id                  ms/PositiveInt]
    [:name                ms/NonBlankString]
    [:table_id            ms/PositiveInt]
-   [:definition          :map]
+   [:definition          ms/Map]
    [:description         {:optional true} [:maybe :string]]
    [:archived            :boolean]
    [:creator_id          ms/PositiveInt]
@@ -158,7 +158,7 @@
    _query-params
    body :- [:map
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
-            [:definition              {:optional true} [:maybe :map]]
+            [:definition              {:optional true} [:maybe ms/Map]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]

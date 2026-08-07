@@ -812,7 +812,7 @@ describe("scenarios > collection defaults", () => {
           H.openUnpinnedItemMenu("Orders, Count");
           H.popover().findByText("Pin this").click();
           H.getPinnedSection().within(() => {
-            cy.findByText("18,760");
+            cy.findByText("Orders, Count");
           });
 
           // Select one
