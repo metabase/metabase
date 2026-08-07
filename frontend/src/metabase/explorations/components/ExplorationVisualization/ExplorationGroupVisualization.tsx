@@ -28,6 +28,7 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import type {
   ClickActionsMode,
   HighlightedObject,
+  OnBrush,
 } from "metabase/visualizations/types";
 import type {
   Comment,
@@ -483,6 +484,13 @@ function ExplorationCartesianChart({
   selectedTimelineEventIds,
   onSeeAllEvents,
 }: ExplorationCartesianChartProps) {
+  const handleBrush = useCallback<OnBrush>(
+    ({ clickObject, openClickActions }) => {
+      openClickActions(clickObject);
+    },
+    [],
+  );
+
   return (
     <ExplorationVisualization
       rawSeries={series}
@@ -492,6 +500,7 @@ function ExplorationCartesianChart({
       highlighted={highlighted}
       selectedTimelineEventIds={selectedTimelineEventIds}
       onSeeAllEvents={onSeeAllEvents}
+      onBrush={handleBrush}
     />
   );
 }
@@ -593,6 +602,7 @@ interface ExplorationVisualizationProps {
   highlighted?: HighlightedObject | null;
   selectedTimelineEventIds?: TimelineEventId[];
   onSeeAllEvents?: (events: TimelineEvent[]) => void;
+  onBrush?: OnBrush;
 }
 
 export function ExplorationVisualization({
@@ -603,6 +613,7 @@ export function ExplorationVisualization({
   highlighted,
   selectedTimelineEventIds,
   onSeeAllEvents,
+  onBrush,
 }: ExplorationVisualizationProps) {
   const [warnings, setWarnings] = useState<string[]>([]);
 
@@ -619,6 +630,7 @@ export function ExplorationVisualization({
         highlighted={highlighted}
         selectedTimelineEventIds={selectedTimelineEventIds}
         onSeeAllEvents={onSeeAllEvents}
+        onBrush={onBrush}
       />
     </Box>
   );

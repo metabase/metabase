@@ -22,11 +22,6 @@ inputs:
     description: Edition to test (oss or ee)
   quarantine-engine:
     required: false
-  driver-status:
-    required: false
-    default: ""
-    description: >-
-      Configured status for this driver ("info", "skip", "required", or empty), as reported by `mage driver-decisions`.
   granular-rerun:
     required: false
     default: "true"
@@ -72,25 +67,30 @@ runs:
     # Workflow expressions have no arithmetic, so the shell computes it.
     #
     # run-tests.yml calls app-db.yml, backend.yml, drivers.yml and semantic-search.yml
-    # into ONE run, so all four share an artifact namespace. Neither `github.job`
-    # (`be-tests-postgres` exists in app-db.yml and drivers.yml) nor `junit-name`
-    # (both derive `be-tests-postgres-ee`) is unique there on its own; together with
-    # `artifact-suffix` they are.
+    # as part of ONE run, so all four share an artifact namespace. `junit-name` alone is not
+    # unique there — app-db.yml and drivers.yml both derive `be-tests-postgres-ee` — so
+    # `artifact-suffix` carries the rest of the discriminator.
     - name: Resolve rerun artifact names
       if: ${{ inputs.granular-rerun == 'true' }}
       shell: bash
       env:
-        RERUN_ARTIFACT_BASE: ${{ format('failed-tests-{0}-{1}{2}', github.job, inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
+        RERUN_ARTIFACT_BASE: ${{ format('failed-tests-{0}{1}', inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
       run: |
         echo "RERUN_ARTIFACT=$RERUN_ARTIFACT_BASE-attempt-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
         echo "RERUN_PREV_ARTIFACT=$RERUN_ARTIFACT_BASE-attempt-$((GITHUB_RUN_ATTEMPT - 1))" >> "$GITHUB_ENV"
 
+    # `pattern` (not `name`) because the artifact is legitimately absent whenever the
+    # previous attempt recorded nothing: `name` treats that as an error, `pattern`
+    # downloads nothing and moves on. The value is a literal — no glob metacharacters —
+    # so it matches exactly one artifact, which lands at `target/failed-tests`. A pattern
+    # that ever matched two would nest them under their artifact names instead, leaving
+    # the file absent and falling back to the full suite.
     - name: Restore previously-failed tests
       if: ${{ inputs.granular-rerun == 'true' && github.run_attempt != '1' }}
       continue-on-error: true
       uses: actions/download-artifact@v8
       with:
-        name: ${{ env.RERUN_PREV_ARTIFACT }}
+        pattern: ${{ env.RERUN_PREV_ARTIFACT }}
         path: target
 
     - name: Test database driver
@@ -109,8 +109,8 @@ runs:
         fi
       shell: bash
       id: run-test
-      # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
-      # Driver "info" status can affect this logic. See below.
+      # Keep this step continue-on-error because the quarantine gate below controls whether it
+      # ultimately fails.
       continue-on-error: true
 
     - name: Report failed tests to ci-conductor
@@ -173,13 +173,7 @@ runs:
     # Last, because this is the only step allowed to fail the job: everything above it reports the
     # failure (JUnit report, logs, ci-conductor) and must run regardless of the verdict below.
     - name: Quarantine gate
-      # Off master and release branches an "info" driver is data-collection only - the test always passes!
-      # On master and release branches "info" carries no weight - the quarantine logic applies.
-      if: |
-        !cancelled()
-        && steps.run-test.outcome == 'failure'
-        && !(inputs.driver-status == 'info'
-             && !(github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')))
+      if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
       uses: ./.github/actions/quarantine-gate
       with:
         adapter: backend

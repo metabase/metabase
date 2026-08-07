@@ -270,6 +270,56 @@ describe("Visualizations > PivotTable > PivotTable", () => {
     });
   });
 
+  describe("body cell click (#79023)", () => {
+    // The click payload must identify the aggregation column so drills like
+    // "See these X" can lift the aggregation's inner filter (e.g. CountIf's
+    // `[Source] = "Invite"`). Without `column` set, and without each `data`
+    // entry carrying its resolved `col`, the underlying-records drill can't
+    // find the aggregation ref and drops the inner filter.
+    it("resolves the aggregation column and enriches the data/dimensions arrays", async () => {
+      const onVisualizationClick = jest.fn();
+      setupPivotTable({ onVisualizationClick });
+
+      // The value 111 is the aggregation-1 cell for the first breakout row (foo1/bar1/baz1).
+      await userEvent.click(await screen.findByText("111"));
+
+      expect(onVisualizationClick).toHaveBeenCalledTimes(1);
+      const clicked = onVisualizationClick.mock.calls[0][0];
+
+      expect(clicked.column).toMatchObject({
+        name: "aggregation-1",
+        source: "aggregation",
+      });
+      expect(clicked.value).toBe(111);
+
+      // Each `data` entry must have `col` resolved from its `colIdx` — the split
+      // if/else in getCellClickHandler is what enables this for value-cell clicks
+      // that carry both a top-level `colIdx` and a pre-built `data` array.
+      expect(clicked.data).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            col: expect.objectContaining({ name: "aggregation-1" }),
+            value: 111,
+          }),
+          expect.objectContaining({
+            col: expect.objectContaining({ name: "field-123" }),
+            value: "foo1",
+          }),
+        ]),
+      );
+
+      // Breakout dimensions must carry column metadata so the drill can filter by them.
+      expect(clicked.dimensions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            column: expect.objectContaining({ name: "field-123" }),
+            value: "foo1",
+          }),
+        ]),
+      );
+    });
+  });
+
   describe("scrollbar alignment", () => {
     it("should reduce top header width by scrollbar size when body has vertical scrollbar", () => {
       const scrollBarSize = 15;

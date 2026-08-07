@@ -11,6 +11,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.transforms.core :as transforms]
+   [metabase.transforms.schema :as transforms.schema]
    [ring.util.response :as response]
    [toucan2.core :as t2]))
 
@@ -97,7 +98,7 @@
    :- [:map
        [:card_id              ::replacement.schema/source-entity-id]
        [:transform_name       :string]
-       [:transform_target     :map]
+       [:transform_target     ::transforms.schema/transform-target]
        [:target_collection_id {:optional true} [:maybe ::replacement.schema/source-entity-id]]
        [:transform_tag_ids    {:optional true} [:maybe [:sequential pos-int?]]]]]
   (api/check-superuser)

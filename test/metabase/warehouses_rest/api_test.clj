@@ -626,24 +626,23 @@
             (let [curr-db (t2/select-one [:model/Database :cache_ttl], :id db-id)]
               (is (= nil (:cache_ttl curr-db))))))))))
 
-(deftest reject-is-stub-in-create-test
-  (testing "POST /api/database rejects :is_stub in the request body (advanced-config only path)"
+(deftest ignore-is-stub-in-create-test
+  (testing "POST /api/database ignores :is_stub in the request body (advanced-config only path)"
     (mt/with-model-cleanup [:model/Database]
       (with-redefs [driver/available?   (constantly true)
                     driver/can-connect? (constantly true)]
-        (is (re-find #"is_stub"
-                     (mt/user-http-request :crowberto :post 400 "database"
-                                           {:name    (mt/random-name)
-                                            :engine  (u/qualified-name ::test-driver)
-                                            :details {:db "my_db"}
-                                            :is_stub true})))))))
+        (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "database"
+                                                 {:name    (mt/random-name)
+                                                  :engine  (u/qualified-name ::test-driver)
+                                                  :details {:db "my_db"}
+                                                  :is_stub true})]
+          (is (false? (t2/select-one-fn :is_stub :model/Database :id id))))))))
 
-(deftest reject-is-stub-in-update-test
-  (testing "PUT /api/database/:id rejects :is_stub=true in the request body"
+(deftest ignore-is-stub-in-update-test
+  (testing "PUT /api/database/:id ignores :is_stub=true in the request body"
     (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
-      (is (re-find #"is_stub"
-                   (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                         {:is_stub true})))
+      (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                            {:is_stub true})
       (testing "the row is unchanged"
         (is (false? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
   (testing "PUT /api/database/:id passes when :is_stub=false is in the body (no-op, matches default)"

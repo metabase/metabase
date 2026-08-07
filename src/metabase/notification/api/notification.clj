@@ -26,17 +26,13 @@
 (mr/def ::NotificationApiInput
   "Notification schema for API input. Like FullyHydratedNotification but restricts templates
   to user-provided types only (no handlebars-resource)."
-  [:merge
-   ::models.notification/FullyHydratedNotification
-   [:map
-    [:handlers {:optional true}
-     [:sequential
-      [:merge
-       ::models.notification/NotificationHandler
-       [:map
-        [:template   {:optional true} [:maybe ::models.channel/ChannelTemplateUserProvided]]
-        [:channel    {:optional true} [:maybe ::models.channel/Channel]]
-        [:recipients {:optional true} [:sequential ::models.notification/NotificationRecipient]]]]]]]])
+  (models.notification/hydrated-notification-schema
+   [:merge
+    ::models.notification/NotificationHandler
+    [:map
+     [:template   {:optional true} [:maybe ::models.channel/ChannelTemplateUserProvided]]
+     [:channel    {:optional true} [:maybe ::models.channel/Channel]]
+     [:recipients {:optional true} [:sequential ::models.notification/NotificationRecipient]]]]))
 
 (defn- check-no-resource-templates!
   "Validate that no handler uses handlebars-resource templates. That type is internal only."

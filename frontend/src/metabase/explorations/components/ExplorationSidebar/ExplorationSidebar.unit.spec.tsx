@@ -35,7 +35,6 @@ import {
   getSidebarTestContext,
   setup,
 } from "./test-utils";
-import { getExplorationSidebarTree } from "./utils";
 
 jest.mock("metabase/explorations/analytics");
 
@@ -168,6 +167,7 @@ describe("ExplorationSidebar", () => {
             onToggleShowHidden={jest.fn()}
             sortOrder={DEFAULT_SORT_ORDER}
             onChangeSortOrder={jest.fn()}
+            contentMode="tree"
           />
         </>
       );
@@ -241,7 +241,7 @@ describe("ExplorationSidebar", () => {
     });
   });
 
-  describe("all-hidden empty state", () => {
+  describe("empty states", () => {
     const hiddenBlock = createBlock({
       id: 1,
       name: "Revenue",
@@ -260,28 +260,125 @@ describe("ExplorationSidebar", () => {
       status: "done",
     });
 
-    it("keeps the first thread with an all-hidden note when every page is hidden", () => {
-      setup({ queries: [hiddenQuery], blocks: [hiddenBlock] });
+    it("shows the all-hidden message without thread headings when every page is hidden", () => {
+      setup({
+        queries: [hiddenQuery],
+        blocks: [hiddenBlock],
+        thread: {
+          status: "completed",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      });
 
-      // The initial thread heading is retained, with an inline note below it.
-      expect(screen.getByText("Initial investigation")).toBeInTheDocument();
       expect(
-        screen.getByText("All items have been hidden."),
-      ).toBeInTheDocument();
-      // The childless heading renders expanded so the note reads as its content.
-      expect(
-        screen.getByRole("group", { name: /Initial investigation/ }),
-      ).toHaveAttribute("aria-expanded", "true");
+        screen.queryByText("Initial investigation"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("exploration-all-hidden")).toHaveTextContent(
+        "All items have been hidden.",
+      );
     });
 
-    it("shows the generic empty message (not the all-hidden note) when nothing is hidden yet", () => {
-      // No pages at all — e.g. an exploration still generating its charts.
-      // Nothing is hidden, so the empty state should show rather than the note.
-      setup({ queries: [] });
+    it("shows a loading skeleton while the initial thread is still running with no pages", () => {
+      setup({
+        queries: [],
+        thread: { status: "running", started_at: "2026-04-30T00:00:00Z" },
+      });
 
-      expect(screen.getByText("Nothing to see here yet.")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("exploration-sidebar-skeleton"),
+      ).toBeInTheDocument();
       expect(
         screen.queryByText("All items have been hidden."),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Nothing to see here yet."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the generic empty message when there is genuinely nothing to show", () => {
+      setup({
+        queries: [],
+        thread: {
+          status: "empty",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      });
+
+      expect(
+        screen.queryByText("Initial investigation"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("All items have been hidden."),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Nothing to see here yet.")).toBeInTheDocument();
+    });
+
+    it("shows an empty failed thread heading instead of the generic empty message", () => {
+      setup({
+        queries: [],
+        thread: {
+          status: "failed",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      });
+
+      expect(
+        screen.getByRole("group", { name: /Initial investigation/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Failed")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Nothing to see here yet."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows an empty canceled thread heading instead of the generic empty message", () => {
+      setup({
+        queries: [],
+        thread: {
+          status: "canceled",
+          canceled_at: "2026-04-30T00:01:00Z",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      });
+
+      expect(
+        screen.getByRole("group", { name: /Initial investigation/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Stopped")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Nothing to see here yet."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows a permission message when derived data is forbidden", () => {
+      setup({
+        queries: [],
+        thread: {
+          status: "forbidden",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      });
+
+      expect(
+        screen.getByText("You don't have permission to view these results."),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a permission message on Stars when derived data is forbidden", () => {
+      setup({
+        queries: [doneQuery],
+        thread: {
+          status: "forbidden",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+        tab: "stars",
+      });
+
+      expect(
+        screen.getByText("You don't have permission to view these results."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Nothing's been starred yet."),
       ).not.toBeInTheDocument();
     });
 
@@ -321,7 +418,7 @@ describe("ExplorationSidebar", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("shows the per-tab empty message on Stars even when the starred pages are merely hidden", () => {
+    it("shows the all-hidden message on Stars when the starred pages are merely hidden", () => {
       setup({
         queries: [hiddenQuery],
         blocks: [
@@ -339,16 +436,18 @@ describe("ExplorationSidebar", () => {
             ],
           }),
         ],
+        thread: {
+          status: "completed",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
         tab: "stars",
       });
 
-      // Filtered tabs never show the all-hidden note — an empty tree always
-      // falls through to the tab's own empty message.
+      expect(screen.getByTestId("exploration-all-hidden")).toHaveTextContent(
+        "All items have been hidden.",
+      );
       expect(
-        screen.getByText("Nothing's been starred yet."),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText("All items have been hidden."),
+        screen.queryByText("Nothing's been starred yet."),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByText("Initial investigation"),
@@ -389,13 +488,13 @@ describe("ExplorationSidebar", () => {
       explorationSidebarTabsInfo,
       selectedSidebarTab,
       getSelectedSidebarTabUrl,
-      treeItemFilter,
       getTree,
+      getModel,
     } = getSidebarTestContext(exploration);
     // A later poll: same block/page ids, but the query settled — a deep-different
     // tree, so `useTree`'s data-change effect runs.
-    const reloadedTree = getExplorationSidebarTree(
-      createExploration({
+    const reloadedTree = getModel({
+      explorationOverride: createExploration({
         blocks: makeBlocks(),
         queries: [
           createQuery({
@@ -406,14 +505,11 @@ describe("ExplorationSidebar", () => {
           }),
         ],
       }),
-      treeItemFilter,
-    );
+    }).tree;
 
     const path = Urls.exploration(exploration.id);
     const shouldScrollSelectionRef = { current: true };
-    const sidebarWith = (
-      tree: ReturnType<typeof getExplorationSidebarTree>,
-    ) => (
+    const sidebarWith = (tree: typeof reloadedTree) => (
       <ExplorationSidebar
         exploration={exploration}
         explorationSidebarTabsInfo={explorationSidebarTabsInfo}
@@ -430,6 +526,7 @@ describe("ExplorationSidebar", () => {
         onToggleShowHidden={jest.fn()}
         sortOrder={DEFAULT_SORT_ORDER}
         onChangeSortOrder={jest.fn()}
+        contentMode="tree"
       />
     );
 
@@ -517,7 +614,7 @@ describe("ExplorationSidebar", () => {
       } = getSidebarTestContext(exploration);
       const shouldScrollSelectionRef = { current: true };
       const sidebarWith = (
-        tree: ReturnType<typeof getExplorationSidebarTree>,
+        tree: ReturnType<typeof getTree>,
         selectedId: string,
       ) => (
         <ExplorationSidebar
@@ -536,12 +633,13 @@ describe("ExplorationSidebar", () => {
           onToggleShowHidden={jest.fn()}
           sortOrder={DEFAULT_SORT_ORDER}
           onChangeSortOrder={jest.fn()}
+          contentMode="tree"
         />
       );
       // Drive updates through in-component state so the sidebar stays mounted
       // (a router rerender would remount it and warn about changing routes).
       let applyUpdate: (next: {
-        tree: ReturnType<typeof getExplorationSidebarTree>;
+        tree: ReturnType<typeof getTree>;
         selectedId: string;
       }) => void = () => {};
       function Harness() {
@@ -558,10 +656,8 @@ describe("ExplorationSidebar", () => {
         initialRoute: path,
       });
       return {
-        rerenderWith: (
-          tree: ReturnType<typeof getExplorationSidebarTree>,
-          selectedId: string,
-        ) => act(() => applyUpdate({ tree, selectedId })),
+        rerenderWith: (tree: ReturnType<typeof getTree>, selectedId: string) =>
+          act(() => applyUpdate({ tree, selectedId })),
       };
     }
 
@@ -577,11 +673,11 @@ describe("ExplorationSidebar", () => {
           createQuery({ id: 2, name: "B leaf", status: "pending" }),
         ],
       });
-      const { treeItemFilter } = getSidebarTestContext(exploration);
+      const { getModel } = getSidebarTestContext(exploration);
       // A later poll: B's query settles with high interestingness (deep-different
       // tree), so the auto-selection moves to Group B's page.
-      const reloadedTree = getExplorationSidebarTree(
-        createExploration({
+      const reloadedTree = getModel({
+        explorationOverride: createExploration({
           blocks: twoBlocks(),
           queries: [
             createQuery({ id: 1, name: "A leaf", status: "done" }),
@@ -593,8 +689,7 @@ describe("ExplorationSidebar", () => {
             }),
           ],
         }),
-        treeItemFilter,
-      );
+      }).tree;
 
       const { rerenderWith } = renderWithTree(exploration, A_LEAF);
 
@@ -1065,6 +1160,7 @@ describe("ExplorationSidebar", () => {
               onToggleShowHidden={jest.fn()}
               sortOrder={DEFAULT_SORT_ORDER}
               onChangeSortOrder={jest.fn()}
+              contentMode="tree"
             />
           </>
         );
