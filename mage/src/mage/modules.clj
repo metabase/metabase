@@ -376,7 +376,7 @@
     (catch Throwable e
       ;; stderr, not stdout: in --github-output-only mode stdout is redirected into $GITHUB_OUTPUT.
       (binding [*out* *err*]
-        (println (c/yellow (str "WARNING: could not read driver statuses from ci-test-config ("
+        (println (c/yellow (str "WARNING: could not read skipped drivers from ci-test-config ("
                                 (.getMessage e) "); treating all drivers as required."))))
       #{})))
 
