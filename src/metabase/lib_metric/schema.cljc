@@ -23,8 +23,6 @@
 (mr/def ::binning
   "Schema for `:binning` options passed to a `:dimension` clause."
   [:and
-   ;; `:strategy` is normalized and checked by each branch of the `:multi` below rather than by a sibling
-   ;; `[:map [:strategy ...]]` guard, which would strip whichever of `:bin-width`/`:num-bins` goes with it.
    {:decode/normalize (fn [binning]
                         (when-some [binning (lib.schema.common/normalize-map binning)]
                           (cond-> binning

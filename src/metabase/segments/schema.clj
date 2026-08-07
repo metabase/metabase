@@ -1,6 +1,5 @@
 (ns metabase.segments.schema
   (:require
-   [malli.core :as mc]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as common]
    [metabase.util.malli.registry :as mr]))
@@ -30,8 +29,8 @@
    [:fn
     {:error/message "A segment must have exactly one stage"}
     #(= (-> % :stages count) 1)]
-   ;; `::mc/default` because this conjunct only narrows `:stages` -- every other key of the query is the sibling
-   ;; `::lib.schema/query`'s business, and would otherwise be stripped here before reaching it
-   [:map
-    [::mc/default :any]
-    [:stages [:sequential [:ref ::stage.segment]]]]])
+   ;; checked with `:fn` rather than a `[:map [:stages ...]]` conjunct: a map conjunct declares only the keys it names,
+   ;; so it would strip every other key of the query before the sibling `::lib.schema/query` saw it
+   [:fn
+    {:error/message "A segment's stages must be segment stages"}
+    #(mr/validate [:sequential [:ref ::stage.segment]] (:stages %))]])

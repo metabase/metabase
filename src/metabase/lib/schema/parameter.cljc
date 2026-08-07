@@ -388,7 +388,7 @@
     ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
     [:slug     {:optional true} ::lib.schema.common/non-blank-string]
     [:default  {:optional true} [:ref ::parameter.value]]
-    [:required {:optional true} :any]
+    [:required {:optional true} [:maybe :boolean]]
     [:options  {:optional true} [:maybe [:ref ::parameter.options]]]]
    ::lib.schema.common/kebab-cased-map
    (lib.schema.common/disallowed-keys

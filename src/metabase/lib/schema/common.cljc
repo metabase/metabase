@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [update-keys #?@(:clj [some])])
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.types.core]
    [metabase.util :as u]
@@ -162,7 +161,10 @@
   [x]
   (normalize-keyword x))
 
-(defn- normalize-base-type [x]
+(defn normalize-base-type
+  "Normalize `x` to a base type keyword, repairing the lower-cased type names some prod fingerprints were stored
+  under (#63397). Returns `nil` if it isn't keyword-able."
+  [x]
   (when-let [k (normalize-base-type* x)]
     (or (cond
           (isa? k :type/*)
@@ -281,9 +283,18 @@
     [:database-type  {:optional true} [:maybe ::non-blank-string]]
     [:name           {:optional true} [:maybe ::non-blank-string]]
     [:display-name   {:optional true} [:maybe ::non-blank-string]]
-    ;; options are an open bag: individual clauses and lib itself add their own keys (`:lib/expression-name`,
-    ;; `:join-alias`, `:temporal-unit` ...), and the ones this schema doesn't name still have to survive decoding.
-    [::mc/default    :any]]
+    ;; the keys clauses add to a plain options map. Clause-specific option schemas (`::lib.schema.ref/field.options`
+    ;; and friends) declare the rest; they all have to be named here because a map schema strips whatever it doesn't
+    ;; declare.
+    ;;
+    ;; the name an expression is defined under, on the expression's own clause
+    [:lib/expression-name {:optional true} ::non-blank-string]
+    ;; `:contains`/`:starts-with`/`:ends-with` and the other string filters
+    [:case-sensitive      {:optional true} :boolean]
+    ;; `:time-interval`
+    [:include-current     {:optional true} :boolean]
+    ;; the name an aggregation is referenced by
+    [:lib/source-name     {:optional true} ::non-blank-string]]
    (disallowed-keys
     {:ident ":ident is deprecated and should not be included in options maps"})])
 

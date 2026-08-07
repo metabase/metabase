@@ -637,10 +637,21 @@
 (mr/def ::card.query
   "Saved query. This is possibly still a legacy query, but should already be normalized.
   Call [[metabase.lib.convert/->mbql5]] on it as needed."
-  ;; open: this is whatever query the card holds, in any MBQL version, and it is passed on as it arrived
-  [:map
-   {:closed           false
-    :decode/normalize normalize-card-query}])
+  ;; dispatched rather than written as a keyless `[:map {:decode/normalize ...}]`, which declares no keys and so
+  ;; would strip the whole query while decoding
+  [:multi {:dispatch (fn [query]
+                       (cond
+                         (empty? query)              :empty
+                         (:lib/type query)           :mbql5
+                         :else                       :legacy))}
+   ;; Cards may be saved with an empty query -- see `:metabase.queries.schema/query`
+   [:empty  [:= {} {}]]
+   [:mbql5  [:schema
+             {:decode/normalize normalize-card-query}
+             [:ref :metabase.lib.schema/query]]]
+   [:legacy [:schema
+             {:decode/normalize normalize-card-query}
+             [:ref :metabase.legacy-mbql.schema/Query]]]])
 
 (defn- normalize-card [card]
   (when card
@@ -727,10 +738,11 @@
 (mr/def ::measure.definition
   "Measure definition query. This should be an MBQL5 query with a single stage and one aggregation.
    Strict validation via :metabase.lib.schema.measure/definition happens in metabase.measures.models.measure."
-  ;; open: strict validation happens in `metabase.measures.models.measure`, this only normalizes
-  [:map
-   {:closed           false
-    :decode/normalize normalize-measure-definition}])
+  ;; wrapped in `[:schema ...]` rather than written as a keyless `[:map {:decode/normalize ...}]`, which declares no
+  ;; keys and so would strip the whole definition while decoding
+  [:schema
+   {:decode/normalize normalize-measure-definition}
+   [:ref :metabase.lib.schema/query]])
 
 (defn- mock-measure [measure]
   (cond-> measure
