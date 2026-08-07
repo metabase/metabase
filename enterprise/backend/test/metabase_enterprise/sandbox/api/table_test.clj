@@ -38,7 +38,7 @@
 (deftest query-metadata-data-app-scope-test
   (testing "GET /api/table/:id/query_metadata carries the data-app scope even under sandboxing"
     ;; Regression: the EE sandbox *replaces* the OSS query_metadata endpoint when sandboxing is active,
-    ;; so it must be tagged `{:scope "data-app"}` too — otherwise a sandboxed data app gets
+    ;; so it must be tagged `{:scope api-scope/data-app}` too — otherwise a sandboxed data app gets
     ;; scope_not_permitted (403) on tables it can otherwise read.
     (met/with-gtaps! {:gtaps      {:venues {:query (mt.tu/restricted-column-query (mt/id))}}
                       :attributes {:cat 50}}
