@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useReducer, useRef } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import { useDispatch } from "metabase/redux";
@@ -24,6 +24,40 @@ type UsageMetadataListResult<T> = {
   fetchNextPage: () => Promise<void>;
   refetch: () => void;
 };
+
+type PaginationState<T> = {
+  data: UsageMetadataPage<T> | undefined;
+  nextPageError: unknown;
+  status: "idle" | "fetching-next" | "restarting";
+};
+
+type PaginationAction<T> =
+  | { type: "reset"; data: UsageMetadataPage<T> | undefined }
+  | { type: "fetch-next" }
+  | { type: "append"; data: UsageMetadataPage<T> }
+  | { type: "fetch-error"; error: unknown }
+  | { type: "restart" }
+  | { type: "restart-complete" };
+
+function paginationReducer<T>(
+  state: PaginationState<T>,
+  action: PaginationAction<T>,
+): PaginationState<T> {
+  switch (action.type) {
+    case "reset":
+      return { data: action.data, nextPageError: undefined, status: "idle" };
+    case "fetch-next":
+      return { ...state, nextPageError: undefined, status: "fetching-next" };
+    case "append":
+      return { data: action.data, nextPageError: undefined, status: "idle" };
+    case "fetch-error":
+      return { ...state, nextPageError: action.error, status: "idle" };
+    case "restart":
+      return { ...state, nextPageError: undefined, status: "restarting" };
+    case "restart-complete":
+      return { ...state, status: "idle" };
+  }
+}
 
 function pageParams(params: ListUsageMetadataRequest, offset: number) {
   const { limit: _limit, offset: _offset, ...filters } = params;
@@ -62,31 +96,37 @@ export function useUsageMetadataPages<T>(
     params: ListUsageMetadataRequest,
   ) => Promise<UsageMetadataPage<T>>,
   getItemId: (item: T) => number,
-  refetch: () => void,
+  refetch: () => unknown,
 ): UsageMetadataListResult<T> {
-  const [data, setData] = useState<UsageMetadataPage<T>>();
-  const [nextPageError, setNextPageError] = useState<unknown>();
-  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
+  const [state, dispatchPagination] = useReducer(paginationReducer<T>, {
+    data: undefined,
+    nextPageError: undefined,
+    status: "idle",
+  });
   const isNextPagePending = useRef(false);
   const generation = useRef(0);
 
   useDeepCompareEffect(() => {
     generation.current += 1;
     isNextPagePending.current = false;
-    setNextPageError(undefined);
-    setIsFetchingNextPage(false);
-    setData(firstPage);
+    dispatchPagination({ type: "reset", data: firstPage });
   }, [firstPage, params]);
 
   const restartPagination = useCallback(() => {
     generation.current += 1;
+    const restartGeneration = generation.current;
     isNextPagePending.current = false;
-    setNextPageError(undefined);
-    setIsFetchingNextPage(false);
-    refetch();
+    dispatchPagination({ type: "restart" });
+    const finishRestart = () => {
+      if (generation.current === restartGeneration) {
+        dispatchPagination({ type: "restart-complete" });
+      }
+    };
+    void Promise.resolve().then(refetch).then(finishRestart, finishRestart);
   }, [refetch]);
 
   const fetchNextPage = useCallback(async () => {
+    const data = state.data;
     const isComplete = data == null || data.data.length >= data.total;
     if (isComplete || isNextPagePending.current) {
       return;
@@ -94,8 +134,7 @@ export function useUsageMetadataPages<T>(
 
     const requestGeneration = generation.current;
     isNextPagePending.current = true;
-    setIsFetchingNextPage(true);
-    setNextPageError(undefined);
+    dispatchPagination({ type: "fetch-next" });
 
     try {
       const nextPage = await fetchPage(pageParams(params, data.data.length));
@@ -115,36 +154,30 @@ export function useUsageMetadataPages<T>(
         restartPagination();
         return;
       }
-      setData((currentData) => {
-        if (
-          currentData == null ||
-          currentData.snapshot?.id !== nextPage.snapshot?.id
-        ) {
-          return currentData;
-        }
-        return {
-          ...currentData,
-          data: appendUniqueItems(currentData.data, nextPage.data, getItemId),
+      dispatchPagination({
+        type: "append",
+        data: {
+          ...data,
+          data: appendUniqueItems(data.data, nextPage.data, getItemId),
           total: nextPage.total,
-        };
+        },
       });
     } catch (error) {
       if (requestGeneration === generation.current) {
-        setNextPageError(error);
+        dispatchPagination({ type: "fetch-error", error });
       }
     } finally {
       if (requestGeneration === generation.current) {
         isNextPagePending.current = false;
-        setIsFetchingNextPage(false);
       }
     }
-  }, [data, fetchPage, getItemId, params, restartPagination]);
+  }, [fetchPage, getItemId, params, restartPagination, state.data]);
 
   return {
-    data,
-    error: firstPageError ?? nextPageError,
-    isFetching: isFirstPageFetching,
-    isFetchingNextPage,
+    data: state.data,
+    error: firstPageError ?? state.nextPageError,
+    isFetching: isFirstPageFetching || state.status === "restarting",
+    isFetchingNextPage: state.status === "fetching-next",
     fetchNextPage,
     refetch,
   };

@@ -261,25 +261,3 @@
          (is (= ids (official-collection-ids ids)))))
     (is (= [200 200 50] @moderation-batches))
     (is (= [200 200 50] @collection-batches))))
-
-(deftest candidate-batch-inputs-are-shared-test
-  (let [source-calls  (atom 0)
-        lineage-calls (atom 0)
-        cards         [{:id 1, :type :question, :dataset_query {}}]]
-    (with-redefs-fn {#'candidate-mining/candidate-source-cards*
-                     (fn [_opts]
-                       (swap! source-calls inc)
-                       cards)
-                     #'candidate-mining/candidate-lineage-index
-                     (fn [_cards _allowed-types]
-                       (swap! lineage-calls inc)
-                       {10 {:id 10, :type :model}
-                        20 {:id 20, :type :question}})}
-      #(candidate-mining/with-candidate-batch-cache
-         (fn []
-           (is (= cards (candidate-mining/candidate-source-cards {:min-view-count 10})))
-           (is (= cards (candidate-mining/candidate-source-cards {:min-view-count 10})))
-           (is (= #{10} (set (keys (candidate-mining/candidate-model-index cards)))))
-           (is (= #{10 20} (set (keys (candidate-mining/candidate-lineage-card-index cards))))))))
-    (is (= 1 @source-calls))
-    (is (= 1 @lineage-calls))))

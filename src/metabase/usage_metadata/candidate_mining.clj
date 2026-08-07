@@ -74,52 +74,8 @@
   [x]
   (json/encode (canonical-form x)))
 (def ^:private candidate-default-min-view-count 10)
-(def candidate-default-limit
-  "Default maximum number of candidates returned by a public miner."
-  50)
 (def ^:private candidate-aggregation-operators
   #{:count :sum :avg :min :max :distinct :median :stddev :var :percentile})
-(def ^:dynamic *candidate-analysis-cache*
-  "Optional run-scoped cache for instance-wide inputs shared across candidate batches."
-  nil)
-
-(def ^:dynamic *candidate-batch-cache*
-  "Optional batch-scoped cache for selected Cards and their saved-Card lineage."
-  nil)
-
-(defn- with-candidate-cache
-  [cache-var current-cache f]
-  (with-bindings {cache-var (or current-cache (atom {}))}
-    (f)))
-
-(defn with-candidate-analysis-cache
-  "Run `f` with a cache shared by all candidate analyses it invokes."
-  [f]
-  (with-candidate-cache #'*candidate-analysis-cache* *candidate-analysis-cache* f))
-
-(defn with-candidate-batch-cache
-  "Run `f` with reusable selected-Card and lineage inputs for one candidate batch."
-  [f]
-  (with-candidate-cache #'*candidate-batch-cache* *candidate-batch-cache* f))
-
-(defn- cached-candidate
-  [cache cache-key f]
-  (if cache
-    (if (contains? @cache cache-key)
-      (get @cache cache-key)
-      (let [value (f)]
-        (swap! cache assoc cache-key value)
-        value))
-    (f)))
-
-(defn cached-candidate-analysis
-  "Read or populate an analysis-scoped cache entry."
-  [cache-key f]
-  (cached-candidate *candidate-analysis-cache* cache-key f))
-
-(defn- cached-candidate-batch-analysis
-  [cache-key f]
-  (cached-candidate *candidate-batch-cache* cache-key f))
 (def ^:private categorical-filter-operators
   #{:= :!= :in :not-in :is-null :not-null :is-empty :not-empty})
 
@@ -238,10 +194,8 @@
 
 (defn candidate-source-cards
   "Load selected Cards and attach deterministic curation and usage evidence."
-  [{:keys [card-ids min-view-count view-count-window-days] :as opts}]
-  (cached-candidate-batch-analysis
-   [::candidate-source-cards min-view-count card-ids view-count-window-days]
-   #(candidate-source-cards* opts)))
+  [opts]
+  (candidate-source-cards* opts))
 
 (defn qualified-card-ids
   "Return the default persisted-cleanup population without loading query definitions."
@@ -294,9 +248,7 @@
 (defn candidate-lineage-card-index
   "Return Cards referenced by `cards`, indexed by Card ID for lineage traversal."
   [cards]
-  (cached-candidate-batch-analysis
-   [::candidate-lineage-card-index (mapv :id cards)]
-   #(candidate-lineage-index cards #{:question :model})))
+  (candidate-lineage-index cards #{:question :model}))
 
 (defn candidate-model-index
   "Index the saved models reachable from selected Cards."

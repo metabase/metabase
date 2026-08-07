@@ -190,57 +190,53 @@
    (or (:name table) "")
    (:id table)])
 
-(defn- rank-candidate-tables
-  [candidates limit]
-  (cond->> (sort-by candidate-table-sort-key candidates)
-    limit (take limit)
-    true  vec))
-
 (defn- unsupported-source-item-sort-key
   [{:keys [id reason model-lineage]}]
   [id (name reason) (mapv :id model-lineage)])
 
-(mu/defn candidate-table-observations :- ::usage-metadata.schema/candidate-table-report
-  "Return every unpublished physical table reached by selected MBQL questions and models.
+(defn- model-index-from-lineage
+  [card-index]
+  (into {}
+        (filter (fn [[_id card]] (= :model (:type card))))
+        card-index))
 
-  This unbounded producer is the persistence boundary. Call [[candidate-tables]] when a ranked,
-  presentation-sized result is required. `:limit` is deliberately ignored here so observations are
-  never discarded before evidence from separate persistence batches is combined."
-  ([] (candidate-table-observations {}))
-  ([opts :- ::usage-metadata.schema/candidate-opts]
-   (lib-be/with-metadata-provider-cache
-     (let [cards        (candidate-mining/candidate-source-cards (dissoc opts :limit))
-           models       (candidate-mining/candidate-model-index cards)
-           analysis     (raw-table-candidate-analysis cards models)
-           by-table     (group-by :table-id (:table-source-items analysis))
-           table-index  (candidate-table-index (keys by-table))
-           candidates   (rank-candidate-tables
+(defn- load-batch-inputs
+  [opts]
+  (let [cards      (candidate-mining/candidate-source-cards opts)
+        card-index (candidate-mining/candidate-lineage-card-index cards)]
+    {:cards cards
+     :card-index card-index
+     :model-index (model-index-from-lineage card-index)}))
+
+(defn- table-observations
+  [cards model-index]
+  (let [analysis    (raw-table-candidate-analysis cards model-index)
+        by-table    (group-by :table-id (:table-source-items analysis))
+        table-index (candidate-table-index (keys by-table))
+        candidates  (->> by-table
                          (keep (fn [[table-id rows]]
                                  (when-let [table (table-index table-id)]
                                    {:table    table
                                     :evidence (candidate-mining/aggregate-candidate-evidence
                                                (map :source-item rows)
-                                               table-source-item-evidence)}))
-                               by-table)
-                         nil)
-           unsupported  (->> (:unsupported analysis)
-                             distinct
-                             (sort-by unsupported-source-item-sort-key)
-                             vec)]
-       {:candidates candidates, :unsupported-source-items unsupported}))))
+                                               table-source-item-evidence)})))
+                         (sort-by candidate-table-sort-key)
+                         vec)
+        unsupported (->> (:unsupported analysis)
+                         distinct
+                         (sort-by unsupported-source-item-sort-key)
+                         vec)]
+    {:candidates candidates, :unsupported-source-items unsupported}))
 
-(mu/defn candidate-tables :- ::usage-metadata.schema/candidate-table-report
-  "Rank unpublished physical tables reached by selected MBQL questions and models.
+(mu/defn candidate-table-observations :- ::usage-metadata.schema/candidate-table-report
+  "Return every unpublished physical table reached by selected MBQL questions and models.
 
-  Saved-model dependencies are followed without the stage lineage barriers used by Measure and
-  Segment extraction. The original selected Card remains the sole endorsement source, while every
-  distinct model path is retained as provenance. Native and unreadable branches are returned in
-  `:unsupported-source-items`. This is a read-only analysis and never publishes or updates a Table."
-  ([] (candidate-tables {}))
-  ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
-   (let [limit  (or limit candidate-mining/candidate-default-limit)
-         report (candidate-table-observations opts)]
-     (update report :candidates #(vec (take limit %))))))
+  Observations are never discarded before evidence from separate persistence batches is combined."
+  ([] (candidate-table-observations {}))
+  ([opts :- ::usage-metadata.schema/candidate-opts]
+   (lib-be/with-metadata-provider-cache
+     (let [{:keys [cards model-index]} (load-batch-inputs opts)]
+       (table-observations cards model-index)))))
 
 (defn- resolve-transparent-card-source
   [database-id source-card-id card-index seen]
@@ -375,19 +371,16 @@
 
 (defn- existing-metric-definition-signatures
   []
-  (candidate-mining/cached-candidate-analysis
-   ::existing-metric-definition-signatures
-   (fn []
-     (let [metric-cards (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
-                                   :type :metric
-                                   :archived false)
-           card-index   (candidate-mining/candidate-lineage-card-index metric-cards)]
-       (into #{}
-             (keep (fn [card]
-                     (some-> (prepare-metric-definition card card-index)
-                             :definition
-                             candidate-mining/canonical-signature)))
-             metric-cards)))))
+  (let [metric-cards (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
+                                :type :metric
+                                :archived false)
+        card-index   (candidate-mining/candidate-lineage-card-index metric-cards)]
+    (into #{}
+          (keep (fn [card]
+                  (some-> (prepare-metric-definition card card-index)
+                          :definition
+                          candidate-mining/canonical-signature)))
+          metric-cards)))
 
 (defn- metric-source-sort-key
   [{source-item ::candidate-mining/source-item}]
@@ -462,69 +455,42 @@
        (sort-by metric-candidate-sort-key)
        (mapv #(dissoc % ::candidate-mining/signature))))
 
+(defn- metric-observations
+  [cards card-index existing-signatures]
+  (let [raw-candidates (raw-metric-candidates cards card-index)
+        table-index    (metric-required-table-index
+                        (into #{} (mapcat ::candidate-mining/table-ids) raw-candidates))]
+    (merge-metric-candidates raw-candidates existing-signatures table-index)))
+
 (mu/defn candidate-metric-observations :- [:sequential ::usage-metadata.schema/candidate-metric]
   "Return every creation-ready Metric Card observation from selected questions and models.
 
-  This unbounded producer is intended for persistence. Call [[candidate-metrics]] for a ranked,
-  presentation-sized result. `:limit` is deliberately ignored so cross-batch evidence remains complete."
+  Cross-batch evidence remains complete because this producer is unbounded."
   ([] (candidate-metric-observations {}))
   ([opts :- ::usage-metadata.schema/candidate-opts]
    (lib-be/with-metadata-provider-cache
-     (let [cards               (candidate-mining/candidate-source-cards (dissoc opts :limit))
-           card-index          (candidate-mining/candidate-lineage-card-index cards)
-           raw-candidates      (raw-metric-candidates cards card-index)
-           existing-signatures (existing-metric-definition-signatures)
-           table-index         (metric-required-table-index (into #{} (mapcat ::candidate-mining/table-ids) raw-candidates))]
-       (merge-metric-candidates raw-candidates existing-signatures table-index)))))
+     (let [{:keys [cards card-index]} (load-batch-inputs opts)]
+       (metric-observations cards card-index (existing-metric-definition-signatures))))))
 
-(mu/defn candidate-metrics :- [:sequential ::usage-metadata.schema/candidate-metric]
-  "Creation-ready Metric Card candidates mined from selected questions and models.
-
-  V1 promotes only whole, single-stage MBQL queries that already have one aggregation and at most one
-  temporal breakout. Plain Measure-shaped aggregations are excluded. Projection-only saved-Card chains
-  are rewritten to physical tables; opaque Card dependencies, saved Measure/Segment references, and
-  unpublishable physical table dependencies are rejected. Existing exact Metric definitions are excluded."
-  ([] (candidate-metrics {}))
-  ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
-   (let [limit (or limit candidate-mining/candidate-default-limit)]
-     (->> (candidate-metric-observations opts)
-          (take limit)
-          vec))))
-
-(defn- assemble-candidates
-  [raw-candidates source-index existing-signatures candidate-type keep-candidate?]
+(defn- merge-cleanup-candidates
+  [candidate-type raw-candidates source-index keep-candidate?]
   (->> raw-candidates
-       (remove #(contains? existing-signatures (::candidate-mining/signature %)))
        (group-by ::candidate-mining/signature)
        (keep (fn [[signature candidates]]
                (let [candidate (first candidates)]
                  (when-let [source (source-index [:table (::candidate-mining/table-id candidate)])]
-                   (let [candidate (cond-> (-> candidate
-                                               (assoc :source source
-                                                      :evidence (candidate-mining/candidate-evidence
-                                                                 (map ::candidate-mining/source-item candidates))
-                                                      ::candidate-mining/signature signature)
-                                               (dissoc ::candidate-mining/table-id ::candidate-mining/source-item))
-                                     candidate-type
-                                     (assoc :candidate-type candidate-type
-                                            :signature (candidate-mining/canonical-signature signature)))]
+                   (let [candidate (-> candidate
+                                       (assoc :source source
+                                              :evidence (candidate-mining/candidate-evidence
+                                                         (map ::candidate-mining/source-item candidates))
+                                              :candidate-type candidate-type
+                                              :signature (candidate-mining/canonical-signature signature))
+                                       (dissoc ::candidate-mining/signature
+                                               ::candidate-mining/table-id
+                                               ::candidate-mining/source-item))]
                      (when (keep-candidate? candidate)
-                       candidate))))))))
-
-(defn- merge-candidates
-  ([raw-candidates source-index existing-signatures limit]
-   (merge-candidates raw-candidates source-index existing-signatures limit (constantly true)))
-  ([raw-candidates source-index existing-signatures limit keep-candidate?]
-   (->> (assemble-candidates raw-candidates source-index existing-signatures nil keep-candidate?)
-        (sort-by candidate-mining/candidate-sort-key)
-        (take limit)
-        (mapv #(dissoc % ::candidate-mining/signature)))))
-
-(defn- merge-cleanup-candidates
-  [candidate-type raw-candidates source-index keep-candidate?]
-  (->> (assemble-candidates raw-candidates source-index #{} candidate-type keep-candidate?)
+                       candidate))))))
        (sort-by candidate-mining/candidate-sort-key)
-       (mapv #(dissoc % ::candidate-mining/signature))
        vec))
 
 (defn- raw-measure-candidates
@@ -560,58 +526,6 @@
               :definition   definition
               :aggregation  info})))
         cards))
-
-(defn- full-segment-predicate
-  [definition]
-  (when-let [filters (seq (lib/filters definition 0))]
-    (if (next filters)
-      (lib/simplify-compound-filter (apply lib/and filters))
-      (first filters))))
-
-(defn- existing-measure-signatures
-  [table-ids]
-  (if (seq table-ids)
-    (into #{}
-          (keep (fn [{:keys [table_id definition]}]
-                  (when (and (pos-int? table_id) (seq definition))
-                    (try
-                      (let [aggregations (lib/aggregations definition 0)]
-                        (when (= 1 (count aggregations))
-                          [table_id (candidate-mining/canonical-signature (first aggregations))]))
-                      (catch InterruptedException e
-                        (.interrupt (Thread/currentThread))
-                        (throw e))
-                      (catch Exception e
-                        (log/debug e "Failed to read an existing Measure definition")
-                        nil)))))
-          (t2/select [:model/Measure :table_id :definition]
-                     :archived false
-                     :table_id [:in table-ids]))
-    #{}))
-
-(defn- existing-segment-signatures
-  [table-ids]
-  (if (seq table-ids)
-    (into #{}
-          (keep (fn [{:keys [table_id definition]}]
-                  (when (and (pos-int? table_id) (seq definition))
-                    (try
-                      (when-let [predicate (full-segment-predicate definition)]
-                        (let [atoms (lib/atomic-filters
-                                     (candidate-mining/minimal-definition definition table_id :filters predicate)
-                                     0)]
-                          (when (seq atoms)
-                            (candidate-mining/segment-signature table_id atoms))))
-                      (catch InterruptedException e
-                        (.interrupt (Thread/currentThread))
-                        (throw e))
-                      (catch Exception e
-                        (log/debug e "Failed to read an existing Segment definition")
-                        nil)))))
-          (t2/select [:model/Segment :table_id :definition]
-                     :archived false
-                     :table_id [:in table-ids]))
-    #{}))
 
 (defn- raw-segment-candidates
   [cards model-index]
@@ -651,85 +565,40 @@
   (candidate-mining/semantically-eligible-candidate?
    (assoc candidate :candidate-type :measure)))
 
-(defn cleanup-candidates
-  "Return reconciliation-ready Measure and Segment observations for persistence.
+(defn- cleanup-observations
+  [cards model-index include-ineligible?]
+  (let [raw-measures (raw-measure-candidates cards model-index)
+        raw-segments (raw-segment-candidates cards model-index)
+        source-idx   (query-utils/build-source-index
+                      (into #{}
+                            (map (comp #(vector :table %) ::candidate-mining/table-id))
+                            (concat raw-measures raw-segments)))
+        measure-keep (if include-ineligible? (constantly true) eligible-measure-candidate?)
+        segment-keep (if include-ineligible? (constantly true) eligible-segment-candidate?)
+        measures     (merge-cleanup-candidates :measure raw-measures source-idx measure-keep)
+        segments     (merge-cleanup-candidates :segment raw-segments source-idx segment-keep)]
+    {:measures (mapv candidate-suggestions/add-measure-suggestions measures)
+     :segments (mapv candidate-suggestions/add-segment-suggestions segments)}))
 
-  Unlike `candidate-measures` and `candidate-segments`, exact existing Library definitions are
-  deliberately retained. This is an internal materialization boundary: callers receive stable
-  semantic signatures and the same eligibility, evidence, naming, and ordering used by the public
-  candidate APIs."
+(defn cleanup-candidates
+  "Return reconciliation-ready Measure and Segment observations for persistence."
   ([] (cleanup-candidates {}))
   ([{:keys [include-ineligible?] :as opts}]
    (lib-be/with-metadata-provider-cache
-     (let [cards        (candidate-mining/candidate-source-cards opts)
-           models       (candidate-mining/candidate-model-index cards)
-           raw-measures (raw-measure-candidates cards models)
-           raw-segments (raw-segment-candidates cards models)
-           source-idx   (query-utils/build-source-index
-                         (into #{}
-                               (map (comp #(vector :table %) ::candidate-mining/table-id))
-                               (concat raw-measures raw-segments)))
-           measure-keep (if include-ineligible? (constantly true) eligible-measure-candidate?)
-           segment-keep (if include-ineligible? (constantly true) eligible-segment-candidate?)
-           measures     (merge-cleanup-candidates :measure raw-measures source-idx measure-keep)
-           segments     (merge-cleanup-candidates :segment raw-segments source-idx segment-keep)]
-       {:measures (mapv candidate-suggestions/add-measure-suggestions measures)
-        :segments (mapv candidate-suggestions/add-segment-suggestions segments)}))))
+     (let [{:keys [cards model-index]} (load-batch-inputs opts)]
+       (cleanup-observations cards model-index include-ineligible?)))))
 
-(mu/defn candidate-measures :- [:sequential ::usage-metadata.schema/candidate-measure]
-  "Creation-ready Measure candidates mined from selected questions and models.
+(defn candidate-analysis-inputs
+  "Load instance-wide inputs reused by every card batch in one materialization run."
+  []
+  (lib-be/with-metadata-provider-cache
+    {:existing-metric-signatures (existing-metric-definition-signatures)}))
 
-  `:card-ids`, when supplied, controls which saved queries are analyzed. Otherwise a Card qualifies
-  when it is verified, directly in an official collection, or has at least `:min-view-count` lifetime views.
-  Primitive aggregations over one physical-table field are considered.
-  Bare row counts seed conditional count Measures but are not returned as standalone candidates.
-  Conditional count/distinct/sum Measures are synthesized from categorical filter subsets and retained
-  when curated or recurring. Every eligible stage is inspected until a
-  non-projection stage forms a lineage barrier. Native queries, joined stages, expressions,
-  non-transparent model sources, and existing semantically equivalent Measures are skipped. Each result
-  includes a deterministic suggested name and description derived from Lib's query display names."
-  ([] (candidate-measures {}))
-  ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
-   (lib-be/with-metadata-provider-cache
-     (let [limit      (or limit candidate-mining/candidate-default-limit)
-           cards      (candidate-mining/candidate-source-cards opts)
-           models     (candidate-mining/candidate-model-index cards)
-           candidates (raw-measure-candidates cards models)
-           source-idx (query-utils/build-source-index
-                       (into #{} (map (comp #(vector :table %) ::candidate-mining/table-id)) candidates))]
-       (mapv candidate-suggestions/add-measure-suggestions
-             (merge-candidates candidates
-                               source-idx
-                               (existing-measure-signatures (into #{} (map ::candidate-mining/table-id) candidates))
-                               limit
-                               eligible-measure-candidate?))))))
-
-(mu/defn candidate-segments :- [:sequential ::usage-metadata.schema/candidate-segment]
-  "Creation-ready Segment candidates mined from selected questions and models.
-
-  `:card-ids`, when supplied, controls which saved queries are analyzed. Otherwise verified,
-  official-collection, or popular questions and models are analyzed. Each eligible direct-table filter
-  becomes an atomic candidate. Queries with two to five eligible
-  atoms also contribute every multi-atom subset. A composite is retained when it recurs across at
-  least two source Cards or has verified/official evidence. Existing exact Segment definitions are
-  skipped without allowing a saved conjunction to suppress its atomic constituents. Questions and
-  models sourced through projection-only MBQL model chains are attributed to the physical source
-  table. Multi-stage lineage is followed through projection-only stages, and filters from joined
-  stages are attributed only when every field in the filter belongs to one physical table. Each
-  result includes a deterministic suggested name and description derived from Lib's filter display
-  names."
-  ([] (candidate-segments {}))
-  ([{:keys [limit] :as opts} :- ::usage-metadata.schema/candidate-opts]
-   (lib-be/with-metadata-provider-cache
-     (let [limit       (or limit candidate-mining/candidate-default-limit)
-           cards       (candidate-mining/candidate-source-cards opts)
-           models      (candidate-mining/candidate-model-index cards)
-           candidates  (raw-segment-candidates cards models)
-           source-idx  (query-utils/build-source-index
-                        (into #{} (map (comp #(vector :table %) ::candidate-mining/table-id)) candidates))]
-       (mapv candidate-suggestions/add-segment-suggestions
-             (merge-candidates candidates
-                               source-idx
-                               (existing-segment-signatures (into #{} (map ::candidate-mining/table-id) candidates))
-                               limit
-                               eligible-segment-candidate?))))))
+(defn candidate-batch-observations
+  "Analyze one selected Card batch once and return every persisted candidate kind."
+  [{:keys [existing-metric-signatures]} {:keys [include-ineligible?] :as opts}]
+  (lib-be/with-metadata-provider-cache
+    (let [{:keys [cards card-index model-index]} (load-batch-inputs opts)]
+      {:cleanup      (cleanup-observations cards model-index include-ineligible?)
+       :table-report (table-observations cards model-index)
+       :metrics      (metric-observations cards card-index existing-metric-signatures)})))

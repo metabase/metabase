@@ -2,7 +2,7 @@
   "Deterministic family ordering and display presentation for persisted candidates."
   (:require
    [clojure.math.combinatorics :as math.combo]
-   [clojure.set :as set]
+   [metabase.models.interface :as mi]
    [metabase.usage-metadata.candidate-definitions :as definitions]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
@@ -10,6 +10,8 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private update-batch-size 500)
 
 (defn- candidate-atom-details
   [{:keys [candidate_type semantic_details]}]
@@ -150,10 +152,16 @@
                                :suggested_name :verified_source_count :official_source_count
                                :distinct_source_count :complexity :recent_view_count]
                               :run_id run-id)]
-    (doseq [{:keys [candidate-id] :as family} (candidate-families candidates)]
-      (t2/update! :model/UsageMetadataCandidate candidate-id
-                  (-> family
-                      (dissoc :candidate-id)
-                      (set/rename-keys {:display-name     :display_name
-                                        :semantic-details :semantic_details
-                                        :sort-position    :sort_position}))))))
+    (doseq [families (partition-all update-batch-size (candidate-families candidates))]
+      (let [case-by-id (fn [column value-fn]
+                         (into [:case]
+                               (concat (mapcat (fn [{:keys [candidate-id] :as family}]
+                                                 [[:= :id candidate-id] (value-fn family)])
+                                               families)
+                                       [:else column])))]
+        (t2/query
+         {:update (t2/table-name :model/UsageMetadataCandidate)
+          :set    {:display_name     (case-by-id :display_name :display-name)
+                   :semantic_details (case-by-id :semantic_details (comp mi/json-in :semantic-details))
+                   :sort_position    (case-by-id :sort_position :sort-position)}
+          :where  [:in :id (mapv :candidate-id families)]})))))

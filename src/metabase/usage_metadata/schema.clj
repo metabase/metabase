@@ -26,8 +26,6 @@
    [:min-view-count {:optional true, :description "Lifetime Card view_count used by the default source and as popularity evidence."}
     [:maybe nat-int?]]
    [:view-count-window-days {:optional true, :description "When set, use Card views within this many days instead of lifetime view_count."}
-    [:maybe pos-int?]]
-   [:limit          {:optional true, :description "Maximum number of candidates to return."}
     [:maybe pos-int?]]])
 
 (mr/def ::source
@@ -159,43 +157,6 @@
    [:aggregation           ::mbql-clause]
    [:temporal-breakout     {:optional true} ::mbql-clause]
    [:required-tables       [:sequential {:min 1} ::candidate-metric-required-table]]
-   [:evidence              ::candidate-evidence]])
-
-(mr/def ::candidate-atom
-  [:map {:closed true}
-   [:signature    :string]
-   [:display-name ::lib.schema.common/non-blank-string]
-   [:kind         [:enum :boolean :category :number :temporal :other]]])
-
-(mr/def ::candidate-measure
-  [:map {:closed true}
-   [:source                ::source]
-   [:definition            :map]
-   [:suggested-name        ::lib.schema.common/non-blank-string]
-   [:suggested-description ::lib.schema.common/non-blank-string]
-   [:aggregation [:map {:closed true}
-                  [:type  [:enum :count :sum :avg :min :max :distinct :median :stddev :var :percentile
-                           :count-where :distinct-where :sum-where]]
-                  [:field [:maybe ::field]]
-                  [:percentile           {:optional true} [:and number? [:>= 0] [:<= 1]]]
-                  [:condition            {:optional true} ::mbql-clause]
-                  [:condition-fields     {:optional true} [:sequential {:min 1} ::field]]
-                  [:condition-atom-count {:optional true} pos-int?]
-                  [:condition-atoms      {:optional true} [:sequential {:min 1} ::candidate-atom]]
-                  [:base-name            {:optional true} ::lib.schema.common/non-blank-string]]]
-   [:evidence    ::candidate-evidence]])
-
-(mr/def ::candidate-segment
-  [:map {:closed true}
-   [:source                ::source]
-   [:definition            :map]
-   [:suggested-name        ::lib.schema.common/non-blank-string]
-   [:suggested-description ::lib.schema.common/non-blank-string]
-   [:predicate             ::mbql-clause]
-   [:fields                [:sequential {:min 1} ::field]]
-   [:atoms                 [:sequential {:min 1} ::candidate-atom]]
-   [:composite?            :boolean]
-   [:atom-count            pos-int?]
    [:evidence              ::candidate-evidence]])
 
 (mr/def ::implicit-segment

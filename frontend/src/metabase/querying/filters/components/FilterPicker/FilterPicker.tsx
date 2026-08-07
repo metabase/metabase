@@ -34,7 +34,7 @@ export type FilterPickerProps = {
   filter?: Lib.FilterClause;
   filterIndex?: number;
 
-  onSelect?: (filter: Lib.Filterable) => void;
+  onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
   onBack?: () => void;
   readOnly?: boolean;
@@ -43,7 +43,24 @@ export type FilterPickerProps = {
   "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
 >;
 
-export function FilterPicker({
+export type ReadOnlyFilterPickerProps = Omit<
+  FilterPickerProps,
+  "onSelect" | "readOnly"
+>;
+
+type FilterPickerContentProps = Omit<FilterPickerProps, "onSelect"> & {
+  onSelect?: FilterPickerProps["onSelect"];
+};
+
+export function FilterPicker(props: FilterPickerProps) {
+  return <FilterPickerContent {...props} />;
+}
+
+export function ReadOnlyFilterPicker(props: ReadOnlyFilterPickerProps) {
+  return <FilterPickerContent {...props} readOnly />;
+}
+
+function FilterPickerContent({
   className,
   query,
   stageIndex,
@@ -56,7 +73,7 @@ export function FilterPicker({
   withColumnGroupIcon,
   withCustomExpression,
   readOnly,
-}: FilterPickerProps) {
+}: FilterPickerContentProps) {
   const [filter, setFilter] = useState(initialFilter);
   const [column, setColumn] = useState(
     getInitialColumn(query, stageIndex, filter),

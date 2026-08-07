@@ -4,10 +4,10 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
+import { ReadOnlyFilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
-import { MeasureAggregationPicker } from "metabase/querying/measures";
-import { ClauseStep } from "metabase/querying/notebook/components/ClauseStep";
+import { ReadOnlyMeasureAggregationPicker } from "metabase/querying/measures";
+import { ReadOnlyClauseStep } from "metabase/querying/notebook/components/ClauseStep";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Badge, Card, Group, Stack, Text } from "metabase/ui";
@@ -40,22 +40,18 @@ export function CandidateFilterDefinition({ query }: { query: Lib.Query }) {
 
   return (
     <ErrorBoundary>
-      <ClauseStep
+      <ReadOnlyClauseStep
         items={filters}
-        initialAddText=""
-        readOnly
-        readOnlyMode="inspectable"
+        mode="inspectable"
         color="core-filter"
-        isLastOpened={false}
         renderName={renderFilterName}
         renderPopover={({ item: filter, index, onClose }) => (
-          <FilterPicker
+          <ReadOnlyFilterPicker
             query={query}
             stageIndex={-1}
             filter={filter}
             filterIndex={index}
             onClose={onClose}
-            readOnly
           />
         )}
       />
@@ -112,7 +108,7 @@ function CandidateMeasureDefinition({ query }: { query: Lib.Query }) {
   return (
     <Card withBorder p="xl">
       <Stack gap="xl">
-        <MeasureAggregationPicker query={query} readOnly />
+        <ReadOnlyMeasureAggregationPicker query={query} />
         {conditionalMeasureQuery && (
           <Stack gap="sm">
             <Text fw="bold">{t`Where`}</Text>
@@ -131,7 +127,7 @@ function CandidateMetricDefinition({ query }: { query: Lib.Query }) {
   return (
     <Card withBorder p="xl">
       <Stack gap="xl">
-        <MeasureAggregationPicker query={query} readOnly />
+        <ReadOnlyMeasureAggregationPicker query={query} />
         {hasFilters && (
           <Stack gap="sm">
             <Text fw="bold">{t`Where`}</Text>

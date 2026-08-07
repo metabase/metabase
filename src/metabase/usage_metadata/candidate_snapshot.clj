@@ -2,7 +2,6 @@
   "Materialization, reconciliation, and retirement of candidate snapshots."
   (:require
    [clojure.set :as set]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.usage-metadata.candidate-builders :as candidate-builders]
@@ -38,6 +37,7 @@
 
 (def ^:private retained-run-count 20)
 (def ^:private source-card-batch-size 100)
+(def ^:private persistence-write-batch-size 500)
 (def ^:private reconciliation-query-batch-size 200)
 (def ^:private reconciliation-write-batch-size 1000)
 
@@ -257,47 +257,94 @@
              (assoc (:semantic_details candidate)
                     :source-dependencies (merged-source-dependencies candidate observation))))))
 
-(defn- persist-observation!
-  [run-id observation]
-  (let [row       (observation-row run-id observation)
-        existing  (t2/select-one :model/UsageMetadataCandidate
-                                 :run_id run-id
-                                 :candidate_type (:candidate_type row)
-                                 :table_id (:table_id row)
-                                 :signature_version (:signature_version row)
-                                 :signature_hash (:signature_hash row))
-        _         (when (and existing (not= (:signature existing) (:signature row)))
-                    (throw (ex-info "Candidate signature hash collision"
-                                    {:candidate-id (:id existing)})))
-        candidate (or existing
-                      (t2/insert-returning-instance! :model/UsageMetadataCandidate row))]
-    (when-let [source-rows (not-empty (mapv #(source-row (:id candidate) %)
-                                            (get-in observation [:evidence :source-items])))]
-      (t2/insert! :model/UsageMetadataCandidateSource source-rows))
-    (when existing
-      (t2/update! :model/UsageMetadataCandidate (:id candidate)
-                  (merged-evidence candidate observation)))))
+(defn- candidate-key
+  [{:keys [candidate_type table_id signature_version signature_hash]}]
+  [candidate_type table_id signature_version signature_hash])
+
+(defn- select-candidates
+  [run-id signature-hashes]
+  (into []
+        (mapcat (fn [hashes]
+                  (t2/select :model/UsageMetadataCandidate
+                             :run_id run-id
+                             :signature_hash [:in hashes])))
+        (partition-all persistence-write-batch-size signature-hashes)))
+
+(defn- case-by-id
+  [column updates value-fn]
+  (into [:case]
+        (concat (mapcat (fn [{:keys [candidate values]}]
+                          [[:= :id (:id candidate)] (value-fn values)])
+                        updates)
+                [:else column])))
+
+(defn- update-existing-evidence!
+  [updates]
+  (doseq [batch (partition-all persistence-write-batch-size updates)]
+    (let [semantic-updates (filter #(contains? (:values %) :semantic_details) batch)]
+      (t2/query
+       {:update (t2/table-name :model/UsageMetadataCandidate)
+        :set    (cond-> {:verified_source_count (case-by-id :verified_source_count batch :verified_source_count)
+                         :official_source_count (case-by-id :official_source_count batch :official_source_count)
+                         :popular_source_count  (case-by-id :popular_source_count batch :popular_source_count)
+                         :distinct_source_count (case-by-id :distinct_source_count batch :distinct_source_count)
+                         :recent_view_count      (case-by-id :recent_view_count batch :recent_view_count)}
+                  (seq semantic-updates)
+                  (assoc :semantic_details
+                         (case-by-id :semantic_details semantic-updates
+                                     (comp mi/json-in :semantic_details))))
+        :where  [:in :id (mapv (comp :id :candidate) batch)]}))))
+
+(defn- persist-observations!
+  [run-id observations]
+  (let [prepared       (mapv (fn [observation]
+                               (let [row (observation-row run-id observation)]
+                                 {:observation observation, :row row, :key (candidate-key row)}))
+                             observations)
+        keys           (mapv :key prepared)
+        _              (when-not (= (count keys) (count (distinct keys)))
+                         (throw (ex-info "Candidate batch contains duplicate observations" {})))
+        signature-hashes (into #{} (map (comp :signature_hash :row)) prepared)
+        existing       (select-candidates run-id signature-hashes)
+        existing-index (u/index-by candidate-key existing)
+        _              (doseq [{:keys [key row]} prepared
+                               :let [candidate (existing-index key)]
+                               :when (and candidate (not= (:signature candidate) (:signature row)))]
+                         (throw (ex-info "Candidate signature hash collision"
+                                         {:candidate-id (:id candidate)})))
+        missing        (remove #(contains? existing-index (:key %)) prepared)]
+    (doseq [rows (->> missing (map :row) (partition-all persistence-write-batch-size))]
+      (t2/insert! :model/UsageMetadataCandidate rows))
+    (let [candidate-index (u/index-by candidate-key (select-candidates run-id signature-hashes))
+          source-rows     (for [{:keys [key observation]} prepared
+                                :let [candidate (candidate-index key)]
+                                source (get-in observation [:evidence :source-items])]
+                            (source-row (:id candidate) source))
+          updates         (keep (fn [{:keys [key observation]}]
+                                  (when-let [candidate (existing-index key)]
+                                    {:candidate candidate
+                                     :values (merged-evidence candidate observation)}))
+                                prepared)]
+      (doseq [rows (partition-all persistence-write-batch-size source-rows)]
+        (t2/insert! :model/UsageMetadataCandidateSource rows))
+      (update-existing-evidence! updates))))
 
 (defn- persist-card-batch!
-  [run-id card-ids]
-  (candidate-mining/with-candidate-batch-cache
-    #(lib-be/with-metadata-provider-cache
-       (let [opts         {:card-ids (set card-ids)
-                           :min-view-count (:minimum-recent-view-count source-config)
-                           :view-count-window-days (:usage-window-days source-config)}
-             {:keys [measures segments]}
-             (candidate-builders/cleanup-candidates (assoc opts :include-ineligible? true))
-             table-report (candidate-builders/candidate-table-observations opts)
-             metrics      (candidate-builders/candidate-metric-observations opts)
-             observations (concat measures
-                                  segments
-                                  (map table-candidate-observation (:candidates table-report))
-                                  (keep metric-candidate-observation metrics))
-             tables       (usable-table-index (into #{} (map observation-table-id) observations))]
-         (doseq [observation observations
-                 :let [table (tables (observation-table-id observation))]
-                 :when table]
-           (persist-observation! run-id observation))))))
+  [run-id analysis-inputs card-ids]
+  (let [opts {:card-ids (set card-ids)
+              :min-view-count (:minimum-recent-view-count source-config)
+              :view-count-window-days (:usage-window-days source-config)
+              :include-ineligible? true}
+        {:keys [cleanup table-report metrics]}
+        (candidate-builders/candidate-batch-observations analysis-inputs opts)
+        observations (concat (:measures cleanup)
+                             (:segments cleanup)
+                             (map table-candidate-observation (:candidates table-report))
+                             (keep metric-candidate-observation metrics))
+        tables       (usable-table-index (into #{} (map observation-table-id) observations))
+        observations (filter #(contains? tables (observation-table-id %)) observations)]
+    (t2/with-transaction [_conn]
+      (persist-observations! run-id observations))))
 
 (defn globally-eligible?
   "Whether an aggregated persisted candidate meets semantic and evidence cutoffs."
@@ -447,12 +494,12 @@
   [{run-id :id :as run}]
   (t2/update! :model/UsageMetadataCandidateRun run-id
               {:status :running, :started_at (mi/now), :error nil})
-  (let [card-ids (candidate-mining/qualified-card-ids
-                  (:minimum-recent-view-count source-config)
-                  (:usage-window-days source-config))]
-    (candidate-mining/with-candidate-analysis-cache
-      #(doseq [batch (partition-all source-card-batch-size card-ids)]
-         (persist-card-batch! run-id batch)))
+  (let [card-ids        (candidate-mining/qualified-card-ids
+                         (:minimum-recent-view-count source-config)
+                         (:usage-window-days source-config))
+        analysis-inputs (candidate-builders/candidate-analysis-inputs)]
+    (doseq [batch (partition-all source-card-batch-size card-ids)]
+      (persist-card-batch! run-id analysis-inputs batch))
     (prune-ineligible-candidates! run-id)
     (prune-non-closed-segment-candidates! run-id)
     (prune-non-closed-measure-candidates! run-id)
