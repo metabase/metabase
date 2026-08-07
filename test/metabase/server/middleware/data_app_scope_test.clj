@@ -54,7 +54,11 @@
 
 (deftest ^:parallel data-app-scope-registered-test
   (testing "the data-app scope is registered so tagged endpoints don't warn about an unknown scope"
-    (is (api-scope/registered-scope? api-scope.data-app/data-app))))
+    (is (api-scope/registered-scope? api-scope.data-app/data-app)))
+  (testing "the scope string is a wire contract — a JWT may carry it, so renaming is breaking"
+    (is (= "data-apps:base" api-scope.data-app/data-app)))
+  (testing "the `data-apps:*` wildcard covers it, leaving room for a later tier"
+    (is (api-scope/scope-matches? #{"data-apps:*"} api-scope.data-app/data-app))))
 
 (deftest data-app-marker-enforces-endpoint-scope-test
   ;; Mirrors the endpoints probed by the e2e spec

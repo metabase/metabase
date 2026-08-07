@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.classloader.core :as classloader]
@@ -353,7 +354,7 @@
   [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for
   `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user
   lacks permission to change the database details."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
            router_database_id can-query can-write-metadata]}
@@ -481,7 +482,7 @@
    [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
    in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
    database details."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include include_editable_data_model exclude_uneditable_details]}
@@ -660,7 +661,7 @@
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [prefix substring]} :- [:map {:closed true}
@@ -697,7 +698,7 @@
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [query include_dashboard_questions]} :- [:map {:closed true}
@@ -1239,7 +1240,7 @@
   Optional filters:
   - `can-query=true` - filter to only schemas containing tables the user can query
   - `can-write-metadata=true` - filter to only schemas containing tables the user can edit metadata for"
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model
@@ -1303,7 +1304,7 @@
   Optional filters:
   - `can-query=true` - filter to only tables the user can query
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [id schema]} :- [:map {:closed true}
                            [:id ms/PositiveInt]
                            [:schema ms/NonBlankString]]

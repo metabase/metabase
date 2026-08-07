@@ -13,6 +13,7 @@
    [metabase-enterprise.data-apps.query-definition :as query-definition]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase-enterprise.data-apps.user-access :as data-app.user-access]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -369,7 +370,7 @@
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
    `If-None-Match` against the content-hash ETag with a 304."
-  {:scope "data-app"}
+  {:scope api-scope/data-app}
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    _body
