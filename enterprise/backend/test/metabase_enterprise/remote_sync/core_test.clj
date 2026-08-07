@@ -85,6 +85,102 @@
            #"Uses content that is not remote synced"
            (core/bulk-set-remote-sync {remote-synced-coll-id true}))))))
 
+(deftest bulk-set-remote-sync-dependency-failure-names-both-collections-test
+  (testing "the failure names the collection we tried to sync and the collection that must be synced too"
+    (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                   :model/Collection {regular-id :id} {:name "Regular" :location "/" :is_remote_synced false}
+                   :model/Card {source-card-id :id} {:name "Source Card"
+                                                     :collection_id regular-id
+                                                     :database_id (mt/id)
+                                                     :dataset_query (mt/mbql-query venues)}
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id synced-id
+                                  :database_id (mt/id)
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+      (let [ex (is (thrown? clojure.lang.ExceptionInfo
+                            (core/bulk-set-remote-sync {synced-id true})))]
+        (is (=? {:status-code 400
+                 :errors      {:collections [{:collection   {:id synced-id :name "Synced"}
+                                              :dependencies [{:model      "Card"
+                                                              :id         source-card-id
+                                                              :name       "Source Card"
+                                                              :collection {:id regular-id :name "Regular"}
+                                                              :remedy     {:type       :collection
+                                                                           :collection {:id       regular-id
+                                                                                        :name     "Regular"
+                                                                                        :personal false}}}]}]}}
+                (ex-data ex)))))))
+
+(deftest bulk-set-remote-sync-dependency-remedy-is-top-level-ancestor-test
+  (testing "the remedy names the top-level collection settings can toggle, not the dependency's sub-collection"
+    (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                   :model/Collection {root-id :id} {:name "Root Regular" :location "/" :is_remote_synced false}
+                   :model/Collection {child-id :id} {:name "Nested"
+                                                     :location (format "/%d/" root-id)
+                                                     :is_remote_synced false}
+                   :model/Card {source-card-id :id} {:name "Source Card"
+                                                     :collection_id child-id
+                                                     :database_id (mt/id)
+                                                     :dataset_query (mt/mbql-query venues)}
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id synced-id
+                                  :database_id (mt/id)
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+      (let [ex (is (thrown? clojure.lang.ExceptionInfo
+                            (core/bulk-set-remote-sync {synced-id true})))]
+        (is (=? {:errors {:collections [{:dependencies [{:id         source-card-id
+                                                         :collection {:id child-id :name "Nested"}
+                                                         :remedy     {:type       :collection
+                                                                      :collection {:id root-id :name "Root Regular"}}}]}]}}
+                (ex-data ex)))))))
+
+(deftest bulk-set-remote-sync-snippet-dependency-remedy-is-library-test
+  (testing "a snippet dependency asks for Library sync — its eligibility keys on the Library, not its collection"
+    (with-library-not-synced
+      (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                     :model/NativeQuerySnippet {snippet-id :id} {:name "active_users" :content "1 = 1"}
+                     :model/Card _ {:name "Snippet Card"
+                                    :collection_id synced-id
+                                    :database_id (mt/id)
+                                    :dataset_query (mt/native-query
+                                                    {:query         "SELECT 1 WHERE {{snippet: active_users}}"
+                                                     :template-tags {"snippet: active_users"
+                                                                     {:snippet-id   snippet-id
+                                                                      :snippet-name "active_users"
+                                                                      :type         :snippet
+                                                                      :name         "snippet: active_users"
+                                                                      :display-name "Snippet: Active Users"
+                                                                      :id           (str (random-uuid))}}})}]
+        (let [ex (is (thrown? clojure.lang.ExceptionInfo
+                              (core/bulk-set-remote-sync {synced-id true})))]
+          (is (=? {:errors {:collections [{:dependencies [{:model  "NativeQuerySnippet"
+                                                           :id     snippet-id
+                                                           :name   "active_users"
+                                                           :remedy {:type :library}}]}]}}
+                  (ex-data ex))))))))
+
+(deftest bulk-set-remote-sync-reports-every-failing-collection-test
+  (testing "every collection with unsynced dependencies is reported, not just the first to fail"
+    (mt/with-temp [:model/Collection {synced-a-id :id} {:name "Synced A" :location "/" :is_remote_synced false}
+                   :model/Collection {synced-b-id :id} {:name "Synced B" :location "/" :is_remote_synced false}
+                   :model/Collection {regular-id :id} {:name "Regular" :location "/" :is_remote_synced false}
+                   :model/Card {source-card-id :id} {:name "Source Card"
+                                                     :collection_id regular-id
+                                                     :database_id (mt/id)
+                                                     :dataset_query (mt/mbql-query venues)}
+                   :model/Card _ {:name "Dependent A"
+                                  :collection_id synced-a-id
+                                  :database_id (mt/id)
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}
+                   :model/Card _ {:name "Dependent B"
+                                  :collection_id synced-b-id
+                                  :database_id (mt/id)
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+      (let [ex (is (thrown? clojure.lang.ExceptionInfo
+                            (core/bulk-set-remote-sync {synced-a-id true synced-b-id true})))]
+        (is (= #{"Synced A" "Synced B"}
+               (into #{} (map (comp :name :collection)) (get-in (ex-data ex) [:errors :collections]))))))))
+
 (deftest bulk-set-remote-sync-throws-on-remote-synced-dependents-test
   (testing "bulk-set-remote-sync throws when disabling a collection that has remote-synced dependents"
     (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced true}

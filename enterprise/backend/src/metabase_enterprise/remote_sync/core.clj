@@ -10,6 +10,7 @@
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -160,6 +161,74 @@
                         :status_changed_at (t/offset-date-time)}
                        (spec/build-sync-object-fields spec entity)))))
 
+(defn- collections-by-id
+  [ids]
+  (when-let [ids (seq (distinct (remove nil? ids)))]
+    (into {}
+          (map (juxt :id identity))
+          (t2/select [:model/Collection :id :name :location :personal_owner_id] :id [:in ids]))))
+
+(defn- top-level-ancestor-id
+  "Id of the outermost collection containing `collection`. Remote sync settings only offers top-level
+  collections as sync targets, so this — not the entity's own collection — is what an admin can act on.
+  A top-level collection is its own ancestor."
+  [{:keys [id location]}]
+  (or (first (collections/location-path->ids location)) id))
+
+(defn- dependency-names
+  "`{[model-name id] name}` for `deps`. A separate select rather than widening the eligibility select,
+  which is shared with the dependents path and sees models that have no `:name`."
+  [deps]
+  (into {}
+        (for [[model-name group] (group-by :model deps)
+              row (t2/select [(keyword "model" model-name) :id :name] :id [:in (map :id group)])]
+          [[model-name (:id row)] (:name row)])))
+
+(defn- sync-remedy
+  "What an admin would have to sync for `dep` to be covered: a specific top-level collection, or the
+  Library for models whose eligibility keys on it (snippets) rather than on their own collection.
+  `:none` when the dependency lives outside any collection."
+  [{:keys [model instance]} collections top-levels]
+  (if (= :library-synced (get-in (spec/spec-for-model-key (keyword "model" model)) [:eligibility :type]))
+    {:type :library}
+    (if-let [top (some->> (:collection_id instance)
+                          (get collections)
+                          top-level-ancestor-id
+                          (get top-levels))]
+      {:type       :collection
+       :collection {:id       (:id top)
+                    :name     (:name top)
+                    :personal (some? (:personal_owner_id top))}}
+      {:type :none})))
+
+(defn- describe-dependencies
+  "Renders [[collections/ineligible-dependencies]] for the API: what each dependency is, the collection it
+  lives in, and the collection (or the Library) that would have to be synced to cover it."
+  [deps]
+  (let [names       (dependency-names deps)
+        collections (collections-by-id (map (comp :collection_id :instance) deps))
+        top-levels  (collections-by-id (map top-level-ancestor-id (vals collections)))]
+    (mapv (fn [{:keys [model id instance] :as dep}]
+            (cond-> {:model  model
+                     :id     id
+                     :name   (get names [model id])
+                     :remedy (sync-remedy dep collections top-levels)}
+              (:collection_id instance)
+              (assoc :collection (select-keys (get collections (:collection_id instance)) [:id :name]))))
+          deps)))
+
+(defn- non-remote-synced-dependency-failures
+  "For each collection being synced on, the dependencies that syncing it would leave outside remote sync.
+  Unlike [[collections/check-non-remote-synced-dependencies]] this reports every offending collection
+  rather than throwing on the first, so an admin sees the whole picture in one pass."
+  [collections-to-sync]
+  (vec
+   (for [collection collections-to-sync
+         :let  [deps (collections/ineligible-dependencies collection)]
+         :when (seq deps)]
+     {:collection   (select-keys collection [:id :name])
+      :dependencies (describe-dependencies deps)})))
+
 (mu/defn bulk-set-remote-sync :- :nil
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state
   afterwards is consistent in terms of dependency rules. Collections are provided as a map of collection-id -> sync state."
@@ -199,8 +268,10 @@
                        :set {:is_remote_synced false}
                        :where [:in :id affected-collection-ids]})
             (record-removed-rsos! affected-collection-ids))))
-      (doseq [collection sync-on]
-        (collections/check-non-remote-synced-dependencies collection))
+      (when-let [failures (seq (non-remote-synced-dependency-failures sync-on))]
+        (throw (ex-info (tru "Uses content that is not remote synced.")
+                        {:status-code 400
+                         :errors      {:collections (vec failures)}})))
       (doseq [collection sync-off]
         (collections/check-remote-synced-dependents collection)))
     (doseq [collection sync-on

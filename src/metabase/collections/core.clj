@@ -21,11 +21,13 @@
   check-remote-synced-dependents
   create-library-collection!
   descendant-ids
+  ineligible-dependencies
   library-collection
   library-collection-type
   library-data-collection-type
   library-metrics-collection-type
   location-path
+  location-path->ids
   moving-from-remote-synced?
   moving-into-remote-synced?
   non-remote-synced-dependencies
