@@ -26,11 +26,6 @@ function setup({
   return { ...view, onSelectedFiltersChange };
 }
 
-function queryIndicatorDot() {
-  // Mantine's decorative dot has no semantic query.
-  return document.querySelector('[class*="Indicator-indicator"]');
-}
-
 describe("CollectionTypeFilter", () => {
   it("renders nothing when no supported models are available", () => {
     setup({ availableModels: ["timeline", "snippet"] });
@@ -83,6 +78,22 @@ describe("CollectionTypeFilter", () => {
     expect(onSelectedFiltersChange).toHaveBeenCalledWith(["card"]);
   });
 
+  it("offers explorations and keeps them when another option is unchecked", async () => {
+    const { onSelectedFiltersChange } = setup({
+      availableModels: ["dashboard", "card", "exploration"],
+    });
+
+    await userEvent.click(screen.getByTestId("collection-type-filter-button"));
+    expect(screen.getByLabelText("Research")).toBeChecked();
+
+    await userEvent.click(screen.getByLabelText("Dashboard"));
+
+    expect(onSelectedFiltersChange).toHaveBeenCalledWith([
+      "card",
+      "exploration",
+    ]);
+  });
+
   it("clears the filter when all available options are checked", async () => {
     const { onSelectedFiltersChange } = setup({
       selectedFilters: ["dashboard"],
@@ -94,14 +105,16 @@ describe("CollectionTypeFilter", () => {
     expect(onSelectedFiltersChange).toHaveBeenCalledWith(null);
   });
 
-  it("shows the indicator only while filtering", () => {
+  it("announces the active state only while filtering", () => {
     const { unmount } = setup();
 
-    expect(queryIndicatorDot()).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
 
     unmount();
     setup({ selectedFilters: ["dashboard"] });
 
-    expect(queryIndicatorDot()).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Filter, filters applied" }),
+    ).toBeInTheDocument();
   });
 });

@@ -131,11 +131,6 @@ function advanceSearchDebounce(duration = SEARCH_DEBOUNCE_DURATION) {
   });
 }
 
-function queryIndicatorDot() {
-  // Mantine's decorative dot has no semantic query.
-  return document.querySelector('[class*="Indicator-indicator"]');
-}
-
 function CollectionNavigationTest({
   nextCollection,
 }: {
@@ -628,7 +623,9 @@ describe("CollectionItemsTable", () => {
       await screen.findByTestId("collection-type-filter-button"),
     );
     await user.click(screen.getByLabelText("Dashboard"));
-    expect(queryIndicatorDot()).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Filter, filters applied" }),
+    ).toBeInTheDocument();
     screen.getByLabelText("Dashboard").focus();
     await user.keyboard("{Escape}");
 
@@ -661,7 +658,7 @@ describe("CollectionItemsTable", () => {
       ),
     ).toBe(true);
 
-    expect(queryIndicatorDot()).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
     await user.click(screen.getByTestId("collection-type-filter-button"));
     const popover = screen.getByTestId("collection-type-filter-popover");
     expect(within(popover).getAllByRole("checkbox")).toHaveLength(1);

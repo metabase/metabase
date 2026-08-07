@@ -72,6 +72,7 @@ export function CollectionTypeFilter({
             variant="default"
             leftSection={<Icon name="filter" aria-hidden />}
             onClick={toggle}
+            aria-label={isFiltering ? t`Filter, filters applied` : undefined}
             data-testid="collection-type-filter-button"
           >
             {t`Filter`}
