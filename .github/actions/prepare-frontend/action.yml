@@ -35,7 +35,7 @@ runs:
       run: |
         BUN_CACHE_DIR=$(bun pm cache)
         echo "Bun cache directory: $BUN_CACHE_DIR"
-        echo "dir=$BUN_CACHE_DIR" >> $GITHUB_OUTPUT
+        echo "dir=$BUN_CACHE_DIR" >> "$GITHUB_OUTPUT"
       shell: bash
 
     - name: Restore node_modules cache
