@@ -63,6 +63,11 @@ const elements = [
   // basic
   createElement({ type: "basic", name: "router" }),
   createElement({ type: "basic", name: "ui" }),
+  createElement({
+    type: "basic",
+    name: "value-formatting",
+    enforcePublicApi: true,
+  }),
 
   // shared
   createElement({ type: "feature", name: "account" }),
@@ -171,11 +176,6 @@ const elements = [
     type: "shared",
     name: "embedding-sdk-shared",
     pattern: "frontend/src/embedding-sdk-shared/**",
-  }),
-  createElement({
-    type: "shared",
-    name: "value-formatting",
-    enforcePublicApi: true,
   }),
   createElement({ type: "shared", name: "forms", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "hoc" }),
@@ -418,6 +418,11 @@ const baseRules = [
   {
     from: ["basic/ui"],
     allow: ["lib/lib"],
+  },
+  // The column-vocabulary predicates (isa, column-key) live in metabase-lib/v1.
+  {
+    from: ["basic/value-formatting"],
+    allow: ["basic/mlv1"],
   },
   {
     from: ["shared/*"],
