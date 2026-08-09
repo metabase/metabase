@@ -2,9 +2,9 @@ import { type PropsWithChildren, useEffect, useState } from "react";
 
 import { setLocaleHeader } from "metabase/api/client";
 import { loadLocalization } from "metabase/api/localization";
-import { useSetting } from "metabase/common/hooks";
 import { FrontendLocaleContext } from "metabase/embedding/FrontendLocaleContext";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useSetting } from "metabase/settings";
 import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";
 import type { LocaleDataWithLanguage } from "metabase/utils/i18n";
 

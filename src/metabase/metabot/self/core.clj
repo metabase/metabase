@@ -38,31 +38,34 @@
   "Canonical schema for the opts map passed to every LLM provider adapter.
 
   Required:
-    :model       - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
+    :model            - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
 
   Optional:
-    :system      - System prompt string
-    :input       - Sequence of AISDK parts and user messages
-    :tools       - Sequence of tool definition maps
-    :tool_choice - \"auto\" or \"required\"
-    :temperature - Sampling temperature
-    :max-tokens  - Maximum tokens in the response
-    :schema      - JSON Schema map for structured output; each provider forces a
-                   tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
-    :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy
-    :reasoning?  - When false, don't request thinking/reasoning and strip
-                   :reasoning parts from the replayed input (defaults true)"
+    :system           - System prompt string
+    :input            - Sequence of AISDK parts and user messages
+    :tools            - Sequence of tool definition maps
+    :tool_choice      - \"auto\" or \"required\"
+    :temperature      - Sampling temperature
+    :max-tokens       - Maximum tokens in the response
+    :schema           - JSON Schema map for structured output; each provider forces a
+                        tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
+    :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
+    :reasoning?       - When false, don't request thinking/reasoning and strip
+                        :reasoning parts from the replayed input (defaults true)
+    :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
+                        provider caches opt-in per key forward it (Mistral), others ignore it"
   [:map
-   [:model       {:optional true} :string]
-   [:system      {:optional true} [:maybe :string]]
-   [:input       {:optional true} [:sequential :map]]
-   [:tools       {:optional true} [:maybe [:sequential ToolEntry]]]
-   [:tool_choice {:optional true} [:maybe [:enum "auto" "required"]]]
-   [:temperature {:optional true} [:maybe number?]]
-   [:max-tokens  {:optional true} [:maybe :int]]
-   [:schema      {:optional true} :any]
-   [:ai-proxy?   {:optional true} [:maybe :boolean]]
-   [:reasoning?  {:optional true} [:maybe :boolean]]])
+   [:model            {:optional true} :string]
+   [:system           {:optional true} [:maybe :string]]
+   [:input            {:optional true} [:sequential :map]]
+   [:tools            {:optional true} [:maybe [:sequential ToolEntry]]]
+   [:tool_choice      {:optional true} [:maybe [:enum "auto" "required"]]]
+   [:temperature      {:optional true} [:maybe number?]]
+   [:max-tokens       {:optional true} [:maybe :int]]
+   [:schema           {:optional true} :any]
+   [:ai-proxy?        {:optional true} [:maybe :boolean]]
+   [:reasoning?       {:optional true} [:maybe :boolean]]
+   [:prompt-cache-key {:optional true} [:maybe :string]]])
 
 (defn mkid
   "Generate a random id"
@@ -852,6 +855,24 @@
                          :exception-class exception-class}
                         e))))))
 
+(defn reducible-with-api-errors
+  "Wrap a reducible stream so exceptions thrown during its (lazy) consumption are
+  routed through [[rethrow-api-error!]], the same translation applied to
+  request-time failures. Provider adapters consume their SSE body outside the
+  request `try` (the reduction happens later, in the agent loop), so a
+  mid-stream failure — e.g. a `SocketTimeoutException` between chunks — would
+  otherwise surface raw instead of in the provider-friendly error shape.
+
+  Takes the reducible first so adapters can thread it straight off
+  [[sse-reducible]]/`capture-stream` with `->`."
+  [reducible provider res->message]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (try
+        (reduce rf init reducible)
+        (catch Exception e
+          (rethrow-api-error! provider res->message e))))))
+
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."
   [llm-type]
@@ -877,8 +898,17 @@
           (throw (missing-api-key-ex llm-type))))))
 
 (defn request
-  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`)."
+  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).
+  Forces a connection + socket timeout on every request so a hung upstream can
+  never block the caller forever. The timeouts default to the operator-tunable
+  `llm/llm-connection-timeout-ms` and `llm/llm-request-timeout-ms` settings (read
+  at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
+  override either timeout per request by passing `:connection-timeout` /
+  `:socket-timeout` in `req`."
   [{:keys [url headers]} req]
-  (http/request (-> req
+  (llm/assert-llm-host-allowed! url)
+  (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
+                     :socket-timeout     (llm/llm-request-timeout-ms)}
+                    (merge req)
                     (update :url #(str url %))
                     (update :headers merge headers))))

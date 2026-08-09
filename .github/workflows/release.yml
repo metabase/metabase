@@ -281,7 +281,7 @@ jobs:
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}
       tag: ${{ needs.check-version.outputs.oss }}
-      release: ${{ 'true' }}
+      release: true
 
   containerize-ee:
     needs: check-version
@@ -292,7 +292,7 @@ jobs:
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}-enterprise
       tag: ${{ needs.check-version.outputs.ee }}
-      release: ${{ 'true' }}
+      release: true
 
   push-tags:
     needs: [verify-s3-download, containerize-oss, containerize-ee, check-version]
@@ -343,6 +343,9 @@ jobs:
       - name: Get extra tags
         id: taglist
         uses: actions/github-script@v9
+        env:
+          AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           result-encoding: string
           script: | # js

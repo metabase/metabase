@@ -9,6 +9,7 @@
   by [[initialize-events!]]."
   (:require
    [clojure.spec.alpha :as s]
+   [metabase.events.hierarchy :as events.hierarchy]
    [metabase.events.schema :as events.schema]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -32,7 +33,7 @@
    qualified-keyword?
    [:fn
     {:error/message "Events should derive from :metabase/event"}
-    #(isa? % :metabase/event)]])
+    #(events.hierarchy/isa? % :metabase/event)]])
 
 (s/def ::publish-event-dispatch-value
   (s/and
@@ -57,10 +58,10 @@
       [topic event]
        ...)
 
-  Instead, derive the event from another key, and write a method for that
+  Instead, derive the event from another key in the event hierarchy, and write a method for that
 
     ;; Good
-    (derive :event/database-create ::events)
+    (events/derive! :event/database-create ::events)
     (methodical/defmethod events/publish-event! ::events
       [topic event]
        ...)
@@ -76,7 +77,8 @@
   :dispatcher
   (u.methodical.unsorted-dispatcher/unsorted-dispatcher
    (fn dispatch-fn [topic _event]
-     (keyword topic)))
+     (keyword topic))
+   :hierarchy #'events.hierarchy/hierarchy)
   ;; work around https://github.com/camsaul/methodical/issues/98
   :cache
   (u.methodical.null-cache/null-cache))
@@ -96,7 +98,7 @@
                             model
                             (assoc :model model))))))
   (assert (and (qualified-keyword? topic)
-               (isa? topic :metabase/event))
+               (events.hierarchy/isa? topic :metabase/event))
           (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
   (assert (map? event)
           (format "Invalid event %s: event must be a map." (pr-str event)))

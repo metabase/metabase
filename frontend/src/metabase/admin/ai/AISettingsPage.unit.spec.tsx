@@ -113,6 +113,18 @@ const setup = async ({
       key: "llm-openrouter-api-key",
       value: undefined,
     }),
+    createMockSettingDefinition({
+      key: "llm-zai-api-key",
+      value: undefined,
+    }),
+    createMockSettingDefinition({
+      key: "llm-mistral-api-key",
+      value: undefined,
+    }),
+    createMockSettingDefinition({
+      key: "llm-moonshot-api-key",
+      value: undefined,
+    }),
   ]);
   setupUpdateSettingEndpoint();
   setupCollectionByIdEndpoint({ collections });
@@ -279,16 +291,16 @@ describe("AISettingsPage", () => {
   });
 
   it("switches tabs using a query param without changing the pathname", async () => {
-    const { history } = await setup({
+    const { router } = await setup({
       enableEmbedding: true,
       initialRoute: "/admin/metabot",
     });
 
     await userEvent.click(screen.getByRole("tab", { name: "Embedded" }));
 
-    expect(history?.getCurrentLocation()).toMatchObject({
+    expect(router?.location).toMatchObject({
       pathname: "/admin/metabot",
-      query: { metabot_id: String(FIXED_METABOT_IDS.EMBEDDED) },
+      search: `?metabot_id=${FIXED_METABOT_IDS.EMBEDDED}`,
       hash: "",
     });
   });

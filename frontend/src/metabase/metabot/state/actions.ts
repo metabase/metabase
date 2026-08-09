@@ -21,9 +21,9 @@ import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { push } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { navigate } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { retry } from "metabase/utils/retry";
 import { uuid } from "metabase/utils/uuid";
@@ -599,8 +599,7 @@ export const sendAgentRequest = createAsyncThunk<
                   return;
                 }
 
-                // Unjustified type cast. FIXME
-                dispatchToConvo(push(path) as UnknownAction);
+                navigate(path);
               })
               .with({ type: "data-entity_saved" }, (part) => {
                 dispatch(
@@ -779,7 +778,7 @@ export const sendAgentRequest = createAsyncThunk<
 
       const handled = handleResponseError(
         error,
-        getSetting(getState(), "metabot-name") || "Metabot",
+        getSetting(getState(), "metabot-name"),
       );
       return rejectWithValue({
         type: "error" as const,
@@ -842,12 +841,13 @@ export const retryPrompt = createAsyncThunk<
     context: MetabotChatContext;
     metabot_id?: string;
     agentId: MetabotAgentId;
+    profile?: MetabotProfileId;
     isTransformsPage?: boolean;
   }
 >(
   "metabase/metabot/retryPrompt",
   async (
-    { messageId, context, metabot_id, agentId, isTransformsPage },
+    { messageId, context, metabot_id, agentId, profile, isTransformsPage },
     { getState, dispatch },
   ) => {
     const state = getState();
@@ -874,6 +874,7 @@ export const retryPrompt = createAsyncThunk<
         message: prompt.message,
         context,
         metabot_id,
+        profile,
         retryMessageId: prompt.externalId,
         isTransformsPage,
       }),
@@ -924,10 +925,50 @@ export const loadConversation = createAsyncThunk(
         agentId,
         conversationId: detail.conversation_id,
         title: detail.title ?? undefined,
+        forkedFromConversationId:
+          detail.forked_from_conversation_id ?? undefined,
         messages: normalizeFetchedChatMessages(detail.messages),
         state: detail.state,
         activeToolCalls: [],
       }),
     );
+  },
+);
+
+export const forkConversation = createAsyncThunk(
+  "metabase/metabot/forkConversation",
+  async (
+    {
+      agentId,
+      conversationId,
+      messageId,
+    }: { agentId: MetabotAgentId; conversationId: string; messageId: string },
+    { dispatch },
+  ) => {
+    const conversation = await dispatch(
+      metabotApi.endpoints.forkMetabotConversation.initiate({
+        conversation_id: conversationId,
+        message_id: messageId,
+      }),
+    ).unwrap();
+
+    dispatch(
+      setConversationSnapshot({
+        agentId,
+        conversationId: conversation.conversation_id,
+        title: conversation.title ?? undefined,
+        forkedFromConversationId:
+          conversation.forked_from_conversation_id ?? undefined,
+        messages: normalizeFetchedChatMessages(conversation.messages),
+        state: conversation.state,
+        activeToolCalls: [],
+      }),
+    );
+
+    if (agentId === "ask") {
+      navigate(Urls.metabotConversation(conversation.conversation_id));
+    }
+
+    return conversation;
   },
 );

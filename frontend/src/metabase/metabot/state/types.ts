@@ -158,6 +158,7 @@ export interface MetabotConverstationState {
   conversationId: string;
   loadId: string;
   title: string | undefined;
+  forkedFromConversationId: string | undefined;
   isProcessing: boolean;
   messages: MetabotChatMessage[];
   visible: boolean;
@@ -173,7 +174,12 @@ export interface MetabotConverstationState {
   };
 }
 
-export const fixedMetabotAgentIds = ["omnibot", "sql", "ask"] as const;
+export const fixedMetabotAgentIds = [
+  "omnibot",
+  "sql",
+  "ask",
+  "explorations",
+] as const;
 type FixedMetabotAgentId = (typeof fixedMetabotAgentIds)[number];
 
 export type MetabotAgentId = FixedMetabotAgentId | `test_${number}`;

@@ -21,7 +21,6 @@ type QuestionResultLoaderProps = {
   question: Question | null | undefined;
   onLoad?: (results: Dataset[]) => void;
   keepPreviousWhileLoading?: boolean;
-  collectionPreview?: boolean;
   children: (state: QuestionResultLoaderChildrenProps) => ReactNode;
 };
 
@@ -47,7 +46,6 @@ export function QuestionResultLoader({
   question,
   onLoad,
   keepPreviousWhileLoading = false,
-  collectionPreview,
   children,
 }: QuestionResultLoaderProps) {
   const dispatch = useDispatch();
@@ -81,7 +79,6 @@ export function QuestionResultLoader({
         const queryResults = await runQuestionQuery(questionToLoad, {
           dispatch,
           signal: cancelControllerRef.current.signal,
-          collectionPreview,
         });
 
         setLoading(false);
@@ -95,7 +92,7 @@ export function QuestionResultLoader({
         setError(err);
       }
     },
-    [dispatch, collectionPreview],
+    [dispatch],
   );
 
   // A function to pass to the child to allow the component to call `loadResult` again

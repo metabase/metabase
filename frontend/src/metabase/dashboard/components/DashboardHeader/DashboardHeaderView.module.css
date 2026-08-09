@@ -21,11 +21,8 @@
 
 .HeaderContainer {
   &.isFixedWidth.offsetSidebar {
-    margin-inline-end: var(--sidebar-width);
-  }
-
-  @container dashboard-header (max-width: 40rem) {
-    margin-inline-end: 0;
+    /* Shrink the offset instead of dropping it at 40rem, so the header never jumps. Must match the stacking breakpoint below. */
+    margin-inline-end: clamp(0px, calc(100cqw - 40rem), var(--sidebar-width));
   }
 }
 

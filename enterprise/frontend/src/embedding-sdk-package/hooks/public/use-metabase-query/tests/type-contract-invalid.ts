@@ -5,7 +5,7 @@ import { TEST_SCHEMA } from "./fixtures";
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
-import { breakout, sum, useMetabaseQuery } from "..";
+import { breakout, count, filter, sum, useMetabaseQuery } from "..";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
@@ -44,8 +44,32 @@ const _invalidCrossTableFieldQuery = {
 const _invalidSavedQuestionClauseQuery = {
   source: TEST_SCHEMA.questions.ordersQuestion,
 
-  // @ts-expect-error saved question queries only support source and enabled
+  // @ts-expect-error a card stage returns the question's columns, so it has no field list
   fields: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
+} satisfies MetabaseQueryOptions<OrdersQuestion>;
+
+const _invalidSavedQuestionFilterQuery = {
+  source: TEST_SCHEMA.questions.ordersQuestion,
+  filters: [
+    // @ts-expect-error saved question filters must name a result column of the question
+    filter(TEST_SCHEMA.tables.orders.fields.id, "=", 1),
+  ],
+} satisfies MetabaseQueryOptions<OrdersQuestion>;
+
+const _invalidSavedQuestionSegmentQuery = {
+  source: TEST_SCHEMA.questions.ordersQuestion,
+  filters: [
+    // @ts-expect-error Segments belong to a table source
+    TEST_SCHEMA.tables.orders.segments.completed,
+  ],
+} satisfies MetabaseQueryOptions<OrdersQuestion>;
+
+const _invalidSavedQuestionMeasureQuery = {
+  source: TEST_SCHEMA.questions.ordersQuestion,
+  aggregations: [
+    // @ts-expect-error Measures belong to a table source
+    TEST_SCHEMA.tables.orders.measures.revenue,
+  ],
 } satisfies MetabaseQueryOptions<OrdersQuestion>;
 
 // Only this value's type is used to reject passing the entire hook result to a card.
@@ -121,6 +145,21 @@ function InvalidTypeFixtures() {
       breakout(TEST_SCHEMA.tables.orders.fields.createdAt, { unit: "month" }),
     ],
   });
+
+  // @ts-expect-error grouped saved question queries must include an explicit aggregation
+  useMetabaseQuery<OrdersQuestion>({
+    source: TEST_SCHEMA.questions.ordersQuestion,
+    breakouts: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
+  });
+
+  const groupedQuestionResult = useMetabaseQuery({
+    source: TEST_SCHEMA.questions.ordersQuestion,
+    aggregations: [count()],
+    breakouts: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
+  });
+
+  // @ts-expect-error grouped queries return only their breakouts and aggregations
+  void groupedQuestionResult.data?.rows[0]?.AMOUNT;
 
   return null;
 }

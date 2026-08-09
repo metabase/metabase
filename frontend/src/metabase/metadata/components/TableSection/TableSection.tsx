@@ -6,9 +6,9 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { Link } from "metabase/common/components/Link";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Link } from "metabase/router";
 import {
   ActionIcon,
   Group,

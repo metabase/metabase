@@ -56,6 +56,17 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest ^:parallel connection-hosts-test
+  (are [details expected] (= expected (driver/connection-hosts :snowflake details))
+    {:account "xy12345.us-east-2.aws"}
+    ["xy12345.us-east-2.aws.snowflakecomputing.com"]
+
+    {:account "xy12345" :use-hostname true :host "snowflake.example.com"}
+    ["snowflake.example.com"]
+
+    {:account "xy12345" :use-hostname true :host "https://snowflake.example.com:443"}
+    ["snowflake.example.com"]))
+
 (defn- query->native! [query]
   (let [check-sql-fn (fn [_ _ sql & _]
                        (throw (ex-info "done" {::native-query sql})))]
@@ -451,6 +462,30 @@
                                                  {:schema-names [(:schema dynamic-table)]
                                                   :table-names  [(:name dynamic-table)]}))))))))))))
 
+(deftest ^:parallel show-dynamic-tables-sql-test
+  (testing "only the LIKE pattern escapes `_`; the IN SCHEMA identifiers stay raw (#78541)"
+    (is (= "SHOW DYNAMIC TABLES LIKE 'MY\\_TABLE' IN SCHEMA \"MY_DB\".\"RAW_DATA\";"
+           (#'driver.snowflake/show-dynamic-tables-sql "MY_DB" "RAW_DATA" "MY_TABLE")))))
+
+(deftest ^:synchronized describe-fks-dynamic-table-check-test
+  (testing "the FK path passes raw names to the dynamic table check (#78541)"
+    (let [dynamic-table-args (atom nil)
+          fk-args            (atom nil)]
+      (with-redefs [driver.snowflake/dynamic-table?
+                    (fn [_conn db-name schema table-name]
+                      (reset! dynamic-table-args [db-name schema table-name])
+                      false)
+
+                    sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata
+                    (fn [_metadata db-name schema table-name]
+                      (reset! fk-args [db-name schema table-name])
+                      [])]
+        (#'driver.snowflake/reducible-table-fks-from-jdbc-metadata
+         (reify java.sql.Connection) (reify java.sql.DatabaseMetaData) "MY_DB" "RAW_DATA" "MY_TABLE"))
+      (is (= ["MY_DB" "RAW_DATA" "MY_TABLE"] @dynamic-table-args))
+      (testing "but still escapes for the JDBC metadata call, which treats them as patterns"
+        (is (= ["MY_DB" "RAW\\_DATA" "MY\\_TABLE"] @fk-args))))))
+
 (deftest ^:sequential describe-table-fields-uuid-column-test
   (mt/test-driver :snowflake
     (testing "Snowflake tables with UUID columns should sync successfully (#71595)"
@@ -713,27 +748,28 @@
 (deftest can-change-from-password-test
   (mt/test-driver
     :snowflake
-    (let [details (:details (mt/db))
+    ;; the test DB authenticates with a private key, so give it a password to switch away from
+    (let [details (assoc (:details (mt/db)) :password "test-password" :use-password true)
           pk-key "testing"]
       (is (=?
            {:user some?
             :password some?
-            :private_key_file complement}
+            :private_key_file :hawk/key-not-present}
            (sql-jdbc.conn/connection-details->spec :snowflake details)))
       (is (=?
            {:user some?
             :password some?
-            :private_key_file complement}
+            :private_key_file :hawk/key-not-present}
            ;; Before `use-password` password took precedence over a key file
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :private-key-value pk-key))))
       (is (=?
            {:user some?
-            :password complement
+            :password :hawk/key-not-present
             :private_key_file some?}
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :password nil :private-key-value pk-key))))
       (is (=?
            {:user some?
-            :password complement
+            :password :hawk/key-not-present
             :private_key_file some?}
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :private-key-value pk-key)))))))
 
@@ -1162,7 +1198,7 @@
                                           :details {:use-password false
                                                     :password "abc"}}]
         (is (= {:password "abc" :use-password true} (:details db1)))
-        (is (=? {:password "abc" :private-key-id int? :use-password complement} (:details db2)))
+        (is (=? {:password "abc" :private-key-id int? :use-password :hawk/key-not-present} (:details db2)))
         (is (= {:password "abc" :use-password false} (:details db3)))))))
 
 (deftest ^:parallel normalize-write-data-details-test

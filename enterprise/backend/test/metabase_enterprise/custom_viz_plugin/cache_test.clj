@@ -1,5 +1,6 @@
 (ns ^:synchronous metabase-enterprise.custom-viz-plugin.cache-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
@@ -91,13 +92,30 @@
                             #"max uncompressed bytes"
                             (cache/validate-bundle! bytes))))))
 
-(deftest validate-bundle-rejects-incompatible-version-test
-  (testing "plugin requiring incompatible Metabase version is rejected"
+(deftest validate-bundle-accepts-incompatible-version-test
+  (testing "version incompatibilities never fail validation — they surface as soft warnings at read time"
     (with-redefs [config/mb-version-info {:tag "v1.60.0"}
                   config/is-dev?         false]
-      (let [bytes (cvp.tu/valid-bundle-bytes "bad-ver" {:metabase-version ">=1.99.0"})]
-        (is (thrown-with-msg? Exception #"version"
-                              (cache/validate-bundle! bytes)))))))
+      (let [bytes (cvp.tu/valid-bundle-bytes "bad-ver" {:metabase-version ">=1.99.0"})
+            res   (cache/validate-bundle! bytes)]
+        (is (= ">=1.99.0" (:version-str res)))))))
+
+(deftest validate-bundle-rejects-malformed-manifest-test
+  (testing "manifest fields with wrong JSON types are rejected with a 400"
+    (doseq [opts [{:sdk-version 2}
+                  {:metabase-version 1.62}
+                  {:icon 5}]]
+      (let [bytes (cvp.tu/valid-bundle-bytes "bad-types" opts)
+            e     (is (thrown-with-msg? Exception #"metabase-plugin\.json is invalid"
+                                        (cache/validate-bundle! bytes))
+                      (pr-str opts))]
+        (is (= 400 (:status-code (ex-data e))) (pr-str opts)))))
+  (testing "a non-string name is rejected before the blank-name check can choke on it"
+    (let [bytes (cvp.tu/make-tgz-bytes
+                 [["metabase-plugin.json" (json/encode {:name 123})]
+                  ["dist/index.js" "console.log('hi')"]])]
+      (is (thrown-with-msg? Exception #"metabase-plugin\.json is invalid"
+                            (cache/validate-bundle! bytes))))))
 
 ;;; ------------------------------------------------ dev-base-url URL validation ------------------------------------------------
 
@@ -119,6 +137,19 @@
   (testing "SECURITY: rejects file:// URLs"
     (is (thrown-with-msg? Exception #"http or https"
                           (cache/dev-base-url "file:///etc/passwd")))))
+
+(deftest fetch-dev-manifest-test
+  (testing "returns a well-formed manifest"
+    (with-redefs [http/get (constantly {:body (json/encode {:name "dev-viz"})})]
+      (is (= {:name "dev-viz"}
+             (cache/fetch-dev-manifest "http://localhost:5174")))))
+  (testing "returns nil when the manifest cannot be fetched"
+    (with-redefs [http/get (fn [& _] (throw (Exception. "connection refused")))]
+      (is (nil? (cache/fetch-dev-manifest "http://localhost:5174")))))
+  (testing "rejects a structurally invalid manifest, same as the upload path"
+    (with-redefs [http/get (constantly {:body (json/encode {:name 123})})]
+      (is (thrown-with-msg? Exception #"is invalid"
+                            (cache/fetch-dev-manifest "http://localhost:5174"))))))
 
 (deftest set-or-clear-dev-bundle!-test
   (mt/with-premium-features #{:custom-viz}

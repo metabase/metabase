@@ -12,7 +12,7 @@ export function createMockComment(comment?: Partial<Comment>): Comment {
 
     target_type: "document",
     target_id: 1,
-    child_target_id: 1,
+    child_target_id: "1",
 
     creator: createMockUser(),
     content: createMockDocumentContent(),

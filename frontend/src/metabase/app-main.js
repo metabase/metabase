@@ -4,15 +4,15 @@ import "metabase-dev";
 
 import _ from "underscore";
 
-import { api } from "metabase/api/client";
+import { Api } from "metabase/api";
+import { PLUGIN_API, api } from "metabase/api/client";
 import { init } from "metabase/app";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
-import { PLUGIN_API } from "metabase/plugins";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
-import { clearCurrentUser } from "metabase/redux/user";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 import { getRoutes } from "metabase/routes";
+import { getUser } from "metabase/selectors/user";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 // Let embedded children detect that their parent is a Metabase instance.
@@ -51,8 +51,15 @@ init(mainReducers, getRoutes, (store) => {
       return;
     }
 
-    store.dispatch(clearCurrentUser());
-    store.dispatch(push("/auth/login"));
+    // The session is gone, which means every cached API response (including the current
+    // user, which the auth route guards read) is stale.
+    // Drop them all, but only if there was a session to invalidate.
+    // Otherwise, we might be in the middle of a login flow,
+    // and dropping the cache would abort the very request carrying the 401.
+    if (getUser(store.getState())) {
+      store.dispatch(Api.util.resetApiState());
+    }
+    navigate("/auth/login");
   });
 
   // received a 403 response

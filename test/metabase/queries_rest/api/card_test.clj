@@ -202,13 +202,19 @@
                                 :value  2}]})))))))
 
 (deftest dashboard-and-collection-context-metric-query-uses-default-dimension-test
-  (testing "POST card query endpoints use the metric's default dimension in dashboard and collection contexts (UXW-4769, UXW-4771)"
+  (testing "POST card query endpoints use collection-specific metric dimension fallbacks (UXW-4769, UXW-4771, UXW-4958)"
     (mt/dataset test-data
       (let [mp           (mt/metadata-provider)
             orders       (lib.metadata/table mp (mt/id :orders))
             created-at   (lib.metadata/field mp (mt/id :orders :created_at))
             product-id   (lib.metadata/field mp (mt/id :orders :product_id))
-            dimension-id (str (random-uuid))]
+            dimension-id (str (random-uuid))
+            dimension    {:id             dimension-id
+                          :display-name   "Product ID"
+                          :effective-type :type/Integer
+                          :semantic-type  :type/FK
+                          :status         :status/active
+                          :sources        [{:type :field, :field-id (mt/id :orders :product_id)}]}]
         (mt/with-temp [:model/Card {metric-id :id}
                        {:name               "Orders metric"
                         :type               :metric
@@ -218,13 +224,7 @@
                         :dataset_query      (-> (lib/query mp orders)
                                                 (lib/aggregate (lib/count))
                                                 (lib/breakout (lib/with-temporal-bucket created-at :month)))
-                        :dimensions         [{:id             dimension-id
-                                              :display-name   "Product ID"
-                                              :effective-type :type/Integer
-                                              :semantic-type  :type/FK
-                                              :status         :status/active
-                                              :sources        [{:type :field, :field-id (mt/id :orders :product_id)}]
-                                              :default        true}]
+                        :dimensions         [dimension]
                         :dimension_mappings [{:type         :table
                                               :table-id     (mt/id :orders)
                                               :dimension-id dimension-id
@@ -234,6 +234,15 @@
                 canonical      (mt/user-http-request :crowberto :post 202 path)
                 stored-metadata (t2/select-one-fn :result_metadata :model/Card :id metric-id)]
             (is (= "CREATED_AT" (-> canonical mt/cols first :name)))
+            (testing "without a curated default, dashboards keep the saved breakout and collection previews are scalar"
+              (let [dashboard-result  (mt/user-http-request :crowberto :post 202 path
+                                                            {:dashboard_id dashboard-id})
+                    collection-result (mt/user-http-request :crowberto :post 202 path
+                                                            {:collection_preview true})]
+                (is (= "CREATED_AT" (-> dashboard-result mt/cols first :name)))
+                (is (= 1 (count (mt/cols collection-result))))
+                (is (= 1 (count (mt/rows collection-result))))))
+            (t2/update! :model/Card metric-id {:dimensions [(assoc dimension :default true)]})
             (doseq [query-path [path (format "card/pivot/%d/query" metric-id)]]
               (let [result (mt/user-http-request :crowberto :post 202 query-path {:dashboard_id dashboard-id})]
                 (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
@@ -243,6 +252,19 @@
               (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
               (is (= stored-metadata
                      (t2/select-one-fn :result_metadata :model/Card :id metric-id))))
+            (t2/update! :model/Card metric-id {:dimensions [(assoc dimension
+                                                                   :default true
+                                                                   :status :status/orphaned)]})
+            (testing "an orphaned default keeps the saved dashboard breakout and makes collection previews scalar"
+              (let [dashboard-result  (mt/user-http-request :crowberto :post 202 path
+                                                            {:dashboard_id dashboard-id})
+                    collection-result (mt/user-http-request :crowberto :post 202 path
+                                                            {:collection_preview true})]
+                (is (= "CREATED_AT" (-> dashboard-result mt/cols first :name)))
+                (is (= 1 (count (mt/cols collection-result))))
+                (is (= 1 (count (mt/rows collection-result))))))
+            (is (= stored-metadata
+                   (t2/select-one-fn :result_metadata :model/Card :id metric-id)))
             (mt/user-http-request :crowberto :post 404 path {:dashboard_id Integer/MAX_VALUE})))))))
 
 (deftest execute-card-with-default-parameters-test
@@ -800,9 +822,8 @@
                               :last-edit-info         {:timestamp true :id true :first_name "Rasta"
                                                        :last_name "Toucan" :email "rasta@metabase.com"}
                               :creator                (merge
-                                                       (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
+                                                       (select-keys (mt/fetch-user :rasta) [:id])
                                                        {:common_name  "Rasta Toucan"
-                                                        :is_superuser false
                                                         :last_name    "Toucan"
                                                         :first_name   "Rasta"
                                                         :email        "rasta@metabase.com"})
@@ -815,7 +836,6 @@
                                 (update :dataset_query map?)
                                 (update :entity_id string?)
                                 (update :result_metadata (partial every? map?))
-                                (update :creator dissoc :is_qbnewb)
                                 (update :last-edit-info (fn [edit-info]
                                                           (-> edit-info
                                                               (update :id boolean)
@@ -1618,10 +1638,8 @@
                     :parameter_usage_count  0
                     :creator_id             (mt/user->id :rasta)
                     :creator                (merge
-                                             (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
+                                             (select-keys (mt/fetch-user :rasta) [:id])
                                              {:common_name  "Rasta Toucan"
-                                              :is_superuser false
-                                              :is_qbnewb    true
                                               :last_name    "Toucan"
                                               :first_name   "Rasta"
                                               :email        "rasta@metabase.com"})
@@ -3241,16 +3259,33 @@
       (testing "POST /api/card/pivot/:card-id/query"
         (doseq [card-attributes [(api.pivots/pivot-card) (api.pivots/legacy-pivot-card)]]
           (mt/with-temp [:model/Card card card-attributes]
-            (api.pivots/with-pivot-parity-check
-              (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
-                    rows   (mt/rows result)]
-                (is (= 1144 (:row_count result)))
-                (is (= "completed" (:status result)))
-                (is (= 6 (count (get-in result [:data :cols]))))
-                (is (= 1144 (count rows)))
-                (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
-                (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
-                (is (= [nil nil nil 7 18760 69540] (last rows)))))))))))
+            (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
+                  rows   (mt/rows result)]
+              (is (= 1144 (:row_count result)))
+              (is (= "completed" (:status result)))
+              (is (= 6 (count (get-in result [:data :cols]))))
+              (is (= 1144 (count rows)))
+              (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+              (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
+              (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
+
+(deftest ^:parallel pivot-card-parameters-test
+  (testing "POST /api/card/pivot/:card-id/query"
+    (testing "should respect `:parameters`"
+      ;; the sibling assertion for the non-pivot route lives in `run-query-with-parameters-test`; the
+      ;; template tag is `:required`, so a dropped `:parameters` cannot even produce a result
+      (with-temp-native-card-with-params [{db-id :id} {card-id :id}]
+        ;; the card's `{{category}}` tag is `:required`, so the query can only run if the value in the
+        ;; request body reaches the query processor — were `:parameters` dropped, this 500s
+        (is (=? {:database_id db-id
+                 :status      "completed"
+                 :row_count   1}
+                (mt/user-http-request
+                 :rasta :post 202 (format "card/pivot/%d/query" card-id)
+                 {:parameters [{:id     "_CATEGORY_"
+                                :type   :number
+                                :target [:variable [:template-tag :category]]
+                                :value  2}]})))))))
 
 (deftest ^:parallel model-card-test
   (testing "Setting a question to a dataset makes it viz type table"
@@ -3764,10 +3799,9 @@
                                                                                                  :values  ["sum"]},
                                                                       :table.cell_column "sum"}}]
               (with-cards-in-readable-collection! [model card]
-                (api.pivots/with-pivot-parity-check
-                  (is (=?
-                       {:data {:cols [{:name user-id} {:name "pivot-grouping"} {:name "sum"}]}}
-                       (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))))))))
+                (is (=?
+                     {:data {:cols [{:name user-id} {:name "pivot-grouping"} {:name "sum"}]}}
+                     (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))))
 
 (deftest ^:mb/driver-tests pivot-from-model-test-2
   (testing "Pivot options should match fields through models (#35319)"
@@ -3788,10 +3822,9 @@
                                                                                                  :values  ["sum"]},
                                                                       :table.cell_column "sum"}}]
               (with-cards-in-readable-collection! [model card]
-                (api.pivots/with-pivot-parity-check
-                  (is (=?
-                       {:data {:cols [{:name user-id} {:name "pivot-grouping"} {:name "sum"}]}}
-                       (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))))))))
+                (is (=?
+                     {:data {:cols [{:name user-id} {:name "pivot-grouping"} {:name "sum"}]}}
+                     (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))))
 
 (defn run-based-on-upload-test!
   "Runs tests for based-on-upload `request` is a function that takes a card and returns a map which may have {:based_on_upload <table-id>}]
@@ -4182,17 +4215,16 @@
           ;; native `GROUPING SETS` path doesn't bump, so it hits the default aggregated cap and drops rows.
           ;; Raise the setting so both paths have room, keeping the parity check meaningful.
           (mt/with-temporary-setting-values [aggregated-query-row-limit 200000]
-            (api.pivots/with-pivot-parity-check
-              (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" pivot-id))
-                    totals (filter (fn [row]
-                                     (< 0 (second (reverse row))))
-                                   (get-in result [:data :rows]))
-                    ;; Postgres SUM(float) returns a slightly noisy double; round the aggregated value so the
-                    ;; assertion is driver-agnostic.
-                    row    (update (vec (first totals)) 4
-                                   #(when % (double (/ (Math/round (* 100.0 (double %))) 100.0))))]
-                (is (= [nil "Abbey Satterfield" "Doohickey" 1 347.91]
-                       row))))))))))
+            (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" pivot-id))
+                  totals (filter (fn [row]
+                                   (< 0 (second (reverse row))))
+                                 (get-in result [:data :rows]))
+                  ;; Postgres SUM(float) returns a slightly noisy double; round the aggregated value so the
+                  ;; assertion is driver-agnostic.
+                  row    (update (vec (first totals)) 4
+                                 #(when % (double (/ (Math/round (* 100.0 (double %))) 100.0))))]
+              (is (= [nil "Abbey Satterfield" "Doohickey" 1 347.91]
+                     row)))))))))
 
 (deftest dashboard-internal-card-creation
   (mt/with-temp [:model/Collection {coll-id :id} {}

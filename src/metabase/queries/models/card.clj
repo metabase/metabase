@@ -157,6 +157,18 @@
   [card]
   (= (keyword (:type card)) :model))
 
+(defn visible-metric-cards-where-clause
+  "HoneySQL `:where` clause selecting non-archived metric Cards that the current user
+   can read (collection visibility applied). Use with `t2/select` / `t2/count` against
+   `:model/Card`."
+  []
+  [:and
+   [:= :type "metric"]
+   [:= :archived false]
+   (collection/visible-collection-filter-clause :collection_id {:include-trash-collection? false
+                                                                :include-archived-items    :exclude
+                                                                :permission-level          :read})])
+
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :dashboard_count]
@@ -251,16 +263,20 @@
         source-card-ids              (into #{}
                                            (keep (comp source-card-id :dataset_query))
                                            cards-with-non-empty-queries)]
-    ;; Prefetching code should not propagate any exceptions.
-    (when (lib-be/metadata-provider-cache)
-      (try
-        (prefetch-tables-for-cards! cards-with-non-empty-queries)
-        (catch Throwable t
-          (log/errorf "Failed prefetching cards `%s`: %s" (pr-str (map :id cards-with-non-empty-queries)) (ex-message t)))))
+    ;; Warming caches must not change the outcome of the permission checks below, so nothing here propagates: finding
+    ;; a query's tables means walking it, and a malformed one throws.
+    (try
+      (when (lib-be/metadata-provider-cache)
+        (prefetch-tables-for-cards! cards-with-non-empty-queries))
+      ;; Only the tables the queries name directly: a source Card is reached through its collection's permissions,
+      ;; not its tables', so it contributes none of its own.
+      (perms/prime-table-perms-cache
+       {:table-ids (into #{} (mapcat card->integer-table-ids) cards-with-non-empty-queries)})
+      (catch Throwable t
+        (log/errorf "Failed prefetching cards `%s`: %s" (pr-str (map :id cards-with-non-empty-queries)) (ex-message t))))
     (query-perms/with-card-instances (when (seq source-card-ids)
                                        (t2/select-fn->fn :id identity [:model/Card :id :collection_id :card_schema]
                                                          :id [:in source-card-ids]))
-      (perms/prime-db-cache (into #{} (map :database_id cards)))
       (mi/instances-with-hydrated-data
        cards :can_run_adhoc_query
        (fn []
@@ -1424,7 +1440,7 @@
           ;; cache invalidation is instance-specific
           :cache_invalidated_at
           ;; those are instance-specific analytic columns
-          :view_count :initially_published_at
+          :view_count :last_used_at :initially_published_at
           ;; this is data migration column
           :dataset_query_metrics_v2_migration_backup
           ;; this column is not used anymore
@@ -1439,8 +1455,6 @@
           :metabot_conversation_id :metabot_chart_id]
    :transform
    {:created_at             (serdes/date)
-    ;; exported so imported cards don't look freshly used to stale-content detection (GDGT-217)
-    :last_used_at           (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query
     ;; is empty (e.g. a native card with no query yet) and database_id is the only reference.
     :database_id            (let [{:keys [import]} (serdes/fk :model/Database)]
@@ -1469,10 +1483,6 @@
               :archived_directly   false
               :collection_preview  true
               :enable_embedding    false}})
-
-(defmethod serdes/load-update! "Card" [_ ingested local]
-  ;; when the card already exists, its own usage history wins over the source's
-  (serdes/default-load-update! "Card" (dissoc ingested :last_used_at) local))
 
 (defn- card-deps
   "The serdes dependencies of a Card as `:serdes/meta` paths. `allow-int-ids?` selects raw-appdb vs serialized ref semantics for

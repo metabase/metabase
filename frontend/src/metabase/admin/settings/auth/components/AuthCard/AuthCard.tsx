@@ -5,7 +5,7 @@ import { c, t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { ActionIcon, Anchor, Button, Icon, Menu, Text } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";
 

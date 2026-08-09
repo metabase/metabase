@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import { Link } from "metabase/common/components/Link";
-import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import type {
   ExportFormat,
@@ -12,6 +12,7 @@ import type {
 import { exportFormatPng, exportFormats } from "metabase/common/types/export";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { useUserSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -114,17 +115,31 @@ export const QuestionDownloadWidget = ({
 
   const handleFormatChange = (newFormat: ExportFormat) => {
     setUserSelectedFormat(newFormat);
+  };
 
-    // Save preference if user is logged in
-    if (newFormat && setFormatPreference) {
-      setFormatPreference({
-        last_download_format: newFormat,
-        last_table_download_format:
-          newFormat !== "png"
-            ? newFormat
-            : formatPreference.last_table_download_format || "csv",
-      });
+  const persistExportFormat = (exportFormat: ExportFormat) => {
+    if (!setFormatPreference) {
+      return;
     }
+
+    const preference: FormatPreference = {
+      last_download_format: exportFormat,
+      last_table_download_format:
+        exportFormat !== "png"
+          ? exportFormat
+          : formatPreference.last_table_download_format || "csv",
+    };
+
+    const isUnchanged =
+      preference.last_download_format ===
+        formatPreference.last_download_format &&
+      preference.last_table_download_format ===
+        formatPreference.last_table_download_format;
+    if (isUnchanged) {
+      return;
+    }
+
+    setFormatPreference(preference);
   };
 
   const { url: pivotExcelExportsDocsLink, showMetabaseLinks } = useDocsUrl(
@@ -139,6 +154,8 @@ export const QuestionDownloadWidget = ({
 
   const handleDownload = async () => {
     setLoading(true);
+
+    persistExportFormat(format);
 
     await onDownload({
       type: format,

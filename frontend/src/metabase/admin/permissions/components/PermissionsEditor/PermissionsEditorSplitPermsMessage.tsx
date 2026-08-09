@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { useUpdateSettingMutation } from "metabase/api";
 import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
+import { useUpdateSettingMutation } from "metabase/settings";
 import { Alert, Anchor, Box, Icon } from "metabase/ui";
 
 export const PermissionsEditorSplitPermsMessage = () => {

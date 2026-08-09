@@ -6,11 +6,11 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { CollectUserDataInput } from "metabase/admin/settings/components/widgets/UsageTracking/CollectUserDataInput";
 import { UpsellDevInstances } from "metabase/admin/upsells";
-import { useAdminSetting } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
+import { useAdminSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";

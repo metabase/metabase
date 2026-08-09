@@ -7,7 +7,6 @@
 
   :aliased-namespace-symbol     {:level :warning}
   :case-symbol-test             {:level :warning}
-  :condition-always-true        {:level :warning}
   :def-fn                       {:level :warning}
   :dynamic-var-not-earmuffed    {:level :warning}
   :equals-expected-position     {:level :warning, :only-in-test-assertion true}
@@ -50,9 +49,11 @@
   ;; disabled linters
   ;;
 
+  :constant-condition {:level :off} ; TODO (sashko): too confused by defenterprises, some hook/config is needed
   :redundant-ignore {:level :off} ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
   :unexpected-recur {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
   :redundant-primitive-coercion {:level :off} ; there are many defensive boolean coercions, kondo looks too much into it
+  :type-mismatch {:level :off} ; Still quite raw, can sometimes give useful insights, but sometimes is just confused
 
   ;;
   ;; globally-enabled custom linters
@@ -503,7 +504,9 @@
   metabase.query-processor.pipeline-queries-test/mbql5-query                            clojure.core/->
   metabase.query-processor.pipeline-queries-test/run-mbql5-query                        clojure.core/->
   metabase.query-processor.error-type/deferror                                          clojure.core/def
+  metabase.query-processor.core/with-reducible-deserialized-results                     clojure.core/let
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
+  metabase.query-processor.result-serialization/with-reducible-deserialized-results     clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
   metabase.search.api-test/do-test-users                                                clojure.core/let
@@ -858,6 +861,11 @@
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
   metabase.util.time-test
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
+
+  ;; classloader sits below `util` in the module graph, so it can't use `metabase.util.log` without creating
+  ;; a cycle; it gets to use tools.logging directly.
+  metabase.classloader.impl
+  {:linters {:discouraged-namespace {clojure.tools.logging {:level :off}}}}
 
   source-namespaces
   {:linters

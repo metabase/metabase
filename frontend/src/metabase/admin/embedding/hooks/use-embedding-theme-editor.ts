@@ -9,7 +9,7 @@ import {
   useGetEmbeddingThemeQuery,
   useUpdateEmbeddingThemeMutation,
 } from "metabase/api/embedding-theme";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import type {
   ChartColor,
   MetabaseColor,
@@ -17,6 +17,7 @@ import type {
 } from "metabase/embedding-sdk/theme";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { useSetting } from "metabase/settings";
 import { suggestHarmonyColors } from "metabase/ui/colors/harmonies";
 import type { EmbeddingTheme } from "metabase-types/api";
 import type { ColorSettings } from "metabase-types/api/settings";

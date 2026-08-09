@@ -6,6 +6,7 @@ import _ from "underscore";
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
+import { getDashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
@@ -20,10 +21,11 @@ import {
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { LocationDescriptorObject } from "metabase/router";
-import { push, searchToQuery } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import type { Path } from "metabase/router";
+import { useNavigate } from "metabase/router";
+import { getSetting } from "metabase/settings";
 import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
@@ -39,7 +41,6 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import type { CardSlownessStatus } from "metabase/visualizations/types";
 import {
   createDataSource,
-  isVisualizerDashboardCard,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
@@ -61,6 +62,7 @@ import type {
   VisualizationSettings,
   VisualizerDataSourceId,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import { CollapsibleDashboardParameterList } from "../CollapsibleDashboardParameterList";
 
@@ -175,15 +177,18 @@ export function DashCardVisualization({
   } = useDashboardContext();
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const onSameOriginNavigation = useCallback(
-    (location: LocationDescriptorObject) => {
-      dispatch(push(location));
+    (location: Partial<Path>) => {
+      navigate(location);
       dispatch(
-        setParameterValuesFromQueryParams(searchToQuery(location.search ?? "")),
+        setParameterValuesFromQueryParams(
+          parseSearchQuery(location.search ?? ""),
+        ),
       );
     },
-    [dispatch],
+    [dispatch, navigate],
   );
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
@@ -548,7 +553,7 @@ export function DashCardVisualization({
             isVisualizerDashboardCard(dashcard) ? rawSeries : undefined
           }
           metadata={metadata}
-          mode={getClickActionMode}
+          mode={getClickActionMode ?? getDashboardClickActionMode}
           getHref={getHref}
           gridSize={gridSize}
           totalNumGridCols={totalNumGridCols}

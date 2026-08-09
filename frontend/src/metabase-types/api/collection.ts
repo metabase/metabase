@@ -102,6 +102,7 @@ export const COLLECTION_ITEM_MODELS = [
   "table",
   "transform",
   "measure",
+  "exploration",
 ] as const;
 export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 
@@ -169,7 +170,9 @@ export type ListCollectionItemsSortColumn =
 
 export type ListCollectionItemsRequest = {
   id: CollectionId;
-  models?: CollectionItemModel[];
+  models?: (CollectionItemModel | "no_models")[];
+  q?: string;
+  include_available_models?: boolean;
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: CollectionNamespace;
@@ -182,6 +185,7 @@ export type ListCollectionItemsRequest = {
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];
   models: CollectionItemModel[] | null;
+  available_models?: string[];
 } & PaginationResponse;
 
 export interface UpdateCollectionRequest {

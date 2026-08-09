@@ -47,7 +47,6 @@
    [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
-   [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.reducible :as qp.reducible]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -466,15 +465,14 @@
                                                             :table-id      1
                                                             :nfc-path      ["jsons" "values" "qty"]
                                                             :database-type "integer"})]})
-        (let [field-clause (sql.qp/mbql-clause-with-opts driver/*driver*
-                                                         :field
-                                                         {:binning
-                                                          {:strategy  :num-bins
-                                                           :num-bins  100
-                                                           :min-value 0.75
-                                                           :max-value 54.0
-                                                           :bin-width 0.75}}
-                                                         1)]
+        (let [field-clause [:field
+                            {:binning
+                             {:strategy  :num-bins
+                              :num-bins  100
+                              :min-value 0.75
+                              :max-value 54.0
+                              :bin-width 0.75}}
+                            1]]
           (is (= ["((FLOOR((((complicated_identifiers.jsons#>> (array[?, ?]::text[]))::integer - 0.75) / 0.75)) * 0.75) + 0.75)"
                   "values" "qty"]
                  (sql/format-expr (sql.qp/->honeysql driver/*driver* field-clause) {:nested true}))))))))
@@ -507,13 +505,13 @@
       (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
         ;; need to make this a function to avoid a duplicate `:lib/uuid` error when we use it in `compile-res`
         (let [field-bucketed-fn (fn []
-                                  (sql.qp/mbql-clause-with-opts
-                                   driver/*driver* :field
+                                  [:field
                                    {:temporal-unit                                              :month
                                     :metabase.query-processor.util.add-alias-info/source-table  1
                                     :metabase.query-processor.util.add-alias-info/source-alias  "dontwannaseethis"
                                     :metabase.query-processor.util.add-alias-info/desired-alias "dontwannaseethis"
-                                    :metabase.query-processor.util.add-alias-info/position      1} 1))
+                                    :metabase.query-processor.util.add-alias-info/position      1}
+                                   1])
               compile-res (maybe-convert-and-compile
                            driver/*driver*
                            (mt/query nil
@@ -546,7 +544,7 @@
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
       (qp.store/with-metadata-provider (json-alias-mock-metadata-provider driver/*driver*)
-        (let [field-ordinary (sql.qp/mbql-clause-with-opts driver/*driver* :field nil 1)
+        (let [field-ordinary [:field {} 1]
               only-order (maybe-convert-and-compile
                           driver/*driver*
                           {:database 1
@@ -688,31 +686,30 @@
                             ;; Use the legacy positional pivot keys — same shape as what dashboards and the
                             ;; REST API send. `apply-legacy-pivot-keys` in the native path will convert these
                             ;; to a `:pivot` clause; the multi-query path reads them directly.
-                            (assoc :pivot-rows [0] :pivot-cols [1]))]
-            (qp.pivot.test-util/with-pivot-parity-check
-              (let [results (qp.pivot/run-pivot-query pivot-q)
-                    rows    (mt/rows results)
-                    pgs     (mapv #(nth % 2) rows)]
-                (is (= #{;; pivot-grouping = 0  base detail rows
-                         ["boop" "doopdoopy" 0 1]
-                         ["boop" "moopywoop" 0 1]
-                         ["boop" "woopywoop" 0 1]
-                         ["boop" "zoopyzoop" 0 1]
-                         [nil    "doopyboop" 0 1]
-                         ;; pivot-grouping = 1  per-bloop subtotals (doop dropped)
-                         [nil    "doopdoopy" 1 1]
-                         [nil    "doopyboop" 1 1]
-                         [nil    "moopywoop" 1 1]
-                         [nil    "woopywoop" 1 1]
-                         [nil    "zoopyzoop" 1 1]
-                         ;; pivot-grouping = 2  per-doop subtotals (bloop dropped)
-                         ["boop" nil 2 4]
-                         [nil    nil 2 1]
-                         ;; pivot-grouping = 3  grand total
-                         [nil    nil 3 5]}
-                       (set rows)))
-                (is (= (sort pgs) pgs)
-                    "rows should appear in non-decreasing pivot-grouping order")))))))))
+                            (assoc :pivot-rows [0] :pivot-cols [1]))
+                results (qp.pivot/run-pivot-query pivot-q)
+                rows    (mt/rows results)
+                pgs     (mapv #(nth % 2) rows)]
+            (is (= #{;; pivot-grouping = 0  base detail rows
+                     ["boop" "doopdoopy" 0 1]
+                     ["boop" "moopywoop" 0 1]
+                     ["boop" "woopywoop" 0 1]
+                     ["boop" "zoopyzoop" 0 1]
+                     [nil    "doopyboop" 0 1]
+                     ;; pivot-grouping = 1  per-bloop subtotals (doop dropped)
+                     [nil    "doopdoopy" 1 1]
+                     [nil    "doopyboop" 1 1]
+                     [nil    "moopywoop" 1 1]
+                     [nil    "woopywoop" 1 1]
+                     [nil    "zoopyzoop" 1 1]
+                     ;; pivot-grouping = 2  per-doop subtotals (bloop dropped)
+                     ["boop" nil 2 4]
+                     [nil    nil 2 1]
+                     ;; pivot-grouping = 3  grand total
+                     [nil    nil 3 5]}
+                   (set rows)))
+            (is (= (sort pgs) pgs)
+                "rows should appear in non-decreasing pivot-grouping order")))))))
 
 ;;; Postgres `:contains`/`:starts-with`/`:ends-with` must produce SQL that the PostgreSQL JDBC
 ;;; driver can prepare regardless of the server's `standard_conforming_strings` setting. With
@@ -1044,7 +1041,7 @@
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
                                           "bird type")
-             (sql.qp/->honeysql driver/*driver* (sql.qp/mbql-clause-with-opts driver/*driver* :value {:database_type "bird type", :base_type :type/PostgresEnum} "toucan")))))))
+             (sql.qp/->honeysql driver/*driver* [:value {:database-type "bird type", :base-type :type/PostgresEnum} "toucan"]))))))
 
 (deftest enums-test-2
   (mt/test-driver :postgres

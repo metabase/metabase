@@ -10,8 +10,6 @@ export * from "./use-is-rtl";
 export * from "./use-locale";
 export * from "./use-notification-channels";
 export * from "./use-scroll-to-top";
-export * from "./use-set-collection-preview";
-export * from "./use-setting";
 export * from "./use-sorting-state-change";
 export * from "./use-temp-storage";
 export * from "./use-temporary-state";

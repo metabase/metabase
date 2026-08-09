@@ -60,19 +60,6 @@
 
 (set! *warn-on-reflection* true)
 
-;;; TODO -- why don't we use [[metabase.util.malli.schema/Parameter]] for this? Are the parameters passed here
-;;; different?
-(def ParameterWithID
-  "Schema for a parameter map with an string `:id`. This is the shape of runtime parameter *overrides* the FE sends
-  when running a dashcard query or exporting a dashboard -- distinct from the stored parameter declarations
-  (`::parameters.schema/parameters`), which also require `:type`."
-  (mu/with-api-error-message
-   [:and
-    [:map
-     [:id ms/NonBlankString]]
-    [:map-of :keyword :any]]
-   (deferred-tru "value must be a parameter map with an ''id'' key")))
-
 (defn- dashboards-list [filter-option]
   (as-> (t2/select :model/Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                        (:all :archived)  true
@@ -659,7 +646,7 @@
    _query-params
    {:keys [parameters paper_size]} :- [:map
                                        [:parameters {:optional true} [:maybe [:or
-                                                                              [:sequential ParameterWithID]
+                                                                              [:sequential ::parameters.schema/parameter-with-value]
                                                                               ;; JSON-string form for <form>-driven
                                                                               ;; downloads, mirroring the dashcard
                                                                               ;; export-format endpoint
@@ -674,7 +661,7 @@
                       (string? parameters) json/decode+kw)
           ;; the array form is validated by the endpoint schema, but a JSON string only proves it's *valid JSON* --
           ;; once decoded it must still be a well-formed parameter list, or it's a 400 (not a 500)
-          _         (api/check-400 (mr/validate [:maybe [:sequential ParameterWithID]] params))
+          _         (api/check-400 (mr/validate [:maybe [:sequential ::parameters.schema/parameter-with-value]] params))
           pdf-bytes (channel.render/render-dashboard-to-pdf id api/*current-user-id*
                                                             (or params [])
                                                             (keyword (or paper_size "a4")))
@@ -896,20 +883,26 @@
 (def ^:private UpdatedDashboardCard
   [:map
    ;; id can be negative, it indicates a new card and BE should create them
-   [:id                                  int?]
-   [:size_x                              ms/PositiveInt]
-   [:size_y                              ms/PositiveInt]
-   [:row                                 ms/IntGreaterThanOrEqualToZero]
-   [:col                                 ms/IntGreaterThanOrEqualToZero]
-   [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:inline_parameters  {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-   [:series             {:optional true} [:maybe [:sequential map?]]]])
+   [:id                                      int?]
+   [:size_x                                  ms/PositiveInt]
+   [:size_y                                  ms/PositiveInt]
+   [:row                                     ms/IntGreaterThanOrEqualToZero]
+   [:col                                     ms/IntGreaterThanOrEqualToZero]
+   [:card_id                {:optional true} [:maybe ms/PositiveInt]]
+   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe int?]]
+   [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
+   [:visualization_settings {:optional true} [:maybe ms/Map]]
+   [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
+   [:series                 {:optional true} [:maybe [:sequential ms/Map]]]])
 
 (def ^:private UpdatedDashboardTab
   [:map
    ;; id can be negative, it indicates a new card and BE should create them
-   [:id   ms/Int]
-   [:name ms/NonBlankString]])
+   [:id       ms/Int]
+   [:name     ms/NonBlankString]
+   ;; tab order -- `metabase.dashboards.models.dashboard-tab/do-update-tabs!` writes it alongside `:name`
+   [:position {:optional true} ms/IntGreaterThanOrEqualToZero]])
 
 (defn- track-dashcard-and-tab-events!
   [{dashboard-id :id :as dashboard}
@@ -985,7 +978,8 @@
                                      (t2/select-one [:model/Dashboard :id :parameters] dashboard-id)
                                      :resolved-params)
           dashboard-params (set (keys resolved-params))]
-      (->> (t2/select :model/Pulse :dashboard_id dashboard-id :archived false)
+      ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
+      (->> (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]})
            (keep (fn [{:keys [parameters] :as pulse}]
                    (let [bad-params (filterv
                                      (fn [{param-id :id}] (not (contains? dashboard-params param-id)))
@@ -1136,6 +1130,7 @@
    [:position                {:optional true} [:maybe ms/PositiveInt]]
    [:width                   {:optional true} [:enum "fixed" "full"]]
    [:archived                {:optional true} [:maybe :boolean]]
+   [:auto_apply_filters      {:optional true} [:maybe :boolean]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position     {:optional true} [:maybe ms/PositiveInt]]
    [:cache_ttl               {:optional true} [:maybe ms/PositiveInt]]
@@ -1449,7 +1444,7 @@
    _query-params
    {:keys [dashboard_load_id], :as body} :- [:map
                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
-                                             [:parameters        {:optional true} [:maybe [:sequential ParameterWithID]]]]]
+                                             [:parameters        {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
   (with-dashboard-load-id dashboard_load_id
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
@@ -1479,7 +1474,7 @@
     pivot-results? :pivot_results}
    :- [:map
        [:parameters    {:optional true} [:maybe [:or
-                                                 [:sequential ParameterWithID]
+                                                 [:sequential ::parameters.schema/parameter-with-value]
                                                  ;; support <form> encoded params for backwards compatibility... see
                                                  ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
                                                  ms/JSONString]]]
@@ -1516,7 +1511,7 @@
                                                   [:card-id ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:parameters {:optional true} [:maybe [:sequential ParameterWithID]]]]]
+            [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body

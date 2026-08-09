@@ -285,6 +285,7 @@ export const createConversation = (
   return {
     isProcessing: false,
     title: undefined,
+    forkedFromConversationId: undefined,
     messages: [],
     visible: false,
     state: {},
@@ -383,6 +384,7 @@ export const getMetabotInitialState = (): MetabotState => {
       omnibot: createConversation("omnibot"),
       sql: createConversation("sql"),
       ask: createConversation("ask"),
+      explorations: createConversation("explorations"),
     },
     reactions: {
       navigateToPath: null,

@@ -3,12 +3,13 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
+   [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -35,33 +36,25 @@
                                              [:name :string]]]]])
 
 (mr/def ::MetricWithDimensions
-  "Schema for a Metric with hydrated dimensions (returned from GET /:id)."
+  "Schema for a Metric with hydrated dimensions (returned from GET /:id). Dimensions and mappings
+  reference the wire-annotated schemas in [[metabase.metrics.dimension]]: the handler returns them
+  in the internal kebab-case shape, is validated against it, and `defendpoint` encodes them to the
+  snake_case wire shape on the way out."
   [:merge
    ::Metric
    [:map
-    [:dimensions           {:optional true} [:maybe [:sequential :map]]]
-    [:dimension_mappings   {:optional true} [:maybe [:sequential :map]]]
-    [:dataset_query        {:optional true} :map]
+    [:dimensions           [:sequential ::metrics.dimension/dimension]]
+    [:dimension_mappings   [:sequential ::metrics.dimension/dimension-mapping]]
+    [:dataset_query        {:optional true} ms/Map]
     [:database_id          {:optional true} [:maybe ms/PositiveInt]]
     [:result_column_name   {:optional true} [:maybe :string]]]])
 
-(def ^:private visibility-config
-  {:include-trash-collection? false
-   :include-archived-items    :exclude
-   :permission-level          :read})
-
-(defn- metrics-where-clause []
-  [:and
-   [:= :type "metric"]
-   [:= :archived false]
-   (collection/visible-collection-filter-clause :collection_id visibility-config)])
-
 (defn- count-metrics []
-  (t2/count :model/Card {:where (metrics-where-clause)}))
+  (t2/count :model/Card {:where (queries/visible-metric-cards-where-clause)}))
 
 (defn- select-metrics [limit offset]
   (-> (t2/select [:model/Card :id :name :description :collection_id]
-                 {:where    (metrics-where-clause)
+                 {:where    (queries/visible-metric-cards-where-clause)
                   :order-by [[:name :asc]]
                   :limit    limit
                   :offset   offset})
@@ -93,13 +86,16 @@
   (api/read-check (t2/select-one :model/Card :id id :type "metric"))
   (metrics/sync-dimensions! :metadata/metric id)
   (cond-> (-> (t2/select-one :model/Card :id id :type "metric")
-              metrics.perms/filter-dimensions-for-user)
+              metrics.perms/filter-dimensions-for-user
+              (update :dimensions #(or % []))
+              (update :dimension_mappings #(or % [])))
     (not include-orphaned?) metrics/without-orphaned-dimensions))
 
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.
 
-  Returns the metric with hydrated dimensions and dimension mappings."
+  Returns the metric with hydrated dimensions and dimension mappings; the `::MetricWithDimensions`
+  schema encodes them to the snake_case wire shape at the `defendpoint` edge."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [include-orphaned]} :- [:map
                                   [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
@@ -349,8 +345,8 @@
 
 ;; The module-local parent keeps the topic publishable in OSS, where no consumer namespace derives
 ;; it. (A direct :metabase/event derive would throw once an EE consumer makes it an ancestor.)
-(derive ::dimensions-event :metabase/event)
-(derive :event/metric-dimensions-update ::dimensions-event)
+(events/derive! ::dimensions-event :metabase/event)
+(events/derive! :event/metric-dimensions-update ::dimensions-event)
 
 (defn- notify-dimensions-changed!
   "Signal that a metric's dimension mappings changed so its dependency graph is recomputed."
@@ -404,12 +400,12 @@
 
 (api.macros/defendpoint :post "/:id/dimension/set-default"
   :- [:sequential :map]
-  "Mark exactly one dimension as the metric's default, clearing any previous default. Returns the
-  updated list of added dimensions. (It is legal for a metric to have no default; this always leaves
-  exactly one.)"
+  "Mark exactly one dimension as the metric's default, clearing any previous default. A null
+  `dimension_id` clears the default without setting a new one, so the metric renders as a scalar.
+  Returns the updated list of added dimensions."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [dimension_id]} :- [:map [:dimension_id ms/NonBlankString]]]
+   {:keys [dimension_id]} :- [:map [:dimension_id [:maybe ms/NonBlankString]]]]
   (write-check-metric! id)
   (metrics/set-default-dimension! :metadata/metric id dimension_id))
 
@@ -426,7 +422,8 @@
 
 (api.macros/defendpoint :post "/:id/dimension/:dimension-key"
   :- :map
-  "Update a metric dimension's `display_name`, `description`, and/or source column.
+  "Update a metric dimension's `display_name`, `description`, `default_temporal_unit`, and/or source
+  column.
 
   `source` is a `{type, field-id}`; the new column must have the same effective type."
   [{:keys [id dimension-key]} :- [:map
@@ -436,6 +433,7 @@
    body :- [:map
             [:display_name {:optional true} ms/NonBlankString]
             [:description  {:optional true} [:maybe :string]]
+            [:default_temporal_unit {:optional true} ms/NonBlankString]
             [:source       {:optional true} [:maybe [:map [:field-id ms/PositiveInt]]]]]]
   (write-check-metric! id)
   (u/prog1 (metrics/update-dimension! :metadata/metric id dimension-key body)

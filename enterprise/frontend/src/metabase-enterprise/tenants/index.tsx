@@ -16,7 +16,6 @@ import {
   getCollectionIcon,
 } from "metabase/common/collections/utils";
 import { modalRoute } from "metabase/common/components/ModalRoute";
-import { useSetting } from "metabase/common/hooks/use-setting";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
@@ -24,9 +23,10 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Route, redirect, withRouteProps } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Box, Text } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -69,13 +69,6 @@ import {
   isTenantGroup,
 } from "./utils/utils";
 
-// Reads route params through `connect`'s `mapStateToProps`, so the hooks cannot
-// reach it. Migrating it means rewriting the connected container, tracked
-// separately.
-const RoutedTenantCollectionPermissionsPage = withRouteProps(
-  TenantCollectionPermissionsPage,
-);
-
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
@@ -102,7 +95,7 @@ export function initializePlugin() {
       <>
         <Route
           path="tenant-collections"
-          element={<RoutedTenantCollectionPermissionsPage />}
+          element={<TenantCollectionPermissionsPage />}
         >
           <Route path=":collectionId" />
         </Route>

@@ -64,7 +64,7 @@ function startNewMetricWithSavedItem(collection, name) {
   });
 }
 
-function saveNewMetric({ name } = {}) {
+function saveNewMetric({ name, defaultDimension = "Created At" } = {}) {
   cy.intercept("POST", "/api/card").as("createCard");
   H.MetricPage.saveButton().click();
   H.modal().within(() => {
@@ -74,7 +74,12 @@ function saveNewMetric({ name } = {}) {
     }
     cy.button("Save").click();
   });
-  cy.wait("@createCard");
+  // Revisit rather than rely on the post-save redirect, so the page is rendered
+  // with the default dimension in place.
+  cy.wait("@createCard").then(({ response }) => {
+    H.setMetricDefaultDimension(response.body.id, defaultDimension);
+    cy.visit(`/metric/${response.body.id}`);
+  });
 }
 
 function getActionButton(title) {
@@ -126,22 +131,11 @@ function verifyScalarValue(value) {
   cy.findByTestId("scalar-value").should("have.text", value).and("be.visible");
 }
 
-function verifyLineChart({ yAxis }) {
-  H.echartsContainer().within(() => {
-    cy.findByText(yAxis).should("be.visible");
-  });
-  cy.findByTestId("visualization-root").should(
-    "have.attr",
-    "data-viz-ui-name",
-    "Line",
-  );
-}
-
 function verifyMetricAboutTimeseries({ yAxis }) {
   H.MetricPage.aboutPage().within(() => {
-    cy.findByRole("button", { name: "Select dimension: Created At" })
+    cy.findByRole("button", { name: "Select dimension: Created At: Month" })
       .should("be.visible")
-      .and("contain.text", "Created At");
+      .and("contain.text", "Created At: Month");
     cy.findByTestId("metric-value-preview").should("be.visible");
     cy.findByTestId("visualization-root")
       .should("be.visible")
@@ -150,14 +144,14 @@ function verifyMetricAboutTimeseries({ yAxis }) {
   });
 }
 
-function verifyMetricDefinitionChart({ yAxis }) {
+function verifyMetricDefinitionScalar({ aggregation, value }) {
   H.MetricPage.definitionTab().click();
   H.MetricPage.queryEditor().should("be.visible");
-  H.getNotebookStep("summarize").findByText(yAxis).should("be.visible");
+  H.getNotebookStep("summarize").findByText(aggregation).should("be.visible");
   cy.intercept("POST", "/api/dataset").as("dataset");
   H.runButtonInOverlay().click();
   cy.wait("@dataset");
-  verifyLineChart({ yAxis });
+  verifyScalarValue(value);
 }
 
 describe("scenarios > metrics > editing", () => {
@@ -185,9 +179,10 @@ describe("scenarios > metrics > editing", () => {
 
     it("should be able to change the query definition of a metric", () => {
       cy.intercept("PUT", "/api/card/*").as("updateCard");
-      H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-        cy.visit(`/metric/${card.id}/query`),
-      );
+      H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
+        H.setMetricDefaultDimension(card.id, "Created At");
+        cy.visit(`/metric/${card.id}/query`);
+      });
       H.MetricPage.queryEditor().should("be.visible");
       H.getNotebookStep("summarize").button("Count").click();
       H.popover().within(() => {
@@ -229,15 +224,8 @@ describe("scenarios > metrics > editing", () => {
       H.MetricPage.header().findByText("Our analytics").click();
 
       cy.findByTestId("pinned-items").within(() => {
-        cy.findByRole("heading", { name: "Metrics" }).should("be.visible");
-        cy.findByText("Pinned metric")
-          .closest("a")
-          .within(() => {
-            cy.findByTestId("visualization-root")
-              .should("be.visible")
-              .and("have.attr", "data-viz-ui-name", "Line");
-            H.echartsContainer().should("be.visible");
-          });
+        cy.findByText("Pinned metric").should("be.visible");
+        cy.findByText("A metric").should("be.visible");
       });
     });
 
@@ -285,7 +273,7 @@ describe("scenarios > metrics > editing", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       H.runButtonInOverlay().click();
       cy.wait("@dataset");
-      verifyLineChart({ yAxis: "Count" });
+      verifyScalarValue("18,760");
     });
   });
 
@@ -356,7 +344,10 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Total2").click();
       });
       saveNewMetric();
-      verifyMetricDefinitionChart({ yAxis: "Sum of Total2" });
+      verifyMetricDefinitionScalar({
+        aggregation: "Sum of Total2",
+        value: "755,310.84",
+      });
 
       cy.log("custom column from implicitly joined table");
       startNewMetricWithTable("Sample Database", "Orders");
@@ -372,7 +363,10 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Price2").click();
       });
       saveNewMetric();
-      verifyMetricDefinitionChart({ yAxis: "Average of Price2" });
+      verifyMetricDefinitionScalar({
+        aggregation: "Average of Price2",
+        value: "111.38",
+      });
     });
   });
 

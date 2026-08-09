@@ -1,3 +1,4 @@
+import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
@@ -130,6 +131,24 @@ export const mockFeedbackEndpoint = () => {
   };
 };
 
+// Fork helpers
+export const forkButton = (message: HTMLElement) =>
+  within(message).findByTestId("metabot-chat-message-fork");
+export const mockForkEndpoint = (
+  response: Record<string, unknown> = {},
+  status = 200,
+) => {
+  fetchMock.post(
+    "express:/api/metabot/conversations/:id/fork",
+    status === 200 ? { status, body: response } : status,
+    { name: "metabot-fork" },
+  );
+  return {
+    calls: (matcher?: Parameters<typeof fetchMock.callHistory.calls>[1]) =>
+      fetchMock.callHistory.calls("metabot-fork", matcher),
+  };
+};
+
 export const assertVisible = async () =>
   expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
 export const assertNotVisible = async () =>
@@ -196,6 +215,11 @@ export const whoIsYourFavoriteResponse: SSEEvent[] = [
 ];
 
 export const erroredResponse: SSEEvent[] = [
+  { type: "error", errorText: "Anthropic API key expired or invalid" },
+];
+
+export const startedThenErroredResponse: SSEEvent[] = [
+  { type: "start", messageId: "msg_errored" },
   { type: "error", errorText: "Anthropic API key expired or invalid" },
 ];
 
@@ -317,7 +341,7 @@ export function setup(
       <MetabotProvider>{ui}</MetabotProvider>
     );
 
-  const { store, rerender, history } = renderWithProviders(content, {
+  const { store, rerender, router } = renderWithProviders(content, {
     storeInitialState: createMockState({
       ...storeInitialState,
       settings: {
@@ -332,16 +356,18 @@ export function setup(
       metabot: metabotReducer,
     },
     withRouter,
+    withUndos: true,
     ...(initialRoute ? { initialRoute } : {}),
   });
 
   return {
     rerender,
-    history,
+    router,
     conversationIds: Object.keys(metabotState.conversations),
     // Unjustified type cast. FIXME
-    store: store as Omit<typeof store, "getState"> & {
+    store: store as Omit<typeof store, "getState" | "dispatch"> & {
       getState: () => State;
+      dispatch: ThunkDispatch<State, unknown, UnknownAction>;
     },
   };
 }

@@ -405,6 +405,7 @@ export const metabot = createSlice({
           activeToolCalls?: MetabotToolCall[];
           conversationId: string;
           title?: string;
+          forkedFromConversationId?: string;
         }>,
         state,
       ) => {
@@ -415,6 +416,7 @@ export const metabot = createSlice({
           activeToolCalls,
           conversationId,
           title,
+          forkedFromConversationId,
         } = action.payload;
 
         convo.messages = castDraft(messages ?? []);
@@ -424,6 +426,7 @@ export const metabot = createSlice({
         convo.conversationId = conversationId ?? uuid();
         convo.loadId = nanoid();
         convo.title = title;
+        convo.forkedFromConversationId = forkedFromConversationId;
         convo.isProcessing = hasInProgressMessage(messages ?? []);
         if (convo.isProcessing) {
           openChain(convo); // resuming mid-response
@@ -438,7 +441,9 @@ export const metabot = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(logout.pending, getMetabotInitialState)
+      .addCase(logout.pending, (state) => {
+        Object.assign(state, getMetabotInitialState());
+      })
       // CONVERSATION REQUEST REDUCERS
       .addCase(sendAgentRequest.pending, (state, action) => {
         const convo = getRequestConversation(state, action);

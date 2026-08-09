@@ -30,16 +30,16 @@ import { createRoot } from "react-dom/client";
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
-import { refetchSiteSettings } from "metabase/api";
+import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
-import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
+import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { LOCATION_CHANGE } from "metabase/router";
-import { createV7Navigator } from "metabase/router/v7/navigator";
 import { getUserId } from "metabase/selectors/user";
+import { refetchSiteSettings } from "metabase/settings";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
@@ -79,12 +79,7 @@ function _init(reducers, getRoutes, callback) {
     });
   }
 
-  const store = getStore(
-    reducers,
-    createV7Navigator(),
-    undefined,
-    extraMiddlewares,
-  );
+  const store = getStore(reducers, undefined, extraMiddlewares);
   const routes = getRoutes(store);
   const mirrorLocation = createLocationMirror(store.dispatch);
 
@@ -106,9 +101,11 @@ function _init(reducers, getRoutes, callback) {
               <GlobalStyles />
               {createPortal(<PortalContainer />, document.body)}
               <MetabotProvider>
-                <RouterProvider onLocationChange={mirrorLocation}>
-                  {routes}
-                </RouterProvider>
+                <RouterProvider
+                  routes={routes}
+                  onLocationChange={mirrorLocation}
+                  hydrateFallback={<DelayedLoadingSpinner />}
+                />
               </MetabotProvider>
             </AppThemeProvider>
           </OverlayStackProvider>
