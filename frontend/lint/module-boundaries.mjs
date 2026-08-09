@@ -69,6 +69,86 @@ const elements = [
     name: "value-formatting",
     enforcePublicApi: true,
   }),
+  // viz-core is the compute layer of the visualizations folder (settings
+  // computation, echarts models and options, shared utils, types), carved out
+  // by pattern so static-viz can depend on it without the React side.
+  // Everything in it must stay server-renderable in GraalJS.
+  // The file entries below pin the UI/app-side files living inside those
+  // folders back into shared/visualizations - they must come before the
+  // viz-core globs, and the globs before the shared/visualizations element,
+  // because the first matching element wins.
+  ...[
+    // Resolves widget names to React components through the registration barrel.
+    "frontend/src/metabase/visualizations/lib/widgets.ts",
+    // Click-behaviour glue: redux dispatch and router navigation.
+    "frontend/src/metabase/visualizations/lib/action.ts",
+    "frontend/src/metabase/visualizations/lib/action.unit.spec.ts",
+    "frontend/src/metabase/visualizations/lib/open-url.ts",
+    "frontend/src/metabase/visualizations/lib/open-url.unit.spec.ts",
+    // Registers the React renderers used for formatted values.
+    "frontend/src/metabase/visualizations/lib/register-jsx-formatting.tsx",
+    "frontend/src/metabase/visualizations/lib/register-jsx-formatting.unit.spec.tsx",
+    // Renders ColorPill and Mantine Text.
+    "frontend/src/metabase/visualizations/lib/scalar_utils.tsx",
+    // Export-to-image DOM glue: app and embedding css modules, branding logo.
+    "frontend/src/metabase/visualizations/lib/image-exports.ts",
+    "frontend/src/metabase/visualizations/lib/save-chart-image.ts",
+    "frontend/src/metabase/visualizations/lib/save-dashboard-pdf.ts",
+    "frontend/src/metabase/visualizations/lib/save-dashboard-pdf.unit.spec.ts",
+    "frontend/src/metabase/visualizations/lib/exports-branding-utils.tsx",
+    "frontend/src/metabase/visualizations/lib/exports-branding-utils.unit.spec.ts",
+    "frontend/src/metabase/visualizations/lib/map.unit.spec.ts",
+    "frontend/src/metabase/visualizations/lib/scalar_utils.unit.spec.ts",
+    // Tile URLs read the embed-preview flag from metabase/embedding/config.
+    "frontend/src/metabase/visualizations/lib/map.ts",
+    // Imports SmartScalar's option-name formatter from the per-viz folder.
+    "frontend/src/metabase/visualizations/lib/trend-helpers.ts",
+    // Specs that import UI-side widgets and charts, or register the full
+    // chart set through metabase/visualizations/register.
+    "frontend/src/metabase/visualizations/lib/table_format.unit.spec.ts",
+    "frontend/src/metabase/visualizations/lib/settings/typed-utils.unit.spec.ts",
+    "frontend/src/metabase/visualizations/lib/sensibility.unit.spec.ts",
+    "frontend/src/metabase/visualizations/lib/settings.unit.spec.ts",
+    "frontend/src/metabase/visualizations/lib/settings/column.unit.spec.ts",
+    "frontend/src/metabase/visualizations/lib/settings/visualization.unit.spec.ts",
+    "frontend/src/metabase/visualizations/lib/timeseries.unit.spec.ts",
+    "frontend/src/metabase/visualizations/echarts/cartesian/utils/timeseries.unit.spec.ts",
+    // Hover-tooltip option builders import the per-viz chart event handlers.
+    "frontend/src/metabase/visualizations/echarts/cartesian/option/tooltip.tsx",
+    "frontend/src/metabase/visualizations/echarts/pie/tooltip.tsx",
+    // Specs using the default static theme, which lives in static-viz.
+    "frontend/src/metabase/visualizations/echarts/cartesian/layout/index.unit.spec.ts",
+    "frontend/src/metabase/visualizations/echarts/cartesian/option/index.unit.spec.ts",
+    "frontend/src/metabase/visualizations/echarts/cartesian/timeline-events/option.unit.spec.ts",
+    "frontend/src/metabase/visualizations/echarts/graph/treemap/option/option.unit.spec.ts",
+    // Stories mounting per-viz or SDK wrappers.
+    "frontend/src/metabase/visualizations/shared/components/RowChart/RowChart.stories.tsx",
+    "frontend/src/metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.stories.tsx",
+    // Type-only imports of widget prop types and redux store types.
+    // The types barrel re-exports these, which the linter does not follow,
+    // so viz-core files importing the barrel stay clean.
+    "frontend/src/metabase/visualizations/types/visualization.ts",
+    "frontend/src/metabase/visualizations/types/click-actions.ts",
+    "frontend/src/metabase/visualizations/types/hover.ts",
+    "frontend/src/metabase/visualizations/types/mocks.ts",
+  ].map((pattern) =>
+    createElement({
+      type: "shared",
+      name: "visualizations",
+      pattern,
+      mode: "full",
+      enforceSharedTiers: false,
+    }),
+  ),
+  ...[
+    "frontend/src/metabase/visualizations/lib/**",
+    "frontend/src/metabase/visualizations/echarts/**",
+    "frontend/src/metabase/visualizations/shared/**",
+    "frontend/src/metabase/visualizations/types/**",
+    "frontend/src/metabase/visualizations/components/ChartTooltip/EChartsTooltip/**",
+  ].map((pattern) =>
+    createElement({ type: "basic", name: "viz-core", pattern }),
+  ),
 
   // shared
   createElement({ type: "feature", name: "account" }),
@@ -425,6 +505,12 @@ const baseRules = [
   {
     from: ["basic/value-formatting"],
     allow: ["basic/mlv1"],
+  },
+  // mlv1 for the same column predicates, value-formatting for formatValue,
+  // ui for the chart colour utilities and Mantine theme types.
+  {
+    from: ["basic/viz-core"],
+    allow: ["basic/mlv1", "basic/value-formatting", "basic/ui"],
   },
   {
     from: ["shared/*"],
