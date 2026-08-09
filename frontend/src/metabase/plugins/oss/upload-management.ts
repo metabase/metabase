@@ -14,14 +14,19 @@ type GdriveAddDataPanelProps = {
   onAddDataModalClose: () => void;
 };
 
+// `PluginPlaceholder` is generic over whatever props a slot is rendered with.
+// A slot filled by `lazyPluginComponent` is a plain `ComponentType`, which does
+// not satisfy that generic signature, so the slots that take no props say so.
+const noProps = PluginPlaceholder as ComponentType;
+
 const getDefaultPluginUploadManagement = () => ({
   FileUploadErrorModal: _FileUploadErrorModal,
-  UploadManagementTable: PluginPlaceholder,
-  GdriveSyncStatus: PluginPlaceholder,
+  UploadManagementTable: noProps,
+  GdriveSyncStatus: noProps,
   GdriveConnectionModal:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
-  GdriveDbMenu: PluginPlaceholder,
+  GdriveDbMenu: noProps,
   GdriveAddDataPanel:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<GdriveAddDataPanelProps>,
