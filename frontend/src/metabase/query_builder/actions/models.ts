@@ -1,13 +1,14 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
+import { SET_METADATA_DIFF } from "metabase/redux/query-builder";
 import type {
   DatasetEditorTab,
   Dispatch,
   GetState,
 } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 
 import { getQuestion } from "../selectors";
 
@@ -26,8 +27,8 @@ export const setDatasetEditorTab =
     dispatch(runDirtyQuestionQuery());
   };
 
-export const onCancelCreateNewModel = () => async (dispatch: Dispatch) => {
-  await dispatch(push("/"));
+export const onCancelCreateNewModel = () => async () => {
+  navigate("/");
 };
 
 export const turnQuestionIntoModel =
@@ -76,7 +77,6 @@ export const turnModelIntoQuestion =
     );
   };
 
-export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
 export const setMetadataDiff = createAction(SET_METADATA_DIFF);
 
 export const onModelPersistenceChange =

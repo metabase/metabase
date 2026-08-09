@@ -608,7 +608,7 @@ describe("scenarios > models", () => {
     turnIntoModel();
     H.visitCollection("root");
     cy.findByTestId("pinned-items").within(() => {
-      cy.findByText("Models");
+      cy.findByText("Orders");
       cy.findByText("A model");
     });
   });

@@ -159,22 +159,15 @@ export const TEST_SCHEMA = {
     },
   },
   questions: {
+    // Generated question columns carry only `type`, `name`, and `jsType`; the
+    // display name is rendered as a comment, not as runtime metadata.
     ordersQuestion: {
       type: "card" as const,
       id: 41,
       columns: [
-        {
-          type: "column" as const,
-          name: "STATUS",
-          displayName: "Status",
-          jsType: "string",
-        },
-        {
-          type: "column" as const,
-          name: "AMOUNT",
-          displayName: "Amount",
-          jsType: "number",
-        },
+        { type: "column" as const, name: "STATUS", jsType: "string" },
+        { type: "column" as const, name: "AMOUNT", jsType: "number" },
+        { type: "column" as const, name: "CREATED_AT", jsType: "Date" },
       ],
     },
   },

@@ -624,10 +624,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/interactive"
   "Handle interactive payloads from Slack (button clicks, modal submissions)."
-  [_route-params _query-params _body request]
+  [_route-params
+   _query-params
+   {:keys [payload]} :- [:map
+                         [:payload ms/NonBlankString]]
+   request]
   (assert-valid-slack-req request)
-  (let [payload (-> (get-in request [:params :payload])
-                    (json/decode true))]
+  (let [payload (json/decode payload true)]
     (case (:type payload)
       "block_actions"
       (let [actions    (:actions payload)

@@ -56,6 +56,17 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest ^:parallel connection-hosts-test
+  (are [details expected] (= expected (driver/connection-hosts :snowflake details))
+    {:account "xy12345.us-east-2.aws"}
+    ["xy12345.us-east-2.aws.snowflakecomputing.com"]
+
+    {:account "xy12345" :use-hostname true :host "snowflake.example.com"}
+    ["snowflake.example.com"]
+
+    {:account "xy12345" :use-hostname true :host "https://snowflake.example.com:443"}
+    ["snowflake.example.com"]))
+
 (defn- query->native! [query]
   (let [check-sql-fn (fn [_ _ sql & _]
                        (throw (ex-info "done" {::native-query sql})))]
@@ -737,27 +748,28 @@
 (deftest can-change-from-password-test
   (mt/test-driver
     :snowflake
-    (let [details (:details (mt/db))
+    ;; the test DB authenticates with a private key, so give it a password to switch away from
+    (let [details (assoc (:details (mt/db)) :password "test-password" :use-password true)
           pk-key "testing"]
       (is (=?
            {:user some?
             :password some?
-            :private_key_file complement}
+            :private_key_file :hawk/key-not-present}
            (sql-jdbc.conn/connection-details->spec :snowflake details)))
       (is (=?
            {:user some?
             :password some?
-            :private_key_file complement}
+            :private_key_file :hawk/key-not-present}
            ;; Before `use-password` password took precedence over a key file
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :private-key-value pk-key))))
       (is (=?
            {:user some?
-            :password complement
+            :password :hawk/key-not-present
             :private_key_file some?}
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :password nil :private-key-value pk-key))))
       (is (=?
            {:user some?
-            :password complement
+            :password :hawk/key-not-present
             :private_key_file some?}
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :private-key-value pk-key)))))))
 
@@ -1186,7 +1198,7 @@
                                           :details {:use-password false
                                                     :password "abc"}}]
         (is (= {:password "abc" :use-password true} (:details db1)))
-        (is (=? {:password "abc" :private-key-id int? :use-password complement} (:details db2)))
+        (is (=? {:password "abc" :private-key-id int? :use-password :hawk/key-not-present} (:details db2)))
         (is (= {:password "abc" :use-password false} (:details db3)))))))
 
 (deftest ^:parallel normalize-write-data-details-test

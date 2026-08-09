@@ -180,8 +180,10 @@ describe("scenarios > metrics > question", () => {
       H.visitMetric(card.id);
     });
     cy.wait("@metricDataset").its("response.statusCode").should("equal", 202);
-    cy.findByTestId("metric-value-preview").should("be.visible");
-    H.echartsContainer().should("be.visible");
+    cy.findByTestId("visualization-root")
+      .should("be.visible")
+      .and("have.attr", "data-viz-ui-name", "Number");
+    cy.findByTestId("scalar-value").should("be.visible");
     H.MetricPage.aboutPage().within(() => {
       cy.button(/Filter/).should("not.exist");
       cy.button(/Summarize/).should("not.exist");

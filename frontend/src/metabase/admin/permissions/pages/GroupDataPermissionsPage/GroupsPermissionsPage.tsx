@@ -6,8 +6,8 @@ import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/perm
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Outlet, push, useParams } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { Outlet, useNavigate, useParams } from "metabase/router";
+import { getSetting } from "metabase/settings";
 import { Center, Loader } from "metabase/ui";
 
 import {
@@ -42,6 +42,7 @@ import {
 
 export function GroupsPermissionsPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // These selectors resolve the focused group from the route, so they take the
   // route params rather than reading them from the store.
@@ -60,7 +61,7 @@ export function GroupsPermissionsPage() {
   const groupRouteParams = parseGroupRouteParams(params);
 
   const navigateToItem = (item: ITreeNodeItem) =>
-    dispatch(push(`${GROUPS_BASE_PATH}/${item.id}`));
+    navigate(`${GROUPS_BASE_PATH}/${item.id}`);
 
   const { loading: isLoading } = useAsync(async () => {
     if (groupRouteParams.groupId) {
@@ -77,9 +78,9 @@ export function GroupsPermissionsPage() {
 
   const handleEntityChange = useCallback(
     (entityType: string) => {
-      dispatch(push(`/admin/permissions/data/${entityType}/`));
+      navigate(`/admin/permissions/data/${entityType}/`);
     },
-    [dispatch],
+    [navigate],
   );
 
   const handleTableItemSelect = useCallback(
@@ -87,13 +88,11 @@ export function GroupsPermissionsPage() {
       if (groupRouteParams.groupId == null) {
         return;
       }
-      dispatch(
-        push(
-          getGroupFocusPermissionsUrl(groupRouteParams.groupId, item.entityId),
-        ),
+      navigate(
+        getGroupFocusPermissionsUrl(groupRouteParams.groupId, item.entityId),
       );
     },
-    [dispatch, groupRouteParams.groupId],
+    [groupRouteParams.groupId, navigate],
   );
 
   const handlePermissionChange = useCallback(
@@ -125,14 +124,12 @@ export function GroupsPermissionsPage() {
     if (groupRouteParams.groupId == null) {
       return;
     }
-    dispatch(
-      action.actionCreator(item.entityId, groupRouteParams.groupId, "group"),
-    );
+    action.onSelect(item.entityId, groupRouteParams.groupId, "group");
   };
 
   const handleBreadcrumbsItemSelect = (item: PermissionEditorBreadcrumb) => {
     if (item.url) {
-      dispatch(push(item.url));
+      navigate(item.url);
     }
   };
 

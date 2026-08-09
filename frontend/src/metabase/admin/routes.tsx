@@ -48,7 +48,7 @@ import {
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
-import { getTokenFeature } from "metabase/selectors/settings";
+import { getTokenFeature } from "metabase/settings";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
 import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
@@ -125,13 +125,13 @@ export const getRoutes = (
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
               element={redirect(
-                "database/:databaseId/schema/:schemaId/table/:tableId",
+                "../database/:databaseId/schema/:schemaId/table/:tableId",
               )}
             />
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
               element={redirect(
-                "database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
+                "../database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
               )}
             />
           </Route>

@@ -25,7 +25,9 @@ export function getEnforcedModules(elements) {
     elements
       .filter(
         (element) =>
-          element.enforceOutgoing && !EXCLUDED_TYPES.includes(element.type),
+          element.enforceOutgoing &&
+          (!element.type.startsWith("shared/") || element.enforceSharedTiers) &&
+          !EXCLUDED_TYPES.includes(element.type),
       )
       .map((element) => element.type),
   );

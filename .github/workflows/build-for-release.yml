@@ -141,10 +141,13 @@ jobs:
     - name: Ensure that the specified commit exists in the ${{ steps.release_branch.outputs.result }} release branch
       run: | # bash
         RELEASE_BRANCH=${{ steps.release_branch.outputs.result }}
-        git checkout $RELEASE_BRANCH
-        git branch --contains ${{ inputs.commit }} | grep -q $RELEASE_BRANCH \
-          && echo "Commit found in correct release branch" \
-          || (echo "Commit not found in correct release branch" && exit 1)
+        git checkout "$RELEASE_BRANCH"
+        if git branch --contains ${{ inputs.commit }} | grep -q "$RELEASE_BRANCH"; then
+          echo "Commit found in correct release branch"
+        else
+          echo "Commit not found in correct release branch"
+          exit 1
+        fi
         git checkout -
 
   get-build-requirements:
@@ -216,7 +219,7 @@ jobs:
           version='${{ needs.check-version.outputs.oss }}'
         fi
 
-        echo "VERSION=$version" >> $GITHUB_ENV
+        echo "VERSION=$version" >> "$GITHUB_ENV"
     - name: Setup Java ${{ needs.get-build-requirements.outputs.java_version }}
       uses: actions/setup-java@v5.2.0
       with:
@@ -238,11 +241,11 @@ jobs:
 
     - name: Build Metabase
       if: ${{ needs.get-build-requirements.outputs.build_process != 'legacy' }}
-      run: ./bin/build.sh :edition :${{ matrix.edition }} :version $VERSION
+      run: ./bin/build.sh :edition :${{ matrix.edition }} :version "$VERSION"
 
     - name: Build Metabase (legacy)
       if: ${{ needs.get-build-requirements.outputs.build_process == 'legacy' }}
-      run: cd ./bin/build-mb && clojure -X build/build! :edition :${{ matrix.edition }} :version $VERSION
+      run: cd ./bin/build-mb && clojure -X build/build! :edition :${{ matrix.edition }} :version "$VERSION"
 
     - name: Store commit's SHA-1 hash
       run:  echo ${{ inputs.commit }} > COMMIT-ID

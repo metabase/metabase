@@ -8,6 +8,7 @@ import {
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
 import type {
+  DashCardDataMap,
   Parameter,
   QuestionDashboardCard,
   VirtualDashboardCard,
@@ -16,6 +17,7 @@ import {
   createMockCard,
   createMockDashboardCard,
   createMockDashboardTab,
+  createMockDataset,
   createMockHeadingDashboardCard,
   createMockParameter,
   createMockParameterMapping,
@@ -275,14 +277,81 @@ describe("duplicateTab", () => {
       DASHBOARD_LEVEL_PARAMETER,
     ]);
   });
+
+  it("should not crash when dashcard data is not loaded yet (#78876)", () => {
+    const questionDashcard = createMockDashboardCard({
+      id: 1,
+      dashboard_tab_id: 1,
+      card_id: ORDERS_CARD.id,
+      card: ORDERS_CARD,
+    });
+
+    const { store } = setup({
+      parameters: [],
+      dashcards: [questionDashcard],
+      dashcardData: {},
+    });
+
+    expect(() => duplicateTab(1)(store.dispatch, store.getState)).not.toThrow();
+
+    const newTabId = -2;
+    const duplicatedQuestion = Object.values(
+      getDashcards(store.getState()),
+    ).find(
+      (dc) => dc.dashboard_tab_id === newTabId && dc.card_id === ORDERS_CARD.id,
+    );
+    expect(duplicatedQuestion).toBeDefined();
+    // No cache entry for the new dashcard; it fetches when the new tab is selected
+    expect(
+      store.getState().dashboard.dashcardData[duplicatedQuestion!.id],
+    ).toBeUndefined();
+  });
+
+  it("should copy all cached series data for a dashcard (#78876)", () => {
+    const SERIES_CARD_ID = 2;
+    const questionDashcard = createMockDashboardCard({
+      id: 1,
+      dashboard_tab_id: 1,
+      card_id: ORDERS_CARD.id,
+      card: ORDERS_CARD,
+    });
+    const sourceDashcardData = {
+      [ORDERS_CARD.id]: createMockDataset(),
+      [SERIES_CARD_ID]: createMockDataset(),
+    };
+
+    const { store } = setup({
+      parameters: [],
+      dashcards: [questionDashcard],
+      dashcardData: { [questionDashcard.id]: sourceDashcardData },
+    });
+
+    duplicateTab(1)(store.dispatch, store.getState);
+
+    const newTabId = -2;
+    const duplicatedQuestion = Object.values(
+      getDashcards(store.getState()),
+    ).find(
+      (dc) => dc.dashboard_tab_id === newTabId && dc.card_id === ORDERS_CARD.id,
+    );
+    expect(
+      store.getState().dashboard.dashcardData[duplicatedQuestion!.id],
+    ).toEqual(sourceDashcardData);
+  });
 });
 
 function createDashboardState({
   parameters,
   dashcards,
+  dashcardData = Object.fromEntries(
+    dashcards
+      .filter((dc) => dc.card_id != null)
+      .map((dc) => [dc.id, { [dc.card_id!]: null }]),
+  ),
 }: {
   parameters: Parameter[];
   dashcards: StoreDashcard[];
+  dashcardData?: DashCardDataMap;
 }) {
   return createMockDashboardState({
     dashboardId: 1,
@@ -299,24 +368,22 @@ function createDashboardState({
       }),
     },
     dashcards: _.indexBy(dashcards, "id"),
-    dashcardData: Object.fromEntries(
-      dashcards
-        .filter((dc) => dc.card_id != null)
-        .map((dc) => [dc.id, { [dc.card_id!]: null }]),
-    ),
+    dashcardData,
   });
 }
 
 function setup({
   parameters,
   dashcards,
+  dashcardData,
 }: {
   parameters: Parameter[];
   dashcards: StoreDashcard[];
+  dashcardData?: DashCardDataMap;
 }) {
   const store = getMainStore(
     createMockState({
-      dashboard: createDashboardState({ parameters, dashcards }),
+      dashboard: createDashboardState({ parameters, dashcards, dashcardData }),
     }),
   );
 

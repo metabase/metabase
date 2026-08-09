@@ -6,16 +6,15 @@ import { skipToken, useGetTableQuery } from "metabase/api";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/querying/common/components/DataSelector";
-import { connect, useSelector } from "metabase/redux";
-import type { Location, LocationDescriptorObject } from "metabase/router";
-import { push, queryToSearch } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import type { Location } from "metabase/router";
+import { queryToSearch, useNavigate } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Icon } from "metabase/ui";
 import type { ConcreteTableId, Segment } from "metabase-types/api";
 
 type FilteredToUrlTableInnerProps = {
   location: Location;
-  push: (location: LocationDescriptorObject) => void;
   segments: Segment[];
 };
 
@@ -35,22 +34,25 @@ export function FilteredToUrlTable(
 ) {
   const Inner = ({
     location,
-    push,
     segments,
     ...props
   }: FilteredToUrlTableInnerProps) => {
+    const navigate = useNavigate();
     const [tableId, setTableIdState] = useState<ConcreteTableId | null>(() =>
       getTableIdFromLocation(location),
     );
 
     const setTableId = (newTableId: ConcreteTableId | null) => {
       setTableIdState(newTableId);
-      push({
-        ...location,
-        search: queryToSearch(
-          newTableId == null ? {} : { table: String(newTableId) },
-        ),
-      });
+      navigate(
+        {
+          ...location,
+          search: queryToSearch(
+            newTableId == null ? {} : { table: String(newTableId) },
+          ),
+        },
+        { state: location.state },
+      );
     };
 
     const filteredItems =
@@ -69,7 +71,7 @@ export function FilteredToUrlTable(
     return <ComposedComponent {...composedProps} />;
   };
 
-  return connect(null, { push })(Inner);
+  return Inner;
 }
 
 type TableSelectorProps = {

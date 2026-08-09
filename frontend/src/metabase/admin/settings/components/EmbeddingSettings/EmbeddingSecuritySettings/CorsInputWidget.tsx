@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Box, Group, HoverCard, Icon, Text } from "metabase/ui";
 
 export const CorsInputWidget = () => {

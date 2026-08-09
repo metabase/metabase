@@ -247,26 +247,33 @@
   Whether a skill is *always-on* (body inlined in the system prompt) vs *on-demand* (advertised in the
   catalog, loaded via `load_skill`) is decided **per profile**, by the profile's `:always-on-skills`
   set — not by the skill itself — so the same skill can be inlined for one profile and on-demand for
-  another (e.g. the SQL skills are always-on for `:sql` but on-demand for `:internal`)."
+  another (e.g. the SQL skills are always-on for `:sql` but on-demand for `:internal`).
+
+  Profiles with `:skills? false` opt out entirely: empty catalog and always-on, and an empty loadable
+  set (so `load_skill` is not injected and cannot resolve guessed ids)."
   [profile active-tool-names capabilities]
-  (let [cap-set       (capabilities/capability-set capabilities)
-        always-on-ids (set (:always-on-skills profile))
-        always-on?    (comp always-on-ids :id)
-        visible       (->> (skills-for-profile profile active-tool-names)
-                           (filter #(skill-visible? % cap-set))
-                           (sort-by (juxt (comp - :priority) (comp str :id))))
-        ;; Always-on skill bodies are already inlined in the system prompt, so they are neither
-        ;; advertised in the catalog nor loadable on demand — only the on-demand skills are.
-        ;; Recording only the loadable ids also stops `load_skill` from re-fetching an always-on
-        ;; skill (a wasted iteration the model would otherwise spend).
-        loadable      (remove always-on? visible)]
-    (record-loadable-skill-ids! loadable)
-    {:always-on (filter always-on? visible)
-     :catalog   (mapv (fn [s]
-                        {:id          (name (:id s))
-                         :title       (:title s)
-                         :description (:description s)})
-                      loadable)}))
+  (if (false? (:skills? profile))
+    (do
+      (record-loadable-skill-ids! [])
+      {:always-on [] :catalog []})
+    (let [cap-set       (capabilities/capability-set capabilities)
+          always-on-ids (set (:always-on-skills profile))
+          always-on?    (comp always-on-ids :id)
+          visible       (->> (skills-for-profile profile active-tool-names)
+                             (filter #(skill-visible? % cap-set))
+                             (sort-by (juxt (comp - :priority) (comp str :id))))
+          ;; Always-on skill bodies are already inlined in the system prompt, so they are neither
+          ;; advertised in the catalog nor loadable on demand — only the on-demand skills are.
+          ;; Recording only the loadable ids also stops `load_skill` from re-fetching an always-on
+          ;; skill (a wasted iteration the model would otherwise spend).
+          loadable      (remove always-on? visible)]
+      (record-loadable-skill-ids! loadable)
+      {:always-on (filter always-on? visible)
+       :catalog   (mapv (fn [s]
+                          {:id          (name (:id s))
+                           :title       (:title s)
+                           :description (:description s)})
+                        loadable)})))
 
 ;;; Dialect preload
 
