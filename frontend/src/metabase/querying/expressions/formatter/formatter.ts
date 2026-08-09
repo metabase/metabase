@@ -1,6 +1,4 @@
-import type { AstPath, Doc, ParserOptions, Plugin } from "prettier";
-import { builders } from "prettier/doc";
-import { format as pformat } from "prettier/standalone";
+import { builders, printer } from "prettier/doc";
 
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
@@ -17,6 +15,7 @@ import { parsePunctuator } from "../punctuator";
 import { type StartDelimiter, formatStringLiteral } from "../string";
 
 import {
+  Path,
   pathMatchers as check,
   isDimensionOperator,
   isExpressionOperator,
@@ -34,9 +33,6 @@ export async function format(
   expression: Lib.Expressionable,
   options: FormatClauseOptions,
 ) {
-  // prettier expects us to pass a string, but we have the AST already
-  // so we pass a bogus string and ignore it. The actual ast is passed via
-  // the root option.
   const { query, stageIndex } = options;
   const parts = Lib.expressionParts(query, stageIndex, expression);
   return formatExpressionParts(parts, options);
@@ -54,58 +50,15 @@ export async function formatExpressionParts(
   root: Lib.ExpressionParts | Lib.ExpressionArg,
   options: FormatOptions = {},
 ) {
-  // prettier expects us to pass a string, but we have the AST already
-  // so we pass a bogus string and ignore it. The actual ast is passed via
-  // the root option.
-  return pformat("__not_used__", {
-    parser: PRETTIER_PLUGIN_NAME,
-    plugins: [plugin({ ...options, root })],
-    printWidth: options.printWidth ?? 80,
+  const doc = print(new Path<ExpressionNode>(root), options);
+  const { formatted } = printer.printDocToString(doc, {
+    printWidth: options.printWidth ?? DEFAULT_PRINT_WIDTH,
+    tabWidth: TAB_WIDTH,
   });
+  return formatted;
 }
 
-const PRETTIER_PLUGIN_NAME = "custom-expression";
-
-type InternalOptions = {
-  root: ExpressionNode;
-};
-
-// Set up a prettier plugin that formats expressions
-function plugin(
-  options: FormatOptions & InternalOptions,
-): Plugin<ExpressionNode> {
-  return {
-    languages: [
-      {
-        name: PRETTIER_PLUGIN_NAME,
-        parsers: [PRETTIER_PLUGIN_NAME],
-      },
-    ],
-    parsers: {
-      [PRETTIER_PLUGIN_NAME]: {
-        astFormat: PRETTIER_PLUGIN_NAME,
-        parse() {
-          return options.root;
-        },
-        locStart() {
-          throw new Error("Not implemented");
-        },
-        locEnd() {
-          throw new Error("Not implemented");
-        },
-      },
-    },
-    printers: {
-      [PRETTIER_PLUGIN_NAME]: {
-        preprocess(ast, opts) {
-          opts.extra = options;
-          return ast;
-        },
-        print,
-      },
-    },
-  };
-}
+type Doc = builders.Doc;
 
 const {
   // prettier helpers
@@ -117,13 +70,10 @@ const {
   ifBreak,
 } = builders;
 
-type Print = (path: AstPath<ExpressionNode>) => Doc;
+const DEFAULT_PRINT_WIDTH = 80;
+const TAB_WIDTH = 2;
 
-function print(
-  path: AstPath<ExpressionNode>,
-  options: ParserOptions<ExpressionNode> & { extra: FormatOptions },
-  print: Print,
-): Doc {
+function print(path: Path<ExpressionNode>, options: FormatOptions): Doc {
   if (path.node === null) {
     return "";
   } else if (check.isNumberLiteral(path)) {
@@ -131,23 +81,23 @@ function print(
   } else if (check.isBooleanLiteral(path)) {
     return formatBooleanLiteral(path.node);
   } else if (check.isStringLiteral(path)) {
-    return formatStringLiteral(path.node, options.extra.stringDelimiter);
+    return formatStringLiteral(path.node, options.stringDelimiter);
   } else if (check.isColumnMetadata(path)) {
-    return formatColumn(path, options.extra);
+    return formatColumn(path, options);
   } else if (check.isMetricMetadata(path)) {
-    return formatMetric(path, options.extra);
+    return formatMetric(path, options);
   } else if (check.isMeasureMetadata(path)) {
-    return formatMeasure(path, options.extra);
+    return formatMeasure(path, options);
   } else if (check.isSegmentMetadata(path)) {
-    return formatSegment(path, options.extra);
+    return formatSegment(path, options);
   } else if (check.isExpressionOperator(path)) {
-    return formatOperator(path, print);
+    return formatOperator(path, options);
   } else if (check.isDimensionOperator(path)) {
     return formatDimension(path);
   } else if (check.isValueOperator(path)) {
-    return formatValueExpression(path, print);
+    return formatValueExpression(path, options);
   } else if (check.isExpressionParts(path)) {
-    return formatFunctionCall(path, print);
+    return formatFunctionCall(path, options);
   }
 
   throw new Error(`Unknown MBQL clause: ${JSON.stringify(path.node)}`);
@@ -155,15 +105,15 @@ function print(
 
 // Helper to recurse into an AST node that is not easily expressed as a
 // property of the node currently in path.
-function recurse<T, R>(
-  path: AstPath<T>,
-  callback: (path: AstPath<T>) => R,
-  value: T,
-): R {
+function recurse(
+  path: Path<ExpressionNode>,
+  options: FormatOptions,
+  node: ExpressionNode,
+): Doc {
   const { length } = path.stack;
-  path.stack.push(value);
+  path.stack.push(node);
   try {
-    return callback(path);
+    return print(path, options);
   } finally {
     path.stack.length = length;
   }
@@ -184,7 +134,7 @@ function assert(condition: any, msg: string): asserts condition {
 }
 
 function formatColumn(
-  path: AstPath<Lib.ColumnMetadata>,
+  path: Path<Lib.ColumnMetadata>,
   options: FormatOptions,
 ): Doc {
   const { query, stageIndex } = options;
@@ -199,7 +149,7 @@ function formatColumn(
 }
 
 function formatMetric(
-  path: AstPath<Lib.MetricMetadata>,
+  path: Path<Lib.MetricMetadata>,
   options: FormatOptions,
 ): Doc {
   const metric = path.node;
@@ -214,7 +164,7 @@ function formatMetric(
 }
 
 function formatMeasure(
-  path: AstPath<Lib.MeasureMetadata>,
+  path: Path<Lib.MeasureMetadata>,
   options: FormatOptions,
 ): Doc {
   const metric = path.node;
@@ -229,7 +179,7 @@ function formatMeasure(
 }
 
 function formatSegment(
-  path: AstPath<Lib.SegmentMetadata>,
+  path: Path<Lib.SegmentMetadata>,
   options: FormatOptions,
 ) {
   const segment = path.node;
@@ -243,7 +193,7 @@ function formatSegment(
   return formatSegmentName(displayInfo.displayName);
 }
 
-function formatDimension(path: AstPath<Lib.ExpressionParts>): Doc {
+function formatDimension(path: Path<Lib.ExpressionParts>): Doc {
   const { node } = path;
   assert(isDimensionOperator(node), "Expected dimension");
 
@@ -254,18 +204,18 @@ function formatDimension(path: AstPath<Lib.ExpressionParts>): Doc {
 }
 
 function formatFunctionCall(
-  path: AstPath<Lib.ExpressionParts>,
-  print: Print,
+  path: Path<Lib.ExpressionParts>,
+  options: FormatOptions,
 ): Doc {
   const { node } = path;
 
   const args = node.args.map((arg: ExpressionNode) =>
-    recurse(path, print, arg),
+    recurse(path, options, arg),
   );
 
-  const options = formatExpressionOptions(node.options);
-  if (options) {
-    args.push(options);
+  const expressionOptions = formatExpressionOptions(node.options);
+  if (expressionOptions) {
+    args.push(expressionOptions);
   }
 
   // render a call expression as
@@ -308,7 +258,10 @@ function formatExpressionOptions(options: Lib.ExpressionOptions): Doc | null {
   return null;
 }
 
-function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
+function formatOperator(
+  path: Path<Lib.ExpressionParts>,
+  options: FormatOptions,
+): Doc {
   const { node } = path;
 
   assert(
@@ -335,11 +288,11 @@ function formatOperator(path: AstPath<Lib.ExpressionParts>, print: Print): Doc {
       isDimensionOperator(arg)
     ) {
       // Not a call expression so not an operator
-      return ind([ln, recurse(path, print, path.node.args[index])]);
+      return ind([ln, recurse(path, options, path.node.args[index])]);
     }
 
     const argOperator = arg.operator;
-    const formattedArg = recurse(path, print, path.node.args[index]);
+    const formattedArg = recurse(path, options, path.node.args[index]);
 
     const operatorPrecedence = precedence(node.operator);
     const argPrecedence = precedence(argOperator);
@@ -396,8 +349,8 @@ function isUnaryOperator(op: Lib.ExpressionOperator) {
 }
 
 function formatValueExpression(
-  path: AstPath<Lib.ExpressionParts>,
-  print: Print,
+  path: Path<Lib.ExpressionParts>,
+  options: FormatOptions,
 ): Doc {
   const { node } = path;
 
@@ -405,10 +358,10 @@ function formatValueExpression(
 
   const {
     args: [value],
-    options,
+    options: valueOptions,
   } = node;
 
-  const baseType = options?.["base-type"];
+  const baseType = valueOptions?.["base-type"];
   if (
     typeof value === "string" &&
     typeof baseType === "string" &&
@@ -416,10 +369,10 @@ function formatValueExpression(
   ) {
     const number = parseNumber(value);
     if (number != null) {
-      return recurse(path, print, number);
+      return recurse(path, options, number);
     }
   }
-  return recurse(path, print, node.args[0]);
+  return recurse(path, options, node.args[0]);
 }
 
 function displayName(name: Lib.ExpressionOperator): string {
