@@ -416,6 +416,13 @@
         (mt/user-http-request :rasta :post 204 "activity/recents"
                               {:model "dashboard" :model_id (:id d) :context "selection"})))))
 
+(deftest post-recents-metric-selection-test
+  (testing "POST /api/activity/recents accepts a metric selection (#79571)"
+    (mt/with-model-cleanup [:model/RecentViews]
+      (mt/with-temp [:model/Card metric {:type :metric}]
+        (mt/user-http-request :crowberto :post 204 "activity/recents"
+                              {:model "metric" :model_id (:id metric) :context "selection"})))))
+
 (deftest card-query-collection-context-excluded-from-recents-test
   (testing "A card-query event with a non-question context is not recorded as a recent view (#45003)"
     (mt/with-test-user :crowberto
