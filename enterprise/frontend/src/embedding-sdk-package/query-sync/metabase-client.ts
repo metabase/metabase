@@ -53,6 +53,16 @@ export class MetabaseClient {
     );
   }
 
+  reconcileQuerySyncPermissions(slug: string, databaseIds: number[]) {
+    return this.request<DataAppMetadata>(
+      `apps/${encodeURIComponent(slug)}/query-sync/permissions`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ database_ids: databaseIds }),
+      },
+    );
+  }
+
   resolveQuery(slug: string, query: Record<string, unknown>) {
     return this.request<{
       database_id: number;

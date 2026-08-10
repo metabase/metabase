@@ -46,6 +46,16 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+function isQuerySyncPermissionsRequest(
+  pathname: string,
+  method: string,
+  slug: string,
+) {
+  return (
+    pathname === `/api/apps/${slug}/query-sync/permissions` && method === "PUT"
+  );
+}
+
 describe("data app query synchronization", () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -120,19 +130,29 @@ describe("data app query synchronization", () => {
     );
   });
 
-  it("prepares an unpublished app before query reconciliation", async () => {
+  it("prepares an unpublished app and reconciles an empty database set", async () => {
     const appRoot = makeApp();
     const slug = path.basename(appRoot);
-    const requests: Array<{ method: string; pathname: string }> = [];
+    const requests: Array<{
+      method: string;
+      pathname: string;
+      body?: string;
+    }> = [];
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
-      requests.push({ method, pathname });
+      requests.push({ method, pathname, body: init?.body?.toString() });
       if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
         return jsonResponse({
           name: slug,
           resource_collection_id: 20,
         });
+      }
+      if (
+        pathname === `/api/apps/${slug}/query-sync/permissions` &&
+        method === "PUT"
+      ) {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
@@ -145,7 +165,16 @@ describe("data app query synchronization", () => {
     });
 
     expect(requests).toEqual([
-      { method: "POST", pathname: `/api/apps/${slug}/query-sync` },
+      {
+        method: "POST",
+        pathname: `/api/apps/${slug}/query-sync`,
+        body: undefined,
+      },
+      {
+        method: "PUT",
+        pathname: `/api/apps/${slug}/query-sync/permissions`,
+        body: JSON.stringify({ database_ids: [] }),
+      },
     ]);
   });
 
@@ -159,6 +188,52 @@ describe("data app query synchronization", () => {
     await expect(discoverQueries(appRoot)).rejects.toThrow(
       "Saved question 10 is referenced by",
     );
+  });
+
+  it("reconciles the complete set of resolved query databases", async () => {
+    const appRoot = makeApp();
+    const slug = path.basename(appRoot);
+    writeQuery(
+      appRoot,
+      `export const First = defineQuery({ source: { type: "table", id: 1 } });
+       export const Second = defineQuery({ source: { type: "table", id: 2 } });`,
+    );
+    let nextCardId = 30;
+    const permissionBodies: unknown[] = [];
+    jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
+      const pathname = new URL(String(input)).pathname;
+      const method = init?.method ?? "GET";
+      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
+      }
+      if (pathname === `/api/apps/${slug}/query` && method === "POST") {
+        const body = JSON.parse(String(init?.body));
+        const tableId = body.stages[0].source.id;
+        const databaseId = tableId === 1 ? 20 : 10;
+        return jsonResponse({
+          database_id: databaseId,
+          dataset_query: { database: databaseId },
+        });
+      }
+      if (pathname === "/api/card" && method === "POST") {
+        return jsonResponse({ id: nextCardId++ });
+      }
+
+      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+        permissionBodies.push(JSON.parse(String(init?.body)));
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
+      }
+      throw new Error(`Unexpected ${method} ${pathname}`);
+    });
+
+    await syncQueries({
+      appRoot,
+      metabaseUrl: "http://metabase.test",
+      apiKey: "secret",
+      log: jest.fn(),
+    });
+
+    expect(permissionBodies).toEqual([{ database_ids: [10, 20] }]);
   });
 
   it("fails a read-only build check when source and lockfile drift", async () => {
@@ -218,6 +293,10 @@ describe("data app query synchronization", () => {
           dataset_query: { database: 1, stages: [{ "source-table": 1 }] },
         });
       }
+
+      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
+      }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
     await syncQueries({
@@ -237,7 +316,20 @@ describe("data app query synchronization", () => {
       log: jest.fn(),
     });
     expect(requests.filter(({ method }) => method === "POST")).toHaveLength(5);
-    expect(requests.some(({ method }) => method === "PUT")).toBe(false);
+    expect(
+      requests.filter(
+        ({ method, pathname }) =>
+          method === "PUT" &&
+          pathname === `/api/apps/${slug}/query-sync/permissions`,
+      ),
+    ).toHaveLength(2);
+    expect(
+      requests.some(
+        ({ method, pathname }) =>
+          method === "PUT" &&
+          pathname !== `/api/apps/${slug}/query-sync/permissions`,
+      ),
+    ).toBe(false);
   });
 
   it("deletes only lockfile-proven questions in the bound collection", async () => {
@@ -272,6 +364,10 @@ describe("data app query synchronization", () => {
       }
       if (pathname === "/api/card/40" && method === "DELETE") {
         return jsonResponse(null, 204);
+      }
+
+      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
@@ -326,6 +422,10 @@ describe("data app query synchronization", () => {
       }
       if (pathname === "/api/card" && method === "POST") {
         return jsonResponse({ id: 51 });
+      }
+
+      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
@@ -391,6 +491,10 @@ describe("data app query synchronization", () => {
           collection_id: 20,
           dataset_query: { database: 1 },
         });
+      }
+
+      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
@@ -458,6 +562,10 @@ describe("data app query synchronization", () => {
       if (pathname === "/api/card/60" && method === "PUT") {
         return jsonResponse({ id: 60 });
       }
+
+      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
+      }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 
@@ -503,6 +611,10 @@ describe("data app query synchronization", () => {
           collection_id: 20,
           dataset_query: { database: 1 },
         });
+      }
+
+      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
@@ -568,6 +680,10 @@ describe("data app query synchronization", () => {
       }
       if (pathname === "/api/card/80" && method === "PUT") {
         return jsonResponse({ id: 80 });
+      }
+
+      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });

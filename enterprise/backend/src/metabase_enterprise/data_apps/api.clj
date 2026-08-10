@@ -90,6 +90,10 @@
    [:database_id ms/PositiveInt]
    [:dataset_query ms/Map]])
 
+(def ^:private QuerySyncPermissionsRequest
+  [:map
+   [:database_ids [:sequential {:distinct true} ms/PositiveInt]]])
+
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
 (api.macros/defendpoint :get "/repo-status" :- RepoStatusResponse
@@ -202,6 +206,16 @@
   (api/check-superuser)
   (data-app.sync/prepare-query-sync! slug)
   (data-apps.db/non-blob-data-app-by-slug slug))
+
+(api.macros/defendpoint :put ["/:slug/query-sync/permissions" :slug slug-regex] :- DataAppResponse
+  "Reconcile the database view-data permissions required by a data app's queries."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   {database-ids :database_ids} :- QuerySyncPermissionsRequest]
+  (api/check-superuser)
+  (let [app (api/check-404 (data-app/select-one-non-blob :name slug))]
+    (data-app.sync/reconcile-query-permissions! app (set database-ids)))
+  (data-app/select-one-non-blob :name slug))
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
