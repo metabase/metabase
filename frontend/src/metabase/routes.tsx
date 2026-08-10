@@ -22,7 +22,10 @@ import CollectionLanding from "metabase/collections/components/CollectionLanding
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import {
+  lazyModalRoute,
+  modalRoute,
+} from "metabase/common/components/ModalRoute";
 import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
@@ -34,8 +37,6 @@ import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDa
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
-import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
-import { DocumentPageOuter } from "metabase/documents/routes";
 import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
 import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirect";
 import { Onboarding } from "metabase/home/components/Onboarding";
@@ -132,10 +133,24 @@ const metabotQueryBuilder = () =>
   );
 
 /**
- * Hovering a link into the query builder starts the fetch, so the chunk is
- * usually in hand by the time the click lands. The router still awaits `lazy`
- * and still commits the location a tick late, so this removes the round trip
- * rather than the asynchrony. See `lazy-route.unit.spec.tsx`.
+ * Documents, in their own chunk. It carries the rich text editing stack, which
+ * nothing outside the document page needs on first paint.
+ */
+const documentPage = () =>
+  import("metabase/documents/routes").then(({ DocumentPageOuter }) => ({
+    Component: DocumentPageOuter,
+  }));
+
+const commentsSidesheet = () =>
+  import("metabase/documents/components/CommentsSidesheet").then(
+    ({ CommentsSidesheet }) => CommentsSidesheet,
+  );
+
+/**
+ * Hovering a link into one of these chunks starts the fetch, so it is usually in
+ * hand by the time the click lands. The router still awaits `lazy` and still
+ * commits the location a tick late, so this removes the round trip rather than
+ * the asynchrony. See `lazy-route.unit.spec.tsx`.
  *
  * The paths are prefixes, so `/table/` also covers the table detail page, which
  * is not the query builder. The chunk is fetched once either way, and someone
@@ -145,6 +160,12 @@ registerPagePrefetch("/question", queryBuilder);
 registerPagePrefetch("/model", queryBuilder);
 registerPagePrefetch("/table/", queryBuilder);
 registerPagePrefetch("/question/ask", metabotQueryBuilder);
+registerPagePrefetch("/document/", documentPage);
+// The sidesheet is a chunk of its own, and its route carries the document id
+// before the segment that names it, so a prefix cannot single it out. Registered
+// against the document prefix instead: 15 kb fetched alongside a page of 337 kb,
+// in exchange for the sidesheet already being there when it is opened.
+registerPagePrefetch("/document/", commentsSidesheet);
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
   {
@@ -211,12 +232,12 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               {
                 path: "document/:entityId",
-                element: <DocumentPageOuter />,
-                children: toRouteObjects(
-                  modalRoute("comments/:childTargetId", CommentsSidesheet, {
+                lazy: documentPage,
+                children: [
+                  lazyModalRoute("comments/:childTargetId", commentsSidesheet, {
                     noWrap: true,
                   }),
-                ),
+                ],
               },
 
               {
