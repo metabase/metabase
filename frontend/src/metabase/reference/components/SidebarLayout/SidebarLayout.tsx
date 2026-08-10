@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { CSSProperties, ReactElement } from "react";
+import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { Children, cloneElement } from "react";
 
 import CS from "metabase/css/core/index.css";
@@ -7,7 +7,7 @@ import CS from "metabase/css/core/index.css";
 interface SidebarLayoutProps {
   className?: string;
   style?: CSSProperties;
-  sidebar: ReactElement;
+  sidebar: ReactElement<{ children?: ReactNode }>;
   children: ReactElement;
 }
 

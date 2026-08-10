@@ -135,7 +135,7 @@ function textFromReactNode(node: ReactNode): string | null {
     return node.map((n) => textFromReactNode(n) ?? "").join("");
   }
 
-  if (isValidElement(node)) {
+  if (isValidElement<{ children?: ReactNode }>(node)) {
     return textFromReactNode(node.props.children) ?? "";
   }
 

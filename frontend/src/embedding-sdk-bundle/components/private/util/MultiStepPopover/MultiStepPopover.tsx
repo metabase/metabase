@@ -46,8 +46,11 @@ const MultiStepPopoverContent = ({
   };
 
   const currentStepContent = findChild(
-    (child): child is ReactElement<StepProps> =>
-      child.type === Step && child.props.value === currentStep,
+    (child): child is ReactElement<StepProps> => {
+      // A `child.type === Step` match guarantees the element carries StepProps.
+      const props = child.props as StepProps;
+      return child.type === Step && props.value === currentStep;
+    },
   )?.props.children;
 
   const targetElement = findChild(
