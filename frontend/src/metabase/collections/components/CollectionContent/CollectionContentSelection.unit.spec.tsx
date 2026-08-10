@@ -279,4 +279,37 @@ describe("CollectionContent selection", () => {
     expect(getPinnedSection().getAllByRole("link")).toHaveLength(2);
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
+
+  it("should toggle a table row with shift+click without navigating", async () => {
+    const events = userEvent.setup();
+    await setup();
+
+    await events.keyboard("{Shift>}");
+    await events.click(screen.getByRole("link", { name: tableQuestion.name }));
+    await events.keyboard("{/Shift}");
+
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    expect(getPinnedCard(pinnedDashboard.name)).toBeInTheDocument();
+
+    await events.keyboard("{Shift>}");
+    await events.click(screen.getByRole("link", { name: tableQuestion.name }));
+    await events.keyboard("{/Shift}");
+
+    expect(screen.queryByText(/items? selected/)).not.toBeInTheDocument();
+  });
+
+  it("should select a pinned card from an empty selection with shift+click", async () => {
+    const events = userEvent.setup();
+    await setup();
+    const pinnedCard = screen.getByRole("link", {
+      name: new RegExp(pinnedDashboard.name),
+    });
+
+    await events.keyboard("{Shift>}");
+    await events.click(pinnedCard);
+    await events.keyboard("{/Shift}");
+
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    expect(getPinnedCard(pinnedDashboard.name)).toBeChecked();
+  });
 });

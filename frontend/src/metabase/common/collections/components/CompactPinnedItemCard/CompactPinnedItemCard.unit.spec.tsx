@@ -74,12 +74,16 @@ function setup({
   isSelectMode,
   isSelected,
   onToggleSelected,
+  onClick,
+  showSelectAffordance,
 }: {
   item?: CollectionItem | RecentCollectionItem;
   collection?: Collection;
   isSelectMode?: boolean;
   isSelected?: boolean;
   onToggleSelected?: OnToggleSelectedWithItem;
+  onClick?: () => void;
+  showSelectAffordance?: boolean;
 } = {}) {
   return renderWithProviders(
     <Route
@@ -95,6 +99,8 @@ function setup({
           isSelectMode={isSelectMode}
           isSelected={isSelected}
           onToggleSelected={onToggleSelected}
+          onClick={onClick}
+          showSelectAffordance={showSelectAffordance}
         />
       }
     />,
@@ -356,6 +362,82 @@ describe("CompactPinnedItemCard", () => {
 
       expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
       expect(screen.getByRole("link")).toBeInTheDocument();
+    });
+  });
+
+  describe("shift selection", () => {
+    it("should select a link-mode card without navigating on shift+click", async () => {
+      const utils = userEvent.setup();
+      const onClick = jest.fn();
+      const onToggleSelected = jest.fn();
+      setup({ onClick, onToggleSelected });
+
+      await utils.keyboard("{Shift>}");
+      await utils.click(screen.getByText(defaultItem.name));
+      await utils.keyboard("{/Shift}");
+
+      expect(onToggleSelected).toHaveBeenCalledWith(defaultItem);
+      expect(onClick).not.toHaveBeenCalled();
+      expect(screen.getByRole("link")).toBeInTheDocument();
+    });
+
+    it("should preserve plain link clicks", async () => {
+      const onClick = jest.fn();
+      const onToggleSelected = jest.fn();
+      setup({ onClick, onToggleSelected });
+      screen
+        .getByRole("link")
+        .addEventListener("click", (event) => event.preventDefault());
+
+      await userEvent.click(screen.getByText(defaultItem.name));
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(onToggleSelected).not.toHaveBeenCalled();
+    });
+
+    it("should not select on shift+click when selection is unavailable", async () => {
+      const utils = userEvent.setup();
+      const onClick = jest.fn();
+      setup({ onClick });
+      screen
+        .getByRole("link")
+        .addEventListener("click", (event) => event.preventDefault());
+
+      await utils.keyboard("{Shift>}");
+      await utils.click(screen.getByText(defaultItem.name));
+      await utils.keyboard("{/Shift}");
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
+    it("should preview an unchecked checkbox on a hovered link", async () => {
+      setup({
+        onToggleSelected: jest.fn(),
+        showSelectAffordance: true,
+      });
+      const card = screen.getByRole("link");
+
+      expect(testGetIcon(modelIconMap[defaultItem.model])).toBeInTheDocument();
+      await userEvent.hover(card);
+
+      expect(card).toBeInTheDocument();
+      expect(screen.getByTestId("pinned-item-checkbox")).not.toBeChecked();
+      expect(
+        queryIcon(modelIconMap[defaultItem.model]),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should keep the model icon until the link is hovered", () => {
+      setup({
+        onToggleSelected: jest.fn(),
+        showSelectAffordance: true,
+      });
+
+      expect(screen.getByRole("link")).toBeInTheDocument();
+      expect(testGetIcon(modelIconMap[defaultItem.model])).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("pinned-item-checkbox"),
+      ).not.toBeInTheDocument();
     });
   });
 

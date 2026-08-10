@@ -348,7 +348,7 @@ export const Columns = {
     }: ActionMenuProps) => {
       return (
         <ItemCell>
-          <RowActionsContainer>
+          <RowActionsContainer data-ignore-row-selection>
             <ActionMenu
               item={item}
               collection={collection}

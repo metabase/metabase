@@ -13,6 +13,7 @@ import type {
 import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
+import { useIsShiftPressed } from "metabase/common/hooks/use-is-shift-pressed";
 import { Box, SimpleGrid, rem } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -62,6 +63,10 @@ export function PinnedItemsGrid({
         }
       : skipToken,
   );
+  const isShiftPressed = useIsShiftPressed();
+  const canSelect = canSelectItems(collection, onToggleSelected);
+  const isSelectMode = canSelect && selected.length > 0;
+  const showSelectAffordance = canSelect && !isSelectMode && isShiftPressed;
 
   const sortedItems = useMemo(() => {
     const items = pinnedItemsData?.data ?? [];
@@ -75,9 +80,6 @@ export function PinnedItemsGrid({
       </Box>
     );
   }
-
-  const canSelect = canSelectItems(collection, onToggleSelected);
-  const isSelectMode = canSelect && selected.length > 0;
 
   return (
     <Box mb={rem(48)} pos="relative" data-testid="pinned-items">
@@ -115,6 +117,7 @@ export function PinnedItemsGrid({
                     isSelectMode={isSelectMode}
                     isSelected={isSelected}
                     onToggleSelected={canSelect ? onToggleSelected : undefined}
+                    showSelectAffordance={showSelectAffordance}
                   />
                 </div>
               </ItemDragSource>

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type FocusEvent, useState } from "react";
+import { type FocusEvent, type MouseEvent, useState } from "react";
 import { t } from "ttag";
 
 import { ActionMenu } from "metabase/common/collections/components/ActionMenu";
@@ -26,6 +26,7 @@ import type {
 } from "metabase-types/api";
 
 import S from "./CompactPinnedItemCard.module.css";
+import { SelectModeCardWrapper } from "./SelectModeCardWrapper";
 
 const TOOLTIP_MAX_WIDTH = 450;
 
@@ -60,6 +61,7 @@ export type CompactPinnedItemCardProps = {
   isSelectMode?: boolean;
   isSelected?: boolean;
   onToggleSelected?: OnToggleSelectedWithItem;
+  showSelectAffordance?: boolean;
 };
 
 const isCollectionItem = (
@@ -81,6 +83,7 @@ export function CompactPinnedItemCard({
   isSelectMode,
   isSelected,
   onToggleSelected,
+  showSelectAffordance,
 }: CompactPinnedItemCardProps) {
   const getIcon = useGetIcon();
   const icon = getIcon({
@@ -97,11 +100,13 @@ export function CompactPinnedItemCard({
     onToggleSelected && isCollectionItem(item)
       ? () => onToggleSelected(item)
       : undefined;
-  const handleToggleSelected = isSelectMode ? toggleSelected : undefined;
-  const showAsSelected = handleToggleSelected != null && Boolean(isSelected);
+  const isInSelectMode = Boolean(isSelectMode) && toggleSelected != null;
+  const showAsSelected = isInSelectMode && Boolean(isSelected);
   const [isHoveredOrFocused, setIsHoveredOrFocused] = useState(false);
   const showCheckbox =
-    handleToggleSelected != null && (showAsSelected || isHoveredOrFocused);
+    toggleSelected != null &&
+    (isInSelectMode || Boolean(showSelectAffordance)) &&
+    (showAsSelected || isHoveredOrFocused);
   const highlightProps = toggleSelected
     ? {
         onMouseEnter: () => setIsHoveredOrFocused(true),
@@ -118,11 +123,20 @@ export function CompactPinnedItemCard({
         },
       }
     : {};
+  const handleLinkClick = (event: MouseEvent) => {
+    if (event.shiftKey && toggleSelected) {
+      event.preventDefault();
+      document.getSelection()?.removeAllRanges();
+      toggleSelected();
+      return;
+    }
+    onClick?.();
+  };
 
   const card = (
     <Card
       className={cx(S.card, {
-        [S.selectable]: handleToggleSelected != null,
+        [S.selectable]: isInSelectMode || showSelectAffordance,
         [S.selected]: showAsSelected,
       })}
       data-testid="pinned-item-card"
@@ -195,28 +209,16 @@ export function CompactPinnedItemCard({
     </Card>
   );
 
-  if (handleToggleSelected) {
+  if (isInSelectMode && toggleSelected) {
     return (
-      <Box
-        {...highlightProps}
-        aria-checked={showAsSelected}
-        aria-label={item.name}
-        className={S.link}
-        role="checkbox"
-        tabIndex={0}
-        onClick={handleToggleSelected}
-        onKeyDown={(event) => {
-          if (event.target !== event.currentTarget) {
-            return;
-          }
-          if (event.key === " " || event.key === "Enter") {
-            event.preventDefault();
-            handleToggleSelected();
-          }
-        }}
+      <SelectModeCardWrapper
+        name={item.name}
+        isSelected={showAsSelected}
+        onToggle={toggleSelected}
+        onHighlightChange={setIsHoveredOrFocused}
       >
         {card}
-      </Box>
+      </SelectModeCardWrapper>
     );
   }
 
@@ -225,7 +227,7 @@ export function CompactPinnedItemCard({
       {...highlightProps}
       className={S.link}
       to={modelToUrl(item)}
-      onClick={onClick}
+      onClick={handleLinkClick}
     >
       {card}
     </Link>
