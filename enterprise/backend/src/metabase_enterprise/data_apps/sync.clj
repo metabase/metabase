@@ -22,6 +22,7 @@
    [toucan2.core :as t2])
   (:import
    (java.security MessageDigest)
+   (java.sql SQLIntegrityConstraintViolationException)
    (org.apache.commons.codec.binary Hex)))
 
 (set! *warn-on-reflection* true)
@@ -47,10 +48,14 @@
     (when-not (str/blank? url)
       url)))
 
-(defn ensure-draft!
-  "Create a data app draft when needed and ensure its permission resources.
-   A later repository import fills the same row with the authoritative manifest
-   and bundle."
+(defn- duplicate-data-app-name? [e]
+  (or (instance? SQLIntegrityConstraintViolationException e)
+      (instance? SQLIntegrityConstraintViolationException (ex-cause e))
+      (when-let [message (ex-message e)]
+        (and (re-find #"(?i)data_app" message)
+             (re-find #"(?i)duplicate|unique" message)))))
+
+(defn- create-draft!
   [slug]
   (t2/with-transaction [_conn]
     (when-not (t2/exists? :model/DataApp :name slug)
@@ -62,6 +67,18 @@
                   :draft            true))
     (-> (t2/select-one :model/DataApp :name slug)
         data-app.resources/ensure-resources!)))
+
+(defn ensure-draft!
+  "Create a data app draft when needed and ensure its permission resources.
+   A later repository import fills the same row with the authoritative manifest
+   and bundle."
+  [slug]
+  (try
+    (create-draft! slug)
+    (catch Throwable e
+      (if (duplicate-data-app-name? e)
+        (create-draft! slug)
+        (throw e)))))
 
 ;;; ----------------------------------------------------- Discovery -----------------------------------------------------
 
@@ -200,6 +217,8 @@
                                         :bundle_path :bundle_hash :sync_error]))
         {:keys [changed removed]}
         (t2/with-transaction [_conn]
+          (when (seq present-slugs)
+            (t2/update! :model/DataApp :name [:in present-slugs] :draft true {:draft false}))
           (let [changed (reduce (fn [n {:keys [slug config-error] :as cfg}]
                                   (cond-> n
                                     ;; A parse failure on an app that still exists marks

@@ -8,6 +8,7 @@
    `metabase.server.routes/static-files-handler`)."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase.api.common :as api]
@@ -81,11 +82,18 @@
    [:configured :boolean]
    [:url [:maybe :string]]])
 
-(def ^:private QueryDefinition
+(def ^:private query-source
   [:map
-   [:stages [:sequential {:min 1} ms/Map]]])
+   [:type :string]
+   [:id ms/PositiveInt]])
 
-(def ^:private QueryResolutionResponse
+(def ^:private query-definition
+  [:map
+   [:stages [:sequential {:min 1}
+             [:map
+              [:source query-source]]]]])
+
+(def ^:private query-resolution-response
   [:map
    [:database_id ms/PositiveInt]
    [:dataset_query ms/Map]])
@@ -182,11 +190,11 @@
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
 
-(api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- QueryResolutionResponse
+(api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- query-resolution-response
   "Resolve an authored data-app query definition into a serializable Metabase query."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
    _query-params
-   query-definition :- QueryDefinition]
+   query-definition :- query-definition]
   (api/check-superuser)
   (api/check-404 (data-app/select-one-non-blob :name slug))
   (let [{source-type :type, table-id :id} (get-in query-definition [:stages 0 :source])
@@ -203,6 +211,8 @@
   "Create or reuse a data app draft before its first repository import."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
   (api/check-superuser)
+  (api/check-400 (data-app.config/valid-slug? slug)
+                 "Data app draft slugs must use lowercase letters, numbers, and dashes.")
   (data-app.sync/ensure-draft! slug)
   (data-app/select-one-non-blob :name slug))
 

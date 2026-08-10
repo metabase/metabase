@@ -113,6 +113,13 @@
              (mt/user-http-request :crowberto :post 400 "apps/demo/query"
                                    {:stages [{:source {:type "card" :id 1}}]}))))))
 
+(deftest query-definition-source-must-be-valid-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (is (some? (mt/user-http-request :crowberto :post 400 "apps/demo/query"
+                                       {:stages [{:source {:type 1 :id (mt/id :venues)}}]}))))))
+
 (deftest non-superuser-cannot-resolve-a-query-definition-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]
@@ -141,6 +148,13 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "apps/draft-app/draft")))
       (is (not (t2/exists? :model/DataApp :name "draft-app"))))))
+
+(deftest data-app-draft-must-have-a-valid-slug-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (is (= "Data app draft slugs must use lowercase letters, numbers, and dashes."
+             (mt/user-http-request :crowberto :post 400 "apps/Draft/draft")))
+      (is (not (t2/exists? :model/DataApp :name "Draft"))))))
 
 (deftest list-available-apps-test
   (mt/with-premium-features #{:data-apps-preview}

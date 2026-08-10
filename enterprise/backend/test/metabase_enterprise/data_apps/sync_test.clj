@@ -144,6 +144,23 @@
             (data-app.sync/import-from-snapshot! (snapshot {}))))
     (is (not (t2/exists? :model/DataApp :name "draft-app")))))
 
+(deftest repository-claims-a-draft-before-a-successful-import-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (data-app.sync/ensure-draft! "draft-app")
+    (data-app.sync/import-from-snapshot!
+     (snapshot {"data_apps/draft-app/data_app.yaml" "name: Draft\n"}))
+    (is (false? (t2/select-one-fn :draft :model/DataApp :name "draft-app")))
+    (is (=? {:removed 1}
+            (data-app.sync/import-from-snapshot! (snapshot {}))))
+    (is (not (t2/exists? :model/DataApp :name "draft-app")))))
+
+(deftest concurrent-draft-creation-is-safe-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [drafts (doall (repeatedly 2 #(future (data-app.sync/ensure-draft! "draft-app"))))]
+      (doseq [draft drafts]
+        @draft)
+      (is (= 1 (t2/count :model/DataApp :name "draft-app"))))))
+
 (deftest remote-sync-prunes-never-successful-repository-apps-test
   (mt/with-model-cleanup [:model/DataApp]
     (data-app.sync/import-from-snapshot!
