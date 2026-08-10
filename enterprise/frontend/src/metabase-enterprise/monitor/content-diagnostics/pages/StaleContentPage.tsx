@@ -29,8 +29,12 @@ export function StaleContentPage() {
     key: "stale",
   });
 
+  const shouldRestoreLastUsedParamsRef = useRef(
+    isEmptyStaleParams(searchParams),
+  );
+
   const params = useMemo(() => {
-    return isEmptyStaleParams(searchParams)
+    return shouldRestoreLastUsedParamsRef.current
       ? parseStaleUserParams(rawLastUsedParams)
       : parseStaleUrlParams(searchParams);
   }, [searchParams, rawLastUsedParams]);
@@ -50,6 +54,7 @@ export function StaleContentPage() {
   useEffect(() => {
     if (!isInitializingRef.current && !isLoadingParams) {
       isInitializingRef.current = true;
+      shouldRestoreLastUsedParamsRef.current = false;
       navigate(Urls.staleContent(getStaleParamsWithoutDefaults(params)), {
         replace: true,
       });

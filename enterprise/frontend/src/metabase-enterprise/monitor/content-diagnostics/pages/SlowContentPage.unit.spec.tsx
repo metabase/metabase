@@ -316,4 +316,20 @@ describe("SlowContentPage", () => {
       "3000",
     );
   });
+
+  it("lets an explicit default-valued URL win over the last-used filter", async () => {
+    const { router } = setup({
+      findings: FINDINGS,
+      urlParams: { page: 0, includePersonalCollections: true },
+      lastUsedParams: { min_duration_ms: 3000 },
+    });
+
+    await waitForListToLoad();
+
+    expect(getLastRequestUrl().searchParams.get("min-duration-ms")).toBeNull();
+    expect(
+      getLastRequestUrl().searchParams.get("include-personal-collections"),
+    ).toBe("true");
+    expect(getUrlQuery(router)).toEqual({});
+  });
 });

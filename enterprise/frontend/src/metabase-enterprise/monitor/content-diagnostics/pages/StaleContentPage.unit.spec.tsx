@@ -423,4 +423,20 @@ describe("StaleContentPage", () => {
       "dashboard",
     ]);
   });
+
+  it("lets an explicit default-valued URL win over the last-used filter", async () => {
+    const { router } = setup({
+      findings: FINDINGS,
+      urlParams: { page: 0, includePersonalCollections: true },
+      lastUsedParams: { entity_types: ["model"] },
+    });
+
+    await waitForListToLoad();
+
+    expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([]);
+    expect(
+      getLastRequestUrl().searchParams.get("include-personal-collections"),
+    ).toBe("true");
+    expect(getUrlQuery(router)).toEqual({});
+  });
 });

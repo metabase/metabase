@@ -6,8 +6,6 @@ import {
   SORT_DIRECTIONS,
 } from "metabase-types/api";
 
-import { getStaleParamsWithoutDefaults } from "../components/stale-utils";
-
 export function parseStaleUrlParams(
   searchParams: URLSearchParams,
 ): Urls.StaleContentParams {
@@ -62,8 +60,15 @@ export function parseStaleUserParams(
   };
 }
 
+const STALE_URL_PARAM_KEYS = [
+  "page",
+  "query",
+  "entity-types",
+  "include-personal-collections",
+  "sort-column",
+  "sort-direction",
+] as const;
+
 export function isEmptyStaleParams(searchParams: URLSearchParams): boolean {
-  return Object.values(
-    getStaleParamsWithoutDefaults(parseStaleUrlParams(searchParams)),
-  ).every((value) => value == null);
+  return STALE_URL_PARAM_KEYS.every((key) => !searchParams.has(key));
 }

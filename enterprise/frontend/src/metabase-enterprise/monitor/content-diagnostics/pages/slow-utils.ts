@@ -6,8 +6,6 @@ import {
   SORT_DIRECTIONS,
 } from "metabase-types/api";
 
-import { getSlowParamsWithoutDefaults } from "../components/slow-utils";
-
 export function parseSlowUrlParams(
   searchParams: URLSearchParams,
 ): Urls.SlowContentParams {
@@ -65,8 +63,16 @@ export function parseSlowUserParams(
   };
 }
 
+const SLOW_URL_PARAM_KEYS = [
+  "page",
+  "query",
+  "entity-types",
+  "include-personal-collections",
+  "min-duration-ms",
+  "sort-column",
+  "sort-direction",
+] as const;
+
 export function isEmptySlowParams(searchParams: URLSearchParams): boolean {
-  return Object.values(
-    getSlowParamsWithoutDefaults(parseSlowUrlParams(searchParams)),
-  ).every((value) => value == null);
+  return SLOW_URL_PARAM_KEYS.every((key) => !searchParams.has(key));
 }

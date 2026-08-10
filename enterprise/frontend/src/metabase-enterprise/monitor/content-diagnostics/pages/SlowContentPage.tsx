@@ -29,8 +29,12 @@ export function SlowContentPage() {
     key: "slow",
   });
 
+  const shouldRestoreLastUsedParamsRef = useRef(
+    isEmptySlowParams(searchParams),
+  );
+
   const params = useMemo(() => {
-    return isEmptySlowParams(searchParams)
+    return shouldRestoreLastUsedParamsRef.current
       ? parseSlowUserParams(rawLastUsedParams)
       : parseSlowUrlParams(searchParams);
   }, [searchParams, rawLastUsedParams]);
@@ -50,6 +54,7 @@ export function SlowContentPage() {
   useEffect(() => {
     if (!isInitializingRef.current && !isLoadingParams) {
       isInitializingRef.current = true;
+      shouldRestoreLastUsedParamsRef.current = false;
       navigate(Urls.slowContent(getSlowParamsWithoutDefaults(params)), {
         replace: true,
       });
