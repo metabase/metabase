@@ -47,7 +47,6 @@ import {
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
-import { getIsDownloadingToImage } from "metabase/visualizations/redux/downloads";
 import {
   type CardSlownessStatus,
   type ClickActionModeGetter,
@@ -81,6 +80,7 @@ import type {
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
+import { getIsDownloadingToImage } from "../../redux/downloads";
 import { EmptyVizState } from "../EmptyVizState";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
