@@ -1,11 +1,14 @@
 import { Route } from "metabase/router";
 
-import { MigrateModelsPage } from "./pages/MigrateModelsPage";
+const migrateModelsPage = () =>
+  import("./pages/MigrateModelsPage").then(({ MigrateModelsPage }) => ({
+    Component: MigrateModelsPage,
+  }));
 
 export function getTransformToolsRoutes() {
   return (
     <Route path="tools">
-      <Route path="migrate-models" element={<MigrateModelsPage />} />
+      <Route path="migrate-models" lazy={migrateModelsPage} />
     </Route>
   );
 }

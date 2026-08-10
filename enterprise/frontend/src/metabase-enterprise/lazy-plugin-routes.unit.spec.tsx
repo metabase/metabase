@@ -6,11 +6,16 @@ import {
   getAiControlsUpsellRoutes,
 } from "metabase-enterprise/ai-controls/routes";
 import getApplicationPermissionsRoutes from "metabase-enterprise/application_permissions/routes";
+import { getRoutes as getDataAppRoutes } from "metabase-enterprise/data_apps/routes";
+import { getDataStudioDependencyRoutes } from "metabase-enterprise/dependencies/routes";
+import { getTransformToolsRoutes } from "metabase-enterprise/replacement/routes";
 import { getDataStudioSchemaViewerRoutes } from "metabase-enterprise/schema_viewer/routes";
+import { getRoutes as getTableEditingRoutes } from "metabase-enterprise/table-editing/routes";
 import {
   getInspectorRoutes,
   getInspectorUpsellRoutes,
 } from "metabase-enterprise/transforms-inspector/routes";
+import { getPythonTransformsRoutes } from "metabase-enterprise/transforms-python/routes";
 
 /**
  * A plugin route factory names its page in an `import()` rather than importing
@@ -41,6 +46,11 @@ const FACTORIES: [string, ReactNode, number][] = [
   ["transforms inspector", getInspectorRoutes(), 2],
   ["transforms inspector upsell", getInspectorUpsellRoutes(), 2],
   ["application permissions", getApplicationPermissionsRoutes(), 1],
+  ["table editing", getTableEditingRoutes(), 1],
+  ["python transforms", getPythonTransformsRoutes(), 1],
+  ["model replacement", getTransformToolsRoutes(), 1],
+  ["data studio dependencies", getDataStudioDependencyRoutes(), 1],
+  ["data apps", getDataAppRoutes(), 3],
 ];
 
 describe("lazy plugin routes", () => {
