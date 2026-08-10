@@ -107,13 +107,6 @@ backend_ci: &backend_ci
   - ".github/workflows/backend.yml"
   - ".github/workflows/drivers.yml"
 
-backend_presto_kerberos:
-  - "**/presto_jdbc/**"
-  - "**/presto-jdbc/**" # the driver module has a hyphen. underscores are classpaths
-  - "**/presto_jdbc.clj"
-  - "**/presto_jdbc_test.clj"
-  - ".github/workflows/presto-kerberos-integration-test.yml"
-
 backend_sources: &backend_sources
   - *shared_sources
   - "**deps.edn"
@@ -223,11 +216,6 @@ i18n:
   - ".github/actions/prepare-backend/**"
   - ".github/workflows/i18n.yml"
   - *sources
-
-visualizations:
-  - "frontend/src/metabase/visualizations/**"
-  - "frontend/src/metabase/static-viz/**"
-  - "src/metabase/pulse/**"
 
 cljs:
   - *shared_sources
