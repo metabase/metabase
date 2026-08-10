@@ -84,7 +84,7 @@ const getRowShiftSelectHandler = ({
       return;
     }
     if (
-      event.target instanceof HTMLElement &&
+      event.target instanceof Element &&
       event.target.closest("[data-ignore-row-selection]")
     ) {
       return;

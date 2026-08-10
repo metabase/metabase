@@ -863,8 +863,18 @@ describe("scenarios > collection defaults", () => {
           // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/item(s)? selected/).should("not.exist");
 
-          cy.log("the overflow menu can start a selection");
-          H.openUnpinnedItemMenu("Orders, Count");
+          cy.log(
+            "shift+clicking the ellipsis opens the menu without selecting",
+          );
+          H.getUnpinnedSection()
+            .findByText("Orders, Count")
+            .closest("tr")
+            .findByRole("button", { name: "Actions" })
+            .click({ shiftKey: true });
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+          cy.findByText(/item(s)? selected/).should("not.exist");
+
+          cy.log("the open overflow menu can start a selection");
           H.popover().findByText("Select").click();
           // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
           cy.findByText("1 item selected").should("be.visible");

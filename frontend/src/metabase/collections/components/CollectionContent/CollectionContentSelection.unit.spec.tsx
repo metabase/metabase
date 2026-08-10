@@ -11,7 +11,7 @@ import {
   setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
@@ -338,5 +338,20 @@ describe("CollectionContent selection", () => {
     await userEvent.click(await screen.findByText("Select"));
 
     expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+  });
+
+  it("should open a row menu without selecting on shift+click", async () => {
+    await setup();
+    const row = screen.getByRole("row", {
+      name: new RegExp(tableQuestion.name),
+    });
+    const actions = within(row).getByRole("button", { name: "Actions" });
+
+    fireEvent.click(within(actions).getByLabelText("ellipsis icon"), {
+      shiftKey: true,
+    });
+
+    expect(await screen.findByText("Select")).toBeInTheDocument();
+    expect(screen.queryByText(/items? selected/)).not.toBeInTheDocument();
   });
 });
