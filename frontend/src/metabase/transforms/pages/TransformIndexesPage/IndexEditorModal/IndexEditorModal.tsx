@@ -11,10 +11,6 @@ import {
   trackTransformIndexCreated,
   trackTransformIndexUpdated,
 } from "metabase/transforms/analytics";
-import {
-  useCreateTableIndexMutation,
-  useUpdateTableIndexMutation,
-} from "metabase/transforms/api/index-manager";
 import { type ComboboxItem, Modal, Text } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
 import type {
@@ -23,6 +19,11 @@ import type {
   TableIndexEntry,
   Transform,
 } from "metabase-types/api";
+
+import {
+  useCreateTableIndexMutation,
+  useUpdateTableIndexMutation,
+} from "../../../api/index-manager";
 
 import { IndexEditorForm } from "./IndexEditorForm";
 import type { IndexKindOption } from "./types";

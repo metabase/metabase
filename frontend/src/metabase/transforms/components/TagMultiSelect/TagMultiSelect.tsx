@@ -4,10 +4,6 @@ import { jt, t } from "ttag";
 
 import { useMetadataToasts } from "metabase/common/hooks";
 import {
-  useCreateTransformTagMutation,
-  useListTransformTagsQuery,
-} from "metabase/transforms/api/transform-tag";
-import {
   ActionIcon,
   Icon,
   Loader,
@@ -18,6 +14,11 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
+
+import {
+  useCreateTransformTagMutation,
+  useListTransformTagsQuery,
+} from "../../api/transform-tag";
 
 import { DeleteTagModal } from "./DeleteTagModal";
 import S from "./TagMultiSelect.module.css";

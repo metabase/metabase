@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useListJobRunTransformRunsQuery } from "metabase/transforms/api/transform-job";
 import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import {
@@ -22,6 +21,8 @@ import type {
   TransformJobRun,
   TransformRunForJobRun,
 } from "metabase-types/api";
+
+import { useListJobRunTransformRunsQuery } from "../../../api/transform-job";
 
 import { JobRunInfoSection } from "./JobRunInfoSection";
 import S from "./JobRunSidebar.module.css";

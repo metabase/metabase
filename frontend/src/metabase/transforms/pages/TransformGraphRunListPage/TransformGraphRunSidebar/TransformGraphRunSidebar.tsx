@@ -16,7 +16,6 @@ import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { useListJobRunTransformRunsQuery } from "metabase/transforms/api/transform-job";
 import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { isActiveRunStatus } from "metabase/transforms/utils";
@@ -40,6 +39,7 @@ import type {
   TransformRunForJobRun,
 } from "metabase-types/api";
 
+import { useListJobRunTransformRunsQuery } from "../../../api/transform-job";
 import { TransformRunItem } from "../../JobRunListPage/JobRunSidebar/TransformRunItem";
 import { RunName, isDeletedRun } from "../TransformGraphRunTable";
 

@@ -10,7 +10,6 @@ import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { useListTransformJobsQuery } from "metabase/transforms/api/transform-job";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { TransformBadge } from "metabase/transforms/components/TransformBadge/TransformBadge";
 import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
@@ -30,6 +29,7 @@ import {
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 
+import { useListTransformJobsQuery } from "../../api/transform-job";
 import { JobListMoreMenu } from "../../components/JobListMoreMenu";
 import { JobMoreMenu } from "../../components/JobMoreMenu";
 

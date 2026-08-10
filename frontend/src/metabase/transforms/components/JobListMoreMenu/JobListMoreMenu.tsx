@@ -2,9 +2,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/common/hooks";
-import { useBulkUpdateTransformJobsActiveMutation } from "metabase/transforms/api/transform-job";
 import { Button, Icon, Menu } from "metabase/ui";
 import type { TransformJob } from "metabase-types/api";
+
+import { useBulkUpdateTransformJobsActiveMutation } from "../../api/transform-job";
 
 import { DisableAllJobsModal } from "./DisableAllJobsModal";
 import type { JobListMoreMenuModalType } from "./types";

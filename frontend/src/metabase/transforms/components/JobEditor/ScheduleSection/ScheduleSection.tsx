@@ -17,13 +17,13 @@ import { isScheduleCronValue } from "metabase/common/components/Schedule/types";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
-import { useRunTransformJobMutation } from "metabase/transforms/api/transform-job";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type { ScheduleDisplayType } from "metabase-types/api";
 
 import { trackTransformJobTriggerManualRun } from "../../../analytics";
+import { useRunTransformJobMutation } from "../../../api/transform-job";
 import { RunButton } from "../../RunButton";
 import { RunStatus } from "../../RunStatus";
 import type { TransformJobInfo } from "../types";
