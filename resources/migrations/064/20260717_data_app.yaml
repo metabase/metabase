@@ -267,3 +267,4 @@ databaseChangeLog:
             referencedTableName: permissions_group
             referencedColumnNames: id
             constraintName: fk_data_app_permission_group_id
+            onDelete: SET NULL
