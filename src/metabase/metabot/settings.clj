@@ -399,6 +399,7 @@
 - `ai_usage_log`
 - `metabot_conversation`
 - `metabot_message`
+- `agent_api_call_log`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
-If set to 0, Metabase will keep all rows.")
+If set to 0, Metabase will keep all rows. If you don't set this variable, Metabase keeps rows for 180 days.")

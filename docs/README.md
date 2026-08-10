@@ -253,6 +253,7 @@ Metabase's reference documentation.
 - [Scheduled jobs](./monitor/scheduled-jobs.md)
 - [Application logs](./monitor/application-logs.md)
 - [Model persistence log](./monitor/model-persistence-log.md)
+- [CLI analytics](./monitor/cli-analytics.md)
 
 ### Tools
 
