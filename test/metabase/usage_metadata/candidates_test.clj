@@ -166,6 +166,81 @@
                            :table_id (mt/id :orders)
                            :signature_hash (:signature_hash candidate)))))))
 
+(deftest candidate-repository-pages-encapsulate-persisted-schema-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                       :trigger           :manual
+                                                       :algorithm_version 1
+                                                       :source_config     {}
+                                                       :finished_at       (mi/now)}
+                 :model/UsageMetadataCandidate first-candidate
+                 (assoc (candidate-row (:id run) (mt/id :orders))
+                        :suggested_name "Alpha orders"
+                        :display_name "Alpha orders")
+                 :model/UsageMetadataCandidate second-candidate
+                 (assoc (candidate-row (:id run) (mt/id :orders))
+                        :candidate_type :measure
+                        :signature_hash (apply str (repeat 64 "b"))
+                        :signature "[\"measure\"]"
+                        :suggested_name "Zulu orders"
+                        :display_name "Zulu orders"
+                        :sort_position 1)]
+    (candidate-repository/dismiss! first-candidate (mt/user->id :crowberto))
+    (try
+      (testing "candidate filtering, ordering, hydration, and dismissal state"
+        (is (=? {:total 2
+                 :rows [{:id (:id second-candidate)
+                         :candidate_type :measure
+                         :modeling_status :missing
+                         :dismissed? false}]}
+                (candidate-repository/candidate-page
+                 (:id run) {} {:limit 1, :offset 1})))
+        (is (=? {:total 1
+                 :rows [{:id (:id first-candidate), :dismissed? true}]}
+                (candidate-repository/candidate-page
+                 (:id run)
+                 {:queue :discarded, :search "alpha"}
+                 {:limit 10, :offset 0}))))
+      (testing "table aggregation and response dependencies"
+        (is (=? {:total 1
+                 :rows [{:candidate-count 2
+                         :table {:id (mt/id :orders)
+                                 :database {:id (mt/id)}}}]}
+                (candidate-repository/table-page
+                 (:id run) {} {:limit 10, :offset 0}))))
+      (finally
+        (candidate-repository/restore! first-candidate)))))
+
+(deftest candidate-repository-detail-hydrates-related-records-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                       :trigger           :manual
+                                                       :algorithm_version 1
+                                                       :source_config     {}
+                                                       :finished_at       (mi/now)}
+                 :model/UsageMetadataCandidate candidate (candidate-row (:id run) (mt/id :orders))]
+    (t2/insert! :model/UsageMetadataCandidateSource
+                {:candidate_id      (:id candidate)
+                 :card_id           123456
+                 :card_name         "Orders question"
+                 :card_type         :question
+                 :verified          true
+                 :official          false
+                 :popular           true
+                 :recent_view_count 12
+                 :joined            false
+                 :stage_numbers     [0]
+                 :model_lineage     []})
+    (t2/insert! :model/UsageMetadataCandidateMatch
+                {:candidate_id (:id candidate)
+                 :relation     :exact
+                 :entity_id    654321
+                 :entity_name  "Recent orders"})
+    (is (=? {:candidate {:id (:id candidate)}
+             :table {:id (mt/id :orders), :database {:id (mt/id)}}
+             :dismissed? false
+             :sources [{:card_id 123456, :card_type :question, :stage_numbers [0]}]
+             :matches [{:relation :exact, :entity_id 654321}]}
+            (candidate-repository/candidate-detail candidate)))))
+
 (deftest candidate-query-definitions-are-serialized-at-the-model-boundary-test
   (let [metadata-provider (lib-be/application-database-metadata-provider (mt/id))
         table             (lib.metadata/table metadata-provider (mt/id :orders))
