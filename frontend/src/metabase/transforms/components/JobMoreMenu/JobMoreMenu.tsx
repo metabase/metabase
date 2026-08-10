@@ -3,10 +3,11 @@ import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
-import { useUpdateTransformJobMutation } from "metabase/transforms/api/transform-job";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
+
+import { useUpdateTransformJobMutation } from "../../api/transform-job";
 
 import { DeleteJobModal } from "./DeleteJobModal";
 import type { JobMoreMenuModalType } from "./types";

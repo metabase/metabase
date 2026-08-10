@@ -6,9 +6,10 @@ import {
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { useDeleteTransformTagMutation } from "metabase/transforms/api/transform-tag";
 import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import type { TransformTag } from "metabase-types/api";
+
+import { useDeleteTransformTagMutation } from "../../../api/transform-tag";
 
 type DeleteTagModalProps = {
   tag: TransformTag;

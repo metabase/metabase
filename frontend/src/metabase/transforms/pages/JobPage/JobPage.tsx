@@ -5,10 +5,6 @@ import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useParams } from "metabase/router";
-import {
-  useGetTransformJobQuery,
-  useUpdateTransformJobMutation,
-} from "metabase/transforms/api/transform-job";
 import { useJobHeaderState } from "metabase/transforms/hooks/use-job-header-state";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
@@ -20,6 +16,10 @@ import type {
   TransformTagId,
 } from "metabase-types/api";
 
+import {
+  useGetTransformJobQuery,
+  useUpdateTransformJobMutation,
+} from "../../api/transform-job";
 import { JobEditor } from "../../components/JobEditor";
 import { JobMoreMenu } from "../../components/JobMoreMenu";
 import { JobTabs } from "../../components/JobTabs";

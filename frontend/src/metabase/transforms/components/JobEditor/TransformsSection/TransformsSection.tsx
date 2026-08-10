@@ -7,7 +7,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import CS from "metabase/css/core/index.css";
 import { useNavigate } from "metabase/router";
-import { useListTransformJobTransformsQuery } from "metabase/transforms/api/transform-job";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -15,6 +14,8 @@ import type {
   TransformJobId,
   TransformRun,
 } from "metabase-types/api";
+
+import { useListTransformJobTransformsQuery } from "../../../api/transform-job";
 
 import type { TransformRunByTransformId } from "./types";
 import { useJobRunTransformRuns } from "./use-job-run-transform-runs";

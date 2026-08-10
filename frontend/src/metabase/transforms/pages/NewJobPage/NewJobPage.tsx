@@ -6,14 +6,14 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
-import {
-  useCreateTransformJobMutation,
-  useLazyGetTransformJobQuery,
-} from "metabase/transforms/api/transform-job";
 import * as Urls from "metabase/urls";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { trackTransformJobCreated } from "../../analytics";
+import {
+  useCreateTransformJobMutation,
+  useLazyGetTransformJobQuery,
+} from "../../api/transform-job";
 import { JobEditor, type TransformJobInfo } from "../../components/JobEditor";
 
 export function NewJobPage() {
