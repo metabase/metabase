@@ -38,10 +38,7 @@ export default {
   decorators: [createWaitForResizeToStopDecorator()],
 };
 
-const DefaultTemplate: StoryFn<{
-  series: RawSeries;
-  isDashboard?: boolean;
-}> = ({
+const DefaultTemplate = ({
   series,
   isDashboard,
   bgColor = "core-white",
