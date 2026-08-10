@@ -204,7 +204,7 @@ const elements = [
   createElement({
     type: "shared",
     name: "schema",
-    pattern: "frontend/src/metabase/schema.js",
+    pattern: "frontend/src/metabase/schema.ts",
     mode: "full",
     enforceSharedTiers: false,
   }),

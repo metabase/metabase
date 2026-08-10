@@ -6,20 +6,54 @@ import { entityTypeForObject } from "metabase/redux/store/entities";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
+import type {
+  CacheConfig,
+  Card,
+  Collection,
+  Dashboard,
+  Database,
+  DatabaseId,
+  Field,
+  ForeignKey,
+  Measure,
+  Metric,
+  NativeQuerySnippet,
+  Schema,
+  SchemaId,
+  SchemaName,
+  Segment,
+  Table,
+} from "metabase-types/api";
 
-export const QuestionSchema = new schema.Entity("questions");
-export const CacheConfigSchema = new schema.Entity("cacheConfigs");
-export const DashboardSchema = new schema.Entity("dashboards");
-export const CollectionSchema = new schema.Entity("collections");
+export const QuestionSchema = new schema.Entity<Card>("questions");
+export const CacheConfigSchema = new schema.Entity<CacheConfig>("cacheConfigs");
+export const DashboardSchema = new schema.Entity<Dashboard>("dashboards");
+export const CollectionSchema = new schema.Entity<Collection>("collections");
 
-export const DatabaseSchema = new schema.Entity("databases");
-export const SchemaSchema = new schema.Entity("schemas");
+export const DatabaseSchema = new schema.Entity<Database>("databases");
+export const SchemaSchema = new schema.Entity<Schema>("schemas");
+
+type TableEntitySchema = {
+  id: SchemaId;
+  name: SchemaName | null;
+  database: Pick<Database, "id" | "is_saved_questions">;
+};
+
+// also accepts partial payloads (e.g. `{ id, fks }` from loadTableFks) and
+// tables whose `schema` was already converted to an object
+type TableEntityData = Partial<Omit<Table, "schema">> &
+  Pick<Table, "id"> & {
+    schema?: SchemaName | TableEntitySchema | null;
+    schema_name?: SchemaName | null;
+    original_fields?: Field[];
+  };
+
 export const TableSchema = new schema.Entity(
   "tables",
   {},
   {
     // convert "schema" returned by API as a string value to an object that can be normalized
-    processStrategy({ ...table }) {
+    processStrategy({ ...table }: TableEntityData) {
       // Saved questions are represented as database tables,
       // and collections they're saved to as schemas
       // Virtual tables ID are strings like "card__45" (where 45 is a question ID)
@@ -27,7 +61,9 @@ export const TableSchema = new schema.Entity(
 
       const databaseId = isVirtualSchema
         ? SAVED_QUESTIONS_VIRTUAL_DB_ID
-        : table.db_id;
+        : // a table carrying a raw string `schema` always carries `db_id`; partial
+          // payloads without it (e.g. `{ id, fks }`) skip the schema branch below
+          (table.db_id as DatabaseId);
       if (typeof table.schema === "string" || table.schema === null) {
         table.schema_name = table.schema;
         table.schema = {
@@ -49,25 +85,33 @@ export const TableSchema = new schema.Entity(
   },
 );
 
+type FieldEntityData = Partial<Field> & Pick<Field, "id">;
+
+export type FieldEntity = FieldEntityData & { uniqueId: number | string };
+
 export const FieldSchema = new schema.Entity("fields", undefined, {
-  processStrategy(field) {
+  processStrategy(field: FieldEntityData): FieldEntity {
     const uniqueId = getUniqueFieldId(field);
     return {
       ...field,
       uniqueId,
     };
   },
-  idAttribute: (field) => {
-    return getUniqueFieldId(field);
+  idAttribute: (field: FieldEntityData) => {
+    // getUniqueFieldId can return a number, which normalizr accepts at runtime
+    // (ids end up as object keys), but its SchemaFunction type is string-only
+    return getUniqueFieldId(field) as string;
   },
 });
 
-export const ForeignKeySchema = new schema.Entity("foreignKeys");
-export const SegmentSchema = new schema.Entity("segments");
-export const MeasureSchema = new schema.Entity("measures");
-export const MetricSchema = new schema.Entity("metrics");
-export const SnippetSchema = new schema.Entity("snippets");
-export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
+export const ForeignKeySchema = new schema.Entity<ForeignKey>("foreignKeys");
+export const SegmentSchema = new schema.Entity<Segment>("segments");
+export const MeasureSchema = new schema.Entity<Measure>("measures");
+export const MetricSchema = new schema.Entity<Metric>("metrics");
+export const SnippetSchema = new schema.Entity<NativeQuerySnippet>("snippets");
+export const SnippetCollectionSchema = new schema.Entity<Collection>(
+  "snippetCollections",
+);
 
 DatabaseSchema.define({
   tables: [TableSchema],
@@ -127,7 +171,10 @@ export const ENTITIES_SCHEMA_MAP = {
 
 export const ObjectUnionSchema = new schema.Union(
   ENTITIES_SCHEMA_MAP,
-  (object, parent, key) => entityTypeForObject(object),
+  // entityTypeForObject returns undefined for unknown models, which normalizr
+  // tolerates at runtime (the value is left unnormalized), but its declared
+  // SchemaFunction type does not
+  (object: { model: string }) => entityTypeForObject(object) as string,
 );
 
 CollectionSchema.define({
