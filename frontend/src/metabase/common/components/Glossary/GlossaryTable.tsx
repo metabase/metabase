@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import type { GlossaryItem } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { EmptyState } from "metabase/common/components/EmptyState";
 import { Table as CommonTable } from "metabase/common/components/Table/Table";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { useSetting } from "metabase/settings";
@@ -19,6 +18,8 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type { SortDirection } from "metabase-types/api";
+
+import { EmptyState } from "../EmptyState";
 
 import S from "./Glossary.module.css";
 import { GlossaryRowEditor } from "./GlossaryRowEditor";
