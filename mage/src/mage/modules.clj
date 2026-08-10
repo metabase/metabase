@@ -339,7 +339,7 @@
                       (get driver-directory->drivers dir-name))))
           updated-files)))
 
-;;; driver quarantine / status
+;;; driver status
 
 (def ^:private ci-test-config-url
   "https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json")
@@ -382,14 +382,14 @@
                                 (.getMessage e) "); treating all drivers as required."))))
       #{})))
 
-(defn- effective-quarantined-drivers
-  "Set of quarantined drivers to actually enforce for this run.
+(defn- effective-skipped-drivers
+  "Set of skipped drivers to actually enforce for this run.
 
-   The quarantine list is fetched on the fly from a remote file (ci-test-config.json, see
+   The skip list is fetched on the fly from a remote file (ci-test-config.json, see
    [[skip-drivers]]) and can change at any time. We intentionally IGNORE it on `master` and
-   `release-*` branches: there, every driver must run and gate, so a stray remote quarantine entry
-   can't silently disable a driver's tests (nor raise a quarantine-conflict, which would fail a push
-   demanding a PR-only label). On PR/feature branches the quarantine is honored, subject to the
+   `release-*` branches: there, every driver must run and gate, so a stray remote skip entry
+   can't silently disable a driver's tests (nor raise a skip-conflict, which would fail a push
+   demanding a PR-only label). On PR/feature branches the skip list is honored, subject to the
    ci:run-<driver> label."
   [skipped is-master-or-release]
   (if is-master-or-release
@@ -429,7 +429,7 @@
   [driver
    {:keys [is-master-or-release pr-labels skip particular-driver-changed?]}
    driver-deps-affected?
-   quarantined-drivers
+   skipped-drivers
    updated]
   (cond
     ;; Priority 1: Global skip (no backend changes)
@@ -450,14 +450,14 @@
                "ci:run-all-drivers label"
                (str (run-driver-label driver) " label"))}
 
-    ;; Priority 4: Quarantined drivers are skipped; Priority 3 is the way to force one to run.
-    ;; On master/release this set is empty (see [[effective-quarantined-drivers]]), so quarantine is
+    ;; Priority 4: Drivers the CI config marks `skip`; Priority 3 is the way to force one to run.
+    ;; On master/release this set is empty (see [[effective-skipped-drivers]]), so the skip list is
     ;; ignored there and we fall through to Priority 5.
-    (contains? quarantined-drivers driver)
+    (contains? skipped-drivers driver)
     {:should-run false
-     :reason "driver is quarantined"}
+     :reason "driver is skipped by CI config"}
 
-    ;; Priority 5: Master/release branch - all (non-quarantined) drivers run
+    ;; Priority 5: Master/release branch - every driver the CI config does not skip runs
     is-master-or-release
     {:should-run true
      :reason "master/release branch"}
@@ -524,10 +524,10 @@
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
              :particular-driver-changed? particular-driver-changed?}
-        ;; On master/release we drop the remote quarantine list entirely (see
-        ;; [[effective-quarantined-drivers]]) so every driver runs and gates, and no
-        ;; quarantine-conflict is raised.
-        quarantined (effective-quarantined-drivers (skip-drivers) is-master-or-release)
+        ;; On master/release we drop the remote skip list entirely (see
+        ;; [[effective-skipped-drivers]]) so every driver runs and gates, and no
+        ;; skip-conflict is raised.
+        skipped (effective-skipped-drivers (skip-drivers) is-master-or-release)
         updated-files (u/updated-files git-ref)
         updated (updated-files->updated-modules updated-files)
         driver-affected? (driver-deps-affected? updated)
@@ -535,24 +535,24 @@
         ;; For module dependency check, combine both conditions
         effective-driver-affected? (or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver ctx effective-driver-affected? quarantined updated)
+                          (assoc (driver-decision driver ctx effective-driver-affected? skipped updated)
                                  :driver driver))
                         all-drivers)
-        ;; Check for quarantined drivers with file changes but no ci:run-<driver> label
-        quarantined-with-changes (into #{}
-                                       (filter (fn [driver]
-                                                 (and (contains? quarantined driver)
-                                                      (contains? particular-driver-changed? driver)
-                                                      (not (contains? (:pr-labels ctx)
-                                                                      (run-driver-label driver))))))
-                                       all-drivers)]
+        ;; Check for skipped drivers with file changes but no ci:run-<driver> label
+        skipped-with-changes (into #{}
+                                   (filter (fn [driver]
+                                             (and (contains? skipped driver)
+                                                  (contains? particular-driver-changed? driver)
+                                                  (not (contains? (:pr-labels ctx)
+                                                                  (run-driver-label driver))))))
+                                   all-drivers)]
     (if github-output-only?
       ;; In github-output-only mode, print just the key=value lines (no colors)
       (do
         (doseq [{:keys [driver should-run]} decisions]
           (println (str (name driver) "-should-run=" should-run)))
-        (doseq [driver quarantined-with-changes]
-          (println (str (name driver) "-quarantine-conflict=true"))))
+        (doseq [driver skipped-with-changes]
+          (println (str (name driver) "-skip-conflict=true"))))
       (do
         ;; Print module analysis summary
         (println "")
@@ -578,14 +578,14 @@
           (println (c/yellow (str "\n=== Drivers to Skip (" (count drivers-to-skip) ") ===")))
           (doseq [{:keys [driver]} drivers-to-skip]
             (println (str (name driver) "-should-run=false"))))
-        ;; Output quarantine conflict warnings with colors
-        (when (seq quarantined-with-changes)
+        ;; Output skip conflict warnings with colors
+        (when (seq skipped-with-changes)
           (println "")
-          (println (c/red "⚠️  WARNING: Quarantined driver(s) have file changes but tests will NOT run!"))
-          (println (c/red "=== Quarantine Conflicts ==="))
-          (doseq [driver quarantined-with-changes]
+          (println (c/red "⚠️  WARNING: Skipped driver(s) have file changes but tests will NOT run!"))
+          (println (c/red "=== Skip Conflicts ==="))
+          (doseq [driver skipped-with-changes]
             (println (c/red (str "  • " (name driver) " - add label '" (run-driver-label driver) "' to run tests")))
-            (println (str (name driver) "-quarantine-conflict=true"))))))
+            (println (str (name driver) "-skip-conflict=true"))))))
     (u/exit 0)))
 
 (defn -main
