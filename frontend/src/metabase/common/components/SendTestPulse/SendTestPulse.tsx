@@ -3,7 +3,11 @@ import { t } from "ttag";
 
 import { ActionButton } from "metabase/common/components/ActionButton";
 import { cleanPulse } from "metabase/pulse";
-import type { Channel, ChannelSpecs, DashboardSubscriptionData  } from "metabase-types/api";
+import type {
+  Channel,
+  ChannelSpecs,
+  DashboardSubscriptionData,
+} from "metabase-types/api";
 
 type SendTestPulseProps<T extends DashboardSubscriptionData> = {
   channel: Channel;

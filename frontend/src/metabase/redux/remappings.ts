@@ -16,7 +16,6 @@ import type {
   RowValue,
 } from "metabase-types/api";
 
-
 export const addRemappings =
   (fieldId: FieldId, remappings: FieldValue[]) =>
   (dispatch: Dispatch, getState: GetState) => {

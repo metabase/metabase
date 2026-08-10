@@ -1,9 +1,11 @@
-import type { ChannelApiResponse,
+import type {
+  ChannelApiResponse,
   CreateSubscriptionRequest,
   DashboardSubscription,
   DashboardSubscriptionData,
   ListSubscriptionsRequest,
-  UpdateSubscriptionRequest } from "metabase-types/api";
+  UpdateSubscriptionRequest,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 import {

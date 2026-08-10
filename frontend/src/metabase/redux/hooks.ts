@@ -9,7 +9,6 @@ import {
 import { metabaseReduxContext } from "metabase/api/context";
 import type { State } from "metabase/redux/store";
 
-
 export const useStore: () => Store<State, AnyAction> =
   createStoreHook(metabaseReduxContext);
 export const useDispatch: () => ThunkDispatch<State, void, AnyAction> =

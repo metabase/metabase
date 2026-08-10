@@ -1,5 +1,5 @@
 import MetabaseSettings from "metabase/utils/settings";
-import type { DashboardSubscriptionData, Parameter  } from "metabase-types/api";
+import type { DashboardSubscriptionData, Parameter } from "metabase-types/api";
 
 import {
   type RecipientPickerValue,

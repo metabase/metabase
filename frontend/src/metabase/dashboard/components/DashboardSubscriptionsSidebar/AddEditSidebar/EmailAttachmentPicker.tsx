@@ -14,7 +14,10 @@ import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsW
 import type { ExportFormat } from "metabase/common/types/export";
 import CS from "metabase/css/core/index.css";
 import { Box, Checkbox, Group, Icon, Switch, Text, Tooltip } from "metabase/ui";
-import type { DraftDashboardSubscription, SubscriptionSupportingCard  } from "metabase-types/api";
+import type {
+  DraftDashboardSubscription,
+  SubscriptionSupportingCard,
+} from "metabase-types/api";
 
 import S from "./EmailAttachmentPicker.module.css";
 

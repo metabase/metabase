@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import { Api, useApiDispatch, useRefreshTokenStatusMutation } from "metabase/api";
 import { useGetSettingsQuery } from "metabase/settings";
 import type { TokenStatusFeature } from "metabase-types/api";
+
+import { Api, useApiDispatch } from "../api";
+import { useRefreshTokenStatusMutation } from "../premium-features";
 
 const REFRESH_INTERVAL = 10 * 1000; // 10 seconds
 

@@ -12,7 +12,8 @@ import {
   getDefaultValuePopulatedParameters,
   normalizeParameterValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { Alert,
+import type {
+  Alert,
   Channel,
   ChannelApiResponse,
   ChannelSpec,
@@ -21,7 +22,8 @@ import type { Alert,
   DashboardSubscriptionData,
   Parameter,
   ScheduleSettings,
-  User } from "metabase-types/api";
+  User,
+} from "metabase-types/api";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,

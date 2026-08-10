@@ -5,11 +5,13 @@ import { subscriptionApi } from "metabase/api";
 import { createThunkAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import type { ChannelApiResponse,
+import type {
+  ChannelApiResponse,
   CreateSubscriptionRequest,
   DashboardSubscription,
   DraftDashboardSubscription,
-  UpdateSubscriptionRequest } from "metabase-types/api";
+  UpdateSubscriptionRequest,
+} from "metabase-types/api";
 
 import { getEditingPulse } from "./selectors";
 

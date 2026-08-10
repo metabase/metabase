@@ -14,7 +14,12 @@ import {
   PULSE_PARAM_USE_DEFAULT,
   getDefaultValuePopulatedParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { Dashboard, DraftDashboardSubscription, Parameter, ParameterId  } from "metabase-types/api";
+import type {
+  Dashboard,
+  DraftDashboardSubscription,
+  Parameter,
+  ParameterId,
+} from "metabase-types/api";
 
 import { getSortedParameters } from "./utils";
 
