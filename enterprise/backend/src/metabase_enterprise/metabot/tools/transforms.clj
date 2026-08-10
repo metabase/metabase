@@ -17,10 +17,10 @@
 ;; Hand-built, not clojure.data.xml: escaping the source breaks `old_string` matching
 ;; (see [[metabase.metabot.tools.transforms/format-transform-details-output]]).
 (defn- format-python-library-output
-  [{:keys [path content]}]
+  [{:keys [path source]}]
   (->> [(str "<python-library path=\"" (llm-shape/escape-xml path) "\">")
-        (when content
-          (str "  <content>" content "</content>"))
+        (when source
+          (str "  <content>" source "</content>"))
         "</python-library>"]
        (remove nil?)
        (str/join "\n")))
@@ -29,7 +29,7 @@
 ;;; Tool definitions
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defenterprise-schema get-transform-python-library-details-tool
+(defenterprise-schema get-transform-python-library-details-tool :- :map
   "Get information about a Python library by path."
   :feature :transforms-python
   [{:keys [path]} :- [:map {:closed true} [:path :string]]]
