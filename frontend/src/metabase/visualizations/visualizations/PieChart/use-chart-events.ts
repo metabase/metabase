@@ -8,7 +8,6 @@ import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import { getTotalValue } from "metabase/visualizations/echarts/tooltip/utils";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type {
   PieChartModel,
@@ -24,6 +23,7 @@ import {
   getMarkerColorClass,
   useClickedStateTooltipSync,
 } from "metabase/visualizations/echarts/tooltip";
+import { getTotalValue } from "metabase/visualizations/echarts/tooltip/utils";
 import { getValueFromDimensionKey } from "metabase/visualizations/shared/settings/pie";
 import type {
   ClickObject,
