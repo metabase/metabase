@@ -54,7 +54,7 @@ const MultiStepPopoverContent = ({
   )?.props.children;
 
   const targetElement = findChild(
-    (child): child is ReactElement => child.type === Target,
+    (child): child is ReactElement<PropsWithChildren> => child.type === Target,
   )?.props.children;
 
   return (

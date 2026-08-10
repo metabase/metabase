@@ -2,6 +2,7 @@ import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import {
   Children,
+  type ReactElement,
   type ReactNode,
   cloneElement,
   forwardRef,
@@ -331,7 +332,10 @@ export const NativeQueryEditorRoot = forwardRef<
   const bodySlots: ReactNode[] = [];
   Children.toArray(children).forEach((child) => {
     if (isValidElement(child) && child.type === TopBar) {
-      topBar = cloneElement(child, { ref: topBarRef });
+      // TopBar forwards its ref; type the element so cloneElement accepts it.
+      topBar = cloneElement(child as ReactElement<{ ref?: typeof topBarRef }>, {
+        ref: topBarRef,
+      });
     } else {
       bodySlots.push(child);
     }
