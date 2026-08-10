@@ -52,6 +52,18 @@
     {:permission_group_id     (:id group)
      :resource_collection_id (:id collection)}))
 
+(defn reconcile-view-data!
+  "Give `app` view-data access to `database-ids` and block every other database."
+  [app database-ids]
+  (let [group        (permission-group! app)
+        all-database-ids (t2/select-pks-set :model/Database :router_database_id nil)
+        permissions  (data-perms/index-database-permissions [(:id group)] all-database-ids)]
+    (doseq [database-id all-database-ids]
+      (data-perms/set-database-permission! permissions group database-id :perms/view-data
+                                           (if (contains? database-ids database-id)
+                                             :unrestricted
+                                             :blocked)))))
+
 (defn delete-resources!
   "Delete the generated collection and permission group referenced by `app`."
   [{:keys [permission_group_id resource_collection_id]}]
