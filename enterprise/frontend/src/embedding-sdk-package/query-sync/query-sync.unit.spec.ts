@@ -2,7 +2,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { canonicalJson, queryFingerprint } from "./canonical";
+import {
+  canonicalJson,
+  getCanonicalQueryJson,
+  getQueryFingerprint,
+} from "./canonical";
 import { discoverQueries } from "./discover";
 import { checkQuerySync, syncQueries } from "./sync";
 
@@ -10,11 +14,14 @@ function makeApp() {
   const appRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), "data-app-query-sync-"),
   );
+
   fs.mkdirSync(path.join(appRoot, "queries"));
+
   const packageRoot = path.join(
     appRoot,
     "node_modules/@metabase/embedding-sdk-react",
   );
+
   fs.mkdirSync(packageRoot, { recursive: true });
   fs.writeFileSync(
     path.join(packageRoot, "package.json"),
@@ -23,10 +30,12 @@ function makeApp() {
       exports: { "./data-app": "./data-app.js" },
     }),
   );
+
   fs.writeFileSync(
     path.join(packageRoot, "data-app.js"),
     "exports.defineQuery = (query) => query;",
   );
+
   return appRoot;
 }
 
@@ -62,11 +71,11 @@ describe("data app query synchronization", () => {
   });
 
   it("uses a property-order-independent authored DSL fingerprint", () => {
-    const first = queryFingerprint({
+    const first = getQueryFingerprint({
       source: { type: "table", id: 1 },
       limit: 5,
     });
-    const second = queryFingerprint({
+    const second = getQueryFingerprint({
       limit: 5,
       source: { id: 2, type: "table" },
       savedQuestionSourceId: 99,
@@ -75,6 +84,31 @@ describe("data app query synchronization", () => {
     expect(first.tableId).toBe(1);
     expect(second.tableId).toBe(2);
     expect(canonicalJson({ b: 1, a: 2 })).toBe('{"a":2,"b":1}');
+  });
+
+  it("preserves references while normalizing generated query IDs", () => {
+    const queryWithGeneratedIds = (
+      firstId: string,
+      secondId: string,
+      orderById: string,
+    ) => ({
+      stages: [
+        {
+          aggregation: [
+            ["sum", { "lib/uuid": firstId }, ["field", {}, 1]],
+            ["sum", { "lib/uuid": secondId }, ["field", {}, 2]],
+          ],
+          "order-by": [["desc", {}, ["aggregation", {}, orderById]]],
+        },
+      ],
+    });
+    const normalized = (value: unknown) => getCanonicalQueryJson(value);
+    const first = queryWithGeneratedIds("first-a", "second-a", "second-a");
+    const same = queryWithGeneratedIds("first-b", "second-b", "second-b");
+    const different = queryWithGeneratedIds("first-c", "second-c", "first-c");
+
+    expect(normalized(first)).toBe(normalized(same));
+    expect(normalized(first)).not.toBe(normalized(different));
   });
 
   it("identifies the request that failed", async () => {
@@ -330,6 +364,80 @@ describe("data app query synchronization", () => {
           pathname !== `/api/apps/${slug}/query-sync/permissions`,
       ),
     ).toBe(false);
+  });
+
+  it("ignores fresh generated UUIDs when comparing saved questions", async () => {
+    const appRoot = makeApp();
+    const slug = path.basename(appRoot);
+    writeQuery(
+      appRoot,
+      `export const Orders = defineQuery({ savedQuestionSourceId: 35, source: { type: "table", id: 1 } });`,
+    );
+    const [query] = await discoverQueries(appRoot);
+    fs.writeFileSync(
+      path.join(appRoot, "queries_metadata.json"),
+      JSON.stringify([
+        {
+          tableId: query.tableId,
+          hash: query.hash,
+          savedQuestionSourceId: 35,
+        },
+      ]),
+    );
+    const queryWithAggregationUuid = (uuid: string) => ({
+      database: 1,
+      stages: [
+        {
+          aggregation: [["sum", { "lib/uuid": uuid }, ["field", {}, 1]]],
+          "order-by": [["desc", {}, ["aggregation", {}, uuid]]],
+        },
+      ],
+    });
+    const requests: Array<{ method: string; pathname: string }> = [];
+    const log = jest.fn();
+    jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
+      const pathname = new URL(String(input)).pathname;
+      const method = init?.method ?? "GET";
+      requests.push({ method, pathname });
+      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
+      }
+      if (pathname === `/api/apps/${slug}/query` && method === "POST") {
+        return jsonResponse({
+          database_id: 1,
+          dataset_query: queryWithAggregationUuid("fresh-uuid"),
+        });
+      }
+      if (pathname === "/api/card/35" && method === "GET") {
+        return jsonResponse({
+          id: 35,
+          name: "Orders",
+          type: "question",
+          collection_id: 20,
+          dataset_query: queryWithAggregationUuid("saved-uuid"),
+        });
+      }
+      if (pathname === "/api/card/35" && method === "PUT") {
+        return jsonResponse({ id: 35 });
+      }
+      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
+      }
+      throw new Error(`Unexpected ${method} ${pathname}`);
+    });
+
+    await syncQueries({
+      appRoot,
+      metabaseUrl: "http://metabase.test",
+      apiKey: "secret",
+      log,
+    });
+
+    expect(requests).not.toContainEqual({
+      method: "PUT",
+      pathname: "/api/card/35",
+    });
+    expect(log).toHaveBeenCalledWith("unchanged: card 35");
   });
 
   it("deletes only lockfile-proven questions in the bound collection", async () => {
