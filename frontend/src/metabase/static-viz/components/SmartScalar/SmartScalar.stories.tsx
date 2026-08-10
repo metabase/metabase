@@ -3,7 +3,6 @@ import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/static-viz/lib/theme";
 import { colors } from "metabase/ui/colors";
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 import {
@@ -11,6 +10,7 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
+import { DEFAULT_VISUALIZATION_THEME } from "../../lib/theme";
 import { StaticVisualization } from "../StaticVisualization";
 
 const COLS = [

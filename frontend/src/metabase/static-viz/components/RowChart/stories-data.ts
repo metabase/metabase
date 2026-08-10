@@ -2,10 +2,10 @@ import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/static-viz/lib/theme";
 import { color } from "metabase/ui/colors";
 import type { RenderingContext } from "metabase/visualizations/types";
 
+import { DEFAULT_VISUALIZATION_THEME } from "../../lib/theme";
 import type { StaticChartProps } from "../StaticVisualization";
 
 export const renderingContext: RenderingContext = {
