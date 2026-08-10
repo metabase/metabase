@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import EmptyEvent from "assets/img/empty-states/event.svg";

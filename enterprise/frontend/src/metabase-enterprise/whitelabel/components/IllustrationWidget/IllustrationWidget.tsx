@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, JSX } from "react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";

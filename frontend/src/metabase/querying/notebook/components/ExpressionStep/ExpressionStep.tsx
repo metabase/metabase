@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import * as Lib from "metabase-lib";

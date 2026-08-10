@@ -1,4 +1,4 @@
-import type { FocusEvent } from "react";
+import type { FocusEvent, JSX } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 

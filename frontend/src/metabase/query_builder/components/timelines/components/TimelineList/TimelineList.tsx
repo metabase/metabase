@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { TimelineCard } from "metabase/query_builder/components/timelines/components/TimelineCard/TimelineCard";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 

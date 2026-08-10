@@ -1,4 +1,5 @@
 import {
+  type JSX,
   type ReactNode,
   useCallback,
   useLayoutEffect,

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { type JSX, useEffect } from "react";
 import { Outlet, useNavigate } from "react-router";
 
 import { setRouterNavigate } from "./navigator";

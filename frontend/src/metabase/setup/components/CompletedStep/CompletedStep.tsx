@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, type JSX, useState } from "react";
 import { t } from "ttag";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";

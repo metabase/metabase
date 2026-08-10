@@ -4,6 +4,7 @@ import React, {
   type CSSProperties,
   type ComponentType,
   type ErrorInfo,
+  type JSX,
   PureComponent,
   type ReactNode,
   type Ref,

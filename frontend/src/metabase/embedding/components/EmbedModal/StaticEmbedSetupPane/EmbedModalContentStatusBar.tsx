@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 

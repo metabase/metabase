@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { JSX, MouseEvent, ReactNode } from "react";
 
 import { Button } from "metabase/ui";
 

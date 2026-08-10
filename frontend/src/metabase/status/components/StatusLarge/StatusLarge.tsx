@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import type { JSX, PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";

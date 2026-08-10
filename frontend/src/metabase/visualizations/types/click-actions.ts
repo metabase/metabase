@@ -1,4 +1,5 @@
 import type React from "react";
+import type { JSX } from "react";
 
 import type { Dispatch, GetState } from "metabase/redux/store";
 import type * as Lib from "metabase-lib";

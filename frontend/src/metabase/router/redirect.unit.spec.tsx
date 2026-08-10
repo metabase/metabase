@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Outlet, Route } from "metabase/router";
 

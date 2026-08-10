@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { ViewFooterButton } from "metabase/query_builder/components/view/ViewFooterButton";

@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { SkeletonImage } from "./MapSkeleton.styled";
 
 const MapSkeleton = (): JSX.Element => {

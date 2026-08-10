@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import PinDropZone from "metabase/common/collections/components/PinDropZone";
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import CS from "metabase/css/core/index.css";

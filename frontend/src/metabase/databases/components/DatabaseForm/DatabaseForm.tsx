@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { type JSX, useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import { Form, FormProvider } from "metabase/forms";
