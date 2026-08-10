@@ -521,5 +521,8 @@
   "browserslist": [
     "defaults"
   ],
-  "packageManager": "bun@1.3.14"
+  "packageManager": "bun@1.3.14",
+  "patchedDependencies": {
+    "@loki/runner@0.35.0": "patches/@loki%2Frunner@0.35.0.patch"
+  }
 }
