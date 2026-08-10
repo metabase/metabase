@@ -8,8 +8,8 @@ import {
   AIProviderConfigurationForm,
   getProviderOptions,
   parseProviderAndModel,
+  useGetMetabotSettingsQuery,
 } from "metabase/metabot";
-import { useGetMetabotSettingsQuery } from "metabase/metabot/api";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { useAdminSetting, useSetting } from "metabase/settings";
 import { Badge, Flex, Group } from "metabase/ui";

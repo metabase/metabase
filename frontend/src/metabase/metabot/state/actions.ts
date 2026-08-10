@@ -15,7 +15,6 @@ import {
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { listTag } from "metabase/api/tags";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { metabotApi } from "metabase/metabot/api";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
@@ -37,6 +36,7 @@ import type {
   MetabotTransformInfo,
 } from "metabase-types/api";
 
+import { metabotApi } from "../api";
 import {
   METABOT_ERR_MSG,
   type MetabotProfileId,

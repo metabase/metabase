@@ -16,7 +16,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { useUpdateMetabotSlackSettingsMutation } from "metabase/metabot/api";
+import { useUpdateMetabotSlackSettingsMutation } from "metabase/metabot";
 import {
   useAdminSetting,
   useAdminSettings,

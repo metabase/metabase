@@ -5,10 +5,11 @@ import { t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { FormErrorMessage, FormProvider, FormTextInput } from "metabase/forms";
-import { useUpdateMetabotSettingsMutation } from "metabase/metabot/api";
 import { useAdminSettings } from "metabase/settings";
 import { Text } from "metabase/ui";
 import type { BedrockCredentials } from "metabase-types/api";
+
+import { useUpdateMetabotSettingsMutation } from "../../api";
 
 import { useAIProviderConfigurationContext } from "./AIProviderConfigurationContext";
 import {

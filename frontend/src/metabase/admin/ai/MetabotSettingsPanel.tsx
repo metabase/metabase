@@ -10,7 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { useUpdateMetabotMutation } from "metabase/metabot/api";
+import { useUpdateMetabotMutation } from "metabase/metabot";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useAdminSetting } from "metabase/settings";

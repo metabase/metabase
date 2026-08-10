@@ -14,7 +14,6 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
-import { useSaveMetabotEntityMutation } from "metabase/metabot/api";
 import { getSavedChartCardId, markChartSaved } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -40,6 +39,8 @@ import {
 } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
 import type { DashboardTabId } from "metabase-types/api";
+
+import { useSaveMetabotEntityMutation } from "../../api";
 
 import S from "./MetabotInlineChart.module.css";
 

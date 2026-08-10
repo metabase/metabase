@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/metabot/api";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
@@ -26,6 +25,8 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+
+import { useGetSuggestedMetabotPromptsQuery } from "../../api";
 
 import S from "./MetabotGreeting.module.css";
 

@@ -10,7 +10,7 @@ import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl } from "metabase/common/hooks";
-import { useListMetabotsQuery } from "metabase/metabot/api";
+import { useListMetabotsQuery } from "metabase/metabot";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK,

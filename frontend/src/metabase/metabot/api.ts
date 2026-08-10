@@ -1,4 +1,4 @@
-import { Api } from "metabase/api/api";
+import { Api } from "metabase/api";
 import { idTag, invalidateTags, listTag } from "metabase/api/tags";
 import type {
   Card,

@@ -6,7 +6,6 @@ import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useToast } from "metabase/common/hooks";
-import { useUpdateMetabotSettingsMutation } from "metabase/metabot/api";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   useAdminSetting,
@@ -27,6 +26,8 @@ import {
   Text,
 } from "metabase/ui";
 import type { MetabotProvider } from "metabase-types/api";
+
+import { useUpdateMetabotSettingsMutation } from "../../api";
 
 import { AIProviderConfigurationContext } from "./AIProviderConfigurationContext";
 import { ApiKeyProviderFields } from "./ApiKeyProviderFields";

@@ -5,7 +5,6 @@ import { t } from "ttag";
 import MetabotFailure from "assets/img/metabot-failure.svg?component";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { idTag } from "metabase/api/tags";
-import { metabotApi } from "metabase/metabot/api";
 import {
   useIsFullPageMetabot,
   useMetabotAgent,
@@ -26,6 +25,7 @@ import {
 } from "metabase/ui";
 
 import { trackMetabotChatOpened } from "../analytics";
+import { metabotApi } from "../api";
 import { isHistoryEnabledProfile } from "../constants";
 import type { MetabotAgentId } from "../state";
 

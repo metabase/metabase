@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { GenericError } from "metabase/common/components/ErrorPages";
-import { useGetMetabotConversationQuery } from "metabase/metabot/api";
 import { MetabotAsk } from "metabase/metabot/components/MetabotAsk";
 import {
   useMetabotAgent,
@@ -19,6 +18,8 @@ import { Navigate, useParams } from "metabase/router";
 import { getSettingsLoading } from "metabase/settings";
 import { Center, Loader } from "metabase/ui";
 import * as Urls from "metabase/urls";
+
+import { useGetMetabotConversationQuery } from "../../api";
 
 export const IN_PROGRESS_POLL_MS = 2500;
 

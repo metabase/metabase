@@ -10,8 +10,9 @@ import {
   FormSelect,
   FormTextInput,
 } from "metabase/forms";
-import { useUpdateMetabotSettingsMutation } from "metabase/metabot/api";
 import { useAdminSettings } from "metabase/settings";
+
+import { useUpdateMetabotSettingsMutation } from "../../api";
 
 import { useAIProviderConfigurationContext } from "./AIProviderConfigurationContext";
 import {

@@ -13,7 +13,6 @@ import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
-import { useSubmitMetabotSourceFeedbackMutation } from "metabase/metabot/api";
 import { getMetabotId } from "metabase/metabot/state";
 import {
   getCollectionLocationLabel,
@@ -43,6 +42,8 @@ import type {
   NativeDatasetQuery,
   TemplateTags,
 } from "metabase-types/api";
+
+import { useSubmitMetabotSourceFeedbackMutation } from "../../api";
 
 import S from "./MetabotAgentDataPartMessage.module.css";
 

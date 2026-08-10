@@ -4,8 +4,10 @@ import { jt, t } from "ttag";
 
 import { useRefreshTokenStatusMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { useAIProviderConfigurationContext } from "metabase/metabot";
-import { useUpdateMetabotSettingsMutation } from "metabase/metabot/api";
+import {
+  useAIProviderConfigurationContext,
+  useUpdateMetabotSettingsMutation,
+} from "metabase/metabot";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";

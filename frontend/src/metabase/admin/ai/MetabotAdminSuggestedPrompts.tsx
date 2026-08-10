@@ -13,7 +13,7 @@ import {
   useDeleteSuggestedMetabotPromptMutation,
   useGetSuggestedMetabotPromptsQuery,
   useRegenerateSuggestedMetabotPromptsMutation,
-} from "metabase/metabot/api";
+} from "metabase/metabot";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import {
   ActionIcon,

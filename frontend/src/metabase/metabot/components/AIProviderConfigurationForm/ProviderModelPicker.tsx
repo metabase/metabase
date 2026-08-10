@@ -4,15 +4,16 @@ import _ from "underscore";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
-import {
-  useGetMetabotSettingsQuery,
-  useUpdateMetabotSettingsMutation,
-} from "metabase/metabot/api";
 import { type ComboboxItem, Select } from "metabase/ui";
 import type {
   MetabotProvider,
   MetabotSettingsResponse,
 } from "metabase-types/api";
+
+import {
+  useGetMetabotSettingsQuery,
+  useUpdateMetabotSettingsMutation,
+} from "../../api";
 
 type MetabotModelOption = ComboboxItem & {
   group?: string | null;
