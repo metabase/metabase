@@ -1,5 +1,10 @@
 import { buildNodes } from "./affected-modules";
-import { createTestPlan, filterAffectedTests } from "./affected-tests";
+import {
+  createTestPlan,
+  filterAffectedTests,
+  parseGithubEvent,
+  testSelectionModeFor,
+} from "./affected-tests";
 
 const ELEMENTS = [
   { type: "lib/utils", pattern: "src/utils/**" },
@@ -26,7 +31,7 @@ const E2E_FILES = ["e2e/test/scenarios/a.cy.spec.ts"];
 const baseInput = {
   elements: ELEMENTS,
   rules: RULES,
-  narrow: true,
+  githubEvent: "pull_request" as const,
   fileDependencies: null,
   testFilesBySuite: { unit: UNIT_FILES, loki: LOKI_FILES, e2e: E2E_FILES },
   e2eSpecFiles: null,
@@ -39,6 +44,18 @@ const baseInput = {
   feFilesTotal: 0,
   beFilesTotal: 0,
 };
+
+describe("testSelectionModeFor", () => {
+  it("selects only on pull requests; unrecognized events plan like a push", () => {
+    expect(testSelectionModeFor("pull_request")).toBe("SELECTIVE");
+    expect(testSelectionModeFor("merge_group")).toBe("COMPREHENSIVE");
+    expect(testSelectionModeFor("push")).toBe("COMPREHENSIVE");
+    expect(testSelectionModeFor(parseGithubEvent("schedule"))).toBe(
+      "COMPREHENSIVE",
+    );
+    expect(testSelectionModeFor(parseGithubEvent(""))).toBe("COMPREHENSIVE");
+  });
+});
 
 describe("createTestPlan", () => {
   it("runs only specs in affected modules (rules graph)", () => {
@@ -234,7 +251,7 @@ describe("createTestPlan", () => {
   it("runs full FE suites when narrowing is off and frontend files changed", () => {
     const plan = createTestPlan({
       ...baseInput,
-      narrow: false,
+      githubEvent: "merge_group",
       changedFiles: ["src/foo/x.ts"],
       feFilesChanged: 1,
     });
@@ -249,7 +266,7 @@ describe("createTestPlan", () => {
     // suites, so a graph mistake can never skip a suite at the last gate.
     const plan = createTestPlan({
       ...baseInput,
-      narrow: false,
+      githubEvent: "merge_group",
       changedFiles: ["frontend/unmapped/x.ts"],
       feFilesChanged: 1,
     });
@@ -261,7 +278,7 @@ describe("createTestPlan", () => {
   it("skips FE suites when narrowing is off and no frontend files changed", () => {
     const plan = createTestPlan({
       ...baseInput,
-      narrow: false,
+      githubEvent: "merge_group",
       changedFiles: ["docs/readme.md"],
     });
 

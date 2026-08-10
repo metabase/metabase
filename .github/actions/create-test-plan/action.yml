@@ -23,12 +23,6 @@ inputs:
   shared-sources-touched:
     description: Whether cljc/cljs/package.json changed.
     required: true
-  narrow:
-    description: >-
-      Whether selection may trim suites. "false" still gates suites on having
-      any selected work, but runs them in full.
-    required: false
-    default: "true"
 
 outputs:
   stats:
@@ -70,15 +64,12 @@ runs:
             headSha: context.payload.pull_request?.head?.sha ?? context.sha,
           });
           core.setOutput("path", result?.path ?? "");
-    - name: Build dependency graph
+    - name: Install dependencies
       shell: bash
       run: |
         # Quiet on success; surface output only if install fails.
         bun install --frozen-lockfile > /tmp/bun-install.log 2>&1 \
           || { echo "bun install issues (continuing):"; tail -20 /tmp/bun-install.log; }
-        bunx depcruise frontend/src enterprise/frontend/src \
-          --config .dependency-cruiser.cjs \
-          --output-type json > dependency-graph.json || true
 
     - name: Create test plan
       id: compute
@@ -91,8 +82,6 @@ runs:
         LOKI_INFRA_TOUCHED: ${{ inputs.loki-infra-touched }}
         E2E_INFRA_TOUCHED: ${{ inputs.e2e-infra-touched }}
         SHARED_SOURCES_TOUCHED: ${{ inputs.shared-sources-touched }}
-        NARROW: ${{ inputs.narrow }}
-        DEP_GRAPH_JSON: dependency-graph.json
         E2E_SPEC_MANIFEST: ${{ steps.manifest.outputs.path }}
       run: |
         # stdout is the plan JSON; the planner's own info logs go to stderr.
