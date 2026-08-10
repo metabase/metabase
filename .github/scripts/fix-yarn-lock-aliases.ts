@@ -7,49 +7,60 @@
  * yarn convention and fails to resolve the dependency.
  */
 
-const packageJsonPath = `${process.cwd()}/package.json`;
-const lockPath = `${process.cwd()}/yarn.lock`;
+import { readFile, writeFile } from "node:fs/promises";
 
-const packageJson = await Bun.file(packageJsonPath).json();
+async function main() {
+  const packageJsonPath = `${process.cwd()}/package.json`;
+  const lockPath = `${process.cwd()}/yarn.lock`;
 
-const dependencies = Object.entries<string>(
-  Object.assign(
-    {},
-    packageJson.dependencies,
-    packageJson.devDependencies,
-    packageJson.optionalDependencies,
-  ),
-);
+  const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
 
-let lock = await Bun.file(lockPath).text();
-const renamedKeys: string[] = [];
+  const dependencies = Object.entries<string>(
+    Object.assign(
+      {},
+      packageJson.dependencies,
+      packageJson.devDependencies,
+      packageJson.optionalDependencies,
+    ),
+  );
 
-for (const [alias, specifier] of dependencies) {
-  if (!specifier.startsWith("npm:")) {
-    continue;
+  let lock = await readFile(lockPath, "utf8");
+  const renamedKeys: string[] = [];
+
+  for (const [alias, specifier] of dependencies) {
+    if (!specifier.startsWith("npm:")) {
+      continue;
+    }
+
+    const aliasedPackage = specifier
+      .slice("npm:".length)
+      .replace(/@[^@]*$/, "");
+
+    if (aliasedPackage === alias) {
+      continue;
+    }
+
+    const bunKey = `"${aliasedPackage}@${specifier}"`;
+    const yarnKey = `"${alias}@${specifier}"`;
+
+    if (lock.includes(bunKey)) {
+      lock = lock.replaceAll(bunKey, yarnKey);
+      renamedKeys.push(`${bunKey} -> ${yarnKey}`);
+    }
   }
 
-  const aliasedPackage = specifier.slice("npm:".length).replace(/@[^@]*$/, "");
-
-  if (aliasedPackage === alias) {
-    continue;
+  if (renamedKeys.length > 0) {
+    await writeFile(lockPath, lock);
   }
 
-  const bunKey = `"${aliasedPackage}@${specifier}"`;
-  const yarnKey = `"${alias}@${specifier}"`;
-
-  if (lock.includes(bunKey)) {
-    lock = lock.replaceAll(bunKey, yarnKey);
-    renamedKeys.push(`${bunKey} -> ${yarnKey}`);
-  }
+  process.stdout.write(
+    renamedKeys.length > 0
+      ? `Renamed alias keys in yarn.lock:\n${renamedKeys.join("\n")}\n`
+      : "No alias keys to rename in yarn.lock\n",
+  );
 }
 
-if (renamedKeys.length > 0) {
-  await Bun.write(lockPath, lock);
-}
-
-process.stdout.write(
-  renamedKeys.length > 0
-    ? `Renamed alias keys in yarn.lock:\n${renamedKeys.join("\n")}\n`
-    : "No alias keys to rename in yarn.lock\n",
-);
+main().catch((error) => {
+  process.stderr.write(`Failed to rename alias keys in yarn.lock: ${error}\n`);
+  process.exit(1);
+});
