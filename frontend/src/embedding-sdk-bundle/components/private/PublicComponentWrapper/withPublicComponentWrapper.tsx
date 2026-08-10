@@ -8,7 +8,7 @@ import { PublicComponentWrapper } from "./PublicComponentWrapper";
 export function withPublicComponentWrapper<P extends object>(
   WrappedComponent: React.ComponentType<P>,
   { supportsGuestEmbed }: { supportsGuestEmbed: boolean },
-): (props: P) => React.ReactNode {
+): React.FC<P> {
   const componentName =
     WrappedComponent.displayName || WrappedComponent.name || "Component";
 
