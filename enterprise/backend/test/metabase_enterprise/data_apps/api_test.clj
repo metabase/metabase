@@ -186,17 +186,23 @@
 (deftest delete-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
-        (testing "a non-superuser cannot remove an app"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :delete 403 "apps/demo")))
-          (is (t2/exists? :model/DataApp :name "demo")))
-        (testing "a superuser removes the app"
-          (is (nil? (mt/user-http-request :crowberto :delete 204 "apps/demo")))
-          (is (not (t2/exists? :model/DataApp :name "demo"))))
-        (testing "removing a non-existent app 404s"
-          (mt/user-http-request :crowberto :delete 404 "apps/missing"))))))
+        (let [{:keys [resource_collection_id permission_group_id]}
+              (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))]
+          (testing "a non-superuser cannot remove an app"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :delete 403 "apps/demo")))
+            (is (t2/exists? :model/DataApp :name "demo")))
+          ; each data app owns a permission group and a collection
+          ; containing saved questions and models
+          (testing "a superuser removes the app and its resources"
+            (is (nil? (mt/user-http-request :crowberto :delete 204 "apps/demo")))
+            (is (not (t2/exists? :model/DataApp :name "demo")))
+            (is (not (t2/exists? :model/Collection :id resource_collection_id)))
+            (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))))
+          (testing "removing a non-existent app 404s"
+            (mt/user-http-request :crowberto :delete 404 "apps/missing")))))))
 
 (deftest import-preserves-enabled-across-syncs-test
   (mt/with-model-cleanup [:model/DataApp]

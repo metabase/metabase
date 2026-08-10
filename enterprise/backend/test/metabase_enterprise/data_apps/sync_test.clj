@@ -63,6 +63,23 @@
           (is (not (t2/exists? :model/Collection :id resource_collection_id)))
           (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))))))))
 
+(deftest sync-restores-deleted-collection-and-permission-group-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
+      (data-app.sync/import-from-snapshot! (snapshot files))
+      (let [before (select-keys (t2/select-one :model/DataApp :name "sales")
+                                [:resource_collection_id :permission_group_id])]
+        (t2/delete! :model/Collection :id (:resource_collection_id before))
+        (t2/delete! :model/PermissionsGroup :id (:permission_group_id before))
+        (data-app.sync/import-from-snapshot! (snapshot files))
+        ; after syncing the app again, the data app collection and
+        ; permission group should be re-created
+        (let [after (select-keys (t2/select-one :model/DataApp :name "sales") (keys before))]
+          (is (every? pos-int? (vals after)))
+          (is (t2/exists? :model/Collection :id (:resource_collection_id after)))
+          (is (t2/exists? :model/PermissionsGroup :id (:permission_group_id after)))
+          (is (not= before after)))))))
+
 (deftest changed-count-tracks-content-not-sha-bumps-test
   (mt/with-model-cleanup [:model/DataApp]
     (let [files (app-files "a" {:name "A" :path "index.js" :bundle "V1"})]
