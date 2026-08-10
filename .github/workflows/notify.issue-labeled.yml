@@ -71,38 +71,6 @@ jobs:
               ]
             }
 
-  on-new-feature-label:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 5
-    if: github.event.label.name == 'Type:New Feature'
-    steps:
-      - name: Setting title
-        uses: actions/github-script@v9
-        id: vars
-        env:
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-        with:
-          script: |
-            core.setOutput('issue_title', process.env.ISSUE_TITLE.replaceAll(/"/g, '\\"'));
-      - name: Send the issue ${{ github.event.issue.number }} to Slack
-        id: slack
-        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3
-        with:
-          webhook: ${{ secrets.SLACK_FEATURE_REQUEST_TRIAGE_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "New incoming feature request: ${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
-                  }
-                }
-              ]
-            }
-
   # Note: this only triggers if a issue is already labeled with `Type:Bug` and `flaky-test-fix` and then a team label is added.
   on-team-label:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
