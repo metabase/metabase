@@ -12,13 +12,14 @@ import { createAction } from "redux-actions";
 import { userApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   ParameterId,
   ParameterValueOrArray,
   User,
 } from "metabase-types/api";
+
+import type { State } from "./store";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
 export const setUIControls = createAction(SET_UI_CONTROLS);
