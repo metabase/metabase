@@ -602,7 +602,10 @@ function getInitialSelectedTabId(
   siteUrl: string,
   isWebApp: boolean,
 ) {
-  const pathname = window.location.pathname.replace(siteUrl, "");
+  const pathname = Urls.stripSubpathFromPathname(
+    window.location.pathname,
+    siteUrl,
+  );
   const isDashboardUrl = pathname.includes("/dashboard/");
 
   if (isDashboardUrl) {

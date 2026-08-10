@@ -9,6 +9,7 @@ import {
   parseListParam,
   parseNumberParam,
   parseStringParam,
+  stripSubpathFromPathname,
 } from "./utils";
 
 const fakeBasename = "foobar";
@@ -39,6 +40,48 @@ describe("utils", () => {
       setBasename("");
 
       expect(getSubpathSafeUrl("baz")).toBe("baz");
+    });
+  });
+
+  describe("stripSubpathFromPathname", () => {
+    it("should leave the pathname unchanged when the site url has no subpath", () => {
+      expect(
+        stripSubpathFromPathname("/dashboard/1", "http://example.com"),
+      ).toBe("/dashboard/1");
+      expect(
+        stripSubpathFromPathname("/dashboard/1", "http://example.com/"),
+      ).toBe("/dashboard/1");
+    });
+
+    it("should strip the subpath from the pathname", () => {
+      expect(
+        stripSubpathFromPathname(
+          "/metabase/dashboard/1",
+          "http://example.com/metabase",
+        ),
+      ).toBe("/dashboard/1");
+    });
+
+    it("should strip a subpath with a trailing slash in the site url", () => {
+      expect(
+        stripSubpathFromPathname(
+          "/metabase/dashboard/1",
+          "http://example.com/metabase/",
+        ),
+      ).toBe("/dashboard/1");
+    });
+
+    it("should not strip a subpath that appears mid-pathname", () => {
+      expect(
+        stripSubpathFromPathname(
+          "/dashboard/metabase/1",
+          "http://example.com/metabase",
+        ),
+      ).toBe("/dashboard/metabase/1");
+    });
+
+    it("should leave the pathname unchanged when the site url is empty", () => {
+      expect(stripSubpathFromPathname("/dashboard/1", "")).toBe("/dashboard/1");
     });
   });
 

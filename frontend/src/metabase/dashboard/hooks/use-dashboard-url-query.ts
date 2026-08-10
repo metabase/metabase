@@ -91,7 +91,7 @@ export function useDashboardUrlQuery(location: Location) {
       return;
     }
 
-    const pathname = location.pathname.replace(siteUrl, "");
+    const pathname = Urls.stripSubpathFromPathname(location.pathname, siteUrl);
     const isDashboardUrl = pathname.startsWith("/dashboard/");
     if (isDashboardUrl) {
       const dashboardSlug = pathname.replace("/dashboard/", "");

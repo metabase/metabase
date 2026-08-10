@@ -40,6 +40,21 @@ export function getSubpathSafeUrl(url: string) {
 }
 
 /**
+ * Strips the subpath of a subpath deployment from a window pathname, so routes
+ * parse the same regardless of where Metabase is mounted. `site-url` stores a
+ * full URL (e.g. `http://example.com/metabase`), never a bare path.
+ */
+export function stripSubpathFromPathname(pathname: string, siteUrl: string) {
+  if (!siteUrl) {
+    return pathname;
+  }
+  const subpath = new URL(siteUrl).pathname.replace(/\/$/, "");
+  return subpath && pathname.startsWith(subpath)
+    ? pathname.slice(subpath.length)
+    : pathname;
+}
+
+/**
  * Metabase can be deployed on a subpath!
  * If you're opening internal links in a new tab, make sure you're using subpath-safe URLs.
  * @see {@link getSubpathSafeUrl}
