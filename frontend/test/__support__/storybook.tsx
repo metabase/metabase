@@ -1,8 +1,7 @@
 // Storybook helpers
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
-import type { StoryFn } from "@storybook/react";
-import { useEffect, useMemo } from "react";
+import { type ComponentType, useEffect, useMemo } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { PrintContext } from "metabase/documents/contexts/PrintContext";
@@ -135,7 +134,7 @@ export const SdkVisualizationStory = ({
 };
 
 export function createWaitForResizeToStopDecorator(timeoutMs: number = 1000) {
-  return function WaitForResizeToStopDecorator(Story: StoryFn) {
+  return function WaitForResizeToStopDecorator(Story: ComponentType) {
     const asyncCallback = useMemo(() => createAsyncCallback(), []);
 
     useEffect(() => {
@@ -179,7 +178,7 @@ export function createWaitForChartsDecorator({
   settleMs?: number;
   timeoutMs?: number;
 }) {
-  return function WaitForChartsDecorator(Story: StoryFn) {
+  return function WaitForChartsDecorator(Story: ComponentType) {
     const asyncCallback = useMemo(() => createAsyncCallback(), []);
 
     useEffect(() => {
@@ -235,7 +234,7 @@ export function createWaitForChartsDecorator({
  * that hide `[data-hide-on-print]` are keyed on the print media query,
  * not this flag, so the snapshot is unaffected.
  */
-export function ForceDocumentCardRenderDecorator(Story: StoryFn) {
+export function ForceDocumentCardRenderDecorator(Story: ComponentType) {
   return (
     <PrintContext.Provider
       value={{ isPrinting: true, prepareForPrint: async () => {} }}

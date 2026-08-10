@@ -1,6 +1,5 @@
-import type { StoryFn } from "@storybook/react";
 import { SignJWT } from "jose";
-import { useMemo } from "react";
+import { type ComponentType, useMemo } from "react";
 
 // To run initialization side effects like Mantine styles, dayjs plugins, etc
 import "embedding-sdk-bundle";
@@ -49,7 +48,7 @@ export const getStorybookSdkAuthConfigForUser = (
 export const storybookSdkAuthDefaultConfig =
   getStorybookSdkAuthConfigForUser("normal");
 
-export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
+export const CommonSdkStoryWrapper = (Story: ComponentType, context: any) => {
   const sdkTheme = context.globals.sdkTheme;
   const globalTheme: MetabaseTheme | undefined = sdkTheme
     ? storybookThemes[sdkTheme]
