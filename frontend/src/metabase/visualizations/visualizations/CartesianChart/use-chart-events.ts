@@ -68,7 +68,7 @@ function clearBrush(
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
   chartModel: BaseCartesianChartModel,
   option: EChartsOption,
   renderingContext: RenderingContext,

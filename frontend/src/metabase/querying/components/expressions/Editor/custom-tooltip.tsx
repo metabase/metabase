@@ -24,7 +24,7 @@ import { createPortal } from "react-dom";
 type TooltipProps = {
   state: EditorState;
   view: EditorView;
-  tooltipRef: RefObject<HTMLDivElement>;
+  tooltipRef: RefObject<HTMLDivElement | null>;
 };
 
 type TooltipOptions = {
