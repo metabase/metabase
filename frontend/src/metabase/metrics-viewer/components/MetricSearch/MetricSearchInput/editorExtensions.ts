@@ -12,7 +12,7 @@ import { trustedDocChangesOnly } from "./trustedDocChangesOnly";
 
 type EditorExtensionRefs = {
   handleRunRef: { current: () => void };
-  dropdownRef: React.RefObject<MetricSearchDropdownRef>;
+  dropdownRef: React.RefObject<MetricSearchDropdownRef | null>;
 };
 
 export function buildEditorExtensions(
