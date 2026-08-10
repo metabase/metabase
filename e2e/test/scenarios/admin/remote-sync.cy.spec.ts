@@ -644,12 +644,13 @@ describe("Remote Sync", () => {
           });
 
           H.modal().within(() => {
-            cy.findByText(/Couldn.t sync selected collection/).should(
+            // Every remedy here is a collection we can switch on, so the modal asks rather than refuses.
+            cy.findByText("Sync collections with dependencies?").should(
               "be.visible",
             );
             // Both failures resolve to the same remedy, so it is offered once.
             cy.findAllByText(SOURCE_COLLECTION_NAME).should("have.length", 1);
-            cy.button("Done").click();
+            cy.button("Cancel").click();
           });
           H.modal().should("not.exist");
 

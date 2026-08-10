@@ -105,12 +105,28 @@ const setupRefusedSave = async ({
   await userEvent.click(screen.getByRole("button", { name: /Save changes/i }));
 };
 
+// The modal asks a question when it can act, and reports a failure when it can't.
+const expectFixOffered = (modal: HTMLElement) => {
+  expect(
+    within(modal).getByText("Sync collections with dependencies?"),
+  ).toBeInTheDocument();
+  expect(
+    within(modal).getByRole("button", { name: "Sync required collections" }),
+  ).toBeInTheDocument();
+  expect(
+    within(modal).getByRole("button", { name: "Cancel" }),
+  ).toBeInTheDocument();
+};
+
 const expectNoFixOffered = (modal: HTMLElement) => {
+  expect(
+    within(modal).getByText(/Couldn.t sync selected collection/),
+  ).toBeInTheDocument();
   expect(
     within(modal).queryByRole("button", { name: "Sync required collections" }),
   ).not.toBeInTheDocument();
   expect(
-    within(modal).getByRole("button", { name: "Done" }),
+    within(modal).getByRole("button", { name: "Back" }),
   ).toBeInTheDocument();
 };
 
@@ -126,9 +142,7 @@ describe("RemoteSyncDependencyModal", () => {
     await setupRefusedSave();
 
     const modal = await screen.findByRole("dialog");
-    expect(
-      within(modal).getByText(/Couldn’t sync selected collection/),
-    ).toBeInTheDocument();
+    expectFixOffered(modal);
     expect(
       within(modal).getByText(/rely on data saved elsewhere/),
     ).toBeInTheDocument();
@@ -188,7 +202,9 @@ describe("RemoteSyncDependencyModal", () => {
     await setupRefusedSave();
 
     const modal = await screen.findByRole("dialog");
-    await userEvent.click(within(modal).getByRole("button", { name: "Done" }));
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Cancel" }),
+    );
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -230,7 +246,9 @@ describe("RemoteSyncDependencyModal", () => {
     await setupRefusedSave();
 
     const modal = await screen.findByRole("dialog");
-    await userEvent.click(within(modal).getByRole("button", { name: "Done" }));
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Cancel" }),
+    );
 
     // A refused save rolls back, so the collection list refetch it triggers must not reset the form.
     await waitFor(async () => {

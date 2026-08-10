@@ -54,7 +54,11 @@ export const RemoteSyncDependencyModal = ({
       opened
       onClose={handleDismiss}
       padding="xl"
-      title={t`Couldn’t sync selected collection`}
+      title={
+        canSync
+          ? t`Sync collections with dependencies?`
+          : t`Couldn’t sync selected collection`
+      }
     >
       <Stack gap="lg" pt="md">
         <Text>{getBlockedMessage(failures)}</Text>
@@ -101,7 +105,7 @@ export const RemoteSyncDependencyModal = ({
         <Group justify={canSync ? "space-between" : "end"} gap="sm">
           <>
             {canSync && (
-              <Button variant="subtle" onClick={handleSyncAndSave}>
+              <Button onClick={handleSyncAndSave}>
                 {t`Sync required collections`}
               </Button>
             )}
@@ -110,7 +114,7 @@ export const RemoteSyncDependencyModal = ({
               onClick={handleDismiss}
               style={{ justifySelf: "end" }}
             >
-              {t`Done`}
+              {canSync ? t`Cancel` : t`Back`}
             </Button>
           </>
         </Group>
