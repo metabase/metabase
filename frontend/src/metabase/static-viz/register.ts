@@ -1,7 +1,7 @@
 import {
   registerVisualization,
   setDefaultVisualization,
-} from "metabase/visualizations";
+} from "metabase/visualizations/lib/registry";
 import { AREA_CHART_DEFINITION } from "metabase/visualizations/visualizations/AreaChart/definition";
 import { BAR_CHART_DEFINITION } from "metabase/visualizations/visualizations/BarChart/definition";
 import { BOXPLOT_CHART_DEFINITION } from "metabase/visualizations/visualizations/BoxPlot/definition";
