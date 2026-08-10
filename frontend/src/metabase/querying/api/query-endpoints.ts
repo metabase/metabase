@@ -1,7 +1,4 @@
-import { cardApi } from "metabase/api/card";
-import { dashboardApi } from "metabase/api/dashboard";
-import { embedApi } from "metabase/api/embed";
-import { publicApi } from "metabase/api/public";
+import { cardApi, dashboardApi, embedApi, publicApi } from "metabase/api";
 import { isNative } from "metabase/common/utils/card";
 import type { Dispatch } from "metabase/redux/store";
 import Question from "metabase-lib/v1/Question";
