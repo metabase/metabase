@@ -7,8 +7,8 @@
      must keep working without an authenticated user. The wrapper short-circuits
      `api/read-check` and returns the inner store's row unchanged.
 
-  2. **Read-checked when a user is bound** — every method (symmetric across import- and
-     export-direction lookups) routes through `api/read-check`. A user without read
+  2. **Read-checked when a user is bound** — all six methods (symmetric across import- and
+     export-direction lookups) route through `api/read-check`. A user without read
      perms gets a 403; the underlying store is consulted for the existence check, and
      unknown / `nil` returns pass through cleanly so the per-model resolver can emit its
      `:unknown-…` agent error."
@@ -24,9 +24,7 @@
    [metabase.test :as mt]))
 
 (defn- record-store
-  "A fake ContentStore that returns a fixed row for any method. Returning a fixed row whose
-  `:row-id` is the requested argument lets tests assert both that the inner method was
-  invoked (`:row-id` carries over) and what `:can-read?` posture each row has."
+  "A fake ContentStore that returns the configured row for each of its six methods."
   [{:keys [card measure-eid segment-eid card-id measure-id segment-id]}]
   (reify resolve.mp/ContentStore
     (card-by-entity-id    [_ _eid] card)
@@ -41,7 +39,7 @@
 ;;; ============================================================
 
 (deftest pass-through-when-no-user-bound-test
-  (testing "with api/*current-user-id* unbound, every method returns the inner store's row unchanged"
+  (testing "with api/*current-user-id* unbound, all six methods return the inner store's row unchanged"
     ;; Plain Clojure maps don't satisfy `mi/can-read?`, so a `read-check` call would throw.
     ;; The fact that these assertions pass proves no read-check fires.
     (let [row    {:opaque :marker}
@@ -78,7 +76,7 @@
 ;;; ============================================================
 
 (deftest applies-read-check-when-user-bound-test
-  (testing (str "with api/*current-user-id* bound, every method routes the inner row through "
+  (testing (str "with api/*current-user-id* bound, all six methods route the inner row through "
                 "`api/read-check`. Using a row that doesn't satisfy `can-read?` proves the "
                 "check fires on each branch — we stub `api/read-check` to a recording fn so "
                 "we don't need a real auth setup, and assert it was called with the row.")
@@ -107,7 +105,7 @@
           (testing "segment-by-id"
             (is (= row (resolve.mp/segment-by-id gated 1)))
             (is (= row (last @calls))))
-          (testing "every method invoked read-check exactly once"
+          (testing "all six methods invoke read-check exactly once"
             (is (= 6 (count @calls)))))))))
 
 (deftest propagates-read-check-403-test
@@ -124,7 +122,7 @@
               (is false "expected throw")
               (catch clojure.lang.ExceptionInfo e
                 (is (= 403 (:status-code (ex-data e)))))))
-          (testing "export-direction branch (the N1 gap)"
+          (testing "export-direction lookups"
             (doseq [lookup [resolve.mp/card-by-id resolve.mp/measure-by-id]]
               (try
                 (lookup gated 1)

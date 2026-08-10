@@ -108,10 +108,15 @@
 
 (defn transform-query->text
   "Render a transform source query for model context: native SQL verbatim, anything else
-  through [[export-query-for-llm]]."
+  through [[export-query-for-llm]]. Portable JSON gets boundary newlines so its Markdown
+  fence remains valid when the result is interpolated inside an XML `<query>` element."
   [query]
   (or (when (map? query) (metabot.u/extract-sql-content query))
-      (export-query-for-llm query)))
+      (let [text (export-query-for-llm query)]
+        (if (and (map? query)
+                 (str/starts-with? text "```json\n"))
+          (format "\n%s\n" text)
+          text))))
 
 (defn escape-xml
   "Escape XML special characters in a string.

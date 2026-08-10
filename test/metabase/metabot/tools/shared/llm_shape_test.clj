@@ -1,5 +1,6 @@
 (ns metabase.metabot.tools.shared.llm-shape-test
   (:require
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -928,17 +929,25 @@
 
 (deftest ^:parallel transform-query->text-mbql-test
   (testing "an MBQL query exports to portable form, referencing tables by FK path"
-    (let [text     (llm-shape/transform-query->text
-                    (lib/query (mt/metadata-provider)
-                               (lib.metadata/table (mt/metadata-provider) (mt/id :products))))
+    (let [mp       (mt/metadata-provider)
+          text     (llm-shape/transform-query->text
+                    (lib/query mp (lib.metadata/table mp (mt/id :products))))
           exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" text)))]
-      (is (= ["PUBLIC" "PRODUCTS"]
-             (vec (take-last 2 (get-in exported ["stages" 0 "source-table"])))))))
+      (is (= [(:name (lib.metadata/database mp)) "PUBLIC" "PRODUCTS"]
+             (get-in exported ["stages" 0 "source-table"])))
+      (is (not (contains? exported "lib/metadata")))))
   (testing "a query that fails to export falls back to EDN without the metadata provider"
     (let [text (llm-shape/transform-query->text
                 {:lib/type :mbql/query
                  :database (mt/id)
                  :stages   [{:lib/type :mbql.stage/mbql :source-table Integer/MAX_VALUE}]})]
+      (is (str/includes? text ":mbql.stage/mbql"))
+      (is (not (str/includes? text ":lib/metadata")))))
+  (testing "the EDN fallback strips an existing provider even when there is no database to normalize"
+    (let [text (llm-shape/transform-query->text
+                {:lib/type     :mbql/query
+                 :lib/metadata :fake-provider
+                 :stages       [{:lib/type :mbql.stage/mbql}]})]
       (is (str/includes? text ":mbql.stage/mbql"))
       (is (not (str/includes? text ":lib/metadata")))))
   (testing "a native stage followed by an MBQL stage renders every stage, not the first stage's SQL"
@@ -948,6 +957,33 @@
           exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" text)))]
       (is (= 2 (count (get exported "stages"))))
       (is (= "SELECT * FROM PRODUCTS" (get-in exported ["stages" 0 "native"]))))))
+
+(deftest transform-query->text-source-card-permission-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Card       {card-id :id, entity-id :entity_id}
+                   {:collection_id collection-id
+                    :database_id   (mt/id)
+                    :dataset_query (lib/query (mt/metadata-provider)
+                                              (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}]
+      (let [query       {:lib/type :mbql/query
+                         :database (mt/id)
+                         :stages   [{:lib/type :mbql.stage/mbql
+                                     :source-card card-id}]}
+            render-as   (fn [user-id]
+                          (mt/with-current-user user-id
+                            (llm-shape/transform-query->text query)))
+            readable    (render-as (mt/user->id :crowberto))
+            unreadable  (render-as (mt/user->id :rasta))
+            exported    (json/decode (second (re-find #"(?s)```json\n(.*)\n```" readable)))
+            fallback-edn (edn/read-string unreadable)]
+        (testing "a user who can read the source Card gets its portable entity id"
+          (is (= entity-id (get-in exported ["stages" 0 "source-card"]))))
+        (testing "a user who cannot read the source Card gets a metadata-free fallback, never its entity id"
+          (is (not (str/includes? unreadable entity-id)))
+          (is (not (str/includes? unreadable "```json")))
+          (is (not (contains? fallback-edn :lib/metadata)))
+          (is (= card-id (get-in fallback-edn [:stages 0 :source-card]))))))))
 
 (deftest ^:parallel transform->xml-source-query-test
   (testing "a native source query renders as verbatim SQL text"
@@ -965,5 +1001,6 @@
                 :source {:type  :query
                          :query (lib/query (mt/metadata-provider)
                                            (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}})]
-      (is (str/includes? xml "<query>```json"))
+      (is (str/includes? xml "<query>\n```json"))
+      (is (str/includes? xml "```\n</query>"))
       (is (str/includes? xml "\"PRODUCTS\"")))))

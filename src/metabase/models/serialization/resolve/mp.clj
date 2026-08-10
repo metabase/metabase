@@ -6,10 +6,10 @@
   `lib.metadata/MetadataProvider`, which may be the live application-DB-backed provider, a
   test-only mock provider, or any cached variant.
 
-  It does, however, touch the application DB for *Metabase-model* lookups (cards by
-  `entity_id`, etc.) because the lib metadata protocol doesn't support filtering by
-  `entity_id`, and cards in any case live in the application DB independently of whose
-  warehouse the metadata provider points at.
+  Its default [[ContentStore]] does touch the application DB for *Metabase-model* lookups
+  (cards by `entity_id`, etc.) because the lib metadata protocol doesn't support filtering
+  by `entity_id`, and cards in any case live in the application DB independently of whose
+  warehouse the metadata provider points at. Callers can supply a different store.
 
   Primary consumer: the agent-lib representations pipeline, which converts LLM-authored
   portable MBQL queries (with FK paths like `[DB, SCHEMA, TABLE, FIELD]`) into numeric-ID
@@ -19,9 +19,7 @@
     * `import-table-fk`, `import-field-fk`, `export-table-fk`, `export-field-fk` for
       warehouse metadata.
     * `import-fk-keyed` / `export-fk-keyed` for `:model/Database` by `:name`.
-    * `import-fk` for `Card` / `:model/Card` by `entity_id` (source-card and metric refs).
-    * `export-fk` for `Card` / `:model/Card` by `entity_id` (exporting final pMBQL back to
-      portable representations YAML).
+    * `import-fk` / `export-fk` for `Card`, `Measure`, and `Segment` references by `entity_id`.
 
   Everything else throws `:not-implemented-yet` for now.
 
@@ -29,13 +27,13 @@
     The resolver has two orthogonal lookup responsibilities:
       * **Warehouse metadata** (databases, tables, fields) is resolved through a
         `lib.metadata/MetadataProvider`.
-      * **Metabase content / assets** (cards, snippets, segments, …) is resolved through a
-        [[ContentStore]] on import, where callers may need permission-aware lookups. Exporting
-        card ids uses the same database-scoped metadata provider, which already contains card
-        metadata in app-backed and mock-provider contexts. The default app-DB-backed store goes
-        through `serdes/lookup-by-id`, but a different store (e.g. backed by the checker's YAML
-        index, an in-memory test fixture, or a snapshot) can be supplied to make import usable
-        without an application database."
+      * **Metabase content / assets** (cards, measures, segments, …) is resolved through a
+        [[ContentStore]] in both directions, where callers may need permission-aware lookups.
+        Card export still uses the database-scoped metadata provider to validate existence and
+        database scope, but obtains the portable `entity_id` from the content store. The default
+        store is app-DB-backed; a different store (e.g. backed by the checker's YAML index, an
+        in-memory test fixture, or a snapshot) can be supplied for contexts without an application
+        database."
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.lib.metadata :as lib.metadata]
@@ -278,11 +276,11 @@
     (into [(db-name metadata-provider) (:schema table) (:name table)] chain)))
 
 ;;; ============================================================
-;;; Content store - Metabase asset lookups (cards, etc.) by portable id
+;;; Content store - Metabase asset lookups by portable entity id or numeric id
 ;;; ============================================================
 
 (p.types/defprotocol+ ContentStore
-  "Lookup of Metabase content (\"assets\") by portable id.
+  "Lookup of Metabase content (\"assets\") by portable entity id or numeric id.
 
   Kept separate from the warehouse-metadata `MetadataProvider` so the resolver can be reused in
   contexts without an application database (e.g. the serdes checker, in-memory tests)."
@@ -315,13 +313,14 @@
   wrap this with `metabase.metabot.tools.shared.content-store/read-checked`** (or use
   `shared.content-store/default-store`, which is the wrapped form).
 
-  Default [[ContentStore]] backed by the Metabase application database via
-  `serdes/lookup-by-id`. Use this in production code paths that already have an app DB; pass a
-  different store implementation when running without one (checker, isolated tests).
+  Default [[ContentStore]] backed by the Metabase application database. Portable entity-id
+  lookups use `serdes/lookup-by-id`; numeric export lookups use direct Toucan selects. Use this
+  in production code paths that already have an app DB; pass a different store implementation
+  when running without one (checker, isolated tests).
 
-  Gated on [[resolve/entity-id?]]: LLM-authored entity-id values are untrusted, so anything that
-  isn't a 21-char NanoID short-circuits to `nil` and the caller surfaces a clear `:unknown-…`
-  agent error."
+  Portable entity-id lookups are gated on [[resolve/entity-id?]]: LLM-authored values are
+  untrusted, so anything that isn't a 21-char NanoID short-circuits to `nil` and the caller
+  surfaces a clear `:unknown-…` agent error."
   (reify ContentStore
     (card-by-entity-id [_ entity-id]
       (when (resolve/entity-id? entity-id)
@@ -334,7 +333,9 @@
         (serdes/lookup-by-id 'Segment entity-id)))
     (card-by-id [_ card-id]
       (when card-id
-        (t2/select-one :model/Card :id card-id)))
+        ;; `api/read-check` for Cards needs only the parent collection. Avoid loading and
+        ;; transforming the entire dataset_query just to export one stable identifier.
+        (t2/select-one [:model/Card :id :entity_id :collection_id] :id card-id)))
     (measure-by-id [_ measure-id]
       (when measure-id
         (t2/select-one [:model/Measure :id :entity_id :table_id] :id measure-id)))
@@ -621,10 +622,10 @@
   with `metabase.metabot.tools.shared.content-store/read-checked`.
 
   Implemented methods:
-    * `import-table-fk`, `import-field-fk` (Phase 1).
-    * `import-fk-keyed` for `:model/Database` by `:name` (Phase 1 - needed because
+    * `import-table-fk`, `import-field-fk`.
+    * `import-fk-keyed` for `:model/Database` by `:name` (needed because
       `resolve/import-mbql` dispatches on `:database` keys).
-    * `import-fk` for `Card` / `:model/Card` by `entity_id` (Phase 2, step 11).
+    * `import-fk` for `Card`, `Measure`, and `Segment` by `entity_id`.
 
   Other methods throw `:not-implemented-yet`."
   ([metadata-provider]
@@ -655,7 +656,10 @@
          (:id (find-field metadata-provider path)))))))
 
 (defn export-resolver
-  "Build a `SerdesExportResolver` backed by `metadata-provider`.
+  "Build a `SerdesExportResolver` backed by `metadata-provider` and `content-store`.
+
+  The 1-arity form uses [[unchecked-app-db-content-store]]. Agent-facing callers must pass
+  an explicit permission-aware store so exported content entity IDs are read-checked.
 
   Implemented methods:
     * `export-table-fk`, `export-field-fk` for warehouse metadata.

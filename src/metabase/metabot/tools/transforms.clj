@@ -21,9 +21,9 @@
 ;;; Formatting helpers
 ;;; ──────────────────────────────────────────────────────────────────
 
-;; Hand-built rather than `metabase.metabot.util/xml` so query and body content stays verbatim:
-;; `clojure.data.xml` escapes `<`/`>`/`&`, and an escaped query breaks `old_string`
-;; matching when the model quotes it back to the write tools.
+;; Hand-built rather than `clojure.data.xml` so query and body content stays verbatim:
+;; data.xml escapes `<`/`>`/`&`, and an escaped query breaks `old_string` matching when
+;; the model quotes it back to the write tools.
 (defn- format-transform-details-output
   [{:keys [id description source target] :as transform}]
   (let [{source-type :type, :keys [query body source-database]} source]

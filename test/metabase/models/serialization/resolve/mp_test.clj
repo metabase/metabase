@@ -710,6 +710,28 @@
     (measure-by-id [_ _measure-id] nil)
     (segment-by-id [_ _segment-id] nil)))
 
+(deftest ^:parallel export-fk-card-via-custom-content-store-test
+  (testing "Card export gets the entity id from the supplied store, including kebab-case rows"
+    (let [store-entity-id "storeEntityId12345678"
+          store           (map-content-store
+                           {"lookup-key"
+                            {:id 500 :database_id 1 :entity-id store-entity-id}})
+          er              (resolve.mp/export-resolver mp-with-cards store)
+          exported        (resolve/export-fk er 500 'Card)]
+      (is (= store-entity-id exported))
+      (is (not= card-entity-id exported)
+          "the metadata provider's permission-agnostic entity id is not used")))
+  (testing "a missing or blank store entity id produces the explicit export error"
+    (doseq [rows [{}
+                  {"lookup-key" {:id 500 :database_id 1}}
+                  {"lookup-key" {:id 500 :database_id 1 :entity_id ""}}]]
+      (let [er (resolve.mp/export-resolver mp-with-cards (map-content-store rows))]
+        (try
+          (resolve/export-fk er 500 'Card)
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (is (= :missing-card-entity-id (:error (ex-data e))))))))))
+
 (deftest ^:parallel import-fk-card-via-custom-content-store-happy-path-test
   (testing "a custom ContentStore lets the resolver work without an app DB"
     (let [card-eid "abcdefghijabcdefghij1"
