@@ -51,7 +51,7 @@ const createMockContainerRef = () => {
   );
 
   // Unjustified type cast. FIXME
-  const containerRef = { current: element } as RefObject<HTMLDivElement>;
+  const containerRef = { current: element } as RefObject<HTMLDivElement | null>;
 
   return { containerRef, el: element };
 };
