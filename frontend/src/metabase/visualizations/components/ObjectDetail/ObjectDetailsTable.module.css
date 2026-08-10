@@ -8,18 +8,16 @@
   gap: var(--mantine-spacing-xs);
 }
 
-/* Hidden rather than faded so the icon claims no width: the label grid track is
-   auto-sized, and a permanently reserved slot would widen every value column. */
 .descriptionIcon {
-  display: none;
+  visibility: hidden;
 }
 
 .columnName:hover .descriptionIcon {
-  display: block;
+  visibility: visible;
 }
 
 @media (hover: none) and (pointer: coarse) {
   .descriptionIcon {
-    display: block;
+    visibility: visible;
   }
 }
