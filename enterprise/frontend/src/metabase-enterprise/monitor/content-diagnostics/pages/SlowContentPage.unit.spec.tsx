@@ -202,11 +202,11 @@ describe("SlowContentPage", () => {
   });
 
   it("sends the minimum duration filter to the server and reflects it in the Filter popover", async () => {
-    setup({ findings: FINDINGS, urlParams: { minDurationMs: 10000 } });
+    setup({ findings: FINDINGS, urlParams: { minDurationMs: 30000 } });
     await waitForListToLoad();
 
     expect(getLastRequestUrl().searchParams.get("min-duration-ms")).toBe(
-      "10000",
+      "30000",
     );
 
     await userEvent.click(
@@ -214,7 +214,7 @@ describe("SlowContentPage", () => {
     );
     const popover = await screen.findByRole("dialog");
     expect(
-      within(popover).getByDisplayValue("10 seconds or more"),
+      within(popover).getByDisplayValue("30 seconds or more"),
     ).toBeInTheDocument();
   });
 
