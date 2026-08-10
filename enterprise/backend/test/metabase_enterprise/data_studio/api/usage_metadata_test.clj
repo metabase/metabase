@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-studio.api.usage-metadata :as usage-metadata.api]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.measures.test-util :as measures.tu]
@@ -450,38 +451,47 @@
                                        :suggested_description "A persisted Segment candidate"})]
           (mt/with-temp-vals-in-db :model/Table table-id {:is_published true}
             (mt/user->id :crowberto)
-            (let [published-events (atom [])]
-              (binding [*published-candidate-create-events* published-events]
-                (doseq [[candidate model expected-name]
-                        [[measure-candidate :model/Measure "Created order subtotal"]
-                         [segment-candidate :model/Segment "Created large orders"]]]
-                  (testing (str "creates " (name (:candidate_type candidate)) " from its persisted definition")
-                    (let [path      (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/create")
-                          start     (promise)
-                          requests  (mapv (fn [_]
-                                            (future
-                                              @start
-                                              (mt/user-http-request :crowberto :post 200 path
-                                                                    {:name expected-name
-                                                                     :description "Admin override"})))
-                                          (range 2))
-                          _         (deliver start true)
-                          responses (mapv deref requests)
-                          response  (first responses)
-                          entity   (t2/select-one model :id (:id response))]
-                      (is (apply = (map :id responses)) "concurrent creation is idempotent")
-                      (is (= expected-name (:name entity)))
-                      (is (= "Admin override" (:description entity)))
-                      (is (= (lib/normalize (:definition candidate))
-                             (dissoc (lib/normalize (:definition entity)) :lib/metadata)))
-                      (is (=? {:modeling_status "modeled", :matches [{:relation "exact"}]}
-                              (mt/user-http-request :crowberto :get 200
-                                                    (str "ee/data-studio/usage-metadata/candidates/"
-                                                         (:id candidate)))))
-                      (is (= (:id entity)
-                             (:id (mt/user-http-request :crowberto :post 200 path {}))))
-                      (is (= 1 (t2/count model :name expected-name))))))
-                (is (= [{:topic :event/measure-create, :visible? true}
-                        {:topic :event/segment-create, :visible? true}]
-                       @published-events)
-                    "creation publishes synchronously after the entity is visible")))))))))
+            (let [after-commit-callbacks (atom [])
+                  published-events       (atom [])]
+              (mt/with-dynamic-fn-redefs [mdb/do-after-commit #(swap! after-commit-callbacks conj %)]
+                (binding [*published-candidate-create-events* published-events]
+                  (doseq [[candidate model expected-name]
+                          [[measure-candidate :model/Measure "Created order subtotal"]
+                           [segment-candidate :model/Segment "Created large orders"]]]
+                    (testing (str "creates " (name (:candidate_type candidate)) " from its persisted definition")
+                      (let [path      (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/create")
+                            start     (promise)
+                            requests  (mapv (fn [_]
+                                              (future
+                                                @start
+                                                (mt/user-http-request :crowberto :post 200 path
+                                                                      {:name expected-name
+                                                                       :description "Admin override"})))
+                                            (range 2))
+                            _         (deliver start true)
+                            responses (mapv deref requests)
+                            response  (first responses)
+                            entity   (t2/select-one model :id (:id response))]
+                        (is (apply = (map :id responses)) "concurrent creation is idempotent")
+                        (is (= expected-name (:name entity)))
+                        (is (= "Admin override" (:description entity)))
+                        (is (= (lib/normalize (:definition candidate))
+                               (dissoc (lib/normalize (:definition entity)) :lib/metadata)))
+                        (is (=? {:modeling_status "modeled", :matches [{:relation "exact"}]}
+                                (mt/user-http-request :crowberto :get 200
+                                                      (str "ee/data-studio/usage-metadata/candidates/"
+                                                           (:id candidate)))))
+                        (is (= (:id entity)
+                               (:id (mt/user-http-request :crowberto :post 200 path {}))))
+                        (is (= 1 (t2/count model :name expected-name))))))
+                  (let [callbacks @after-commit-callbacks]
+                    (is (= 2 (count callbacks)) "only the winning requests schedule create events")
+                    (is (every? fn? callbacks))
+                    (is (empty? @published-events) "create events remain deferred until commit")
+                    (run! (fn [callback]
+                            (callback))
+                          callbacks))
+                  (is (= [{:topic :event/measure-create, :visible? true}
+                          {:topic :event/segment-create, :visible? true}]
+                         @published-events)
+                      "creation publishes after commit once the entity is visible"))))))))))
