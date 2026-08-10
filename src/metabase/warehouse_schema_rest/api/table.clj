@@ -91,7 +91,10 @@
   (let [like       (fn [field pattern]
                      (case (app-db/db-type)
                        (:h2 :postgres) [:ilike field pattern]
-                       [:raw [:like field pattern] " COLLATE " [:inline "utf8mb4_unicode_ci"]]))
+                       [:like field pattern]
+                       [:raw [:like field [:lift pattern]]
+                        ;; defaults to utf8mb4_bin for some reason
+                        " COLLATE " [:inline "utf8mb4_unicode_ci"]]))
         pattern    (some-> term
                            (str/replace "\\" "\\\\")
                            (str/replace "_" "\\_")

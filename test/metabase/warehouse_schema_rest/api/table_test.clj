@@ -1332,6 +1332,8 @@
                            (map #(select-keys % [:display_name]))))]
     (testing "term filtering"
       (is (=? [{:display_name "Users"}] (list-tables :term "Use")))
+      (testing "case-insensitive"
+        (is (=? [{:display_name "Users"}] (list-tables :term "usérs"))))
       (testing "wildcard"
         (is (=? [{:display_name "Users"}] (list-tables :term "*S*rs"))))
       (testing "escaping"
