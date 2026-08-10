@@ -10,11 +10,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :each
-  (fn [f]
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (f))))
-
 ;;; ---------------------------------------------- Helpers ----------------------------------------------
 
 (defn- create-app! []
@@ -60,7 +55,7 @@
   ;; a thread-local `binding`).
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
         (testing "a non-superuser can view (open) a data app"
           (is (= [{:name "demo" :display_name "Demo"}]
@@ -96,7 +91,7 @@
 
 (deftest list-available-apps-test
   (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (t2/insert! :model/DataApp :name "ready" :display_name "Ready" :bundle_path "data_apps/ready/index.js")
       (t2/insert! :model/DataApp :name "disabled" :display_name "Disabled" :bundle_path "data_apps/disabled/index.js"
                   :enabled false)
@@ -107,7 +102,7 @@
 
 (deftest bundle-includes-allowed-hosts-header-test
   (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (t2/insert! :model/DataApp
                   :name          "demo"
                   :display_name  "Demo"
@@ -127,7 +122,7 @@
 
 (deftest list-includes-allowed-hosts-test
   (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (t2/insert! :model/DataApp
                   :name "withhosts" :display_name "With"
                   :bundle_path "data_apps/withhosts/index.js"
@@ -146,7 +141,7 @@
 ;;; ----------------------------------------------------- Sync -----------------------------------------------------
 
 (deftest import-materializes-apps-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [result (data-app.sync/import-from-snapshot!
                   (snapshot (merge (app-files "sales" {:name "Sales" :path "dist/index.js" :bundle "SALES-BUNDLE"})
                                    (app-files "ops"   {:name "Ops"   :path "dist/app.js"   :bundle "OPS-BUNDLE"}))))]
@@ -161,7 +156,7 @@
         (is (nil? (:sync_error sales)))))))
 
 (deftest import-stores-allowed-hosts-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (testing "allowed_hosts from data_app.yaml are persisted on the row"
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "sales" {:name "Sales" :path "dist/index.js" :bundle "B"
@@ -174,7 +169,7 @@
       (is (= [] (:allowed_hosts (t2/select-one :model/DataApp :name "sales")))))))
 
 (deftest import-prunes-apps-absent-from-snapshot-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (data-app.sync/import-from-snapshot!
      (snapshot (merge (app-files "keep" {:name "Keep" :path "index.js" :bundle "KEEP"})
                       (app-files "gone" {:name "Gone" :path "index.js" :bundle "GONE"}))))
@@ -210,7 +205,7 @@
             (mt/user-http-request :crowberto :delete 404 "apps/missing")))))))
 
 (deftest import-preserves-enabled-across-syncs-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (data-app.sync/import-from-snapshot!
      (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "V1"})))
     (t2/update! :model/DataApp :name "a" {:enabled false})
@@ -223,7 +218,7 @@
 
 (deftest import-per-app-error-test
   (testing "a missing bundle file fails just that app, not the whole import"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (merge (app-files "good" {:name "Good" :path "index.js" :bundle "GOOD"})
                         ;; "bad" declares a path that doesn't exist
@@ -238,7 +233,7 @@
 
 (deftest import-serves-each-app-from-its-directory-test
   (testing "the directory an app lives in is the slug it's served at — two apps can't collide on one"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (merge (app-files "one" {:name "One" :path "a.js" :bundle "A"})
                         (app-files "two" {:name "Two" :path "b.js" :bundle "B"}))))
@@ -246,7 +241,7 @@
 
 (deftest import-isolates-bad-config-test
   (testing "a malformed data_app.yaml is isolated: sibling apps in the same repo still sync and are not pruned, the bad one is reported"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "existing" {:name "Existing" :path "i.js" :bundle "E"})))
       ;; The repo still holds "existing" and adds "good", alongside a broken "bad".
@@ -262,13 +257,13 @@
 
 (deftest sync-from-snapshot!-never-throws-test
   (testing "a malformed data_app.yaml is isolated into :config-errors; the app just doesn't appear, the sync doesn't throw"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [result (data-app.sync/sync-from-snapshot!
                     (snapshot {"data_apps/x/data_app.yaml" "name: [unterminated"}))]
         (is (seq (:config-errors result)))
         (is (empty? (t2/select-fn-set :name :model/DataApp))))))
   (testing "a clean sync materializes the app with no config errors"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [result (data-app.sync/sync-from-snapshot!
                     (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "A"})))]
         (is (empty? (:config-errors result)))
@@ -279,7 +274,7 @@
 (deftest list-and-bundle-endpoints-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (data-app.sync/import-from-snapshot!
          (snapshot (app-files "demo" {:name "Demo app" :path "dist/index.js" :bundle "DEMOBUNDLE"})))
         (testing "GET / lists the synced apps"
@@ -305,7 +300,7 @@
 (deftest enable-disable-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (data-app.sync/import-from-snapshot!
          (snapshot (app-files "demo" {:name "Demo" :path "index.js" :bundle "BUNDLE"})))
         (testing "PUT /:slug can disable an app"
@@ -348,7 +343,7 @@
   ;; routed as a data app named "sandbox-host" and 404.
   (testing "the route is not shadowed by the /:slug route"
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
         (is (= 200 (:status (mt/user-http-request-full-response
                              :crowberto :get 200 "apps/sandbox-host"))))))))
