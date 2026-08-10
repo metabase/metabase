@@ -1,5 +1,3 @@
-import { EnterpriseApi } from "metabase-enterprise/api/api";
-import { listTag } from "metabase-enterprise/api/tags";
 import type {
   AcknowledgeAdvisoriesResponse,
   AcknowledgeAdvisoryResponse,
@@ -7,6 +5,9 @@ import type {
   ListAdvisoriesResponse,
   SendTestNotificationRequest,
 } from "metabase-types/api";
+
+import { EnterpriseApi } from "../api/api";
+import { listTag } from "../api/tags";
 
 export const securityCenterApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
