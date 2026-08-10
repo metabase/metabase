@@ -8,7 +8,7 @@ import type React from "react";
 import { useCallback, useMemo } from "react";
 
 interface VirtualGridProps<TData> {
-  gridRef: React.RefObject<HTMLDivElement>;
+  gridRef: React.RefObject<HTMLDivElement | null>;
   table: ReactTable<TData>;
   defaultRowHeight: number;
   enableRowVirtualization?: boolean;

@@ -321,7 +321,7 @@ export type ScrollToDestinations = {
 
 export interface DataGridInstance<TData> {
   table: Table<TData>;
-  gridRef: RefObject<HTMLDivElement>;
+  gridRef: RefObject<HTMLDivElement | null>;
   virtualGrid: VirtualGrid;
   measureRoot: React.ReactNode;
   columnsReordering: ColumnsReordering;
