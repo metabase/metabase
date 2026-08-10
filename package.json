@@ -435,6 +435,8 @@
     "@lezer/lr": "^1.4.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz",
     "ansi-regex": "5.0.1",
     "cipher-base": "^1.0.5",
