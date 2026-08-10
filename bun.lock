@@ -373,6 +373,9 @@
     "esbuild",
     "cypress",
   ],
+  "patchedDependencies": {
+    "@loki/runner@0.35.0": "patches/@loki%2Frunner@0.35.0.patch",
+  },
   "overrides": {
     "@codemirror/autocomplete": "^6.18.6",
     "@codemirror/commands": "^6.10.1",
