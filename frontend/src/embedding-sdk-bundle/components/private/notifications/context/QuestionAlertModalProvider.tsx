@@ -1,5 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type PropsWithChildren, createContext, useContext } from "react";
+import {
+  type JSX,
+  type PropsWithChildren,
+  createContext,
+  useContext,
+} from "react";
 
 interface QuestionAlertModalContext {
   isOpen: boolean;

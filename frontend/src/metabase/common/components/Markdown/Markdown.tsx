@@ -3,6 +3,7 @@ import type {
   AnchorHTMLAttributes,
   CSSProperties,
   ComponentPropsWithRef,
+  JSX,
   TableHTMLAttributes,
 } from "react";
 import { useMemo } from "react";

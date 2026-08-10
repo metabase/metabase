@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, JSX } from "react";
 
 import type { ActionIconProps } from "metabase/ui";
 

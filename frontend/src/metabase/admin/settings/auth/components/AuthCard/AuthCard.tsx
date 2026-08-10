@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { useCallback, useState } from "react";
 import { c, t } from "ttag";
 
