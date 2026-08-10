@@ -8,27 +8,29 @@ import { SET_PARAMETER_VALUES, initialize } from "metabase/redux/dashboard";
 import type { Card } from "metabase-types/api";
 
 import {
-  REMOVE_CARD_FROM_DASH,
   REMOVE_PARAMETER,
   RESET_PARAMETERS,
   SET_PARAMETER_VALUE,
-  UNDO_REMOVE_CARD_FROM_DASH,
-  addCardToDash,
-  addManyCardsToDash,
   fetchDashboard,
-  markNewCardSeen,
-  onReplaceAllDashCardVisualizationSettings,
-  onUpdateDashCardColumnSettings,
-  onUpdateDashCardVisualizationSettings,
   type removeCardFromDashboard,
   type removeParameter,
   type resetParameters,
-  setDashCardAttributes,
-  setMultipleDashCardAttributes,
   type setParameterValue,
   tabsReducer,
   type undoRemoveCardFromDashboard,
 } from "./actions";
+import {
+  REMOVE_CARD_FROM_DASH,
+  UNDO_REMOVE_CARD_FROM_DASH,
+  addCardToDash,
+  addManyCardsToDash,
+  markNewCardSeen,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  onUpdateDashCardVisualizationSettings,
+  setDashCardAttributes,
+  setMultipleDashCardAttributes,
+} from "./actions/core";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import {
   autoApplyFilters,

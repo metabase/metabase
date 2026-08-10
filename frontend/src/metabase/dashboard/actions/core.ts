@@ -10,6 +10,9 @@ import type {
   DashboardId,
 } from "metabase-types/api";
 
+// Type-only, so it adds no runtime edge to the dashboard utils module.
+import type { NewDashboardCard } from "../utils";
+
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
 export const setEditingDashboard = (
   dashboard: Dashboard | null,
@@ -74,6 +77,18 @@ export const setMultipleDashCardAttributes = createAction<{
 export const ADD_CARD_TO_DASH = "metabase/dashboard/ADD_CARD_TO_DASH";
 export const ADD_MANY_CARDS_TO_DASH =
   "metabase/dashboard/ADD_MANY_CARDS_TO_DASH";
+
+// Declared beside their type constants rather than next to the thunks that
+// dispatch them. `reducers.ts` needs the creators, and the thunk modules reach
+// the visualization and parameter stacks, which would then be in the initial
+// bundle because the store imports the reducer on every page.
+export const addCardToDash = createAction<NewDashboardCard>(ADD_CARD_TO_DASH);
+export const addManyCardsToDash = createAction<NewDashboardCard[]>(
+  ADD_MANY_CARDS_TO_DASH,
+);
+
+export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
+export const markNewCardSeen = createAction<DashCardId>(MARK_NEW_CARD_SEEN);
 
 export const REMOVE_CARD_FROM_DASH = "metabase/dashboard/REMOVE_CARD_FROM_DASH";
 
