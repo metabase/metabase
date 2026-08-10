@@ -44,7 +44,7 @@ jobs:
         uses: ./.github/actions/prepare-frontend
 
       # Always required by whitespace linter, also used by OpenAPI spec validation
-      - name: Prepare back-end environment
+      - name: Setup backend env
         uses: ./.github/actions/prepare-backend
 
       - name: Setup actionlint
