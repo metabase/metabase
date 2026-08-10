@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import {
   act,
@@ -39,6 +40,33 @@ const defaultItem = createMockCollectionItem({
   description: "description foo foo foo",
   collection_position: 1,
 });
+
+function HoverStateHarness() {
+  const [isSelectMode, setIsSelectMode] = useState(true);
+  const [isSelected, setIsSelected] = useState(false);
+
+  const handleToggleSelected = () => {
+    if (isSelected) {
+      setIsSelected(false);
+      setIsSelectMode(false);
+    } else {
+      setIsSelected(true);
+    }
+  };
+
+  return (
+    <>
+      <button onClick={() => setIsSelectMode(true)}>Enter select mode</button>
+      <CompactPinnedItemCard
+        item={defaultItem}
+        collection={defaultCollection}
+        isSelectMode={isSelectMode}
+        isSelected={isSelected}
+        onToggleSelected={handleToggleSelected}
+      />
+    </>
+  );
+}
 
 function setup({
   item = defaultItem,
@@ -232,6 +260,28 @@ describe("CompactPinnedItemCard", () => {
       const card = screen.getByTestId("pinned-item-card");
 
       await userEvent.hover(card);
+
+      expect(testGetIcon(modelIconMap[defaultItem.model])).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("pinned-item-checkbox"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should clear hover state after leaving a card outside select mode (UXW-4996)", async () => {
+      renderWithProviders(<Route path="/" element={<HoverStateHarness />} />, {
+        withRouter: true,
+      });
+      const card = screen.getByRole("checkbox", { name: defaultItem.name });
+
+      fireEvent.mouseEnter(card);
+      expect(screen.getByTestId("pinned-item-checkbox")).toBeInTheDocument();
+
+      fireEvent.click(card);
+      fireEvent.click(card);
+      fireEvent.mouseLeave(screen.getByRole("link"));
+      await userEvent.click(
+        screen.getByRole("button", { name: "Enter select mode" }),
+      );
 
       expect(testGetIcon(modelIconMap[defaultItem.model])).toBeInTheDocument();
       expect(

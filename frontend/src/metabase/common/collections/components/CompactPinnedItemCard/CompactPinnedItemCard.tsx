@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type FocusEvent, useState } from "react";
 import { t } from "ttag";
 
 import { ActionMenu } from "metabase/common/collections/components/ActionMenu";
@@ -93,14 +93,31 @@ export function CompactPinnedItemCard({
   const hasActionHandlers = Boolean(
     onCopy || onMove || createBookmark || deleteBookmark || collection,
   );
-  const handleToggleSelected =
-    isSelectMode && onToggleSelected && isCollectionItem(item)
+  const toggleSelected =
+    onToggleSelected && isCollectionItem(item)
       ? () => onToggleSelected(item)
       : undefined;
+  const handleToggleSelected = isSelectMode ? toggleSelected : undefined;
   const showAsSelected = handleToggleSelected != null && Boolean(isSelected);
   const [isHoveredOrFocused, setIsHoveredOrFocused] = useState(false);
   const showCheckbox =
     handleToggleSelected != null && (showAsSelected || isHoveredOrFocused);
+  const highlightProps = toggleSelected
+    ? {
+        onMouseEnter: () => setIsHoveredOrFocused(true),
+        onMouseLeave: () => setIsHoveredOrFocused(false),
+        onFocus: (event: FocusEvent) => {
+          if (event.target === event.currentTarget) {
+            setIsHoveredOrFocused(true);
+          }
+        },
+        onBlur: (event: FocusEvent) => {
+          if (event.target === event.currentTarget) {
+            setIsHoveredOrFocused(false);
+          }
+        },
+      }
+    : {};
 
   const card = (
     <Card
@@ -181,22 +198,13 @@ export function CompactPinnedItemCard({
   if (handleToggleSelected) {
     return (
       <div
+        {...highlightProps}
         aria-checked={showAsSelected}
         aria-label={item.name}
         className={S.link}
         role="checkbox"
         tabIndex={0}
-        onBlur={(event) => {
-          if (event.target === event.currentTarget) {
-            setIsHoveredOrFocused(false);
-          }
-        }}
         onClick={handleToggleSelected}
-        onFocus={(event) => {
-          if (event.target === event.currentTarget) {
-            setIsHoveredOrFocused(true);
-          }
-        }}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) {
             return;
@@ -206,8 +214,6 @@ export function CompactPinnedItemCard({
             handleToggleSelected();
           }
         }}
-        onMouseEnter={() => setIsHoveredOrFocused(true)}
-        onMouseLeave={() => setIsHoveredOrFocused(false)}
       >
         {card}
       </div>
@@ -215,7 +221,12 @@ export function CompactPinnedItemCard({
   }
 
   return (
-    <Link className={S.link} to={modelToUrl(item)} onClick={onClick}>
+    <Link
+      {...highlightProps}
+      className={S.link}
+      to={modelToUrl(item)}
+      onClick={onClick}
+    >
       {card}
     </Link>
   );
