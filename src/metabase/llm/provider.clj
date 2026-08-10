@@ -128,11 +128,13 @@
                      :help      (deferred-tru "Point this at the .cn platform to use it instead; keys are not interchangeable between the two.")}]}
    {:type          "google"
     :label         (deferred-tru "Google Gemini")
-    :default-model nil
+    :default-model "google/gemini-3.5-flash"
     ;; The Gemini Enterprise Agent Platform has no listing endpoint we can trust — the one it exposes reports models
-    ;; that are not really available and omits ones that are — so, as with Azure, the connection names the model it
-    ;; serves and connecting validates it with a free `countTokens` probe.
-    :model-fields  [:model]
+    ;; that are not really available and omits ones that are — so the models Metabot is known to work with are fixed
+    ;; here, and connecting validates the credentials against one of them with a free `countTokens` probe. Which of
+    ;; them a project can actually reach depends on its location.
+    :models        [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
+                    {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}]
     :fields        [{:key         :project-id
                      :label       (deferred-tru "Project ID")
                      :type        :text
@@ -144,17 +146,6 @@
                      :type      :text
                      :placeholder "global"
                      :help      (deferred-tru "Optional. Defaults to global.")}
-                    {:key       :model
-                     :label     (deferred-tru "Model")
-                     :type      :select
-                     :required? true
-                     ;; Stored publisher-qualified, which is what the request path is built from; the option shows
-                     ;; the bare ID, the way Google's own docs name it.
-                     :options   [{:value "google/gemini-3.5-flash" :label "gemini-3.5-flash"}
-                                 {:value "google/gemini-3.6-flash" :label "gemini-3.6-flash"}]
-                     :default   "google/gemini-3.5-flash"
-                     :help      (deferred-tru "Which of these a project can reach depends on its location.")
-                     :docs-url  "https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations#google-models"}
                     {:key       :auth-method
                      :label     (deferred-tru "Authentication method")
                      :type      :segmented

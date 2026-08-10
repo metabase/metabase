@@ -15,8 +15,7 @@
    "zai"        {:api-key "zai-test-key"}
    "moonshot"   {:api-key "sk-moonshot-test-key"}
    "google"     {:oauth-access-token "ya29.test-token"
-                 :project-id         "my-project"
-                 :model              "google/gemini-3.5-flash"}
+                 :project-id         "my-project"}
    "azure"      {:api-key         "azure-test-key"
                  :base-url        azure-base-url
                  :model-family    "openai"

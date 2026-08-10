@@ -3026,7 +3026,7 @@
              (llm-connections))))))
 
 (deftest migrate-llm-provider-settings-google-test
-  (testing "v64.7qmx3p : either Google credential is enough, and the model comes from the reference it lived in"
+  (testing "v64.7qmx3p : either Google credential on its own is enough"
     (impl/test-migrations ["v64.7qmx3p"] [migrate!]
       (insert-llm-settings! {"llm-google-oauth-access-token" "ya29.stored-token"
                              "llm-google-project-id"         "my-project"
@@ -3036,8 +3036,7 @@
                :type   "google"
                :name   "Google Gemini"
                :config {:oauth-access-token "ya29.stored-token"
-                        :project-id         "my-project"
-                        :model              "google/gemini-3.5-flash"}}]
+                        :project-id         "my-project"}}]
              (llm-connections))))))
 
 (deftest migrate-llm-provider-settings-managed-test

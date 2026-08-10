@@ -61,17 +61,16 @@
                    :deployment-name "llm-azure-deployment-name"}
     :credentials  [:api-key :base-url]
     :model-fields [:model-family :deployment-name]}
-   {:type         "google"
-    :name         "Google Gemini"
-    :settings     {:service-account-key "llm-google-service-account-key"
-                   :oauth-access-token  "llm-google-oauth-access-token"
-                   :project-id          "llm-google-project-id"
-                   :location            "llm-google-location"
-                   :base-url            "llm-google-api-base-url"}
+   {:type        "google"
+    :name        "Google Gemini"
+    :settings    {:service-account-key "llm-google-service-account-key"
+                  :oauth-access-token  "llm-google-oauth-access-token"
+                  :project-id          "llm-google-project-id"
+                  :location            "llm-google-location"
+                  :base-url            "llm-google-api-base-url"}
     ;; either credential will do, so completeness is checked against the pair rather than against every key
-    :credentials  []
-    :any-of       [:service-account-key :oauth-access-token]
-    :model-fields [:model]}
+    :credentials []
+    :any-of      [:service-account-key :oauth-access-token]}
    {:type        "bedrock"
     :name        "Amazon Bedrock"
     :settings    {:access-key-id     "llm-bedrock-access-key-id"

@@ -89,7 +89,7 @@
                       (filter #(= "google" (:type %)))
                       first)
           fields (into {} (map (juxt :key identity)) (:fields google))]
-      (is (= ["project-id" "location" "model" "auth-method" "service-account-key" "oauth-access-token" "base-url"]
+      (is (= ["project-id" "location" "auth-method" "service-account-key" "oauth-access-token" "base-url"]
              (map :key (:fields google))))
       (is (=? {:type    "segmented"
                :default "service-account-key"
@@ -102,12 +102,9 @@
       (is (=? {:type      "password"
                :show_when {:field "auth-method" :value "oauth-token"}}
               (fields "oauth-access-token")))
-      (testing "the model is picked from the ones Metabot is known to work with, stored publisher-qualified"
-        (is (=? {:type    "select"
-                 :default "google/gemini-3.5-flash"
-                 :options [{:value "google/gemini-3.5-flash" :label "gemini-3.5-flash"}
-                           {:value "google/gemini-3.6-flash" :label "gemini-3.6-flash"}]}
-                (fields "model")))))))
+      (testing "the models are the fixed catalog every connection of the type offers, not a field of its own"
+        (is (nil? (fields "model")))
+        (is (= "google/gemini-3.5-flash" (:default_model google)))))))
 
 (deftest provider-types-managed-availability-test
   (letfn [(managed [types] (->> types (filter #(= "metabase" (:type %))) first))]
@@ -522,6 +519,24 @@
                                                                       {:api-key "sk-ant-rotated"})]]
           (mt/user-http-request :crowberto :get 200 "llm/models"))
         (is (= ["sk-ant-first" "sk-ant-rotated"] @keys-seen))))))
+
+(deftest models-for-a-connection-with-a-fixed-catalog-test
+  (testing (str "Google's models are the registry's, so every connection of the type offers both of them in the "
+                "model picker — but the call is still made, because it is what verifies the credentials")
+    (let [probed (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model]}]
+                                                             (reset! probed model)
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "gemini-catalog" "google"
+                                                                      {:oauth-access-token "ya29.token"
+                                                                       :project-id         "my-project"})]]
+          (is (= [{:key    "gemini-catalog"
+                   :name   "gemini-catalog"
+                   :type   "google"
+                   :models [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
+                            {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}]}]
+                 (mt/user-http-request :crowberto :get 200 "llm/models")))
+          (is (= "google/gemini-3.5-flash" @probed)))))))
 
 (deftest models-for-a-connection-that-names-its-own-model-test
   (testing "Azure serves a deployment its listing endpoint never returns, so the connection's own model is reported"

@@ -134,28 +134,34 @@
   "List `conn`'s models. `config-override` stands in for the stored credentials when validating a connection that has
   not been saved yet. Returns `{:models [...]}` or `{:models [] :error msg}` for a credential-level failure.
 
-  Types whose catalog is fixed (the managed provider, which serves one model through the proxy) are answered from
-  the registry — there is nothing to fetch, and calling out would fail on instances that cannot reach the proxy.
+  The managed provider is answered from the registry — it serves one model through the proxy, there is nothing to
+  fetch, and calling out would fail on instances that cannot reach it.
 
-  Types that name their model in `:config` (Azure, whose deployments its listing endpoint does not return) still
-  make the call, because it is what verifies the credentials, but the model they serve comes from the connection
-  rather than the empty list that comes back."
+  A type whose catalog is fixed but whose credentials are its own (Google, whose listing endpoint reports models
+  that are not really available) still makes the call, because it is what verifies those credentials; the catalog
+  comes from the registry and the call is made against its first model.
+
+  A type that names its model in `:config` (Azure, whose deployments its listing endpoint does not return) makes
+  the call for the same reason, but the model it serves comes from the connection rather than from the empty list
+  that comes back."
   [{:keys [type config]} config-override model]
-  (if-let [models (llm.provider/fixed-models type)]
-    {:models (vec models)}
-    (let [config           (llm.provider/with-field-defaults type (or config-override config))
-          configured-model (llm.provider/connection-model type config)
-          model            (or model configured-model)]
-      (try
-        (let [listed (:models (metabot.self/list-models type (cond-> {:credentials config}
-                                                               model (assoc :model model))))]
-          {:models (if configured-model
-                     [{:id configured-model :display_name (last (str/split configured-model #"/"))}]
-                     (vec listed))})
-        (catch clojure.lang.ExceptionInfo e
-          (if (provider-client-error? e)
-            {:models [] :error (.getMessage e)}
-            (throw e)))))))
+  (let [fixed (llm.provider/fixed-models type)]
+    (if (llm.provider/managed-type? type)
+      {:models (vec fixed)}
+      (let [config           (llm.provider/with-field-defaults type (or config-override config))
+            configured-model (llm.provider/connection-model type config)
+            model            (or model configured-model (:id (first fixed)))]
+        (try
+          (let [listed (:models (metabot.self/list-models type (cond-> {:credentials config}
+                                                                 model (assoc :model model))))]
+            {:models (cond
+                       configured-model [{:id configured-model :display_name (last (str/split configured-model #"/"))}]
+                       fixed            (vec fixed)
+                       :else            (vec listed))})
+          (catch clojure.lang.ExceptionInfo e
+            (if (provider-client-error? e)
+              {:models [] :error (.getMessage e)}
+              (throw e))))))))
 
 (def ^:private models-cache-ttl-ms
   "How long a connection's model list is reused. Long enough that an admin page load does not fan out to every

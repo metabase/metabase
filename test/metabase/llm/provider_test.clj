@@ -377,8 +377,7 @@
             "mistral"    "mistral-medium-3-5"
             "zai"        "glm-5.2"
             "moonshot"   "kimi-k3"
-            ;; google's model is the connection's own, like azure's deployment
-            "google"     nil
+            "google"     "google/gemini-3.5-flash"
             ;; azure's models are deployment names the admin chooses, so there is nothing to default to
             "azure"      nil
             "bedrock"    "anthropic.claude-opus-4-8"
