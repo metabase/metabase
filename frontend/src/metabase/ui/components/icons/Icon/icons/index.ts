@@ -307,7 +307,7 @@ import zap_component from "./zap.svg?component";
 import zoom_in_component from "./zoom_in.svg?component";
 import zoom_out_component from "./zoom_out.svg?component";
 
-export const Icons: Record<IconName, React.VFC> = {
+export const Icons: Record<IconName, React.FC> = {
   add: add_component,
   add_collection: add_collection_component,
   add_column: add_column_component,

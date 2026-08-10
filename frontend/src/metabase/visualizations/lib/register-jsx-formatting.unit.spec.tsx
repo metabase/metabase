@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { isElementOfType } from "react-dom/test-utils";
 
 import { setupSdkPlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
@@ -9,6 +8,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import { formatValue } from "metabase/value-formatting";
+import { isElementOfType } from "metabase/value-formatting/test-utils";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { ColumnSettings } from "metabase-types/api";
 import {
