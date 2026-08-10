@@ -48,8 +48,7 @@ export const DataGridRow = <TData,>({
   styles,
 }: DataGridRowProps<TData>) => {
   // Use displayIndex rather than the origin row index so that stripes follow
-  // the rendered order (client-side sorting reorders rows without changing
-  // `row.origin.index`, which refers to the position in the original dataset).
+  // the rendered order
   const isStriped = striped && row.displayIndex % 2 === 1;
   const rowPositionStyles = getRowPositionStyles(row);
   const paddingLeft = columns[0]?.virtualItem?.start ?? 0;
