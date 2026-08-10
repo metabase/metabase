@@ -55,7 +55,7 @@ Custom visualizations behave like built-in charts in most places:
 - **Dark mode.** Custom visualizations that use Metabase's colors adapt to [dark mode](../../people-and-groups/account-settings.md#theme) automatically.
 - **Icons.** A custom visualization shows its own icon in the visualization picker, and questions that use it show that icon in collections and bookmarks.
 
-### Custom visualizations in embeds only work when people log in
+### Custom visualizations in embeds only work when people are signed in
 
 [Modular embeds](../../embedding/modular-embedding.md) that use SSO can render custom visualizations, whether you embed with web components or with the [React SDK](../../embedding/sdk/introduction.md). You allowlist the custom visualizations you want to load with the `allowedCustomVisualizations` setting. See [Custom visualizations in embeds](../../embedding/custom-visualizations.md).
 
