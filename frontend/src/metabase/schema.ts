@@ -39,8 +39,7 @@ type TableEntitySchema = {
   database: Pick<Database, "id" | "is_saved_questions">;
 };
 
-// also accepts partial payloads (e.g. `{ id, fks }` from loadTableFks) and
-// tables whose `schema` was already converted to an object
+// also accepts partial payloads (e.g. `{ id, fks }`) and already-processed tables
 type TableEntityData = Partial<Omit<Table, "schema">> &
   Pick<Table, "id"> & {
     schema?: SchemaName | TableEntitySchema | null;
@@ -61,8 +60,7 @@ export const TableSchema = new schema.Entity(
 
       const databaseId = isVirtualSchema
         ? SAVED_QUESTIONS_VIRTUAL_DB_ID
-        : // a table carrying a raw string `schema` always carries `db_id`; partial
-          // payloads without it (e.g. `{ id, fks }`) skip the schema branch below
+        : // tables with a raw string `schema` always carry `db_id`
           (table.db_id as DatabaseId);
       if (typeof table.schema === "string" || table.schema === null) {
         table.schema_name = table.schema;
@@ -98,8 +96,7 @@ export const FieldSchema = new schema.Entity("fields", undefined, {
     };
   },
   idAttribute: (field: FieldEntityData) => {
-    // getUniqueFieldId can return a number, which normalizr accepts at runtime
-    // (ids end up as object keys), but its SchemaFunction type is string-only
+    // numeric ids work as object keys at runtime; SchemaFunction declares string only
     return getUniqueFieldId(field) as string;
   },
 });
@@ -171,9 +168,7 @@ export const ENTITIES_SCHEMA_MAP = {
 
 export const ObjectUnionSchema = new schema.Union(
   ENTITIES_SCHEMA_MAP,
-  // entityTypeForObject returns undefined for unknown models, which normalizr
-  // tolerates at runtime (the value is left unnormalized), but its declared
-  // SchemaFunction type does not
+  // undefined (unknown model) just leaves the value unnormalized at runtime
   (object: { model: string }) => entityTypeForObject(object) as string,
 );
 
