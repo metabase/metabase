@@ -35,14 +35,14 @@
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
       (data-app.sync/import-from-snapshot! (snapshot files))
-      (let [{app-id :id, :keys [resource_collection_id permission_group_id]}
+      (let [{:keys [resource_collection_id permission_group_id]}
             (t2/select-one :model/DataApp :name "sales")]
         (testing "the first sync creates a dedicated group and collection"
           (is (pos-int? resource_collection_id))
           (is (pos-int? permission_group_id))
-          (is (= (format "Data app sales resources (%s)" app-id)
+          (is (= "Data App: sales"
                  (t2/select-one-fn :name :model/Collection :id resource_collection_id)))
-          (is (= (format "Data app sales users (%s)" app-id)
+          (is (= "Data App: sales"
                  (t2/select-one-fn :name :model/PermissionsGroup :id permission_group_id)))
           (is (t2/exists? :model/Permissions
                           :group_id permission_group_id

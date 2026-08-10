@@ -7,12 +7,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- resource-name [app resource]
-  (format "Data app %s %s (%s)" (:name app) resource (:id app)))
+(defn- resource-name [app]
+  (format "Data App: %s" (:name app)))
 
 (defn- create-permission-group! [app]
   (let [group (t2/insert-returning-instance! :model/PermissionsGroup
-                                             :name (resource-name app "users"))]
+                                             :name (resource-name app))]
     (t2/update! :model/DataApp :id (:id app) {:permission_group_id (:id group)})
     group))
 
@@ -27,7 +27,7 @@
 
 (defn- create-resource-collection! [app]
   (let [collection (t2/insert-returning-instance! :model/Collection
-                                                  :name (resource-name app "resources")
+                                                  :name (resource-name app)
                                                   :location "/")]
     (t2/update! :model/DataApp :id (:id app) {:resource_collection_id (:id collection)})
     collection))
@@ -43,9 +43,9 @@
   (let [group      (permission-group! app)
         collection (resource-collection! app)]
     (t2/update! :model/PermissionsGroup :id (:id group)
-                {:name (resource-name app "users")})
+                {:name (resource-name app)})
     (t2/update! :model/Collection :id (:id collection)
-                {:name (resource-name app "resources")})
+                {:name (resource-name app)})
     (restrict-query-creation! group)
     (perms/revoke-collection-permissions! group collection)
     (perms/grant-collection-read-permissions! group collection)
