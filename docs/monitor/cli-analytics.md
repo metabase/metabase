@@ -18,14 +18,14 @@ The page has two tabs:
 - **Usage**: Charts that summarize CLI activity over the date range you pick.
 - **Calls**: One row per call, so you can look at individual requests.
 
-Both tabs share the same filters.
-
 ## Filters
 
-- **Date range**: The time window the page covers. Defaults to the last 30 days.
-- **User**: Limit to a single person (or **All users**).
-- **Group**: Limit to a single [group](../people-and-groups/managing.md) (or **All groups**).
+Both tabs share the same filters.
+
 - **Tenant**: Limit to a single [tenant](../embedding/tenants.md). Only shows up if tenants are enabled.
+- **Group**: Limit to a single [group](../people-and-groups/managing.md) (or **All groups**).
+- **User**: Limit to a single person (or **All users**).
+- **Date range**: The time window the page covers. Defaults to the last 30 days.
 
 ## Usage
 
