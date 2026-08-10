@@ -18,7 +18,6 @@ import {
   getTimezoneOrOffset,
   normalizeDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
-import { getVisualizationTransformed } from "metabase/visualizations/lib/registry";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 import {
@@ -31,6 +30,8 @@ import {
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+
+import { getVisualizationTransformed } from "../../../lib/registry";
 
 function createMockChartMeasurements(
   outerWidth: number,

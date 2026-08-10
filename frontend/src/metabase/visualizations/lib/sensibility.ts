@@ -1,8 +1,5 @@
 import _ from "underscore";
 
-import visualizations, {
-  type RegisteredVisualization,
-} from "metabase/visualizations/lib/registry";
 import { getSeriesWithDisplay } from "metabase/visualizations/lib/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
@@ -27,6 +24,7 @@ import {
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
+import visualizations, { type RegisteredVisualization } from "./registry";
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 const MAX_RECOMMENDED = 12;

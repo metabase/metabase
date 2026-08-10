@@ -40,11 +40,6 @@ import type {
   StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
-import { formatValueForTooltip } from "metabase/visualizations/echarts/tooltip/format";
-import {
-  getPercent,
-  getTotalValue,
-} from "metabase/visualizations/echarts/tooltip/utils";
 import {
   type EChartsSeriesBrushEndEvent,
   type EChartsSeriesMouseEvent,
@@ -81,6 +76,9 @@ import type {
   RowValue,
 } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
+
+import { formatValueForTooltip } from "../../echarts/tooltip/format";
+import { getPercent, getTotalValue } from "../../echarts/tooltip/utils";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
