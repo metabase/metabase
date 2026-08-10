@@ -37,7 +37,6 @@ import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirec
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
-import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { getMonitorRedirects, getMonitorRoutes } from "metabase/monitor/routes";
@@ -132,6 +131,11 @@ const automaticDashboardApp = () =>
     ({ AutomaticDashboardApp }) => ({ Component: AutomaticDashboardApp }),
   );
 
+const metricsViewerPage = () =>
+  import("metabase/metrics-viewer").then(({ MetricsViewerPage }) => ({
+    Component: MetricsViewerPage,
+  }));
+
 const documentPage = () =>
   import("metabase/documents/routes").then(({ DocumentPageOuter }) => ({
     Component: DocumentPageOuter,
@@ -164,6 +168,7 @@ registerPagePrefetch("/document/", documentPage);
 registerPagePrefetch("/document/", commentsSidesheet);
 registerPagePrefetch("/dashboard/", dashboardApp);
 registerPagePrefetch("/auto/dashboard/", automaticDashboardApp);
+registerPagePrefetch("/explore", metricsViewerPage);
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
   {
@@ -434,7 +439,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 ],
               },
 
-              { path: "explore", element: <MetricsViewerPage /> },
+              { path: "explore", lazy: metricsViewerPage },
 
               {
                 path: "table",
