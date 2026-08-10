@@ -3167,6 +3167,8 @@
            metabase-enterprise.data-apps.init
            metabase-enterprise.data-apps.sync}
    :uses #{api
+           lib
+           lib-be
            models
            permissions
            premium-features

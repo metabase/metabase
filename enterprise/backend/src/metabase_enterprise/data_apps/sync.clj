@@ -47,6 +47,22 @@
     (when-not (str/blank? url)
       url)))
 
+(defn prepare-query-sync!
+  "Create an unpublished data app when needed, ensure its permission resources,
+   and return their IDs. A later repository import fills the same row with the
+   authoritative manifest and bundle."
+  [slug]
+  (t2/with-transaction [_conn]
+    (when-not (t2/exists? :model/DataApp :name slug)
+      (t2/insert! :model/DataApp
+                  :name             slug
+                  :display_name     slug
+                  :bundle_path      (format "%s/%s/%s" data-app.config/apps-dir slug data-app.config/config-file-name)
+                  :sync_error       (tru "Bundle not synced yet.")
+                  :query_sync_draft true))
+    (-> (t2/select-one :model/DataApp :name slug)
+        data-app.resources/ensure-resources!)))
+
 ;;; ----------------------------------------------------- Discovery -----------------------------------------------------
 
 (defn- discover-app-configs
@@ -138,7 +154,8 @@
                                      :bundle          bytes
                                      :last_synced_sha sha
                                      :last_synced_at  :%now
-                                     :sync_error      nil))
+                                     :sync_error      nil
+                                     :query_sync_draft false))
         (-> (data-app/select-one-non-blob :name slug)
             data-app.resources/ensure-resources!)
         (app-content-changed? existing fields)))
@@ -197,8 +214,10 @@
                 ;; `enabled` is deliberately not consulted — see the README's
                 ;; source-of-truth table. (`[:not-in #{}]` is invalid SQL, so delete-all.)
                 removed (if (seq present-slugs)
-                          (t2/delete! :model/DataApp :name [:not-in present-slugs])
-                          (t2/delete! :model/DataApp))]
+                          (t2/delete! :model/DataApp
+                                      :name [:not-in present-slugs]
+                                      :query_sync_draft false)
+                          (t2/delete! :model/DataApp :query_sync_draft false))]
             {:changed changed, :removed removed}))]
     (log/infof "[data-app] synced sha=%s apps=%d changed=%d removed=%d errors=%d"
                sha (count good) changed removed (count errors))
