@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { ActionMenu } from "metabase/common/collections/components/ActionMenu";
@@ -97,6 +98,9 @@ export function CompactPinnedItemCard({
       ? () => onToggleSelected(item)
       : undefined;
   const showAsSelected = handleToggleSelected != null && Boolean(isSelected);
+  const [isHoveredOrFocused, setIsHoveredOrFocused] = useState(false);
+  const showCheckbox =
+    handleToggleSelected != null && (showAsSelected || isHoveredOrFocused);
 
   const card = (
     <Card
@@ -111,11 +115,12 @@ export function CompactPinnedItemCard({
       withBorder
     >
       <div className={S.body}>
-        {showAsSelected ? (
+        {showCheckbox ? (
           <Checkbox
             aria-hidden
-            checked
+            checked={showAsSelected}
             className={S.selectCheckbox}
+            data-testid="pinned-item-checkbox"
             readOnly
             size="sm"
             style={{ pointerEvents: "none" }}
@@ -181,7 +186,17 @@ export function CompactPinnedItemCard({
         className={S.link}
         role="checkbox"
         tabIndex={0}
+        onBlur={(event) => {
+          if (event.target === event.currentTarget) {
+            setIsHoveredOrFocused(false);
+          }
+        }}
         onClick={handleToggleSelected}
+        onFocus={(event) => {
+          if (event.target === event.currentTarget) {
+            setIsHoveredOrFocused(true);
+          }
+        }}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) {
             return;
@@ -191,6 +206,8 @@ export function CompactPinnedItemCard({
             handleToggleSelected();
           }
         }}
+        onMouseEnter={() => setIsHoveredOrFocused(true)}
+        onMouseLeave={() => setIsHoveredOrFocused(false)}
       >
         {card}
       </div>

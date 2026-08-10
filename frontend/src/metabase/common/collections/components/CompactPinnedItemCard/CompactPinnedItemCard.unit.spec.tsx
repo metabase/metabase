@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  act,
+  fireEvent,
   queryIcon,
   renderWithProviders,
   screen,
@@ -145,6 +147,98 @@ describe("CompactPinnedItemCard", () => {
       expect(testGetIcon(modelIconMap[defaultItem.model])).toBeInTheDocument();
     });
 
+    it("should swap the icon for an unchecked checkbox while hovering an unselected card", async () => {
+      setup({
+        isSelectMode: true,
+        isSelected: false,
+        onToggleSelected: jest.fn(),
+      });
+      const card = screen.getByRole("checkbox", { name: defaultItem.name });
+
+      expect(testGetIcon(modelIconMap[defaultItem.model])).toBeInTheDocument();
+
+      await userEvent.hover(card);
+
+      expect(
+        queryIcon(modelIconMap[defaultItem.model]),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pinned-item-checkbox")).not.toBeChecked();
+      expect(card).not.toBeChecked();
+
+      await userEvent.unhover(card);
+
+      expect(testGetIcon(modelIconMap[defaultItem.model])).toBeInTheDocument();
+    });
+
+    it("should show a checked checkbox while hovering a selected card", async () => {
+      setup({
+        isSelectMode: true,
+        isSelected: true,
+        onToggleSelected: jest.fn(),
+      });
+      const card = screen.getByRole("checkbox", { name: defaultItem.name });
+
+      expect(screen.getByTestId("pinned-item-checkbox")).toBeChecked();
+      expect(
+        queryIcon(modelIconMap[defaultItem.model]),
+      ).not.toBeInTheDocument();
+
+      await userEvent.hover(card);
+
+      expect(screen.getByTestId("pinned-item-checkbox")).toBeChecked();
+      expect(
+        queryIcon(modelIconMap[defaultItem.model]),
+      ).not.toBeInTheDocument();
+
+      await userEvent.unhover(card);
+
+      expect(screen.getByTestId("pinned-item-checkbox")).toBeChecked();
+    });
+
+    it("should swap the icon for a checkbox when the card receives keyboard focus", () => {
+      setup({
+        isSelectMode: true,
+        isSelected: false,
+        onToggleSelected: jest.fn(),
+      });
+      const card = screen.getByRole("checkbox", { name: defaultItem.name });
+
+      act(() => card.focus());
+
+      expect(
+        queryIcon(modelIconMap[defaultItem.model]),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pinned-item-checkbox")).toBeInTheDocument();
+
+      fireEvent.blur(card);
+
+      expect(testGetIcon(modelIconMap[defaultItem.model])).toBeInTheDocument();
+    });
+
+    it("should keep the model icon when focusing the action menu", () => {
+      setup({
+        isSelectMode: true,
+        isSelected: false,
+        onToggleSelected: jest.fn(),
+      });
+
+      fireEvent.focus(screen.getByRole("button", { name: "Actions" }));
+
+      expect(testGetIcon(modelIconMap[defaultItem.model])).toBeInTheDocument();
+    });
+
+    it("should not swap the icon on hover outside select mode", async () => {
+      setup();
+      const card = screen.getByTestId("pinned-item-card");
+
+      await userEvent.hover(card);
+
+      expect(testGetIcon(modelIconMap[defaultItem.model])).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("pinned-item-checkbox"),
+      ).not.toBeInTheDocument();
+    });
+
     it("should toggle the item exactly once when the card body is clicked", async () => {
       const onToggleSelected = jest.fn();
       setup({ isSelectMode: true, onToggleSelected });
@@ -161,7 +255,7 @@ describe("CompactPinnedItemCard", () => {
       setup({ isSelectMode: true, onToggleSelected });
       const card = screen.getByRole("checkbox", { name: defaultItem.name });
 
-      card.focus();
+      act(() => card.focus());
       await userEvent.keyboard(" ");
 
       expect(onToggleSelected).toHaveBeenCalledTimes(1);
