@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { canonicalJson, stripGeneratedQueryIds } from "./canonical";
+import { getCanonicalQueryJson } from "./canonical";
 import { injectSavedQuestionId } from "./discover";
 import { writeQueryLockfile } from "./lockfile";
 import type { MetabaseClient } from "./metabase-client";
@@ -233,8 +233,8 @@ function applyLockfileRepairs(
 
 function queriesMatch(card: QueryCard, resolved: ResolvedQuery["resolved"]) {
   return (
-    canonicalJson(stripGeneratedQueryIds(card.dataset_query)) ===
-    canonicalJson(stripGeneratedQueryIds(resolved.dataset_query))
+    getCanonicalQueryJson(card.dataset_query) ===
+    getCanonicalQueryJson(resolved.dataset_query)
   );
 }
 
