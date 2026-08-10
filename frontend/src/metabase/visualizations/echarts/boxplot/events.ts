@@ -10,7 +10,6 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type { DataKey } from "metabase/visualizations/echarts/cartesian/model/types";
-import { formatValueForTooltip } from "metabase/visualizations/echarts/tooltip/format";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import type {
   ComputedVisualizationSettings,
@@ -18,6 +17,8 @@ import type {
 } from "metabase/visualizations/types";
 import type { ClickObject, ClickObjectDimension } from "metabase-lib";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+
+import { formatValueForTooltip } from "../tooltip/format";
 
 import type {
   BoxPlotChartModel,

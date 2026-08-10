@@ -53,13 +53,14 @@ import type {
   SeriesSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import type {
-  ChartSettingEnumToggleProps,
-  ChartSettingSegmentedControlProps,
-} from "metabase/visualizations/types/widget-props";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationDisplay } from "metabase-types/api";
+
+import type {
+  ChartSettingEnumToggleProps,
+  ChartSettingSegmentedControlProps,
+} from "../../types/widget-props";
 
 export const getSeriesDisplays = (
   transformedSeries: Series,

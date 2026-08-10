@@ -23,7 +23,6 @@ import {
   getMarkerColorClass,
   useClickedStateTooltipSync,
 } from "metabase/visualizations/echarts/tooltip";
-import { getTotalValue } from "metabase/visualizations/echarts/tooltip/utils";
 import { getValueFromDimensionKey } from "metabase/visualizations/shared/settings/pie";
 import type {
   ClickObject,
@@ -32,6 +31,8 @@ import type {
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import type { ClickObjectDimension } from "metabase-lib";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+
+import { getTotalValue } from "../../echarts/tooltip/utils";
 
 export const getTooltipModel = (
   sliceKeyPath: string[],
