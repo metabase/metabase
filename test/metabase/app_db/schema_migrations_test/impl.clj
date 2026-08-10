@@ -17,6 +17,7 @@
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.snapshot-test-util :as snapshot]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -149,19 +150,32 @@
         (.generateDeploymentId change-log-service)
         (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters})))))
 
+(defn- migrate-to-start!
+  "Bring an empty app DB up to, but not including, `start-id`.
+
+  When `start-id` falls after the checked-in snapshot's boundary changeset, load the snapshot and replay only the
+  changesets between the boundary and `start-id`; otherwise replay the changelog from the beginning."
+  [^java.sql.Connection conn driver start-id]
+  (if (snapshot/usable-for-start? conn (snapshot/changeset-ids conn) driver start-id)
+    (do
+      (log/debugf "Loading app db snapshot %s, then running migrations up to %s..."
+                  snapshot/snapshot-version start-id)
+      (snapshot/load-snapshot! conn driver)
+      (run-migrations-in-range! conn [(snapshot/through-changeset-id) start-id]
+                                {:inclusive-start? false, :inclusive-end? false}))
+    (do
+      (log/debugf "Finding and running migrations before %s..." start-id)
+      (run-migrations-in-range! conn ["v00.00-000" start-id] {:inclusive-end? false}))))
+
 (defn test-migrations-for-driver! [driver [start-id end-id] f]
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))
   (with-temp-empty-app-db [conn driver]
     ;; sanity check: make sure the DB is actually empty
-    (let [metadata  (.getMetaData conn)
-          schema    (when (= :h2 driver) "PUBLIC")]
-      (with-open [rs (.getTables metadata nil schema "%" (into-array String ["TABLE"]))]
-        (let [tables (jdbc/result-set-seq rs)]
-          (assert (zero? (count tables))
-                  (str "'Empty' application DB is not actually empty. Found tables:\n"
-                       (u/pprint-to-str tables))))))
-    (log/debugf "Finding and running migrations before %s..." start-id)
-    (run-migrations-in-range! conn ["v00.00-000" start-id] {:inclusive-end? false})
+    (let [tables (snapshot/user-tables conn driver)]
+      (assert (empty? tables)
+              (str "'Empty' application DB is not actually empty. Found tables:\n"
+                   (u/pprint-to-str tables))))
+    (migrate-to-start! conn driver start-id)
     (let [restart-id (atom nil)]
       (letfn [(migrate
                 ([]
