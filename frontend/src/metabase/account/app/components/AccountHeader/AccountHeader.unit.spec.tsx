@@ -16,6 +16,8 @@ const getUser = () =>
     sso_source: "google",
   });
 
+const getLdapUser = () => createMockUser({ ...getUser(), sso_source: "ldap" });
+
 type SetupOpts = {
   user?: User;
   isMfaEnabled?: boolean;
@@ -56,46 +58,72 @@ describe("AccountHeader", () => {
   it("should show all tabs for a regular user", () => {
     setup();
 
-    expect(screen.getByText("Profile")).toBeInTheDocument();
-    expect(screen.getByText("Password")).toBeInTheDocument();
-    expect(screen.getByText("Login History")).toBeInTheDocument();
-    expect(screen.getByText("Notifications")).toBeInTheDocument();
-  });
-
-  it("should show the password tab if it is enabled by a plugin", () => {
-    PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source === "google");
-
-    setup();
-
-    expect(screen.getByText("Password")).toBeInTheDocument();
-  });
-
-  it("should hide the password tab if it is disabled by a plugin", () => {
-    PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "google");
-
-    setup();
-
-    expect(screen.queryByText("Password")).not.toBeInTheDocument();
-  });
-
-  describe("security tab", () => {
-    it("should show the tab when two-factor authentication is enabled for the instance", () => {
-      setup({ isMfaEnabled: true });
-
-      expect(screen.getByText("Security")).toBeInTheDocument();
-    });
-
-    it("should hide the tab when two-factor authentication is disabled for the instance", () => {
-      setup({ isMfaEnabled: false });
-
-      expect(screen.queryByText("Security")).not.toBeInTheDocument();
-    });
+    expect(screen.getByRole("tab", { name: "Profile" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: "Authentication" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: "Login History" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: "Notifications" }),
+    ).toBeInTheDocument();
   });
 
   it("should change location when a tab is selected", () => {
     const { onChangeLocation } = setup();
 
-    fireEvent.click(screen.getByText("Profile"));
+    fireEvent.click(screen.getByRole("tab", { name: "Profile" }));
     expect(onChangeLocation).toHaveBeenCalledWith("/account/profile");
+  });
+
+  describe("authentication tab", () => {
+    it("should show the tab if password changes are enabled by a plugin", () => {
+      PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source === "google");
+
+      setup();
+
+      expect(
+        screen.getByRole("tab", { name: "Authentication" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should hide the tab if password changes are disabled by a plugin", () => {
+      PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "google");
+
+      setup();
+
+      expect(
+        screen.queryByRole("tab", { name: "Authentication" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show the tab for a password user when two-factor authentication is disabled for the instance", () => {
+      setup({ isMfaEnabled: false });
+
+      expect(
+        screen.getByRole("tab", { name: "Authentication" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should show the tab for an LDAP user when two-factor authentication is enabled for the instance", () => {
+      PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "ldap");
+
+      setup({ user: getLdapUser(), isMfaEnabled: true });
+
+      expect(
+        screen.getByRole("tab", { name: "Authentication" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should hide the tab for an LDAP user when two-factor authentication is disabled for the instance", () => {
+      PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "ldap");
+
+      setup({ user: getLdapUser(), isMfaEnabled: false });
+
+      expect(
+        screen.queryByRole("tab", { name: "Authentication" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
