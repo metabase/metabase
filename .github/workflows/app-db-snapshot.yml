@@ -1,0 +1,122 @@
+name: App DB snapshot tests
+
+# The test suite boots its application DB from the checked-in snapshot in
+# `test_resources/app_db_snapshots/` instead of replaying the whole changelog. That is only sound while loading the
+# snapshot and migrating the rest lands on the same DB as migrating everything from scratch, so this workflow runs
+# both paths and diffs the result. It is separate from the normal backend jobs because the from-scratch replay is
+# expensive and only needs to happen when the migrations or the snapshot change.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "resources/migrations/**"
+      - "resources/liquibase*.yaml"
+      - "test_resources/app_db_snapshots/**"
+      - "test/metabase/app_db/snapshot_test_util.clj"
+      - "test/metabase/app_db/snapshot_test.clj"
+      - "test/metabase/app_db/schema_migrations_test/impl.clj"
+      - ".github/workflows/app-db-snapshot.yml"
+  push:
+    branches:
+      - master
+      - "release-x**"
+    paths:
+      - "resources/migrations/**"
+      - "resources/liquibase*.yaml"
+      - "test_resources/app_db_snapshots/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  snapshot-drift:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: H2
+            driver: h2
+          - name: Postgres 14
+            driver: postgres
+          - name: MySQL 8.0
+            driver: mysql
+    name: "App DB snapshot drift (${{ matrix.name }})"
+    env:
+      CI: 'true'
+      # what turns the from-scratch comparison on; see metabase.app-db.snapshot-test
+      MB_APP_DB_SNAPSHOT_DRIFT_TEST: 'true'
+      DRIVERS: ${{ matrix.driver }}
+      MB_POSTGRESQL_TEST_USER: mb_test
+      MB_MYSQL_TEST_USER: root
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Start Postgres
+        if: ${{ matrix.driver == 'postgres' }}
+        run: |
+          docker run -d --name pg -p 5432:5432 \
+            -e POSTGRES_USER=mb_test -e POSTGRES_DB=mb_test -e POSTGRES_HOST_AUTH_METHOD=trust \
+            postgres:14-alpine
+        shell: bash
+
+      - name: Start MySQL
+        if: ${{ matrix.driver == 'mysql' }}
+        run: |
+          docker run -d --name mysql -p 3306:3306 \
+            -e MYSQL_ALLOW_EMPTY_PASSWORD=true -e MYSQL_DATABASE=mb_test \
+            mysql:8.0
+        shell: bash
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Wait for the database to accept connections
+        if: ${{ matrix.driver != 'h2' }}
+        run: |
+          port=$([ "${{ matrix.driver }}" = "postgres" ] && echo 5432 || echo 3306)
+          for _ in $(seq 1 60); do
+            if nc -z localhost "$port"; then exit 0; fi
+            sleep 2
+          done
+          echo "Database on port $port never came up"
+          exit 1
+        shell: bash
+
+      - name: Compare snapshot against a from-scratch migration
+        run: ./bin/test-agent --drivers=${{ matrix.driver }} :only '[metabase.app-db.snapshot-test]'
+        shell: bash
+
+  app-db-snapshot-result:
+    needs: [snapshot-drift]
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    name: app-db-snapshot-result
+    if: always() && !cancelled()
+    steps:
+      - name: Check job status
+        uses: actions/github-script@v9
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const failed = Object.entries(needs)
+              .filter(([, v]) => v.result !== 'success' && v.result !== 'skipped');
+
+            if (failed.length === 0) {
+              console.log('App DB snapshot matches a from-scratch migration.');
+              process.exit(0);
+            }
+
+            console.log(
+              'The checked-in app DB snapshot no longer matches a from-scratch migration.\n' +
+              'If you changed a migration at or below the snapshot boundary, either move the change to a new\n' +
+              'changeset or regenerate the snapshot with metabase.app-db.snapshot-test-util/generate!.'
+            );
+            failed.forEach(([name, v]) => console.log(`${name} - ${v.result}`));
+            process.exit(1);
