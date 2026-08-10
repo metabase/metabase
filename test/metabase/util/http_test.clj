@@ -6,6 +6,8 @@
    (clojure.lang ExceptionInfo)
    (java.net InetAddress)))
 
+(set! *warn-on-reflection* true)
+
 (deftest valid-host?-test
   (testing "external-only strategy (default)"
     (is (true? (http/valid-host? :external-only "https://example.com")))
