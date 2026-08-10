@@ -7,10 +7,9 @@
 (set! *warn-on-reflection* true)
 
 (defenterprise run-candidate-refresh!
-  "Queue and execute a scheduled candidate refresh when Library is licensed."
+  "Queue a scheduled candidate refresh when Library is licensed."
   :feature :library
   []
   ;; `queue-refresh!` also recovers runs interrupted by a previous process, so every
   ;; scheduled tick must go through it rather than short-circuiting on `active-run`.
-  (when-let [run (candidate-refresh/queue-refresh! :scheduled nil)]
-    (candidate-refresh/run-refresh! run)))
+  (candidate-refresh/queue-refresh! :scheduled nil))

@@ -3,10 +3,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.mq.test-util :as mq.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.usage-metadata.candidate-builders :as candidate-builders]
@@ -62,6 +64,14 @@
    :distinct_source_count  1
    :recent_view_count       10
    :complexity             1})
+
+(defn- queued-run!
+  []
+  (t2/insert-returning-instance! :model/UsageMetadataCandidateRun
+                                 {:status            :queued
+                                  :trigger           :manual
+                                  :algorithm_version candidate-refresh/algorithm-version
+                                  :source_config     candidate-snapshot/source-config}))
 
 (defn- family-candidate
   [id atoms overrides]
@@ -405,8 +415,12 @@
                                                        :trigger           :manual
                                                        :algorithm_version 1
                                                        :source_config     {}}]
-    (is (nil? (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))))
-    (is (= (:id run) (:id (candidate-refresh/active-run))))))
+    (let [published (atom [])]
+      (with-redefs-fn {#'candidate-refresh/publish-refresh! #(swap! published conj %)}
+        #(is (= (:id run)
+                (:id (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))))))
+      (is (= [(:id run)] (mapv :id @published)))
+      (is (= (:id run) (:id (candidate-refresh/active-run)))))))
 
 (deftest candidate-refresh-lock-timeout-detection-test
   (testing "cluster-lock reports keyword locks as namespace/name strings"
@@ -418,22 +432,34 @@
                  (ex-info "Timed out"
                           {:lock-names ["metabase.usage-metadata.candidate-refresh/another-lock"]}))))))
 
-(deftest refresh-queue-recovers-run-interrupted-before-worker-start-test
+(deftest candidate-refresh-lock-timeout-keeps-running-run-active-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :running
+                                                       :trigger           :manual
+                                                       :algorithm_version 1
+                                                       :source_config     {}
+                                                       :started_at        (mi/now)}]
+    (with-redefs-fn
+      {#'cluster-lock/do-with-cluster-lock
+       (fn [_opts _thunk]
+         (throw (ex-info "Timed out"
+                         {:lock-names ["metabase.usage-metadata.candidate-refresh/candidate-refresh"]})))}
+      #(is (= (:id run) (:id (@#'candidate-refresh/recover-interrupted-run! run)))))
+    (is (= :running
+           (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id (:id run))))))
+
+(deftest refresh-queue-redispatches-existing-queued-run-test
   (mt/with-temp [:model/UsageMetadataCandidateRun interrupted-run {:status            :queued
                                                                    :trigger           :manual
                                                                    :algorithm_version 1
                                                                    :source_config     {}
                                                                    :created_at        (t/minus (t/offset-date-time) (t/minutes 10))}]
-    (let [replacement-run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))
-          interrupted-run (t2/select-one :model/UsageMetadataCandidateRun :id (:id interrupted-run))]
-      (try
-        (is (= :failed (:status interrupted-run)))
-        (is (some? (:finished_at interrupted-run)))
-        (is (re-find #"before processing started" (:error interrupted-run)))
-        (is (= :queued (:status replacement-run)))
-        (is (= (:id replacement-run) (:id (candidate-refresh/active-run))))
-        (finally
-          (t2/delete! :model/UsageMetadataCandidateRun :id (:id replacement-run)))))))
+    (let [published (atom [])]
+      (with-redefs-fn {#'candidate-refresh/publish-refresh! #(swap! published conj %)}
+        #(is (= (:id interrupted-run)
+                (:id (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))))))
+      (is (= [(:id interrupted-run)] (mapv :id @published)))
+      (is (= :queued
+             (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id (:id interrupted-run)))))))
 
 (deftest refresh-queue-recovers-run-interrupted-by-server-restart-test
   (mt/with-temp [:model/UsageMetadataCandidateRun interrupted-run {:status            :running
@@ -441,16 +467,40 @@
                                                                    :algorithm_version 1
                                                                    :source_config     {}
                                                                    :started_at        (mi/now)}]
-    (let [replacement-run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))
-          interrupted-run (t2/select-one :model/UsageMetadataCandidateRun :id (:id interrupted-run))]
-      (try
-        (is (= :failed (:status interrupted-run)))
-        (is (some? (:finished_at interrupted-run)))
-        (is (re-find #"interrupted" (:error interrupted-run)))
-        (is (= :queued (:status replacement-run)))
-        (is (= (:id replacement-run) (:id (candidate-refresh/active-run))))
-        (finally
-          (t2/delete! :model/UsageMetadataCandidateRun :id (:id replacement-run)))))))
+    (let [published (atom [])]
+      (with-redefs-fn
+        {#'candidate-refresh/publish-refresh! #(swap! published conj %)}
+        (fn []
+          (let [replacement-run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))
+                interrupted-run (t2/select-one :model/UsageMetadataCandidateRun :id (:id interrupted-run))]
+            (try
+              (is (= :failed (:status interrupted-run)))
+              (is (some? (:finished_at interrupted-run)))
+              (is (re-find #"interrupted" (:error interrupted-run)))
+              (is (= :queued (:status replacement-run)))
+              (is (= [(:id replacement-run)] (mapv :id @published)))
+              (is (= (:id replacement-run) (:id (candidate-refresh/active-run))))
+              (finally
+                (t2/delete! :model/UsageMetadataCandidateRun :id (:id replacement-run))))))))))
+
+(deftest recovered-running-message-dispatches-clean-replacement-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun interrupted-run {:status            :running
+                                                                   :trigger           :scheduled
+                                                                   :algorithm_version 1
+                                                                   :source_config     {}
+                                                                   :started_at        (mi/now)}]
+    (let [published (atom [])]
+      (with-redefs-fn
+        {#'candidate-refresh/publish-refresh! #(swap! published conj %)}
+        (fn []
+          (let [replacement-run (candidate-refresh/run-refresh! interrupted-run)]
+            (try
+              (is (= :failed
+                     (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id (:id interrupted-run))))
+              (is (= :queued (:status replacement-run)))
+              (is (= [(:id replacement-run)] (mapv :id @published)))
+              (finally
+                (t2/delete! :model/UsageMetadataCandidateRun :id (:id replacement-run))))))))))
 
 (deftest refresh-queue-does-not-recover-a-locally-running-run-test
   (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :running
@@ -466,6 +516,52 @@
       (finally
         (swap! locally-running-run-ids disj (:id run))))))
 
+(deftest refresh-run-creation-rolls-back-when-dispatch-fails-test
+  (let [run-count (t2/count :model/UsageMetadataCandidateRun)]
+    (with-redefs-fn
+      {#'candidate-refresh/publish-refresh! (fn [_run]
+                                              (throw (ex-info "Injected dispatch failure" {})))}
+      #(is (thrown-with-msg? Exception #"Injected dispatch failure"
+                             (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto)))))
+    (is (= run-count (t2/count :model/UsageMetadataCandidateRun)))))
+
+(deftest duplicate-refresh-delivery-materializes-once-test
+  (let [materialization-count (atom 0)
+        status-at-materialize  (atom nil)
+        run-id                (atom nil)]
+    (mq.tu/with-test-mq [ctx {:duplicate-delivery? true}]
+      ;; MQ workers do not inherit the test thread's dynamic bindings.
+      (with-redefs [candidate-snapshot/materialize!
+                    (fn [{:keys [id] :as run}]
+                      (swap! materialization-count inc)
+                      (reset! status-at-materialize
+                              (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id id))
+                      (t2/update! :model/UsageMetadataCandidateRun
+                                  {:id id, :status :running}
+                                  {:status :succeeded, :finished_at (mi/now)})
+                      (assoc run :status :succeeded))]
+        (let [run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
+          (reset! run-id (:id run))
+          (is (mq.tu/eventually! ctx
+                                 #(= :succeeded
+                                     (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id (:id run)))
+                                 5000))
+          (mq.tu/flush! ctx)
+          (is (= 1 @materialization-count))
+          (is (= :running @status-at-materialize)))))
+    (when @run-id
+      (t2/delete! :model/UsageMetadataCandidateRun :id @run-id))))
+
+(deftest late-refresh-failure-does-not-overwrite-success-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                       :trigger           :manual
+                                                       :algorithm_version 1
+                                                       :source_config     {}
+                                                       :finished_at       (mi/now)}]
+    (candidate-refresh/fail-run! run (ex-info "Late failure" {}))
+    (is (= :succeeded
+           (t2/select-one-fn :status :model/UsageMetadataCandidateRun :id (:id run))))))
+
 (deftest successful-refresh-retains-run-history-but-prunes-old-snapshot-test
   (mt/with-temp [:model/UsageMetadataCandidateRun old-run {:status            :succeeded
                                                            :trigger           :scheduled
@@ -475,7 +571,7 @@
                  :model/UsageMetadataCandidate old-candidate (candidate-row (:id old-run) (mt/id :orders))]
     (mt/with-dynamic-fn-redefs [candidate-mining/qualified-card-ids (constantly [])
                                 candidate-builders/candidate-analysis-inputs (constantly {})]
-      (let [run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
+      (let [run (queued-run!)]
         (is (= :succeeded (:status (candidate-refresh/run-refresh! run))))
         (is (= (:id run) (:id (candidate-refresh/latest-successful-run))))
         (is (t2/exists? :model/UsageMetadataCandidateRun :id (:id old-run)))
@@ -489,7 +585,7 @@
                                                            :finished_at       (mi/now)}
                  :model/UsageMetadataCandidate old-candidate (candidate-row (:id old-run) (mt/id :orders))]
     (mt/with-dynamic-fn-redefs [candidate-mining/qualified-card-ids (constantly [])]
-      (let [run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
+      (let [run (queued-run!)]
         (with-redefs-fn {#'candidate-snapshot/prune-old-snapshots!
                          (fn [_current-run-id]
                            (t2/delete! :model/UsageMetadataCandidate :id (:id old-candidate))
@@ -504,7 +600,7 @@
 
 (deftest abnormal-refresh-termination-marks-run-failed-and-rethrows-original-test
   (let [failure (AssertionError. "Injected assertion failure")
-        run     (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
+        run     (queued-run!)]
     (mt/with-dynamic-fn-redefs [candidate-snapshot/materialize! (fn [_run]
                                                                   (t2/update! :model/UsageMetadataCandidateRun
                                                                               (:id run)
@@ -524,7 +620,7 @@
 
 (deftest interrupted-refresh-marks-run-failed-and-restores-interrupt-flag-test
   (let [failure (InterruptedException. "Injected interrupt")
-        run     (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
+        run     (queued-run!)]
     (try
       (mt/with-dynamic-fn-redefs [candidate-snapshot/materialize! (fn [_run]
                                                                     (t2/update! :model/UsageMetadataCandidateRun
@@ -560,7 +656,7 @@
          {:cleanup {:measures [], :segments []}
           :table-report {:candidates [], :unsupported-source-items []}
           :metrics []})]
-      (let [run (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))]
+      (let [run (queued-run!)]
         (is (= :succeeded (:status (candidate-refresh/run-refresh! run))))
         (is (= {:kind                      "qualified-cards"
                 :usage-window-days         90
@@ -635,7 +731,7 @@
                            :official-source-count 0
                            :popular-source-count 1
                            :total-view-count 20}}]})]
-          (let [run     (candidate-refresh/queue-refresh! :manual (mt/user->id :crowberto))
+          (let [run     (queued-run!)
                 result  (candidate-refresh/run-refresh! run)
                 rows    (t2/select :model/UsageMetadataCandidate :run_id (:id run))
                 by-type (u/index-by :candidate_type rows)]
