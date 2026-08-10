@@ -155,6 +155,7 @@ config:
     enable-pivoted-exports: true
     enable-public-sharing: true
     enable-xrays: true
+    explorations-worker-count: 2
     fingerprint-max-fields-per-table: 10000
     follow-up-email-sent: false
     google-auth-auto-create-accounts-domain: null
@@ -216,9 +217,11 @@ config:
     llm-bedrock-region: us-east-1
     llm-bedrock-secret-access-key: null
     llm-bedrock-session-token: null
-    llm-connection-timeout-ms: 5000
+    llm-connection-timeout-ms: 10000
     llm-max-tokens: 4096
     llm-metabot-provider: anthropic/claude-sonnet-4-6
+    llm-mistral-api-base-url: https://api.mistral.ai/v1
+    llm-mistral-api-key: null
     llm-openai-api-base-url: https://api.openai.com
     llm-openai-api-key: null
     llm-openai-model: gpt-5.4
@@ -226,7 +229,9 @@ config:
     llm-openrouter-api-key: null
     llm-rate-limit-per-ip: 100
     llm-rate-limit-per-user: 20
-    llm-request-timeout-ms: 60000
+    llm-request-timeout-ms: 120000
+    llm-zai-api-base-url: https://api.z.ai/api/paas/v4
+    llm-zai-api-key: null
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
@@ -304,7 +309,7 @@ config:
     search-typeahead-enabled: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax
-    session-cookies: null
+    session-cookies: false
     session-timeout: null
     setup-embedding-autoenabled: false
     setup-license-active-at-setup: false
@@ -346,5 +351,6 @@ config:
     usage-metadata-last-completed-day: null
     usage-metadata-retention-days: 90
     usage-metadata-schedule: 0 0 2 * * ? *
+    use-native-pivot-tables: false
     user-visibility: all
 ```

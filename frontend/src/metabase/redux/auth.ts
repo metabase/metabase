@@ -4,7 +4,7 @@ import {
   createReducer,
 } from "@reduxjs/toolkit";
 
-import { Api, refetchCurrentUser, refetchSiteSettings } from "metabase/api";
+import { Api, refetchCurrentUser } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
 import {
   type MfaChallengeResponse,
@@ -13,9 +13,9 @@ import {
 } from "metabase/api/session";
 import { openNavbar } from "metabase/redux/app";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { push } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { navigate } from "metabase/router";
 import { getUser } from "metabase/selectors/user";
+import { getSetting, refetchSiteSettings } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";
 import { isResourceNotFoundError } from "metabase/utils/errors";
@@ -153,7 +153,7 @@ export const logout = createAsyncThunk(
         await deleteSession(dispatch);
         await dispatch(refreshLocale()).unwrap();
 
-        dispatch(push(Urls.login()));
+        navigate(Urls.login());
         dispatch(Api.util.resetApiState());
         reload(); // clears redux state and browser caches
       }

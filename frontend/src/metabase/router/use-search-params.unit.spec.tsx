@@ -56,23 +56,23 @@ describe("router/useSearchParams", () => {
   });
 
   it("navigates to the new query string when set", async () => {
-    const { history } = setup("/foo?x=1");
+    const { router } = setup("/foo?x=1");
 
     await click("set");
 
     expect(screen.getByTestId("x")).toHaveTextContent("2");
     expect(screen.getByTestId("y")).toHaveTextContent("9");
-    expect(history?.getCurrentLocation().pathname).toBe("/foo");
-    expect(history?.getCurrentLocation().search).toBe("?x=2&y=9");
+    expect(router?.location.pathname).toBe("/foo");
+    expect(router?.location.search).toBe("?x=2&y=9");
   });
 
   it("pushes by default so the previous query stays in history", async () => {
-    const { history } = setup("/foo?x=1");
+    const { router } = setup("/foo?x=1");
 
     await click("set");
     expect(screen.getByTestId("x")).toHaveTextContent("2");
 
-    act(() => history?.goBack());
+    act(() => router?.back());
     expect(screen.getByTestId("x")).toHaveTextContent("1");
   });
 
@@ -93,12 +93,12 @@ describe("router/useSearchParams", () => {
   });
 
   it("clears the query when called without an argument", async () => {
-    const { history } = setup("/foo?x=1");
+    const { router } = setup("/foo?x=1");
 
     await click("clear");
 
     expect(screen.getByTestId("x")).toBeEmptyDOMElement();
-    expect(history?.getCurrentLocation().search).toBe("");
+    expect(router?.location.search).toBe("");
   });
 
   it("gives the functional updater a clone, not the held instance", async () => {

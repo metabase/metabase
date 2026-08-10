@@ -22,7 +22,8 @@
    [metabase.lib-metric.measures :as lib-metric.measures]
    [metabase.lib-metric.metadata.provider :as lib-metric.metadata.provider]
    [metabase.lib-metric.metrics :as lib-metric.metrics]
-   [metabase.lib-metric.projection :as lib-metric.projection]))
+   [metabase.lib-metric.projection :as lib-metric.projection]
+   [metabase.lib-metric.types.isa :as lib-metric.types.isa]))
 
 ;; Ensure multimethod implementations are loaded
 (comment lib-metric.dimension/keep-me
@@ -69,13 +70,14 @@
      field-ref->key
      get-persisted-dimension-mappings
      get-persisted-dimensions
+     group-by-source
      main-group?
      mappings-changed?
-     pick-default-dimension
      reconcile-dimensions-and-mappings
      reconcile-existing-dimensions
      remove-dimensions
      reorder-dimensions
+     same-source?
      set-default-dimension
      update-dimension
      resolve-dimension-to-field-id]
@@ -92,7 +94,9 @@
      dimension-breakout
      project-dimension
      projectable-dimensions
-     valid-temporal-unit-for-type?])
+     valid-temporal-unit-for-type?]
+    [lib-metric.types.isa
+     type-isa?])
    :cljs
    (do
      (def remove-clause "See [[lib-metric.clause/remove-clause]]." lib-metric.clause/remove-clause)
@@ -116,8 +120,9 @@
      (def dimensions-for-table "See [[lib-metric.dimension/dimensions-for-table]]." lib-metric.dimension/dimensions-for-table)
      (def get-persisted-dimensions "See [[lib-metric.dimension/get-persisted-dimensions]]." lib-metric.dimension/get-persisted-dimensions)
      (def get-persisted-dimension-mappings "See [[lib-metric.dimension/get-persisted-dimension-mappings]]." lib-metric.dimension/get-persisted-dimension-mappings)
-     (def pick-default-dimension "See [[lib-metric.dimension/pick-default-dimension]]." lib-metric.dimension/pick-default-dimension)
+     (def group-by-source "See [[lib-metric.dimension/group-by-source]]." lib-metric.dimension/group-by-source)
      (def resolve-dimension-to-field-id "See [[lib-metric.dimension/resolve-dimension-to-field-id]]." lib-metric.dimension/resolve-dimension-to-field-id)
+     (def same-source? "See [[lib-metric.dimension/same-source?]]." lib-metric.dimension/same-source?)
      (def field-ref->key "See [[lib-metric.dimension/field-ref->key]]." lib-metric.dimension/field-ref->key)
      (def database-provider-for-table "See [[lib-metric.metadata.provider/database-provider-for-table]]." lib-metric.metadata.provider/database-provider-for-table)
      (def metric-context-metadata-provider "See [[lib-metric.metadata.provider/metric-context-metadata-provider]]." lib-metric.metadata.provider/metric-context-metadata-provider)
@@ -127,4 +132,5 @@
      (def dimension-breakout "See [[lib-metric.projection/dimension-breakout]]." lib-metric.projection/dimension-breakout)
      (def project-dimension "See [[lib-metric.projection/project-dimension]]." lib-metric.projection/project-dimension)
      (def projectable-dimensions "See [[lib-metric.projection/projectable-dimensions]]." lib-metric.projection/projectable-dimensions)
-     (def valid-temporal-unit-for-type? "See [[lib-metric.projection/valid-temporal-unit-for-type?]]." lib-metric.projection/valid-temporal-unit-for-type?)))
+     (def valid-temporal-unit-for-type? "See [[lib-metric.projection/valid-temporal-unit-for-type?]]." lib-metric.projection/valid-temporal-unit-for-type?)
+     (def type-isa? "See [[lib-metric.types.isa/type-isa?]]." lib-metric.types.isa/type-isa?)))

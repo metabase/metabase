@@ -341,7 +341,7 @@ export function setup(
       <MetabotProvider>{ui}</MetabotProvider>
     );
 
-  const { store, rerender, history } = renderWithProviders(content, {
+  const { store, rerender, router } = renderWithProviders(content, {
     storeInitialState: createMockState({
       ...storeInitialState,
       settings: {
@@ -362,7 +362,7 @@ export function setup(
 
   return {
     rerender,
-    history,
+    router,
     conversationIds: Object.keys(metabotState.conversations),
     // Unjustified type cast. FIXME
     store: store as Omit<typeof store, "getState" | "dispatch"> & {

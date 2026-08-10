@@ -24,7 +24,7 @@ import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import {
   Badge,
   Box,

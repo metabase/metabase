@@ -4,8 +4,7 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { useDispatch } from "metabase/redux";
-import { Route, replace, useSearchParams } from "metabase/router";
+import { Route, useNavigate, useSearchParams } from "metabase/router";
 import { Loader } from "metabase/ui";
 
 function MetabotNewRoute() {
@@ -13,7 +12,7 @@ function MetabotNewRoute() {
   const { canUseMetabot, isLoading } = useUserMetabotPermissions();
   const { submitInput } = useMetabotAgent("omnibot");
   const prompt = searchParams.get("q") ?? "";
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   useEffect(() => {
@@ -21,13 +20,13 @@ function MetabotNewRoute() {
       return;
     }
 
-    dispatch(replace("/"));
+    navigate("/", { replace: true });
 
     if (prompt && canUseMetabot) {
       void submitInput(prompt, { focusInput: true });
       setHasSubmitted(true);
     }
-  }, [isLoading, canUseMetabot, prompt, submitInput, dispatch, hasSubmitted]);
+  }, [isLoading, canUseMetabot, prompt, submitInput, hasSubmitted, navigate]);
 
   return <Loader m="5rem auto" display="block" size="xl" />;
 }

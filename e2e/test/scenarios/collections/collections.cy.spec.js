@@ -512,6 +512,116 @@ describe("scenarios > collection defaults", () => {
       cy.findByText("Orders");
     });
 
+    it("should be able to drag an item into a sub-collection shown in the items table (metabase#37329)", () => {
+      H.createDocument({
+        name: "Quarterly Notes",
+        collection_id: null,
+        document: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Notes" }],
+              attrs: { _id: "1" },
+            },
+          ],
+        },
+      });
+      H.createQuestion({
+        name: "Count of orders",
+        type: "metric",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      visitRootCollection();
+
+      cy.log("Drag a question into the sub-collection row");
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Orders").as("dragSubject");
+        cy.findByText("First collection").as("dropTarget");
+      });
+
+      H.dragAndDrop("dragSubject", "dropTarget");
+
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Moved question");
+      cy.findByTestId("collection-table")
+        .findByText("Orders")
+        .should("not.exist");
+
+      cy.log("Drag a document into the sub-collection row");
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Quarterly Notes").as("documentDragSubject");
+        cy.findByText("First collection").as("documentDropTarget");
+      });
+
+      H.dragAndDrop("documentDragSubject", "documentDropTarget");
+
+      cy.findByTestId("collection-table")
+        .findByText("Quarterly Notes")
+        .should("not.exist");
+
+      cy.log("Drag a metric into the sub-collection row");
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Count of orders").as("metricDragSubject");
+        cy.findByText("First collection").as("metricDropTarget");
+      });
+
+      H.dragAndDrop("metricDragSubject", "metricDropTarget");
+
+      cy.findByTestId("collection-table")
+        .findByText("Count of orders")
+        .should("not.exist");
+
+      H.visitCollection(FIRST_COLLECTION_ID);
+      cy.findByTestId("collection-table").findByText("Orders");
+      cy.findByTestId("collection-table").findByText("Quarterly Notes");
+      cy.findByTestId("collection-table").findByText("Count of orders");
+    });
+
+    it("should reject dragging a subcollection directly or in a mixed selection (metabase#37329)", () => {
+      H.createCollection({ name: "Destination collection" });
+      visitRootCollection();
+
+      cy.intercept(
+        "PUT",
+        /\/api\/(card|collection)\/\d+$/,
+        cy.spy().as("moveRequest"),
+      );
+
+      cy.log("Subcollections cannot initiate a drag");
+      cy.findByTestId("collection-table")
+        .findByText("First collection")
+        .closest("a")
+        .should("have.attr", "draggable", "false");
+      cy.findByTestId("items-drag-preview").should("not.exist");
+      cy.findByTestId("collection-table")
+        .findByText("First collection")
+        .should("be.visible");
+      cy.get("@moveRequest").should("not.have.been.called");
+
+      cy.log("A mixed selection is rejected as one operation");
+      cy.findByTestId("collection-table").within(() => {
+        selectItemUsingCheckbox("Orders");
+        selectItemUsingCheckbox("First collection");
+        cy.findByText("Orders").as("dragSubject");
+        cy.findByText("Destination collection").as("dropTarget");
+      });
+
+      H.dragAndDrop("dragSubject", "dropTarget");
+
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Orders").should("be.visible");
+        cy.findByText("First collection").should("be.visible");
+        cy.findByText("Destination collection").should("be.visible");
+      });
+      cy.get("@moveRequest").should("not.have.been.called");
+    });
+
     describe("nested collections with revoked parent access", () => {
       const { first_name, last_name } = nocollection;
       const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;
@@ -702,7 +812,7 @@ describe("scenarios > collection defaults", () => {
           H.openUnpinnedItemMenu("Orders, Count");
           H.popover().findByText("Pin this").click();
           H.getPinnedSection().within(() => {
-            cy.findByText("18,760");
+            cy.findByText("Orders, Count");
           });
 
           // Select one
@@ -1022,6 +1132,175 @@ describe("scenarios > collection items listing", () => {
   };
 
   const PAGE_SIZE = 25;
+
+  describe("search", () => {
+    function interceptSearch(query, alias) {
+      cy.intercept({
+        method: "GET",
+        pathname: "/api/collection/root/items",
+        query: {
+          pinned_state: "is_not_pinned",
+          q: query,
+        },
+      }).as(alias);
+    }
+
+    beforeEach(() => {
+      archiveAll();
+
+      H.createCollection({
+        name: "Quarterly revenue",
+      });
+
+      cy.signIn("normal");
+      H.createQuestion({
+        name: "Customer health",
+        collection_position: null,
+        query: TEST_QUESTION_QUERY,
+      });
+      cy.signInAsAdmin();
+    });
+
+    it("should search by item name and last editor name, clear results, and show an empty state", () => {
+      visitRootCollection();
+
+      interceptSearch("revenue", "searchByName");
+      cy.findByLabelText("Search items in this collection")
+        .should("have.value", "")
+        .type("revenue")
+        .should("have.value", "revenue");
+      cy.wait("@searchByName").then(({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+
+        expect(searchParams.get("q")).to.equal("revenue");
+        expect(searchParams.get("offset")).to.equal("0");
+      });
+
+      cy.findByTestId("collection-table")
+        .should("contain", "Quarterly revenue")
+        .and("not.contain", "Customer health");
+
+      cy.findByLabelText("Clear search").click();
+      cy.findByLabelText("Search items in this collection").should(
+        "have.value",
+        "",
+      );
+      cy.findByTestId("collection-table")
+        .should("contain", "Quarterly revenue")
+        .and("contain", "Customer health");
+
+      interceptSearch("Robert", "searchByEditor");
+      cy.findByLabelText("Search items in this collection")
+        .type("Robert")
+        .should("have.value", "Robert");
+      cy.wait("@searchByEditor").then(({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+
+        expect(searchParams.get("q")).to.equal("Robert");
+        expect(searchParams.get("offset")).to.equal("0");
+      });
+
+      cy.findByTestId("collection-table")
+        .should("contain", "Customer health")
+        .and("not.contain", "Quarterly revenue");
+
+      cy.findByLabelText("Clear search").click();
+      cy.findByLabelText("Search items in this collection").should(
+        "have.value",
+        "",
+      );
+
+      interceptSearch("nothing matches this", "searchWithoutResults");
+      cy.findByLabelText("Search items in this collection")
+        .type("nothing matches this")
+        .should("have.value", "nothing matches this");
+      cy.wait("@searchWithoutResults").then(({ request }) => {
+        expect(new URL(request.url).searchParams.get("q")).to.equal(
+          "nothing matches this",
+        );
+      });
+
+      cy.findByTestId("collection-filter-empty-state").within(() => {
+        cy.findByText("Didn't find anything").should("be.visible");
+        cy.findByText("There weren't any results for your search.").should(
+          "be.visible",
+        );
+      });
+    });
+  });
+
+  describe("type filters", () => {
+    beforeEach(() => {
+      archiveAll();
+
+      H.createDashboard({
+        name: "Revenue dashboard",
+        collection_position: null,
+      });
+      H.createQuestion({
+        name: "Customer question",
+        collection_position: null,
+        query: TEST_QUESTION_QUERY,
+      });
+    });
+
+    it("should filter collection items by the available types", () => {
+      cy.intercept(
+        {
+          method: "GET",
+          pathname: "/api/collection/root/items",
+          query: { pinned_state: "is_not_pinned" },
+        },
+        (request) => {
+          const models = new URL(request.url).searchParams
+            .getAll("models")
+            .sort();
+
+          if (models.join(",") === "card,collection") {
+            request.alias = "getTypeFilteredCollectionItems";
+          }
+        },
+      );
+      visitRootCollection();
+
+      cy.findByRole("button", { name: "Filter" }).click();
+      H.popover().within(() => {
+        cy.findAllByRole("checkbox").should("have.length", 3);
+        cy.findByLabelText("Collection").should("be.checked");
+        cy.findByLabelText("Dashboard").should("be.checked");
+        cy.findByLabelText("Question").should("be.checked");
+        cy.findByLabelText("Model").should("not.exist");
+        cy.findByRole("button", { name: "Apply" }).should("not.exist");
+        cy.findByLabelText("Dashboard").click();
+      });
+
+      cy.wait("@getTypeFilteredCollectionItems").then(({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+
+        expect(searchParams.getAll("models").sort()).to.deep.equal([
+          "card",
+          "collection",
+        ]);
+        expect(searchParams.get("offset")).to.equal("0");
+      });
+      cy.findByTestId("collection-table")
+        .should("contain", "First collection")
+        .and("contain", "Customer question")
+        .and("not.contain", "Revenue dashboard");
+      cy.findByTestId("type-filter-indicator")
+        .find('[class*="Indicator-indicator"]')
+        .should("exist");
+
+      H.popover().findByLabelText("Dashboard").click();
+
+      cy.findByTestId("collection-table")
+        .should("contain", "Revenue dashboard")
+        .and("contain", "Customer question");
+      cy.findByTestId("type-filter-indicator")
+        .find('[class*="Indicator-indicator"]')
+        .should("not.exist");
+    });
+  });
 
   describe("pagination", () => {
     const SUBCOLLECTIONS = 1;

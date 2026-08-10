@@ -22,7 +22,7 @@ const Page = () => {
 
 describe("router/RouterProvider context stability", () => {
   it("keeps a page's usePrevious(location.key) state after a same-path navigation", async () => {
-    const { history } = renderWithProviders(
+    const { router } = renderWithProviders(
       <Route path="doc/:id" element={<Page />} />,
       { withRouter: true, initialRoute: "/doc/new" },
     );
@@ -30,7 +30,7 @@ describe("router/RouterProvider context stability", () => {
     expect(await screen.findByText("no-prompt")).toBeInTheDocument();
 
     act(() => {
-      history?.push("/doc/new");
+      router?.navigate("/doc/new");
     });
 
     // The context value is memoized, so v3's post-navigation re-render (with an

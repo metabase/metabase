@@ -1,6 +1,9 @@
 import type { Connect } from "vite";
 
-import { DATA_APP_BUNDLE_URL } from "../../constants/bundle";
+import {
+  DATA_APP_BUILD_ID_HEADER,
+  DATA_APP_BUNDLE_URL,
+} from "../../constants/bundle";
 import type { AppBundle } from "../app-bundle";
 
 /** Serves the in-memory app bundle the sandbox fetches and evaluates. */
@@ -22,5 +25,6 @@ export const getAppBundleMiddleware =
     }
 
     res.setHeader("Content-Type", "text/javascript");
+    res.setHeader(DATA_APP_BUILD_ID_HEADER, String(bundle.buildId));
     res.end(bundle.code);
   };

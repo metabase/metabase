@@ -9,7 +9,6 @@ import {
   useGetCollectionQuery,
   useUpdateMetabotMutation,
 } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils/settings";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
@@ -17,6 +16,7 @@ import { useToast } from "metabase/common/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useAdminSetting } from "metabase/settings";
 import {
   Box,
   Button,

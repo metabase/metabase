@@ -9,7 +9,7 @@ import { isAnyOf } from "@reduxjs/toolkit";
 
 import { Api } from "metabase/api";
 import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import type { Card, Collection, Dashboard, Document } from "metabase-types/api";
 
 import { REMOTE_SYNC_INVALIDATION_TAGS, TRANSFORMS_KEY } from "../constants";

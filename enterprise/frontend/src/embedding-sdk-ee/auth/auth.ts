@@ -28,13 +28,7 @@ import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
-import {
-  loadCurrentUser,
-  refetchCurrentUser,
-  refetchSiteSettings,
-  sessionApi,
-  userApi,
-} from "metabase/api";
+import { loadCurrentUser, refetchCurrentUser, userApi } from "metabase/api";
 import { PLUGIN_API } from "metabase/api/client";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
@@ -47,6 +41,7 @@ import {
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { createAsyncThunk } from "metabase/redux/utils";
+import { refetchSiteSettings, settingsApi } from "metabase/settings";
 import MetabaseSettings from "metabase/utils/settings";
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
@@ -113,7 +108,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
         ),
       );
       dispatch(
-        sessionApi.util.upsertQueryData(
+        settingsApi.util.upsertQueryData(
           "getSessionProperties",
           undefined,
           authState.siteSettings,
@@ -122,7 +117,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       // Add subscriptions so that the user and settings entries don't get deleted from the cache.
       // RTK will delete entries with no subscribers if they are invalidated.
       dispatch(loadCurrentUser());
-      dispatch(sessionApi.endpoints.getSessionProperties.initiate());
+      dispatch(settingsApi.endpoints.getSessionProperties.initiate());
       MetabaseSettings.setAll(authState.siteSettings);
 
       // The session handler emits the X-Metabase-Session header on every API

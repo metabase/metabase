@@ -26,7 +26,7 @@ import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { initializePlugins } from "sdk-ee-plugins";

@@ -5,10 +5,10 @@ import * as Yup from "yup";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
-import { useMetabotName } from "metabase/metabot/hooks";
 import { getMetabotId } from "metabase/metabot/state";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { MetabotFeedback, MetabotIssueType } from "metabase-types/api";
@@ -64,7 +64,7 @@ export const MetabotFeedbackModal = ({
   positive,
 }: MetabotFeedbackModalProps) => {
   const applicationName = useSelector(getApplicationName);
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const metabotId = useSelector(getMetabotId);
 
   const handleSubmit = (values: {
