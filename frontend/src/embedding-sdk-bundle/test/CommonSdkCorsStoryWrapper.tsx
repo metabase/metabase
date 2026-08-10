@@ -1,4 +1,4 @@
-import type { StoryFn } from "@storybook/react";
+import type { ComponentType } from "react";
 
 // To run initialization side effects like Mantine styles, dayjs plugins, etc
 import "embedding-sdk-bundle";
@@ -11,7 +11,7 @@ const DEFAULT_AUTH_CONFIG: MetabaseAuthConfig = {
   metabaseInstanceUrl: STORYBOOK_METABASE_INSTANCE_URL,
 };
 
-export const CommonSdkStoryCorsWrapper = (Story: StoryFn) => (
+export const CommonSdkStoryCorsWrapper = (Story: ComponentType) => (
   <ComponentProvider authConfig={DEFAULT_AUTH_CONFIG}>
     <Story />
   </ComponentProvider>
