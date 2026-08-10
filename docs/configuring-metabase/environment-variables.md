@@ -1390,7 +1390,7 @@ Maximum tokens for LLM responses.
 - Default: `anthropic/claude-sonnet-4-6`
 - [Configuration file name](./config-file.md): `llm-metabot-provider`
 
-The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.
+The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `moonshot/kimi-k3`, `openrouter/anthropic/claude-haiku-4.5`.
 
 ### `MB_LLM_MISTRAL_API_BASE_URL`
 
@@ -1407,6 +1407,22 @@ The Mistral API base URL used for Chat Completions.
 - [Configuration file name](./config-file.md): `llm-mistral-api-key`
 
 The Mistral API Key.
+
+### `MB_LLM_MOONSHOT_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.moonshot.ai/v1`
+- [Configuration file name](./config-file.md): `llm-moonshot-api-base-url`
+
+The Moonshot AI API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.
+
+### `MB_LLM_MOONSHOT_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-moonshot-api-key`
+
+The Moonshot AI API Key.
 
 ### `MB_LLM_OPENAI_API_BASE_URL`
 
@@ -2666,6 +2682,19 @@ When enabled, run pivot queries as a single native GROUPING SETS query on driver
 - [Configuration file name](./config-file.md): `user-visibility`
 
 Note: Sandboxed users will never see suggestions.
+
+### `MB_WAREHOUSE_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+
+Controls which networks Metabase may connect to for warehouse connections.
+Options:
+- external-only (only globally routable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
+Also covers the SSH tunnel host and the database auth-provider URLs.
 
 ## Other environment variables
 
