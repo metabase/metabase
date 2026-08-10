@@ -6,8 +6,7 @@ import {
   hasHour,
 } from "metabase/utils/formatting";
 import { parseTime, parseTimestamp } from "metabase/utils/time-dayjs";
-import type { TimeOnlyOptions } from "metabase-types/api";
-import type { DatetimeUnit } from "metabase-types/api/query";
+import type { DatetimeUnit, TimeOnlyOptions } from "metabase-types/api";
 
 interface TimeWithUnitType {
   local?: boolean;

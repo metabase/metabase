@@ -18,7 +18,6 @@ import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
 } from "metabase/value-formatting";
-import { getVisualization, getVisualizationRaw } from "metabase/visualizations";
 import { getDeduplicatedTableColumnSettings } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultCurrency,
@@ -55,6 +54,8 @@ import type {
   TimeEnabled,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { getVisualization, getVisualizationRaw } from "../..";
 
 import { nestedSettings } from "./nested";
 

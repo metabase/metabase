@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { currency as currencyCljs } from "cljs/metabase.util.currency";
-import type { CurrencyStyle } from "metabase-types/api/formatting";
+import type { CurrencyStyle } from "metabase-types/api";
 
 export const currency: [Currency["symbol"], Currency][] = currencyCljs;
 
