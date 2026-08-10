@@ -4,6 +4,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
+   [metabase.app-db.core :as mdb]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -11,7 +13,17 @@
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(def ^:dynamic ^:private *published-create-events* nil)
+
+(events/derive! :event/segment-create ::segment-create-events)
+
+(methodical/defmethod events/publish-event! ::segment-create-events
+  [topic event]
+  (when *published-create-events*
+    (swap! *published-create-events* conj [topic event])))
 
 ;; ## Helper Fns
 
@@ -101,6 +113,25 @@
                                         :points_of_interest      nil
                                         :definition              (definition-fn (mt/id :users :id) 20)})
                  segment-response))))))
+
+(deftest create-segment-publishes-event-after-commit-test
+  (let [after-commit-callback (promise)
+        published-events      (atom [])]
+    (mt/with-dynamic-fn-redefs [mdb/do-after-commit #(deliver after-commit-callback %)]
+      (binding [*published-create-events* published-events]
+        (let [segment  (mt/user-http-request :crowberto :post 200 "segment"
+                                             {:name       "A deferred Segment"
+                                              :definition (mbql4-segment-definition (mt/id :users)
+                                                                                    (mt/id :users :id)
+                                                                                    20)})
+              callback (deref after-commit-callback 1000 ::timeout)]
+          (is (fn? callback))
+          (is (empty? @published-events))
+          (callback)
+          (is (=? [[:event/segment-create
+                    {:object  {:id (:id segment)}
+                     :user-id (mt/user->id :crowberto)}]]
+                  @published-events)))))))
 
 (deftest create-segment-derives-table-id-test
   (testing "POST /api/segment derives table_id from the definition"

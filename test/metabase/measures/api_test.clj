@@ -4,6 +4,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
+   [metabase.app-db.core :as mdb]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -11,7 +13,17 @@
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(def ^:dynamic ^:private *published-create-events* nil)
+
+(events/derive! :event/measure-create ::measure-create-events)
+
+(methodical/defmethod events/publish-event! ::measure-create-events
+  [topic event]
+  (when *published-create-events*
+    (swap! *published-create-events* conj [topic event])))
 
 (defn- legacy-mbql-measure-definition
   "Create an MBQL4 (legacy MBQL) full query measure definition.
@@ -84,6 +96,24 @@
                                   {:name        "A Measure"
                                    :description "I did it!"
                                    :definition  (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))})))))
+
+(deftest create-measure-publishes-event-after-commit-test
+  (let [after-commit-callback (promise)
+        published-events      (atom [])]
+    (mt/with-dynamic-fn-redefs [mdb/do-after-commit #(deliver after-commit-callback %)]
+      (binding [*published-create-events* published-events]
+        (let [measure  (mt/user-http-request :crowberto :post 200 "measure"
+                                             {:name       "A deferred Measure"
+                                              :definition (mbql5-measure-definition (mt/id :venues)
+                                                                                    (mt/id :venues :price))})
+              callback (deref after-commit-callback 1000 ::timeout)]
+          (is (fn? callback))
+          (is (empty? @published-events))
+          (callback)
+          (is (=? [[:event/measure-create
+                    {:object  {:id (:id measure)}
+                     :user-id (mt/user->id :crowberto)}]]
+                  @published-events)))))))
 
 ;; ## PUT /api/measure
 
