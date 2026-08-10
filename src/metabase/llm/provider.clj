@@ -151,7 +151,7 @@
                      :type      :text
                      :required? true
                      :default   "google/gemini-3.5-flash"
-                     :help      (deferred-tru "Publisher-qualified, e.g. google/gemini-3.5-flash.")}
+                     :help      (deferred-tru "Publisher-qualified, e.g. google/gemini-3.5-flash. Metabot works best with gemini-3.5-flash and gemini-3.6-flash; which of them a project can reach depends on its location, so any model ID is accepted.")}
                     {:key         :oauth-access-token
                      :label       (deferred-tru "OAuth access token")
                      :type        :password
