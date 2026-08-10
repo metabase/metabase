@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import type { Location } from "metabase/router";
+import type { Location, RouteObject } from "metabase/router";
 import { Route, useLocation, useNavigate, useParams } from "metabase/router";
 import { Modal, type ModalProps } from "metabase/ui";
 
@@ -16,6 +16,8 @@ export type ModalComponentProps = {
   location: Location;
   onClose: () => void;
 };
+
+type ModalComponent = React.ComponentType<ModalComponentProps>;
 
 type ModalRouteOptions = {
   /**
@@ -35,8 +37,38 @@ type ModalRouteOptions = {
  */
 export function modalRoute(
   path: string,
-  ComposedModal: React.ComponentType<ModalComponentProps>,
-  { noWrap = false, modalProps }: ModalRouteOptions = {},
+  ComposedModal: ModalComponent,
+  options: ModalRouteOptions = {},
+) {
+  const ModalRouteComponent = createModalRouteComponent(ComposedModal, options);
+
+  // Keyed for the plugin route arrays, which React renders as a list.
+  return <Route key={path} path={path} element={<ModalRouteComponent />} />;
+}
+
+/**
+ * `modalRoute` for a modal that lives in a code-split chunk.
+ *
+ * `route.lazy` cannot supply `children`, so a lazy page's modal children have to
+ * be route objects of their own. This keeps the path static, which is what
+ * matching needs, and defers only the modal itself.
+ */
+export function lazyModalRoute(
+  path: string,
+  loadModal: () => Promise<ModalComponent>,
+  options: ModalRouteOptions = {},
+): RouteObject {
+  return {
+    path,
+    lazy: async () => ({
+      Component: createModalRouteComponent(await loadModal(), options),
+    }),
+  };
+}
+
+function createModalRouteComponent(
+  ComposedModal: ModalComponent,
+  { noWrap = false, modalProps }: ModalRouteOptions,
 ) {
   function ModalRouteComponent() {
     const params = useParams();
@@ -73,6 +105,5 @@ export function modalRoute(
     ComposedModal.displayName || ComposedModal.name
   }]`;
 
-  // Keyed for the plugin route arrays, which React renders as a list.
-  return <Route key={path} path={path} element={<ModalRouteComponent />} />;
+  return ModalRouteComponent;
 }

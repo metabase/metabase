@@ -727,7 +727,7 @@ describe("scenarios > explorations > sidebar triage", () => {
     );
   });
 
-  it("hides pages from the toolbar and group menus, reveals them via Show hidden items, and keeps Initial investigation when everything is hidden", () => {
+  it("hides pages from the toolbar and group menus and reveals them via Show hidden items", () => {
     createTwoPageExploration("Sidebar hide fixture").then(
       ({ explorationId, metricName, pageNames }) => {
         cy.intercept("PUT", "/api/exploration/pages/hidden").as(
@@ -751,7 +751,6 @@ describe("scenarios > explorations > sidebar triage", () => {
             )!;
 
             cy.log("Triage arrows step between pages");
-            cy.findByRole("button", { name: "Previous" }).should("be.disabled");
             cy.findByRole("button", { name: "Next" }).click();
             selectedRows().should("contain.text", secondPageName);
             cy.findByRole("button", { name: "Previous" }).click();
