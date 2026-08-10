@@ -10,16 +10,16 @@ import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useParams } from "metabase/router";
 import { trackTransformIndexDeleted } from "metabase/transforms/analytics";
-import {
-  useDeleteTableIndexMutation,
-  useListTableIndexesQuery,
-} from "metabase/transforms/api/index-manager";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { TableIndexEntry, Transform } from "metabase-types/api";
 
+import {
+  useDeleteTableIndexMutation,
+  useListTableIndexesQuery,
+} from "../../api/index-manager";
 import { TransformHeader } from "../../components/TransformHeader";
 
 import { IndexEditorModal } from "./IndexEditorModal/IndexEditorModal";

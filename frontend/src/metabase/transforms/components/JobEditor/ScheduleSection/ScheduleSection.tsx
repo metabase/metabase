@@ -7,7 +7,6 @@ import { Schedule } from "metabase/common/components/Schedule";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSetting } from "metabase/settings";
-import { useRunTransformJobMutation } from "metabase/transforms/api/transform-job";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { isResourceNotFoundError } from "metabase/utils/errors";
@@ -18,6 +17,7 @@ import type {
 } from "metabase-types/api";
 
 import { trackTransformJobTriggerManualRun } from "../../../analytics";
+import { useRunTransformJobMutation } from "../../../api/transform-job";
 import { RunButton } from "../../RunButton";
 import { RunStatus } from "../../RunStatus";
 import type { TransformJobInfo } from "../types";

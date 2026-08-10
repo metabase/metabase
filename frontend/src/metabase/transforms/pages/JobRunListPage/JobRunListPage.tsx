@@ -8,10 +8,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useLocation, useNavigate, useParams } from "metabase/router";
-import {
-  useGetTransformJobQuery,
-  useListTransformJobRunsQuery,
-} from "metabase/transforms/api/transform-job";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { useJobHeaderState } from "metabase/transforms/hooks/use-job-header-state";
 import { formatRunMethod, formatStatus } from "metabase/transforms/utils";
@@ -26,6 +22,10 @@ import {
   type TransformRunMethod,
 } from "metabase-types/api";
 
+import {
+  useGetTransformJobQuery,
+  useListTransformJobRunsQuery,
+} from "../../api/transform-job";
 import { JobHeader } from "../../components/JobHeader";
 import { JobMoreMenu } from "../../components/JobMoreMenu";
 import { JobTabs } from "../../components/JobTabs";

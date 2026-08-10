@@ -12,7 +12,6 @@ import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/Da
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useLocation, useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { useListTransformTagsQuery } from "metabase/transforms/api/transform-tag";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
@@ -20,6 +19,8 @@ import { isActiveRunStatus } from "metabase/transforms/utils";
 import { Center, Flex, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformRun, TransformRunId } from "metabase-types/api";
+
+import { useListTransformTagsQuery } from "../../api/transform-tag";
 
 import { RunFilterBar } from "./RunFilterBar";
 import S from "./RunListPage.module.css";
