@@ -8,10 +8,6 @@ import { SET_PARAMETER_VALUES, initialize } from "metabase/redux/dashboard";
 import type { Card } from "metabase-types/api";
 
 import {
-  REMOVE_PARAMETER,
-  RESET_PARAMETERS,
-  SET_PARAMETER_VALUE,
-  fetchDashboard,
   type removeCardFromDashboard,
   type removeParameter,
   type resetParameters,
@@ -21,9 +17,13 @@ import {
 } from "./actions";
 import {
   REMOVE_CARD_FROM_DASH,
+  REMOVE_PARAMETER,
+  RESET_PARAMETERS,
+  SET_PARAMETER_VALUE,
   UNDO_REMOVE_CARD_FROM_DASH,
   addCardToDash,
   addManyCardsToDash,
+  fetchDashboardFulfilled,
   markNewCardSeen,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
@@ -63,7 +63,7 @@ const dashcards = createReducer(
   INITIAL_DASHBOARD_STATE.dashcards,
   (builder) => {
     builder
-      .addCase(fetchDashboard.fulfilled, (state, action) => ({
+      .addCase(fetchDashboardFulfilled, (state, action) => ({
         ...state,
         ...action.payload.entities.dashcard,
       }))
@@ -217,7 +217,7 @@ const draftParameterValues = createReducer(
       .addCase(initialize, (state, { payload: { clearCache = true } = {} }) => {
         return clearCache ? {} : state;
       })
-      .addCase(fetchDashboard.fulfilled, (state, { payload }) =>
+      .addCase(fetchDashboardFulfilled, (state, { payload }) =>
         payload.preserveParameters && !payload.dashboard.auto_apply_filters
           ? state
           : payload.parameterValues,
