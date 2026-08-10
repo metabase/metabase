@@ -6,7 +6,6 @@ import {
   trackTableFreezeColumnsEnabled,
   trackTableFreezeRowsEnabled,
 } from "metabase/visualizations/analytics";
-import { isFormattable } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import {
   columnSettings,
@@ -42,6 +41,8 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { isFormattable } from "../../components/settings/ChartSettingsTableFormatting";
 
 export const TABLE_DEFINITION = {
   getUiName: () => t`Table`,

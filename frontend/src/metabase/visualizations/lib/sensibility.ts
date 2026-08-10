@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import visualizations from "metabase/visualizations/lib/registry";
 import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import {
   hasLatitudeAndLongitudeColumns,
@@ -21,6 +20,7 @@ import {
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
+import visualizations from "./registry";
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 const MAX_RECOMMENDED = 12;

@@ -1,5 +1,6 @@
 import { Switch } from "metabase/ui";
-import type { ChartSettingEnumToggleProps } from "metabase/visualizations/types/widget-props";
+
+import type { ChartSettingEnumToggleProps } from "../../types/widget-props";
 
 export const ChartSettingEnumToggle = <T extends string>({
   value,

@@ -2,7 +2,8 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Center, Icon, Text } from "metabase/ui";
-import type { ChartSettingSegmentedControlProps } from "metabase/visualizations/types/widget-props";
+
+import type { ChartSettingSegmentedControlProps } from "../../../types/widget-props";
 
 export const ChartSettingSegmentedControl = ({
   options,

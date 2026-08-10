@@ -8,10 +8,6 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model";
 import { getCardsSeriesModels } from "metabase/visualizations/echarts/cartesian/model/series";
 import {
-  getMaxDimensionsSupported,
-  getMaxMetricsSupported,
-} from "metabase/visualizations/lib/registry";
-import {
   MAX_SERIES,
   columnsAreValid,
   getColumnCardinality,
@@ -35,6 +31,11 @@ import type {
   SeriesOrderSetting,
   VisualizationDisplay,
 } from "metabase-types/api";
+
+import {
+  getMaxDimensionsSupported,
+  getMaxMetricsSupported,
+} from "../../lib/registry";
 
 export function getDefaultDimensionFilter(display: string) {
   return display === "scatter" ? isAny : isDimension;
