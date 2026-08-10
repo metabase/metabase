@@ -14,6 +14,11 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each
+  (fn [f]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (f))))
+
 (def ^:private fake-sha "0123456789abcdef0123456789abcdef01234567")
 
 (defn- snapshot

@@ -13,6 +13,10 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each (fn [f] (test-helpers/clean-remote-sync-state f)))
+(use-fixtures :each
+  (fn [f]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (f))))
 
 (comment metabase-enterprise.data-apps.models.data-app/keep-me)
 

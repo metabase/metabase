@@ -19,6 +19,10 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp)
+(use-fixtures :each
+  (fn [f]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (f))))
 
 (defn- import-at!
   "Run `import!` against the source's snapshot at `version`, complete the task (so

@@ -10,6 +10,11 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each
+  (fn [f]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (f))))
+
 ;;; ---------------------------------------------- Helpers ----------------------------------------------
 
 (defn- create-app! []
