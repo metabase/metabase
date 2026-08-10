@@ -18,7 +18,7 @@
                 xrays}}
 
     {:name    "somber-harbor"
-     :edges   986
+     :edges   973
      :modules #{actions
                 activity-feed
                 agent-api
@@ -36,7 +36,6 @@
                 batch-processing
                 cache
                 channel
-                classloader
                 collections
                 content-verification
                 contextual-interestingness
@@ -126,7 +125,7 @@
  :uses+model-imports
  {:sccs
   #{{:name    "ivory-orchard"
-     :edges   1404
+     :edges   1390
      :modules #{actions
                 activity-feed
                 agent-api
@@ -145,7 +144,6 @@
                 bookmarks
                 cache
                 channel
-                classloader
                 collections
                 comments
                 content-verification
