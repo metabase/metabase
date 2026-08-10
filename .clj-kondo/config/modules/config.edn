@@ -1403,6 +1403,7 @@
               server
               settings
               slackbot
+              sql-parsing
               sql-tools
               sync
               system

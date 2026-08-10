@@ -147,6 +147,8 @@
       (json/decode+kw (call "field_references" sql dialect)))
     (replace-names [_ dialect sql replacements]
       (call "replace_names" sql (json/encode replacements) dialect))
+    (correct-identifier-casing [_ dialect sql tables]
+      (call "correct_identifier_casing" sql (json/encode tables) dialect))
     (single-stmt-of-type [_ dialect sql stmt-type]
       (json/decode+kw (call "is_single_stmt_of_type" sql stmt-type dialect)))
     (transpile-sql [_ sql from-dialect to-dialect]

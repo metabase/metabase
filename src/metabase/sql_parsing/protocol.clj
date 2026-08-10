@@ -32,6 +32,10 @@
   (replace-names [parser dialect sql replacements]
     "Replace schema/table/column names in the SQL. Returns the rewritten SQL string. Replacement values
     are injected into the AST unsanitized — callers must ensure they are system-generated.")
+  (correct-identifier-casing [parser dialect sql tables]
+    "Scope-aware correction of unquoted identifiers that differ from the synced metadata name only by
+    letter case. `tables` is a seq of `{:schema s|nil :name n :columns [c ...]}` maps. Returns the
+    rewritten SQL string, or the input unchanged when nothing safely applies.")
   (single-stmt-of-type [parser dialect sql stmt-type]
     "Whether the SQL is a single statement of `stmt-type`, as a keywordized map that includes the SQL
     reconstructed from the parsed AST.")

@@ -2,7 +2,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest testing is]]
-   [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]))
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.core :as sql-tools]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.log.capture :as log.capture]))
 
 ;;;; contains-template-tags?
 
@@ -108,3 +115,343 @@
     (testing context
       (is (=? expected
               (metabot.tools.sql.validation/validate-sql dialect sql))))))
+
+;;;; validate-sql with a metadata provider - identifier casing correction
+
+(def ^:private orders-mp
+  "ORDERS and CUSTOMERS synced the way Snowflake reports unquoted identifiers: folded to uppercase."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id 1}
+               {:id 11 :name "CUSTOMERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"       :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "SUBTOTAL" :table-id 10 :base-type :type/Float}
+               {:id 110 :name "ID"       :table-id 11 :base-type :type/Integer}
+               {:id 111 :name "NAME"     :table-id 11 :base-type :type/Text}]}))
+
+(def ^:private mixed-case-id-mp
+  "Two tables whose synced ID casings disagree, so a shared USING column has no single correction."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id 1}
+               {:id 11 :name "CUSTOMERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID" :table-id 10 :base-type :type/Integer}
+               {:id 110 :name "Id" :table-id 11 :base-type :type/Integer}]}))
+
+(def ^:private pg-orders-mp
+  "The same tables synced the way Postgres reports them: folded to lowercase."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "orders" :schema "public" :db-id 1}]
+    :fields   [{:id 100 :name "id"       :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "subtotal" :table-id 10 :base-type :type/Float}]}))
+
+(def ^:private pg-filtered-table-mp
+  "Stands in for a filtered metadata view that hides the real lowercase `orders` table and shows
+  only a case-distinct `ORDERS`, e.g. because the real one is hidden/technical."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "public" :db-id 1}]
+    :fields   [{:id 100 :name "SUBTOTAL" :table-id 10 :base-type :type/Float}]}))
+
+(def ^:private pg-filtered-column-mp
+  "Stands in for a filtered metadata view where the table is visible but its real lowercase
+  `subtotal` column is hidden/sensitive, leaving only a case-distinct `SUBTOTAL`."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "orders" :schema "public" :db-id 1}]
+    :fields   [{:id 100 :name "SUBTOTAL" :table-id 10 :base-type :type/Float}]}))
+
+(def ^:private snowflake-filtered-column-mp
+  "The real Snowflake-canonical uppercase `SUBTOTAL` field is hidden/sensitive; only a visible,
+  case-distinct quoted-created `SubTotal` remains in the synced (filtered) metadata."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "SubTotal" :table-id 10 :base-type :type/Float}]}))
+
+(def ^:private scalar-subquery-mp
+  "ORDERS and CUSTOMERS each have a physical column, differently cased, that collides
+  case-insensitively with the other's in a way that must stay scoped to its own table."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id 1}
+               {:id 11 :name "CUSTOMERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "DISCOUNT" :table-id 10 :base-type :type/Float}
+               {:id 110 :name "SUBTOTAL" :table-id 11 :base-type :type/Float}]}))
+
+(def ^:private column-alias-list-mp
+  "ORDERS synced normally; used with a query that shadows its columns via an explicit
+  table column-alias list (`AS o(subtotal, id)`)."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"       :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "SUBTOTAL" :table-id 10 :base-type :type/Float}]}))
+
+(defn- mock-table-ids-by-name
+  "Stands in for the appdb name lookup: mock providers have no appdb rows to look up, so serve the
+  same case-insensitive prefilter from the mock's own tables."
+  [mp]
+  (fn [_database-id table-names]
+    (let [names (into #{} (map u/lower-case-en) table-names)]
+      (into #{}
+            (comp (filter #(contains? names (u/lower-case-en (:name %))))
+                  (map :id))
+            (lib.metadata/tables mp)))))
+
+(defn- validated [dialect sql mp]
+  (mt/with-dynamic-fn-redefs [sql-tools/table-ids-by-name (mock-table-ids-by-name mp)]
+    (metabot.tools.sql.validation/validate-sql dialect sql mp)))
+
+(defn- transpiled [dialect sql mp]
+  (:transpiled-sql (validated dialect sql mp)))
+
+(deftest ^:parallel corrects-lowercase-identifiers-test
+  (testing "the Slack report: LLM-written lowercase column and table become the synced uppercase names"
+    (is (= "SELECT\n  \"SUBTOTAL\"\nFROM \"ORDERS\""
+           (transpiled "snowflake" "select subtotal from orders" orders-mp)))))
+
+(deftest ^:parallel corrects-mixed-case-identifiers-test
+  (is (= "SELECT\n  \"SUBTOTAL\"\nFROM \"ORDERS\""
+         (transpiled "snowflake" "select SubTotal from Orders" orders-mp))))
+
+(deftest ^:parallel corrects-postgres-direction-test
+  (testing "synced names lowercase, LLM wrote uppercase"
+    (is (= "SELECT\n  \"subtotal\"\nFROM \"orders\""
+           (transpiled "postgres" "select SUBTOTAL from ORDERS" pg-orders-mp)))))
+
+(deftest ^:parallel corrects-schema-qualification-test
+  (testing "schema casing is corrected together with the table's"
+    (is (= "SELECT\n  \"ID\"\nFROM \"PUBLIC\".\"ORDERS\""
+           (transpiled "snowflake" "select id from public.orders" orders-mp)))))
+
+(deftest ^:parallel corrects-table-qualified-columns-test
+  (testing "a table-name qualifier follows the table rename, keeping the query consistent"
+    (is (= "SELECT\n  \"ORDERS\".\"SUBTOTAL\"\nFROM \"ORDERS\""
+           (transpiled "snowflake" "select orders.subtotal from orders" orders-mp)))))
+
+(deftest ^:parallel corrects-alias-qualified-columns-test
+  (is (= "SELECT\n  \"o\".\"SUBTOTAL\"\nFROM \"ORDERS\" AS \"o\""
+         (transpiled "snowflake" "select o.subtotal from orders as o" orders-mp))))
+
+(deftest ^:parallel corrects-mixed-case-qualifier-test
+  (testing "an unquoted qualifier resolves to its source case-insensitively, like unquoted SQL does"
+    (is (= "SELECT\n  \"ORDERS\".\"SUBTOTAL\"\nFROM \"ORDERS\""
+           (transpiled "snowflake" "select Orders.SubTotal from orders" orders-mp)))))
+
+(deftest ^:parallel corrects-mixed-case-alias-qualifier-test
+  (is (= "SELECT\n  \"o\".\"SUBTOTAL\"\nFROM \"ORDERS\" AS \"o\""
+         (transpiled "snowflake" "select O.subtotal from orders o" orders-mp))))
+
+(deftest ^:parallel corrects-qualified-star-test
+  (is (= "SELECT\n  \"ORDERS\".*\nFROM \"ORDERS\""
+         (transpiled "snowflake" "select orders.* from orders" orders-mp))))
+
+(deftest ^:parallel corrects-schema-qualified-star-test
+  (is (= "SELECT\n  \"PUBLIC\".\"ORDERS\".*\nFROM \"PUBLIC\".\"ORDERS\""
+         (transpiled "snowflake" "select public.orders.* from public.orders" orders-mp))))
+
+(deftest ^:parallel corrects-join-using-test
+  (is (= "SELECT\n  *\nFROM \"ORDERS\"\nJOIN \"CUSTOMERS\"\n  USING (\"ID\")"
+         (transpiled "snowflake" "select * from orders join customers using (id)" orders-mp))))
+
+(deftest ^:parallel ambiguous-join-using-untouched-test
+  (testing "joined tables that disagree on the synced casing leave the USING identifier alone"
+    (is (= "SELECT\n  *\nFROM \"ORDERS\"\nJOIN \"CUSTOMERS\"\n  USING (\"id\")"
+           (transpiled "snowflake" "select * from orders join customers using (id)" mixed-case-id-mp)))))
+
+(deftest ^:parallel corrects-order-by-select-name-test
+  (testing "an ORDER BY reference follows the corrected select column it names"
+    (is (= "SELECT\n  \"SUBTOTAL\"\nFROM \"ORDERS\"\nORDER BY\n  \"SUBTOTAL\""
+           (transpiled "snowflake" "select subtotal from orders order by subtotal" orders-mp)))))
+
+(deftest ^:parallel corrects-having-reference-test
+  (is (= "SELECT\n  SUM(\"SUBTOTAL\")\nFROM \"ORDERS\"\nHAVING\n  SUM(\"SUBTOTAL\") > 1"
+         (transpiled "snowflake" "select sum(subtotal) from orders having sum(subtotal) > 1" orders-mp))))
+
+(deftest ^:parallel order-by-alias-untouched-test
+  (testing "an ORDER BY reference to a select alias keeps naming the alias"
+    (is (= "SELECT\n  \"SUBTOTAL\" AS \"x\"\nFROM \"ORDERS\"\nORDER BY\n  \"x\""
+           (transpiled "snowflake" "select subtotal as x from orders order by x" orders-mp)))))
+
+(deftest ^:parallel correct-casing-untouched-test
+  (is (= "SELECT\n  \"SUBTOTAL\"\nFROM \"PUBLIC\".\"ORDERS\""
+         (transpiled "snowflake" "select SUBTOTAL from PUBLIC.ORDERS" orders-mp))))
+
+(deftest ^:parallel no-metadata-provider-skips-correction-test
+  (testing "the 2-arity call behaves exactly as before this feature"
+    (is (= "SELECT\n  \"subtotal\"\nFROM \"orders\""
+           (:transpiled-sql (metabot.tools.sql.validation/validate-sql
+                             "snowflake" "select subtotal from orders"))))))
+
+(deftest ^:parallel multi-statement-still-rejected-test
+  (testing "correction must not swallow statements; multi-statement input is rejected as before"
+    (is (=? {:valid? false
+             :error-message "Multiple SQL statements are not supported. Please provide a single query."}
+            (validated "snowflake" "select subtotal from orders; select 1" orders-mp)))))
+
+(deftest ^:parallel unknown-table-untouched-test
+  (is (str/includes? (transpiled "snowflake" "select id from nonexistent_table" orders-mp)
+                     "\"nonexistent_table\"")))
+
+(deftest ^:parallel derived-table-alias-untouched-test
+  (testing "an outer reference to a derived column alias is not rewritten to the physical name"
+    (is (= (str "SELECT\n  \"subtotal\"\nFROM (\n  SELECT\n    \"amount\" AS \"subtotal\"\n"
+                "  FROM \"ORDERS\"\n) AS \"d\"")
+           (transpiled "snowflake"
+                       "select subtotal from (select amount as subtotal from orders) as d"
+                       orders-mp)))))
+
+(deftest ^:parallel derived-table-output-name-follows-correction-test
+  (testing "a bare (unaliased) derived-table projection is corrected without an alias, so the
+           derived table exposes the dialect's canonical output name and the outer reference
+           is corrected to follow it"
+    (let [sql (transpiled "snowflake"
+                          "select subtotal from (select subtotal from orders) as d"
+                          orders-mp)]
+      (is (= (str "SELECT\n  \"SUBTOTAL\"\nFROM (\n  SELECT\n    \"SUBTOTAL\"\n"
+                  "  FROM \"ORDERS\"\n) AS \"d\"")
+             sql))
+      (is (= "ok" (:status (sql-parsing/validate-query
+                            "snowflake" sql "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT"}}})))
+          "the corrected query must still resolve, not just read as plausible SQL"))))
+
+(deftest ^:parallel cte-output-name-follows-correction-test
+  (testing "the CTE body is corrected against the physical table and the outer reference follows
+           the corrected output name, so the result column keeps the dialect's canonical spelling"
+    (let [sql (transpiled "snowflake"
+                          "with subs as (select subtotal from orders) select subtotal from subs"
+                          orders-mp)]
+      (is (= (str "WITH \"subs\" AS (\n  SELECT\n    \"SUBTOTAL\"\n  FROM \"ORDERS\"\n)\n"
+                  "SELECT\n  \"SUBTOTAL\"\nFROM \"subs\"")
+             sql))
+      (is (= "ok" (:status (sql-parsing/validate-query
+                            "snowflake" sql "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT"}}})))
+          "the corrected query must still resolve, not just read as plausible SQL"))))
+
+(deftest ^:parallel correlated-references-corrected-test
+  (testing "correlated references resolve through the scope that owns them: alias-qualified,
+           table-name-qualified, and bare"
+    (is (= (str "SELECT\n  *\nFROM \"ORDERS\" AS \"o\"\nWHERE\n  EXISTS(\n    SELECT\n      1\n"
+                "    FROM \"CUSTOMERS\" AS \"c\"\n    WHERE\n      \"c\".\"ID\" = \"o\".\"ID\"\n  )")
+           (transpiled "snowflake"
+                       "select * from orders o where exists (select 1 from customers c where c.id = o.id)"
+                       orders-mp)))
+    (is (str/includes?
+         (transpiled "snowflake"
+                     "select * from orders where exists (select 1 from customers c where c.id = orders.id)"
+                     orders-mp)
+         "\"c\".\"ID\" = \"ORDERS\".\"ID\""))
+    (is (str/includes?
+         (transpiled "snowflake"
+                     "select * from orders o where exists (select 1 from customers c where subtotal > 100)"
+                     orders-mp)
+         "\"SUBTOTAL\" > 100"))))
+
+(deftest ^:parallel set-operation-output-contract-test
+  (testing "an outer reference through a set-operation wrapper follows the corrected first-arm
+           output, for every operator in both derived-table and CTE form"
+    (doseq [op  ["union all" "intersect" "except"]
+            sql [(format "select subtotal from (select subtotal from orders %s select subtotal from orders) d" op)
+                 (format "with d as (select subtotal from orders %s select subtotal from orders) select subtotal from d" op)]]
+      (let [corrected (transpiled "snowflake" sql orders-mp)]
+        (is (not (str/includes? corrected "\"subtotal\"")) sql)
+        (is (= "ok" (:status (sql-parsing/validate-query
+                              "snowflake" corrected "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT"}}})))
+            sql)))))
+
+(deftest ^:parallel fold-equivalent-nonphysical-alias-test
+  (testing "an unquoted reference bound to a case-different derived alias or CTE name is rewritten
+           to the exact spelling transpile will quote"
+    (is (= "SELECT\n  \"d\".\"SUBTOTAL\"\nFROM (\n  SELECT\n    \"SUBTOTAL\"\n  FROM \"ORDERS\"\n) AS \"d\""
+           (transpiled "snowflake" "select D.subtotal from (select subtotal from orders) d" orders-mp)))
+    (is (= (str "WITH \"X\" AS (\n  SELECT\n    \"SUBTOTAL\"\n  FROM \"ORDERS\"\n)\n"
+                "SELECT\n  \"X\".\"SUBTOTAL\"\nFROM \"X\"")
+           (transpiled "snowflake" "with X as (select subtotal from orders) select x.subtotal from X" orders-mp)))))
+
+(deftest ^:parallel postgres-output-identity-test
+  (testing "the lowercase fold direction: an uppercase spelling becomes the canonical lowercase
+           output name end to end, not a pinned uppercase alias"
+    (is (= (str "WITH \"x\" AS (\n  SELECT\n    \"subtotal\"\n  FROM \"orders\"\n)\n"
+                "SELECT\n  \"subtotal\"\nFROM \"x\"")
+           (transpiled "postgres" "with x as (select SUBTOTAL from ORDERS) select subtotal from x" pg-orders-mp)))))
+
+(deftest ^:parallel quoted-identifiers-untouched-test
+  (testing "an explicitly quoted identifier denotes an exact object and is never re-cased"
+    (is (= "SELECT\n  \"subtotal\"\nFROM \"orders\""
+           (transpiled "snowflake" "select \"subtotal\" from \"orders\"" orders-mp)))))
+
+(deftest ^:parallel catalog-qualified-untouched-test
+  (testing "a catalog-qualified table is outside the current database's metadata scope"
+    (is (= "SELECT\n  \"subtotal\"\nFROM \"other\".\"public\".\"orders\""
+           (transpiled "snowflake" "select subtotal from other.public.orders" orders-mp)))))
+
+(deftest correction-failure-does-not-log-sql-test
+  (testing "SQL that fails to parse during correction stays out of the warn log: it can hold literals"
+    (let [msgs (log.capture/with-log-messages-for-level [msgs [metabase.metabot.tools.sql.validation :warn]]
+                 (validated "snowflake" "select * from orders where token = 'synthetic-secret' and" orders-mp)
+                 (msgs))]
+      (is (seq msgs))
+      (is (not (str/includes? (pr-str msgs) "synthetic-secret"))))))
+
+(deftest ^:parallel case-insensitive-dialects-skip-correction-test
+  (testing "dialects that don't quote with identify=True don't pay for correction"
+    (is (= "SELECT\n  SubTotal\nFROM Orders"
+           (transpiled "mysql" "select SubTotal from Orders" orders-mp)))))
+
+(deftest ^:parallel filtered-metadata-does-not-retarget-valid-table-test
+  (testing "a table name already at Postgres's unquoted fold is left alone even when the only
+           metadata match is a case-distinct object a filtered view happened to show"
+    (is (= "SELECT\n  \"subtotal\"\nFROM \"orders\""
+           (transpiled "postgres" "select subtotal from orders" pg-filtered-table-mp)))))
+
+(deftest ^:parallel filtered-metadata-does-not-retarget-valid-column-test
+  (testing "a column name already at Postgres's unquoted fold is left alone even when the table
+           matches and the only metadata for the column is a case-distinct name"
+    (is (= "SELECT\n  \"subtotal\"\nFROM \"orders\""
+           (transpiled "postgres" "select subtotal from orders" pg-filtered-column-mp)))))
+
+(deftest ^:parallel filtered-metadata-does-not-retarget-upper-fold-column-test
+  (testing "a Snowflake column not already at the uppercase fold is left alone (not rewritten to a
+           case-distinct name) when the only metadata match isn't the exact canonical fold"
+    (is (= "SELECT\n  \"subtotal\"\nFROM \"ORDERS\""
+           (transpiled "snowflake" "select subtotal from orders" snowflake-filtered-column-mp)))))
+
+(deftest ^:parallel scalar-subquery-column-scoped-to-its-own-table-test
+  (testing "a bare column inside a scalar subquery is corrected against its own table, not the
+           outer query's table, even though scope.columns leaks it into the outer scope too"
+    (is (= "SELECT\n  (\n    SELECT\n      \"SUBTOTAL\"\n    FROM \"CUSTOMERS\"\n  )\nFROM \"ORDERS\""
+           (transpiled "snowflake" "select (select subtotal from customers) from orders"
+                       scalar-subquery-mp)))))
+
+(deftest ^:parallel table-column-alias-list-skips-field-correction-test
+  (testing "an explicit table column-alias list shadows the physical column names, so field
+           correction is skipped for that source; table correction still applies"
+    (is (= "SELECT\n  \"subtotal\"\nFROM \"ORDERS\" AS \"o\"(\"subtotal\", \"id\")"
+           (transpiled "snowflake" "select subtotal from orders as o(subtotal, id)"
+                       column-alias-list-mp)))))
+
+(deftest ^:parallel corrects-mixed-case-group-by-alias-test
+  (testing "a GROUP BY reference to a select alias is quoted to match the alias, not left mismatched"
+    (is (= "SELECT\n  \"SUBTOTAL\" AS \"Total\"\nFROM \"ORDERS\"\nGROUP BY\n  \"Total\""
+           (transpiled "snowflake" "select subtotal as Total from orders group by total" orders-mp)))))
+
+(deftest ^:parallel corrects-mixed-case-order-by-alias-test
+  (testing "an ORDER BY reference to a select alias is quoted to match the alias, not left mismatched"
+    (is (= "SELECT\n  \"SUBTOTAL\" AS \"Total\"\nFROM \"ORDERS\"\nORDER BY\n  \"Total\""
+           (transpiled "snowflake" "select subtotal as Total from orders order by total" orders-mp)))))
+
+(deftest casing-correction-fetches-only-named-tables-test
+  (testing "GHY-4251: casing correction looks up only the Tables the SQL names, never the Database's
+           whole catalog. Fetching the catalog per validation made the cost scale with warehouse
+           size instead of query size, OOM-killing instances with ~20k synced tables."
+    (let [catalog-fetches (atom 0)
+          all-tables      lib.metadata/tables]
+      (with-redefs [lib.metadata/tables (fn [mp] (swap! catalog-fetches inc) (all-tables mp))]
+        (testing "the referenced table still resolves and gets its casing corrected"
+          (is (= "SELECT\n  \"SUBTOTAL\"\nFROM \"ORDERS\""
+                 (:transpiled-sql (metabot.tools.sql.validation/validate-sql
+                                   "snowflake" "select subtotal from orders" (mt/metadata-provider))))))
+        (testing "and it did so without fetching the catalog"
+          (is (zero? @catalog-fetches)))))))

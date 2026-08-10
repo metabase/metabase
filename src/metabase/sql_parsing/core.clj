@@ -513,6 +513,21 @@
   [dialect sql replacements]
   (protocol/replace-names (parser) dialect sql replacements))
 
+(defn correct-identifier-casing
+  "Scope-aware correction of unquoted identifiers that differ from a synced metadata name only by
+  letter case. `tables` is a seq of `{:schema s|nil :name n :columns [c ...]}` maps describing the
+  synced tables the query may reference. Quoted identifiers, catalog-qualified tables, CTEs,
+  derived tables, and anything ambiguous are left alone; multi-statement or unparseable input is
+  returned unchanged. Returns the (possibly rewritten) SQL string.
+
+  Queries whose literal lists are large enough to need stripping (see
+  [[strip-large-literal-lists]]) are returned unchanged: this function returns SQL, so parsing a
+  stripped variant would drop the caller's literals (#74284)."
+  [dialect sql tables]
+  (if (= sql (strip-large-literal-lists sql))
+    (protocol/correct-identifier-casing (parser) dialect sql tables)
+    sql))
+
 (defn is-single-stmt-of-type?
   "Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
    and returns the query reconstructed from the parsed AST."
