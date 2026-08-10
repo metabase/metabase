@@ -17,7 +17,11 @@ import {
 import { getParameterColumns } from "metabase-lib/v1/parameters/utils/targets";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import { isDate, isa } from "metabase-lib/v1/types/utils/isa";
+import {
+  isDate,
+  isDateWithoutTime,
+  isa,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   ClickBehavior,
   ClickBehaviorDimensionTarget,
@@ -287,6 +291,7 @@ export function formatSourceForTarget(
     typeof datum.value === "string"
   ) {
     const sourceDateUnit = datum.column.unit || null;
+    const fallbackUnit = isDateWithoutTime(datum.column) ? "day" : "minute";
 
     if (target.type === "parameter") {
       // we should serialize differently based on the target parameter type
@@ -294,12 +299,10 @@ export function formatSourceForTarget(
         return formatDateForParameterType(
           datum.value,
           parameter.type,
-          sourceDateUnit,
+          sourceDateUnit ?? fallbackUnit,
         );
       }
     } else {
-      // If the target is a dimension or variable, we serialize as a date to remove the timestamp
-
       if (
         typeof sourceDateUnit === "string" &&
         ["week", "month", "quarter", "year", "hour", "minute"].includes(
@@ -312,7 +315,7 @@ export function formatSourceForTarget(
       return formatDateForParameterType(
         datum.value,
         "date/single",
-        sourceDateUnit,
+        sourceDateUnit ?? fallbackUnit,
       );
     }
   }
