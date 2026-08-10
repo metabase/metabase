@@ -17,10 +17,10 @@ import {
   getDashboardDrillType,
   getDashboardDrillUrl,
 } from "./dashboard-click-drill";
-import type { DashboardDrillType } from "./types";
+import type { DashboardDrillType, ParameterIdValuePair } from "./types";
 
 type SetOrUnsetParameterValues = (
-  parameterIdValuePairs: [string, ParameterValueOrArray | null][],
+  parameterIdValuePairs: ParameterIdValuePair[],
 ) => (dispatch: Dispatch) => void;
 
 type SetParameterValue = (
@@ -38,7 +38,7 @@ function getAction(
   // "dashboard-filter" and "dashboard-reset" drill types are produced.
   const setOrUnsetParameterValues = clicked.extraData
     ?.setOrUnsetParameterValues as SetOrUnsetParameterValues;
-  // Likewise injected by useClickBehaviorData.
+  // Also injected via extraData by the useClickBehaviorData hook.
   const setParameterValue = clicked.extraData
     ?.setParameterValue as SetParameterValue;
 

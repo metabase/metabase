@@ -1,13 +1,12 @@
 import querystring from "querystring";
 
-import _ from "underscore";
-
 import type { ClickBehaviorExtraData } from "metabase/dashboard/utils/click-behavior";
 import {
   formatSourceForTarget,
   getTargetForQueryParams,
 } from "metabase/dashboard/utils/click-behavior";
 import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
 import { getDataFromClicked } from "metabase/visualizations/lib/formatting/click-data";
 import type { ValueAndColumnForColumnNameDate } from "metabase/visualizations/lib/formatting/link";
 import { renderLinkURLForClick } from "metabase/visualizations/lib/formatting/link";
@@ -35,6 +34,7 @@ import type {
   ClickBehaviorProperties,
   DashboardDrillType,
   DrillExtraData,
+  ParameterIdValuePair,
 } from "./types";
 
 export function getDashboardDrillType(
@@ -74,14 +74,14 @@ export function getDashboardDrillType(
 }
 
 export function getDashboardDrillTab(clicked: ClickObject) {
-  const clickBehavior = getClickBehavior(clicked)!;
+  const clickBehavior = checkNotNull(getClickBehavior(clicked));
   const { tabId } = getClickBehaviorData(clicked, clickBehavior);
 
   return tabId;
 }
 
 export function getDashboardDrillParameters(clicked: ClickObject) {
-  const clickBehavior = getClickBehavior(clicked)!;
+  const clickBehavior = checkNotNull(getClickBehavior(clicked));
   const { data, parameterMapping, extraData } = getClickBehaviorData(
     clicked,
     clickBehavior,
@@ -95,20 +95,25 @@ export function getDashboardDrillParameters(clicked: ClickObject) {
 }
 
 export function getDashboardDrillLinkUrl(clicked: ClickObject) {
-  const clickBehavior = getClickBehavior(clicked)!;
+  const clickBehavior = checkNotNull(getClickBehavior(clicked));
   const { data, linkTemplate } = getClickBehaviorData(clicked, clickBehavior);
 
   return renderLinkURLForClick(linkTemplate || "", data);
 }
 
 export function getDashboardDrillUrl(clicked: ClickObject) {
-  const clickBehavior = getClickBehavior(clicked)!;
-  const { data, extraData, parameterMapping, tabId, targetId } =
+  const clickBehavior = checkNotNull(getClickBehavior(clicked));
+  const { data, extraData, linkType, parameterMapping, tabId, targetId } =
     getClickBehaviorData(clicked, clickBehavior);
 
-  const targetDashboard = extraData!.dashboards![targetId!];
+  const targetDashboardId = checkNotNull(
+    linkType === "dashboard" ? targetId : undefined,
+  );
+  const targetDashboard = checkNotNull(
+    extraData?.dashboards?.[targetDashboardId],
+  );
   const targetDefaultParameters = Object.fromEntries(
-    targetDashboard.parameters!.map((parameter) => [
+    checkNotNull(targetDashboard.parameters).map((parameter) => [
       parameter.slug,
       parameter.default ?? "",
     ]),
@@ -128,7 +133,7 @@ export function getDashboardDrillUrl(clicked: ClickObject) {
     ...tabParams,
   };
 
-  const path = Urls.dashboard({ id: targetId! });
+  const path = Urls.dashboard({ id: targetDashboardId });
   return `${path}?${querystring.stringify(queryParams)}`;
 }
 
@@ -136,14 +141,16 @@ export function getDashboardDrillQuestionUrl(
   question: Question,
   clicked: ClickObject,
 ) {
-  const clickBehavior = getClickBehavior(clicked)!;
-  const { data, extraData, parameterMapping, targetId } = getClickBehaviorData(
-    clicked,
-    clickBehavior,
-  );
+  const clickBehavior = checkNotNull(getClickBehavior(clicked));
+  const { data, extraData, linkType, parameterMapping, targetId } =
+    getClickBehaviorData(clicked, clickBehavior);
 
+  const targetCardId = checkNotNull(
+    linkType === "question" ? targetId : undefined,
+  );
+  const targetCard = checkNotNull(extraData?.questions?.[targetCardId]);
   const baseQuestion = new Question(
-    extraData!.questions![targetId!],
+    targetCard,
     question.metadata(),
   ).lockDisplay();
   const targetQuestion =
@@ -152,16 +159,16 @@ export function getDashboardDrillQuestionUrl(
       ? baseQuestion
       : baseQuestion.setQuery(Lib.ensureFilterStage(baseQuestion.query()));
 
-  // Entries lack Parameter's name; question URL building never reads it.
-  const parameters = _.chain(parameterMapping)
-    .values()
-    .map(({ target, id, source }) => ({
-      target: target.dimension,
+  // The cast covers what `ParameterWithTarget` requires, but these entries
+  // lack: `name` (never read by URL building) and a target on non-dimension mappings.
+  const parameters = Object.values(parameterMapping ?? {}).map(
+    ({ target, id, source }) => ({
+      target: target.type === "dimension" ? target.dimension : undefined,
       id,
       slug: id,
       type: getTypeForSource(source, data, extraData),
-    }))
-    .value() as ParameterWithTarget[];
+    }),
+  ) as ParameterWithTarget[];
 
   const queryParams = getParameterValuesBySlug(parameterMapping, {
     data,
@@ -217,28 +224,20 @@ export function getClickBehaviorData(
   clicked: ClickBehaviorClickObject,
   clickBehavior: ClickBehaviorProperties,
 ) {
-  const data = getDataFromClicked(clicked);
-  const { type, linkType, linkTemplate, parameterMapping, tabId, targetId } =
-    clickBehavior;
-  const { extraData } = clicked;
-
+  // The spread (vs picking fields) preserves the linkType discrimination, so
+  // callers can narrow targetId.
   return {
-    type,
-    linkType,
-    linkTemplate,
-    data,
-    extraData,
-    parameterMapping,
-    tabId,
-    targetId,
+    ...clickBehavior,
+    data: getDataFromClicked(clicked),
+    extraData: clicked.extraData,
   };
 }
 
 export function getParameterIdValuePairs(
   parameterMapping: ClickBehaviorParameterMapping | undefined,
   { data, extraData, clickBehavior }: ClickBehaviorDataOptions,
-): [string, ParameterValueOrArray | null][] {
-  return _.values(parameterMapping).map(({ source, target, id }) => {
+): ParameterIdValuePair[] {
+  return Object.values(parameterMapping ?? {}).map(({ source, target, id }) => {
     return [
       id,
       formatSourceForTarget(source, target, {

@@ -10,9 +10,10 @@ import type {
   ClickBehavior,
   ClickBehaviorParameterMapping,
   ClickBehaviorType,
-  CustomDestinationClickBehaviorLinkType,
   DashboardId,
   DashboardTabId,
+  ParameterId,
+  ParameterValueOrArray,
 } from "metabase-types/api";
 
 export type DashboardDrillType =
@@ -23,7 +24,7 @@ export type DashboardDrillType =
   | "dashboard-reset";
 
 export interface DrillExtraData extends ClickBehaviorExtraData {
-  questions?: Record<CardId | string, Card>;
+  questions?: Record<CardId, Card>;
 }
 
 // ClickObject with the shapes dashboards put in its untyped settings/extraData.
@@ -35,17 +36,43 @@ export interface ClickBehaviorClickObject extends Omit<
   extraData?: DrillExtraData;
 }
 
-export type ClickBehaviorProperties = {
+type ClickBehaviorPropertiesBase = {
   type: ClickBehaviorType;
-  linkType?: CustomDestinationClickBehaviorLinkType;
-  linkTemplate?: string;
   parameterMapping?: ClickBehaviorParameterMapping;
-  tabId?: DashboardTabId;
-  targetId?: CardId | DashboardId;
 };
+
+// ClickBehavior flattened for uniform destructuring, discriminated on linkType
+// so targetId narrows to the matching id type.
+export type ClickBehaviorProperties =
+  | (ClickBehaviorPropertiesBase & {
+      linkType?: undefined;
+      linkTemplate?: undefined;
+      tabId?: undefined;
+      targetId?: undefined;
+    })
+  | (ClickBehaviorPropertiesBase & {
+      linkType: "url";
+      linkTemplate?: string;
+      tabId?: undefined;
+      targetId?: undefined;
+    })
+  | (ClickBehaviorPropertiesBase & {
+      linkType: "question";
+      linkTemplate?: undefined;
+      tabId?: undefined;
+      targetId?: CardId;
+    })
+  | (ClickBehaviorPropertiesBase & {
+      linkType: "dashboard";
+      linkTemplate?: undefined;
+      tabId?: DashboardTabId;
+      targetId?: DashboardId;
+    });
 
 export type ClickBehaviorDataOptions = {
   data: ValueAndColumnForColumnNameDate;
   extraData: ClickBehaviorExtraData | undefined;
   clickBehavior: ClickBehavior;
 };
+
+export type ParameterIdValuePair = [ParameterId, ParameterValueOrArray | null];

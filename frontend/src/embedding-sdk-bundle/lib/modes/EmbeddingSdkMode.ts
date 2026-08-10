@@ -5,6 +5,7 @@ import {
   getParameterIdValuePairs,
   getParameterValuesBySlug,
 } from "metabase/dashboard/click-behavior/dashboard-click-drill";
+import type { ParameterIdValuePair } from "metabase/dashboard/click-behavior/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { CombineColumnsAction } from "metabase/visualizations/click-actions/actions/CombineColumnsAction";
 import { ExtractColumnAction } from "metabase/visualizations/click-actions/actions/ExtractColumnAction";
@@ -15,16 +16,9 @@ import type {
   LegacyDrill,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
-import type {
-  CardId,
-  DashboardId,
-  DashboardTabId,
-  ParameterValueOrArray,
-} from "metabase-types/api";
+import type { CardId, DashboardId, DashboardTabId } from "metabase-types/api";
 
-export type ClickBehaviorTarget = {
-  type: "dashboard" | "question";
-  id: CardId | DashboardId;
+type ClickBehaviorTargetBase = {
   name: string;
   parameters: ParameterValues;
   /**
@@ -32,9 +26,16 @@ export type ClickBehaviorTarget = {
    * Used for same-dashboard click behaviors that need to dispatch per-id
    * setParameterValue actions (mirrors core app DashboardClickAction).
    */
-  parameterIdValuePairs: [string, ParameterValueOrArray | null][];
-  tabId?: DashboardTabId;
+  parameterIdValuePairs: ParameterIdValuePair[];
 };
+
+export type ClickBehaviorTarget =
+  | (ClickBehaviorTargetBase & {
+      type: "dashboard";
+      id: DashboardId;
+      tabId?: DashboardTabId;
+    })
+  | (ClickBehaviorTargetBase & { type: "question"; id: CardId });
 
 const getClickBehaviorTarget = (
   clicked: ClickObject,
@@ -47,14 +48,10 @@ const getClickBehaviorTarget = (
   const { linkType, targetId, extraData, parameterMapping, data, tabId } =
     getClickBehaviorData(clicked, clickBehavior);
 
-  if (linkType !== "dashboard" && linkType !== "question") {
-    return null;
-  }
-
-  if (targetId == null) {
-    console.warn(
-      `[SDK Navigation] Could not find ${linkType} with id ${targetId}`,
-    );
+  if (
+    (linkType !== "dashboard" && linkType !== "question") ||
+    targetId == null
+  ) {
     return null;
   }
 
@@ -74,24 +71,41 @@ const getClickBehaviorTarget = (
       })
     : [];
 
-  const entitiesMap =
-    linkType === "dashboard" ? extraData?.dashboards : extraData?.questions;
-  const target = entitiesMap?.[targetId];
+  if (linkType === "dashboard") {
+    const dashboard = extraData?.dashboards?.[targetId];
 
-  if (!target) {
+    if (!dashboard) {
+      console.warn(
+        `[SDK Navigation] Could not find dashboard with id ${targetId}`,
+      );
+      return null;
+    }
+
+    return {
+      type: "dashboard",
+      id: dashboard.id,
+      name: dashboard.name,
+      parameters,
+      parameterIdValuePairs,
+      tabId,
+    };
+  }
+
+  const question = extraData?.questions?.[targetId];
+
+  if (!question) {
     console.warn(
-      `[SDK Navigation] Could not find ${linkType} with id ${targetId}`,
+      `[SDK Navigation] Could not find question with id ${targetId}`,
     );
     return null;
   }
 
   return {
-    type: linkType,
-    id: target.id,
-    name: target.name,
+    type: "question",
+    id: question.id,
+    name: question.name,
     parameters,
     parameterIdValuePairs,
-    tabId,
   };
 };
 
