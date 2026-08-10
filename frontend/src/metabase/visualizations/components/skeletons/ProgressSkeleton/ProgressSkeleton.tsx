@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { SkeletonImage } from "../FunnelSkeleton/FunnelSkeleton.styled";
 
 const ProgressSkeleton = (): JSX.Element => {

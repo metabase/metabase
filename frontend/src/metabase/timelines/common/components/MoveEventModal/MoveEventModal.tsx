@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { type JSX, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getSortedTimelines } from "metabase/common/utils/timelines";

@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import type { CardType, CollectionId, TableId } from "metabase-types/api";
 
 export interface DataSourceSelectorProps {

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 
 import type { CodeLanguage } from "metabase/common/components/CodeEditor";
 import { CodeEditor } from "metabase/common/components/CodeEditor";

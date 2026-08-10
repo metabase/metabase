@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { dayjs } from "metabase/dayjs";

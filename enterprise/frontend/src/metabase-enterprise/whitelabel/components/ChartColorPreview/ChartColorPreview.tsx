@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { Box, Flex } from "metabase/ui";

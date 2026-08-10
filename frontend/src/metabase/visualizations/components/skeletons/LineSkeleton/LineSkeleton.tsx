@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { SkeletonImage } from "./LineSkeleton.styled";
 
 const LineSkeleton = (): JSX.Element => {

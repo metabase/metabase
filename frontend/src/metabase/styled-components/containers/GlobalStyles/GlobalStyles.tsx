@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import { Global, css } from "@emotion/react";
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";

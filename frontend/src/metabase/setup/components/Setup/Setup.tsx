@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { type JSX, useEffect } from "react";
 import { useUpdate } from "react-use";
 
 import { useSelector } from "metabase/redux";

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { type JSX, useMemo } from "react";
 import { jt, t } from "ttag";
 
 import {

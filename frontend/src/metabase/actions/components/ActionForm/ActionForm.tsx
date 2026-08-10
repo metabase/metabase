@@ -1,5 +1,5 @@
 import type { FormikHelpers } from "formik";
-import { useCallback, useMemo } from "react";
+import { type JSX, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import useActionForm from "metabase/actions/hooks/use-action-form";

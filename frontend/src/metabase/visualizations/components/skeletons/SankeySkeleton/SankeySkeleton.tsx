@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { SkeletonImage } from "./SankeySkeleton.styled";
 
 const SankeySkeleton = (): JSX.Element => {

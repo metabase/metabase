@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import * as Urls from "metabase/urls";
 import type {

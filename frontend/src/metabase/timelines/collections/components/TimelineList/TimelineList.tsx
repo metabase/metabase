@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import type { Timeline } from "metabase-types/api";
 
 import TimelineCard from "../TimelineCard";

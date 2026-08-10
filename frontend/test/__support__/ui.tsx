@@ -17,6 +17,7 @@ import {
 import {
   Children,
   Fragment,
+  type JSX,
   isValidElement,
   useCallback,
   useMemo,
