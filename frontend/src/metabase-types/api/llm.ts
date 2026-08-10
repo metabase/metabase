@@ -45,7 +45,12 @@ export type LlmProviderTypeName =
   | "bedrock"
   | "metabase";
 
-export type LlmProviderFieldType = "text" | "password" | "select";
+export type LlmProviderFieldType =
+  | "text"
+  | "password"
+  | "select"
+  | "segmented"
+  | "file";
 
 export interface LlmProviderField {
   key: string;
@@ -59,6 +64,7 @@ export interface LlmProviderField {
   docs_url?: string | null;
   prefix?: string | null;
   options?: { value: string; label: string }[] | null;
+  show_when?: { field: string; value: string } | null;
 }
 
 export interface LlmProviderType {

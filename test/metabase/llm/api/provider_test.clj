@@ -83,6 +83,32 @@
                     :fields
                     (into {} (map (juxt :key :advanced))))))))))
 
+(deftest provider-types-google-fields-test
+  (testing "Google's credentials hang off the authentication method it is asked for, and its models are a fixed list"
+    (let [google (->> (mt/user-http-request :crowberto :get 200 "llm/provider-types")
+                      (filter #(= "google" (:type %)))
+                      first)
+          fields (into {} (map (juxt :key identity)) (:fields google))]
+      (is (= ["project-id" "location" "model" "auth-method" "service-account-key" "oauth-access-token" "base-url"]
+             (map :key (:fields google))))
+      (is (=? {:type    "segmented"
+               :default "service-account-key"
+               :options [{:value "service-account-key" :label "Service account key"}
+                         {:value "oauth-token" :label "OAuth token"}]}
+              (fields "auth-method")))
+      (is (=? {:type      "file"
+               :show_when {:field "auth-method" :value "service-account-key"}}
+              (fields "service-account-key")))
+      (is (=? {:type      "password"
+               :show_when {:field "auth-method" :value "oauth-token"}}
+              (fields "oauth-access-token")))
+      (testing "the model is picked from the ones Metabot is known to work with, stored publisher-qualified"
+        (is (=? {:type    "select"
+                 :default "google/gemini-3.5-flash"
+                 :options [{:value "google/gemini-3.5-flash" :label "gemini-3.5-flash"}
+                           {:value "google/gemini-3.6-flash" :label "gemini-3.6-flash"}]}
+                (fields "model")))))))
+
 (deftest provider-types-managed-availability-test
   (letfn [(managed [types] (->> types (filter #(= "metabase" (:type %))) first))]
     (testing "the managed provider leads the list when the LLM proxy is configured"

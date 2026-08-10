@@ -27,7 +27,7 @@
   [:map
    [:key :string]
    [:label :string]
-   [:type [:enum "text" "password" "select"]]
+   [:type [:enum "text" "password" "select" "segmented" "file"]]
    [:required :boolean]
    [:advanced :boolean]
    [:placeholder {:optional true} [:maybe :string]]
@@ -35,7 +35,9 @@
    [:help {:optional true} [:maybe :string]]
    [:docs_url {:optional true} [:maybe :string]]
    [:prefix {:optional true} [:maybe :string]]
-   [:options {:optional true} [:maybe [:sequential [:map [:value :string] [:label :string]]]]]])
+   [:options {:optional true} [:maybe [:sequential [:map [:value :string] [:label :string]]]]]
+   ;; the field is only shown, and only sent, while the named field holds this value
+   [:show_when {:optional true} [:maybe [:map [:field :string] [:value :string]]]]])
 
 (def ^:private provider-type-response-schema
   [:map
@@ -79,8 +81,12 @@
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
+(defn- option-response
+  [{:keys [value label]}]
+  {:value value :label (str label)})
+
 (defn- field-response
-  [{:keys [key label type required? advanced? placeholder default help docs-url prefix options]}]
+  [{:keys [key label type required? advanced? placeholder default help docs-url prefix options show-when]}]
   (cond-> {:key      (name key)
            :label    (str label)
            :type     (name type)
@@ -91,7 +97,8 @@
     help        (assoc :help (str help))
     docs-url    (assoc :docs_url docs-url)
     prefix      (assoc :prefix prefix)
-    options     (assoc :options options)))
+    options     (assoc :options (mapv option-response options))
+    show-when   (assoc :show_when {:field (name (:field show-when)) :value (:value show-when)})))
 
 (defn- provider-type-response
   [{:keys [type label managed? singleton? default-model fields]}]

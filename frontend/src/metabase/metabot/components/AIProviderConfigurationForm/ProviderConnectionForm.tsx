@@ -30,6 +30,7 @@ import { ProviderConfigFields } from "./ProviderConfigFields";
 import { ProviderTypeIcon } from "./ProviderTypeIcon";
 import { ProviderTypePicker } from "./ProviderTypePicker";
 import { findProviderTypeForApiKey } from "./api-key";
+import { getHiddenFieldKeys, isVisibleField } from "./visible-fields";
 
 export function ProviderConnectionForm({
   providerTypes,
@@ -123,7 +124,12 @@ export function ProviderConnectionForm({
   const isComplete =
     providerType != null &&
     providerType.fields
-      .filter((field) => field.required && !field.default)
+      .filter(
+        (field) =>
+          field.required &&
+          !field.default &&
+          isVisibleField(field, providerType.fields, config),
+      )
       .every((field) => (config[field.key] ?? "").trim() !== "");
 
   const handleSave = async () => {
@@ -131,13 +137,26 @@ export function ProviderConnectionForm({
       return;
     }
     setError(undefined);
+    // A field the form hid is not part of the connection: clearing it is what makes switching
+    // Google's authentication method drop the credential the other one replaced.
+    const cleared = getHiddenFieldKeys(providerType.fields, config).filter(
+      (key) => (config[key] ?? "") !== "",
+    );
+    const savedConfig = {
+      ...config,
+      ...Object.fromEntries(cleared.map((key) => [key, ""])),
+    };
     try {
       const saved = isEditing
-        ? await updateProvider({ key: connection.key, name, config }).unwrap()
+        ? await updateProvider({
+            key: connection.key,
+            name,
+            config: savedConfig,
+          }).unwrap()
         : await createProvider({
             type: providerType.type,
             name,
-            config,
+            config: savedConfig,
           }).unwrap();
       onSaved(saved);
     } catch (caught) {

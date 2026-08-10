@@ -136,34 +136,47 @@
     :fields        [{:key         :project-id
                      :label       (deferred-tru "Project ID")
                      :type        :text
-                     :required?   true
                      :placeholder (deferred-tru "my-project")
-                     :help        (deferred-tru "The Google Cloud project the platform bills and serves requests for. Taken from the service account key when left blank.")
+                     :help        (deferred-tru "The Google Cloud project to use. Optional if the service account key provides it.")
                      :docs-url    "https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects"}
-                    {:key         :service-account-key
-                     :label       (deferred-tru "Service account key")
-                     :type        :password
-                     :placeholder (deferred-tru "Paste the service account key JSON")
-                     :help        (deferred-tru "The JSON key of a service account with access to the platform. Preferred over an OAuth token, which expires.")
-                     :docs-url    "https://docs.cloud.google.com/iam/docs/keys-create-delete"}
+                    {:key       :location
+                     :label     (deferred-tru "Location")
+                     :type      :text
+                     :placeholder "global"
+                     :help      (deferred-tru "Optional. Defaults to global.")}
                     {:key       :model
                      :label     (deferred-tru "Model")
-                     :type      :text
+                     :type      :select
                      :required? true
+                     ;; Stored publisher-qualified, which is what the request path is built from; the option shows
+                     ;; the bare ID, the way Google's own docs name it.
+                     :options   [{:value "google/gemini-3.5-flash" :label "gemini-3.5-flash"}
+                                 {:value "google/gemini-3.6-flash" :label "gemini-3.6-flash"}]
                      :default   "google/gemini-3.5-flash"
-                     :help      (deferred-tru "Publisher-qualified, e.g. google/gemini-3.5-flash. Metabot works best with gemini-3.5-flash and gemini-3.6-flash; which of them a project can reach depends on its location, so any model ID is accepted.")}
+                     :help      (deferred-tru "Which of these a project can reach depends on its location.")
+                     :docs-url  "https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations#google-models"}
+                    {:key       :auth-method
+                     :label     (deferred-tru "Authentication method")
+                     :type      :segmented
+                     :required? true
+                     :options   [{:value "service-account-key" :label (deferred-tru "Service account key")}
+                                 {:value "oauth-token" :label (deferred-tru "OAuth token")}]
+                     :default   "service-account-key"
+                     :help      (deferred-tru "Authenticate with a service account key or an OAuth access token.")}
+                    {:key         :service-account-key
+                     :label       (deferred-tru "Service account key file")
+                     :type        :file
+                     :show-when   {:field :auth-method :value "service-account-key"}
+                     :placeholder (deferred-tru "Click to select a file")
+                     :help        (deferred-tru "Upload a service account key file to authenticate with.")
+                     :docs-url    "https://docs.cloud.google.com/iam/docs/keys-create-delete"}
                     {:key         :oauth-access-token
+                     ;; not "OAuth token", which is what the method above is called: one label per control
                      :label       (deferred-tru "OAuth access token")
                      :type        :password
-                     :advanced?   true
+                     :show-when   {:field :auth-method :value "oauth-token"}
                      :placeholder "ya29..."
-                     :help        (deferred-tru "A short-lived token, e.g. from gcloud auth print-access-token. Useful for testing; the service account key wins when both are set.")}
-                    {:key         :location
-                     :label       (deferred-tru "Location")
-                     :type        :text
-                     :advanced?   true
-                     :placeholder "global"
-                     :help        (deferred-tru "The Google Cloud location serving the requests. Leave blank for the global one.")}
+                     :help        (deferred-tru "A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing.")}
                     {:key       :base-url
                      :label     (deferred-tru "API base URL")
                      :type      :text
