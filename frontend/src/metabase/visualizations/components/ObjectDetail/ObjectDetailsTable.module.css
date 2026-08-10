@@ -1,3 +1,25 @@
 .fitImage {
   object-fit: contain;
 }
+
+.columnName {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+/* Hidden rather than faded so the icon claims no width: the label grid track is
+   auto-sized, and a permanently reserved slot would widen every value column. */
+.descriptionIcon {
+  display: none;
+}
+
+.columnName:hover .descriptionIcon {
+  display: block;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .descriptionIcon {
+    display: block;
+  }
+}
