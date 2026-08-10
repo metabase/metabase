@@ -3,6 +3,12 @@
    [clojure.test :refer :all]
    [metabase.usage-metadata.frequent-itemsets :as frequent-itemsets]))
 
+(deftest ^:parallel rows->baskets-counts-distinct-atoms-test
+  (is (= [{:atoms #{:a :b}, :count 3}]
+         (frequent-itemsets/rows->baskets
+          [{:atom_fingerprints [:a :a], :total_count 2}
+           {:atom_fingerprints [:a :a :b], :total_count 3}]))))
+
 (deftest ^:parallel weighted-support-test
   (let [baskets [{:atoms #{:a :b :c} :count 3}
                  {:atoms #{:a :b} :count 2}
@@ -38,10 +44,16 @@
              {:atoms #{:a :b} :count 3}])))))
 
 (deftest ^:parallel mine-closed-itemsets-respects-size-bounds-test
-  (let [mined (frequent-itemsets/mine-closed-itemsets [{:atoms #{:a :b} :count 5}])]
-    (is (every? #(>= (count %) frequent-itemsets/minimum-itemset-size) (keys mined)))
-    (is (not (contains? mined [:a])))
-    (is (not (contains? mined [:b])))))
+  (testing "singletons are excluded"
+    (let [mined (frequent-itemsets/mine-closed-itemsets [{:atoms #{:a :b} :count 5}])]
+      (is (every? #(>= (count %) frequent-itemsets/minimum-itemset-size) (keys mined)))
+      (is (not (contains? mined [:a])))
+      (is (not (contains? mined [:b])))))
+  (testing "itemsets larger than five atoms are not generated"
+    (let [mined (frequent-itemsets/mine-closed-itemsets
+                 [{:atoms #{:a :b :c :d :e :f}, :count 2}])]
+      (is (= 6 (count mined)))
+      (is (every? #(= 5 (count %)) (keys mined))))))
 
 (deftest ^:parallel relative-support-ok?-test
   (testing "ratio above the relative support floor"
