@@ -12,6 +12,7 @@ Keep the semantic layer and presentation layer separate.
 - All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
 - Do not discover data through MCP tools, create Metabase content, create tables, or edit the semantic layer while building the React UI.
 - Import data app query helpers from `@metabase/embedding-sdk-react/data-app`.
+- Never remove, edit, or copy a generated `savedQuestionSourceId`, even if it appears unused. Preserve it during refactors; use `npm run sync-queries` to repair or replace generated IDs.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level table objects.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, bare table IDs, or metric IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table and metric schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
 - Build queries with `source: schema.tables.<name>` or `source: schema.questions.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, generated question `columns`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
@@ -112,6 +113,8 @@ export const RevenueQuery = defineQuery({ source: schema.tables.orders });
 ```
 
 Ensure `package.json` defines `"sync-queries": "embedding-sdk-react data-apps sync-queries"`. Run `npm run sync-queries` after adding, changing, renaming, or removing a query definition. The command loads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, creates or reconciles the saved questions, injects `savedQuestionSourceId`, and updates `queries_metadata.json`.
+
+Treat inline `savedQuestionSourceId` values and `queries_metadata.json` as generated synchronization state. Do not delete or manually edit either one. If an inline ID is accidentally missing but the query's table and authored hash still match one unclaimed lockfile entry, `npm run sync-queries` restores it automatically.
 
 Do not build, test, or hand off the app until synchronization succeeds, every live definition contains a positive `savedQuestionSourceId`, and `queries_metadata.json` contains its matching entry. Commit both generated changes. Production builds fail when these files are stale.
 
