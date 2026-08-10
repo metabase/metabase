@@ -1,0 +1,52 @@
+import {
+  canonicalJson,
+  getCanonicalQueryJson,
+  getQueryFingerprint,
+} from "../canonical";
+
+import { setupQuerySyncTests } from "./setup";
+
+describe("query canonicalization", () => {
+  setupQuerySyncTests();
+
+  it("uses a property-order-independent authored DSL fingerprint", () => {
+    const first = getQueryFingerprint({
+      source: { type: "table", id: 1 },
+      limit: 5,
+    });
+    const second = getQueryFingerprint({
+      limit: 5,
+      source: { id: 2, type: "table" },
+      savedQuestionSourceId: 99,
+    });
+    expect(first.hash).toBe(second.hash);
+    expect(first.tableId).toBe(1);
+    expect(second.tableId).toBe(2);
+    expect(canonicalJson({ b: 1, a: 2 })).toBe('{"a":2,"b":1}');
+  });
+
+  it("preserves references while normalizing generated query IDs", () => {
+    const queryWithGeneratedIds = (
+      firstId: string,
+      secondId: string,
+      orderById: string,
+    ) => ({
+      stages: [
+        {
+          aggregation: [
+            ["sum", { "lib/uuid": firstId }, ["field", {}, 1]],
+            ["sum", { "lib/uuid": secondId }, ["field", {}, 2]],
+          ],
+          "order-by": [["desc", {}, ["aggregation", {}, orderById]]],
+        },
+      ],
+    });
+    const normalized = (value: unknown) => getCanonicalQueryJson(value);
+    const first = queryWithGeneratedIds("first-a", "second-a", "second-a");
+    const same = queryWithGeneratedIds("first-b", "second-b", "second-b");
+    const different = queryWithGeneratedIds("first-c", "second-c", "first-c");
+
+    expect(normalized(first)).toBe(normalized(same));
+    expect(normalized(first)).not.toBe(normalized(different));
+  });
+});
