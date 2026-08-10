@@ -160,6 +160,33 @@ describe("CollectionContent selection", () => {
     expect(getPinnedCard(pinnedQuestion.name)).toBeChecked();
   });
 
+  it("should select pinned cards and table rows with select all from an empty selection", async () => {
+    await setup();
+
+    await userEvent.click(screen.getByLabelText("Select all items"));
+
+    expect(await screen.findByText("4 items selected")).toBeInTheDocument();
+    expect(getPinnedCard(pinnedDashboard.name)).toBeChecked();
+    expect(getPinnedCard(pinnedQuestion.name)).toBeChecked();
+  });
+
+  it("should base the header checkbox state on table rows only", async () => {
+    await setup();
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    await userEvent.click(getRowSelectionButton(tableDashboard.name));
+
+    expect(await screen.findByText("2 items selected")).toBeInTheDocument();
+    expect(screen.getByLabelText("Select all items")).toBeChecked();
+    expect(
+      screen.getByLabelText("Select all items"),
+    ).not.toBePartiallyChecked();
+
+    await userEvent.click(screen.getByLabelText("Select all items"));
+
+    expect(screen.queryByText(/items? selected/)).not.toBeInTheDocument();
+  });
+
   it("should complete select all from a pinned-only selection", async () => {
     await setup();
 

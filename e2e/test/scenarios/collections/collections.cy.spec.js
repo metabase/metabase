@@ -817,8 +817,9 @@ describe("scenarios > collection defaults", () => {
 
           // Select one
           selectItemUsingCheckbox("Orders");
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("1 item selected").should("be.visible");
+          cy.findByTestId("toast-card")
+            .findByText("1 item selected")
+            .should("be.visible");
           assertSelectAllIsIndeterminate(true);
           getRowCheckbox("Orders").should("be.checked");
 
@@ -826,8 +827,9 @@ describe("scenarios > collection defaults", () => {
           H.getPinnedSection()
             .findByRole("checkbox", { name: "Orders, Count" })
             .click();
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("2 items selected").should("be.visible");
+          cy.findByTestId("toast-card")
+            .findByText("2 items selected")
+            .should("be.visible");
           assertSelectAllIsIndeterminate(true);
 
           // Select all
@@ -836,14 +838,15 @@ describe("scenarios > collection defaults", () => {
           H.getPinnedSection()
             .findByRole("checkbox", { name: "Orders, Count" })
             .should("have.attr", "aria-checked", "true");
-          cy.findByTestId("toast-card").findByText(/\d+ items selected/);
+          cy.findByTestId("toast-card")
+            .findByText(/\d+ items selected/)
+            .should("be.visible");
 
           // Deselect all
           cy.findByLabelText("Select all items").click();
 
           cy.findAllByRole("checkbox").should("not.be.checked");
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/).should("not.exist");
+          cy.findByTestId("toast-card").should("not.exist");
         });
 
         it("should clean up selection when opening another collection (metabase#16491)", () => {

@@ -30,7 +30,7 @@ const dashboardItem = createMockCollectionItem({
 });
 
 const metricItem = createMockCollectionItem({
-  id: 2,
+  id: 1,
   model: "metric",
   collection_position: 1,
   name: "Metric Bar",
@@ -56,13 +56,11 @@ function setup({
   items,
   collection,
   selected,
-  getIsSelected,
   onToggleSelected,
 }: {
   items?: CollectionItem[];
   collection?: Collection;
   selected?: CollectionItem[];
-  getIsSelected?: (item: CollectionItem) => boolean;
   onToggleSelected?: OnToggleSelectedWithItem;
 } = {}) {
   items = items || defaultItems;
@@ -82,7 +80,6 @@ function setup({
       createBookmark={jest.fn()}
       deleteBookmark={jest.fn()}
       selected={selected}
-      getIsSelected={getIsSelected}
       onToggleSelected={onToggleSelected}
     />,
     {
@@ -129,12 +126,9 @@ describe("PinnedItemsGrid", () => {
 
   it("should make all cards selectable when an item is selected", async () => {
     const onToggleSelected = jest.fn();
-    const getIsSelected = (item: CollectionItem) =>
-      item.id === dashboardItem.id && item.model === dashboardItem.model;
 
     setup({
       selected: [dashboardItem],
-      getIsSelected,
       onToggleSelected,
     });
 
@@ -161,7 +155,6 @@ describe("PinnedItemsGrid", () => {
         can_write: false,
       }),
       selected: [dashboardItem],
-      getIsSelected: () => true,
       onToggleSelected: jest.fn(),
     });
 
