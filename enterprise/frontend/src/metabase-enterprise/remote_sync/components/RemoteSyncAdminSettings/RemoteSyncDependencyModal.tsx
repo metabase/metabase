@@ -8,8 +8,8 @@ import type { RemoteSyncDependencyFailure } from "metabase-types/api";
 import { COLLECTIONS_KEY } from "../../constants";
 import type { RemoteSyncSettingsFormState } from "../../types";
 import {
+  canSyncRequiredCollections,
   getBlockedMessage,
-  getBlockedReason,
   getRequiredCollections,
 } from "../../utils";
 
@@ -34,8 +34,7 @@ export const RemoteSyncDependencyModal = ({
   }
 
   const requiredCollections = getRequiredCollections(failures);
-  const canSyncRequiredCollections =
-    getBlockedReason(failures) !== "personal-content";
+  const canSync = canSyncRequiredCollections(failures);
 
   const handleDismiss = () => setDismissedFailures(failures);
 
@@ -99,12 +98,9 @@ export const RemoteSyncDependencyModal = ({
           </Card>
         )}
 
-        <Group
-          justify={canSyncRequiredCollections ? "space-between" : "end"}
-          gap="sm"
-        >
+        <Group justify={canSync ? "space-between" : "end"} gap="sm">
           <>
-            {canSyncRequiredCollections && (
+            {canSync && (
               <Button variant="subtle" onClick={handleSyncAndSave}>
                 {t`Sync required collections`}
               </Button>

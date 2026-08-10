@@ -136,31 +136,17 @@ export type UpdateRemoteSyncConfigurationResponse = {
   task_id?: number;
 };
 
-/**
- * Models remote sync can report as an unsynced dependency, in the collection-item vocabulary — so
- * icon, label and `modelToUrl` handling works unchanged. `timeline` is the one value outside
- * `CollectionItemModel`: timelines are never returned as collection items, but they are syncable.
- */
-export type RemoteSyncDependencyModel =
-  | Extract<
-      CollectionItemModel,
-      "card" | "dataset" | "metric" | "dashboard" | "document" | "snippet"
-    >
-  | "timeline";
+export type RemoteSyncDependencyModel = Extract<
+  CollectionItemModel,
+  "card" | "dataset" | "metric" | "dashboard" | "document" | "snippet"
+>;
 
 export type RemoteSyncCollectionRef = {
   id: number;
   name: string;
 };
 
-/**
- * What would have to be synced for the dependency to be covered. `collection` names the top-level
- * collection settings can toggle, not necessarily the sub-collection the dependency sits in;
- * `library` is for entities whose eligibility keys on the Library (snippets); `none` means the
- * dependency lives outside any collection, so there is nothing to offer.
- */
 export type RemoteSyncRemedyCollection = RemoteSyncCollectionRef & {
-  /** Personal collections can't be synced, so this remedy isn't actionable. */
   personal: boolean;
 };
 
@@ -173,12 +159,11 @@ export type RemoteSyncIneligibleDependency = {
   model: RemoteSyncDependencyModel;
   id: number;
   name: string;
-  /** Absent when the dependency doesn't live in a collection. */
+  /** undefined when dep is in our analytics or dep is a native query snippet */
   collection?: RemoteSyncCollectionRef;
   remedy: RemoteSyncDependencyRemedy;
 };
 
-/** One collection we were asked to sync, plus everything syncing it would leave behind. */
 export type RemoteSyncDependencyFailure = {
   collection: RemoteSyncCollectionRef;
   dependencies: RemoteSyncIneligibleDependency[];
@@ -186,10 +171,6 @@ export type RemoteSyncDependencyFailure = {
 
 export const UNSYNCED_DEPENDENCIES_ERROR_CODE = "unsynced-dependencies";
 
-/**
- * 400 body from `PUT /api/ee/remote-sync/settings` when the requested collections depend on content
- * that would stay outside remote sync. Every offending collection is reported, not just the first.
- */
 export type RemoteSyncDependencyErrorResponse = {
   error_code: typeof UNSYNCED_DEPENDENCIES_ERROR_CODE;
   error: string;

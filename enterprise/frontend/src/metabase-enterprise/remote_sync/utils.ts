@@ -169,25 +169,16 @@ export const parseSyncError = (exportError: SyncError | null): ParsedError => {
   };
 };
 
-/**
- * The collections we asked to sync that the backend refused. One entry per collection — the backend
- * reports every offending collection in a single pass, so these are already unique.
- */
 export const getBlockedCollections = (
   failures: RemoteSyncDependencyFailure[],
 ): RemoteSyncCollectionRef[] => failures.map((failure) => failure.collection);
 
-/** [[getBlockedCollections]] reduced to an id set, for per-row lookup in a collection list. */
 export const getBlockedCollectionIds = (
   failures: RemoteSyncDependencyFailure[],
 ): Set<number> =>
   new Set(getBlockedCollections(failures).map((collection) => collection.id));
 
-/**
- * Every collection that would also have to be synced for the save to go through, deduped — remedies
- * point at top-level collections, so many dependencies collapse onto the same one. Snippet
- * dependencies ask for the Library instead, which `requiresLibrarySync` reports separately.
- */
+// Deduped because remedies point at top-level collections, so dependencies collapse onto the same one.
 export const getRequiredCollections = (
   failures: RemoteSyncDependencyFailure[],
 ): RemoteSyncRemedyCollection[] => {
@@ -206,17 +197,12 @@ export const getRequiredCollections = (
   return [...byId.values()];
 };
 
-/** [[getRequiredCollections]] reduced to an id set, for per-row lookup in a collection list. */
 export const getRequiredCollectionIds = (
   failures: RemoteSyncDependencyFailure[],
 ): Set<number> =>
   new Set(getRequiredCollections(failures).map((collection) => collection.id));
 
-/**
- * Blocked collections that can't be unblocked from this screen, because at least one dependency
- * resolves to a personal collection. `personal` sits on the remedy — the top-level ancestor — not on
- * the collection the dependency itself lives in, which may be a sub-collection of it.
- */
+// `personal` sits on the remedy — the top-level ancestor — not the collection the dependency is in.
 export const getCollectionIdsBlockedByPersonalContent = (
   failures: RemoteSyncDependencyFailure[],
 ): Set<number> =>
@@ -232,7 +218,6 @@ export const getCollectionIdsBlockedByPersonalContent = (
       .map((failure) => failure.collection.id),
   );
 
-/** Whether any dependency needs the Library synced — snippets key on it, not on their collection. */
 export const requiresLibrarySync = (
   failures: RemoteSyncDependencyFailure[],
 ): boolean =>
@@ -242,21 +227,44 @@ export const requiresLibrarySync = (
     ),
   );
 
-/** Which situation the admin is actually in, and so what we can offer them. */
+// A `none` remedy means root content, which is never syncable — it has to be moved instead.
+export const requiresContentMove = (
+  failures: RemoteSyncDependencyFailure[],
+): boolean =>
+  failures.some((failure) =>
+    failure.dependencies.some(
+      (dependency) => dependency.remedy.type === "none",
+    ),
+  );
+
+// `every`, not `some`: one dependency we can't toggle makes this a partial fix, which is refused again.
+export const canSyncRequiredCollections = (
+  failures: RemoteSyncDependencyFailure[],
+): boolean =>
+  getRequiredCollections(failures).length > 0 &&
+  failures.every((failure) =>
+    failure.dependencies.every(
+      (dependency) =>
+        dependency.remedy.type === "collection" &&
+        !dependency.remedy.collection.personal,
+    ),
+  );
+
 export type BlockedReason =
   | "personal-content"
+  | "root-content"
   | "library"
   | "linked-collections";
 
-/**
- * Ordered by how much each situation constrains the admin: content they can't sync at all outranks
- * content they can, so we never tell them to fix something that wouldn't be enough on its own.
- */
+// Ordered so content that can't be synced at all outranks content that can.
 export const getBlockedReason = (
   failures: RemoteSyncDependencyFailure[],
 ): BlockedReason => {
   if (getCollectionIdsBlockedByPersonalContent(failures).size > 0) {
     return "personal-content";
+  }
+  if (requiresContentMove(failures)) {
+    return "root-content";
   }
   if (requiresLibrarySync(failures)) {
     return "library";
@@ -264,13 +272,14 @@ export const getBlockedReason = (
   return "linked-collections";
 };
 
-/** What to tell the admin about the refused save, per [[getBlockedReason]]. */
 export const getBlockedMessage = (
   failures: RemoteSyncDependencyFailure[],
 ): string => {
   switch (getBlockedReason(failures)) {
     case "personal-content":
       return t`Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue.`;
+    case "root-content":
+      return t`Dashboards or questions in this collection rely on content saved in Our analytics, which can’t be synced on its own. Move that content into a collection you’re syncing to continue.`;
     case "library":
       return t`Dashboards or questions in this collection rely on snippets, which sync with the Library. Sync the Library as well to continue.`;
     case "linked-collections":

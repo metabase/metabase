@@ -1,8 +1,12 @@
-import type { RemoteSyncDependencyFailure } from "metabase-types/api";
+import type {
+  RemoteSyncDependencyFailure,
+  RemoteSyncIneligibleDependency,
+} from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import {
   buildCollectionMap,
+  canSyncRequiredCollections,
   getBlockedCollectionIds,
   getBlockedCollections,
   getBlockedReason,
@@ -11,6 +15,7 @@ import {
   getRequiredCollectionIds,
   getRequiredCollections,
   isTableChildModel,
+  requiresContentMove,
   requiresLibrarySync,
 } from "./utils";
 
@@ -414,34 +419,115 @@ describe("remote_sync utils", () => {
       });
     });
 
+    const SYNCABLE_DEPENDENCY: RemoteSyncIneligibleDependency = {
+      model: "card",
+      id: 1,
+      name: "Seats over time",
+      remedy: {
+        type: "collection",
+        collection: { id: 7, name: "Finance", personal: false },
+      },
+    };
+    const PERSONAL_DEPENDENCY: RemoteSyncIneligibleDependency = {
+      model: "card",
+      id: 2,
+      name: "Draft",
+      remedy: {
+        type: "collection",
+        collection: { id: 5, name: "Personal", personal: true },
+      },
+    };
+    const ROOT_DEPENDENCY: RemoteSyncIneligibleDependency = {
+      model: "card",
+      id: 3,
+      name: "Orphaned",
+      remedy: { type: "none" },
+    };
+    const SNIPPET_DEPENDENCY: RemoteSyncIneligibleDependency = {
+      model: "snippet",
+      id: 4,
+      name: "active_users",
+      remedy: { type: "library" },
+    };
+
+    const failureWith = (
+      ...dependencies: RemoteSyncIneligibleDependency[]
+    ): RemoteSyncDependencyFailure[] => [
+      { collection: { id: 31, name: "Drafts" }, dependencies },
+    ];
+
+    describe("requiresContentMove", () => {
+      it("is true when a dependency has no remedy to offer", () => {
+        expect(requiresContentMove(failureWith(ROOT_DEPENDENCY))).toBe(true);
+      });
+
+      it("is false when every dependency names something syncable", () => {
+        expect(
+          requiresContentMove(
+            failureWith(SYNCABLE_DEPENDENCY, SNIPPET_DEPENDENCY),
+          ),
+        ).toBe(false);
+      });
+    });
+
     describe("getBlockedReason", () => {
-      const PERSONAL_FAILURE: RemoteSyncDependencyFailure = {
-        collection: { id: 31, name: "Drafts" },
-        dependencies: [
-          {
-            model: "card",
-            id: 1,
-            name: "Draft",
-            remedy: {
-              type: "collection",
-              collection: { id: 5, name: "Personal", personal: true },
-            },
-          },
-        ],
-      };
-
       it("is linked-collections when every remedy is a collection the admin can sync", () => {
-        expect(getBlockedReason([FAILURES[1]])).toBe("linked-collections");
-      });
-
-      it("is library when a dependency needs the Library and none is personal", () => {
-        expect(getBlockedReason(FAILURES)).toBe("library");
-      });
-
-      it("outranks the other reasons when any remedy is a personal collection", () => {
-        expect(getBlockedReason([...FAILURES, PERSONAL_FAILURE])).toBe(
-          "personal-content",
+        expect(getBlockedReason(failureWith(SYNCABLE_DEPENDENCY))).toBe(
+          "linked-collections",
         );
+      });
+
+      it("is library when a dependency needs the Library", () => {
+        expect(
+          getBlockedReason(
+            failureWith(SYNCABLE_DEPENDENCY, SNIPPET_DEPENDENCY),
+          ),
+        ).toBe("library");
+      });
+
+      it("ranks root content above the Library, since it can't be synced at all", () => {
+        expect(
+          getBlockedReason(failureWith(SNIPPET_DEPENDENCY, ROOT_DEPENDENCY)),
+        ).toBe("root-content");
+      });
+
+      it("ranks personal content above every other reason", () => {
+        expect(
+          getBlockedReason(
+            failureWith(
+              SNIPPET_DEPENDENCY,
+              ROOT_DEPENDENCY,
+              PERSONAL_DEPENDENCY,
+            ),
+          ),
+        ).toBe("personal-content");
+      });
+    });
+
+    describe("canSyncRequiredCollections", () => {
+      it("is true when every dependency points at a collection we can switch on", () => {
+        expect(
+          canSyncRequiredCollections(failureWith(SYNCABLE_DEPENDENCY)),
+        ).toBe(true);
+      });
+
+      it.each([
+        ["personal", PERSONAL_DEPENDENCY],
+        ["root", ROOT_DEPENDENCY],
+        ["library", SNIPPET_DEPENDENCY],
+      ])(
+        "is false when a %s dependency rides along, since a half fix is refused again",
+        (_label, dependency) => {
+          expect(
+            canSyncRequiredCollections(
+              failureWith(SYNCABLE_DEPENDENCY, dependency),
+            ),
+          ).toBe(false);
+        },
+      );
+
+      it("is false when there is nothing to switch on", () => {
+        expect(canSyncRequiredCollections([])).toBe(false);
       });
     });
   });
