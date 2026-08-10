@@ -1,6 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
 
-import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
 
@@ -40,10 +39,7 @@ export const getAccountRoutes = (
         <Route index element={redirect("profile")} />
         <Route path="profile" lazy={userProfileApp} />
         <Route path="password" lazy={userPasswordApp} />
-        <Route
-          path="security"
-          element={<PLUGIN_MULTI_FACTOR_AUTH.AccountSecurityPanel />}
-        />
+        <Route path="security" element={redirect("/account/password")} />
         <Route path="login-history" lazy={loginHistoryApp} />
         {getNotificationRoutes()}
       </Route>
