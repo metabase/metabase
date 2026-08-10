@@ -7,6 +7,15 @@
         <ThresholdFilter level="FATAL" onMatch="ACCEPT" onMismatch="DENY"/>
       </Filters>
     </Console>
+    <!-- Fixture initialization needs to be readable in the job log itself: it runs before any test output exists,
+         and a step that hangs or exits the JVM takes the run with it, so the uploaded log artifact may be all that
+         is left. Its own console appender, so accepting INFO here does not raise the level for everything. -->
+    <Console name="InitConsole" target="SYSTEM_OUT" follow="true">
+      <PatternLayout pattern="%-5level %logger{36} - %msg%n"/>
+      <Filters>
+        <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
+      </Filters>
+    </Console>
     <File name="File" fileName="logs/test-log.json" append="false">
       <JsonLayout locationInfo="false" properties="true" compact="true" eventEol="true"/>
       <Filters>
@@ -24,6 +33,15 @@
          appender via metabase.util.log.capture, so this does not hide them. Mirrors the prod
          resources/log4j2.xml, minus the per-session RoutingAppender (tests don't read the files). -->
     <Logger name="metabase.ai-tracing.log" level="info" additivity="false"/>
+
+    <Logger name="metabase.test.initialize" level="INFO" additivity="false">
+      <AppenderRef ref="InitConsole"/>
+      <AppenderRef ref="File"/>
+    </Logger>
+    <Logger name="metabase.test-runner" level="INFO" additivity="false">
+      <AppenderRef ref="InitConsole"/>
+      <AppenderRef ref="File"/>
+    </Logger>
 
     <Root level="INFO">
       <AppenderRef ref="Console"/>

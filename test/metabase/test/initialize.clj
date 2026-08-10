@@ -40,8 +40,11 @@
   (try
     (log-init-message step)
     (binding [*initializing* (conj *initializing* step)]
-      (u/with-timeout init-timeout-ms
-        (do-initialization! step)))
+      (u/with-timer-ms [duration-ms]
+        (u/with-timeout init-timeout-ms
+          (do-initialization! step))
+        ;; wall time, including any steps this one initializes in turn
+        (log/infof "Initialized %s in %d ms" step (long (duration-ms)))))
     (catch Throwable e
       (log/fatalf e "Error initializing %s" step)
       (when config/is-test?
