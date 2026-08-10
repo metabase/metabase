@@ -27,7 +27,7 @@
   ;; stricter would break working instances on upgrade.
   :getter     (fn []
                 (or (setting/get-value-of-type :keyword :warehouse-allowed-networks)
-                    (if (premium-features/is-hosted?)
+                    (if (and (premium-features/is-hosted?) config/is-prod?)
                       :external-only
                       :allow-all)))
   :setter     (fn [new-value]
