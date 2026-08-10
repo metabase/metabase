@@ -7,10 +7,12 @@
  * yarn convention and fails to resolve the dependency.
  */
 
+import { readFileSync, writeFileSync } from "node:fs";
+
 const packageJsonPath = `${process.cwd()}/package.json`;
 const lockPath = `${process.cwd()}/yarn.lock`;
 
-const packageJson = await Bun.file(packageJsonPath).json();
+const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
 
 const dependencies = Object.entries<string>(
   Object.assign(
@@ -21,7 +23,7 @@ const dependencies = Object.entries<string>(
   ),
 );
 
-let lock = await Bun.file(lockPath).text();
+let lock = readFileSync(lockPath, "utf8");
 const renamedKeys: string[] = [];
 
 for (const [alias, specifier] of dependencies) {
@@ -45,7 +47,7 @@ for (const [alias, specifier] of dependencies) {
 }
 
 if (renamedKeys.length > 0) {
-  await Bun.write(lockPath, lock);
+  writeFileSync(lockPath, lock);
 }
 
 process.stdout.write(
