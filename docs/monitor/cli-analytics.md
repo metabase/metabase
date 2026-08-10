@@ -9,7 +9,7 @@ summary: See which operations the Metabase CLI runs, who runs them, and when eac
 
 _Monitor > CLI analytics_
 
-The CLI analytics page shows how people are using the [Metabase CLI](../installation-and-operation/metabase-cli.md) with your instance. Metabase records one row for every API call the CLI makes, so you can see whether anyone has picked up the CLI, which operations they run, how often they run them, and when each person last used it.
+The CLI analytics page shows how people use the [Metabase CLI](../installation-and-operation/metabase-cli.md) with your instance. Metabase records one row for every API call the CLI makes, so you can see whether anyone is using it, which operations they run, how often they run them, and when each person last used it.
 
 Admins and people in groups with [Monitoring access](../permissions/application.md#monitoring-access) can view CLI analytics. See [Permissions for Monitor](./start.md#permissions-for-monitor).
 
@@ -22,7 +22,7 @@ Both tabs share the same filters.
 
 ## Filters
 
-- **Date range**: The time window the page covers. Defaults to the previous 30 days.
+- **Date range**: The time window the page covers. Defaults to the last 30 days.
 - **User**: Limit to a single person (or **All users**).
 - **Group**: Limit to a single [group](../people-and-groups/managing.md) (or **All groups**).
 - **Tenant**: Limit to a single [tenant](../embedding/tenants.md). Only shows up if tenants are enabled.
@@ -44,7 +44,7 @@ If any calls in your date range failed, Metabase adds an **Errors** section belo
 - **Calls by status over time**: Successful calls next to failed ones.
 - **Errors by operation**: Which operations fail most.
 
-Widen the date range if you're expecting errors and don't see the section.
+If you're expecting errors and don't see the section, widen the date range.
 
 ## Calls
 
