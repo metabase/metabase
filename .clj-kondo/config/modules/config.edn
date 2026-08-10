@@ -2682,11 +2682,7 @@
            premium-features
            settings
            task
-           util}
-   :model-exports #{:model/UsageMetadataCandidate
-                    :model/UsageMetadataCandidateDismissal
-                    :model/UsageMetadataCandidateMatch
-                    :model/UsageMetadataCandidateSource}}
+           util}}
 
   user-key-value
   {:team "UX West"
@@ -3255,16 +3251,11 @@
            usage-metadata
            util}
    :model-imports #{:model/Collection
-                    :model/Database
                     :model/Dimension
                     :model/Field
                     :model/Measure
                     :model/Segment
-                    :model/Table
-                    :model/UsageMetadataCandidate
-                    :model/UsageMetadataCandidateDismissal
-                    :model/UsageMetadataCandidateMatch
-                    :model/UsageMetadataCandidateSource}}
+                    :model/Table}}
 
   enterprise/database-replication
   {:team "Cloud"

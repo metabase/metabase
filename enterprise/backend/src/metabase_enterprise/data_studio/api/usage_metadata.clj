@@ -1,7 +1,6 @@
 (ns metabase-enterprise.data-studio.api.usage-metadata
   "Superuser routes for reviewing deterministic Library recommendations."
   (:require
-   [metabase-enterprise.data-studio.api.usage-metadata.queries :as queries]
    [metabase-enterprise.data-studio.api.usage-metadata.representations :as representations]
    [metabase-enterprise.data-studio.api.usage-metadata.schema :as schema]
    [metabase-enterprise.data-studio.usage-metadata.service :as service]
@@ -10,13 +9,24 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.core :as request]
    [metabase.usage-metadata.candidate-refresh :as candidate-refresh]
+   [metabase.usage-metadata.candidate-repository :as candidate-repository]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private default-limit 50)
+(def ^:private max-limit 200)
+
+(defn- paging
+  []
+  (let [limit (or (request/limit) default-limit)]
+    (api/check-400 (<= limit max-limit) "limit must not exceed 200")
+    {:limit limit, :offset (or (request/offset) 0)}))
 
 (defn- run-refresh-async!
   "TEMPORARY: run a manual refresh without Quartz so it works when the scheduler is disabled."
@@ -38,7 +48,7 @@
 
 (defn- candidate-detail-response
   [candidate]
-  (let [{candidate-table :table :as detail} (queries/candidate-detail candidate)]
+  (let [{candidate-table :table :as detail} (candidate-repository/candidate-detail candidate)]
     (representations/candidate-detail detail (service/creation-blockers candidate candidate-table))))
 
 (api.macros/defendpoint :get "/candidates" :- ::schema/candidate-page
@@ -46,30 +56,29 @@
   [_route
    opts :- schema/list-query]
   (api/check-superuser)
-  (if-let [run (candidate-refresh/latest-successful-run)]
-    (let [{:keys [rows total limit offset]} (queries/candidate-page run opts)
-          dismissals (queries/dismissal-index rows)]
+  (let [{:keys [limit offset] :as page-options} (paging)]
+    (if-let [run (candidate-refresh/latest-successful-run)]
+      (let [{:keys [rows total]} (candidate-repository/candidate-page (:id run) opts page-options)]
+        (representations/page
+         (mapv #(representations/candidate-summary % (:dismissed? %)) rows)
+         total limit offset run))
       (representations/page
-       (mapv #(representations/candidate-summary % (queries/dismissed? dismissals %)) rows)
-       total limit offset run))
-    (let [{:keys [limit offset]} (queries/paging)]
-      (representations/page [] 0 limit offset nil))))
+       [] 0 limit offset nil))))
 
 (api.macros/defendpoint :get "/tables" :- ::schema/table-page
   "List physical tables with mined Library cleanup activity."
   [_route
    opts :- schema/list-query]
   (api/check-superuser)
-  (if-let [run (candidate-refresh/latest-successful-run)]
-    (let [{:keys [rows total limit offset]} (queries/table-page run opts)
-          tables (queries/table-index (into #{} (map :table_id) rows))]
-      (representations/page
-       (mapv (fn [row]
-               {:table (representations/table (tables (:table_id row)))
-                :candidate_count (or (:candidate_count row) 0)})
-             rows)
-       total limit offset run))
-    (let [{:keys [limit offset]} (queries/paging)]
+  (let [{:keys [limit offset] :as page-options} (paging)]
+    (if-let [run (candidate-refresh/latest-successful-run)]
+      (let [{:keys [rows total]} (candidate-repository/table-page (:id run) opts page-options)]
+        (representations/page
+         (mapv (fn [{:keys [table candidate-count]}]
+                 {:table (representations/table table)
+                  :candidate_count (or candidate-count 0)})
+               rows)
+         total limit offset run))
       (representations/page [] 0 limit offset nil))))
 
 (api.macros/defendpoint :get "/candidates/:id" :- ::schema/candidate-detail
