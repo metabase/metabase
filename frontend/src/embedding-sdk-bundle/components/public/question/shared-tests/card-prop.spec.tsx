@@ -28,7 +28,7 @@ import { TEST_COLUMN, TEST_DB, TEST_TABLE } from "./constants.spec";
 export function addCardPropTests({
   Component,
 }: {
-  Component: (props: { card: string | MetabaseCard }) => React.ReactNode;
+  Component: React.ComponentType<{ card: string | MetabaseCard }>;
 }) {
   describe("card prop", () => {
     const DATASET_QUERY = {
