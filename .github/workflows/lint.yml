@@ -46,15 +46,16 @@ jobs:
       # Always required by whitespace linter, also used by OpenAPI spec validation
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-
-      # Lint whitespace, always runs
-      - run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
-        name: Run Whitespace Linter
-
-      # Lint YAML
-      - name: Lint YAML files
-        if: needs.files-changed.outputs.yaml == 'true'
-        run: bun run lint-yaml
+      
+      - parallel:
+        # Lint whitespace, always runs
+        - name: Run Whitespace Linter
+          run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
+          
+        # Lint YAML
+        - name: Lint YAML files
+          if: needs.files-changed.outputs.yaml == 'true'
+          run: bun run lint-yaml
 
       # Lint Github Actions
       - name: Setup actionlint
