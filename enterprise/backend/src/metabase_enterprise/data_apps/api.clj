@@ -88,9 +88,9 @@
    [:id ms/PositiveInt]])
 
 (def ^:private query-definition
-  [:map
+  [:map {:closed false}
    [:stages [:sequential {:min 1}
-             [:map
+             [:map {:closed false}
               [:source query-source]]]]])
 
 (def ^:private query-resolution-response
