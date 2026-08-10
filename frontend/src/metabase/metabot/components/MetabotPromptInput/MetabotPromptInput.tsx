@@ -195,7 +195,10 @@ export const MetabotPromptInput = forwardRef<
       ],
     );
 
-    useImperativeHandle(ref, () => {
+    useImperativeHandle<
+      MetabotPromptInputRef | null,
+      MetabotPromptInputRef | null
+    >(ref, () => {
       if (!editor) {
         return null;
       }
