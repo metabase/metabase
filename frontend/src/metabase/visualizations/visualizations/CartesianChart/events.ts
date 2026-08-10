@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { isNative } from "metabase/common/utils/card";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { formatChangeWithSign, formatPercent  } from "metabase/utils/formatting";
+import { formatChangeWithSign, formatPercent } from "metabase/utils/formatting";
 import { getObjectKeys } from "metabase/utils/objects";
 import {
   getDaylightSavingsChangeTolerance,
