@@ -451,6 +451,9 @@
                                        eid))
     (measure-by-entity-id [_ eid] (when (= eid measure-entity-id) {:id 77 :table_id 10}))
     (segment-by-entity-id [_ _] nil)
+    (card-by-id           [_ id] (get {900 {:id 900 :entity_id metric-entity-id}
+                                       902 {:id 902 :entity_id datetime-metric-entity-id}}
+                                      id))
     (measure-by-id        [_ _] nil)
     (segment-by-id        [_ _] nil)))
 

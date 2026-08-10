@@ -98,6 +98,20 @@
                 :type        :metric
                 :entity-id   metric-entity-id}]}))
 
+(def ^:private cards-content-store
+  "Serves the [[mp-with-cards]] cards by numeric id. Card export reads `entity_id` through a
+  ContentStore rather than the permission-agnostic metadata provider, so a provider-only
+  fixture needs a matching store."
+  (reify resolve.mp/ContentStore
+    (card-by-entity-id    [_ _entity-id] nil)
+    (measure-by-entity-id [_ _entity-id] nil)
+    (segment-by-entity-id [_ _entity-id] nil)
+    (card-by-id           [_ card-id] (get {500 {:id 500 :entity_id card-entity-id}
+                                            501 {:id 501 :entity_id metric-entity-id}}
+                                           card-id))
+    (measure-by-id        [_ _measure-id] nil)
+    (segment-by-id        [_ _segment-id] nil)))
+
 ;;; ============================================================
 ;;; import-table-fk
 ;;; ============================================================
@@ -409,7 +423,7 @@
       (is (= path (resolve/export-field-fk er (resolve/import-field-fk ir path)))))))
 
 (deftest ^:parallel export-database-and-card-fks-test
-  (let [r (resolve.mp/export-resolver mp-with-cards)]
+  (let [r (resolve.mp/export-resolver mp-with-cards cards-content-store)]
     (testing "database id exports to the provider's database name"
       (is (= "Sample" (resolve/export-fk-keyed r 1 :model/Database :name)))
       (is (= "Sample" (resolve/export-fk-keyed r 1 'Database :name))))
@@ -423,7 +437,7 @@
 
 (deftest ^:parallel export-mbql-with-mp-resolver-round-trip-shape-test
   (testing "final numeric pMBQL exports back to portable DB/table/field/card references"
-    (let [r        (resolve.mp/export-resolver mp-with-cards)
+    (let [r        (resolve.mp/export-resolver mp-with-cards cards-content-store)
           exported (resolve/export-mbql
                     r
                     {:lib/type :mbql/query
@@ -442,7 +456,7 @@
       (is (string? (get-in exported [:stages 0 :fields 0 1 :lib/uuid])))
       (is (string? (get-in exported [:stages 0 :aggregation 0 1 :lib/uuid])))))
   (testing "source-card map keys export through the Card entity_id path"
-    (let [r (resolve.mp/export-resolver mp-with-cards)]
+    (let [r (resolve.mp/export-resolver mp-with-cards cards-content-store)]
       (is (= {:source-card card-entity-id}
              (resolve/export-mbql r {:source-card 500}))))))
 
@@ -691,6 +705,8 @@
       (get entity-id->card entity-id))
     (measure-by-entity-id [_ _entity-id] nil)
     (segment-by-entity-id [_ _entity-id] nil)
+    (card-by-id [_ card-id]
+      (first (filter #(= card-id (:id %)) (vals entity-id->card))))
     (measure-by-id [_ _measure-id] nil)
     (segment-by-id [_ _segment-id] nil)))
 

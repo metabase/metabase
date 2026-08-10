@@ -296,6 +296,10 @@
   (segment-by-entity-id [this entity-id]
     "Return the segment row for the given portable `entity_id`, or nil. Same contract as
     `measure-by-entity-id`.")
+  (card-by-id [this card-id]
+    "Return the card row for the given numeric id, or nil. Used by the export direction
+    (a numeric `source-card` / metric ref → its portable `entity_id`). The returned map must
+    carry `:entity_id` (or `:entity-id`).")
   (measure-by-id [this measure-id]
     "Return the measure row for the given numeric id, or nil. Same contract as
     `measure-by-entity-id`; used by the export direction (`[:measure {} <id>]` →
@@ -328,6 +332,9 @@
     (segment-by-entity-id [_ entity-id]
       (when (resolve/entity-id? entity-id)
         (serdes/lookup-by-id 'Segment entity-id)))
+    (card-by-id [_ card-id]
+      (when card-id
+        (t2/select-one :model/Card :id card-id)))
     (measure-by-id [_ measure-id]
       (when measure-id
         (t2/select-one [:model/Measure :id :entity_id :table_id] :id measure-id)))
@@ -396,13 +403,18 @@
 
   Uses the metadata provider rather than the generic app-DB serdes resolver so exporting a
   final pMBQL query can stay paired with the same database-scoped provider used for table and
-  field FK export. Guards against accidental cross-database card refs."
-  [metadata-provider card-id]
+  field FK export. Guards against accidental cross-database card refs.
+
+  The `entity_id` comes from `content-store` rather than the provider: the provider is
+  deliberately permission-agnostic, so a read-checked store is what keeps the stable id of a
+  Card the current user cannot read out of the exported query."
+  [metadata-provider content-store card-id]
   (when card-id
     (let [current-db-id (:id (lib.metadata/database metadata-provider))
           card          (lib.metadata.protocols/card metadata-provider card-id)
           card-db-id    (or (:database-id card) (:database_id card))
-          entity-id     (or (:entity-id card) (:entity_id card))]
+          stored        (when card (card-by-id content-store card-id))
+          entity-id     (or (:entity-id stored) (:entity_id stored))]
       (cond
         (nil? card)
         (throw (ex-info (tru "No saved question, model, or metric found with id {0} in metadata provider." card-id)
@@ -659,7 +671,7 @@
      (export-fk       [_ id model]
        (cond
          (nil? id)              nil
-         (card-model? model)    (export-card-by-id metadata-provider id)
+         (card-model? model)    (export-card-by-id metadata-provider content-store id)
          (measure-model? model) (export-measure-by-id metadata-provider content-store id)
          (segment-model? model) (export-segment-by-id metadata-provider content-store id)
          :else                  (not-implemented! :export-fk)))

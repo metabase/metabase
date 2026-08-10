@@ -19,7 +19,8 @@
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.serialization :as serdes]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]))
 
 (set! *warn-on-reflection* true)
 
@@ -877,10 +878,25 @@
              (= eid card-entity-id))
     {:id 500 :database_id 1 :entity_id eid}))
 
+(defn- stub-content-store
+  "Stands in for the app-DB store over a mock metadata provider: `row` is the Card row the
+  entity-id direction stubs out through `serdes/lookup-by-id`, served here by numeric id too
+  so the export direction can read its `entity_id`."
+  [row]
+  (reify resolve.mp/ContentStore
+    (card-by-entity-id    [_ eid] (serdes/lookup-by-id 'Card eid))
+    (measure-by-entity-id [_ _] nil)
+    (segment-by-entity-id [_ _] nil)
+    (card-by-id           [_ id] (when (= id (:id row)) row))
+    (measure-by-id        [_ _] nil)
+    (segment-by-id        [_ _] nil)))
+
 (defn- with-card-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-card)
                 construct/resolve-database-id-from-first-stage (fn [_] 1)
                 serdes/lookup-by-id                             lookup-card-stub
+                construct/permission-aware-content-store        (stub-content-store
+                                                                 {:id 500 :database_id 1 :entity_id card-entity-id})
                 api/read-check                                  allow-read-check
                 api/query-check                                 allow-read-check]
     (f)))
@@ -1093,6 +1109,8 @@
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-metric)
                 construct/resolve-database-id-from-first-stage (fn [_] 1)
                 serdes/lookup-by-id                             lookup-metric-stub
+                construct/permission-aware-content-store        (stub-content-store
+                                                                 {:id 900 :database_id 1 :entity_id metric-entity-id})
                 api/read-check                                  allow-read-check
                 api/query-check                                 allow-read-check]
     (f)))
