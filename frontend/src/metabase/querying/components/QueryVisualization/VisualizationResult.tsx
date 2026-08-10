@@ -6,11 +6,12 @@ import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
 import { ALERT_TYPE_ROWS, getAlertType } from "metabase/notifications/utils";
-import { getDefaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { Anchor, Button, Flex } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+
+import { getDefaultClickActionMode } from "../../click-actions/lib/modes";
 
 import type { QueryVisualizationProps } from "./types";
 
