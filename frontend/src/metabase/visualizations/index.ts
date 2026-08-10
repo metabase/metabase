@@ -33,16 +33,6 @@ visualizations.get = function (key) {
   );
 };
 
-export function getSensibleDisplays(data: DatasetData) {
-  return Array.from(visualizations)
-    .filter(
-      ([, viz]) =>
-        // don't rule out displays if there's no data
-        data.rows.length <= 1 || (viz.isSensible && viz.isSensible(data)),
-    )
-    .map(([display]) => display);
-}
-
 let defaultVisualization: RegisteredVisualization;
 export function setDefaultVisualization(
   visualization: RegisteredVisualization,
