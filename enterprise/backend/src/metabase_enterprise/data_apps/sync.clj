@@ -63,6 +63,14 @@
     (-> (data-apps.db/non-blob-data-app-by-slug slug)
         data-app.resources/ensure-resources!)))
 
+(defn reconcile-query-permissions!
+  "Make `database-ids` the authoritative view-data permission set for `app`."
+  [app database-ids]
+  (t2/with-transaction [_conn]
+    (data-app.resources/ensure-resources! app)
+    (-> (t2/select-one :model/DataApp :id (:id app))
+        (data-app.resources/reconcile-view-data! database-ids))))
+
 ;;; ----------------------------------------------------- Discovery -----------------------------------------------------
 
 (defn- discover-app-configs
