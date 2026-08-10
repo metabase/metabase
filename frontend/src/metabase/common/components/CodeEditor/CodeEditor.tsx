@@ -1,5 +1,5 @@
 import type { Extension } from "@uiw/react-codemirror";
-import { useMemo } from "react";
+import { type FocusEventHandler, useMemo } from "react";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 
@@ -12,11 +12,14 @@ type Props = {
   id?: string;
   language?: CodeLanguage | Extension;
   lineNumbers?: boolean;
+  placeholder?: string;
   readOnly?: boolean;
   value: string;
   proposedValue?: string;
+  onBlur?: FocusEventHandler<HTMLDivElement>;
   onChange?: (value: string) => void;
   extensions?: Extension[];
+  "aria-label"?: string;
   "data-testid"?: string;
 };
 
