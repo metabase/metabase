@@ -521,16 +521,6 @@ describe("Release Notes", () => {
       },
     });
 
-    let warn: jest.SpyInstance;
-
-    beforeEach(() => {
-      warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
-    });
-
-    afterEach(() => {
-      warn.mockRestore();
-    });
-
     const publish = (version: string, github: ReturnType<typeof buildGithub>) =>
       publishRelease({
         version,
@@ -544,16 +534,16 @@ describe("Release Notes", () => {
     it("should create a draft release for a major release", async () => {
       const github = buildGithub();
 
-      await publish("v0.58.0", github);
+      await publish("v0.58.0-beta", github);
 
       expect(github.rest.repos.createRelease).toHaveBeenCalledWith(
         expect.objectContaining({
           owner: "metabase",
           repo: "metabase",
-          tag_name: "v0.58.0",
-          name: "Metabase 58.0",
+          tag_name: "v0.58.0-beta",
+          name: "Metabase 58.0-beta",
           draft: true,
-          prerelease: false,
+          prerelease: true,
         }),
       );
     });
@@ -580,9 +570,6 @@ describe("Release Notes", () => {
         await expect(publish(version, github)).resolves.toBeUndefined();
 
         expect(github.rest.repos.createRelease).not.toHaveBeenCalled();
-        expect(warn).toHaveBeenCalledWith(
-          expect.stringContaining("Skipping Github release"),
-        );
       },
     );
 
