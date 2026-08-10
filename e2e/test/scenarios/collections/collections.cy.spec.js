@@ -849,6 +849,27 @@ describe("scenarios > collection defaults", () => {
           cy.findByTestId("toast-card").should("not.exist");
         });
 
+        it("should support shift+click and the Select menu entry", () => {
+          cy.visit("/collection/root");
+
+          cy.log("shift+click a row selects it instead of navigating");
+          H.getUnpinnedSection().findByText("Orders").click({ shiftKey: true });
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+          cy.findByText("1 item selected").should("be.visible");
+          cy.location("pathname").should("include", "/collection/root");
+
+          cy.log("shift+click the row again clears the selection");
+          H.getUnpinnedSection().findByText("Orders").click({ shiftKey: true });
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+          cy.findByText(/item(s)? selected/).should("not.exist");
+
+          cy.log("the overflow menu can start a selection");
+          H.openUnpinnedItemMenu("Orders, Count");
+          H.popover().findByText("Select").click();
+          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+          cy.findByText("1 item selected").should("be.visible");
+        });
+
         it("should clean up selection when opening another collection (metabase#16491)", () => {
           cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
             collection_id: ADMIN_PERSONAL_COLLECTION_ID,
