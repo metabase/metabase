@@ -492,8 +492,6 @@
 (defn materialize!
   "Populate `run` and atomically promote it while retiring old snapshot payloads."
   [{run-id :id :as run}]
-  (t2/update! :model/UsageMetadataCandidateRun run-id
-              {:status :running, :started_at (mi/now), :error nil})
   (let [card-ids        (candidate-mining/qualified-card-ids
                          (:minimum-recent-view-count source-config)
                          (:usage-window-days source-config))
@@ -508,7 +506,10 @@
     (let [summary (run-summary run-id)]
       (candidate-repository/with-snapshot-action-lock
         #(t2/with-transaction [_conn]
-           (t2/update! :model/UsageMetadataCandidateRun run-id
-                       {:status :succeeded, :finished_at (mi/now), :summary summary})
+           (when-not (pos? (t2/update! :model/UsageMetadataCandidateRun
+                                       {:id run-id, :status :running}
+                                       {:status :succeeded, :finished_at (mi/now), :summary summary}))
+             (throw (ex-info "Usage metadata candidate run is no longer active"
+                             {:run-id run-id})))
            (prune-old-snapshots! run-id)))
       (assoc run :status :succeeded, :summary summary))))

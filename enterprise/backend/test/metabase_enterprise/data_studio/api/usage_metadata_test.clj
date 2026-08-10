@@ -18,8 +18,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(def ^:private run-refresh-async! @#'usage-metadata.api/run-refresh-async!)
-
 (def ^:dynamic ^:private *published-candidate-create-events* nil)
 
 (events/derive! :event/measure-create ::candidate-create-events)
@@ -44,10 +42,6 @@
                     e))]
       (is (= 402 (:status-code (ex-data error))))
       (is (re-find #"Library is a paid feature" (ex-message error))))))
-
-(deftest temporary-direct-refresh-must-not-merge-to-master-test
-  ;; Remove this test only after the usage-metadata refresh API path is wired through Quartz again.
-  (is false "DO NOT MERGE: the usage-metadata refresh API temporarily bypasses Quartz."))
 
 (defn- candidate-row
   ([run-id]
@@ -82,39 +76,14 @@
      :complexity            1}
     overrides)))
 
-(deftest manual-refresh-runs-without-quartz-test
-  (let [run       {:id 42, :status :queued}
-        started   (promise)
-        completed (promise)]
-    (mt/with-dynamic-fn-redefs [candidate-refresh/run-refresh! (fn [submitted-run]
-                                                                 (deliver started submitted-run)
-                                                                 (deliver completed true))]
-      (run-refresh-async! run)
-      (is (= run (deref started 1000 ::timeout)))
-      (is (true? (deref completed 1000 ::timeout))))))
-
-(deftest manual-refresh-async-rethrows-non-exception-failure-test
-  (let [failure (AssertionError. "Injected manual refresh failure")]
-    (mt/with-dynamic-fn-redefs [candidate-refresh/run-refresh! (fn [_run]
-                                                                 (throw failure))]
-      (is (identical? failure
-                      (try
-                        (.get ^java.util.concurrent.Future (run-refresh-async! {:id 42, :status :queued}))
-                        (catch java.util.concurrent.ExecutionException error
-                          (.getCause error))))))))
-
-(deftest manual-refresh-api-starts-direct-run-test
+(deftest manual-refresh-api-dispatches-queued-run-test
   (mt/with-premium-features #{:library}
-    (let [run     {:id 42, :status :queued}
-          started (promise)]
-      (with-redefs-fn {#'candidate-refresh/queue-refresh!                 (fn [_trigger _requested-by] run)
-                       #'usage-metadata.api/run-refresh-async! #(deliver started %)}
+    (let [run {:id 42, :status :queued}]
+      (with-redefs-fn {#'candidate-refresh/queue-refresh! (fn [_trigger _requested-by] run)}
         (fn []
-          (let [response (mt/user-http-request :crowberto :post 202
-                                               "ee/data-studio/usage-metadata/refresh")
-                submitted-run (deref started 1000 ::timeout)]
-            (is (= (:run_id response) (:id submitted-run)))
-            (is (= run submitted-run))))))))
+          (is (= {:run_id (:id run)}
+                 (mt/user-http-request :crowberto :post 202
+                                       "ee/data-studio/usage-metadata/refresh"))))))))
 
 (defn- definition-signature
   [candidate-type table-id definition]

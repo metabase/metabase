@@ -7,19 +7,16 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest scheduled-refresh-queues-and-runs-candidate-materialization-test
+(deftest scheduled-refresh-dispatches-candidate-materialization-test
   (mt/with-premium-features #{:library}
-    (let [run          {:id 2, :status :queued}
-          queued-args  (atom nil)
-          submitted-run (atom nil)]
+    (let [run         {:id 2, :status :queued}
+          queued-args (atom nil)]
       (mt/with-dynamic-fn-redefs
         [candidate-refresh/queue-refresh! (fn [trigger requested-by]
                                             (reset! queued-args [trigger requested-by])
-                                            run)
-         candidate-refresh/run-refresh! #(reset! submitted-run %)]
-        (usage-metadata.task/run-candidate-refresh!))
-      (is (= [:scheduled nil] @queued-args))
-      (is (= run @submitted-run)))))
+                                            run)]
+        (is (= run (usage-metadata.task/run-candidate-refresh!))))
+      (is (= [:scheduled nil] @queued-args)))))
 
 (deftest scheduled-refresh-does-nothing-without-library-test
   (mt/with-premium-features #{}

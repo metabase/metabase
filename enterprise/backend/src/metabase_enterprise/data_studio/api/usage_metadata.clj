@@ -13,8 +13,6 @@
    [metabase.usage-metadata.candidate-refresh :as candidate-refresh]
    [metabase.usage-metadata.candidate-repository :as candidate-repository]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
@@ -27,16 +25,6 @@
   (let [limit (or (request/limit) default-limit)]
     (api/check-400 (<= limit max-limit) "limit must not exceed 200")
     {:limit limit, :offset (or (request/offset) 0)}))
-
-(defn- run-refresh-async!
-  "TEMPORARY: run a manual refresh without Quartz so it works when the scheduler is disabled."
-  [run]
-  (u.jvm/in-virtual-thread*
-   (try
-     (candidate-refresh/run-refresh! run)
-     (catch Throwable e
-       (log/error e "Manual usage-metadata candidate refresh failed")
-       (throw e)))))
 
 (defn- conflict!
   [message reason & [data]]
@@ -125,10 +113,8 @@
   []
   (api/check-superuser)
   (if-let [run (candidate-refresh/queue-refresh! :manual api/*current-user-id*)]
-    (do
-      (run-refresh-async! run)
-      (-> (response/response {:run_id (:id run)})
-          (response/status 202)))
+    (-> (response/response {:run_id (:id run)})
+        (response/status 202))
     (let [run (candidate-refresh/active-run)]
       (conflict! "A usage-metadata candidate refresh is already running"
                  :refresh-already-active
