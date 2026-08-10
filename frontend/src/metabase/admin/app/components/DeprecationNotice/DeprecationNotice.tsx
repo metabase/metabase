@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { jt, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";

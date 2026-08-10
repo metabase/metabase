@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type JSX } from "react";
 import { t } from "ttag";
 
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";

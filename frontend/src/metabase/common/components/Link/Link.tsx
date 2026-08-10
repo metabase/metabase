@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { JSX } from "react";
 
 import type { NavLinkRenderProps } from "metabase/router";
 import { Tooltip } from "metabase/ui";

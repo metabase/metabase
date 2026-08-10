@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { Box } from "metabase/ui";
 export interface ModalBodyProps {

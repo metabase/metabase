@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { SkeletonImage } from "./PieSkeleton.styled";
 
 const PieSkeleton = (): JSX.Element => {

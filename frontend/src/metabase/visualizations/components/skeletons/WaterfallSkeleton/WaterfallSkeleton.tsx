@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { SkeletonImage } from "./WaterfallSkeleton.styled";
 
 const WaterfallSkeleton = (): JSX.Element => {
