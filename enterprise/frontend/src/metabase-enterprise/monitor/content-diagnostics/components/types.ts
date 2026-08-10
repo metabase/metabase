@@ -11,7 +11,9 @@ export type ContentDiagnosticsBaseFilterOptions<
   includePersonalCollections: boolean;
 };
 
-export type StaleContentFilterOptions = ContentDiagnosticsBaseFilterOptions;
+export type StaleContentFilterOptions = ContentDiagnosticsBaseFilterOptions & {
+  thresholdDays?: number;
+};
 
 export type SlowContentFilterOptions = ContentDiagnosticsBaseFilterOptions & {
   minDurationMs?: number;

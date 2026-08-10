@@ -20,6 +20,7 @@ export type StaleContentParams = {
   query?: string;
   entityTypes?: ContentDiagnosticsNonCollectionFilterType[];
   includePersonalCollections?: boolean;
+  thresholdDays?: number;
   sortColumn?: ContentDiagnosticsStaleSortColumn;
   sortDirection?: SortDirection;
 };
@@ -29,6 +30,7 @@ function staleContentQueryString({
   query,
   entityTypes,
   includePersonalCollections,
+  thresholdDays,
   sortColumn,
   sortDirection,
 }: StaleContentParams = {}) {
@@ -50,6 +52,9 @@ function staleContentQueryString({
       "include-personal-collections",
       String(includePersonalCollections),
     );
+  }
+  if (thresholdDays != null) {
+    searchParams.set("threshold-days", String(thresholdDays));
   }
   if (sortColumn != null) {
     searchParams.set("sort-column", sortColumn);

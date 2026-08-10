@@ -59,6 +59,7 @@ export function StaleContent({
       query,
       "entity-types": getStaleEntityTypesParam(filterOptions.entityTypes),
       "include-personal-collections": filterOptions.includePersonalCollections,
+      "threshold-days": filterOptions.thresholdDays,
       "sort-column": params.sortColumn,
       "sort-direction": params.sortDirection,
       limit: PAGE_SIZE,

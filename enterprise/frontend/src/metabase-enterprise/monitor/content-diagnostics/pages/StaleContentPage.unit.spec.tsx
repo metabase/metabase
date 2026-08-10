@@ -390,6 +390,43 @@ describe("StaleContentPage", () => {
     ).toBe("false");
   });
 
+  it("reflects the staleness threshold from the URL and sends changes made in the Filter popover", async () => {
+    const { router } = setup({
+      findings: FINDINGS,
+      urlParams: { thresholdDays: 90 },
+    });
+    await waitForListToLoad();
+
+    expect(getLastRequestUrl().searchParams.get("threshold-days")).toBe("90");
+
+    await userEvent.click(
+      screen.getByTestId("content-diagnostics-filter-button"),
+    );
+    const popover = await screen.findByRole("dialog");
+    const input = within(popover).getByDisplayValue("90 days or more");
+
+    await userEvent.click(input);
+    await userEvent.click(
+      await within(popover).findByRole("option", { name: "1 year or more" }),
+    );
+
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({
+        "threshold-days": "365",
+      });
+    });
+    expect(getLastRequestUrl().searchParams.get("threshold-days")).toBe("365");
+
+    await userEvent.click(within(popover).getByLabelText("Clear"));
+
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({});
+    });
+    expect(
+      within(popover).getByPlaceholderText("Any length of time"),
+    ).toHaveValue("");
+  });
+
   it("restores the last-used filter when the URL has no params", async () => {
     const { router } = setup({
       findings: FINDINGS,

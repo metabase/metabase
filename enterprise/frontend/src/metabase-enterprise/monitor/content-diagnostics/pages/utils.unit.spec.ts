@@ -56,6 +56,13 @@ describe("parseStaleUrlParams", () => {
     ).toEqual(["model"]);
   });
 
+  it("parses threshold-days", () => {
+    expect(
+      parseStaleUrlParams(createSearchParams({ "threshold-days": "90" }))
+        .thresholdDays,
+    ).toBe(90);
+  });
+
   it("parses sort-column and sort-direction", () => {
     const params = parseStaleUrlParams(
       createSearchParams({

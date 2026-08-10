@@ -29,10 +29,26 @@ export function getLastActiveLabel(
     .exhaustive();
 }
 
+type ThresholdDaysFilterOption = {
+  value: number;
+  label: string;
+};
+
+// Nothing below `content-diagnostics-stale-threshold-days` (default 90): the scan never records a
+// fresher finding, so a lower option would silently behave like "Any length of time".
+export function getThresholdDaysFilterOptions(): ThresholdDaysFilterOption[] {
+  return [
+    { value: 90, label: t`90 days or more` },
+    { value: 180, label: t`6 months or more` },
+    { value: 365, label: t`1 year or more` },
+  ];
+}
+
 export function getStaleDefaultFilterOptions(): StaleContentFilterOptions {
   return {
     entityTypes: ALL_FILTER_TYPES,
     includePersonalCollections: DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+    thresholdDays: undefined,
   };
 }
 
@@ -43,6 +59,7 @@ export function getStaleFilterOptions(
     entityTypes: params.entityTypes ?? ALL_FILTER_TYPES,
     includePersonalCollections:
       params.includePersonalCollections ?? DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
+    thresholdDays: params.thresholdDays,
   };
 }
 
@@ -52,13 +69,17 @@ export function areStaleFilterOptionsEqual(
 ): boolean {
   return (
     areEntityTypesEqual(a.entityTypes, b.entityTypes) &&
-    a.includePersonalCollections === b.includePersonalCollections
+    a.includePersonalCollections === b.includePersonalCollections &&
+    a.thresholdDays === b.thresholdDays
   );
 }
 
 export function getStaleFilterParams(
   filterOptions: StaleContentFilterOptions,
-): Pick<Urls.StaleContentParams, "entityTypes" | "includePersonalCollections"> {
+): Pick<
+  Urls.StaleContentParams,
+  "entityTypes" | "includePersonalCollections" | "thresholdDays"
+> {
   const isAllTypes =
     filterOptions.entityTypes.length === ALL_FILTER_TYPES.length;
   const isDefaultPersonal =
@@ -69,6 +90,7 @@ export function getStaleFilterParams(
     includePersonalCollections: isDefaultPersonal
       ? undefined
       : filterOptions.includePersonalCollections,
+    thresholdDays: filterOptions.thresholdDays,
   };
 }
 
