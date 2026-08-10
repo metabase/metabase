@@ -14,6 +14,7 @@ import {
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import {
   ExpressionWidget,
   ExpressionWidgetHeader,
@@ -26,8 +27,6 @@ import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
-import { QueryColumnPicker } from "../QueryColumnPicker";
 
 import {
   ColumnPickerHeaderContainer,
