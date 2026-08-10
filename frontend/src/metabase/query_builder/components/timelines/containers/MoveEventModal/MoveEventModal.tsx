@@ -4,11 +4,12 @@ import {
   useListTimelinesQuery,
 } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
+
 import MoveEventModal, {
   type MoveEventModalProps,
-} from "metabase/query_builder/timelines/common/components/MoveEventModal";
-import { useSetTimeline } from "metabase/query_builder/timelines/common/hooks";
-import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
+} from "../../../../timelines/common/components/MoveEventModal";
+import { useSetTimeline } from "../../../../timelines/common/hooks";
 
 type ContainerProps = Omit<
   MoveEventModalProps,

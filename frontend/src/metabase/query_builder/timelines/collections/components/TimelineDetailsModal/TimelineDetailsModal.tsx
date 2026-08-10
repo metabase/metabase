@@ -6,13 +6,13 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getTimelineName } from "metabase/common/utils/timelines";
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import ModalHeader from "metabase/query_builder/timelines/common/components/ModalHeader";
 import { ActionIcon, Icon, Menu, TextInput } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
+import ModalHeader from "../../../common/components/ModalHeader";
 import EventList from "../EventList";
 import SearchEmptyState from "../SearchEmptyState";
 import TimelineEmptyState from "../TimelineEmptyState";

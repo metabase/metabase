@@ -8,7 +8,6 @@ import {
 } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
-import NewEventModal from "metabase/query_builder/timelines/common/components/NewEventModal";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type {
@@ -18,6 +17,8 @@ import type {
   CreateTimelineRequest,
   TimelineEvent,
 } from "metabase-types/api";
+
+import NewEventModal from "../../../../timelines/common/components/NewEventModal";
 
 interface NewEventModalContainerProps {
   cardId?: number;

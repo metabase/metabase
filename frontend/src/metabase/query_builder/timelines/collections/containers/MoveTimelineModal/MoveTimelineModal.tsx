@@ -9,12 +9,12 @@ import {
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useSetCollection } from "metabase/common/hooks";
 import { getDefaultTimelineName } from "metabase/common/utils/timelines";
-import MoveTimelineModal from "metabase/query_builder/timelines/common/components/MoveTimelineModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { CollectionId, Timeline } from "metabase-types/api";
 
+import MoveTimelineModal from "../../../common/components/MoveTimelineModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 
 function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {

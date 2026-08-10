@@ -4,7 +4,6 @@ import {
   useGetTimelineQuery,
 } from "metabase/api";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import NewEventModal from "metabase/query_builder/timelines/common/components/NewEventModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -14,6 +13,7 @@ import type {
   TimelineEvent,
 } from "metabase-types/api";
 
+import NewEventModal from "../../../common/components/NewEventModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 
 function NewEventModalContainer({ params, onClose }: ModalComponentProps) {

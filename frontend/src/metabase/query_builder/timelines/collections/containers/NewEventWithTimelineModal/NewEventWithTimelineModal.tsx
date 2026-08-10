@@ -5,7 +5,6 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
-import NewEventModal from "metabase/query_builder/timelines/common/components/NewEventModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -16,6 +15,7 @@ import type {
   TimelineEvent,
 } from "metabase-types/api";
 
+import NewEventModal from "../../../common/components/NewEventModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
 

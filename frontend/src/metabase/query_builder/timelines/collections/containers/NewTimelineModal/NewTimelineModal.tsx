@@ -3,12 +3,12 @@ import {
   useCreateTimelineMutation,
   useGetCollectionQuery,
 } from "metabase/api";
-import NewTimelineModal from "metabase/query_builder/timelines/common/components/NewTimelineModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { CreateTimelineRequest, Timeline } from "metabase-types/api";
 
+import NewTimelineModal from "../../../common/components/NewTimelineModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
 

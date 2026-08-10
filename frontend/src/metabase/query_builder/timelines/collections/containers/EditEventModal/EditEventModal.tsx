@@ -6,12 +6,12 @@ import {
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import EditEventModal from "metabase/query_builder/timelines/common/components/EditEventModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
+import EditEventModal from "../../../common/components/EditEventModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 
 function EditEventModalContainer({ params, onClose }: ModalComponentProps) {

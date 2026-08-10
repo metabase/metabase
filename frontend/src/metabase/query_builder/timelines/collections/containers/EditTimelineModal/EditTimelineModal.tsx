@@ -5,12 +5,12 @@ import {
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import EditTimelineModal from "metabase/query_builder/timelines/common/components/EditTimelineModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 
+import EditTimelineModal from "../../../common/components/EditTimelineModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 
 function EditTimelineModalContainer({ params, ...props }: ModalComponentProps) {

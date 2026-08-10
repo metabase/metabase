@@ -6,11 +6,12 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import DeleteEventModal from "metabase/query_builder/timelines/common/components/DeleteEventModal";
 import { useDispatch } from "metabase/redux";
 import { push } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
+
+import DeleteEventModal from "../../../common/components/DeleteEventModal";
 
 function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
   const dispatch = useDispatch();
