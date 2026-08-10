@@ -422,8 +422,6 @@ For uploading and managing plugins, see [Custom visualizations](../questions/vis
 
 Metabase runs two compatibility checks on a plugin, and neither one blocks anything (the plugin uploads and runs either way). When a check fails, Metabase shows a [compatibility warning](../questions/visualizations/custom.md#compatibility-warnings-are-heads-ups-not-errors) on the **Manage visualizations** page.
 
-The first check is the SDK version. `pack` stamps the `@metabase/custom-viz` version you built with into the packed manifest as `sdk.version`, and Metabase compares that stamp against the SDK versions it was tested with.
-
 The second check is the Metabase version, which you declare yourself. Set `metabase.version` in `metabase-plugin.json` to an [npm semver range](https://github.com/npm/node-semver#ranges) like `">=1.62 <1.64"`, closed on both ends. Metabase versions are [license.major.minor](https://www.metabase.com/version-support), so include the license prefix: a bare `">=62 <64"` won't match anything.
 
 ## Custom visualization limitations
