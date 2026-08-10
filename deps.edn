@@ -57,7 +57,7 @@
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
   {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
-                                            {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
+  {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
   com.taoensso/encore                       {:mvn/version "3.160.1"}            ; Utilities library (used by Nippy)
   com.taoensso/nippy                        {:mvn/version "3.6.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
@@ -207,7 +207,7 @@
   weavejester/dependency                    {:mvn/version "1.0.0"}              ; Dependency graphs and topological sorting
   xerces/xercesImpl                         {:mvn/version "2.12.2"}}            ; SAX2 parser, transient dependency of batik
 
-;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  ;; !!         PLEASE KEEP NEW DEPENDENCIES ABOVE ALPHABETICALLY ORGANIZED AND ADD COMMENTS EXPLAINING THEM.         !!
  ;; !!                            *PLEASE DO NOT* ADD NEW ONES TO THE BOTTOM OF THE LIST.                            !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -334,6 +334,9 @@
                  "-Dmb.jetty.join=false"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.api.key=test-api-key"
+                 ;; Test warehouses live on localhost, so the network policy has to be off by default or every test
+                 ;; that creates one breaks.
+                 "-Dmb.warehouse.allowed.networks=allow-all"
                  ;; Different port from normal `:dev` so you can run tests on a different server.
                  ;; TODO -- figure out how to do a random port like in the old project.clj?
                  "-Dmb.jetty.port=3001"]}
@@ -931,7 +934,7 @@
   {:exec-args {:only ["enterprise/backend/test/metabase_enterprise/transforms"
                       "enterprise/backend/test/metabase_enterprise/transforms_python"]}}
 
-;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
+  ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql
@@ -991,4 +994,4 @@
     "-Dmb.db.connection.uri=jdbc:mysql://localhost:3307/metabase_test?user=root&password="]}}}
 
 ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
-  ;; on them all from a single REPL process.
+;; on them all from a single REPL process.
