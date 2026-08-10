@@ -126,25 +126,16 @@
 
 ;;; AISDK5
 
-(def ^:private provider-finish-reasons
-  "Raw provider stop reasons → AI SDK v5 `FinishReason`."
-  {"end_turn"                      "stop"
-   "stop"                          "stop"
-   "stop_sequence"                 "stop"
-   "max_tokens"                    "length"
-   "max_output_tokens"             "length"
-   "model_context_window_exceeded" "length"
-   "length"                        "length"
-   "tool_use"                      "tool-calls"
-   "tool_calls"                    "tool-calls"
-   "refusal"                       "content-filter"
-   "content_filter"                "content-filter"})
+(def finish-reasons
+  "The AI SDK v5 `FinishReason` values a provider stop reason may be translated to."
+  #{"stop" "length" "content-filter" "tool-calls" "error" "other"})
 
 (defn stop-reason->finish-reason
-  "Unmapped reasons → \"other\"; nil → nil."
-  [raw]
+  "Translate a raw provider stop reason to an AI SDK v5 `FinishReason` through that provider's `stop-reasons` table.
+  Unmapped reasons → \"other\"; nil → nil."
+  [stop-reasons raw]
   (when raw
-    (get provider-finish-reasons raw "other")))
+    (get stop-reasons raw "other")))
 
 (defn- parse-tool-arguments
   "Parse concatenated tool input deltas as JSON.

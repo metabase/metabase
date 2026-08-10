@@ -494,20 +494,21 @@ const IncompleteTurnAlert = ({
   onContinue?: () => void;
 }) => {
   const metabotName = useSetting("metabot-name");
-  const message = match(finishReason)
-    .with(
-      "length",
-      () =>
-        t`Response from ${metabotName} was cut off because it hit the maximum length`,
-    )
-    .with(
-      "content-filter",
-      () => t`Response from ${metabotName} was stopped by a content filter`,
-    )
-    .otherwise(
-      () => t`Response from ${metabotName} stopped before it finished`,
-    );
-  const canContinue = finishReason === "length" && !!onContinue;
+  const { message, continuable } = match(finishReason)
+    .with("length", () => ({
+      message: t`Response from ${metabotName} was cut off because it hit the maximum length`,
+      continuable: true,
+    }))
+    .with("content-filter", () => ({
+      message: t`Response from ${metabotName} was stopped by a content filter`,
+      continuable: false,
+    }))
+    .with("tool-calls", "other", () => ({
+      message: t`Response from ${metabotName} stopped before it finished`,
+      continuable: false,
+    }))
+    .exhaustive();
+  const canContinue = continuable && !!onContinue;
   return (
     <AgentTurnAlert
       variant="info"

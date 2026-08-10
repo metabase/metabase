@@ -17,6 +17,12 @@
   "Output item types we translate into AI SDK chunks."
   #{:text :function_call :reasoning})
 
+(def ^:private stop-reasons
+  "Responses API `incomplete_details.reason` → AI SDK v5 `FinishReason`. Only an incomplete response carries a reason,
+  so there is nothing here for a normal or tool-call finish."
+  {"max_output_tokens" "length"
+   "content_filter"    "content-filter"})
+
 (defn- openai-usage->aisdk-usage
   "Convert an OpenAI Responses API `usage` block into the AISDK `:usage` shape.
 
@@ -170,7 +176,7 @@
                             ;; non-standard extension, not in AISDK5
                             :id    (:id response)
                             :model @model-name}
-                     raw (assoc :finish-reason     (core/stop-reason->finish-reason raw)
+                     raw (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons raw)
                                 :raw-finish-reason raw))))
              ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
              ;; `response.error`, not in a top-level `error` event, so surface it explicitly.

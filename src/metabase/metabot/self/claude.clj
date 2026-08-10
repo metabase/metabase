@@ -55,6 +55,15 @@
   "Claude content-block types we translate into AI SDK chunks."
   #{:text :tool_use :thinking :redacted_thinking})
 
+(def ^:private stop-reasons
+  "Anthropic `stop_reason` → AI SDK v5 `FinishReason`."
+  {"end_turn"                      "stop"
+   "stop_sequence"                 "stop"
+   "max_tokens"                    "length"
+   "model_context_window_exceeded" "length"
+   "tool_use"                      "tool-calls"
+   "refusal"                       "content-filter"})
+
 (defn claude->aisdk-chunks-xf
   "Translates Claude /v1/messages streaming events into AI SDK v5 protocol chunks.
 
@@ -108,7 +117,7 @@
                                       :usage (claude-usage->aisdk-usage @last-usage)
                                       :id    @message-id
                                       :model @model-name}
-                               @stop-reason (assoc :finish-reason     (core/stop-reason->finish-reason @stop-reason)
+                               @stop-reason (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
                                                    :raw-finish-reason @stop-reason)))
            true          (rf)))
         ([result {t :type :keys [message content_block delta error index] :as chunk}]

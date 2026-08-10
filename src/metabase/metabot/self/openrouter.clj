@@ -115,12 +115,17 @@
 
 ;;; Streaming response → AISDK v5 chunks
 
+(def ^:private stop-reasons
+  "OpenRouter normalizes each upstream model's reason into the Chat Completions set (the raw value stays in
+  `native_finish_reason`), and adds `error` for a mid-generation upstream failure."
+  (assoc chat-completions/stop-reasons "error" "error"))
+
 (defn openrouter->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
   OpenRouter streams the generic Chat Completions dialect; see
   [[chat-completions/chat-completions->aisdk-chunks-xf]]."
   []
-  (chat-completions/chat-completions->aisdk-chunks-xf))
+  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons))
 
 ;;; HTTP request
 
