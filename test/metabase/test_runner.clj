@@ -138,7 +138,8 @@
     (log/info "Initialized prometheus collector")
     (u/with-timer-ms [duration-ms]
       (doseq [init-step steps]
-        (fixtures/initialize init-step))
+        (when-let [fixt-fn (fixtures/initialize init-step)]
+          (fixt-fn (fn no-op-thunk []))))
       (log/info (str "Initialized " (count steps) " fixtures in " (duration-ms) "ms")))))
 
 (defn find-and-run-tests-repl
