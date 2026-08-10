@@ -16,8 +16,6 @@ interface CollectionsNavTreeProps {
   hasMore?: boolean;
   onLoadMore?: (parentId: number | string | null) => void;
   loadingMoreIds?: Set<number | string | null>;
-  remainingByLevel?: Map<number | string | null, number>;
-  totalByLevel?: Map<number | string | null, number>;
 }
 
 export const CollectionsNavTree = ({
@@ -29,8 +27,6 @@ export const CollectionsNavTree = ({
   hasMore,
   onLoadMore,
   loadingMoreIds,
-  remainingByLevel,
-  totalByLevel,
 }: CollectionsNavTreeProps) => {
   // The dirty state is the whole test. It comes from the remote sync changes endpoint, which is bounded to what has
   // changed and is skipped altogether while git sync is off, so it is already empty when nothing is synced. Reading
@@ -47,8 +43,6 @@ export const CollectionsNavTree = ({
       hasMore={hasMore}
       onLoadMore={onLoadMore}
       loadingMoreIds={loadingMoreIds}
-      remainingByLevel={remainingByLevel}
-      totalByLevel={totalByLevel}
       TreeNode={SidebarCollectionLink}
       role="tree"
       aria-label="collection-tree"

@@ -1,12 +1,3 @@
 .root {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
   padding-left: 1.25rem;
-}
-
-/* How much of a long level is on screen, sat beside the button that reads the rest. */
-.count {
-  color: var(--mb-color-text-secondary);
-  font-size: 0.75rem;
 }

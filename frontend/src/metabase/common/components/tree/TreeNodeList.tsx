@@ -25,10 +25,6 @@ interface TreeNodeListProps<TData = unknown> extends Omit<
   loadMoreFor?: ITreeNodeItem<TData>["id"] | null;
   onLoadMore?: (parentId: ITreeNodeItem<TData>["id"] | null) => void;
   loadingMoreIds?: Set<ITreeNodeItem<TData>["id"] | null>;
-  /** Per level, how many rows it holds beyond the ones rendered. Keyed by parent id, or `null` for the top level. */
-  remainingByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
-  /** Per level, how many rows it holds in all. Keyed the same way. */
-  totalByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   TreeNode: TreeNodeComponent<TData>;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
@@ -47,8 +43,6 @@ function BaseTreeNodeList<TData = unknown>({
   loadMoreFor = null,
   onLoadMore,
   loadingMoreIds,
-  remainingByLevel,
-  totalByLevel,
   TreeNode,
   rightSection,
   role,
@@ -101,8 +95,6 @@ function BaseTreeNodeList<TData = unknown>({
                   loadMoreFor={item.id}
                   onLoadMore={onLoadMore}
                   loadingMoreIds={loadingMoreIds}
-                  remainingByLevel={remainingByLevel}
-                  totalByLevel={totalByLevel}
                   TreeNode={TreeNode}
                   rightSection={rightSection}
                   wrapNodes={wrapNodes}
@@ -125,8 +117,6 @@ function BaseTreeNodeList<TData = unknown>({
         <TreeLoadMore
           depth={depth}
           isLoading={loadingMoreIds?.has(loadMoreFor) ?? false}
-          remaining={remainingByLevel?.get(loadMoreFor)}
-          total={totalByLevel?.get(loadMoreFor)}
           onLoadMore={() => onLoadMore(loadMoreFor)}
         />
       )}

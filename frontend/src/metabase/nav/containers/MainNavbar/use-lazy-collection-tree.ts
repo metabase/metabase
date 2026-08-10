@@ -25,10 +25,6 @@ type Level = {
   hasMore: boolean;
   nextOffset: number;
   isLoadingMore: boolean;
-  /** Rows of this level that sit below the window, whose height the list reserves after the rows it has. */
-  remaining: number;
-  /** Every row the level holds, read or not. */
-  total: number;
 };
 
 /**
@@ -244,8 +240,6 @@ export function useLazyCollectionTree({
         hasMore: last.has_more,
         nextOffset: last.next_offset,
         isLoadingMore: loaded.length < pages.length,
-        remaining: Math.max(last.total - items.length, 0),
-        total: last.total,
       });
     });
 
@@ -384,25 +378,6 @@ export function useLazyCollectionTree({
     [levels],
   );
 
-  // Every level that was cut short, keyed the way the tree asks for it. The list gives the unread rows their height
-  // so it is as tall as it will ever be, and the scrollbar stops moving as pages arrive.
-  const remainingByLevel = useMemo(() => {
-    const remaining = new Map<NodeId | null, number>();
-    levels.forEach((level, key) => {
-      remaining.set(key === ROOT_LEVEL ? null : key, level.remaining);
-    });
-    return remaining;
-  }, [levels]);
-
-  // How many rows each level holds in all, so the end of a level can say how much of it is on screen.
-  const totalByLevel = useMemo(() => {
-    const totals = new Map<NodeId | null, number>();
-    levels.forEach((level, key) => {
-      totals.set(key === ROOT_LEVEL ? null : key, level.total);
-    });
-    return totals;
-  }, [levels]);
-
   const loadingMoreIds = useMemo(() => {
     const ids = new Set<NodeId | null>();
     levels.forEach((level, key) => {
@@ -422,8 +397,6 @@ export function useLazyCollectionTree({
     prefetchChildren,
     loadMore,
     loadingMoreIds,
-    remainingByLevel,
-    totalByLevel,
     hasMore: levels.get(ROOT_LEVEL)?.hasMore ?? false,
     isLoading,
     error,

@@ -138,8 +138,8 @@ describe("Tree", () => {
       expect(screen.getByText("Item 2")).toBeInTheDocument();
     });
 
-    /** A level of 102 rows with 100 still unread. */
-    const renderLongLevel = ({ onLoadMore = jest.fn() } = {}) => {
+    it("should read the next page when asked", async () => {
+      const onLoadMore = jest.fn();
       render(
         <Tree
           data={data}
@@ -147,44 +147,14 @@ describe("Tree", () => {
           hasMore
           onLoadMore={onLoadMore}
           loadingMoreIds={new Set()}
-          remainingByLevel={new Map([[null, 100]])}
-          totalByLevel={new Map([[null, 102]])}
         />,
       );
-      return { onLoadMore };
-    };
-
-    it("should read the next page when asked", async () => {
-      const { onLoadMore } = renderLongLevel();
 
       expect(onLoadMore).not.toHaveBeenCalled();
 
       await userEvent.click(screen.getByRole("button", { name: /Show more/ }));
 
       expect(onLoadMore).toHaveBeenCalled();
-    });
-
-    it("should say how much of a long level is on screen", () => {
-      renderLongLevel();
-
-      expect(screen.getByTestId("tree-level-count")).toHaveTextContent(
-        "2 of 102",
-      );
-    });
-
-    it("should stop counting once the level is all there", () => {
-      render(
-        <Tree
-          data={data}
-          onSelect={jest.fn()}
-          onLoadMore={jest.fn()}
-          loadingMoreIds={new Set()}
-          remainingByLevel={new Map([[null, 0]])}
-          totalByLevel={new Map([[null, 2]])}
-        />,
-      );
-
-      expect(screen.queryByTestId("tree-level-count")).not.toBeInTheDocument();
     });
 
     it("should report expansion to an external controller", () => {

@@ -25,10 +25,6 @@ export interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   /** Called with the parent whose level should grow, or `null` for the top level. */
   onLoadMore?: (parentId: ITreeNodeItem<TData>["id"] | null) => void;
   loadingMoreIds?: Set<ITreeNodeItem<TData>["id"] | null>;
-  /** Per level, how many rows it holds beyond the ones rendered. Keyed by parent id, or `null` for the top level. */
-  remainingByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
-  /** Per level, how many rows it holds in all. Keyed the same way. */
-  totalByLevel?: Map<ITreeNodeItem<TData>["id"] | null, number>;
 }
 
 function BaseTree<TData = unknown>({
@@ -46,8 +42,6 @@ function BaseTree<TData = unknown>({
   hasMore,
   onLoadMore,
   loadingMoreIds,
-  remainingByLevel,
-  totalByLevel,
   ...boxProps
 }: TreeProps<TData>) {
   const defaultController = useTree({
@@ -78,8 +72,6 @@ function BaseTree<TData = unknown>({
       hasMore={hasMore}
       onLoadMore={onLoadMore}
       loadingMoreIds={loadingMoreIds}
-      remainingByLevel={remainingByLevel}
-      totalByLevel={totalByLevel}
       rightSection={rightSection}
       wrapNodes={wrapNodesInListItem}
       {...boxProps}
