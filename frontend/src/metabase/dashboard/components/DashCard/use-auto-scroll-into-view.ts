@@ -27,7 +27,7 @@ export function useAutoScrollIntoView({
   enabled,
   onScrolled,
 }: {
-  ref: RefObject<HTMLElement>;
+  ref: RefObject<HTMLElement | null>;
   enabled: boolean;
   onScrolled: () => void;
 }) {

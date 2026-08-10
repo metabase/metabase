@@ -28,8 +28,8 @@ export function calculateFillerHeight(
 }
 
 function resizeFillerArea(
-  scrollContainerRef: RefObject<HTMLElement>,
-  fillerRef: RefObject<HTMLElement>,
+  scrollContainerRef: RefObject<HTMLElement | null>,
+  fillerRef: RefObject<HTMLElement | null>,
 ) {
   const scrollContainerEl = scrollContainerRef.current;
   const fillerEl = fillerRef.current;

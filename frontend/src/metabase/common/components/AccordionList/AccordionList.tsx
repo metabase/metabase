@@ -61,7 +61,7 @@ export class AccordionList<
   TItem extends Item,
   TSection extends Section<TItem> = Section<TItem>,
 > extends Component<Props<TItem, TSection>, State> {
-  listRootRef: RefObject<HTMLDivElement>;
+  listRootRef: RefObject<HTMLDivElement | null>;
 
   constructor(props: Props<TItem, TSection>, context: unknown) {
     super(props, context);

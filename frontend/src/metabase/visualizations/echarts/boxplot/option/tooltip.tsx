@@ -49,7 +49,7 @@ const BoxPlotItemTooltip = ({
 export const getBoxPlotTooltipOption = (
   chartModel: BoxPlotChartModel,
   settings: ComputedVisualizationSettings,
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
 ): TooltipOption => {
   return {
     ...getTooltipBaseOption(containerRef),

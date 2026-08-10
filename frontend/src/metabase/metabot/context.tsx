@@ -59,7 +59,7 @@ export type MetabotPromptInputRef = {
 export type MetabotCtx = {
   prompt: string;
   setPrompt: (prompt: string) => void;
-  promptInputRef: RefObject<MetabotPromptInputRef> | undefined;
+  promptInputRef: RefObject<MetabotPromptInputRef | null> | undefined;
 
   getChatContext: () => Promise<MetabotChatContext>;
   registerChatContextProvider: (
