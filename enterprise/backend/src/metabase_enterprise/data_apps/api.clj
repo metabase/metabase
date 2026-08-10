@@ -199,11 +199,11 @@
     {:database_id database-id
      :dataset_query query}))
 
-(api.macros/defendpoint :post ["/:slug/query-sync" :slug slug-regex] :- DataAppResponse
-  "Prepare a data app for query synchronization before its first repository import."
+(api.macros/defendpoint :post ["/:slug/draft" :slug slug-regex] :- DataAppResponse
+  "Create or reuse a data app draft before its first repository import."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
   (api/check-superuser)
-  (data-app.sync/prepare-query-sync! slug)
+  (data-app.sync/ensure-draft! slug)
   (data-app/select-one-non-blob :name slug))
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]

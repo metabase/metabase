@@ -131,15 +131,15 @@
               (data-app.sync/import-from-snapshot! (snapshot {}))))
       (is (empty? (t2/select-fn-set :name :model/DataApp))))))
 
-(deftest remote-sync-preserves-unpublished-query-sync-drafts-test
+(deftest remote-sync-preserves-unpublished-data-app-drafts-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (data-app.sync/prepare-query-sync! "draft-app")
+    (data-app.sync/ensure-draft! "draft-app")
     (is (=? {:removed 0}
             (data-app.sync/import-from-snapshot! (snapshot {}))))
-    (is (true? (t2/select-one-fn :query_sync_draft :model/DataApp :name "draft-app")))
+    (is (true? (t2/select-one-fn :draft :model/DataApp :name "draft-app")))
     (data-app.sync/import-from-snapshot!
      (snapshot (app-files "draft-app" {:name "Draft" :path "index.js" :bundle "BUNDLE"})))
-    (is (false? (t2/select-one-fn :query_sync_draft :model/DataApp :name "draft-app")))
+    (is (false? (t2/select-one-fn :draft :model/DataApp :name "draft-app")))
     (is (=? {:removed 1}
             (data-app.sync/import-from-snapshot! (snapshot {}))))
     (is (not (t2/exists? :model/DataApp :name "draft-app")))))
@@ -148,7 +148,7 @@
   (mt/with-model-cleanup [:model/DataApp]
     (data-app.sync/import-from-snapshot!
      (snapshot {"data_apps/broken/data_app.yaml" "name: Broken\npath: missing.js\n"}))
-    (is (false? (t2/select-one-fn :query_sync_draft :model/DataApp :name "broken")))
+    (is (false? (t2/select-one-fn :draft :model/DataApp :name "broken")))
     (is (=? {:removed 1}
             (data-app.sync/import-from-snapshot! (snapshot {}))))
     (is (not (t2/exists? :model/DataApp :name "broken")))))
