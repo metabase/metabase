@@ -12,7 +12,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { DatasetColumn } from "metabase-types/api";
 
-import { formatValueForTooltip } from "../utils";
+import { formatValueForTooltip } from "metabase/visualizations/echarts/tooltip/format";
 
 import S from "./KeyValuePairChartTooltip.module.css";
 

@@ -1,4 +1,4 @@
-import { memoize } from "metabase/common/hooks/use-memoized-callback";
+import { memoize } from "metabase/utils/memoize";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { isEmpty } from "metabase/utils/validate";
 import { formatValue } from "metabase/value-formatting";
