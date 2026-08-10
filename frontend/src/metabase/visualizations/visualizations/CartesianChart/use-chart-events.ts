@@ -23,7 +23,6 @@ import {
   isLineXBrushRange,
 } from "metabase/visualizations/echarts/types";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
-import { getVisualizerSeriesCardIndex } from "metabase/visualizations/lib/series";
 import type {
   RenderingContext,
   VisualizationProps,
@@ -39,6 +38,7 @@ import {
 } from "metabase/visualizations/visualizations/CartesianChart/events";
 import type { CardId } from "metabase-types/api";
 
+import { getVisualizerSeriesCardIndex } from "../../lib/series";
 import type { CartesianHoveredObject } from "./types";
 import { useBrush } from "./use-brush";
 import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
