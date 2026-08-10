@@ -10,6 +10,7 @@ import {
   getRowUrl,
   getSingleResultsRow,
 } from "metabase/visualizations/components/ObjectDetail/utils";
+import { getSeriesWithDisplay } from "metabase/visualizations/lib/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
@@ -60,9 +61,7 @@ function ObjectDetailSidesheetInner() {
       return undefined;
     }
     // Force "object" display so settings resolve the object-detail column config.
-    const series = [
-      { ...first, card: { ...first.card, display: "object" as const } },
-    ];
+    const series = getSeriesWithDisplay([first], "object");
     return { series, settings: getComputedSettingsForSeries(series) };
   }, [rawSeries]);
 

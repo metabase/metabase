@@ -124,6 +124,7 @@ function AIProviderConfigurationFormBody({
     useAdminSettings([
       "llm-anthropic-api-key",
       "llm-mistral-api-key",
+      "llm-moonshot-api-key",
       "llm-openai-api-key",
       "llm-openrouter-api-key",
       "llm-zai-api-key",
@@ -325,6 +326,7 @@ function AIProviderConfigurationFormBody({
               .with(
                 "anthropic",
                 "mistral",
+                "moonshot",
                 "openai",
                 "openrouter",
                 "zai",

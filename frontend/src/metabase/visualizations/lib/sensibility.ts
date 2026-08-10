@@ -1,6 +1,10 @@
 import _ from "underscore";
 
-import visualizations from "metabase/visualizations";
+import visualizations, {
+  type RegisteredVisualization,
+} from "metabase/visualizations";
+import { getSeriesWithDisplay } from "metabase/visualizations/lib/series";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import {
   hasLatitudeAndLongitudeColumns,
@@ -17,6 +21,8 @@ import {
   type Dataset,
   type DatasetData,
   type QueryVisualizationDisplayType,
+  type RawSeries,
+  type VisualizationDisplay,
   isCardDisplayType,
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
@@ -24,6 +30,44 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 const MAX_RECOMMENDED = 12;
+
+function isRenderable(
+  viz: RegisteredVisualization,
+  rawSeries: RawSeries,
+  display: VisualizationDisplay,
+) {
+  const series = getSeriesWithDisplay(rawSeries, display);
+
+  try {
+    viz.checkRenderable(series, getComputedSettingsForSeries(series));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Built-in visualizations decide via their own `isSensible`. Custom
+ * visualizations have no `isSensible`, so they count as sensible when they can
+ * render the data without throwing.
+ */
+export function getSensibleDisplays(rawSeries: RawSeries) {
+  const [{ data }] = rawSeries;
+  const hasNothingToJudgeBy = data.rows.length === 0;
+
+  return Array.from(visualizations)
+    .filter(([display, viz]) => {
+      if (viz.isSensible) {
+        // don't rule out displays if there's no data
+        return data.rows.length <= 1 || viz.isSensible(data);
+      }
+      return (
+        !viz.hidden &&
+        (hasNothingToJudgeBy || isRenderable(viz, rawSeries, display))
+      );
+    })
+    .map(([display]) => display);
+}
 
 export type VisualizationSensibility =
   | "recommended"

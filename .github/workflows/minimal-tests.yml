@@ -9,7 +9,6 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  id-token: write
   contents: read
   checks: write
   actions: read
@@ -70,16 +69,6 @@ jobs:
             :exclude-tags '[:mb/driver-tests :mb/transforms-python-test]'
             :partition/total 2
             :partition/index 0
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   # Postgres driver tests
   postgres-driver-test:
@@ -117,16 +106,6 @@ jobs:
           test-args: >-
             :only-tags [:mb/driver-tests]
             :exclude-tags [:mb/transforms-python-test]
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   # Frontend unit tests
   frontend-unit-tests:
@@ -170,16 +149,6 @@ jobs:
           adapter: frontend
           test-suite: fe-tests-unit
           enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit
-          output-name: frontend-unit
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          previous-step-outcome: ${{ steps.run-tests.outcome }}
 
   # Summary job
   minimal-tests-result:

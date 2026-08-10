@@ -69,7 +69,7 @@ const HEADING_ICON: Record<
 export interface ExplorationTreeContextValue {
   explorationId: ExplorationId;
   canWrite: boolean;
-  handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
+  onPrefetchPage: (pageId: ExplorationPageNodeId) => void;
   shouldScrollSelectionRef: React.MutableRefObject<boolean>;
   getSelectedPageUrl: (pageId: ExplorationPageNodeId) => string;
   readPageIds: ReadonlySet<string>;
@@ -117,7 +117,6 @@ function isExplorationTreeHeadingProps(
 function ExplorationTreeHeading({
   item,
   isExpanded,
-  hasChildren,
   onToggleExpand,
   depth,
   explorationId,
@@ -125,16 +124,11 @@ function ExplorationTreeHeading({
   getSelectedPageUrl,
 }: ExplorationTreeHeadingProps) {
   const isLoading = isLoadingStatus(item.data?.status);
-  // Only the retained initial-investigation heading can be childless (pruning
-  // drops every other empty heading). The tree controller can't expand a node
-  // without children, so force the expanded look: the all-hidden note beneath
-  // then reads as the group's content rather than a collapsed group.
-  const displayExpanded = isExpanded || !hasChildren;
   return (
     <Box
       role="group"
       aria-label={item.name}
-      aria-expanded={displayExpanded}
+      aria-expanded={isExpanded}
       aria-busy={isLoading}
       className={cx(S.treeRow, S.treeRowHeading, {
         [S.treeRowNested]: depth > 0,
@@ -153,7 +147,7 @@ function ExplorationTreeHeading({
     >
       <Box className={S.treeChevron} aria-hidden>
         <Icon
-          name={displayExpanded ? "chevrondown" : "chevronright"}
+          name={isExpanded ? "chevrondown" : "chevronright"}
           size={12}
           c="text-tertiary"
         />
@@ -212,8 +206,7 @@ function ExplorationGroupMenu({
   const pageIds = useMemo(() => itemPageIds ?? [], [itemPageIds]);
   // when the whole group is already hidden, the action shows it again
   const allHidden = item.data?.allHidden === true;
-  const canHideGroup =
-    canWrite && item.data?.hideable === true && pageIds.length > 0;
+  const canHideGroup = canWrite && pageIds.length > 0;
 
   const setGroupHidden = useCallback(
     async (hidden: boolean) => {
@@ -364,7 +357,7 @@ function ExplorationTreeItem({
   isSelected,
   depth,
   explorationId,
-  handlePrefetch,
+  onPrefetchPage,
   shouldScrollSelectionRef,
   getSelectedPageUrl,
   readPageIds,
@@ -414,7 +407,7 @@ function ExplorationTreeItem({
         [S.treeRowSelected]: isSelected,
         [S.treeRowNested]: depth > 0,
       })}
-      onMouseEnter={() => handlePrefetch(item)}
+      onMouseEnter={() => onPrefetchPage(pageId)}
       onClick={handleClick}
       // custom css var used for tree styles
       style={{ "--tree-depth": depth } as React.CSSProperties}
@@ -467,6 +460,13 @@ function ExplorationHeadingIcon({
   if (status === "canceled") {
     return (
       <Icon name="octagon_alert" c="icon-primary" aria-label={t`Stopped`} />
+    );
+  }
+  const isThreadNode =
+    headingKind === "root" || headingKind === "sub-exploration";
+  if (status === "error" && isThreadNode) {
+    return (
+      <Icon name="warning_triangle_filled" c="error" aria-label={t`Failed`} />
     );
   }
   if (headingKind == null) {
