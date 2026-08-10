@@ -24,6 +24,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv some empty? not-empty]]
@@ -89,8 +90,33 @@
   '("https://www.googleapis.com/auth/bigquery"
     "https://www.googleapis.com/auth/drive"))
 
+(def ^:private default-api-host
+  "Where `BigQueryOptions` sends API calls when no alternate `:host` is configured."
+  "bigquery.googleapis.com")
+
+(def ^:private default-token-uri
+  "Where `ServiceAccountCredentials` exchanges the signed JWT when the credentials JSON names no `token_uri`."
+  "https://oauth2.googleapis.com/token")
+
+(defn- service-account-token-uri
+  "The URI [[bigquery.common/service-account-json->service-account-credential]] will POST a signed assertion to.
+  `ServiceAccountCredentials/fromStream` honors a `token_uri` out of the credentials JSON, so this is a destination
+  chosen by whoever supplied the credentials rather than a fixed Google endpoint."
+  [service-account-json]
+  (or (when-not (str/blank? service-account-json)
+        (not-empty (get (json/decode service-account-json) "token_uri")))
+      default-token-uri))
+
+(defmethod driver/connection-hosts :bigquery-cloud-sdk
+  [_driver {:keys [host service-account-json]}]
+  (driver/hosts-from-details
+   {:api-host   (if (str/blank? host) default-api-host host)
+    :token-host (service-account-token-uri service-account-json)}
+   [:api-host :token-host]))
+
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
+  (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
   (let [base-creds   (bigquery.common/database-details->service-account-credential details)
         ;; Check if we should impersonate a different service account
         ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
