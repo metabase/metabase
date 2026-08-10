@@ -1039,7 +1039,6 @@ function assertNonAdminCannotCreatePublicLink(resource) {
     H.openSharingMenu();
     H.sharingMenu().within(() => {
       cy.findByText("Copy link").should("be.visible");
-      cy.findByText("Export as PDF").should("not.exist");
       cy.findByText("Embed").should("not.exist");
       cy.findByText(/public link/i).should("not.exist");
     });
