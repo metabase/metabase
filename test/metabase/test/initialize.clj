@@ -97,32 +97,52 @@
 ;; Must happen before :db so that listeners (e.g. connection-pool-invalidated) are available
 ;; when database initialization triggers events.
 (define-initialization :mq
+  ;; `register-listeners!` iterates the `def-listener!` implementations that are loaded at that moment, so every
+  ;; namespace declaring one has to be loaded first
+  (initialize-if-needed! :core-init)
   (classloader/require 'metabase.test.initialize.mq)
   ((resolve 'metabase.test.initialize.mq/init!)))
+
+;; loads the namespaces that install the system's multimethods, settings, tasks and event handlers. Steps below write
+;; rows through models whose behavior those methods provide -- e.g. inserting an AuthIdentity dispatches
+;; `metabase.auth-identity.provider/validate`, which only exists once `metabase.auth-identity.init` is loaded.
+(define-initialization :core-init
+  (classloader/require 'metabase.core.init))
 
 ;; initializing the DB also does setup needed so the scheduler will work correctly. (Remember that the scheduler uses
 ;; a JDBC backend!)
 (define-initialization :db
+  ;; migrating triggers events (e.g. connection-pool-invalidated) and sets up the scheduler, both of which run
+  ;; handlers installed by the init namespaces
+  (initialize-if-needed! :core-init)
   (initialize-if-needed! :mq)
   (classloader/require 'metabase.test.initialize.db)
   ((resolve 'metabase.test.initialize.db/init!)))
 
 (define-initialization :web-server
+  ;; the handler routes to API namespaces, and `set!`ting the site name goes through the settings machinery
+  (initialize-if-needed! :core-init)
   (initialize-if-needed! :db)
   (classloader/require 'metabase.test.initialize.web-server)
   ((resolve 'metabase.test.initialize.web-server/init!)))
 
 (define-initialization :test-users
+  ;; creating a user inserts an AuthIdentity, which dispatches `auth-identity.provider/validate :provider/password`
+  (initialize-if-needed! :core-init)
   (initialize-if-needed! :db)
   (classloader/require 'metabase.test.initialize.test-users)
   ((resolve 'metabase.test.initialize.test-users/init!)))
 
 (define-initialization :test-users-personal-collections
+  ;; personal collections are created through the Collection model's hooks
+  (initialize-if-needed! :core-init)
   (initialize-if-needed! :test-users)
   (classloader/require 'metabase.test.initialize.test-users-personal-collections)
   ((resolve 'metabase.test.initialize.test-users-personal-collections/init!)))
 
 (define-initialization :notifications
+  ;; seeding writes Notification rows, whose channels and payload types are registered by the init namespaces
+  (initialize-if-needed! :core-init)
   (initialize-if-needed! :db)
   (notification/seed-notification!))
 
