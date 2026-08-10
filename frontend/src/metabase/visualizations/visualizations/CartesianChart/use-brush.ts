@@ -159,7 +159,7 @@ function useTouchBrush({
   enableBrush: () => void;
   disableBrush: () => void;
 }) {
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const startRef = useRef<Point | null>(null);
   const activeRef = useRef(false);
 

@@ -34,7 +34,7 @@ export function useAutoScrollIntoView({
   const onScrolledRef = useRef(onScrolled);
   onScrolledRef.current = onScrolled;
 
-  const frameRef = useRef<number>();
+  const frameRef = useRef<number>(undefined);
 
   useEffect(() => () => cancelAnimationFrame(frameRef.current ?? 0), []);
 
