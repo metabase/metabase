@@ -422,8 +422,8 @@ For uploading and managing plugins, see [Custom visualizations](../questions/vis
 
 Metabase checks both:
 
-- **Which custom viz SDK you used to build the plugin**: `pack` stamps the exact `@metabase/custom-viz` version into the packed manifest as `sdk.version`. Metabase compares that stamp against the SDK versions it was tested with.
-- **Which Metabase your plugin supports**: declare it with `metabase.version` in `metabase-plugin.json`, using semver range syntax — for example, `">=1.62 <1.64"`. Keep the range closed on both ends. Metabase versions are [license.major.minor](https://www.metabase.com/version-support), so include the license prefix (`">=1.62 <1.64"`). A bare major version (`">=62 <64"`) won't match.
+- **Which version of custom viz SDK you used to build the plugin**: `pack` stamps the exact `@metabase/custom-viz` version into the packed manifest as `sdk.version`. Metabase compares that stamp against the SDK versions it was tested with.
+- **Which Metabase versions your plugin supports**: declare it with `metabase.version` in `metabase-plugin.json`, using semver range syntax — for example, `">=1.62 <1.64"`. Keep the range closed on both ends. Metabase versions are [license.major.minor](https://www.metabase.com/version-support), so include the license prefix (`">=1.62 <1.64"`). A bare major version (`">=62 <64"`) won't match.
 
 Neither check blocks anything: the plugin uploads and runs either way. When a check fails, Metabase shows a [compatibility warning](../questions/visualizations/custom.md#compatibility-warnings-are-heads-ups-not-errors) on the **Manage visualizations** page.
 
