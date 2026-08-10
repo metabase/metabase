@@ -94,7 +94,7 @@ export const useChartEvents = (
   // has measured it.
   chartInstance?: EChartsType,
 ) => {
-  const isBrushing = useRef<boolean>();
+  const isBrushing = useRef<boolean>(undefined);
   useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
   const onOpenQuestion = useCallback(

@@ -55,7 +55,7 @@ const TreemapChartComponent = ({
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<EChartsType>();
+  const chartRef = useRef<EChartsType>(undefined);
   const overlayRef = useRef<TreemapHoverOverlay | null>(null);
   const isAnimatingRef = useRef(false);
   const clickedRef = useLatest(clicked);
