@@ -21,12 +21,7 @@
   We want to keep track of recents in multiple contexts. e.g. when selecting a value from the data-picker, that should
   log a recent_view row with context=`selection`. At this time there are only `view` and `selection` contexts.
 
-  E.G., if you were to view lots of _cards_, it would not push collections and dashboards out of your recents.
-
-  [Metrics] TODO:
-  At some point in 2024, there was an attempt to add `metric` to the list of recent-view models. This
-  was never completed, and the code has not been hooked up. There is no query for metrics, despite there being a
-  `:metric` model in the `rv-models` list. This is a TODO to complete this work."
+  E.G., if you were to view lots of _cards_, it would not push collections and dashboards out of your recents."
   (:require
    [clojure.set :as set]
    [colorize.core :as colorize]
@@ -89,6 +84,7 @@
   [rvm :- (into [:enum] rv-models)]
   (get {:dataset :model/Card
         :card :model/Card
+        :metric :model/Card
         :dashboard :model/Dashboard
         :table :model/Table
         :collection :model/Collection
@@ -101,13 +97,13 @@
                     {:select [:rv.id]
                      :from [[:recent_views :rv]]
                      :where [:and
-                             [:= :rv.model (get {:dataset "card"} model (name model))]
+                             [:= :rv.model (get {:dataset "card" :metric "card"} model (name model))]
                              [:= :rv.user_id user-id]
                              [:= :rv.context (h2x/literal (name context))]
-                             (when (#{:card :dataset} model) ;; TODO add metric
+                             (when (#{:card :dataset :metric} model)
                                [:= :rc.type (cond (= model :card) (h2x/literal "question")
-                                                  ;; TODO add metric
-                                                  (= model :dataset) (h2x/literal "model"))])]
+                                                  (= model :dataset) (h2x/literal "model")
+                                                  (= model :metric) (h2x/literal "metric"))])]
                      :left-join [[:report_card :rc]
                                  [:and
                                   [:= :rc.id :rv.model_id]
