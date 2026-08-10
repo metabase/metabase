@@ -121,6 +121,10 @@ const setup = async ({
       key: "llm-mistral-api-key",
       value: undefined,
     }),
+    createMockSettingDefinition({
+      key: "llm-moonshot-api-key",
+      value: undefined,
+    }),
   ]);
   setupUpdateSettingEndpoint();
   setupCollectionByIdEndpoint({ collections });

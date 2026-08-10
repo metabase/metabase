@@ -20,6 +20,7 @@
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.mistral :as mistral]
+   [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.zai :as zai]
@@ -38,6 +39,7 @@
     "azure"      azure/azure
     "bedrock"    bedrock/bedrock
     "mistral"    mistral/mistral
+    "moonshot"   moonshot/moonshot
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
     "zai"        zai/zai
@@ -51,6 +53,7 @@
     "azure"      azure/list-models
     "bedrock"    bedrock/list-models
     "mistral"    mistral/list-models
+    "moonshot"   moonshot/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
     "zai"        zai/list-models

@@ -307,6 +307,7 @@ export const CollectionContentView = ({
             bookmarks={bookmarks}
             createBookmark={createBookmark}
             deleteBookmark={deleteBookmark}
+            showFilterBar
             selected={selected}
             toggleItem={toggleItem}
             clear={clear}

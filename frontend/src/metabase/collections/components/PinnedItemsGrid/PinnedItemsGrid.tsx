@@ -70,11 +70,8 @@ export function PinnedItemsGrid({
       <PinDropZone variant="pin" />
       <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} spacing="md">
         {sortedItems.map((item, index) => {
-          // Autopinned items can share a collection_position (e.g. several
-          // items at 1), which would make the strict front/back drop-target
-          // comparisons reject every slot. Use the dense display order for
-          // drag and drop instead; the backend reconciles sibling positions
-          // on drop.
+          // collection_position isn't guaranteed unique, so drag and drop is
+          // keyed by display index instead.
           const pinIndex = index + 1;
           return (
             <Box key={`${item.model}-${item.id}`} pos="relative">

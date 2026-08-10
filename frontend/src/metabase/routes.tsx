@@ -22,7 +22,10 @@ import CollectionLanding from "metabase/collections/components/CollectionLanding
 import { MoveCollectionModal } from "metabase/collections/components/MoveCollectionModal";
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
-import { modalRoute } from "metabase/common/components/ModalRoute";
+import {
+  lazyModalRoute,
+  modalRoute,
+} from "metabase/common/components/ModalRoute";
 import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/MoveQuestionsIntoDashboardsModal";
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
@@ -34,8 +37,6 @@ import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDa
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
-import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
-import { DocumentPageOuter } from "metabase/documents/routes";
 import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
 import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirect";
 import { Onboarding } from "metabase/home/components/Onboarding";
@@ -51,9 +52,7 @@ import {
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { MetabotQueryBuilder } from "metabase/query_builder/components/MetabotQueryBuilder";
 import { QuestionHashRedirect } from "metabase/query_builder/components/QuestionHashRedirect";
-import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import type { State } from "metabase/redux/store";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
@@ -80,6 +79,7 @@ import {
   Navigate,
   type RouteObject,
   redirect,
+  registerPagePrefetch,
   toRouteObjects,
   useParams,
 } from "metabase/router";
@@ -112,6 +112,60 @@ export function LegacyBrowseRedirect() {
 
   return <Navigate to={`/browse/databases/${dbIdAndSlug}`} replace />;
 }
+
+/**
+ * The query builder, in its own chunk. Every route that renders it names the
+ * same `import()`, so they share one chunk that is fetched the first time one of
+ * them is visited.
+ *
+ * A `lazy` route makes that first navigation asynchronous: the router resolves
+ * the module before it commits the location. It resolves the route in place, so
+ * every later navigation to the query builder is synchronous again.
+ */
+const queryBuilder = () =>
+  import("metabase/query_builder/containers/QueryBuilder").then(
+    ({ QueryBuilder }) => ({ Component: QueryBuilder }),
+  );
+
+const metabotQueryBuilder = () =>
+  import("metabase/query_builder/components/MetabotQueryBuilder").then(
+    ({ MetabotQueryBuilder }) => ({ Component: MetabotQueryBuilder }),
+  );
+
+/**
+ * Documents, in their own chunk. It carries the rich text editing stack, which
+ * nothing outside the document page needs on first paint.
+ */
+const documentPage = () =>
+  import("metabase/documents/routes").then(({ DocumentPageOuter }) => ({
+    Component: DocumentPageOuter,
+  }));
+
+const commentsSidesheet = () =>
+  import("metabase/documents/components/CommentsSidesheet").then(
+    ({ CommentsSidesheet }) => CommentsSidesheet,
+  );
+
+/**
+ * Hovering a link into one of these chunks starts the fetch, so it is usually in
+ * hand by the time the click lands. The router still awaits `lazy` and still
+ * commits the location a tick late, so this removes the round trip rather than
+ * the asynchrony. See `lazy-route.unit.spec.tsx`.
+ *
+ * The paths are prefixes, so `/table/` also covers the table detail page, which
+ * is not the query builder. The chunk is fetched once either way, and someone
+ * looking at a table row is a fair bet to open a question next.
+ */
+registerPagePrefetch("/question", queryBuilder);
+registerPagePrefetch("/model", queryBuilder);
+registerPagePrefetch("/table/", queryBuilder);
+registerPagePrefetch("/question/ask", metabotQueryBuilder);
+registerPagePrefetch("/document/", documentPage);
+// The sidesheet is a chunk of its own, and its route carries the document id
+// before the segment that names it, so a prefix cannot single it out. Registered
+// against the document prefix instead: 15 kb fetched alongside a page of 337 kb,
+// in exchange for the sidesheet already being there when it is opened.
+registerPagePrefetch("/document/", commentsSidesheet);
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
   {
@@ -178,12 +232,12 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               {
                 path: "document/:entityId",
-                element: <DocumentPageOuter />,
-                children: toRouteObjects(
-                  modalRoute("comments/:childTargetId", CommentsSidesheet, {
+                lazy: documentPage,
+                children: [
+                  lazyModalRoute("comments/:childTargetId", commentsSidesheet, {
                     noWrap: true,
                   }),
-                ),
+                ],
               },
 
               {
@@ -301,14 +355,14 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                       ],
                     }),
                   },
-                  { index: true, element: <QueryBuilder /> },
-                  { path: "notebook", element: <QueryBuilder /> },
-                  { path: "ask", element: <MetabotQueryBuilder /> },
+                  { index: true, lazy: queryBuilder },
+                  { path: "notebook", lazy: queryBuilder },
+                  { path: "ask", lazy: metabotQueryBuilder },
                   ...toRouteObjects(getExplorationsRoutes()),
-                  { path: ":slug", element: <QueryBuilder /> },
-                  { path: ":slug/notebook", element: <QueryBuilder /> },
-                  { path: ":slug/metabot", element: <QueryBuilder /> },
-                  { path: ":slug/:objectId", element: <QueryBuilder /> },
+                  { path: ":slug", lazy: queryBuilder },
+                  { path: ":slug/notebook", lazy: queryBuilder },
+                  { path: ":slug/metabot", lazy: queryBuilder },
+                  { path: ":slug/:objectId", lazy: queryBuilder },
                 ],
               },
 
@@ -318,17 +372,17 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               {
                 path: "/model",
                 children: [
-                  { index: true, element: <QueryBuilder /> },
+                  { index: true, lazy: queryBuilder },
                   { path: "new", element: <NewModelOptions /> },
-                  { path: ":slug", element: <QueryBuilder /> },
-                  { path: ":slug/notebook", element: <QueryBuilder /> },
-                  { path: ":slug/query", element: <QueryBuilder /> },
-                  { path: ":slug/columns", element: <QueryBuilder /> },
-                  { path: ":slug/metadata", element: <QueryBuilder /> },
-                  { path: ":slug/metabot", element: <QueryBuilder /> },
-                  { path: ":slug/:objectId", element: <QueryBuilder /> },
-                  { path: "query", element: <QueryBuilder /> },
-                  { path: "metabot", element: <QueryBuilder /> },
+                  { path: ":slug", lazy: queryBuilder },
+                  { path: ":slug/notebook", lazy: queryBuilder },
+                  { path: ":slug/query", lazy: queryBuilder },
+                  { path: ":slug/columns", lazy: queryBuilder },
+                  { path: ":slug/metadata", lazy: queryBuilder },
+                  { path: ":slug/metabot", lazy: queryBuilder },
+                  { path: ":slug/:objectId", lazy: queryBuilder },
+                  { path: "query", lazy: queryBuilder },
+                  { path: "metabot", lazy: queryBuilder },
                 ],
               },
 
@@ -371,7 +425,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               {
                 path: "table",
                 children: [
-                  { path: ":slug", element: <QueryBuilder /> },
+                  { path: ":slug", lazy: queryBuilder },
                   {
                     path: ":tableId/detail/:rowId",
                     element: <TableDetailPage />,

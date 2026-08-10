@@ -56,7 +56,7 @@
                                       [:name        ms/NonBlankString]
                                       [:description {:optional true} [:maybe ms/NonBlankString]]
                                       [:type        ChannelType]
-                                      [:details     :map]
+                                      [:details     ms/Map]
                                       [:active      {:optional true} [:maybe {:default true} :boolean]]]]
   (perms/check-has-application-permission :setting)
   (when (t2/exists? :model/Channel :name channel-name)
@@ -88,7 +88,7 @@
             [:name        {:optional true} [:maybe ms/NonBlankString]]
             [:description {:optional true} [:maybe ms/NonBlankString]]
             [:type        {:optional true} [:maybe ChannelType]]
-            [:details     {:optional true} [:maybe :map]]
+            [:details     {:optional true} [:maybe ms/Map]]
             [:active      {:optional true} [:maybe :boolean]]]]
   (let [channel-before-update (api/write-check (t2/select-one :model/Channel id))]
     (t2/update! :model/Channel id body)
@@ -122,6 +122,6 @@
    _query-params
    {:keys [type details]} :- [:map
                               [:type    ChannelType]
-                              [:details :map]]]
+                              [:details ms/Map]]]
   (perms/check-has-application-permission :setting)
   (test-channel-connection! type details))

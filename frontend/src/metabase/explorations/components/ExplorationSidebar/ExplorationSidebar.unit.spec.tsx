@@ -35,7 +35,6 @@ import {
   getSidebarTestContext,
   setup,
 } from "./test-utils";
-import { getExplorationSidebarTree } from "./utils";
 
 jest.mock("metabase/explorations/analytics");
 
@@ -47,14 +46,14 @@ describe("ExplorationSidebar", () => {
 
   describe("keyboard navigation", () => {
     it("moves selection to the next page with ArrowRight", () => {
-      const { setSelectedPageId } = setup({
+      const { onNextPage } = setup({
         queries: [doneQuery, errorQuery],
         selectedQueryId: 2,
       });
 
       fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
-      expect(setSelectedPageId).toHaveBeenCalledWith("3");
+      expect(onNextPage).toHaveBeenCalledTimes(1);
       expect(trackExplorationVisualizationChanged).toHaveBeenCalledWith(
         expect.any(Number),
         "keyboard",
@@ -62,14 +61,14 @@ describe("ExplorationSidebar", () => {
     });
 
     it("moves selection to the previous page with ArrowLeft", () => {
-      const { setSelectedPageId } = setup({
+      const { onPreviousPage } = setup({
         queries: [doneQuery, errorQuery],
         selectedQueryId: 3,
       });
 
       fireEvent.keyDown(document.body, { key: "ArrowLeft" });
 
-      expect(setSelectedPageId).toHaveBeenCalledWith("2");
+      expect(onPreviousPage).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -159,7 +158,6 @@ describe("ExplorationSidebar", () => {
             getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
             tree={tree}
             selectedPageId="2"
-            setSelectedPageId={jest.fn()}
             getSelectedPageUrl={(pageId) => `${path}/page/${pageId}`}
             shouldScrollSelectionRef={{ current: false }}
             isOpen
@@ -168,6 +166,10 @@ describe("ExplorationSidebar", () => {
             onToggleShowHidden={jest.fn()}
             sortOrder={DEFAULT_SORT_ORDER}
             onChangeSortOrder={jest.fn()}
+            contentMode="tree"
+            onPreviousPage={jest.fn()}
+            onNextPage={jest.fn()}
+            onPrefetchPage={jest.fn()}
           />
         </>
       );
@@ -219,7 +221,7 @@ describe("ExplorationSidebar", () => {
     });
 
     it("toggles show-hidden from the menu without changing selection", async () => {
-      const { onToggleShowHidden, setSelectedPageId } = setup({
+      const { onToggleShowHidden, onNextPage, onPreviousPage } = setup({
         queries: [doneQuery],
       });
       await userEvent.click(filterButton());
@@ -228,7 +230,8 @@ describe("ExplorationSidebar", () => {
       );
       expect(onToggleShowHidden).toHaveBeenCalledTimes(1);
       // toggling the filter must not navigate/select anything
-      expect(setSelectedPageId).not.toHaveBeenCalled();
+      expect(onNextPage).not.toHaveBeenCalled();
+      expect(onPreviousPage).not.toHaveBeenCalled();
     });
 
     it("changes sort order from the menu", async () => {
@@ -241,7 +244,7 @@ describe("ExplorationSidebar", () => {
     });
   });
 
-  describe("all-hidden empty state", () => {
+  describe("empty states", () => {
     const hiddenBlock = createBlock({
       id: 1,
       name: "Revenue",
@@ -260,28 +263,125 @@ describe("ExplorationSidebar", () => {
       status: "done",
     });
 
-    it("keeps the first thread with an all-hidden note when every page is hidden", () => {
-      setup({ queries: [hiddenQuery], blocks: [hiddenBlock] });
+    it("shows the all-hidden message without thread headings when every page is hidden", () => {
+      setup({
+        queries: [hiddenQuery],
+        blocks: [hiddenBlock],
+        thread: {
+          status: "completed",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      });
 
-      // The initial thread heading is retained, with an inline note below it.
-      expect(screen.getByText("Initial investigation")).toBeInTheDocument();
       expect(
-        screen.getByText("All items have been hidden."),
-      ).toBeInTheDocument();
-      // The childless heading renders expanded so the note reads as its content.
-      expect(
-        screen.getByRole("group", { name: /Initial investigation/ }),
-      ).toHaveAttribute("aria-expanded", "true");
+        screen.queryByText("Initial investigation"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("exploration-all-hidden")).toHaveTextContent(
+        "All items have been hidden.",
+      );
     });
 
-    it("shows the generic empty message (not the all-hidden note) when nothing is hidden yet", () => {
-      // No pages at all — e.g. an exploration still generating its charts.
-      // Nothing is hidden, so the empty state should show rather than the note.
-      setup({ queries: [] });
+    it("shows a loading skeleton while the initial thread is still running with no pages", () => {
+      setup({
+        queries: [],
+        thread: { status: "running", started_at: "2026-04-30T00:00:00Z" },
+      });
 
-      expect(screen.getByText("Nothing to see here yet.")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("exploration-sidebar-skeleton"),
+      ).toBeInTheDocument();
       expect(
         screen.queryByText("All items have been hidden."),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Nothing to see here yet."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the generic empty message when there is genuinely nothing to show", () => {
+      setup({
+        queries: [],
+        thread: {
+          status: "empty",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      });
+
+      expect(
+        screen.queryByText("Initial investigation"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("All items have been hidden."),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Nothing to see here yet.")).toBeInTheDocument();
+    });
+
+    it("shows an empty failed thread heading instead of the generic empty message", () => {
+      setup({
+        queries: [],
+        thread: {
+          status: "failed",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      });
+
+      expect(
+        screen.getByRole("group", { name: /Initial investigation/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Failed")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Nothing to see here yet."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows an empty canceled thread heading instead of the generic empty message", () => {
+      setup({
+        queries: [],
+        thread: {
+          status: "canceled",
+          canceled_at: "2026-04-30T00:01:00Z",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      });
+
+      expect(
+        screen.getByRole("group", { name: /Initial investigation/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Stopped")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Nothing to see here yet."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows a permission message when derived data is forbidden", () => {
+      setup({
+        queries: [],
+        thread: {
+          status: "forbidden",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+      });
+
+      expect(
+        screen.getByText("You don't have permission to view these results."),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a permission message on Stars when derived data is forbidden", () => {
+      setup({
+        queries: [doneQuery],
+        thread: {
+          status: "forbidden",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
+        tab: "stars",
+      });
+
+      expect(
+        screen.getByText("You don't have permission to view these results."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Nothing's been starred yet."),
       ).not.toBeInTheDocument();
     });
 
@@ -321,7 +421,7 @@ describe("ExplorationSidebar", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("shows the per-tab empty message on Stars even when the starred pages are merely hidden", () => {
+    it("shows the all-hidden message on Stars when the starred pages are merely hidden", () => {
       setup({
         queries: [hiddenQuery],
         blocks: [
@@ -339,16 +439,18 @@ describe("ExplorationSidebar", () => {
             ],
           }),
         ],
+        thread: {
+          status: "completed",
+          completed_at: "2026-04-30T00:01:00Z",
+        },
         tab: "stars",
       });
 
-      // Filtered tabs never show the all-hidden note — an empty tree always
-      // falls through to the tab's own empty message.
+      expect(screen.getByTestId("exploration-all-hidden")).toHaveTextContent(
+        "All items have been hidden.",
+      );
       expect(
-        screen.getByText("Nothing's been starred yet."),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText("All items have been hidden."),
+        screen.queryByText("Nothing's been starred yet."),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByText("Initial investigation"),
@@ -389,13 +491,13 @@ describe("ExplorationSidebar", () => {
       explorationSidebarTabsInfo,
       selectedSidebarTab,
       getSelectedSidebarTabUrl,
-      treeItemFilter,
       getTree,
+      getModel,
     } = getSidebarTestContext(exploration);
     // A later poll: same block/page ids, but the query settled — a deep-different
     // tree, so `useTree`'s data-change effect runs.
-    const reloadedTree = getExplorationSidebarTree(
-      createExploration({
+    const reloadedTree = getModel({
+      explorationOverride: createExploration({
         blocks: makeBlocks(),
         queries: [
           createQuery({
@@ -406,14 +508,11 @@ describe("ExplorationSidebar", () => {
           }),
         ],
       }),
-      treeItemFilter,
-    );
+    }).tree;
 
     const path = Urls.exploration(exploration.id);
     const shouldScrollSelectionRef = { current: true };
-    const sidebarWith = (
-      tree: ReturnType<typeof getExplorationSidebarTree>,
-    ) => (
+    const sidebarWith = (tree: typeof reloadedTree) => (
       <ExplorationSidebar
         exploration={exploration}
         explorationSidebarTabsInfo={explorationSidebarTabsInfo}
@@ -421,7 +520,6 @@ describe("ExplorationSidebar", () => {
         getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
         tree={tree}
         selectedPageId={String(REVENUE_PAGE_ID)}
-        setSelectedPageId={jest.fn()}
         getSelectedPageUrl={() => path}
         shouldScrollSelectionRef={shouldScrollSelectionRef}
         isOpen
@@ -430,6 +528,10 @@ describe("ExplorationSidebar", () => {
         onToggleShowHidden={jest.fn()}
         sortOrder={DEFAULT_SORT_ORDER}
         onChangeSortOrder={jest.fn()}
+        contentMode="tree"
+        onPreviousPage={jest.fn()}
+        onNextPage={jest.fn()}
+        onPrefetchPage={jest.fn()}
       />
     );
 
@@ -517,7 +619,7 @@ describe("ExplorationSidebar", () => {
       } = getSidebarTestContext(exploration);
       const shouldScrollSelectionRef = { current: true };
       const sidebarWith = (
-        tree: ReturnType<typeof getExplorationSidebarTree>,
+        tree: ReturnType<typeof getTree>,
         selectedId: string,
       ) => (
         <ExplorationSidebar
@@ -527,7 +629,6 @@ describe("ExplorationSidebar", () => {
           getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
           tree={tree}
           selectedPageId={selectedId}
-          setSelectedPageId={jest.fn()}
           getSelectedPageUrl={() => path}
           shouldScrollSelectionRef={shouldScrollSelectionRef}
           isOpen
@@ -536,12 +637,16 @@ describe("ExplorationSidebar", () => {
           onToggleShowHidden={jest.fn()}
           sortOrder={DEFAULT_SORT_ORDER}
           onChangeSortOrder={jest.fn()}
+          contentMode="tree"
+          onNextPage={jest.fn()}
+          onPreviousPage={jest.fn()}
+          onPrefetchPage={jest.fn()}
         />
       );
       // Drive updates through in-component state so the sidebar stays mounted
       // (a router rerender would remount it and warn about changing routes).
       let applyUpdate: (next: {
-        tree: ReturnType<typeof getExplorationSidebarTree>;
+        tree: ReturnType<typeof getTree>;
         selectedId: string;
       }) => void = () => {};
       function Harness() {
@@ -558,10 +663,8 @@ describe("ExplorationSidebar", () => {
         initialRoute: path,
       });
       return {
-        rerenderWith: (
-          tree: ReturnType<typeof getExplorationSidebarTree>,
-          selectedId: string,
-        ) => act(() => applyUpdate({ tree, selectedId })),
+        rerenderWith: (tree: ReturnType<typeof getTree>, selectedId: string) =>
+          act(() => applyUpdate({ tree, selectedId })),
       };
     }
 
@@ -577,11 +680,11 @@ describe("ExplorationSidebar", () => {
           createQuery({ id: 2, name: "B leaf", status: "pending" }),
         ],
       });
-      const { treeItemFilter } = getSidebarTestContext(exploration);
+      const { getModel } = getSidebarTestContext(exploration);
       // A later poll: B's query settles with high interestingness (deep-different
       // tree), so the auto-selection moves to Group B's page.
-      const reloadedTree = getExplorationSidebarTree(
-        createExploration({
+      const reloadedTree = getModel({
+        explorationOverride: createExploration({
           blocks: twoBlocks(),
           queries: [
             createQuery({ id: 1, name: "A leaf", status: "done" }),
@@ -593,8 +696,7 @@ describe("ExplorationSidebar", () => {
             }),
           ],
         }),
-        treeItemFilter,
-      );
+      }).tree;
 
       const { rerenderWith } = renderWithTree(exploration, A_LEAF);
 
@@ -892,7 +994,7 @@ describe("ExplorationSidebar", () => {
 
     describe("arrow-key navigation", () => {
       it("Right moves selection from one page to the next within the same heading and keeps that heading expanded", () => {
-        const { setSelectedPageId } = setup({
+        const { onNextPage } = setup({
           queries: [...planQueries, ...regionQueries],
           blocks,
           selectedPageId: planLeafAllId,
@@ -900,7 +1002,7 @@ describe("ExplorationSidebar", () => {
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
-        expect(setSelectedPageId).toHaveBeenLastCalledWith(planLeafUsId);
+        expect(onNextPage).toHaveBeenCalledTimes(1);
         // Region heading stayed closed; we never left the plan heading.
         const regionHeading = screen.getByRole("group", {
           name: /Revenue by region/,
@@ -909,7 +1011,7 @@ describe("ExplorationSidebar", () => {
       });
 
       it("Right past the last page in a heading selects the first page of the next heading and collapses the source heading", () => {
-        const { setSelectedPageId } = setup({
+        const { onNextPage } = setup({
           queries: [...planQueries, ...regionQueries],
           blocks,
           // Selection sits on the LAST page of the plan heading.
@@ -918,13 +1020,13 @@ describe("ExplorationSidebar", () => {
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
-        expect(setSelectedPageId).toHaveBeenLastCalledWith(regionLeafAllId);
+        expect(onNextPage).toHaveBeenCalledTimes(1);
 
         // The keyboard handler imperatively collapses the source
         // heading via `treeController.collapse`. Auto-expanding the
         // target heading happens via `getInitialExpandedIds` on the
         // next render — that's a parent-side effect we don't model
-        // here (the `setSelectedPageId` is a mock so the controlled
+        // here (onNextPage is a mock so the controlled
         // `selectedPageId` prop never updates).
         const planHeading = screen.getByRole("group", {
           name: /Revenue by plan/,
@@ -933,7 +1035,7 @@ describe("ExplorationSidebar", () => {
       });
 
       it("Left past the first page in a heading selects the last page of the previous heading and collapses the source heading", () => {
-        const { setSelectedPageId } = setup({
+        const { onPreviousPage } = setup({
           queries: [...planQueries, ...regionQueries],
           blocks,
           selectedPageId: regionLeafAllId,
@@ -941,7 +1043,7 @@ describe("ExplorationSidebar", () => {
 
         fireEvent.keyDown(document.body, { key: "ArrowLeft" });
 
-        expect(setSelectedPageId).toHaveBeenLastCalledWith(planLeafUsId);
+        expect(onPreviousPage).toHaveBeenCalledTimes(1);
 
         const regionHeading = screen.getByRole("group", {
           name: /Revenue by region/,
@@ -956,7 +1058,7 @@ describe("ExplorationSidebar", () => {
         ];
         const PAGE_BLOCK_ID = 60;
         const PAGE_LEAF_ID = 600;
-        const { setSelectedPageId } = setup({
+        const { onNextPage } = setup({
           queries: [...planQueries, ...pageQueriesNav],
           blocks: [
             blocks[0], // plan block + its two single-query pages
@@ -981,9 +1083,7 @@ describe("ExplorationSidebar", () => {
 
         fireEvent.keyDown(document.body, { key: "ArrowRight" });
 
-        expect(setSelectedPageId).toHaveBeenLastCalledWith(
-          String(PAGE_LEAF_ID),
-        );
+        expect(onNextPage).toHaveBeenCalledTimes(1);
         const planHeading = screen.getByRole("group", {
           name: /Revenue by plan/,
         });
@@ -1056,7 +1156,6 @@ describe("ExplorationSidebar", () => {
               getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
               tree={tree}
               selectedPageId={String(PAGE_ID)}
-              setSelectedPageId={jest.fn()}
               getSelectedPageUrl={() => path}
               shouldScrollSelectionRef={shouldScrollSelectionRef}
               isOpen
@@ -1065,6 +1164,10 @@ describe("ExplorationSidebar", () => {
               onToggleShowHidden={jest.fn()}
               sortOrder={DEFAULT_SORT_ORDER}
               onChangeSortOrder={jest.fn()}
+              contentMode="tree"
+              onPreviousPage={jest.fn()}
+              onNextPage={jest.fn()}
+              onPrefetchPage={jest.fn()}
             />
           </>
         );

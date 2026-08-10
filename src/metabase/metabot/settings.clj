@@ -106,7 +106,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "azure" "bedrock" "mistral" "openai" "openrouter" "zai"})
+  #{"anthropic" "azure" "bedrock" "mistral" "moonshot" "openai" "openrouter" "zai"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -119,6 +119,10 @@
 (def ^:private default-mistral-llm-metabot-model
   "Default Mistral model used for Metabot when no explicit model is selected."
   "mistral-medium-3-5")
+
+(def ^:private default-moonshot-llm-metabot-model
+  "Default Moonshot model used for Metabot when no explicit model is selected."
+  "kimi-k3")
 
 (def ^:private default-openai-llm-metabot-model
   "Default OpenAI model used for Metabot when no explicit model is selected."
@@ -146,6 +150,7 @@
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
    "mistral"                              default-mistral-llm-metabot-model
+   "moonshot"                             default-moonshot-llm-metabot-model
    "openai"                               default-openai-llm-metabot-model
    "openrouter"                           default-openrouter-llm-metabot-model
    "zai"                                  default-zai-llm-metabot-model
@@ -267,7 +272,7 @@
     (validate-direct-provider! value)))
 
 (defsetting llm-metabot-provider
-  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.")
+  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `moonshot/kimi-k3`, `openrouter/anthropic/claude-haiku-4.5`.")
   :type             :string
   :encryption       :no
   :default          default-llm-metabot-provider
@@ -311,6 +316,7 @@
                     :session-token     (non-blank (llm.settings/llm-bedrock-session-token))
                     :region            (non-blank (llm.settings/llm-bedrock-region))})
     "mistral"    (configured-api-key-credentials (llm.settings/llm-mistral-api-key))
+    "moonshot"   (configured-api-key-credentials (llm.settings/llm-moonshot-api-key))
     "openai"     (configured-api-key-credentials (llm.settings/llm-openai-api-key))
     "openrouter" (configured-api-key-credentials (llm.settings/llm-openrouter-api-key))
     "zai"        (configured-api-key-credentials (llm.settings/llm-zai-api-key))

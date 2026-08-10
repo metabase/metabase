@@ -178,21 +178,38 @@ function handleCollectionItemsResponse({
   const models = modelsParam ?? url.searchParams.getAll("models");
   const pinnedState = url.searchParams.get("pinned_state");
 
-  // When the models filter is an empty array, return all items.
-  // In the API, omitting the `models` param returns all collection items.
-  const matchedItems = collectionItems
-    .filter(({ model }) => models.length === 0 || models.includes(model))
-    .filter((item) => matchesPinnedState(item, pinnedState));
+  // As in the API, requesting no models at all returns every item.
+  const matchedItems: CollectionItem[] = models.includes("no_models")
+    ? []
+    : collectionItems
+        .filter(({ model }) => models.length === 0 || models.includes(model))
+        .filter((item) => matchesPinnedState(item, pinnedState));
 
-  const limit = Number(url.searchParams.get("limit")) || matchedItems.length;
+  const q = url.searchParams.get("q")?.toLowerCase().trim();
+  const searchedItems = q
+    ? matchedItems.filter(({ name }) => name.toLowerCase().includes(q))
+    : matchedItems;
+
+  const limit = Number(url.searchParams.get("limit")) || searchedItems.length;
   const offset = Number(url.searchParams.get("offset")) || 0;
 
-  return {
-    data: matchedItems.slice(offset, offset + limit),
-    total: matchedItems.length,
+  const response = {
+    data: searchedItems.slice(offset, offset + limit),
+    total: searchedItems.length,
     models,
     limit,
     offset,
+  };
+
+  if (url.searchParams.get("include_available_models") !== "true") {
+    return response;
+  }
+
+  return {
+    ...response,
+    available_models: Array.from(
+      new Set(collectionItems.map((item) => item.model)),
+    ),
   };
 }
 

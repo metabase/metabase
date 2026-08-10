@@ -18,6 +18,8 @@ import type {
 import {
   getExplorationPages,
   getExplorationQueryGroupStatus,
+  isRestartableExplorationThreadStatus,
+  isTerminalExplorationThreadStatus,
 } from "metabase-types/api";
 
 import {
@@ -42,7 +44,6 @@ export interface ExplorationTreeHeading {
   thread?: ExplorationThread;
   status?: ExplorationQueryStatus;
   lastActivityAt?: string;
-  hideable?: boolean;
   pageIds?: number[];
   allHidden?: boolean;
 }
@@ -76,7 +77,7 @@ function threadHeadingStatus(
   return match(thread.status)
     .with("failed", () => "error" as const)
     .with("canceled", () => "canceled" as const)
-    .with("completed", "empty", () => "done" as const)
+    .with("completed", "empty", "forbidden", () => "done" as const)
     .with("pending", "running", () =>
       getExplorationQueryGroupStatus(thread.queries ?? []),
     )
@@ -112,15 +113,13 @@ function getHeadingHideState(nodes: ITreeNodeItem<ExplorationTreeNode>[]): {
   };
 }
 
-interface GetExplorationSidebarTreeOptions {
-  keepEmptyInitialThread?: boolean;
-}
-
 export function getExplorationSidebarTree(
   exploration: Exploration,
   treeItemFilter: TreeItemFilter,
   sortOrder: ExplorationSortOrder = DEFAULT_SORT_ORDER,
-  { keepEmptyInitialThread = false }: GetExplorationSidebarTreeOptions = {},
+  {
+    keepEmptyRestartableThreads = false,
+  }: { keepEmptyRestartableThreads?: boolean } = {},
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   const threads = exploration.threads ?? [];
   const initialThreadId = threads[0]?.id;
@@ -183,8 +182,6 @@ export function getExplorationSidebarTree(
         lastActivityAt: latestTimestamp(
           (thread.queries ?? []).map((query) => query.finished_at),
         ),
-        // Every group is hideable except the first thread ("Initial investigation").
-        hideable: index > 0,
         ...getHeadingHideState(children),
       },
       children,
@@ -216,10 +213,7 @@ export function getExplorationSidebarTree(
     }
   });
 
-  return pruneEmptyHeadings(
-    topLevel,
-    keepEmptyInitialThread ? initialThreadId : undefined,
-  );
+  return pruneEmptyHeadings(topLevel, keepEmptyRestartableThreads);
 }
 
 type PageKey = string;
@@ -248,24 +242,38 @@ function getInterestingnessByPageKey(
   return interestingnessByPageKey;
 }
 
+function isEmptyRestartableThreadHeading(
+  node: ITreeNodeItem<ExplorationTreeNode>,
+): boolean {
+  const data = node.data;
+  return (
+    data?.type === "heading" &&
+    data.thread != null &&
+    isRestartableExplorationThreadStatus(data.thread.status)
+  );
+}
+
 function pruneEmptyHeadings(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
-  initialThreadId: ExplorationThreadId | undefined,
+  keepEmptyRestartableThreads: boolean,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   return nodes
     .map((node) =>
       node.children?.length
         ? {
             ...node,
-            children: pruneEmptyHeadings(node.children, initialThreadId),
+            children: pruneEmptyHeadings(
+              node.children,
+              keepEmptyRestartableThreads,
+            ),
           }
         : node,
     )
     .filter(
       (node) =>
         node.data?.type !== "heading" ||
-        node.id === initialThreadId ||
-        (node.children?.length ?? 0) > 0,
+        (node.children?.length ?? 0) > 0 ||
+        (keepEmptyRestartableThreads && isEmptyRestartableThreadHeading(node)),
     );
 }
 
@@ -373,7 +381,6 @@ function getExplorationQueryTree(
             isExplorationTreePage(child) ? (child.data?.queries ?? []) : [],
           ),
         ),
-        hideable: true,
         ...getHeadingHideState(children),
       },
       children,
@@ -501,6 +508,85 @@ export function pickInitialSidebarPage(
     }
   }
   return null;
+}
+
+export function treeHasPages(
+  tree: ITreeNodeItem<ExplorationTreeNode>[],
+): boolean {
+  return flattenTree(tree).some((node) => node.data?.type === "page");
+}
+
+export type ExplorationSidebarContentMode =
+  | "loading"
+  | "forbidden"
+  | "all-hidden"
+  | "empty"
+  | "tree";
+
+export interface ExplorationSidebarModel {
+  tree: ITreeNodeItem<ExplorationTreeNode>[];
+  contentMode: ExplorationSidebarContentMode;
+}
+
+export function getExplorationSidebarModel({
+  exploration,
+  selectedSidebarTab,
+  tabsInfo,
+  showHidden,
+  sortOrder = DEFAULT_SORT_ORDER,
+}: {
+  exploration: Exploration;
+  selectedSidebarTab: ExplorationSidebarTab;
+  tabsInfo: ExplorationSidebarTabsInfo;
+  showHidden: boolean;
+  sortOrder?: ExplorationSortOrder;
+}): ExplorationSidebarModel {
+  const tabFilter = tabsInfo[selectedSidebarTab].treeItemFilter;
+  const treeItemFilter = showHidden
+    ? tabFilter
+    : (node: ITreeNodeItem<ExplorationTreeNode>) =>
+        tabFilter(node) && !isHiddenTreeItem(node);
+
+  // Empty failed/canceled threads only belong on All
+  const keepEmptyRestartableThreads = selectedSidebarTab === "all";
+  const tree = getExplorationSidebarTree(
+    exploration,
+    treeItemFilter,
+    sortOrder,
+    { keepEmptyRestartableThreads },
+  );
+  const treeWithHidden = getExplorationSidebarTree(
+    exploration,
+    tabFilter,
+    sortOrder,
+    { keepEmptyRestartableThreads },
+  );
+
+  const hasPages = treeHasPages(tree);
+  const initialThread = exploration.threads?.[0];
+
+  let contentMode: ExplorationSidebarContentMode;
+  if (
+    selectedSidebarTab === "all" &&
+    initialThread != null &&
+    !isTerminalExplorationThreadStatus(initialThread.status) &&
+    !hasPages
+  ) {
+    contentMode = "loading";
+  } else if (
+    !hasPages &&
+    (exploration.threads ?? []).some((thread) => thread.status === "forbidden")
+  ) {
+    contentMode = "forbidden";
+  } else if (!showHidden && tree.length === 0 && treeWithHidden.length > 0) {
+    contentMode = "all-hidden";
+  } else if (tree.length === 0) {
+    contentMode = "empty";
+  } else {
+    contentMode = "tree";
+  }
+
+  return { tree, contentMode };
 }
 
 export type ExplorationSidebarTabsInfo = Record<
