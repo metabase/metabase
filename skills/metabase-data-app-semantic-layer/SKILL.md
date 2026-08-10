@@ -103,7 +103,7 @@ If schema generation fails while building a selected saved question, model, or m
 
 ## Synchronize every end-to-end prototype query
 
-For end-to-end prototype data apps, treat every Metabase query as permission-bound. Before using a query in React, define its fixed source and clauses in `queries/<name>.query.ts` as a named export whose initializer is a direct `defineQuery({...})` call. Import that definition into React. Do not pass an inline table-source query directly to `useMetabaseQuery` or `useMetabaseQueryObject`, even for read-only, filter-option, or helper queries.
+For end-to-end prototype data apps, treat every Metabase query as permission-bound. Define queries as named exports with `defineQuery(...)` calls in `<app-root>/queries/`. The `queries/` directory must be a direct child of the data-app root, beside `package.json`; never put synchronized definitions under `src/queries/` or another source directory because `sync-queries` does not scan them. Import those definitions into React. Do not pass an inline table-source query directly to `useMetabaseQuery` or `useMetabaseQueryObject`, even for read-only, filter-option, or helper queries.
 
 ```ts
 import { defineQuery } from "@metabase/embedding-sdk-react/data-app";
@@ -113,6 +113,8 @@ export const RevenueQuery = defineQuery({ source: schema.tables.orders });
 ```
 
 Ensure `package.json` defines `"sync-queries": "embedding-sdk-react data-apps sync-queries"`. Run `npm run sync-queries` after adding, changing, renaming, or removing a query definition. The command loads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, creates or reconciles the saved questions, injects `savedQuestionSourceId`, and updates `queries_metadata.json`.
+
+Before synchronization, verify that every `*.query.ts` definition is under the root-level `queries/` directory and that none remain under `src/queries/`. Treat a successful run that discovers no definitions as a failure when the app contains Metabase queries.
 
 Treat inline `savedQuestionSourceId` values and `queries_metadata.json` as generated synchronization state. Do not delete or manually edit either one. If an inline ID is accidentally missing but the query's table and authored hash still match one unclaimed lockfile entry, `npm run sync-queries` restores it automatically.
 
