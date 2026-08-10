@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -28,6 +29,39 @@
   {(format "data_apps/%s/data_app.yaml" dir)
    (format "name: %s\npath: %s\n" name path)
    (format "data_apps/%s/%s" dir path) bundle})
+
+(deftest sync-creates-stable-permission-resources-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
+      (data-app.sync/import-from-snapshot! (snapshot files))
+      (let [{:keys [resource_collection_id permission_group_id]}
+            (t2/select-one :model/DataApp :name "sales")]
+        (testing "the first sync creates a dedicated group and collection"
+          (is (pos-int? resource_collection_id))
+          (is (pos-int? permission_group_id))
+          (is (= "Data App: sales"
+                 (t2/select-one-fn :name :model/Collection :id resource_collection_id)))
+          (is (= "Data App: sales"
+                 (t2/select-one-fn :name :model/PermissionsGroup :id permission_group_id)))
+          (is (t2/exists? :model/Permissions
+                          :group_id permission_group_id
+                          :object (perms/collection-read-path resource_collection_id)))
+          (is (not (t2/exists? :model/Permissions
+                               :group_id permission_group_id
+                               :object (perms/collection-readwrite-path resource_collection_id))))
+          (is (every? #(= :no %)
+                      (t2/select-fn-vec :perm_value :model/DataPermissions
+                                        :group_id permission_group_id
+                                        :perm_type "perms/create-queries"))))
+        (testing "later syncs reuse the same resources"
+          (data-app.sync/import-from-snapshot! (snapshot files))
+          (is (=? {:resource_collection_id resource_collection_id
+                   :permission_group_id     permission_group_id}
+                  (t2/select-one :model/DataApp :name "sales"))))
+        (testing "removing the app deletes its resources"
+          (data-app.sync/import-from-snapshot! (snapshot {}))
+          (is (not (t2/exists? :model/Collection :id resource_collection_id)))
+          (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))))))))
 
 (deftest changed-count-tracks-content-not-sha-bumps-test
   (mt/with-model-cleanup [:model/DataApp]

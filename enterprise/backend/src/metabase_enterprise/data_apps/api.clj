@@ -60,6 +60,8 @@
    [:bundle_path     ms/NonBlankString]
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
+   [:resource_collection_id [:maybe ms/PositiveInt]]
+   [:permission_group_id     [:maybe ms/PositiveInt]]
    [:bundle_hash     [:maybe :string]]
    [:last_synced_sha [:maybe :string]]
    [:last_synced_at  [:maybe :any]]

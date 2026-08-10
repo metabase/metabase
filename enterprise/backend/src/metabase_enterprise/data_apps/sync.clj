@@ -14,6 +14,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-apps.config :as data-app.config]
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -137,6 +138,8 @@
                                      :last_synced_sha sha
                                      :last_synced_at  :%now
                                      :sync_error      nil))
+        (-> (t2/select-one :model/DataApp :name slug)
+            data-app.resources/ensure-resources!)
         (app-content-changed? existing fields)))
     (catch Throwable e
       (upsert-by-name! slug {:display_name  display_name

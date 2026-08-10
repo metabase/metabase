@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-apps.models.data-app
   (:require
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -43,6 +44,7 @@
 (def non-blob-columns
   "Columns to select for normal data-app metadata reads, excluding the raw bundle blob."
   [:id :name :display_name :bundle_path :enabled :allowed_hosts
+   :resource_collection_id :permission_group_id
    :bundle_hash :last_synced_sha :last_synced_at :sync_error
    :created_at :updated_at])
 
@@ -70,6 +72,10 @@
 (defmethod mi/can-create? :model/DataApp
   [_model _instance]
   api/*is-superuser?*)
+
+(t2/define-before-delete :model/DataApp
+  [app]
+  (data-app.resources/delete-resources! app))
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."

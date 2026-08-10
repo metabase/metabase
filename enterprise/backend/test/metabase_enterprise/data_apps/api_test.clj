@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase.test :as mt]
@@ -73,12 +74,16 @@
 (deftest superuser-can-manage-and-view-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
+        (let [app (t2/select-one :model/DataApp :name "demo")]
+          (data-app.resources/ensure-resources! app))
         (testing "a superuser can list, read metadata, and serve the bundle"
           (is (=? [{:name "demo" :display_name "Demo"}]
                   (mt/user-http-request :crowberto :get 200 "apps")))
-          (is (=? {:name "demo"}
+          (is (=? {:name "demo"
+                   :resource_collection_id pos-int?
+                   :permission_group_id pos-int?}
                   (mt/user-http-request :crowberto :get 200 "apps/demo")))
           (is (str/includes?
                (str (mt/user-real-request :crowberto :get 200 "apps/demo/bundle"))
