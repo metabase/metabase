@@ -202,6 +202,8 @@ export function CompactPinnedItemCard({
               deleteBookmark={deleteBookmark}
               onCopy={onCopy}
               onMove={onMove}
+              isSelected={showAsSelected}
+              onToggleSelected={onToggleSelected}
             />
           </EventSandbox>
         </Box>

@@ -345,6 +345,8 @@ export const Columns = {
       onMove,
       createBookmark,
       deleteBookmark,
+      isSelected,
+      onToggleSelected,
     }: ActionMenuProps) => {
       return (
         <ItemCell>
@@ -358,6 +360,8 @@ export const Columns = {
               onMove={onMove}
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
+              isSelected={isSelected}
+              onToggleSelected={onToggleSelected}
             />
           </RowActionsContainer>
         </ItemCell>

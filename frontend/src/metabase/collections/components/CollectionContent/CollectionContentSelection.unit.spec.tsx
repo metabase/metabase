@@ -312,4 +312,31 @@ describe("CollectionContent selection", () => {
     expect(await screen.findByText("1 item selected")).toBeInTheDocument();
     expect(getPinnedCard(pinnedDashboard.name)).toBeChecked();
   });
+
+  it("should select a pinned card from its overflow menu", async () => {
+    await setup();
+    const pinnedCard = screen.getByRole("link", {
+      name: new RegExp(pinnedDashboard.name),
+    });
+
+    await userEvent.click(
+      within(pinnedCard).getByRole("button", { name: "Actions" }),
+    );
+    await userEvent.click(await screen.findByText("Select"));
+
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    expect(getPinnedCard(pinnedDashboard.name)).toBeChecked();
+  });
+
+  it("should select a table row from its overflow menu", async () => {
+    await setup();
+    const row = screen.getByRole("row", {
+      name: new RegExp(tableQuestion.name),
+    });
+
+    await userEvent.click(within(row).getByRole("button", { name: "Actions" }));
+    await userEvent.click(await screen.findByText("Select"));
+
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+  });
 });

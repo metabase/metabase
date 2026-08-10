@@ -439,6 +439,37 @@ describe("CompactPinnedItemCard", () => {
         screen.queryByTestId("pinned-item-checkbox"),
       ).not.toBeInTheDocument();
     });
+
+    it("should select an item from the overflow menu", async () => {
+      const onToggleSelected = jest.fn();
+      setup({ onToggleSelected });
+
+      await userEvent.click(screen.getByRole("button", { name: "Actions" }));
+      await userEvent.click(await screen.findByText("Select"));
+
+      expect(onToggleSelected).toHaveBeenCalledWith(defaultItem);
+    });
+
+    it("should show Deselect for a selected item", async () => {
+      setup({
+        isSelectMode: true,
+        isSelected: true,
+        onToggleSelected: jest.fn(),
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Actions" }));
+
+      expect(await screen.findByText("Deselect")).toBeInTheDocument();
+    });
+
+    it("should omit selection from the menu without a toggle callback", async () => {
+      setup();
+
+      await userEvent.click(screen.getByRole("button", { name: "Actions" }));
+
+      expect(screen.queryByText("Select")).not.toBeInTheDocument();
+      expect(screen.queryByText("Deselect")).not.toBeInTheDocument();
+    });
   });
 
   describe("recent items", () => {
