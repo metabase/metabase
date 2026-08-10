@@ -43,7 +43,8 @@
           (let [exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" output)))]
             (is (= [(:name (lib.metadata/database (mt/metadata-provider))) "PUBLIC" "PRODUCTS"]
                    (get-in exported ["stages" 0 "source-table"])))
-            (is (not (contains? exported "lib/metadata")))))))))
+            (is (not-any? #(and (map? %) (contains? % "lib/metadata"))
+                          (tree-seq coll? seq exported)))))))))
 
 (deftest get-transform-details-python-source-test
   (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
