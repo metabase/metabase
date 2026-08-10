@@ -11,6 +11,14 @@ jobs:
   files-changed:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
+    outputs:
+      actionlint: ${{ steps.changes.outputs.actionlint }}
+      actionlint_files: ${{ steps.changes.outputs.actionlint_files }}
+      codeql: ${{ steps.changes.outputs.codeql }}
+      i18n: ${{ steps.changes.outputs.i18n }}
+      openapi: ${{ steps.changes.outputs.openapi }}
+      snowplow: ${{ steps.changes.outputs.snowplow }}
+      yaml: ${{ steps.changes.outputs.yaml }}
     steps:
       - uses: actions/checkout@v6
 
@@ -20,6 +28,7 @@ jobs:
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+          list-files: shell
 
   lint:
     needs: files-changed
@@ -37,17 +46,17 @@ jobs:
       # Always required by whitespace linter, also used by OpenAPI spec validation
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
- 
+
       # Lint whitespace, always runs
       - run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
         name: Run Whitespace Linter
 
-      # Lint YAML 
+      # Lint YAML
       - name: Lint YAML files
         if: needs.files-changed.outputs.yaml == 'true'
         run: bun run lint-yaml
-      
-      # Lint Github Actions 
+
+      # Lint Github Actions
       - name: Setup actionlint
         if: needs.files-changed.outputs.actionlint == 'true'
         id: download
@@ -87,7 +96,7 @@ jobs:
           trap-caching: false
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
-  
+
   i18n:
     needs: files-changed
     if: needs.files-changed.outputs.i18n == 'true'
