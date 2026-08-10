@@ -156,6 +156,26 @@
                                                                       :collection {:id root-id :name "Root Regular"}}}]}]}}
                 (ex-data ex)))))))
 
+(deftest bulk-set-remote-sync-root-dependency-collection-is-explicit-nil-test
+  (testing "a dependency in the root collection reports `:collection nil` — the root is a place, not a missing value"
+    (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
+                   :model/Card {source-card-id :id} {:name "Root Card"
+                                                     :collection_id nil
+                                                     :database_id (mt/id)
+                                                     :dataset_query (mt/mbql-query venues)}
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id synced-id
+                                  :database_id (mt/id)
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+      (let [ex    (is (thrown? clojure.lang.ExceptionInfo
+                               (core/bulk-set-remote-sync {synced-id true})))
+            [dep] (get-in (ex-data ex) [:errors :collections 0 :dependencies])]
+        (is (= source-card-id (:id dep)))
+        (is (= {:type :none} (:remedy dep)))
+        (testing "the key is present and nil, so clients can tell root from unresolvable"
+          (is (contains? dep :collection))
+          (is (nil? (:collection dep))))))))
+
 (deftest bulk-set-remote-sync-snippet-dependency-remedy-is-library-test
   (testing "a snippet dependency asks for Library sync — its eligibility keys on the Library, not its collection"
     (with-library-not-synced

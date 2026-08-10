@@ -224,6 +224,16 @@
                     :personal (some? (:personal_owner_id top))}}
       {:type :none})))
 
+(defn- dependency-collection
+  "Where the dependency lives, as a map to merge into its description. An explicit `nil` says the root
+  collection — a real place, not a missing value — while an absent key says we could not resolve the
+  collection at all, so clients don't read one as the other."
+  [{:keys [collection_id]} collections]
+  (if collection_id
+    (when-let [collection (get collections collection_id)]
+      {:collection (select-keys collection [:id :name])})
+    {:collection nil}))
+
 (defn- describe-dependencies
   "Renders [[collections/ineligible-dependencies]] for the API: what each dependency is, the collection it
   lives in, and the collection (or the Library) that would have to be synced to cover it."
@@ -233,14 +243,13 @@
         collections (collections-by-id (map (comp :collection_id :instance) deps))
         top-levels  (collections-by-id (map top-level-ancestor-id (vals collections)))]
     (mapv (fn [{:keys [model id instance] :as dep}]
-            (cond-> {:model  (if (= "Card" model)
-                               (get card-models id "card")
-                               (model-name->collection-item-model model))
-                     :id     id
-                     :name   (get names [model id])
-                     :remedy (sync-remedy dep collections top-levels)}
-              (:collection_id instance)
-              (assoc :collection (select-keys (get collections (:collection_id instance)) [:id :name]))))
+            (merge {:model  (if (= "Card" model)
+                              (get card-models id "card")
+                              (model-name->collection-item-model model))
+                    :id     id
+                    :name   (get names [model id])
+                    :remedy (sync-remedy dep collections top-levels)}
+                   (dependency-collection instance collections)))
           deps)))
 
 (defn- non-remote-synced-dependency-failures

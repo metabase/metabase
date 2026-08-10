@@ -10,6 +10,7 @@ import type { RemoteSyncSettingsFormState } from "../../types";
 import {
   canSyncRequiredCollections,
   getBlockedMessage,
+  getRequiredCollectionRows,
   getRequiredCollections,
 } from "../../utils";
 
@@ -33,7 +34,9 @@ export const RemoteSyncDependencyModal = ({
     return null;
   }
 
+  // Rows are for display and can include Our analytics; only real remedies are safe to switch on.
   const requiredCollections = getRequiredCollections(failures);
+  const requiredCollectionRows = getRequiredCollectionRows(failures);
   const canSync = canSyncRequiredCollections(failures);
 
   const handleDismiss = () => setDismissedFailures(failures);
@@ -63,10 +66,10 @@ export const RemoteSyncDependencyModal = ({
       <Stack gap="lg" pt="md">
         <Text>{getBlockedMessage(failures)}</Text>
 
-        {requiredCollections.length > 0 && (
+        {requiredCollectionRows.length > 0 && (
           <Card withBorder p={0} shadow="none">
             <Stack gap={0}>
-              {requiredCollections.map((collection) => (
+              {requiredCollectionRows.map((collection) => (
                 <Group
                   key={collection.id}
                   gap="sm"
@@ -74,27 +77,22 @@ export const RemoteSyncDependencyModal = ({
                   py="sm"
                   px="md"
                   justify="space-between"
-                  bg={collection.personal ? "background-secondary" : undefined}
+                  bg={collection.syncable ? undefined : "background-secondary"}
                 >
-                  {collection.personal ? (
-                    <>
-                      <Group>
-                        <Icon name="person" c="text-secondary" />
-                        <Text fw="medium">{collection.name}</Text>
-                      </Group>
-                      <Text c="text-secondary">{t`Can't be synced`}</Text>
-                    </>
+                  <Group>
+                    <Icon
+                      name={collection.personal ? "person" : "collection"}
+                      c="text-secondary"
+                    />
+                    <Text fw="medium">{collection.name}</Text>
+                  </Group>
+                  {collection.syncable ? (
+                    <Group gap="sm">
+                      <Icon name="warning_triangle_filled" c="warning" />
+                      <Text c="feedback-warning-strong">{t`Sync to continue`}</Text>
+                    </Group>
                   ) : (
-                    <>
-                      <Group>
-                        <Icon name="collection" c="text-secondary" />
-                        <Text fw="medium">{collection.name}</Text>
-                      </Group>
-                      <Group gap="sm">
-                        <Icon name="warning_triangle_filled" c="warning" />
-                        <Text c="feedback-warning-strong">{t`Sync to continue`}</Text>
-                      </Group>
-                    </>
+                    <Text c="text-secondary">{t`Can't be synced`}</Text>
                   )}
                 </Group>
               ))}

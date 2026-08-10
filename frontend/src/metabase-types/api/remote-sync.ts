@@ -159,8 +159,8 @@ export type RemoteSyncIneligibleDependency = {
   model: RemoteSyncDependencyModel;
   id: number;
   name: string;
-  /** undefined when dep is in our analytics or dep is a native query snippet */
-  collection?: RemoteSyncCollectionRef;
+  /** `null` is the root collection; absent means the backend couldn't resolve one. */
+  collection?: RemoteSyncCollectionRef | null;
   remedy: RemoteSyncDependencyRemedy;
 };
 

@@ -36,11 +36,12 @@ const PERSONAL_DEPENDENCY: RemoteSyncIneligibleDependency = {
   },
 };
 
-// Root content: no `collection` at all, and no remedy to offer.
+// `collection: null` is the root collection
 const ROOT_DEPENDENCY: RemoteSyncIneligibleDependency = {
   model: "card",
   id: 512,
   name: "Orphaned",
+  collection: null,
   remedy: { type: "none" },
 };
 
@@ -227,9 +228,23 @@ describe("RemoteSyncDependencyModal", () => {
 
     const modal = await screen.findByRole("dialog");
     expect(
-      within(modal).getByText(/saved in Our analytics/),
+      within(modal).getByText(/can.t be synced where it currently lives/),
     ).toBeInTheDocument();
     expectNoFixOffered(modal);
+  });
+
+  it("lists Our analytics as unsyncable, rather than leaving the list empty", async () => {
+    await setupRefusedSave({
+      body: createRefusal(SYNCABLE_DEPENDENCY, ROOT_DEPENDENCY),
+    });
+
+    const modal = await screen.findByRole("dialog");
+    expect(within(modal).getByText("Our analytics")).toBeInTheDocument();
+    // The syncable remedy is still listed, but nothing here is actionable while the root one stands.
+    expect(
+      within(modal).getByText(REQUIRED_COLLECTION.name),
+    ).toBeInTheDocument();
+    expect(within(modal).getByText("Can't be synced")).toBeInTheDocument();
   });
 
   it("offers no fix when the dependency is a snippet, since the Library has no id to switch on", async () => {

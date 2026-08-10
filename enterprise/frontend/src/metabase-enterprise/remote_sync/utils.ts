@@ -4,7 +4,6 @@ import type { ColorName } from "metabase/ui/colors/types";
 import type {
   Collection,
   IconName,
-  RemoteSyncCollectionRef,
   RemoteSyncDependencyFailure,
   RemoteSyncEntityStatus,
   RemoteSyncRemedyCollection,
@@ -169,15 +168,6 @@ export const parseSyncError = (exportError: SyncError | null): ParsedError => {
   };
 };
 
-export const getBlockedCollections = (
-  failures: RemoteSyncDependencyFailure[],
-): RemoteSyncCollectionRef[] => failures.map((failure) => failure.collection);
-
-export const getBlockedCollectionIds = (
-  failures: RemoteSyncDependencyFailure[],
-): Set<number> =>
-  new Set(getBlockedCollections(failures).map((collection) => collection.id));
-
 // Deduped because remedies point at top-level collections, so dependencies collapse onto the same one.
 export const getRequiredCollections = (
   failures: RemoteSyncDependencyFailure[],
@@ -196,11 +186,6 @@ export const getRequiredCollections = (
 
   return [...byId.values()];
 };
-
-export const getRequiredCollectionIds = (
-  failures: RemoteSyncDependencyFailure[],
-): Set<number> =>
-  new Set(getRequiredCollections(failures).map((collection) => collection.id));
 
 // `personal` sits on the remedy — the top-level ancestor — not the collection the dependency is in.
 export const getCollectionIdsBlockedByPersonalContent = (
@@ -227,7 +212,7 @@ export const requiresLibrarySync = (
     ),
   );
 
-// A `none` remedy means root content, which is never syncable — it has to be moved instead.
+// A `none` remedy leaves nothing to switch on, so the content has to move instead.
 export const requiresContentMove = (
   failures: RemoteSyncDependencyFailure[],
 ): boolean =>
@@ -236,6 +221,55 @@ export const requiresContentMove = (
       (dependency) => dependency.remedy.type === "none",
     ),
   );
+
+export const ROOT_COLLECTION_ROW_ID = "root";
+
+export type RequiredCollectionRow = {
+  id: number | typeof ROOT_COLLECTION_ROW_ID;
+  name: string;
+  personal: boolean;
+  syncable: boolean;
+};
+
+const getUnsyncableRows = (
+  failures: RemoteSyncDependencyFailure[],
+): RequiredCollectionRow[] => {
+  const rows = failures
+    .flatMap((failure) => failure.dependencies)
+    .filter((dependency) => dependency.remedy.type === "none")
+    .flatMap((dependency): RequiredCollectionRow[] => {
+      const { collection } = dependency;
+
+      // Absent means the backend couldn't resolve one, so there is nothing honest to name.
+      if (collection === undefined) {
+        return [];
+      }
+      return collection === null
+        ? [
+            {
+              id: ROOT_COLLECTION_ROW_ID,
+              name: t`Our analytics`,
+              personal: false,
+              syncable: false,
+            },
+          ]
+        : [{ ...collection, personal: false, syncable: false }];
+    });
+
+  return [...new Map(rows.map((row) => [row.id, row])).values()];
+};
+
+export const getRequiredCollectionRows = (
+  failures: RemoteSyncDependencyFailure[],
+): RequiredCollectionRow[] => [
+  ...getRequiredCollections(failures).map(({ id, name, personal }) => ({
+    id,
+    name,
+    personal,
+    syncable: !personal,
+  })),
+  ...getUnsyncableRows(failures),
+];
 
 // `every`, not `some`: one dependency we can't toggle makes this a partial fix, which is refused again.
 export const canSyncRequiredCollections = (
@@ -252,7 +286,7 @@ export const canSyncRequiredCollections = (
 
 export type BlockedReason =
   | "personal-content"
-  | "root-content"
+  | "unsyncable-content"
   | "library"
   | "linked-collections";
 
@@ -264,7 +298,7 @@ export const getBlockedReason = (
     return "personal-content";
   }
   if (requiresContentMove(failures)) {
-    return "root-content";
+    return "unsyncable-content";
   }
   if (requiresLibrarySync(failures)) {
     return "library";
@@ -278,8 +312,8 @@ export const getBlockedMessage = (
   switch (getBlockedReason(failures)) {
     case "personal-content":
       return t`Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue.`;
-    case "root-content":
-      return t`Dashboards or questions in this collection rely on content saved in Our analytics, which can’t be synced on its own. Move that content into a collection you’re syncing to continue.`;
+    case "unsyncable-content":
+      return t`Dashboards or questions in this collection rely on content that can’t be synced where it currently lives. Move that content into a collection you’re syncing to continue.`;
     case "library":
       return t`Dashboards or questions in this collection rely on snippets, which sync with the Library. Sync the Library as well to continue.`;
     case "linked-collections":

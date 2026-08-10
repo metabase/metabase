@@ -7,12 +7,10 @@ import { createMockCollection } from "metabase-types/api/mocks";
 import {
   buildCollectionMap,
   canSyncRequiredCollections,
-  getBlockedCollectionIds,
-  getBlockedCollections,
   getBlockedReason,
   getCollectionIdsBlockedByPersonalContent,
   getCollectionPathSegments,
-  getRequiredCollectionIds,
+  getRequiredCollectionRows,
   getRequiredCollections,
   isTableChildModel,
   requiresContentMove,
@@ -281,29 +279,6 @@ describe("remote_sync utils", () => {
       },
     ];
 
-    describe("getBlockedCollections", () => {
-      it("returns the collections we tried to sync", () => {
-        expect(getBlockedCollections(FAILURES)).toEqual([
-          { id: 14, name: "Marketing" },
-          { id: 22, name: "Ops" },
-        ]);
-      });
-
-      it("returns nothing when there are no failures", () => {
-        expect(getBlockedCollections([])).toEqual([]);
-      });
-    });
-
-    describe("getBlockedCollectionIds", () => {
-      it("reduces the blocked collections to an id set", () => {
-        expect(getBlockedCollectionIds(FAILURES)).toEqual(new Set([14, 22]));
-      });
-
-      it("is empty when there are no failures", () => {
-        expect(getBlockedCollectionIds([]).size).toBe(0);
-      });
-    });
-
     describe("getRequiredCollections", () => {
       it("flattens remedies across every failure and dedupes by id", () => {
         expect(getRequiredCollections(FAILURES)).toEqual([
@@ -350,16 +325,6 @@ describe("remote_sync utils", () => {
         expect(getRequiredCollections(personal)).toEqual([
           { id: 5, name: "Nick's stuff", personal: true },
         ]);
-      });
-    });
-
-    describe("getRequiredCollectionIds", () => {
-      it("reduces the required collections to a deduped id set", () => {
-        expect(getRequiredCollectionIds(FAILURES)).toEqual(new Set([7]));
-      });
-
-      it("is empty when no remedy names a collection", () => {
-        expect(getRequiredCollectionIds([]).size).toBe(0);
       });
     });
 
@@ -441,6 +406,16 @@ describe("remote_sync utils", () => {
       model: "card",
       id: 3,
       name: "Orphaned",
+      collection: null,
+      remedy: { type: "none" },
+    };
+
+    // No remedy, but it does live somewhere — the backend couldn't resolve a syncable ancestor.
+    const UNRESOLVED_DEPENDENCY: RemoteSyncIneligibleDependency = {
+      model: "card",
+      id: 6,
+      name: "Stranded",
+      collection: { id: 9, name: "Dangling" },
       remedy: { type: "none" },
     };
     const SNIPPET_DEPENDENCY: RemoteSyncIneligibleDependency = {
@@ -488,7 +463,7 @@ describe("remote_sync utils", () => {
       it("ranks root content above the Library, since it can't be synced at all", () => {
         expect(
           getBlockedReason(failureWith(SNIPPET_DEPENDENCY, ROOT_DEPENDENCY)),
-        ).toBe("root-content");
+        ).toBe("unsyncable-content");
       });
 
       it("ranks personal content above every other reason", () => {
@@ -501,6 +476,67 @@ describe("remote_sync utils", () => {
             ),
           ),
         ).toBe("personal-content");
+      });
+    });
+
+    describe("getRequiredCollectionRows", () => {
+      it("marks a syncable remedy as actionable", () => {
+        expect(
+          getRequiredCollectionRows(failureWith(SYNCABLE_DEPENDENCY)),
+        ).toEqual([
+          { id: 7, name: "Finance", personal: false, syncable: true },
+        ]);
+      });
+
+      it("keeps a personal remedy in the list but not as actionable", () => {
+        expect(
+          getRequiredCollectionRows(failureWith(PERSONAL_DEPENDENCY)),
+        ).toEqual([
+          { id: 5, name: "Personal", personal: true, syncable: false },
+        ]);
+      });
+
+      it("names the collection a stranded dependency actually lives in", () => {
+        expect(
+          getRequiredCollectionRows(failureWith(UNRESOLVED_DEPENDENCY)),
+        ).toEqual([
+          { id: 9, name: "Dangling", personal: false, syncable: false },
+        ]);
+      });
+
+      it("adds Our analytics for a root dependency, which carries no remedy of its own", () => {
+        expect(getRequiredCollectionRows(failureWith(ROOT_DEPENDENCY))).toEqual(
+          [
+            {
+              id: "root",
+              name: "Our analytics",
+              personal: false,
+              syncable: false,
+            },
+          ],
+        );
+      });
+
+      it("lists the syncable remedy alongside Our analytics", () => {
+        expect(
+          getRequiredCollectionRows(
+            failureWith(SYNCABLE_DEPENDENCY, ROOT_DEPENDENCY),
+          ),
+        ).toEqual([
+          { id: 7, name: "Finance", personal: false, syncable: true },
+          {
+            id: "root",
+            name: "Our analytics",
+            personal: false,
+            syncable: false,
+          },
+        ]);
+      });
+
+      it("is empty when only the Library is implicated", () => {
+        expect(
+          getRequiredCollectionRows(failureWith(SNIPPET_DEPENDENCY)),
+        ).toEqual([]);
       });
     });
 
