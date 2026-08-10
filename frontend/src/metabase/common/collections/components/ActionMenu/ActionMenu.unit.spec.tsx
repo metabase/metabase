@@ -23,6 +23,7 @@ interface SetupOpts {
   collection?: Collection;
   databases?: Database[];
   isXrayEnabled?: boolean;
+  withBookmarks?: boolean;
 }
 
 const setup = ({
@@ -30,6 +31,7 @@ const setup = ({
   collection = createMockCollection({ can_write: true }),
   databases = [],
   isXrayEnabled = false,
+  withBookmarks = false,
 }: SetupOpts) => {
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
@@ -43,6 +45,8 @@ const setup = ({
   const metadata = getMetadata(storeInitialState);
   const onCopy = jest.fn();
   const onMove = jest.fn();
+  const createBookmark = withBookmarks ? jest.fn() : undefined;
+  const deleteBookmark = withBookmarks ? jest.fn() : undefined;
 
   renderWithProviders(
     <ActionMenu
@@ -51,14 +55,34 @@ const setup = ({
       databases={metadata.databasesList()}
       onCopy={onCopy}
       onMove={onMove}
+      createBookmark={createBookmark}
+      deleteBookmark={deleteBookmark}
     />,
     { storeInitialState },
   );
 
-  return { onCopy, onMove };
+  return { onCopy, onMove, createBookmark, deleteBookmark };
 };
 
 describe("ActionMenu", () => {
+  describe("bookmarks", () => {
+    it("should bookmark an item with its id and model", async () => {
+      const item = createMockCollectionItem({
+        id: 1,
+        name: "Dashboard",
+        model: "dashboard",
+        can_write: true,
+      });
+
+      const { createBookmark } = setup({ item, withBookmarks: true });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Bookmark"));
+
+      expect(createBookmark).toHaveBeenCalledWith({ id: 1, type: "dashboard" });
+    });
+  });
+
   describe("moving and archiving", () => {
     it("should duplicate an item", async () => {
       const item = createMockCollectionItem({
@@ -112,9 +136,11 @@ describe("ActionMenu", () => {
         personal_owner_id: 1,
       });
 
-      setup({ item });
+      setup({ item, withBookmarks: true });
 
-      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Bookmark")).toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
@@ -126,9 +152,11 @@ describe("ActionMenu", () => {
         can_write: false,
       });
 
-      setup({ item });
+      setup({ item, withBookmarks: true });
 
-      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Bookmark")).toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });

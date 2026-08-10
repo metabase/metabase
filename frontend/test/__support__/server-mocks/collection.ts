@@ -155,6 +155,16 @@ export function setupCollectionVirtualSchemaEndpoints(
   });
 }
 
+function matchesPinnedState(item: CollectionItem, pinnedState: string | null) {
+  if (pinnedState === "is_pinned") {
+    return item.collection_position != null;
+  }
+  if (pinnedState === "is_not_pinned") {
+    return item.collection_position == null;
+  }
+  return true;
+}
+
 function handleCollectionItemsResponse({
   call,
   collectionItems,
@@ -166,13 +176,13 @@ function handleCollectionItemsResponse({
 }) {
   const url = new URL(call.url);
   const models = modelsParam ?? url.searchParams.getAll("models");
+  const pinnedState = url.searchParams.get("pinned_state");
 
   // When the models filter is an empty array, return all items.
   // In the API, omitting the `models` param returns all collection items.
-  const matchedItems =
-    models.length === 0
-      ? collectionItems
-      : collectionItems.filter(({ model }) => models.includes(model));
+  const matchedItems = collectionItems
+    .filter(({ model }) => models.length === 0 || models.includes(model))
+    .filter((item) => matchesPinnedState(item, pinnedState));
 
   const limit = Number(url.searchParams.get("limit")) || matchedItems.length;
   const offset = Number(url.searchParams.get("offset")) || 0;

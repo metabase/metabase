@@ -26,6 +26,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { Box } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -38,10 +39,7 @@ import type {
   SortingOptions,
 } from "metabase-types/api";
 
-import {
-  CollectionEmptyContent,
-  CollectionTable,
-} from "./CollectionContent.styled";
+import S from "./CollectionContent.module.css";
 
 const getDefaultSortingOptions = (
   collection: Collection | undefined,
@@ -72,8 +70,6 @@ export type CollectionItemsTableProps = {
   getIsSelected: (item: CollectionItem) => boolean;
   handleCopy: (items: CollectionItem[]) => void;
   handleMove: (items: CollectionItem[]) => void;
-  hasPinnedItems: boolean;
-  loadingPinnedItems: boolean;
   models: CollectionItemModel[];
   pageSize: number;
   showDashboardQuestions: boolean;
@@ -90,9 +86,9 @@ const DefaultEmptyContentComponent = ({
   collection?: Collection;
 }) => {
   return (
-    <CollectionEmptyContent>
+    <Box mt="calc(20vh - 3.5rem)">
       <CollectionEmptyState collection={collection} />
-    </CollectionEmptyContent>
+    </Box>
   );
 };
 
@@ -108,8 +104,6 @@ export const CollectionItemsTable = ({
   getIsSelected,
   handleCopy,
   handleMove,
-  hasPinnedItems,
-  loadingPinnedItems,
   models = ALL_MODELS,
   pageSize = COLLECTION_PAGE_SIZE,
   showDashboardQuestions = true,
@@ -119,7 +113,7 @@ export const CollectionItemsTable = ({
   visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
   onClick,
 }: CollectionItemsTableProps) => {
-  const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState<
+  const [itemsSorting, setItemsSorting] = useState<
     SortingOptions<ListCollectionItemsSortColumn>
   >(() => getDefaultSortingOptions(collection));
 
@@ -132,15 +126,18 @@ export const CollectionItemsTable = ({
     }
   }, [collectionId, resetPage]);
 
-  const handleUnpinnedItemsSortingChange = useCallback(
+  const handleItemsSortingChange = useCallback(
     (sortingOpts: SortingOptions<ListCollectionItemsSortColumn>) => {
-      setUnpinnedItemsSorting(sortingOpts);
+      setItemsSorting(sortingOpts);
       setPage(0);
     },
     [setPage],
   );
 
-  const showAllItems = isEmbeddingSdk() || isRootTrashCollection(collection);
+  // Dashboard questions are only ever listed in the SDK and in the trash.
+  const showDashboardQuestionsInList =
+    (isEmbeddingSdk() || isRootTrashCollection(collection)) &&
+    showDashboardQuestions;
 
   return (
     <CollectionItemsTableContent
@@ -155,15 +152,13 @@ export const CollectionItemsTable = ({
       getIsSelected={getIsSelected}
       handleCopy={handleCopy}
       handleMove={handleMove}
-      hasPinnedItems={hasPinnedItems}
-      loadingPinnedItems={loadingPinnedItems}
       page={page}
       pageSize={pageSize}
       selected={selected}
       selectOnlyTheseItems={selectOnlyTheseItems}
       toggleItem={toggleItem}
-      unpinnedItemsSorting={unpinnedItemsSorting}
-      unpinnedQuery={
+      itemsSorting={itemsSorting}
+      itemsQuery={
         collectionId === undefined
           ? skipToken
           : {
@@ -171,29 +166,27 @@ export const CollectionItemsTable = ({
               models,
               limit: pageSize,
               offset: pageSize * page,
-              ...(showAllItems
-                ? { show_dashboard_questions: showDashboardQuestions }
-                : { pinned_state: "is_not_pinned" }),
-              ...unpinnedItemsSorting,
+              show_dashboard_questions: showDashboardQuestionsInList,
+              ...itemsSorting,
             }
       }
       visibleColumns={visibleColumns}
       onClick={onClick}
       onNextPage={handleNextPage}
       onPreviousPage={handlePreviousPage}
-      onUnpinnedItemsSortingChange={handleUnpinnedItemsSortingChange}
+      onItemsSortingChange={handleItemsSortingChange}
     />
   );
 };
 
 type CollectionItemsTableContentProps = CollectionItemsTableProps & {
   page: number;
-  unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
-  unpinnedQuery: ListCollectionItemsRequest | typeof skipToken;
+  itemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
+  itemsQuery: ListCollectionItemsRequest | typeof skipToken;
   onNextPage: () => void;
   onPreviousPage: () => void;
-  onUnpinnedItemsSortingChange: (
-    unpinnedItemsSorting: SortingOptions<ListCollectionItemsSortColumn>,
+  onItemsSortingChange: (
+    itemsSorting: SortingOptions<ListCollectionItemsSortColumn>,
   ) => void;
   visibleColumns: CollectionContentTableColumn[];
 };
@@ -209,25 +202,23 @@ const CollectionItemsTableContent = ({
   getIsSelected,
   handleCopy,
   handleMove,
-  hasPinnedItems,
-  loadingPinnedItems,
   page,
   pageSize = COLLECTION_PAGE_SIZE,
   selected,
   selectOnlyTheseItems,
   toggleItem,
-  unpinnedItemsSorting,
-  unpinnedQuery,
+  itemsSorting,
+  itemsQuery,
   visibleColumns,
   onClick,
   onNextPage,
   onPreviousPage,
-  onUnpinnedItemsSortingChange,
+  onItemsSortingChange,
 }: CollectionItemsTableContentProps) => {
-  const { data, isLoading: loadingUnpinnedItems } =
-    useListCollectionItemsQuery(unpinnedQuery);
+  const { data, isLoading: loadingItems } =
+    useListCollectionItemsQuery(itemsQuery);
 
-  const unpinnedItems = data?.data ?? [];
+  const items = data?.data ?? [];
   const total = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
@@ -237,32 +228,31 @@ const CollectionItemsTableContent = ({
   const hasPagination: boolean = total ? total > pageSize : false;
 
   const unselected = getIsSelected
-    ? unpinnedItems.filter((item) => !getIsSelected(item))
-    : unpinnedItems;
+    ? items.filter((item) => !getIsSelected(item))
+    : items;
   const hasUnselected = unselected.length > 0;
 
   const handleSelectAll = () => {
-    selectOnlyTheseItems?.(unpinnedItems);
+    selectOnlyTheseItems?.(items);
   };
 
-  const loading = loadingPinnedItems || loadingUnpinnedItems;
-  const isEmpty = !loading && !hasPinnedItems && unpinnedItems.length === 0;
+  const isEmpty = !loadingItems && items.length === 0;
 
-  if (isEmpty && !loadingUnpinnedItems) {
+  if (isEmpty) {
     return <EmptyContentComponent collection={collection} />;
   }
 
   return (
-    <CollectionTable data-testid="collection-table">
+    <Box className={S.table} data-testid="collection-table">
       <ItemsTable
         databases={databases}
         bookmarks={bookmarks}
         createBookmark={createBookmark}
         deleteBookmark={deleteBookmark}
-        items={unpinnedItems}
+        items={items}
         collection={collection}
-        sortingOptions={unpinnedItemsSorting}
-        onSortingOptionsChange={onUnpinnedItemsSortingChange}
+        sortingOptions={itemsSorting}
+        onSortingOptionsChange={onItemsSortingChange}
         selectedItems={selected}
         hasUnselected={hasUnselected}
         getIsSelected={getIsSelected}
@@ -289,12 +279,12 @@ const CollectionItemsTableContent = ({
             page={page}
             pageSize={pageSize}
             total={total}
-            itemsLength={unpinnedItems.length}
+            itemsLength={items.length}
             onNextPage={onNextPage}
             onPreviousPage={onPreviousPage}
           />
         )}
       </div>
-    </CollectionTable>
+    </Box>
   );
 };

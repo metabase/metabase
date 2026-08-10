@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
+import { useListCollectionItemsQuery } from "metabase/api";
 import { PinnedItemSortDropTarget } from "metabase/collections/components/PinnedItemSortDropTarget";
 import { CompactPinnedItemCard } from "metabase/common/collections/components/CompactPinnedItemCard";
 import PinDropZone from "metabase/common/collections/components/PinDropZone";
@@ -8,17 +9,23 @@ import type {
   CreateBookmark,
   DeleteBookmark,
 } from "metabase/common/collections/types";
+import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import { Box, SimpleGrid, rem } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type {
+  Bookmark,
+  Collection,
+  CollectionId,
+  CollectionItem,
+} from "metabase-types/api";
 
 type Props = {
   databases?: Database[];
   bookmarks?: Bookmark[];
   createBookmark: CreateBookmark;
   deleteBookmark: DeleteBookmark;
-  items: CollectionItem[];
+  collectionId: CollectionId;
   collection: Collection;
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
@@ -29,17 +36,28 @@ export function PinnedItemsGrid({
   bookmarks,
   createBookmark,
   deleteBookmark,
-  items,
+  collectionId,
   collection,
   onCopy,
   onMove,
 }: Props) {
-  const sortedItems = useMemo(
-    () => _.sortBy(items, (item) => item.collection_position),
-    [items],
-  );
+  const { data: pinnedItemsData } = useListCollectionItemsQuery({
+    id: collectionId,
+    pinned_state: "is_pinned",
+    sort_column: "name",
+    sort_direction: "asc",
+  });
 
-  if (items.length === 0) {
+  const sortedItems = useMemo(() => {
+    // Trashed items keep their pin position, but the trash never shows a pinned section.
+    if (isRootTrashCollection(collection)) {
+      return [];
+    }
+    const items = pinnedItemsData?.data ?? [];
+    return _.sortBy(items, (item) => item.collection_position);
+  }, [pinnedItemsData, collection]);
+
+  if (sortedItems.length === 0) {
     return (
       <Box mb={rem(48)} pos="relative">
         <PinDropZone variant="pin" empty />
