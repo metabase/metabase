@@ -20,6 +20,16 @@
   (let [mp (lib-be/application-database-metadata-provider (mt/id))]
     (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
 
+(deftest ^:parallel referenced-card-ids-support-current-and-legacy-references-test
+  (let [referenced-card-ids @#'candidate-mining/referenced-card-ids]
+    (is (= #{12 34 56}
+           (referenced-card-ids
+            {:source-card 12
+             :source-table "card__34"
+             :stages [{:source-card 56}
+                      {:source-card -1}
+                      {:source-table "card__not-an-id"}]})))))
+
 (deftest predicate-candidates-canonicalize-source-atom-order-test
   (let [mp          (lib-be/application-database-metadata-provider (mt/id))
         first-field (lib.metadata/field mp (mt/id :orders :subtotal))

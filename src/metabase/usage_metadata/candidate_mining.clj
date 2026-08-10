@@ -2,7 +2,6 @@
   "Shared normalization and internal data contracts used by deterministic candidate miners."
   (:require
    [clojure.math.combinatorics :as math.combo]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [java-time.api :as t]
@@ -73,6 +72,7 @@
   separate candidates for the same table and clause."
   [x]
   (json/encode (canonical-form x)))
+
 (def ^:private candidate-default-min-view-count 10)
 (def ^:private candidate-aggregation-operators
   #{:count :sum :avg :min :max :distinct :median :stddev :var :percentile})
@@ -155,6 +155,18 @@
                 :archived false
                 :type [:in [:question :model]]))))
 
+(defn- add-card-evidence
+  [{:keys [min-view-count view-count-window-days recent-view-counts verified-ids official-ids]}
+   {:keys [id collection_id view_count] :as card}]
+  (let [view-count (if view-count-window-days
+                     (get recent-view-counts id 0)
+                     (long (or view_count 0)))]
+    (assoc card
+           :verified?            (contains? verified-ids id)
+           :official-collection? (contains? official-ids collection_id)
+           :popular?             (>= view-count min-view-count)
+           :view-count           view-count)))
+
 (defn- candidate-card-population
   [{:keys [card-columns card-ids min-view-count view-count-window-days]}]
   (let [min-view-count     (or min-view-count candidate-default-min-view-count)
@@ -164,38 +176,26 @@
         recent-view-counts (when view-count-window-days
                              (recent-card-view-counts selected-card-ids view-count-window-days))
         verified-ids       (verified-card-ids selected-card-ids)
-        official-ids       (official-collection-ids collection-ids)]
-    (cond->> cards
-      true
-      (map (fn [{:keys [id collection_id view_count] :as card}]
-             (let [view-count (if view-count-window-days
-                                (get recent-view-counts id 0)
-                                (long (or view_count 0)))]
-               (assoc card
-                      :verified?            (contains? verified-ids id)
-                      :official-collection? (contains? official-ids collection_id)
-                      :popular?             (>= view-count min-view-count)
-                      :view-count           view-count))))
-
-      ;; With no explicit IDs, preserve the original curated-or-popular default universe.
-      ;; Explicit IDs control inclusion; these signals remain evidence used by ranking.
-      (nil? card-ids)
-      (filter (some-fn :verified? :official-collection? :popular?))
-
-      true
-      (sort-by :id)
-
-      true
-      vec)))
-
-(defn- candidate-source-cards*
-  [opts]
-  (candidate-card-population (assoc opts :card-columns candidate-card-columns)))
+        official-ids       (official-collection-ids collection-ids)
+        evidence           {:min-view-count         min-view-count
+                            :view-count-window-days view-count-window-days
+                            :recent-view-counts     recent-view-counts
+                            :verified-ids           verified-ids
+                            :official-ids           official-ids}
+        cards              (map (partial add-card-evidence evidence) cards)
+        ;; With no explicit IDs, preserve the original curated-or-popular default universe.
+        ;; Explicit IDs control inclusion; these signals remain evidence used by ranking.
+        cards              (if (nil? card-ids)
+                             (filter (some-fn :verified? :official-collection? :popular?) cards)
+                             cards)]
+    (->> cards
+         (sort-by :id)
+         vec)))
 
 (defn candidate-source-cards
   "Load selected Cards and attach deterministic curation and usage evidence."
   [opts]
-  (candidate-source-cards* opts))
+  (candidate-card-population (assoc opts :card-columns candidate-card-columns)))
 
 (defn qualified-card-ids
   "Return the default persisted-cleanup population without loading query definitions."
@@ -207,22 +207,25 @@
                                      :min-view-count         min-view-count
                                      :view-count-window-days view-count-window-days}))))
 
+(defn- legacy-source-card-id
+  [source-table]
+  (when (and (string? source-table)
+             (str/starts-with? source-table "card__"))
+    (parse-long (subs source-table 6))))
+
+(defn- card-reference-ids
+  [{:keys [source-card source-table]}]
+  (filter pos-int? [source-card (legacy-source-card-id source-table)]))
+
 (defn- referenced-card-ids
   [dataset-query]
-  (let [ids (volatile! #{})]
-    (walk/postwalk
-     (fn [node]
-       (when (map? node)
-         (when (pos-int? (:source-card node))
-           (vswap! ids conj (:source-card node)))
-         (when-let [source-table (:source-table node)]
-           (when (and (string? source-table)
-                      (str/starts-with? source-table "card__"))
-             (when-let [id (parse-long (subs source-table 6))]
-               (vswap! ids conj id)))))
-       node)
-     dataset-query)
-    @ids))
+  (into #{}
+        (comp (filter map?) (mapcat card-reference-ids))
+        (tree-seq coll? seq dataset-query)))
+
+(defn- referenced-card-ids-in
+  [cards]
+  (into #{} (mapcat (comp referenced-card-ids :dataset_query)) cards))
 
 (defn- select-lineage-cards
   [ids allowed-types]
@@ -236,14 +239,13 @@
 
 (defn- candidate-lineage-index
   [cards allowed-types]
-  (loop [pending (into #{} (mapcat (comp referenced-card-ids :dataset_query)) cards)
+  (loop [pending (referenced-card-ids-in cards)
          index   {}]
-    (let [pending (set/difference pending (set (keys index)))]
-      (if (empty? pending)
-        index
-        (let [rows (select-lineage-cards pending allowed-types)]
-          (recur (into #{} (mapcat (comp referenced-card-ids :dataset_query)) rows)
-                 (into index (map (juxt :id identity)) rows)))))))
+    (if-let [unresolved-ids (not-empty (into #{} (remove #(contains? index %)) pending))]
+      (let [cards (select-lineage-cards unresolved-ids allowed-types)]
+        (recur (referenced-card-ids-in cards)
+               (into index (map (juxt :id identity)) cards)))
+      index)))
 
 (defn candidate-lineage-card-index
   "Return Cards referenced by `cards`, indexed by Card ID for lineage traversal."
@@ -285,6 +287,41 @@
       (log/debug e "Failed to resolve candidate fields")
       nil)))
 
+(defn- rewrite-physical-field-ref
+  [query stage-number expected-table-id field-ref]
+  (let [columns (direct-columns query stage-number field-ref)
+        column  (when (= 1 (count columns)) (first columns))]
+    (when (and column
+               (or (nil? expected-table-id)
+                   (= expected-table-id (:table-id column))))
+      (-> field-ref
+          (update 1 #(apply dissoc % contextual-field-option-keys))
+          (assoc 2 (:id column))))))
+
+(defn- rewrite-physical-field-refs
+  [query stage-number expected-table-id clause]
+  (let [valid?    (volatile! true)
+        rewritten (walk/postwalk
+                   (fn [node]
+                     (if-not (lib/clause-of-type? node :field)
+                       node
+                       (or (rewrite-physical-field-ref query stage-number expected-table-id node)
+                           (do
+                             (vreset! valid? false)
+                             node))))
+                   clause)]
+    (when @valid? rewritten)))
+
+(defn- valid-physical-source?
+  [clause columns expected-table-id allow-no-fields?]
+  (let [table-ids (into #{} (map :table-id) columns)]
+    (or (and allow-no-fields?
+             (empty? (clauses-of-type :field clause)))
+        (and (seq columns)
+             (= 1 (count table-ids))
+             (or (nil? expected-table-id)
+                 (= expected-table-id (first table-ids)))))))
+
 (defn physical-clause
   "Rewrite every Field ref in `clause` to a direct physical Field-id ref.
 
@@ -295,33 +332,33 @@
    (physical-clause query stage-number clause expected-table-id false))
   ([query stage-number clause expected-table-id allow-no-fields?]
    (let [columns   (direct-columns query stage-number clause)
-         table-ids (into #{} (map :table-id) columns)
-         valid?    (atom true)
-         rewritten
-         (walk/postwalk
-          (fn [x]
-            (if (lib/clause-of-type? x :field)
-              (let [field-columns (direct-columns query stage-number x)]
-                (if (= 1 (count field-columns))
-                  (let [column (first field-columns)]
-                    (if (or (nil? expected-table-id)
-                            (= expected-table-id (:table-id column)))
-                      (-> x
-                          (update 1 #(apply dissoc % contextual-field-option-keys))
-                          (assoc 2 (:id column)))
-                      (do (reset! valid? false) x)))
-                  (do (reset! valid? false) x)))
-              x))
-          clause)]
-     (when (and @valid?
-                (or (and allow-no-fields? (empty? (clauses-of-type :field clause)))
-                    (and (seq columns)
-                         (= 1 (count table-ids))
-                         (or (nil? expected-table-id)
-                             (= expected-table-id (first table-ids))))))
+         rewritten (rewrite-physical-field-refs query stage-number expected-table-id clause)]
+     (when (and rewritten
+                (valid-physical-source? clause columns expected-table-id allow-no-fields?))
        {:clause   rewritten
         :columns  (or columns [])
-        :table-id (or expected-table-id (first table-ids))}))))
+        :table-id (or expected-table-id (:table-id (first columns)))}))))
+
+(def ^:private semantic-barrier-collection-keys
+  [:joins :expressions :filters :aggregation :breakout :order-by])
+
+(def ^:private semantic-barrier-value-keys
+  [:pivot :limit :page])
+
+(defn- semantic-barrier-stage?
+  [stage]
+  (boolean
+   (or (some #(seq (get stage %)) semantic-barrier-collection-keys)
+       (some #(some? (get stage %)) semantic-barrier-value-keys))))
+
+(def ^:private contextual-projection-field-option-keys
+  [:temporal-unit :binning :source-field :join-alias])
+
+(defn- direct-projection-field?
+  [query stage-number table-id field]
+  (and (lib/clause-of-type? field :field)
+       (not-any? (second field) contextual-projection-field-option-keys)
+       (some? (physical-clause query stage-number field table-id))))
 
 (defn- projection-only-stage?
   "Whether a stage preserves physical rows and field identity for a later stage.
@@ -332,22 +369,9 @@
   (let [stage  (lib/query-stage query stage-number)
         fields (:fields stage)]
     (and (= :mbql.stage/mbql (:lib/type stage))
-         (not (seq (:joins stage)))
-         (not (seq (:expressions stage)))
-         (not (seq (:filters stage)))
-         (not (seq (:aggregation stage)))
-         (not (seq (:breakout stage)))
-         (not (seq (:order-by stage)))
-         (nil? (:pivot stage))
-         (nil? (:limit stage))
-         (nil? (:page stage))
-         (or (not (seq fields))
-             (every? (fn [field]
-                       (and (lib/clause-of-type? field :field)
-                            (not-any? #(get (second field) %)
-                                      [:temporal-unit :binning :source-field :join-alias])
-                            (some? (physical-clause query stage-number field table-id))))
-                     fields)))))
+         (not (semantic-barrier-stage? stage))
+         (or (empty? fields)
+             (every? #(direct-projection-field? query stage-number table-id %) fields)))))
 
 (defn- transparent-model-query?
   [query table-id]
@@ -366,32 +390,31 @@
 (defn resolve-transparent-source
   "Follow a projection-only saved-Card chain to its physical source table."
   [database-id source-card-id card-index eligible-card? seen]
-  (when (and (pos-int? source-card-id)
-             (not (contains? seen source-card-id)))
-    (when-let [{card-database-id :database_id
-                card-query-map   :dataset_query
-                :keys            [id name]
-                :as              card} (card-index source-card-id)]
-      (when (and (eligible-card? card)
-                 (= database-id card-database-id))
-        (when-let [card-query (query-utils/wrap-query database-id card-query-map)]
-          (let [stage (when (= 1 (lib/stage-count card-query))
-                        (lib/query-stage card-query 0))
-                source
-                (cond
-                  (pos-int? (:source-table stage))
-                  {:table-id (:source-table stage)
-                   :model-lineage []}
+  (let [candidate-card (when (and (pos-int? source-card-id)
+                                  (not (contains? seen source-card-id)))
+                         (card-index source-card-id))
+        eligible-card  (when (and candidate-card
+                                  (eligible-card? candidate-card)
+                                  (= database-id (:database_id candidate-card)))
+                         candidate-card)
+        card-query     (when eligible-card
+                         (query-utils/wrap-query database-id (:dataset_query eligible-card)))
+        stage      (when (and card-query (= 1 (lib/stage-count card-query)))
+                     (lib/query-stage card-query 0))
+        source     (cond
+                     (pos-int? (:source-table stage))
+                     {:table-id (:source-table stage)
+                      :model-lineage []}
 
-                  (pos-int? (:source-card stage))
-                  (resolve-transparent-source database-id
-                                              (:source-card stage)
-                                              card-index
-                                              eligible-card?
-                                              (conj seen source-card-id)))]
-            (when (and source
-                       (transparent-model-query? card-query (:table-id source)))
-              (update source :model-lineage conj {:id id :name name}))))))))
+                     (pos-int? (:source-card stage))
+                     (resolve-transparent-source database-id
+                                                 (:source-card stage)
+                                                 card-index
+                                                 eligible-card?
+                                                 (conj seen source-card-id)))]
+    (when (and source
+               (transparent-model-query? card-query (:table-id source)))
+      (update source :model-lineage conj (select-keys eligible-card [:id :name])))))
 
 (defn- resolve-model-source
   [database-id source-card-id model-index seen]
@@ -401,38 +424,47 @@
                               #(= :model (:type %))
                               seen))
 
+(defn- query-root-source
+  [database-id query model-index]
+  (let [stage (lib/query-stage query 0)]
+    (cond
+      (pos-int? (:source-table stage))
+      {:table-id (:source-table stage)
+       :model-lineage []}
+
+      (pos-int? (:source-card stage))
+      (resolve-model-source database-id (:source-card stage) model-index #{}))))
+
+(defn- stage-context
+  [query source stage-number]
+  (let [stage (lib/query-stage query stage-number)]
+    (when (= :mbql.stage/mbql (:lib/type stage))
+      (assoc source
+             :query query
+             :stage-number stage-number
+             :joined? (joined-stage? stage)
+             :expressions? (boolean (seq (:expressions stage)))))))
+
+(defn- traceable-stage-contexts
+  [query source]
+  (reduce
+   (fn [contexts stage-number]
+     (if-let [context (stage-context query source stage-number)]
+       (let [contexts (conj contexts context)]
+         (if (projection-only-stage? query stage-number (:table-id source))
+           contexts
+           (reduced contexts)))
+       (reduced contexts)))
+   []
+   (range (lib/stage-count query))))
+
 (defn query-stage-contexts
   "Return physically traceable MBQL stages up to the first semantic lineage barrier."
   [database-id dataset-query model-index]
-  (when-let [query (query-utils/wrap-query database-id dataset-query)]
-    (let [stage (lib/query-stage query 0)
-          source
-          (cond
-            (pos-int? (:source-table stage))
-            {:table-id (:source-table stage)
-             :model-lineage []}
-
-            (pos-int? (:source-card stage))
-            (resolve-model-source database-id (:source-card stage) model-index #{})
-
-            :else nil)]
-      (when source
-        (loop [stage-number 0
-               contexts    []]
-          (if (= stage-number (lib/stage-count query))
-            contexts
-            (let [stage   (lib/query-stage query stage-number)
-                  context (when (= :mbql.stage/mbql (:lib/type stage))
-                            (assoc source
-                                   :query query
-                                   :stage-number stage-number
-                                   :joined? (joined-stage? stage)
-                                   :expressions? (boolean (seq (:expressions stage)))))
-                  contexts (cond-> contexts context (conj context))]
-              (if (and context
-                       (projection-only-stage? query stage-number (:table-id source)))
-                (recur (inc stage-number) contexts)
-                contexts))))))))
+  (let [query  (query-utils/wrap-query database-id dataset-query)
+        source (when query (query-root-source database-id query model-index))]
+    (when source
+      (traceable-stage-contexts query source))))
 
 (defn minimal-definition
   "Build a one-stage physical-table definition containing one clause."
