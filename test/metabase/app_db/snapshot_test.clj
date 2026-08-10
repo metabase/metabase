@@ -160,6 +160,33 @@
    :changelog (changelog-fingerprint conn)
    :data      (data-fingerprint conn db-type)})
 
+(defn- timed
+  "Run `thunk` and return how many milliseconds it took."
+  [thunk]
+  (let [start (System/nanoTime)]
+    (thunk)
+    (quot (- (System/nanoTime) start) 1000000)))
+
+(defn- log-timings!
+  "Report what the snapshot buys on this machine: the cost of reaching a fully-migrated app DB by replaying the whole
+  changelog, against the cost of loading the snapshot and replaying only what comes after it. Fingerprinting is
+  outside both measurements, so these are migration cost alone.
+
+  This is the same work [[metabase.test.initialize.db/init!]] does once per test JVM, so the difference is what every
+  backend job saves at startup."
+  [db-type full-ms snapshot-ms]
+  (let [saved (- full-ms snapshot-ms)]
+    (log/infof (str "app DB snapshot timing [%s]: full changelog %dms, snapshot %s + later changesets %dms "
+                    "-- saves %dms (%.1fx)")
+               (name db-type)
+               full-ms
+               snapshot/snapshot-version
+               snapshot-ms
+               saved
+               (if (pos? snapshot-ms)
+                 (double (/ full-ms snapshot-ms))
+                 ##Inf))))
+
 ;;; --------------------------------------------------- the tests ---------------------------------------------------
 
 (deftest snapshot-loads-cleanly-test
@@ -188,13 +215,20 @@
         (let [driver  driver/*driver*
               through (snapshot/through-changeset-id)]
           (when (snapshot/available? driver)
-            (let [from-scratch  (impl/with-temp-empty-app-db [conn driver]
-                                  (impl/run-migrations-in-range! conn ["v00.00-000" nil])
+            (let [full-ms       (volatile! nil)
+                  snapshot-ms   (volatile! nil)
+                  from-scratch  (impl/with-temp-empty-app-db [conn driver]
+                                  (vreset! full-ms
+                                           (timed #(impl/run-migrations-in-range! conn ["v00.00-000" nil])))
                                   (fingerprint conn driver))
                   from-snapshot (impl/with-temp-empty-app-db [conn driver]
-                                  (snapshot/load-snapshot! conn driver)
-                                  (impl/run-migrations-in-range! conn [through nil] {:inclusive-start? false})
+                                  (vreset! snapshot-ms
+                                           (timed (fn []
+                                                    (snapshot/load-snapshot! conn driver)
+                                                    (impl/run-migrations-in-range!
+                                                     conn [through nil] {:inclusive-start? false}))))
                                   (fingerprint conn driver))]
+              (log-timings! driver @full-ms @snapshot-ms)
               (testing "same tables"
                 (is (= (set (keys (:schema from-scratch)))
                        (set (keys (:schema from-snapshot))))))
