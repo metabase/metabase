@@ -58,12 +58,12 @@ jobs:
             # script sets executable output, for details see: https://github.com/rhysd/actionlint/blob/main/docs/usage.md#use-actionlint-on-github-actions
             bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash)
           fi
- 
+
       - parallel:
         # Lint whitespace, always runs
         - name: Run Whitespace Linter
           run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
-   
+
         # Lint YAML
         - name: Lint YAML files
           if: needs.files-changed.outputs.yaml == 'true'
@@ -80,7 +80,7 @@ jobs:
           run: bun run generate-openapi
 
       # Parallel steps run asynchronously, and explicitly waiting for a parallel step means "if" statements are ignored.
-      # Move OpenAPI validation outside the parallel block so that spec generation happens asynchronously without requiring 
+      # Move OpenAPI validation outside the parallel block so that spec generation happens asynchronously without requiring
       # an explicit "wait".
       - name: Validate OpenAPI spec
         if: needs.files-changed.outputs.openapi == 'true'
