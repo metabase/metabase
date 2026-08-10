@@ -3,6 +3,7 @@ import type {
   GeneratedEntity,
 } from "metabase/api/ai-streaming/schemas";
 import { serializeCardForUrl } from "metabase/common/utils/card";
+import { matchPath } from "metabase/router";
 import type {
   CardDisplayType,
   DatasetQuery,
@@ -40,13 +41,8 @@ export function metabotConversation(conversationId: string) {
   return `/${CONVERSATION_BASE_PATH}/${conversationId}`;
 }
 
-// react-router matches the route with or without a trailing slash.
-const CONVERSATION_URL_REGEX = new RegExp(
-  `^/${CONVERSATION_BASE_PATH}/[^/]+/?$`,
-);
-
 export function isMetabotConversationUrl(pathname: string): boolean {
-  return CONVERSATION_URL_REGEX.test(pathname);
+  return matchPath(`/${CONVERSATION_BASE_PATH}/:convoId`, pathname) !== null;
 }
 
 export type ConversationChart = {

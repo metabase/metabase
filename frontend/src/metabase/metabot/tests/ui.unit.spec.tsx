@@ -146,7 +146,11 @@ describe("metabot > ui", () => {
       expect(await chat()).toBeInTheDocument();
     });
 
-    it.each(["/question/ask", "/metabot/conversation/past-conversation-id"])(
+    it.each([
+      "/question/ask",
+      "/question/ask/",
+      "/metabot/conversation/past-conversation-id",
+    ])(
       "should do nothing on the full-page metabot surface (%s)",
       async (initialRoute) => {
         const { store } = setup({ withRouter: true, initialRoute });

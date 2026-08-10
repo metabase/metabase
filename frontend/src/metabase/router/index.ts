@@ -3,6 +3,7 @@ export {
   NavLink,
   type NavLinkProps,
   type NavLinkRenderProps,
+  matchPath,
   Navigate,
   Outlet,
   Route,

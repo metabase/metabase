@@ -88,7 +88,11 @@ describe("MetabotAppBarButton", () => {
     ).not.toBeInTheDocument();
   });
 
-  it.each(["/question/ask", "/metabot/conversation/past-conversation-id"])(
+  it.each([
+    "/question/ask",
+    "/question/ask/",
+    "/metabot/conversation/past-conversation-id",
+  ])(
     "should disable the button on the full-page metabot surface (%s)",
     async (pathname) => {
       setup({ isMetabotEnabled: true, pathname });

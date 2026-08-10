@@ -8,6 +8,7 @@ describe("isMetabotConversationUrl", () => {
   it.each([
     ["/metabot/conversation/abc-123", true],
     ["/metabot/conversation/abc-123/", true],
+    ["/Metabot/Conversation/abc-123", true],
     ["/metabot/conversation/abc-123/extra", false],
     ["/metabot/conversation/", false],
     ["/metabot/conversation", false],
