@@ -3,6 +3,7 @@ import type { StoryFn } from "@storybook/react";
 import {
   IsomorphicVisualizationStory,
   SdkVisualizationStory,
+  createWaitForChartsDecorator,
 } from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -15,6 +16,7 @@ registerVisualizations();
 export default {
   title: "viz/SankeyChart",
   component: IsomorphicVisualizationStory,
+  decorators: [createWaitForChartsDecorator({ count: 1 })],
 };
 
 type SankeyStoryProps = {
