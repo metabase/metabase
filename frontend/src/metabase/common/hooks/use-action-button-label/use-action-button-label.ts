@@ -15,7 +15,7 @@ export const useActionButtonLabel = ({
   timeout = 3000,
 }: UseActionButtonLabelProps) => {
   const [label, setLabel] = useState(defaultLabel);
-  const timeoutId = useRef<number>();
+  const timeoutId = useRef<number>(undefined);
 
   const handleUpdateLabel = (newLabel: string) => {
     clearTimeout(timeoutId.current);
