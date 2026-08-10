@@ -541,7 +541,7 @@
   {:team "DevEx"
    :api  #{metabase.classloader.core
            metabase.classloader.init}
-   :uses #{util}}
+   :uses #{}}
 
   cloud-migration
   {:team "UX West"
@@ -1207,7 +1207,6 @@
            metabase.lib.schema.ref
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
-           metabase.lib.schema.test-spec
            metabase.lib.schema.util
            metabase.lib.schema.validate
            metabase.lib.types.isa
@@ -1381,7 +1380,6 @@
               events
               explorations
               interestingness
-              legacy-mbql
               lib
               lib-be
               llm
@@ -1794,6 +1792,7 @@
            lib
            models
            notification
+           parameters
            permissions
            premium-features
            query-processor
@@ -2727,8 +2726,7 @@
    :api  :any
    :uses #{classloader
            config
-           settings
-           system}}
+           settings}}
 
   version
   {:team "UX West"

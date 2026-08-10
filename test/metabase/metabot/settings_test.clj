@@ -179,6 +179,13 @@
            clojure.lang.ExceptionInfo #"Unsupported provider \"mistral\" for metabase managed AI"
            (metabot.settings/llm-metabot-provider! "metabase/mistral/mistral-medium-3-5"))))))
 
+(deftest validate-metabot-provider-rejects-direct-only-provider-as-managed-moonshot-test
+  (testing "rejects moonshot under metabase/ prefix (not in the managed allow-list)"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Unsupported provider \"moonshot\" for metabase managed AI"
+           (metabot.settings/llm-metabot-provider! "metabase/moonshot/kimi-k2.6"))))))
+
 (deftest validate-metabot-provider-rejects-unsupported-metabase-managed-model-test
   (testing "rejects unsupported model for an allowed metabase managed provider"
     (mt/with-premium-features #{:metabase-ai-managed}
@@ -218,6 +225,13 @@
   (testing "accepts valid direct mistral provider string"
     (mt/with-temporary-setting-values [llm-metabot-provider "mistral/mistral-medium-3-5"]
       (is (= "mistral/mistral-medium-3-5" (metabot.settings/llm-metabot-provider))))))
+
+(deftest validate-metabot-provider-accepts-valid-direct-moonshot-test
+  (testing "accepts valid direct moonshot provider strings"
+    (mt/with-temporary-setting-values [llm-metabot-provider "moonshot/kimi-k2.6"]
+      (is (= "moonshot/kimi-k2.6" (metabot.settings/llm-metabot-provider))))
+    (mt/with-temporary-setting-values [llm-metabot-provider "moonshot/kimi-k3"]
+      (is (= "moonshot/kimi-k3" (metabot.settings/llm-metabot-provider))))))
 
 (deftest validate-metabot-provider-accepts-allowed-metabase-managed-provider-and-model-test
   (testing "accepts allow-listed metabase managed provider/model"
@@ -288,6 +302,14 @@
              (metabot.settings/configured-provider-credentials "mistral"))))
     (mt/with-temporary-setting-values [llm-mistral-api-key nil]
       (is (nil? (metabot.settings/configured-provider-credentials "mistral"))))))
+
+(deftest configured-provider-credentials-moonshot-test
+  (testing "returns the api-key map when a moonshot key is configured, nil when blank or missing"
+    (mt/with-temporary-setting-values [llm-moonshot-api-key "sk-moonshot-key-test"]
+      (is (= {:api-key "sk-moonshot-key-test"}
+             (metabot.settings/configured-provider-credentials "moonshot"))))
+    (mt/with-temporary-setting-values [llm-moonshot-api-key nil]
+      (is (nil? (metabot.settings/configured-provider-credentials "moonshot"))))))
 
 (deftest configured-provider-credentials-bedrock-fully-configured-test
   (testing "returns the AWS credentials map when bedrock is fully configured"

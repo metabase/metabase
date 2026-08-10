@@ -7,12 +7,10 @@ import type { MetabotPromptInputRef } from "metabase/metabot";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { MetabotManagedProviderLimitHoverCard } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
-import {
-  useMetabotName,
-  useUserMetabotPermissions,
-} from "metabase/metabot/hooks";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import type { MetabotAgentTurnDisplayError } from "metabase/metabot/state";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
+import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
 
@@ -55,7 +53,7 @@ export const MetabotInlineSQLPrompt = ({
   ] = useDisclosure(false);
   const { canUseSqlGeneration, hasSqlGenerationAccess } =
     useUserMetabotPermissions();
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
 
   const isSubmitDisabled = !canUseSqlGeneration || !value.trim() || isLoading;
 

@@ -5,8 +5,9 @@ import { identity } from "underscore";
 
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { getDocsUrl, getIsHosted } from "metabase/selectors/settings";
+import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Code } from "metabase/ui";
 
 import type { TipProps as _TipProps } from "./TroubleshootingTip";
@@ -25,7 +26,7 @@ export const useTroubleshootingTips = (
   expanded: boolean,
 ): TipProps[] => {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const getDocPageUrl = useSelector(docPageUrlGetter);
   const metabaseIPAddresses = useCloudGatewayIPs();
 

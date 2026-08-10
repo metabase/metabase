@@ -68,9 +68,14 @@
    [:Operations
     [:sequential [:map
                   [:op ms/NonBlankString]
-                  [:value [:or [:map-of [:or :keyword :string]
-                                [:or ms/NonBlankString ms/BooleanValue]]
-                           ms/NonBlankString ms/BooleanValue]]]]]])
+                  ;; which attribute the operation targets; `nil` means the value is a map of attribute -> value
+                  [:path {:optional true} [:maybe ms/NonBlankString]]
+                  ;; dispatched on shape rather than written as `[:or [:map-of ...] ...]`: request decoding would
+                  ;; run the `:map-of` decoder over a scalar value and throw
+                  [:value [:multi {:dispatch #(if (map? %) :map :scalar)}
+                           [:map    [:map-of [:or :keyword :string]
+                                     [:or ms/NonBlankString ms/BooleanValue]]]
+                           [:scalar [:or ms/NonBlankString ms/BooleanValue]]]]]]]])
 
 (def SCIMGroup
   "Malli schema for a SCIM group."

@@ -10,6 +10,7 @@ const entry = (
   over: Partial<DataAppDiagnosticEntry> = {},
 ): DataAppDiagnosticEntry => ({
   time: 1700000000000,
+  buildId: 1,
   kind: "error",
   summary: "boom",
   detail: null,
