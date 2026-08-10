@@ -2,7 +2,6 @@ import { Api } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import type { DataSegregationStrategy } from "metabase-types/api";
 
-
 type CheckListApiStep =
   | "create-dashboard"
   | "add-data"

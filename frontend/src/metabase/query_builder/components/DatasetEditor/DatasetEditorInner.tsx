@@ -26,7 +26,6 @@ import {
   setTemplateTagConfig,
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
-import { useListModelIndexesQuery } from "metabase/query_builder/api/model-index";
 import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
 import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
 import type { FieldWithMaybeIndex } from "metabase/query_builder/model-indexes/actions";
@@ -74,6 +73,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
+
+import { useListModelIndexesQuery } from "../../api/model-index";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
 import {

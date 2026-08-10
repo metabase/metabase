@@ -1,4 +1,3 @@
-
 import { Api } from "metabase/api";
 import { listTag, tag } from "metabase/api/tags";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";

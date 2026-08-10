@@ -1,4 +1,3 @@
-
 import { Api } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import type { SlackAppInfo, SlackSettings } from "metabase-types/api";

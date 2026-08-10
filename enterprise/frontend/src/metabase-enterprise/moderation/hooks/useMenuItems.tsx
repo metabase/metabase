@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
-import { useEditItemVerificationMutation } from "metabase-enterprise/moderation/api/moderation";
 import type { Card, Dashboard, ModerationReview } from "metabase-types/api";
 
+import { useEditItemVerificationMutation } from "../api/moderation";
 import {
   MODERATION_STATUS,
   getLatestModerationReview,

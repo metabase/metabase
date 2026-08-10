@@ -5,12 +5,8 @@ import { c, t } from "ttag";
 import * as Yup from "yup";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import {
-  useGetSlackAppInfoQuery,
-  useGetSlackManifestQuery,
-} from "metabase/admin/settings/api/slack";
 import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useUpdateMetabotSlackSettingsMutation } from "metabase/api/metabot";
+import { useUpdateMetabotSlackSettingsMutation } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
@@ -29,6 +25,11 @@ import {
 import { Accordion, Button, Flex, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { SlackAppInfo } from "metabase-types/api/slack";
+
+import {
+  useGetSlackAppInfoQuery,
+  useGetSlackManifestQuery,
+} from "../settings/api/slack";
 
 import {
   EncryptionRequiredAlert,

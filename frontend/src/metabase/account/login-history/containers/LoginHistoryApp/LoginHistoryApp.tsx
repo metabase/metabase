@@ -1,6 +1,6 @@
-import { useGetLoginHistoryQuery } from "metabase/account/api/login-history";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 
+import { useGetLoginHistoryQuery } from "../../../api/login-history";
 import LoginHistoryList from "../../components/LoginHistory";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

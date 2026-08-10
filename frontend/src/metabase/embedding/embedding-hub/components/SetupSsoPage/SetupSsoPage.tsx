@@ -2,10 +2,11 @@ import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { useGetEmbeddingHubChecklistQuery } from "metabase/embedding/embedding-hub/api/embedding-hub";
 import { OnboardingStepper } from "metabase/embedding/embedding-hub/components/OnboardingStepper";
 import type { OnboardingStepperHandle } from "metabase/embedding/embedding-hub/components/OnboardingStepper/types";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
+
+import { useGetEmbeddingHubChecklistQuery } from "../../api/embedding-hub";
 
 import { AddEndpointStep } from "./AddEndpointStep";
 import { SetupJwtStep } from "./SetupJwtStep";

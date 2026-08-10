@@ -1,4 +1,3 @@
-
 import { Api } from "metabase/api";
 import { provideOAuthAuthorizationListTags } from "metabase/api/tags";
 import type {

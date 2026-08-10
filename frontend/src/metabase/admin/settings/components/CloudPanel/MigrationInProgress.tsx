@@ -1,7 +1,6 @@
 /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { t } from "ttag";
 
-import { useCancelCloudMigrationMutation } from "metabase/admin/settings/api/cloud-migration";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import type { Plan } from "metabase/common/utils/plan";
@@ -18,6 +17,8 @@ import {
   Progress,
   Text,
 } from "metabase/ui";
+
+import { useCancelCloudMigrationMutation } from "../../api/cloud-migration";
 
 import { MigrationCard } from "./CloudPanel.styled";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";
