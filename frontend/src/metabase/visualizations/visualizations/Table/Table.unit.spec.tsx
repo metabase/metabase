@@ -327,6 +327,10 @@ describe("dashboard client-side sorting", () => {
 });
 
 describe("table.striped", () => {
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
   it("should be a display toggle disabled by default", () => {
     const setting = Table.settings["table.striped"];
 
@@ -334,6 +338,71 @@ describe("table.striped", () => {
     expect(setting.widget).toBe("toggle");
     expect(setting.inline).toBe(true);
     expect(setting.getDefault?.()).toBe(false);
+  });
+
+  function setupStripedTable() {
+    const series = [
+      createMockSingleSeries(
+        { display: "table" },
+        {
+          data: {
+            cols: [
+              createMockNumericColumn({ display_name: "id", name: "id" }),
+            ],
+            rows: [[1], [2], [3], [4]],
+          },
+        },
+      ),
+    ];
+
+    series[0].card.visualization_settings = {
+      ...series[0].card.visualization_settings,
+      "table.striped": true,
+    };
+
+    renderWithProviders(
+      <Visualization rawSeries={series} isDashboard width={600} height={400} />,
+    );
+  }
+
+  function getStripedRows() {
+    return screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => [
+        within(row).getAllByRole("gridcell")[0].textContent,
+        row.getAttribute("data-row-striped") === "true",
+      ]);
+  }
+
+  it("stripes every other rendered row", () => {
+    setupStripedTable();
+
+    expect(getStripedRows()).toEqual([
+      ["1", false],
+      ["2", true],
+      ["3", false],
+      ["4", true],
+    ]);
+  });
+
+  it("keeps stripes on alternating rendered rows after client-side sorting (#71960)", () => {
+    setupStripedTable();
+
+    const idHeader = screen.getByRole("columnheader", { name: "id" });
+    const clickTarget = within(idHeader).getByTestId("cell-data");
+
+    fireEvent.mouseDown(clickTarget, { clientX: 0, clientY: 0 });
+    fireEvent.mouseUp(clickTarget, { clientX: 0, clientY: 0 });
+
+    // Rows are now in descending order; the stripes must still alternate by
+    // display position rather than by position in the original dataset.
+    expect(getStripedRows()).toEqual([
+      ["4", false],
+      ["3", true],
+      ["2", false],
+      ["1", true],
+    ]);
   });
 });
 
