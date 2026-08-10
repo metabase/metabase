@@ -69,7 +69,7 @@ export async function syncQueries({
     throw new Error(`Data app ${slug} does not have a resource collection.`);
   }
 
-  await reconcileQueries({
+  const databaseIds = await reconcileQueries({
     appRoot,
     slug,
     collectionId: app.resource_collection_id,
@@ -78,4 +78,6 @@ export async function syncQueries({
     client,
     log,
   });
+
+  await client.reconcileQuerySyncPermissions(slug, databaseIds);
 }

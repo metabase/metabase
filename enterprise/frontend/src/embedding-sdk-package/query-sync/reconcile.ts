@@ -429,4 +429,8 @@ export async function reconcileQueries({
   if (!fs.existsSync(path.join(appRoot, "queries_metadata.json"))) {
     writeQueryLockfile(appRoot, entries);
   }
+
+  return [
+    ...new Set(resolvedQueries.map(({ resolved }) => resolved.database_id)),
+  ].sort((a, b) => a - b);
 }
