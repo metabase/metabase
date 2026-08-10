@@ -1,4 +1,10 @@
-import { type ChangeEventHandler, useCallback, useMemo, useState } from "react";
+import {
+  type ChangeEventHandler,
+  type JSX,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 import _ from "underscore";
 

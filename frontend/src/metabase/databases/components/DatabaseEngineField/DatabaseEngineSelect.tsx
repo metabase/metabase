@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
 import { getEngineLogo } from "metabase/databases/utils/engine";

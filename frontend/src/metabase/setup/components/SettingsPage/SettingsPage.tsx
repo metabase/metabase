@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { getLocalizationNoticeText } from "metabase/common/components/CommunityLocalizationNotice";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";

@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { Ellipsified, Icon, Text } from "metabase/ui";
 
 import { HomeCard } from "../HomeCard";

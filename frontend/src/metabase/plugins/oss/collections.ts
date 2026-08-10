@@ -1,5 +1,5 @@
 import type React from "react";
-import type { ComponentType } from "react";
+import type { ComponentType, JSX } from "react";
 import { t } from "ttag";
 
 import type {

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { MouseEvent } from "react";
+import type { JSX, MouseEvent } from "react";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 

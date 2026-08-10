@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import lineChartImage from "assets/img/empty-states/visualizations/line.svg?url";
