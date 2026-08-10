@@ -1,6 +1,6 @@
-import type { ContinuousDomain, StringLike } from "@visx/scale";
+import type { ContinuousDomain } from "@visx/scale";
 import { scaleBand, scaleLinear, scaleLog, scalePower } from "@visx/scale";
-import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
+import type { ScaleContinuousNumeric } from "d3-scale";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { ValueFormatter } from "metabase/visualizations/shared/types/format";
@@ -14,13 +14,6 @@ import { DATA_LABEL_OFFSET } from "../../RowChartView";
 import type { SeriesData, StackOffset } from "../types";
 
 import { createXDomain, createYDomain } from "./domain";
-
-type ChartScales = {
-  yDomain: StringLike[];
-  xDomain: ContinuousDomain;
-  yScale: ScaleBand<StringLike>;
-  xScale: ScaleContinuousNumeric<number, number, never>;
-};
 
 export const createXScale = (
   domain: ContinuousDomain,
@@ -53,6 +46,7 @@ export const createXScale = (
   }
 };
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export const getChartScales = <TDatum>(
   seriesData: SeriesData<TDatum>[],
   innerHeight: number,
@@ -61,7 +55,7 @@ export const getChartScales = <TDatum>(
   xScaleType: ContinuousScaleType,
   stackOffset: StackOffset,
   rangeOverride?: Range,
-): ChartScales => {
+) => {
   const yDomain = createYDomain(seriesData);
   const yScale = scaleBand({
     domain: yDomain,

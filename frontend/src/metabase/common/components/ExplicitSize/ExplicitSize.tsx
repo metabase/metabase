@@ -22,9 +22,7 @@ export const ExplicitSizeRefreshModeContext = createContext<
   RefreshMode | undefined
 >(undefined);
 
-// stripInternal keeps this out of declaration emit, which otherwise has to
-// name lodash's debounce return types through a non-portable path.
-/** @internal */
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 const REFRESH_MODE = {
   throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
   debounce: (fn: () => void) => debounce(fn, WAIT_TIME),

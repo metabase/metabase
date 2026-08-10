@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
 
-export interface FieldSetProps {
+interface FieldSetProps {
   className?: string;
   legend?: string;
   required?: boolean;
@@ -11,6 +11,7 @@ export interface FieldSetProps {
   children: ReactNode;
 }
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export function FieldSet({
   className = CS.borderBrand,
   legend,

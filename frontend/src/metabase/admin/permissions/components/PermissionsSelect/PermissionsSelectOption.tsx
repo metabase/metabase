@@ -10,14 +10,12 @@ import {
   PermissionsSelectOptionRoot,
 } from "./PermissionsSelectOption.styled";
 
-export interface PermissionsSelectOptionProps extends Omit<
-  PermissionOption,
-  "value"
-> {
+interface PermissionsSelectOptionProps extends Omit<PermissionOption, "value"> {
   className?: string;
   hint?: string | null;
 }
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export function PermissionsSelectOption({
   label,
   icon,

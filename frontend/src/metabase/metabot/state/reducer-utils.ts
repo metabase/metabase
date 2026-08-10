@@ -231,6 +231,7 @@ export const closeChain = (
   convo.activeChainId = undefined;
 };
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export const getRequestConversation = (
   state: WritableDraft<MetabotState>,
   action: {
@@ -238,7 +239,7 @@ export const getRequestConversation = (
       arg: { agentId: MetabotAgentId; conversation_id: string; loadId: string };
     };
   },
-): WritableDraft<MetabotConverstationState> | undefined => {
+) => {
   const { agentId, conversation_id, loadId } = action.meta.arg;
   const convo = state.conversations[agentId];
 

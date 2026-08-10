@@ -844,6 +844,7 @@ function getStackedSelectionFrequency(
   return { selectionFrequency, selectionOffset };
 }
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export const getStackTotalsSeries = (
   chartModel: CartesianChartModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
@@ -851,7 +852,7 @@ export const getStackTotalsSeries = (
   chartWidth: number,
   seriesOptions: (LineSeriesOption | BarSeriesOption)[],
   renderingContext: RenderingContext,
-): (LineSeriesOption | BarSeriesOption)[] => {
+) => {
   const seriesByStackName = _.groupBy(
     seriesOptions.filter((s) => s.stack != null),
     "stack",

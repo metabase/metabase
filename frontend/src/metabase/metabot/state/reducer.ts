@@ -1,9 +1,4 @@
-import {
-  type CaseReducer,
-  type PayloadAction,
-  createSlice,
-  nanoid,
-} from "@reduxjs/toolkit";
+import { type PayloadAction, createSlice, nanoid } from "@reduxjs/toolkit";
 import { castDraft } from "immer";
 import _ from "underscore";
 
@@ -43,107 +38,13 @@ import {
 import type {
   MetabotAgentChatMessage,
   MetabotChatMessage,
-  MetabotState,
   MetabotToolCall,
   MetabotUserChatMessage,
 } from "./types";
 import { createMessageId, hasInProgressMessage } from "./utils";
 
-type ConvoPayload<Value extends Record<string, any> = Record<string, any>> =
-  ConvoPayloadAction<Value>["payload"];
-
-type MetabotActionPayloads = {
-  createAgent: ConvoPayload<{ visible?: boolean }>;
-  destroyAgent: ConvoPayload;
-  resetConversation: ConvoPayload;
-  setDebugMode: boolean;
-  markChartSaved: { entityId: string; cardId: number };
-  setConversationTitle: ConvoPayload<{ title: string }>;
-  setIsPollingForTitle: {
-    conversationId: string;
-    isPollingForTitle: boolean;
-  };
-  addDeveloperMessage: ConvoPayload<{ message: string }>;
-  addUserMessage: ConvoPayload<Omit<MetabotUserChatMessage, "role">>;
-  addAgentMessage: ConvoPayload<
-    Omit<MetabotAgentChatMessage, "id" | "role" | "externalId">
-  >;
-  reasoningStart: ConvoPayload<{ nowMs?: number }>;
-  reasoningDelta: ConvoPayload<{ text: string; nowMs?: number }>;
-  addAgentTextDelta: ConvoPayload<{ text: string; nowMs?: number }>;
-  setMessageExternalIds: ConvoPayload<{
-    agentMessageId?: string;
-    userMessageId?: string;
-  }>;
-  toolCallStart: ConvoPayload<{
-    toolCallId: string;
-    toolName: string;
-    title?: string;
-    args?: string;
-    nowMs?: number;
-  }>;
-  toolCallArgs: ConvoPayload<{
-    toolCallId: string;
-    toolName: string;
-    title?: string;
-    args: string;
-    nowMs?: number;
-  }>;
-  toolCallEnd: ConvoPayload<{
-    toolCallId: string;
-    result?: string;
-    isError?: boolean;
-    nowMs?: number;
-  }>;
-  toolCallSearchResults: ConvoPayload<{
-    toolCallId: string;
-    totalCount: number;
-    results: SearchResultItem[];
-  }>;
-  toolCallTitled: ConvoPayload<{ toolCallId: string; title: string }>;
-  rewindStateToMessageId: ConvoPayload<{ messageId: string }>;
-  setIsProcessing: ConvoPayload<{ processing: boolean }>;
-  setVisible: ConvoPayload<{ visible: boolean }>;
-  setMetabotReqIdOverride: ConvoPayload<{ id: string | undefined }>;
-  setProfileOverride: ConvoPayload<{
-    profile: MetabotProfileId | undefined;
-  }>;
-  setNavigateToPath: string | null;
-  addSuggestedTransform: MetabotSuggestedTransform;
-  activateSuggestedTransform: {
-    id?: SuggestedTransform["id"];
-    suggestionId: string;
-  };
-  deactivateSuggestedTransform: SuggestedTransform["id"] | undefined;
-  updateSuggestedTransformId: {
-    suggestionId: string;
-    newId: number | undefined;
-  };
-  addSuggestedCodeEdit: MetabotCodeEdit;
-  removeSuggestedCodeEdit: MetabotCodeEdit["buffer_id"];
-  setConversationSnapshot: ConvoPayload<{
-    messages: MetabotChatMessage[];
-    state?: MetabotStateContext;
-    activeToolCalls?: MetabotToolCall[];
-    conversationId: string;
-    title?: string;
-    forkedFromConversationId?: string;
-  }>;
-};
-
-type MetabotCaseReducers = {
-  [Name in keyof MetabotActionPayloads]: CaseReducer<
-    MetabotState,
-    PayloadAction<MetabotActionPayloads[Name]>
-  >;
-};
-
-export const metabot = createSlice<
-  MetabotState,
-  MetabotCaseReducers,
-  "metabase/metabot",
-  Record<never, never>
->({
+/** @internal -- Prevents a declaration emit error in the SDK build. */
+export const metabot = createSlice({
   name: "metabase/metabot",
   initialState: getMetabotInitialState(),
   reducers: {
@@ -613,5 +514,7 @@ export const metabot = createSlice<
   },
 });
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export const metabotReducer = metabot.reducer;
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export const metabotActions = metabot.actions;
