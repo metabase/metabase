@@ -1,12 +1,12 @@
 import { createAction } from "@reduxjs/toolkit";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
-import type { Dispatch, GetState } from "metabase/redux/store";
+import type { Dispatch, GetState, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import {
   isQuestionDashCard,
@@ -31,6 +31,7 @@ import type {
   VisualizerVizDefinition,
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import {
   trackCardCreated,
@@ -74,6 +75,28 @@ import {
   removeParameterAndReferences,
 } from "./parameters";
 import { getExistingDashCards } from "./utils";
+
+function refuseCustomVizCardOnPublicDashboard(
+  state: State,
+  dashId: DashboardId,
+  card: Card,
+  dispatch: Dispatch,
+): boolean {
+  const dashboard = state.dashboard.dashboards[dashId];
+  const isBlocked =
+    Boolean(dashboard?.public_uuid) && isCustomVizDisplay(card.display);
+  if (isBlocked) {
+    dispatch(
+      addUndo({
+        icon: "warning",
+        toastColor: "error",
+        message: c("{0} is a card name")
+          .t`"${card.name}" uses a custom visualization, which isn't supported in public links, so it can't be added.`,
+      }),
+    );
+  }
+  return isBlocked;
+}
 
 export type NewDashCardOpts = {
   dashId: DashboardId;
@@ -170,12 +193,18 @@ export type AddCardToDashboardOpts = NewDashCardOpts & {
 
 export const addCardToDashboard =
   ({ dashId, tabId, cardId }: AddCardToDashboardOpts) =>
-  async (dispatch: Dispatch) => {
+  async (dispatch: Dispatch, getState: GetState) => {
     const card = await runRtkEndpoint(
       { id: cardId },
       dispatch,
       cardApi.endpoints.getCard,
     );
+
+    if (
+      refuseCustomVizCardOnPublicDashboard(getState(), dashId, card, dispatch)
+    ) {
+      return;
+    }
 
     const dashcardId = generateTemporaryDashcardId();
     // Unjustified type cast. FIXME
@@ -257,6 +286,18 @@ export const replaceCard =
       dispatch,
       cardApi.endpoints.getCard,
     );
+
+    if (
+      dashboardId &&
+      refuseCustomVizCardOnPublicDashboard(
+        getState(),
+        dashboardId,
+        card,
+        dispatch,
+      )
+    ) {
+      return;
+    }
 
     await dispatch(
       setDashCardAttributes({

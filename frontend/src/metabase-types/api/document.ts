@@ -28,6 +28,7 @@ export type Document = {
   made_public_by_id?: UserId | null;
   cards?: Record<number, Card>; // Map of card ID -> card metadata, hydrated for public documents
   view_count?: number;
+  contains_custom_viz?: boolean;
 };
 
 export type GetDocumentRequest = { id: DocumentId };
@@ -50,4 +51,9 @@ export type CopyDocumentRequest = {
   collection_position?: number | null;
 };
 
-export type GetPublicDocument = Pick<Document, "id" | "name" | "public_uuid">;
+export type GetPublicDocument = Pick<
+  Document,
+  "id" | "name" | "public_uuid"
+> & {
+  contains_custom_viz: boolean;
+};

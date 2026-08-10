@@ -44,6 +44,7 @@ import type {
   VisualizerVizDefinition,
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
@@ -416,6 +417,13 @@ class DashboardGridInner extends Component<
         }
       }
       if (item.model === "dashboard" && item.id !== dashboard.id) {
+        return true;
+      }
+      if (
+        dashboard.public_uuid &&
+        "display" in item &&
+        isCustomVizDisplay(item.display)
+      ) {
         return true;
       }
       return false;

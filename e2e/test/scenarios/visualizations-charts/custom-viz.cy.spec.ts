@@ -1264,6 +1264,151 @@ describe("admin > custom visualizations", () => {
     });
   });
 
+  describe("custom viz public sharing block", () => {
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
+      H.updateSetting("custom-viz-enabled", true);
+      H.updateSetting("enable-public-sharing", true);
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
+    });
+
+    const customVizQuestionDetails: StructuredQuestionDetails = {
+      name: "Public Sharing Block Custom Viz",
+      query: {
+        "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      display: H.CUSTOM_VIZ_DISPLAY,
+    };
+
+    it("disables the public-link menu item for a dashboard containing a custom viz card", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: customVizQuestionDetails,
+        dashboardDetails: { name: "Public Sharing Block Dashboard" },
+      }).then(({ body: dashcard }) => {
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+
+      H.openSharingMenu();
+      H.sharingMenu().within(() => {
+        cy.findByTestId("public-link-menu-item")
+          .should("have.attr", "aria-disabled", "true")
+          .realHover();
+      });
+
+      H.tooltip().should(
+        "contain.text",
+        "This dashboard contains custom visualizations, which aren't supported in public links. Remove them to create a public link.",
+      );
+    });
+
+    it("disables the public-link menu item for a question with a custom viz display", () => {
+      H.createQuestion(customVizQuestionDetails, { visitQuestion: true });
+
+      H.openSharingMenu();
+      H.sharingMenu().within(() => {
+        cy.findByTestId("public-link-menu-item")
+          .should("have.attr", "aria-disabled", "true")
+          .realHover();
+      });
+
+      H.tooltip().should(
+        "contain.text",
+        "This chart uses a custom visualization, which isn't supported in public links.",
+      );
+    });
+
+    it("disables the custom viz option in the chart-type sidebar once the question has a public link", () => {
+      H.createQuestion(
+        {
+          name: "Public Sharing Block Chart Type Question",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: "table",
+        },
+        { wrapId: true, idAlias: "chartTypeQuestionId" },
+      );
+
+      cy.get<CardId>("@chartTypeQuestionId").then((questionId) => {
+        H.createPublicQuestionLink(questionId);
+        H.visitQuestion(questionId);
+      });
+
+      cy.findByTestId("viz-type-button").click();
+      cy.findByTestId("custom-viz-plugins-toggle").click();
+
+      cy.findByTestId("demo-viz-button")
+        .should("have.attr", "aria-disabled", "true")
+        .realHover();
+      H.tooltip().should(
+        "contain.text",
+        "Not available while this question is shared publicly.",
+      );
+
+      cy.log("clicking the disabled option does not change the display");
+      cy.findByTestId("demo-viz-button").click();
+      cy.findByTestId("viz-type-button").click();
+
+      cy.findByTestId("table-root").should("be.visible");
+    });
+
+    it("refuses to add a custom-viz card to a public dashboard from the add-card sidebar", () => {
+      H.createQuestion(customVizQuestionDetails, {
+        wrapId: true,
+        idAlias: "addCardQuestionId",
+      });
+
+      H.createDashboard(
+        { name: "Public Sharing Block Add Card Dashboard" },
+        { wrapId: true, idAlias: "addCardDashboardId" },
+      );
+
+      cy.get<DashboardId>("@addCardDashboardId").then((dashboardId) => {
+        H.createPublicDashboardLink(dashboardId);
+        H.visitDashboard(dashboardId);
+      });
+
+      H.editDashboard();
+      H.openQuestionsSidebar();
+      cy.findByTestId("add-card-sidebar")
+        .findByText(customVizQuestionDetails.name)
+        .click();
+
+      H.undoToastList()
+        .findByText(
+          `"${customVizQuestionDetails.name}" uses a custom visualization, which isn't supported in public links, so it can't be added.`,
+        )
+        .should("be.visible");
+
+      H.getDashboardCard().should("not.exist");
+    });
+
+    it("shows a warning icon for a flagged public question in admin > public sharing", () => {
+      H.createQuestion(customVizQuestionDetails, {
+        wrapId: true,
+        idAlias: "adminListingQuestionId",
+      });
+
+      cy.intercept("GET", "/api/card/public").as("getPublicQuestions");
+      cy.get<CardId>("@adminListingQuestionId").then((questionId) => {
+        H.createPublicQuestionLink(questionId);
+      });
+
+      cy.visit("/admin/settings/public-sharing");
+      cy.wait("@getPublicQuestions");
+
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.findByText(customVizQuestionDetails.name).should("be.visible");
+        cy.findByLabelText(
+          "Contains custom visualizations, which appear as tables in the public link.",
+        ).should("be.visible");
+      });
+    });
+  });
+
   describe("icon rendering across the app", () => {
     const ICON_QUESTION_NAME = "Custom Viz Icon Test";
     const UNPINNED_QUESTION_NAME = "Custom Viz Icon Test — List";

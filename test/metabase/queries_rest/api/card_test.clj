@@ -3245,6 +3245,15 @@
                  (for [card (mt/user-http-request :crowberto :get 200 "card/public")]
                    (m/map-vals boolean (select-keys card [:name :id :public_uuid]))))))))))
 
+(deftest public-card-listing-contains-custom-viz-test
+  (testing "GET /api/card/public flags custom-viz cards"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card {plain-id :id} (shared-card)
+                     :model/Card {custom-id :id} (merge (shared-card) {:display "custom:calendar"})]
+        (let [by-id (m/index-by :id (mt/user-http-request :crowberto :get 200 "card/public"))]
+          (is (true?  (get-in by-id [custom-id :contains_custom_viz])))
+          (is (false? (get-in by-id [plain-id :contains_custom_viz]))))))))
+
 (deftest test-that-we-can-fetch-a-list-of-embeddable-cards
   (testing "GET /api/card/embeddable"
     (mt/with-temporary-setting-values [enable-embedding-static true]

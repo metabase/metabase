@@ -86,6 +86,12 @@ const ORDERS_PIE_CHART_CARD = createMockCard({
   dataset_query,
 });
 
+const CUSTOM_VIZ_CARD = createMockCard({
+  id: 77,
+  name: "Sales Sankey",
+  display: "custom:sankey",
+});
+
 const TABLE_DASHCARD = createMockDashboardCard({
   id: 1,
   card_id: ORDERS_TABLE_CARD.id,
@@ -157,7 +163,11 @@ function setup({
   dashcards = DASHCARDS,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints([TEST_DB]);
-  setupCardsEndpoints([ORDERS_TABLE_CARD, ORDERS_LINE_CHART_CARD]);
+  setupCardsEndpoints([
+    ORDERS_TABLE_CARD,
+    ORDERS_LINE_CHART_CARD,
+    CUSTOM_VIZ_CARD,
+  ]);
   setupCardQueryEndpoints(ORDERS_TABLE_CARD, createMockDataset());
   setupCardQueryMetadataEndpoint(
     ORDERS_TABLE_CARD,
@@ -166,6 +176,11 @@ function setup({
   setupCardQueryEndpoints(ORDERS_LINE_CHART_CARD, createMockDataset());
   setupCardQueryMetadataEndpoint(
     ORDERS_LINE_CHART_CARD,
+    createMockCardQueryMetadata({ databases: [TEST_DB] }),
+  );
+  setupCardQueryEndpoints(CUSTOM_VIZ_CARD, createMockDataset());
+  setupCardQueryMetadataEndpoint(
+    CUSTOM_VIZ_CARD,
     createMockCardQueryMetadata({ databases: [TEST_DB] }),
   );
 
@@ -292,6 +307,16 @@ describe("dashboard/actions/cards", () => {
 
       expect(nextDashCard.parameter_mappings).toEqual([]);
     });
+
+    it("refuses to replace a card with a custom viz card on a public dashboard", async () => {
+      const { nextDashCard } = await runReplaceCardAction({
+        dashcardId: TABLE_DASHCARD.id,
+        nextCardId: CUSTOM_VIZ_CARD.id,
+        dashboard: { ...DASHBOARD, public_uuid: "1337bad801" },
+      });
+
+      expect(nextDashCard.card_id).not.toBe(CUSTOM_VIZ_CARD.id);
+    });
   });
 
   describe("addCardToDashboard", () => {
@@ -305,6 +330,34 @@ describe("dashboard/actions/cards", () => {
       });
 
       expect(nextDashCard.parameter_mappings).toEqual([]);
+    });
+
+    it("refuses to add a custom viz card to a public dashboard and shows a toast", async () => {
+      const { nextDashCard, store } = await runAddCardToDashboard({
+        dashId: DASHBOARD.id,
+        tabId: null,
+        cardId: CUSTOM_VIZ_CARD.id,
+        dashboard: { ...DASHBOARD, public_uuid: "1337bad801" },
+      });
+
+      expect(nextDashCard).toBeUndefined();
+      expect(store.getState().undo).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            message: `"Sales Sankey" uses a custom visualization, which isn't supported in public links, so it can't be added.`,
+          }),
+        ]),
+      );
+    });
+
+    it("adds a custom viz card to a non-public dashboard", async () => {
+      const { nextDashCard } = await runAddCardToDashboard({
+        dashId: DASHBOARD.id,
+        tabId: null,
+        cardId: CUSTOM_VIZ_CARD.id,
+      });
+
+      expect(nextDashCard?.card_id).toBe(CUSTOM_VIZ_CARD.id);
     });
   });
 
@@ -455,7 +508,7 @@ async function runAddCardToDashboard({
     dashId,
     tabId,
     cardId,
-  })(store.dispatch);
+  })(store.dispatch, store.getState);
   const nextState = store.getState();
 
   const tempDashCardId =
@@ -465,5 +518,6 @@ async function runAddCardToDashboard({
 
   return {
     nextDashCard: getDashCardById(nextState, tempDashCardId),
+    store,
   };
 }

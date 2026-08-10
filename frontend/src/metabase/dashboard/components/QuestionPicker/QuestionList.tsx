@@ -14,6 +14,7 @@ import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboardId, getSelectedTabId } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useGetIcon } from "metabase/hooks/use-icon";
@@ -28,6 +29,7 @@ import type {
   CollectionItem,
   SearchResult,
 } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 import S from "./QuestionList.module.css";
 import { trackVisualizeAnotherWayClicked } from "./analytics";
@@ -57,6 +59,8 @@ export function QuestionList({
 
   const selectedTabId = useSelector(getSelectedTabId);
   const dashboardId = useSelector(getDashboardId);
+  const { dashboard } = useDashboardContext();
+  const isPublicDashboard = Boolean(dashboard?.public_uuid);
 
   useEffect(() => {
     setQueryOffset(0);
@@ -140,8 +144,13 @@ export function QuestionList({
   return (
     <>
       <SelectList>
-        {list.map((item) => (
-          <Flex key={item.id} className={S.QuestionListItemRoot} gap="2px">
+        {list.map((item) => {
+          const isBlockedCustomViz =
+            isPublicDashboard &&
+            "display" in item &&
+            isCustomVizDisplay(item.display);
+
+          const questionItem = (
             <SelectList.Item
               id={item.id}
               classNames={{
@@ -159,22 +168,39 @@ export function QuestionList({
               rightIcon={PLUGIN_MODERATION.getStatusIcon(
                 item.moderated_status ?? undefined,
               )}
+              isDisabled={isBlockedCustomViz}
             />
-            <Tooltip label={t`Visualize another way`}>
-              <ActionIcon
-                className={S.VisualizerButton}
-                size="41px"
-                aria-label={t`Visualize another way`}
-                onClick={() => {
-                  trackVisualizeAnotherWayClicked();
-                  setVisualizerModalCardId(Number(item.id));
-                }}
-              >
-                <Icon name="lineandbar" />
-              </ActionIcon>
-            </Tooltip>
-          </Flex>
-        ))}
+          );
+
+          return (
+            <Flex key={item.id} className={S.QuestionListItemRoot} gap="2px">
+              {isBlockedCustomViz ? (
+                <Tooltip
+                  label={t`This chart uses a custom visualization, which isn't supported in public links.`}
+                  maw="20rem"
+                  multiline
+                >
+                  {questionItem}
+                </Tooltip>
+              ) : (
+                questionItem
+              )}
+              <Tooltip label={t`Visualize another way`}>
+                <ActionIcon
+                  className={S.VisualizerButton}
+                  size="41px"
+                  aria-label={t`Visualize another way`}
+                  onClick={() => {
+                    trackVisualizeAnotherWayClicked();
+                    setVisualizerModalCardId(Number(item.id));
+                  }}
+                >
+                  <Icon name="lineandbar" />
+                </ActionIcon>
+              </Tooltip>
+            </Flex>
+          );
+        })}
       </SelectList>
       <Flex justify="flex-end">
         <PaginationControls

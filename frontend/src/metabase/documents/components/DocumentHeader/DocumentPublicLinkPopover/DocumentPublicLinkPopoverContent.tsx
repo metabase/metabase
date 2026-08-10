@@ -6,6 +6,7 @@ import { getPublicEmbedHTMLWithResizer } from "metabase/embedding/lib/code-templ
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
+  Alert,
   Anchor,
   Box,
   Code,
@@ -26,6 +27,7 @@ interface DocumentPublicLinkPopoverContentProps {
   onRemoveLink?: () => void;
   onCopyLink?: () => void;
   onCopyEmbed?: () => void;
+  warningText?: string;
 }
 
 export const DocumentPublicLinkPopoverContent = ({
@@ -34,6 +36,7 @@ export const DocumentPublicLinkPopoverContent = ({
   onRemoveLink,
   onCopyLink,
   onCopyEmbed,
+  warningText,
 }: DocumentPublicLinkPopoverContentProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const [activeTab, setActiveTab] = useState<string | null>("link");
@@ -44,6 +47,17 @@ export const DocumentPublicLinkPopoverContent = ({
 
   return (
     <Stack gap="md">
+      {warningText && (
+        <Alert
+          variant="light"
+          color="warning"
+          p="sm"
+          mb="sm"
+          data-testid="public-link-custom-viz-warning"
+        >
+          {warningText}
+        </Alert>
+      )}
       <Box>
         <Text size="sm" c="text-secondary" mb="xs">
           {t`Anyone can view this if you give them the link or embed it.`}

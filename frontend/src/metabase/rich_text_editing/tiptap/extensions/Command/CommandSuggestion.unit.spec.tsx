@@ -11,12 +11,23 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { SettingsState } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
+import {
+  DEFAULT_EDITOR_HOST,
+  EditorHostProvider,
+} from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Input } from "metabase/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { type RecentItem, isRecentTableItem } from "metabase-types/api";
+import {
+  type CardDisplayType,
+  type Document,
+  type RecentItem,
+  isRecentTableItem,
+} from "metabase-types/api";
 import {
   createMockDatabase,
+  createMockDocument,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockSearchResult,
@@ -83,6 +94,18 @@ const RECENT_ITEMS = [
   }),
 ];
 
+const CUSTOM_VIZ_ITEM = createMockSearchResult({
+  name: "Custom viz chart",
+  model: "card",
+  id: 100,
+  // SearchResult["display"] is typed as CardDisplayType, which predates
+  // custom visualizations; the search API does return "custom:*" values for
+  // custom-viz cards, so this exercises that real shape.
+  display: "custom:my-viz" as CardDisplayType,
+});
+
+const SEARCH_ITEMS_WITH_CUSTOM_VIZ = [...SEARCH_ITEMS, CUSTOM_VIZ_ITEM];
+
 const getRecentItemName = (item: RecentItem) =>
   isRecentTableItem(item) ? (item.display_name ?? item.name) : item.name;
 
@@ -109,9 +132,19 @@ const TestWrapper = (props: CommandSuggestionProps) => {
 type SetupProps = {
   query?: string;
   metabotCommand?: MetabotCommandConfig | null;
+  settings?: SettingsState;
+  /** The document the editor is currently in, e.g. to test public-document behavior. */
+  document?: Document | null;
+  searchItems?: typeof SEARCH_ITEMS;
 };
 
-const setup = ({ query = "", metabotCommand = null }: SetupProps = {}) => {
+const setup = ({
+  query = "",
+  metabotCommand = null,
+  settings = mockSettings({}),
+  document = null,
+  searchItems = SEARCH_ITEMS,
+}: SetupProps = {}) => {
   const command = jest.fn();
 
   const editor = {
@@ -122,21 +155,31 @@ const setup = ({ query = "", metabotCommand = null }: SetupProps = {}) => {
     isActive: jest.fn(),
   };
 
-  setupSearchEndpoints(SEARCH_ITEMS);
+  setupSearchEndpoints(searchItems);
   setupRecentViewsEndpoints(RECENT_ITEMS);
   setupDatabasesEndpoints([MOCK_DATABASE]);
 
+  const host = {
+    ...DEFAULT_EDITOR_HOST,
+    selectors: {
+      ...DEFAULT_EDITOR_HOST.selectors,
+      getCurrentDocument: () => document,
+    },
+  };
+
   renderWithProviders(
-    <TestWrapper
-      command={command}
-      // Unjustified type cast. FIXME
-      editor={editor as unknown as Editor}
-      query={query}
-      items={[]}
-      range={{ from: 0, to: 0 }}
-      metabotCommand={metabotCommand}
-    />,
-    { storeInitialState: createMockState({ settings: mockSettings({}) }) },
+    <EditorHostProvider value={host}>
+      <TestWrapper
+        command={command}
+        // Unjustified type cast. FIXME
+        editor={editor as unknown as Editor}
+        query={query}
+        items={[]}
+        range={{ from: 0, to: 0 }}
+        metabotCommand={metabotCommand}
+      />
+    </EditorHostProvider>,
+    { storeInitialState: createMockState({ settings }) },
   );
 
   return {
@@ -454,6 +497,104 @@ describe("CommandSuggestion", () => {
 
         expect(await screen.findByText("Ask Ada")).toBeInTheDocument();
         await expectStandardCommandsToBePresent();
+      });
+    });
+  });
+
+  describe("public documents", () => {
+    const PUBLIC_DOCUMENT = createMockDocument({ public_uuid: "abc123" });
+    const CUSTOM_VIZ_TOOLTIP =
+      "This chart uses a custom visualization, which isn't supported in public links.";
+
+    it("greys out a custom-viz card in the default command search results", async () => {
+      const { command } = setup({
+        query: "Custom viz",
+        document: PUBLIC_DOCUMENT,
+        searchItems: SEARCH_ITEMS_WITH_CUSTOM_VIZ,
+      });
+
+      const option = await screen.findByRole("option", {
+        name: /Custom viz chart/,
+      });
+      expect(option).toHaveAttribute("aria-disabled", "true");
+
+      await userEvent.hover(option);
+      expect(await screen.findByText(CUSTOM_VIZ_TOOLTIP)).toBeInTheDocument();
+
+      await userEvent.click(option);
+      expect(command).not.toHaveBeenCalled();
+    });
+
+    it("greys out a custom-viz card in the Chart (embed) picker", async () => {
+      const { command } = setup({
+        query: "",
+        document: PUBLIC_DOCUMENT,
+        searchItems: SEARCH_ITEMS_WITH_CUSTOM_VIZ,
+      });
+
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Chart" }),
+      );
+      await userEvent.type(
+        screen.getByRole("textbox", { name: "test-input" }),
+        "Custom viz",
+      );
+
+      const option = await screen.findByRole("option", {
+        name: /Custom viz chart/,
+      });
+      expect(option).toHaveAttribute("aria-disabled", "true");
+
+      command.mockClear();
+      await userEvent.click(option);
+      expect(command).not.toHaveBeenCalled();
+    });
+
+    it("does not grey out the same card when linking to it", async () => {
+      const { command } = setup({
+        query: "",
+        document: PUBLIC_DOCUMENT,
+        searchItems: SEARCH_ITEMS_WITH_CUSTOM_VIZ,
+      });
+
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Link" }),
+      );
+      await userEvent.type(
+        screen.getByRole("textbox", { name: "test-input" }),
+        "Custom viz",
+      );
+
+      const option = await screen.findByRole("option", {
+        name: /Custom viz chart/,
+      });
+      expect(option).not.toHaveAttribute("aria-disabled");
+
+      await userEvent.click(option);
+      expect(command).toHaveBeenCalledWith({
+        selectItem: true,
+        entityId: 100,
+        model: "card",
+      });
+    });
+
+    it("does not grey out a custom-viz card when the document is not public", async () => {
+      const { command } = setup({
+        query: "Custom viz",
+        document: null,
+        searchItems: SEARCH_ITEMS_WITH_CUSTOM_VIZ,
+      });
+
+      const option = await screen.findByRole("option", {
+        name: /Custom viz chart/,
+      });
+      expect(option).not.toHaveAttribute("aria-disabled");
+
+      await userEvent.click(option);
+      expect(command).toHaveBeenCalledWith({
+        embedItem: true,
+        entityId: 100,
+        model: "card",
       });
     });
   });

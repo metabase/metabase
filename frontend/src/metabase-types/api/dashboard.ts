@@ -381,7 +381,12 @@ export type UpdateDashboardPropertyRequest<
   Key extends keyof UpdateDashboardRequest,
 > = Required<Pick<UpdateDashboardRequest, "id" | Key>>;
 
-export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
+export type GetPublicDashboard = Pick<
+  Dashboard,
+  "id" | "name" | "public_uuid"
+> & {
+  contains_custom_viz: boolean;
+};
 
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
 

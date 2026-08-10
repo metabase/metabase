@@ -14,6 +14,7 @@ import {
   Menu,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type {
@@ -28,8 +29,12 @@ import {
 } from "../documents.slice";
 import { useCardData } from "../hooks/use-card-data";
 import { useDraftCardOperations } from "../hooks/use-draft-card-operations";
-import { getSelectedEmbedIndex } from "../selectors";
-import { useVisualizationOptions } from "../utils/visualizationUtils";
+import { getCurrentDocument, getSelectedEmbedIndex } from "../selectors";
+import type { VisualizationItem } from "../utils/visualizationUtils";
+import {
+  isVizOptionBlockedForPublicDocument,
+  useVisualizationOptions,
+} from "../utils/visualizationUtils";
 
 import S from "./EmbedQuestionSettingsSidebar.module.css";
 
@@ -38,12 +43,56 @@ interface EmbedQuestionSettingsSidebarProps {
   editorInstance?: Editor;
 }
 
+interface VisualizationMenuItemProps {
+  item: VisualizationItem;
+  isBlocked: boolean;
+  onClick: () => void;
+}
+
+const VisualizationMenuItem = ({
+  item,
+  isBlocked,
+  onClick,
+}: VisualizationMenuItemProps) => {
+  const { iconName, iconUrl, label } = item;
+  const leftSection =
+    iconName || iconUrl ? (
+      <EntityIcon name={iconName ?? undefined} iconUrl={iconUrl} />
+    ) : null;
+
+  if (isBlocked) {
+    return (
+      <Tooltip
+        label={t`Not available while this document is shared publicly.`}
+        maw="20rem"
+        multiline
+      >
+        <Menu.Item
+          component="div"
+          disabled
+          aria-disabled="true"
+          leftSection={leftSection}
+        >
+          {label}
+        </Menu.Item>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Menu.Item onClick={onClick} leftSection={leftSection}>
+      {label}
+    </Menu.Item>
+  );
+};
+
 export const EmbedQuestionSettingsSidebar = ({
   cardId,
   editorInstance,
 }: EmbedQuestionSettingsSidebarProps) => {
   const dispatch = useDispatch();
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
+  const document = useSelector(getCurrentDocument);
 
   const {
     card,
@@ -148,46 +197,34 @@ export const EmbedQuestionSettingsSidebar = ({
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>
-                {sensibleItems.map(
-                  ({ iconName, iconUrl, label, value }, index) => (
-                    <Menu.Item
-                      key={`${value}/${index}`}
-                      onClick={() => handleVisualizationTypeChange(value)}
-                      leftSection={
-                        iconName || iconUrl ? (
-                          <EntityIcon
-                            name={iconName ?? undefined}
-                            iconUrl={iconUrl}
-                          />
-                        ) : null
-                      }
-                    >
-                      {label}
-                    </Menu.Item>
-                  ),
-                )}
+                {sensibleItems.map((item, index) => (
+                  <VisualizationMenuItem
+                    key={`${item.value}/${index}`}
+                    item={item}
+                    isBlocked={isVizOptionBlockedForPublicDocument(
+                      document,
+                      item.value,
+                    )}
+                    onClick={() => handleVisualizationTypeChange(item.value)}
+                  />
+                ))}
 
                 {nonsensibleItems.length > 0 && (
                   <>
                     <Menu.Label>{t`More charts`}</Menu.Label>
-                    {nonsensibleItems.map(
-                      ({ iconName, iconUrl, label, value }, index) => (
-                        <Menu.Item
-                          key={`${value}/${index}`}
-                          onClick={() => handleVisualizationTypeChange(value)}
-                          leftSection={
-                            iconName || iconUrl ? (
-                              <EntityIcon
-                                name={iconName ?? undefined}
-                                iconUrl={iconUrl}
-                              />
-                            ) : null
-                          }
-                        >
-                          {label}
-                        </Menu.Item>
-                      ),
-                    )}
+                    {nonsensibleItems.map((item, index) => (
+                      <VisualizationMenuItem
+                        key={`${item.value}/${index}`}
+                        item={item}
+                        isBlocked={isVizOptionBlockedForPublicDocument(
+                          document,
+                          item.value,
+                        )}
+                        onClick={() =>
+                          handleVisualizationTypeChange(item.value)
+                        }
+                      />
+                    ))}
                   </>
                 )}
               </Menu.Dropdown>

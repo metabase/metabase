@@ -21,6 +21,8 @@ export type ChartTypeOptionProps = {
   visualizationType: VisualizationDisplay;
   selectedVisualization: VisualizationDisplay;
   onOpenSettings?: () => void;
+  isDisabled?: boolean;
+  disabledReason?: string;
 };
 
 export const ChartTypeOption = ({
@@ -28,6 +30,8 @@ export const ChartTypeOption = ({
   selectedVisualization,
   onSelectVisualization,
   onOpenSettings,
+  isDisabled,
+  disabledReason,
 }: ChartTypeOptionProps) => {
   const visualization = visualizations.get(visualizationType);
   const isSelected = selectedVisualization === visualizationType;
@@ -45,39 +49,51 @@ export const ChartTypeOption = ({
         aria-selected={isSelected}
         data-testid={`${displayName}-container`}
       >
-        <ActionIcon
-          w="3.125rem"
-          h="3.125rem"
-          radius="xl"
-          onClick={() => {
-            if (isSelected) {
-              onOpenSettings?.();
-            } else {
-              onSelectVisualization(visualizationType);
-            }
-          }}
-          color="core-brand"
-          data-is-selected={isSelected}
-          variant={isSelected ? "filled" : "outline"}
-          className={cx(
-            ChartTypeOptionS.BorderedButton,
-            ChartTypeOptionS.VisualizationButton,
-          )}
-          data-testid={`${displayName}-button`}
+        <Tooltip
+          label={disabledReason}
+          disabled={!isDisabled || !disabledReason}
+          maw="20rem"
+          multiline
         >
-          <EntityIcon
-            name={iconName ?? "unknown"}
-            iconUrl={visualization?.iconUrl}
-            alt={displayName}
-            color={isSelected ? "core-white" : "core-brand"}
-            size={20}
-            style={
-              hasCustomIcon && isSelected
-                ? { filter: "brightness(0) invert(1)" }
-                : undefined
-            }
-          />
-        </ActionIcon>
+          <ActionIcon
+            w="3.125rem"
+            h="3.125rem"
+            radius="xl"
+            onClick={() => {
+              if (isDisabled) {
+                return;
+              }
+              if (isSelected) {
+                onOpenSettings?.();
+              } else {
+                onSelectVisualization(visualizationType);
+              }
+            }}
+            color="core-brand"
+            data-is-selected={isSelected}
+            variant={isSelected ? "filled" : "outline"}
+            className={cx(
+              ChartTypeOptionS.BorderedButton,
+              ChartTypeOptionS.VisualizationButton,
+            )}
+            data-testid={`${displayName}-button`}
+            aria-disabled={isDisabled || undefined}
+            opacity={isDisabled ? 0.4 : undefined}
+          >
+            <EntityIcon
+              name={iconName ?? "unknown"}
+              iconUrl={visualization?.iconUrl}
+              alt={displayName}
+              color={isSelected ? "core-white" : "core-brand"}
+              size={20}
+              style={
+                hasCustomIcon && isSelected
+                  ? { filter: "brightness(0) invert(1)" }
+                  : undefined
+              }
+            />
+          </ActionIcon>
+        </Tooltip>
 
         {isSelected && onOpenSettings && (
           <ActionIcon

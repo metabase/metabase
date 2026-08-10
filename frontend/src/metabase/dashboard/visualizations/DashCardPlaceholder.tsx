@@ -14,6 +14,7 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 type Props = VisualizationProps & {
   dashcard: VirtualDashboardCard;
@@ -55,6 +56,13 @@ function DashCardPlaceholderInner({
       }
     }
     if (item.model === "dashboard" && item.id !== dashboard.id) {
+      return true;
+    }
+    if (
+      dashboard.public_uuid &&
+      "display" in item &&
+      isCustomVizDisplay(item.display)
+    ) {
       return true;
     }
     return false;

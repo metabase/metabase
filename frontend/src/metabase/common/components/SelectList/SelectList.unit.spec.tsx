@@ -106,5 +106,79 @@ describe("Components > SelectList", () => {
         "true",
       );
     });
+
+    it("does not call onSelect on click when isDisabled", async () => {
+      const selectSpy = jest.fn();
+
+      render(
+        <SelectList.Item
+          id="1"
+          name="Item 1"
+          icon="check"
+          onSelect={selectSpy}
+          isDisabled
+        />,
+      );
+
+      await userEvent.click(screen.getByText("Item 1"));
+
+      expect(selectSpy).not.toHaveBeenCalled();
+    });
+
+    it("does not call onSelect on Enter when isDisabled", async () => {
+      const selectSpy = jest.fn();
+
+      render(
+        <SelectList.Item
+          id="1"
+          name="Item 1"
+          icon="check"
+          onSelect={selectSpy}
+          isDisabled
+        />,
+      );
+
+      screen.getByLabelText("Item 1").focus();
+      await userEvent.keyboard("{Enter}");
+
+      expect(selectSpy).not.toHaveBeenCalled();
+    });
+
+    it("marks a disabled item with aria-disabled", () => {
+      render(
+        <SelectList.Item
+          id="1"
+          name="Item 1"
+          icon="check"
+          onSelect={_.noop}
+          isDisabled
+        />,
+      );
+
+      expect(screen.getByLabelText("Item 1")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    });
+
+    it("does not mark a default item as disabled", async () => {
+      const selectSpy = jest.fn();
+
+      render(
+        <SelectList.Item
+          id="1"
+          name="Item 1"
+          icon="check"
+          onSelect={selectSpy}
+        />,
+      );
+
+      const item = screen.getByLabelText("Item 1");
+      expect(item).not.toHaveAttribute("aria-disabled");
+
+      await userEvent.click(item);
+
+      expect(selectSpy).toHaveBeenCalledWith("1", expect.anything());
+    });
   });
 });

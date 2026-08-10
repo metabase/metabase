@@ -11,6 +11,7 @@ import { PublicLinksListing } from "./PublicLinksListing";
 const setup = async (props: {
   publicCardData?: GetPublicCard[];
   revoke?: () => Promise<unknown>;
+  getWarning?: (item: GetPublicCard) => string | undefined;
 }) => {
   renderWithProviders(
     <div>
@@ -22,6 +23,7 @@ const setup = async (props: {
           return `test-public-url-${name}`;
         }}
         revoke={props.revoke || Promise.resolve}
+        getWarning={props.getWarning}
       />
       <UndoListing />
     </div>,
@@ -42,16 +44,19 @@ describe("PublicSharingSettingsPage", () => {
         public_uuid: "5eb3c485-f7d4-40d7-b625-6cc338cf9f4c",
         name: "Test Question 1",
         id: 1,
+        contains_custom_viz: false,
       },
       {
         public_uuid: "316ff9b2-d86e-483f-9156-c766081a1c05",
         name: "Test Question 2",
         id: 2,
+        contains_custom_viz: false,
       },
       {
         public_uuid: "c5c992f9-e761-4a26-a836-de5ce89d1fe5",
         name: "Test Question 3",
         id: 3,
+        contains_custom_viz: false,
       },
     ];
     await act(() =>
@@ -87,6 +92,7 @@ describe("PublicSharingSettingsPage", () => {
         public_uuid: "5eb3c485-f7d4-40d7-b625-6cc338cf9f4c",
         name: "Test Question 1",
         id: 1,
+        contains_custom_viz: false,
       },
     ];
 
@@ -118,5 +124,39 @@ describe("PublicSharingSettingsPage", () => {
     expect(mockRevoke).toHaveBeenCalledTimes(1);
     expect(mockRevoke).toHaveBeenCalledWith(publicCardData[0]);
     expect(screen.queryByText("Disable this link?")).not.toBeInTheDocument();
+  });
+
+  it("shows a warning icon with tooltip for flagged items", async () => {
+    await act(() =>
+      setup({
+        publicCardData: [
+          {
+            id: 1,
+            name: "Plain card",
+            public_uuid: "abc",
+            contains_custom_viz: false,
+          },
+          {
+            id: 2,
+            name: "Sankey card",
+            public_uuid: "def",
+            contains_custom_viz: true,
+          },
+        ],
+        getWarning: (item) =>
+          item.contains_custom_viz
+            ? "Contains custom visualizations, which appear as tables in the public link."
+            : undefined,
+      }),
+    );
+    const rows = screen.getAllByRole("row");
+    expect(
+      within(rows[2]).getByLabelText(
+        "Contains custom visualizations, which appear as tables in the public link.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(rows[1]).queryByLabelText(/Contains custom visualizations/),
+    ).not.toBeInTheDocument();
   });
 });

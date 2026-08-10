@@ -7,7 +7,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Box, Icon, Loader, Text } from "metabase/ui";
+import { ActionIcon, Box, Icon, Loader, Text, Tooltip } from "metabase/ui";
 
 export const PublicLinksListing = <
   T extends { id: string | number; name: string },
@@ -17,6 +17,7 @@ export const PublicLinksListing = <
   revoke,
   getUrl,
   getPublicUrl,
+  getWarning,
   noLinksMessage,
   "data-testid": dataTestId,
 }: {
@@ -25,6 +26,7 @@ export const PublicLinksListing = <
   revoke?: (item: T) => Promise<unknown>;
   getUrl: (item: T) => string;
   getPublicUrl?: (item: T) => string | null;
+  getWarning?: (item: T) => string | undefined;
   noLinksMessage: string;
   "data-testid"?: string;
 }) => {
@@ -63,11 +65,24 @@ export const PublicLinksListing = <
           {data.map((item) => {
             const internalUrl = getUrl(item);
             const publicUrl = getPublicUrl?.(item);
+            const warning = getWarning?.(item);
 
             return (
               <tr key={item.id}>
                 <Link to={internalUrl} className={cx(CS.flex, CS.fullWidth)}>
-                  <td>{item.name}</td>
+                  <td>
+                    {item.name}
+                    {warning && (
+                      <Tooltip label={warning} maw="20rem" multiline>
+                        <Icon
+                          name="warning"
+                          c="warning"
+                          ml="sm"
+                          aria-label={warning}
+                        />
+                      </Tooltip>
+                    )}
+                  </td>
                 </Link>
 
                 {publicUrl && (

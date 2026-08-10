@@ -2734,6 +2734,17 @@
                  (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/public")]
                    (m/map-vals boolean (select-keys dash [:name :id :public_uuid]))))))))))
 
+(deftest public-dashboard-listing-contains-custom-viz-test
+  (testing "GET /api/dashboard/public flags dashboards containing custom-viz cards"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Dashboard {plain-id :id} (shared-dashboard)
+                     :model/Dashboard {custom-id :id} (shared-dashboard)
+                     :model/Card {card-id :id} {:display "custom:calendar"}
+                     :model/DashboardCard _ {:dashboard_id custom-id :card_id card-id}]
+        (let [by-id (m/index-by :id (mt/user-http-request :crowberto :get 200 "dashboard/public"))]
+          (is (true?  (get-in by-id [custom-id :contains_custom_viz])))
+          (is (false? (get-in by-id [plain-id :contains_custom_viz]))))))))
+
 (deftest fetch-embeddable-dashboards-test
   (testing "GET /api/dashboard/embeddable"
     (testing "Test that we can fetch a list of embeddable-accessible dashboards"

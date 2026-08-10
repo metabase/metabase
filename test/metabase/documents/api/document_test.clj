@@ -1984,9 +1984,25 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "document/public"))))
         (testing "Test that superusers can fetch a list of publicly-accessible documents"
-          (is (= [{:name true, :id true, :public_uuid true}]
+          (is (= [{:name true, :id true, :public_uuid true, :contains_custom_viz false}]
                  (for [doc (mt/user-http-request :crowberto :get 200 "document/public")]
                    (m/map-vals boolean doc)))))))))
+
+(deftest public-document-listing-contains-custom-viz-test
+  (testing "GET /api/document/public flags documents containing custom-viz cards"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document {plain-id :id} (document-with-public-link {:name "Plain"})
+                     :model/Document {custom-id :id} (document-with-public-link {:name "Custom"})
+                     :model/Card _ {:display "custom:calendar" :document_id custom-id}]
+        (let [by-id (m/index-by :id (mt/user-http-request :crowberto :get 200 "document/public"))]
+          (is (true?  (get-in by-id [custom-id :contains_custom_viz])))
+          (is (false? (get-in by-id [plain-id :contains_custom_viz]))))))))
+
+(deftest get-document-contains-custom-viz-test
+  (testing "GET /api/document/:id includes contains_custom_viz"
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Doc" :document (documents.test-util/text->prose-mirror-ast "x")}
+                   :model/Card _ {:display "custom:calendar" :document_id doc-id}]
+      (is (true? (:contains_custom_viz (mt/user-http-request :crowberto :get 200 (str "document/" doc-id))))))))
 
 ;;; ---------------------------------------- GET /api/public/document/:uuid ----------------------------------------------
 

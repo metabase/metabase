@@ -92,6 +92,11 @@ export const DocumentHeader = ({
   const [isPublicLinkPopoverOpen, setIsPublicLinkPopoverOpen] = useState(false);
 
   const hasPublicLink = !!document?.public_uuid;
+  const containsCustomViz = Boolean(document?.contains_custom_viz);
+  const publicLinkDisabledReason =
+    isPublicSharingEnabled && !hasPublicLink && containsCustomViz
+      ? t`This document contains custom visualizations, which aren't supported in public links. Remove them to create a public link.`
+      : undefined;
 
   const { prepareForPrint } = usePrintContext();
 
@@ -239,41 +244,50 @@ export const DocumentHeader = ({
               {!isNewDocument && (
                 <>
                   {isAdmin && (
-                    <Menu.Item
-                      leftSection={<Icon name="link" />}
-                      onClick={() => setIsPublicLinkPopoverOpen(true)}
-                      {...(!isPublicSharingEnabled && {
-                        onClick: undefined,
-                        component: "div",
-                        disabled: true,
-                      })}
+                    <Tooltip
+                      label={publicLinkDisabledReason}
+                      disabled={!publicLinkDisabledReason}
+                      maw="20rem"
+                      multiline
                     >
-                      {isPublicSharingEnabled ? (
-                        hasPublicLink ? (
-                          t`Public link`
+                      <Menu.Item
+                        leftSection={<Icon name="link" />}
+                        onClick={() => setIsPublicLinkPopoverOpen(true)}
+                        {...((!isPublicSharingEnabled ||
+                          publicLinkDisabledReason) && {
+                          onClick: undefined,
+                          component: "div",
+                          disabled: true,
+                          "aria-disabled": true,
+                        })}
+                      >
+                        {isPublicSharingEnabled ? (
+                          hasPublicLink ? (
+                            t`Public link`
+                          ) : (
+                            t`Create a public link`
+                          )
                         ) : (
-                          t`Create a public link`
-                        )
-                      ) : (
-                        <>
-                          {t`Public link`}
-                          <Button
-                            component={Link}
-                            to="/admin/settings/public-sharing"
-                            target="_blank"
-                            variant="subtle"
-                            h="auto"
-                            lh="inherit"
-                            ml="sm"
-                            p={0}
-                            bd={0}
-                            className={CS.floatRight}
-                          >
-                            {t`Enable`}
-                          </Button>
-                        </>
-                      )}
-                    </Menu.Item>
+                          <>
+                            {t`Public link`}
+                            <Button
+                              component={Link}
+                              to="/admin/settings/public-sharing"
+                              target="_blank"
+                              variant="subtle"
+                              h="auto"
+                              lh="inherit"
+                              ml="sm"
+                              p={0}
+                              bd={0}
+                              className={CS.floatRight}
+                            >
+                              {t`Enable`}
+                            </Button>
+                          </>
+                        )}
+                      </Menu.Item>
+                    </Tooltip>
                   )}
                   {canWrite && (
                     <Menu.Item

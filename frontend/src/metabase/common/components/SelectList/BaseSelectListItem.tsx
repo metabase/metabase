@@ -1,8 +1,10 @@
-import type {
-  KeyboardEvent,
-  MouseEvent,
-  ReactNode,
-  SyntheticEvent,
+import { useMergedRef } from "@mantine/hooks";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  type SyntheticEvent,
+  forwardRef,
 } from "react";
 
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
@@ -15,6 +17,7 @@ export interface BaseSelectListItemProps {
   onSelect: (id: string | number, event: SyntheticEvent) => void;
   children: ReactNode;
   isSelected?: boolean;
+  isDisabled?: boolean;
   size?: "small" | "medium";
   className?: string;
   hasLeftIcon?: boolean;
@@ -22,30 +25,44 @@ export interface BaseSelectListItemProps {
   as?: any;
 }
 
-export function BaseSelectListItem({
-  id,
-  onSelect,
-  isSelected = false,
-  size = "medium",
-  className,
-  as = BaseItemRoot,
-  children,
-  ...rest
-}: BaseSelectListItemProps) {
-  const ref = useScrollOnMount<HTMLLIElement>();
+const BaseSelectListItemInner = forwardRef<
+  HTMLLIElement,
+  BaseSelectListItemProps
+>(function BaseSelectListItem(
+  {
+    id,
+    onSelect,
+    isSelected = false,
+    isDisabled = false,
+    size = "medium",
+    className,
+    as = BaseItemRoot,
+    children,
+    ...rest
+  },
+  forwardedRef,
+) {
+  // Merged so a consumer (e.g. Tooltip, which needs the DOM node to
+  // position the floating element) can still attach its own ref.
+  const scrollRef = useScrollOnMount<HTMLLIElement>();
+  const mergedRef = useMergedRef(isSelected ? scrollRef : null, forwardedRef);
   const Root = as;
   return (
     <Root
-      ref={isSelected ? ref : undefined}
+      ref={mergedRef}
       isSelected={isSelected}
       aria-selected={isSelected}
+      aria-disabled={isDisabled || undefined}
+      data-disabled={isDisabled || undefined}
       role="menuitem"
       tabIndex={0}
       size={size}
-      onClick={(event: MouseEvent) => onSelect(id, event)}
+      style={isDisabled ? { opacity: 0.4 } : undefined}
+      onClick={(event: MouseEvent) => !isDisabled && onSelect(id, event)}
       onKeyDown={(event: KeyboardEvent) =>
         event.key === "Enter" &&
         !event.nativeEvent.isComposing &&
+        !isDisabled &&
         onSelect(id, event)
       }
       className={className}
@@ -54,6 +71,8 @@ export function BaseSelectListItem({
       {children}
     </Root>
   );
-}
+});
 
-BaseSelectListItem.Root = BaseItemRoot;
+export const BaseSelectListItem = Object.assign(BaseSelectListItemInner, {
+  Root: BaseItemRoot,
+});
