@@ -46,6 +46,18 @@ jobs:
       # Always required by whitespace linter, also used by OpenAPI spec validation
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+
+      - name: Setup actionlint
+        if: needs.files-changed.outputs.actionlint == 'true'
+        id: download
+        shell: bash
+        run: |
+          if command -v actionlint; then
+            echo "executable=actionlint" >> "$GITHUB_OUTPUT"
+          else
+            # script sets executable output, for details see: https://github.com/rhysd/actionlint/blob/main/docs/usage.md#use-actionlint-on-github-actions
+            bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash)
+          fi
  
       - parallel:
         # Lint whitespace, always runs
@@ -58,17 +70,6 @@ jobs:
           run: bun run lint-yaml
 
         # Lint Github Actions
-        - name: Setup actionlint
-          if: needs.files-changed.outputs.actionlint == 'true'
-          id: download
-          shell: bash
-          run: |
-            if command -v actionlint; then
-              echo "executable=actionlint" >> "$GITHUB_OUTPUT"
-            else
-              # script sets executable output, for details see: https://github.com/rhysd/actionlint/blob/main/docs/usage.md#use-actionlint-on-github-actions
-              bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash)
-            fi
         - name: Run actionlint
           if: needs.files-changed.outputs.actionlint == 'true'
           run: ${{ steps.download.outputs.executable }} --color --verbose ${{ needs.files-changed.outputs.actionlint_files }}
@@ -77,9 +78,13 @@ jobs:
         - name: Generate OpenAPI spec
           if: needs.files-changed.outputs.openapi == 'true'
           run: bun run generate-openapi
-        - name: Validate OpenAPI spec
-          if: needs.files-changed.outputs.openapi == 'true'
-          run: bun run lint-openapi
+
+      # Parallel steps run asynchronously, and explicitly waiting for a parallel step means "if" statements are ignored.
+      # Move OpenAPI validation outside the parallel block so that spec generation happens asynchronously without requiring 
+      # an explicit "wait".
+      - name: Validate OpenAPI spec
+        if: needs.files-changed.outputs.openapi == 'true'
+        run: bun run lint-openapi
 
   codeql:
     if: needs.files-changed.outputs.codeql == 'true'
