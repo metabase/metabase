@@ -3,7 +3,6 @@ import type {
   GeneratedEntity,
 } from "metabase/api/ai-streaming/schemas";
 import { serializeCardForUrl } from "metabase/common/utils/card";
-import { matchPath } from "metabase/router";
 import type {
   CardDisplayType,
   DatasetQuery,
@@ -39,10 +38,6 @@ export const CONVERSATION_BASE_PATH = "metabot/conversation";
 
 export function metabotConversation(conversationId: string) {
   return `/${CONVERSATION_BASE_PATH}/${conversationId}`;
-}
-
-export function isMetabotConversationUrl(pathname: string): boolean {
-  return matchPath(`/${CONVERSATION_BASE_PATH}/:convoId`, pathname) !== null;
 }
 
 export type ConversationChart = {

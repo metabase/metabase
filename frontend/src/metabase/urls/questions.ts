@@ -1,6 +1,5 @@
 import slugg from "slugg";
 
-import { matchPath } from "metabase/router";
 import MetabaseSettings from "metabase/utils/settings";
 import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";
@@ -42,12 +41,6 @@ export function serializedQuestion(card: SavedCard | UnsavedCard, opts = {}) {
   return urlForCard(card, { ...opts, forceUnsaved: true });
 }
 
-const ASK_PATH = "/question/ask";
-
-export function isQuestionAskUrl(pathname: string): boolean {
-  return matchPath(ASK_PATH, pathname) !== null;
-}
-
 type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
   mode?: "view" | "notebook" | "query" | "ask";
   creationType?: string;
@@ -61,7 +54,7 @@ export function newQuestion({
   ...options
 }: NewQuestionUrlBuilderParams) {
   if (mode === "ask") {
-    return ASK_PATH;
+    return `/question/ask`;
   }
 
   const q = Question.create(options);

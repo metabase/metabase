@@ -8,7 +8,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { isQuestionAskUrl, newQuestion, question, table } from "./questions";
+import { newQuestion, question, table } from "./questions";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -86,20 +86,6 @@ describe("urls > questions", () => {
       );
       expect(newQuestion({ mode: "view" })).toBe(`/question/view#${hash}`);
       expect(newQuestion({ mode: "ask" })).toBe("/question/ask");
-    });
-  });
-
-  describe("isQuestionAskUrl", () => {
-    it.each([
-      ["/question/ask", true],
-      ["/question/ask/", true],
-      ["/QUESTION/Ask", true],
-      ["/question/ask/extra", false],
-      ["/question/asking", false],
-      ["/question/123", false],
-      ["", false],
-    ])("matches %s as %s", (pathname, expected) => {
-      expect(isQuestionAskUrl(pathname)).toBe(expected);
     });
   });
 });

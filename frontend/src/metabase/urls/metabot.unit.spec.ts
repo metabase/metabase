@@ -2,22 +2,7 @@ import { serializeCardForUrl } from "metabase/common/utils/card";
 import type { DatasetQuery } from "metabase-types/api";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
-import { conversationChartUrl, isMetabotConversationUrl } from "./metabot";
-
-describe("isMetabotConversationUrl", () => {
-  it.each([
-    ["/metabot/conversation/abc-123", true],
-    ["/metabot/conversation/abc-123/", true],
-    ["/Metabot/Conversation/abc-123", true],
-    ["/metabot/conversation/abc-123/extra", false],
-    ["/metabot/conversation/", false],
-    ["/metabot/conversation", false],
-    ["/metabot/conversations", false],
-    ["/metabot/new", false],
-  ])("matches %s as %s", (pathname, expected) => {
-    expect(isMetabotConversationUrl(pathname)).toBe(expected);
-  });
-});
+import { conversationChartUrl } from "./metabot";
 
 describe("conversationChartUrl", () => {
   it("builds an ad-hoc question url with a locked display from a conversation chart", () => {
