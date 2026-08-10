@@ -11,8 +11,8 @@ import { useSetting } from "metabase/settings";
 import { Box, Button, Icon, Tooltip } from "metabase/ui";
 
 import { CustomHomePageModal } from "../CustomHomePageModal";
-import { EmbeddingHubHomePage } from "../EmbeddingHubHomePage";
 import { HomeGreeting } from "../HomeGreeting";
+import { SetupGuideHomePage } from "../SetupGuideHomePage";
 
 interface HomeLayoutProps {
   children?: ReactNode;
@@ -32,7 +32,7 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
     user?.is_superuser &&
     isSimpleEmbeddingAvailable
   ) {
-    return <EmbeddingHubHomePage />;
+    return <SetupGuideHomePage />;
   }
 
   return (

@@ -130,23 +130,23 @@ const guestEmbedsSettings = () =>
     /* webpackChunkName: "admin" */ "metabase/admin/settings/components/EmbeddingSettings"
   ).then(({ GuestEmbedsSettings }) => ({ Component: GuestEmbedsSettings }));
 
-const embeddingHub = () =>
+const setupGuide = () =>
   import(
-    /* webpackChunkName: "admin" */ "metabase/admin/embedding/embedding-hub"
-  ).then(({ EmbeddingHubAdminSettingsPage }) => ({
-    Component: EmbeddingHubAdminSettingsPage,
+    /* webpackChunkName: "admin" */ "metabase/admin/embedding/setup-guide"
+  ).then(({ SetupGuideAdminSettingsPage }) => ({
+    Component: SetupGuideAdminSettingsPage,
   }));
 
 const setupPermissions = () =>
   import(
-    /* webpackChunkName: "admin" */ "metabase/embedding/embedding-hub"
+    /* webpackChunkName: "admin" */ "metabase/embedding/setup-guide"
   ).then(({ SetupPermissionsAndTenantsPage }) => ({
     Component: SetupPermissionsAndTenantsPage,
   }));
 
 const setupSso = () =>
   import(
-    /* webpackChunkName: "admin" */ "metabase/embedding/embedding-hub"
+    /* webpackChunkName: "admin" */ "metabase/embedding/setup-guide"
   ).then(({ SetupSsoPage }) => ({
     Component: SetupSsoPage,
   }));
@@ -347,7 +347,7 @@ export const getRoutes = (
             <Route index lazy={embeddingSettings} />
 
             <Route path="setup-guide">
-              <Route index lazy={embeddingHub} />
+              <Route index lazy={setupGuide} />
 
               <Route path="permissions" lazy={setupPermissions} />
 
