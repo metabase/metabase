@@ -10,7 +10,6 @@
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.transforms.write :as transforms-write-tools]
    [metabase.metabot.tools.util :as metabot.tools.u]
-   [metabase.metabot.util :as metabot.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
@@ -22,7 +21,7 @@
 ;;; Formatting helpers
 ;;; ──────────────────────────────────────────────────────────────────
 
-;; Hand-built rather than `metabot.u/xml` so query and body content stays verbatim:
+;; Hand-built rather than `metabase.metabot.util/xml` so query and body content stays verbatim:
 ;; `clojure.data.xml` escapes `<`/`>`/`&`, and an escaped query breaks `old_string`
 ;; matching when the model quotes it back to the write tools.
 (defn- format-transform-details-output
@@ -34,7 +33,7 @@
           (when source
             (str "  <source type=\"" (some-> source-type name) "\">"))
           (when query
-            (str "    <query>" (metabot.u/transform-query->text query) "</query>"))
+            (str "    <query>" (llm-shape/transform-query->text query) "</query>"))
           (when body
             (str "    <body>" body "</body>"))
           (when source-database

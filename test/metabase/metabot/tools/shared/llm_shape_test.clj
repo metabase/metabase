@@ -2,7 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.tools.shared.llm-shape :as llm-shape]))
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (deftest ^:parallel escape-xml-test
   (testing "escape-xml handles special characters"
@@ -909,8 +913,44 @@
         (is (str/includes? xml "related_by_field_name=\"user_id\" related_by_field_id=\"303\""))
         (is (str/includes? xml "related_by_field_name=\"review_id\" related_by_field_id=\"404\""))))))
 
+(deftest ^:parallel transform-query->text-test
+  (testing "native SQL renders verbatim"
+    (are [query] (= "SELECT 1" (llm-shape/transform-query->text query))
+      {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+      {:native {:query "SELECT 1"}}
+      "SELECT 1"))
+  (testing "orphaned sources skip normalization and still render as SQL through their string keys"
+    (are [query] (= "SELECT 1" (llm-shape/transform-query->text query))
+      {"database" nil "native" {"query" "SELECT 1"}}
+      {"database" nil "stages" [{"native" "SELECT 1"}]}))
+  (testing "nil stays nil"
+    (is (nil? (llm-shape/transform-query->text nil)))))
+
+(deftest ^:parallel transform-query->text-mbql-test
+  (testing "an MBQL query exports to portable form, referencing tables by FK path"
+    (let [text     (llm-shape/transform-query->text
+                    (lib/query (mt/metadata-provider)
+                               (lib.metadata/table (mt/metadata-provider) (mt/id :products))))
+          exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" text)))]
+      (is (= ["PUBLIC" "PRODUCTS"]
+             (vec (take-last 2 (get-in exported ["stages" 0 "source-table"])))))))
+  (testing "a query that fails to export falls back to EDN without the metadata provider"
+    (let [text (llm-shape/transform-query->text
+                {:lib/type :mbql/query
+                 :database (mt/id)
+                 :stages   [{:lib/type :mbql.stage/mbql :source-table Integer/MAX_VALUE}]})]
+      (is (str/includes? text ":mbql.stage/mbql"))
+      (is (not (str/includes? text ":lib/metadata")))))
+  (testing "a native stage followed by an MBQL stage renders every stage, not the first stage's SQL"
+    (let [mp       (mt/metadata-provider)
+          text     (llm-shape/transform-query->text
+                    (lib/append-stage (lib/native-query mp "SELECT * FROM PRODUCTS")))
+          exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" text)))]
+      (is (= 2 (count (get exported "stages"))))
+      (is (= "SELECT * FROM PRODUCTS" (get-in exported ["stages" 0 "native"]))))))
+
 (deftest ^:parallel transform->xml-source-query-test
-  (testing "a normalized (map) source query renders as verbatim SQL text"
+  (testing "a native source query renders as verbatim SQL text"
     (let [xml (llm-shape/transform->xml
                {:id     7
                 :name   "Orders rollup"
@@ -918,13 +958,12 @@
                          :query {:stages [{:lib/type :mbql.stage/native
                                            :native   "SELECT * FROM orders WHERE total < 100"}]}}})]
       (is (str/includes? xml "<query>SELECT * FROM orders WHERE total < 100</query>"))))
-  (testing "a notebook-built source query renders as EDN with the metadata provider stripped"
+  (testing "an MBQL source query renders as a JSON code block"
     (let [xml (llm-shape/transform->xml
                {:id     8
                 :name   "Notebook rollup"
                 :source {:type  :query
-                         :query {:lib/type     :mbql/query
-                                 :lib/metadata :fake-metadata-provider
-                                 :stages       [{:lib/type :mbql.stage/mbql :source-table 1}]}}})]
-      (is (str/includes? xml ":mbql.stage/mbql"))
-      (is (not (str/includes? xml ":lib/metadata"))))))
+                         :query (lib/query (mt/metadata-provider)
+                                           (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}})]
+      (is (str/includes? xml "<query>```json"))
+      (is (str/includes? xml "\"PRODUCTS\"")))))

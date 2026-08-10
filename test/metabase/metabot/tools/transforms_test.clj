@@ -28,15 +28,15 @@
             (is (str/includes? output "name=\"Gadget Products\""))
             (is (str/includes? output "<source type=\"query\">"))
             (is (str/includes? output "<query>SELECT * FROM products WHERE price < 100 AND category <> 'Widget'</query>")))))
-      (testing "notebook-built source falls back to EDN with the metadata provider stripped"
+      (testing "notebook-built source renders as a portable-repr JSON block"
         (mt/with-temp [:model/Transform {transform-id :id}
                        {:name   "Notebook Products"
                         :source {:type  "query"
                                  :query (lib/query (mt/metadata-provider)
                                                    (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}]
           (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
-            (is (str/includes? output ":lib/type"))
-            (is (not (str/includes? output ":lib/metadata"))))))
+            (is (str/includes? output "<query>```json"))
+            (is (str/includes? output "\"PRODUCTS\"")))))
       (testing "python source renders its body and source database"
         (mt/with-temp [:model/Transform {transform-id :id}
                        {:name   "Gadget Metrics"
