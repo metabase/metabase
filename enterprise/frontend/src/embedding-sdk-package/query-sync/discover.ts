@@ -5,7 +5,7 @@ import path from "node:path";
 import { build } from "esbuild";
 import ts from "typescript";
 
-import { canonicalJson, queryFingerprint } from "./canonical";
+import { canonicalJson, getQueryFingerprint } from "./canonical";
 import type { DiscoveredQuery } from "./types";
 
 interface QuerySource {
@@ -180,7 +180,7 @@ export async function discoverQueries(
         query.savedQuestionSourceId,
         location,
       );
-      const { tableId, hash } = queryFingerprint(query);
+      const { tableId, hash } = getQueryFingerprint(query);
       discovered.push({
         exportName: source.exportName,
         filePath,
