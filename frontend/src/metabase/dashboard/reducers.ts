@@ -7,13 +7,12 @@ import { CARD_UPDATED } from "metabase/redux/cards";
 import { SET_PARAMETER_VALUES, initialize } from "metabase/redux/dashboard";
 import type { Card } from "metabase-types/api";
 
-import {
-  type removeCardFromDashboard,
-  type removeParameter,
-  type resetParameters,
-  type setParameterValue,
-  tabsReducer,
-  type undoRemoveCardFromDashboard,
+import type {
+  removeCardFromDashboard,
+  removeParameter,
+  resetParameters,
+  setParameterValue,
+  undoRemoveCardFromDashboard,
 } from "./actions";
 import {
   REMOVE_CARD_FROM_DASH,
@@ -31,6 +30,7 @@ import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
 } from "./actions/core";
+import { tabsReducer } from "./actions/tabs";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import {
   autoApplyFilters,
