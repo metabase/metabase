@@ -914,20 +914,24 @@
         (is (str/includes? xml "related_by_field_name=\"user_id\" related_by_field_id=\"303\""))
         (is (str/includes? xml "related_by_field_name=\"review_id\" related_by_field_id=\"404\""))))))
 
-(deftest ^:parallel transform-query->text-test
+(deftest ^:parallel transform-query->text-native-test
   (testing "native SQL renders verbatim"
     (are [query] (= "SELECT 1" (llm-shape/transform-query->text query))
       {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
       {:native {:query "SELECT 1"}}
-      "SELECT 1"))
+      "SELECT 1")))
+
+(deftest ^:parallel transform-query->text-orphaned-source-test
   (testing "orphaned sources skip normalization and still render as SQL through their string keys"
     (are [query] (= "SELECT 1" (llm-shape/transform-query->text query))
       {"database" nil "native" {"query" "SELECT 1"}}
-      {"database" nil "stages" [{"native" "SELECT 1"}]}))
+      {"database" nil "stages" [{"native" "SELECT 1"}]})))
+
+(deftest ^:parallel transform-query->text-nil-test
   (testing "nil stays nil"
     (is (nil? (llm-shape/transform-query->text nil)))))
 
-(deftest ^:parallel transform-query->text-mbql-test
+(deftest ^:parallel transform-query->text-portable-mbql-test
   (testing "an MBQL query exports to portable form, referencing tables by FK path"
     (let [mp       (mt/metadata-provider)
           text     (llm-shape/transform-query->text
@@ -935,21 +939,27 @@
           exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" text)))]
       (is (= [(:name (lib.metadata/database mp)) "PUBLIC" "PRODUCTS"]
              (get-in exported ["stages" 0 "source-table"])))
-      (is (not (contains? exported "lib/metadata")))))
+      (is (not (contains? exported "lib/metadata"))))))
+
+(deftest ^:parallel transform-query->text-export-failure-fallback-test
   (testing "a query that fails to export falls back to EDN without the metadata provider"
     (let [text (llm-shape/transform-query->text
                 {:lib/type :mbql/query
                  :database (mt/id)
                  :stages   [{:lib/type :mbql.stage/mbql :source-table Integer/MAX_VALUE}]})]
       (is (str/includes? text ":mbql.stage/mbql"))
-      (is (not (str/includes? text ":lib/metadata")))))
+      (is (not (str/includes? text ":lib/metadata"))))))
+
+(deftest ^:parallel transform-query->text-existing-metadata-fallback-test
   (testing "the EDN fallback strips an existing provider even when there is no database to normalize"
     (let [text (llm-shape/transform-query->text
                 {:lib/type     :mbql/query
                  :lib/metadata :fake-provider
                  :stages       [{:lib/type :mbql.stage/mbql}]})]
       (is (str/includes? text ":mbql.stage/mbql"))
-      (is (not (str/includes? text ":lib/metadata")))))
+      (is (not (str/includes? text ":lib/metadata"))))))
+
+(deftest ^:parallel transform-query->text-multi-stage-test
   (testing "a native stage followed by an MBQL stage renders every stage, not the first stage's SQL"
     (let [mp       (mt/metadata-provider)
           text     (llm-shape/transform-query->text

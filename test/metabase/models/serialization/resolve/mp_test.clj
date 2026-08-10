@@ -720,11 +720,14 @@
           exported        (resolve/export-fk er 500 'Card)]
       (is (= store-entity-id exported))
       (is (not= card-entity-id exported)
-          "the metadata provider's permission-agnostic entity id is not used")))
+          "the metadata provider's permission-agnostic entity id is not used"))))
+
+(deftest ^:parallel export-fk-card-missing-entity-id-test
   (testing "a missing or blank store entity id produces the explicit export error"
     (doseq [rows [{}
                   {"lookup-key" {:id 500 :database_id 1}}
-                  {"lookup-key" {:id 500 :database_id 1 :entity_id ""}}]]
+                  {"lookup-key" {:id 500 :database_id 1 :entity_id ""}}
+                  {"lookup-key" {:id 500 :database_id 1 :entity_id "  \t"}}]]
       (let [er (resolve.mp/export-resolver mp-with-cards (map-content-store rows))]
         (try
           (resolve/export-fk er 500 'Card)

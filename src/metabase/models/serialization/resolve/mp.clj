@@ -35,6 +35,7 @@
         in-memory test fixture, or a snapshot) can be supplied for contexts without an application
         database."
   (:require
+   [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -432,7 +433,7 @@
                          :card-database-id card-db-id
                          :expected-database current-db-id}))
 
-        (not (and (string? entity-id) (seq entity-id)))
+        (or (not (string? entity-id)) (str/blank? entity-id))
         (throw (ex-info (tru "Saved question, model, or metric id {0} does not have an entity_id, so it cannot be exported as a portable representation." card-id)
                         {:status-code 400
                          :error       :missing-card-entity-id

@@ -590,31 +590,35 @@
                              :source-table 99999}]}]
       (is (nil? (repr.resolve/try-export-query mp bogus))))))
 
+(def ^:private source-card-export-query
+  {:lib/type :mbql/query
+   :database 1
+   :stages   [{:lib/type :mbql.stage/mbql
+               :source-card 900}]})
+
+(defn- recording-export-content-store [calls]
+  (reify resolve.mp/ContentStore
+    (card-by-entity-id    [_ _] nil)
+    (measure-by-entity-id [_ _] nil)
+    (segment-by-entity-id [_ _] nil)
+    (card-by-id           [_ id]
+      (swap! calls conj id)
+      {:id id :entity_id metric-entity-id})
+    (measure-by-id        [_ _] nil)
+    (segment-by-id        [_ _] nil)))
+
 (deftest export-query-3-arity-threads-content-store-test
-  (testing (str "export-query / try-export-query accept an explicit content-store as their "
-                "third argument. The store is used for Card / Measure / Segment id → "
-                "entity_id lookups. A source-card query must invoke the "
-                "supplied store rather than the default unchecked one.")
-    (let [calls (atom [])
-          store (reify resolve.mp/ContentStore
-                  (card-by-entity-id    [_ _] nil)
-                  (measure-by-entity-id [_ _] nil)
-                  (segment-by-entity-id [_ _] nil)
-                  (card-by-id           [_ id]
-                    (swap! calls conj id)
-                    {:id id :entity_id metric-entity-id})
-                  (measure-by-id        [_ _] nil)
-                  (segment-by-id        [_ _] nil))
-          q     {:lib/type :mbql/query
-                 :database 1
-                 :stages   [{:lib/type :mbql.stage/mbql
-                             :source-card 900}]}]
-      (testing "export-query uses the explicit store for source-card export"
-        (let [exported (repr.resolve/export-query mp-with-metric q store)]
-          (is (= metric-entity-id (get-in exported ["stages" 0 "source-card"])))
-          (is (= [900] @calls))))
-      (testing "try-export-query threads the same explicit store"
-        (reset! calls [])
-        (let [exported (repr.resolve/try-export-query mp-with-metric q store)]
-          (is (= metric-entity-id (get-in exported ["stages" 0 "source-card"])))
-          (is (= [900] @calls)))))))
+  (testing "export-query uses its explicit content store for source-card export"
+    (let [calls    (atom [])
+          store    (recording-export-content-store calls)
+          exported (repr.resolve/export-query mp-with-metric source-card-export-query store)]
+      (is (= metric-entity-id (get-in exported ["stages" 0 "source-card"])))
+      (is (= [900] @calls)))))
+
+(deftest try-export-query-3-arity-threads-content-store-test
+  (testing "try-export-query uses its explicit content store for source-card export"
+    (let [calls    (atom [])
+          store    (recording-export-content-store calls)
+          exported (repr.resolve/try-export-query mp-with-metric source-card-export-query store)]
+      (is (= metric-entity-id (get-in exported ["stages" 0 "source-card"])))
+      (is (= [900] @calls)))))
