@@ -141,6 +141,11 @@ const documentPage = () =>
     Component: DocumentPageOuter,
   }));
 
+const commentsSidesheet = () =>
+  import("metabase/documents/components/CommentsSidesheet").then(
+    ({ CommentsSidesheet }) => CommentsSidesheet,
+  );
+
 /**
  * Hovering a link into one of these chunks starts the fetch, so it is usually in
  * hand by the time the click lands. The router still awaits `lazy` and still
@@ -156,6 +161,11 @@ registerPagePrefetch("/model", queryBuilder);
 registerPagePrefetch("/table/", queryBuilder);
 registerPagePrefetch("/question/ask", metabotQueryBuilder);
 registerPagePrefetch("/document/", documentPage);
+// The sidesheet is a chunk of its own, and its route carries the document id
+// before the segment that names it, so a prefix cannot single it out. Registered
+// against the document prefix instead: 15 kb fetched alongside a page of 337 kb,
+// in exchange for the sidesheet already being there when it is opened.
+registerPagePrefetch("/document/", commentsSidesheet);
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
   {
@@ -224,14 +234,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "document/:entityId",
                 lazy: documentPage,
                 children: [
-                  lazyModalRoute(
-                    "comments/:childTargetId",
-                    () =>
-                      import("metabase/documents/components/CommentsSidesheet").then(
-                        ({ CommentsSidesheet }) => CommentsSidesheet,
-                      ),
-                    { noWrap: true },
-                  ),
+                  lazyModalRoute("comments/:childTargetId", commentsSidesheet, {
+                    noWrap: true,
+                  }),
                 ],
               },
 
