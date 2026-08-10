@@ -3,7 +3,7 @@ import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ComponentType } from "react";
 
 import { getPublicStore } from "__support__/entities-store";
 import { createMockSettingsState, createMockState } from "__support__/state";
@@ -69,7 +69,7 @@ export default {
   },
 };
 
-function ReduxDecorator(Story: StoryFn) {
+function ReduxDecorator(Story: ComponentType) {
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
@@ -186,7 +186,7 @@ export const TransparentThemeDefault = {
   decorators: [LightBackgroundDecorator],
 };
 
-function LightBackgroundDecorator(Story: StoryFn) {
+function LightBackgroundDecorator(Story: ComponentType) {
   return (
     <Box bg="background_page-primary" h="100%">
       <Story />
@@ -443,7 +443,7 @@ export const TableLightTheme = {
   },
 };
 
-function NarrowContainer(Story: StoryFn) {
+function NarrowContainer(Story: ComponentType) {
   return (
     <Box w="300px" h="250px" pos="relative">
       <Story />
