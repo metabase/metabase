@@ -3,62 +3,78 @@ import * as Urls from "metabase/urls";
 
 import { RequireMetabotConfigured } from "./components/RequireMetabotConfigured";
 
+/**
+ * The AI settings pages, in one chunk.
+ *
+ * Every loader names the same chunk, so the whole section arrives in a single
+ * request. These pages are tabs of one settings screen, and moving between them
+ * should not cost a fetch each time. The gate stays eager: it has to decide
+ * before there is anything to show.
+ */
 const metabotFeatureAccessPage = () =>
-  import("./pages/MetabotFeatureAccessPage").then(
-    ({ MetabotFeatureAccessPage }) => ({ Component: MetabotFeatureAccessPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-controls" */ "./pages/MetabotFeatureAccessPage"
+  ).then(({ MetabotFeatureAccessPage }) => ({
+    Component: MetabotFeatureAccessPage,
+  }));
 
 const metabotFeatureAccessUpsellPage = () =>
-  import("./pages/MetabotFeatureAccessPage").then(
-    ({ MetabotFeatureAccessUpsellPage }) => ({
-      Component: MetabotFeatureAccessUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "ai-controls" */ "./pages/MetabotFeatureAccessPage"
+  ).then(({ MetabotFeatureAccessUpsellPage }) => ({
+    Component: MetabotFeatureAccessUpsellPage,
+  }));
 
 const metabotUsageLimitsPage = () =>
-  import("./pages/MetabotUsageLimitsPage").then(
-    ({ MetabotUsageLimitsPage }) => ({ Component: MetabotUsageLimitsPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-controls" */ "./pages/MetabotUsageLimitsPage"
+  ).then(({ MetabotUsageLimitsPage }) => ({
+    Component: MetabotUsageLimitsPage,
+  }));
 
 const metabotCustomizationPage = () =>
-  import("./pages/MetabotCustomizationPage").then(
-    ({ MetabotCustomizationPage }) => ({ Component: MetabotCustomizationPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-controls" */ "./pages/MetabotCustomizationPage"
+  ).then(({ MetabotCustomizationPage }) => ({
+    Component: MetabotCustomizationPage,
+  }));
 
 const metabotCustomizationUpsellPage = () =>
-  import("./pages/MetabotCustomizationPage").then(
-    ({ MetabotCustomizationUpsellPage }) => ({
-      Component: MetabotCustomizationUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "ai-controls" */ "./pages/MetabotCustomizationPage"
+  ).then(({ MetabotCustomizationUpsellPage }) => ({
+    Component: MetabotCustomizationUpsellPage,
+  }));
 
 const metabotChatPromptPage = () =>
-  import("./pages/MetabotSystemPromptsPage").then(
-    ({ MetabotChatPromptPage }) => ({ Component: MetabotChatPromptPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-controls" */ "./pages/MetabotSystemPromptsPage"
+  ).then(({ MetabotChatPromptPage }) => ({ Component: MetabotChatPromptPage }));
 
 const naturalLanguagePromptPage = () =>
-  import("./pages/MetabotSystemPromptsPage").then(
-    ({ NaturalLanguagePromptPage }) => ({
-      Component: NaturalLanguagePromptPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "ai-controls" */ "./pages/MetabotSystemPromptsPage"
+  ).then(({ NaturalLanguagePromptPage }) => ({
+    Component: NaturalLanguagePromptPage,
+  }));
 
 const sqlGenerationPromptPage = () =>
-  import("./pages/MetabotSystemPromptsPage").then(
-    ({ SqlGenerationPromptPage }) => ({ Component: SqlGenerationPromptPage }),
-  );
+  import(
+    /* webpackChunkName: "ai-controls" */ "./pages/MetabotSystemPromptsPage"
+  ).then(({ SqlGenerationPromptPage }) => ({
+    Component: SqlGenerationPromptPage,
+  }));
 
 const metabotSystemPromptsUpsellPage = () =>
-  import("./pages/MetabotSystemPromptsPage").then(
-    ({ MetabotSystemPromptsUpsellPage }) => ({
-      Component: MetabotSystemPromptsUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "ai-controls" */ "./pages/MetabotSystemPromptsPage"
+  ).then(({ MetabotSystemPromptsUpsellPage }) => ({
+    Component: MetabotSystemPromptsUpsellPage,
+  }));
 
 /**
- * Hovering an AI settings tab starts the fetch. One prefix per section, since
- * the section a page belongs to is what the sidebar links to.
+ * Hovering any AI settings tab starts the fetch, and since they share a chunk,
+ * the first hover covers the whole section.
  */
 registerPagePrefetch(
   `${Urls.adminAiSettings()}/usage-controls/ai-feature-access`,
