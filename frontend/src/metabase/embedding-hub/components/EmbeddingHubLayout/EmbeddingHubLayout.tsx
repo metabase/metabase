@@ -6,7 +6,7 @@ import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
 import { useDispatch } from "metabase/redux";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Outlet, useLocation } from "metabase/router";
-import { Button, FixedSizeIcon, Flex, Stack } from "metabase/ui";
+import { FixedSizeIcon, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 
@@ -18,41 +18,6 @@ type EmbeddingHubTab = {
   to: string;
   isGated?: boolean;
 };
-
-// Matches a whole path segment, never a string prefix: /embedding/permissions
-// is otherwise a prefix of /embedding/permissions-setup, which would strip that
-// wizard's padding.
-function isUnder(pathname: string, base: string) {
-  return pathname === base || pathname.startsWith(`${base}/`);
-}
-
-// Two things need the whole area: the theme editor, which puts its editor panel
-// and live preview side by side, and the permissions editor, which is a
-// full-width app of its own. Every other page is capped at 800px, per the
-// design. The theme *list* stays capped, so appearance matches only deeper.
-function isFullWidthPath(pathname: string) {
-  return (
-    pathname.startsWith(`${Urls.embeddingHubAppearance()}/`) ||
-    isUnder(pathname, Urls.embeddingHubPermissions())
-  );
-}
-
-// The setup wizard's two sub-pages belong to Get started, so they keep that
-// tab selected rather than leaving the nav with nothing lit.
-const GET_STARTED_PATHS = [
-  `${Urls.embeddingHub()}/permissions-setup`,
-  `${Urls.embeddingHub()}/sso-setup`,
-];
-
-function isTabSelected(tab: EmbeddingHubTab, pathname: string) {
-  // Get started is the index route, so a prefix match would claim every other
-  // tab's path.
-  if (tab.to === Urls.embeddingHub()) {
-    return pathname === tab.to || GET_STARTED_PATHS.includes(pathname);
-  }
-
-  return isUnder(pathname, tab.to);
-}
 
 export function EmbeddingHubLayout() {
   const {
@@ -73,7 +38,7 @@ export function EmbeddingHubLayout() {
   // arrives with its own issue and adds its entry here, gated on the feature
   // it needs.
   const tabs: EmbeddingHubTab[] = [
-    { label: t`Get started`, icon: "list", to: Urls.embeddingHub() },
+    { label: t`Get started`, icon: "list", to: Urls.embeddingHubGetStarted() },
   ];
 
   const upperNav = (
@@ -111,13 +76,23 @@ export function EmbeddingHubLayout() {
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={setIsNavbarOpened}
       upperNav={upperNav}
-      lowerNav={<NewEmbedNavButton />}
+      lowerNav={<NewEmbedNavButton showLabel={isNavbarOpened} />}
     >
-      <EmbeddingHubContent fullWidth={isFullWidthPath(pathname)}>
+      <EmbeddingHubContent>
         <Outlet />
       </EmbeddingHubContent>
     </AreaLayout>
   );
+}
+
+function isTabSelected(tab: EmbeddingHubTab, pathname: string) {
+  return isUnder(pathname, tab.to);
+}
+
+// Matches a whole path segment, never a string prefix, so a tab claims its own
+// sub-routes without claiming a sibling whose path merely starts the same way.
+function isUnder(pathname: string, base: string) {
+  return pathname === base || pathname.startsWith(`${base}/`);
 }
 
 /**
@@ -125,21 +100,19 @@ export function EmbeddingHubLayout() {
  * `id: "embed"` modal the admin button uses, which is why the hub's routes
  * mount inside AppComponent -- NewModals lives there.
  */
-function NewEmbedNavButton() {
+function NewEmbedNavButton({ showLabel }: { showLabel: boolean }) {
   const dispatch = useDispatch();
 
   return (
-    <Button
-      variant="subtle"
-      leftSection={<FixedSizeIcon name="add" size={12} />}
-      fullWidth
+    <AreaTab
+      label={t`New embed`}
+      icon="add"
+      showLabel={showLabel}
       onClick={() =>
         dispatch(
           setOpenModalWithProps({ id: "embed", props: { initialState: {} } }),
         )
       }
-    >
-      {t`New embed`}
-    </Button>
+    />
   );
 }

@@ -28,9 +28,13 @@ const TAB_LABELS = ["Get started"];
 
 type SetupOptions = {
   initialRoute?: string;
+  isNavbarOpened?: boolean;
 };
 
-function setup({ initialRoute = "/embedding" }: SetupOptions = {}) {
+function setup({
+  initialRoute = "/embedding/get-started",
+  isNavbarOpened = true,
+}: SetupOptions = {}) {
   const tokenFeatures = createMockTokenFeatures();
 
   setupSettingsEndpoints([]);
@@ -40,16 +44,18 @@ function setup({ initialRoute = "/embedding" }: SetupOptions = {}) {
   setupUserKeyValueEndpoints({
     namespace: "embedding_hub",
     key: "isNavbarOpened",
-    value: true,
+    value: isNavbarOpened,
   });
 
   return renderWithProviders(
     <Route path="/embedding" element={<EmbeddingHubLayout />}>
-      <Route index element={<div>{"Get started body"}</div>} />
-      <Route
-        path="permissions-setup"
-        element={<div>{"Permissions wizard body"}</div>}
-      />
+      <Route path="get-started">
+        <Route index element={<div>{"Get started body"}</div>} />
+        <Route
+          path="permissions-setup"
+          element={<div>{"Permissions wizard body"}</div>}
+        />
+      </Route>
     </Route>,
     {
       withRouter: true,
@@ -84,11 +90,11 @@ describe("EmbeddingHubLayout", () => {
 
     expect(
       await within(nav).findByRole("link", { name: "Get started" }),
-    ).toHaveAttribute("href", "/embedding");
+    ).toHaveAttribute("href", "/embedding/get-started");
   });
 
-  it("marks the Get started tab as current on the index route", async () => {
-    setup({ initialRoute: "/embedding" });
+  it("marks the Get started tab as current on its own path", async () => {
+    setup({ initialRoute: "/embedding/get-started" });
 
     const nav = await findNav();
 
@@ -98,7 +104,7 @@ describe("EmbeddingHubLayout", () => {
   });
 
   it("keeps Get started current on the setup wizard sub-pages", async () => {
-    setup({ initialRoute: "/embedding/permissions-setup" });
+    setup({ initialRoute: "/embedding/get-started/permissions-setup" });
 
     const nav = await findNav();
 
@@ -109,18 +115,34 @@ describe("EmbeddingHubLayout", () => {
   });
 
   it("keeps the width cap on the permissions-setup wizard", async () => {
-    setup({ initialRoute: "/embedding/permissions-setup" });
+    setup({ initialRoute: "/embedding/get-started/permissions-setup" });
 
     await screen.findByText("Permissions wizard body");
 
-    // /embedding/permissions is a string prefix of this path. Treating it as
-    // the Permissions editor would drop the page padding and width cap.
     expect(screen.getByTestId("embedding-hub-content-cap")).toBeInTheDocument();
   });
 
   it("renders the routed body", async () => {
-    setup({ initialRoute: "/embedding" });
+    setup({ initialRoute: "/embedding/get-started" });
 
     expect(await screen.findByText("Get started body")).toBeInTheDocument();
+  });
+
+  describe("New embed button", () => {
+    it("shows its label while the navbar is open", async () => {
+      setup({ isNavbarOpened: true });
+
+      expect(
+        await screen.findByRole("button", { name: "New embed" }),
+      ).toHaveTextContent("New embed");
+    });
+
+    it("collapses to the icon alone once the navbar is closed", async () => {
+      setup({ isNavbarOpened: false });
+
+      const button = await screen.findByRole("button", { name: "New embed" });
+
+      expect(button).toHaveTextContent("");
+    });
   });
 });

@@ -29,3 +29,11 @@
   grid-template-columns: repeat(auto-fill, minmax(15.625rem, 1fr));
   gap: var(--mantine-spacing-md);
 }
+
+/*
+ * Without modular embedding the checklist is shorter and its cards carry more
+ * weight, so the design fixes two columns rather than letting them flow.
+ */
+.cardGridTwoColumn {
+  grid-template-columns: repeat(2, 1fr);
+}

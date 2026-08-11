@@ -23,8 +23,6 @@ import {
 
 import { EmbeddingHubGetStartedPage } from "./EmbeddingHubGetStartedPage";
 
-const CARD_TESTID = "embedding-hub-checklist-card";
-
 const THEME_CARD = "Create a custom theme";
 const AI_CARD = "Configure AI";
 const TENANTS_CARD = "Configure data permissions and tenants";
@@ -35,7 +33,6 @@ interface SetupOpts {
   hasSimpleEmbedding?: boolean;
   hasSsoJwt?: boolean;
   hasTenants?: boolean;
-  hasMetabot?: boolean;
   checklist?: Partial<SetupGuideChecklist>;
   isLlmConfigured?: boolean;
   isEmbeddedMetabotEnabled?: boolean;
@@ -45,7 +42,6 @@ function setup({
   hasSimpleEmbedding = false,
   hasSsoJwt = false,
   hasTenants = false,
-  hasMetabot = false,
   checklist = {},
   isLlmConfigured = false,
   isEmbeddedMetabotEnabled = true,
@@ -55,7 +51,6 @@ function setup({
       embedding_simple: hasSimpleEmbedding,
       sso_jwt: hasSsoJwt,
       tenants: hasTenants,
-      "metabot-v3": hasMetabot,
     }),
     "llm-metabot-configured?": isLlmConfigured,
     "embedded-metabot-enabled?": isEmbeddedMetabotEnabled,
@@ -79,10 +74,13 @@ function setup({
   setupEnterprisePlugins();
 
   return renderWithProviders(
-    <Route path="/embedding" element={<EmbeddingHubGetStartedPage />} />,
+    <Route
+      path="/embedding/get-started"
+      element={<EmbeddingHubGetStartedPage />}
+    />,
     {
       withRouter: true,
-      initialRoute: "/embedding",
+      initialRoute: "/embedding/get-started",
       storeInitialState: createMockState({
         settings: storeSettings,
         currentUser: createMockUser({ is_superuser: true }),
@@ -91,11 +89,27 @@ function setup({
   );
 }
 
-/** The card whose own subtree carries the given title. */
+/**
+ * The card whose own subtree carries the given title.
+ *
+ * An unlocked card is a real control -- an anchor or a button -- with the
+ * title as its accessible name, so it is found by role. A locked card is
+ * deliberately inert: no link, no button, no role at all, since it is not
+ * meant to be reachable. There is nothing to query by role there, so it
+ * falls back to the container testid, scoped by the title text within it.
+ */
 function queryCard(title: string) {
+  const control =
+    screen.queryByRole("link", { name: title }) ??
+    screen.queryByRole("button", { name: title });
+
+  if (control) {
+    return control;
+  }
+
   return (
     screen
-      .queryAllByTestId(CARD_TESTID)
+      .queryAllByTestId("embedding-hub-checklist-card")
       .find((card) => within(card).queryByText(title) != null) ?? null
   );
 }
@@ -114,6 +128,12 @@ function isLocked(title: string) {
   return getCard(title).getAttribute("aria-disabled") === "true";
 }
 
+/** The number shown on a card's badge, or null once the step is complete. */
+function stepNumber(title: string) {
+  const badge = within(getCard(title)).queryByText(/^\d+$/);
+  return badge ? Number(badge.textContent) : null;
+}
+
 describe("EmbeddingHubGetStartedPage", () => {
   describe("per-feature locking", () => {
     it("locks every Fine-tune step when the instance licenses nothing", async () => {
@@ -121,11 +141,10 @@ describe("EmbeddingHubGetStartedPage", () => {
 
       expect(await screen.findByText(SSO_CARD)).toBeInTheDocument();
 
-      [TENANTS_CARD, SSO_CARD, PRODUCTION_CARD, THEME_CARD, AI_CARD].forEach(
-        (title) => {
-          expect(isLocked(title)).toBe(true);
-        },
-      );
+      // AI is excluded on purpose: it needs no paid feature, so it never locks.
+      [TENANTS_CARD, SSO_CARD, PRODUCTION_CARD, THEME_CARD].forEach((title) => {
+        expect(isLocked(title)).toBe(true);
+      });
     });
 
     it("unlocks only the steps whose own feature is licensed", async () => {
@@ -139,7 +158,6 @@ describe("EmbeddingHubGetStartedPage", () => {
       expect(isLocked(SSO_CARD)).toBe(false);
       expect(isLocked(TENANTS_CARD)).toBe(true);
       expect(isLocked(THEME_CARD)).toBe(true);
-      expect(isLocked(AI_CARD)).toBe(true);
     });
 
     it("unlocks the tenants step on its own feature", async () => {
@@ -150,13 +168,19 @@ describe("EmbeddingHubGetStartedPage", () => {
       expect(isLocked(SSO_CARD)).toBe(true);
     });
 
-    it("unlocks the theme step on embedding_simple and the AI step on metabot-v3", async () => {
-      setup({ hasSimpleEmbedding: true, hasMetabot: true });
+    it("unlocks the theme step on embedding_simple", async () => {
+      setup({ hasSimpleEmbedding: true });
 
       expect(await screen.findByText(THEME_CARD)).toBeInTheDocument();
       expect(isLocked(THEME_CARD)).toBe(false);
-      expect(isLocked(AI_CARD)).toBe(false);
       expect(isLocked(SSO_CARD)).toBe(true);
+    });
+
+    it("never locks the AI step, which needs no paid feature", async () => {
+      setup();
+
+      expect(await screen.findByText(AI_CARD)).toBeInTheDocument();
+      expect(isLocked(AI_CARD)).toBe(false);
     });
 
     it("still renders the tenants step the shared checklist omitted", async () => {
@@ -222,14 +246,10 @@ describe("EmbeddingHubGetStartedPage", () => {
   });
 
   describe("the AI card's done state", () => {
-    it("is not done on credentials alone", async () => {
-      // `embedded-metabot-enabled?` defaults true, so credentials on their own
-      // would report a fresh instance as done if only one half were checked.
-      setup({
-        hasMetabot: true,
-        isLlmConfigured: false,
-        isEmbeddedMetabotEnabled: true,
-      });
+    // Which settings make it done is the backend's business now -- it reports
+    // `configure-ai`, and the card just renders what the checklist says.
+    it("is not done while the checklist says it is not", async () => {
+      setup({ checklist: { "configure-ai": false } });
 
       expect(await screen.findByText(AI_CARD)).toBeInTheDocument();
       expect(
@@ -237,40 +257,23 @@ describe("EmbeddingHubGetStartedPage", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("is not done when embedded Metabot is switched off", async () => {
-      setup({
-        hasMetabot: true,
-        isLlmConfigured: true,
-        isEmbeddedMetabotEnabled: false,
-      });
+    it("is done when the checklist says so, and links out to admin", async () => {
+      setup({ checklist: { "configure-ai": true } });
 
-      expect(await screen.findByText(AI_CARD)).toBeInTheDocument();
-      expect(
-        within(getCard(AI_CARD)).queryByLabelText(/complete/),
-      ).not.toBeInTheDocument();
-    });
+      // Before the checklist loads, the card is still the unconfigured
+      // (button) variant -- querying by text alone would resolve against
+      // that transient render and hold a stale node once it is swapped for
+      // the link. Querying by the link role waits for the swap itself.
+      const card = await screen.findByRole("link", { name: AI_CARD });
 
-    it("is done only when both halves hold, and links out to admin", async () => {
-      setup({
-        hasMetabot: true,
-        isLlmConfigured: true,
-        isEmbeddedMetabotEnabled: true,
-      });
-
-      expect(await screen.findByText(AI_CARD)).toBeInTheDocument();
-      expect(
-        within(getCard(AI_CARD)).getByLabelText(/complete/),
-      ).toBeInTheDocument();
+      expect(within(card).getByLabelText(/complete/)).toBeInTheDocument();
 
       // Configured, the card links out rather than reopening the modal.
-      expect(getCard(AI_CARD)).toHaveAttribute(
-        "href",
-        expect.stringContaining("/admin"),
-      );
+      expect(card).toHaveAttribute("href", expect.stringContaining("/admin"));
     });
 
     it("opens the provider modal while unconfigured", async () => {
-      setup({ hasMetabot: true, isLlmConfigured: false });
+      setup({ checklist: { "configure-ai": false } });
 
       await userEvent.click(await screen.findByText(AI_CARD));
 
@@ -383,5 +386,52 @@ describe("EmbeddingHubGetStartedPage", () => {
 
     await screen.findByText(TENANTS_CARD);
     expect(queryCard(TENANTS_CARD)).toBeInTheDocument();
+  });
+
+  describe("step order", () => {
+    it("promotes AI to step 4 without modular embedding", async () => {
+      setup({ hasSimpleEmbedding: false });
+
+      expect(await screen.findByText(AI_CARD)).toBeInTheDocument();
+
+      // AI is the one advanced step still reachable, so it joins the first
+      // section and pushes the Fine-tune steps down by one.
+      expect(stepNumber(AI_CARD)).toBe(4);
+      expect(stepNumber(SSO_CARD)).toBe(6);
+      expect(stepNumber(THEME_CARD)).toBe(8);
+    });
+
+    it("leaves AI last once modular embedding is licensed", async () => {
+      setup({ hasSimpleEmbedding: true });
+
+      expect(await screen.findByText(AI_CARD)).toBeInTheDocument();
+
+      expect(stepNumber(SSO_CARD)).toBe(5);
+      expect(stepNumber(THEME_CARD)).toBe(7);
+      expect(stepNumber(AI_CARD)).toBe(8);
+    });
+  });
+
+  describe("Pro upsell banner", () => {
+    it("shows the banner when the instance lacks modular embedding", async () => {
+      setup({ hasSimpleEmbedding: false });
+
+      expect(
+        await screen.findByRole("heading", {
+          name: "Upgrade to Metabase Pro to configure advanced options.",
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("hides the banner once modular embedding is licensed", async () => {
+      setup({ hasSimpleEmbedding: true });
+
+      await screen.findByText(THEME_CARD);
+      expect(
+        screen.queryByRole("heading", {
+          name: "Upgrade to Metabase Pro to configure advanced options.",
+        }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
