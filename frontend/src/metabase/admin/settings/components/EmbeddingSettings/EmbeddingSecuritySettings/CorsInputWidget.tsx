@@ -9,15 +9,37 @@ export const CorsInputWidget = () => {
   const isLocalhostCorsDisabled = useSetting("disable-cors-on-localhost");
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
-  // The paid design names the methods this covers and the API-key caveat;
-  // below the paywall the SDK is not available, so the plain line applies.
-  const corsDescription = hasSimpleEmbedding
-    ? t`Add the website domains where you want to allow Modular embedding and SDK. SDK using API keys can only run on localhost.`
-    : t`Add the website domains where you want to allow embedding.`;
-
   const corsHintText = isLocalhostCorsDisabled
     ? t`Separate values with a space. Localhost is not allowed. Changes will take effect within one minute.`
     : t`Separate values with a space. Localhost is automatically included. Changes will take effect within one minute.`;
+
+  const hint = (
+    <HoverCard key="embedding-cors-hint" position="bottom">
+      <HoverCard.Target>
+        <Icon
+          name="info"
+          c="text-secondary"
+          cursor="pointer"
+          ml="sm"
+          style={{ verticalAlign: "middle" }}
+        />
+      </HoverCard.Target>
+
+      <HoverCard.Dropdown>
+        <Box p="md" w={270}>
+          <Text lh="lg" c="text-secondary">
+            {corsHintText}
+          </Text>
+        </Box>
+      </HoverCard.Dropdown>
+    </HoverCard>
+  );
+
+  // The paid design names the methods this covers and the API-key caveat;
+  // below the paywall the SDK is not available, so the plain line applies.
+  const corsDescription = hasSimpleEmbedding
+    ? jt`Add the website domains where you want to allow Modular embedding and SDK. SDK using API keys can only run on localhost. ${hint}`
+    : jt`Add the website domains where you want to allow embedding. ${hint}`;
 
   return (
     <AdminSettingInput
@@ -25,27 +47,7 @@ export const CorsInputWidget = () => {
       description={
         <Group align="center" gap="sm">
           <Text c="text-secondary" fz="md">
-            {jt`${corsDescription} ${(
-              <HoverCard key="embedding-cors-hint" position="bottom">
-                <HoverCard.Target>
-                  <Icon
-                    name="info"
-                    c="text-secondary"
-                    cursor="pointer"
-                    ml="sm"
-                    style={{ verticalAlign: "middle" }}
-                  />
-                </HoverCard.Target>
-
-                <HoverCard.Dropdown>
-                  <Box p="md" w={270}>
-                    <Text lh="lg" c="text-secondary">
-                      {corsHintText}
-                    </Text>
-                  </Box>
-                </HoverCard.Dropdown>
-              </HoverCard>
-            )}`}
+            {corsDescription}
           </Text>
         </Group>
       }
