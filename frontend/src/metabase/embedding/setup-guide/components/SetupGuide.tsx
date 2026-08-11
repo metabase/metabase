@@ -3,7 +3,6 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import {
-  type SetupGuideUrls,
   useCompletedSetupGuideSteps,
   useGetSetupGuideSteps,
   useSetupGuideModals,
@@ -16,15 +15,13 @@ import {
   StepperWithCards,
 } from "./StepperWithCards/StepperWithCards";
 
-export const SetupGuide = ({
-  setupGuideUrls,
-}: {
-  setupGuideUrls?: SetupGuideUrls;
-} = {}) => {
-  const embeddingSteps = useGetSetupGuideSteps(setupGuideUrls);
+export const SetupGuide = ({ returnTo }: { returnTo?: string } = {}) => {
+  const embeddingSteps = useGetSetupGuideSteps();
   const { data: completedSteps } = useCompletedSetupGuideSteps();
 
-  const { setOpenedModal, modals } = useSetupGuideModals();
+  // Flows that leave the guide -- connecting a database, for one -- come back
+  // here, and the guide has more than one host.
+  const { setOpenedModal, modals } = useSetupGuideModals(returnTo);
 
   const lockedSteps: Partial<Record<SetupGuideStepId, boolean>> = useMemo(
     () => ({
