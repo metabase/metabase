@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -10,7 +10,6 @@ import type {
   ScheduleDayType,
   ScheduleFrameType,
   ScheduleSettings,
-  ScheduleType,
 } from "metabase-types/api";
 
 import { AutoWidthSelect } from "./AutoWidthSelect";
@@ -23,7 +22,7 @@ import {
   getScheduleStrings,
   minutes,
 } from "./strings";
-import type { UpdateSchedule } from "./types";
+import type { ScheduleValueType, UpdateSchedule } from "./types";
 
 export type SelectFrameProps = {
   schedule_frame: ScheduleSettings["schedule_frame"];
@@ -35,12 +34,12 @@ export type SelectFrameProps = {
  * also known as the schedule 'type'. */
 export const SelectFrequency = ({
   scheduleType,
-  updateSchedule,
+  onScheduleTypeChange,
   scheduleOptions,
 }: {
-  scheduleType?: ScheduleType | null;
-  updateSchedule: UpdateSchedule;
-  scheduleOptions: ScheduleType[];
+  scheduleType: ScheduleValueType;
+  onScheduleTypeChange: (scheduleType: ScheduleValueType) => void;
+  scheduleOptions: ScheduleValueType[];
 }) => {
   const { scheduleOptionNames } = getScheduleStrings();
 
@@ -57,10 +56,8 @@ export const SelectFrequency = ({
   return (
     <AutoWidthSelect
       display="flex"
-      value={scheduleType ?? "daily"}
-      onChange={(value: ScheduleType | null) =>
-        updateSchedule("schedule_type", value)
-      }
+      value={scheduleType}
+      onChange={onScheduleTypeChange}
       data={scheduleTypeOptions}
       aria-label={label}
       data-testid="select-frequency"
@@ -98,18 +95,19 @@ export const SelectTime = ({
 }) => {
   const { amAndPM } = getScheduleStrings();
   const isClock12Hour = !has24HourModeSetting();
-  const hourIn24HourFormat =
+  const isTimeSelected =
     schedule_hour !== undefined &&
     schedule_hour !== null &&
-    !isNaN(schedule_hour)
-      ? schedule_hour
-      : defaultHour;
+    !isNaN(schedule_hour);
+  const hourIn24HourFormat = isTimeSelected ? schedule_hour : defaultHour;
   const hour = isClock12Hour
     ? hourToTwelveHourFormat(hourIn24HourFormat)
     : hourIn24HourFormat;
   const amPm = hourIn24HourFormat >= 12 ? 1 : 0;
   const hourIndex = isClock12Hour && hour === 12 ? 0 : hour;
-  const value = hourIndex === 0 && isClock12Hour ? "12" : hourIndex.toString();
+  const selectedValue =
+    hourIndex === 0 && isClock12Hour ? "12" : hourIndex.toString();
+  const value = isTimeSelected ? selectedValue : null;
   const timeSelectLabel = useMemo(() => getScheduleComponentLabel("time"), []);
   const amPmControlLabel = useMemo(() => getScheduleComponentLabel("amPm"), []);
   const applicationName = useSelector(getApplicationName);
@@ -119,8 +117,13 @@ export const SelectTime = ({
       {/* Select the hour */}
       <AutoWidthSelect
         value={value}
+        placeholder={c("Placeholder of a time picker with no time chosen yet")
+          .t`HH:MM`}
         data={getHours()}
-        onChange={(value: string) => {
+        onChange={(value: string | null) => {
+          if (value === null) {
+            return;
+          }
           const num = Number(value);
           updateSchedule(
             "schedule_hour",
@@ -132,7 +135,7 @@ export const SelectTime = ({
       />
       {/* Choose between AM and PM */}
       <Group gap="sm">
-        {isClock12Hour && (
+        {isClock12Hour && isTimeSelected && (
           <SegmentedControl
             lh="1rem"
             radius="sm"

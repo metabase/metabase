@@ -38,6 +38,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       cy.findByText("Slack").should("not.exist");
     });
 
+    H.selectScheduleTime();
     cy.button("Done").click();
 
     cy.wait("@saveAlert").then(({ response: { body } }) => {
@@ -69,6 +70,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     H.removeNotificationHandlerChannel("Email");
 
+    H.selectScheduleTime();
     H.modal().within(() => {
       cy.button("Done").click();
     });
@@ -104,6 +106,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       .click();
     H.popover().findByText("#work").click();
 
+    H.selectScheduleTime();
     H.modal().within(() => {
       cy.button("Done").click();
     });
@@ -225,6 +228,7 @@ function saveAlert() {
 
   cy.findByLabelText("Move, duplicate, and more…").click();
   H.popover().findByText("Create an alert").click();
+  H.selectScheduleTime();
   H.modal().button("Done").click();
 }
 
@@ -239,6 +243,7 @@ function sendTestAlertForQuestion(name) {
 
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Create an alert").click();
+  H.selectScheduleTime();
   H.sendAlertAndVisitIt();
   cy.findAllByRole("link").filter(`:contains(${name})`).should("be.visible");
 }

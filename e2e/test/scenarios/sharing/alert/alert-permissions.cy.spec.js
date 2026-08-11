@@ -163,6 +163,7 @@ function createBasicAlert({ includeNormal } = {}) {
       .type(`${H.getFullName(normal)}{enter}`);
   }
 
+  H.selectScheduleTime();
   cy.findByText("Done").click();
   cy.findByText("New alert").should("not.exist");
 }

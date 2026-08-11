@@ -7,7 +7,8 @@ import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
-import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
+import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
+import type { ScheduleChangeEvent } from "metabase/common/components/Schedule/types";
 import type { FormTextInputProps } from "metabase/forms";
 import {
   Form,
@@ -40,7 +41,7 @@ import type {
 } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 
-import { defaultCronSchedule, rootId } from "../constants/simple";
+import { rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
 import {
   getDefaultValueForField,
@@ -410,13 +411,15 @@ const ScheduleStrategyFormFields = ({
 }) => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
   const { schedule: scheduleInCronFormat } = values;
-  const initialSchedule = cronToScheduleSettings(scheduleInCronFormat);
+  const initialSchedule = cronToBuilderValue(scheduleInCronFormat);
   const timezone = useSelector((state) =>
     getSetting(state, "report-timezone-short"),
   );
   const onScheduleChange = useCallback(
-    (newCronSchedule: string) => {
-      setFieldValue("schedule", newCronSchedule);
+    ({ cronString }: ScheduleChangeEvent) => {
+      if (cronString) {
+        setFieldValue("schedule", cronString);
+      }
     },
     [setFieldValue],
   );
@@ -444,7 +447,7 @@ const ScheduleStrategyFormFields = ({
           </Text>
         </Stack>
         <Schedule
-          cronString={scheduleInCronFormat || defaultCronSchedule}
+          value={initialSchedule}
           scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
           onScheduleChange={onScheduleChange}
           verb={c("A verb in the imperative mood").t`Invalidate`}

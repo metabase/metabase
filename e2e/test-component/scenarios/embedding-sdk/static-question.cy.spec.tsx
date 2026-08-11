@@ -8,7 +8,12 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion, modal, popover } from "e2e/support/helpers";
+import {
+  createQuestion,
+  modal,
+  popover,
+  selectScheduleTime,
+} from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
@@ -217,10 +222,9 @@ describe("scenarios > embedding-sdk > static-question", () => {
 
       cy.log("alerts modal is open");
       cy.wait("@listAlerts");
-      modal().within(() => {
-        cy.findByRole("heading", { name: "New alert" }).should("be.visible");
-        cy.button("Done").click();
-      });
+      modal().findByRole("heading", { name: "New alert" }).should("be.visible");
+      selectScheduleTime();
+      modal().button("Done").click();
       modal().should("not.exist");
 
       cy.log("alerts list modal");

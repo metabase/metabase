@@ -65,9 +65,9 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
           cy.findByTestId("alert-goal-select")
             .should("not.be.enabled")
             .should("have.text", "When this question has results");
-
-          cy.findByText("Done").click();
         });
+        H.selectScheduleTime();
+        H.modal().findByText("Done").click();
 
         cy.wait("@updateAlert").then(({ response: { body } }) => {
           expect(body.payload?.send_condition).to.equal("has_result");
@@ -103,11 +103,11 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
         cy.findByText("When results go above the goal").click();
       });
 
+      H.selectScheduleTime();
       H.modal().within(() => {
         cy.findByLabelText("Delete this Alert after it's triggered").click();
-
-        cy.button("Done").click();
       });
+      H.modal().button("Done").click();
 
       cy.log("Check the API response");
       cy.wait("@updateAlert").then(({ response: { body } }) => {
@@ -129,9 +129,9 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
         cy.findByTestId("alert-goal-select")
           .should("not.be.enabled")
           .should("have.text", "When this question has results");
-
-        cy.findByText("Done").click();
       });
+      H.selectScheduleTime();
+      H.modal().findByText("Done").click();
 
       // The alert condition should fall back to rows
       cy.wait("@updateAlert").then(({ response: { body } }) => {

@@ -80,6 +80,7 @@ describe("scenarios > alert", () => {
 
       H.addNotificationHandlerChannel("Bar Hook");
 
+      H.selectScheduleTime();
       cy.findByRole("button", { name: "Done" }).click();
 
       H.notificationList().findByText("Your alert is all set up.");
@@ -138,6 +139,7 @@ describe("scenarios > alert", () => {
 
     cy.findByLabelText("Move, duplicate, and more…").click();
     H.popover().findByText("Create an alert").click();
+    H.selectScheduleTime();
     H.modal().button("Done").click();
 
     cy.findByLabelText("Move, duplicate, and more…").click();
@@ -193,8 +195,9 @@ describe("scenarios > alert", () => {
           addEmailRecipient(deniedEmail);
 
           cy.findByText(adminAlertError);
-          cy.button("Done").should("be.disabled");
         });
+        H.selectScheduleTime();
+        H.modal().button("Done").should("be.disabled");
       });
 
       it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
@@ -222,9 +225,9 @@ describe("scenarios > alert", () => {
           cy.findByText("New alert").should("be.visible");
 
           addEmailRecipient(deniedEmail);
-
-          cy.button("Done").click();
         });
+        H.selectScheduleTime();
+        H.modal().button("Done").click();
         cy.findByTestId("toast-undo").within(() => {
           cy.root().should("have.attr", "color", "feedback-negative");
           cy.root().should("have.text", normalUserAlertError);

@@ -3,8 +3,12 @@ import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Schedule, toCronString } from "metabase/common/components/Schedule";
-import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
+import { Schedule } from "metabase/common/components/Schedule";
+import type {
+  ScheduleChangeProp,
+  ScheduleValue,
+} from "metabase/common/components/Schedule/types";
+import { toScheduleSettings } from "metabase/common/components/Schedule/utils";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
@@ -88,9 +92,9 @@ export const AddEditEmailSidebar = ({
     getSetting(state, "report-timezone-short"),
   );
 
-  const renderScheduleDescription = (schedule: ScheduleSettings) => {
+  const renderScheduleDescription = (value: ScheduleValue) => {
     const description = getSubscriptionScheduleDescription({
-      schedule,
+      schedule: toScheduleSettings(value),
       channelSpec,
       applicationName,
       timezone,
@@ -143,22 +147,20 @@ export const AddEditEmailSidebar = ({
         )}
         <Schedule
           mt="md"
-          cronString={toCronString(
-            _.pick(
-              channel,
-              "schedule_day",
-              "schedule_frame",
-              "schedule_hour",
-              "schedule_type",
-            ),
+          value={_.pick(
+            channel,
+            "schedule_day",
+            "schedule_frame",
+            "schedule_hour",
+            "schedule_type",
           )}
           scheduleOptions={channelSpec.schedules}
           verb={t`Sent`}
           renderScheduleDescription={renderScheduleDescription}
-          onScheduleChange={(_cronString, newSchedule) =>
-            onChannelScheduleChange(newSchedule, {
+          onScheduleChange={({ value }) =>
+            onChannelScheduleChange(toScheduleSettings(value), {
               name: "schedule_type",
-              value: newSchedule.schedule_type,
+              value: value.schedule_type,
             })
           }
         />
