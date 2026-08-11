@@ -196,21 +196,21 @@ export function createWaitForChartsDecorator({
       };
 
       const poll = () => {
-        // Wait until the cards have mounted (`visualization-root`) AND none is
-        // still showing its loading skeleton (`loading-indicator`). React 19
-        // defers the lazy ECharts chunk past a fixed settle, so a card can hold
-        // a skeleton well after its root mounts. Gating on the skeletons being
-        // gone keeps Loki from snapshotting a half-painted chart, and works for
-        // multi-card dashboards where the exact chart count is unknown.
-        const mountedCount = document.querySelectorAll(
-          '[data-testid="visualization-root"]',
+        // Wait for the painted ECharts root (`chart-container`) AND for every
+        // dashboard card to finish loading (`loading-indicator` gone). React 19
+        // defers the lazy ECharts chunk past a fixed settle, so both the outer
+        // `visualization-root` and the dashcard skeleton can sit there long
+        // after mount while the chart is still blank. Gating on the real chart
+        // node keeps Loki from snapshotting an empty skeleton.
+        const paintedCount = document.querySelectorAll(
+          '[data-testid="chart-container"]',
         ).length;
         const stillLoading = document.querySelectorAll(
           '[data-testid="loading-indicator"]',
         ).length;
         const timedOut = Date.now() - startedAt > timeoutMs;
 
-        if ((mountedCount >= count && stillLoading === 0) || timedOut) {
+        if ((paintedCount >= count && stillLoading === 0) || timedOut) {
           settleTimer = setTimeout(resolve, settleMs);
           return;
         }
