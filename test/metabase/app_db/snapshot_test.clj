@@ -12,6 +12,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.custom-migrations :as custom-migrations]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.app-db.snapshot-test-util :as snapshot]
    [metabase.config.core :as config]
@@ -123,6 +124,20 @@
                   :indexes      (indexes conn db-type table)
                   :foreign-keys (foreign-keys conn db-type table)}])))
 
+(defn- view-fingerprint
+  "Each view and the columns it exposes.
+
+  The column list is the point: a view whose body could not be resolved when the snapshot loaded still shows up as a
+  view, just with nothing in it, and the instance analytics views are only ever read through the app so nothing else
+  here would notice."
+  [^java.sql.Connection conn db-type]
+  (with-open [rs (.getTables (.getMetaData conn) nil (schema-of db-type) "%" (into-array String ["VIEW"]))]
+    (into (sorted-map)
+          (map (fn [view]
+                 [(u/upper-case-en (:table_name view))
+                  (vec (keys (columns conn db-type (:table_name view))))]))
+          (jdbc/result-set-seq rs))))
+
 (defn- changelog-fingerprint
   "Which changesets the DB believes it has run, and their checksums. `dateexecuted`, `orderexecuted`, `deployment_id`
   and the recorded Liquibase version legitimately differ between a replay and a snapshot load, so they are left out."
@@ -168,6 +183,7 @@
 
 (defn- fingerprint [^java.sql.Connection conn db-type]
   {:schema    (schema-fingerprint conn db-type)
+   :views     (view-fingerprint conn db-type)
    :changelog (changelog-fingerprint conn)
    :data      (data-fingerprint conn db-type)})
 
@@ -186,20 +202,20 @@
   This is the same work [[metabase.test.initialize.db/init!]] does once per test JVM, so the difference is what every
   backend job saves at startup.
 
-  Printed rather than logged: the test log config sends INFO to a file, and this needs to be readable in CI output."
+  `test_config/log4j2-test.xml` gives this namespace a console appender of its own so the line lands in the CI job
+  output; everything else logged at INFO during a test run only reaches `logs/test-log.json`."
   [db-type full-ms snapshot-ms]
   (let [saved (- full-ms snapshot-ms)]
-    (println (format (str "app DB snapshot timing [%s]: full changelog %dms, snapshot %s + later changesets %dms "
-                          "-- saves %dms (%.1fx)")
-                     (name db-type)
-                     full-ms
-                     snapshot/snapshot-version
-                     snapshot-ms
-                     saved
-                     (if (pos? snapshot-ms)
-                       (double (/ full-ms snapshot-ms))
-                       ##Inf)))
-    (flush)))
+    (log/infof (str "app DB snapshot timing [%s]: full changelog %dms, snapshot %s + later changesets %dms "
+                    "-- saves %dms (%.1fx)")
+               (name db-type)
+               full-ms
+               snapshot/snapshot-version
+               snapshot-ms
+               saved
+               (if (pos? snapshot-ms)
+                 (double (/ full-ms snapshot-ms))
+                 ##Inf))))
 
 ;;; --------------------------------------------------- the tests ---------------------------------------------------
 
@@ -260,6 +276,9 @@
                 (testing (format "%s structure" table)
                   (is (= (get-in from-scratch [:schema table])
                          (get-in from-snapshot [:schema table])))))
+              (testing "same views"
+                (is (= (:views from-scratch)
+                       (:views from-snapshot))))
               (testing "same changesets recorded as run"
                 (is (= (:changelog from-scratch)
                        (:changelog from-snapshot))))
