@@ -537,4 +537,13 @@ describe("formatValue", () => {
       }),
     ).toEqual("7/7/2019");
   });
+
+  it("should format numeric 0/1 from DB as false/true for boolean columns (metabase#76999)", () => {
+    const boolColumn = createMockColumn({ base_type: "type/Boolean" });
+    expect(formatValue(0, { column: boolColumn })).toEqual("false");
+    expect(formatValue(1, { column: boolColumn })).toEqual("true");
+    // native JS booleans should still work
+    expect(formatValue(false, { column: boolColumn })).toEqual("false");
+    expect(formatValue(true, { column: boolColumn })).toEqual("true");
+  });
 });
