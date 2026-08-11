@@ -1139,7 +1139,6 @@ describe("scenarios > collection items listing", () => {
         method: "GET",
         pathname: "/api/collection/root/items",
         query: {
-          pinned_state: "is_not_pinned",
           q: query,
         },
       }).as(alias);
@@ -1249,7 +1248,6 @@ describe("scenarios > collection items listing", () => {
         {
           method: "GET",
           pathname: "/api/collection/root/items",
-          query: { pinned_state: "is_not_pinned" },
         },
         (request) => {
           const models = new URL(request.url).searchParams
