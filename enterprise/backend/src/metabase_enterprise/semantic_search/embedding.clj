@@ -650,15 +650,14 @@
 
 (def ^:private model-family-query-prefixes
   "Query prefixes for embedding-model families trained for asymmetric retrieval.
-  These models expect search queries — but not the indexed documents — to carry a fixed prefix."
-  ;; Patterns must be mutually exclusive: lookup scans entries in unspecified order.
+  These models expect search queries — but not the indexed documents — to carry a fixed prefix.
+  First match wins, so keep more specific patterns first."
+  ;; Arctic Embed moved to the short "query: " prefix at v2.0. Everything earlier expects the original
+  ;; longer instruction: v1 (xs, s, m, m-long, l) and v1.5 alike, including the bundled xs model.
   ;; Keep patterns narrow: a false positive is unfixable without a code change, since the
   ;; `ee-embedding-query-prefix` setting can only replace a matched prefix, never suppress it.
-  ;; The v1 family (bundled xs, s, m, l with no version suffix) switched to the short "query: " prefix
-  ;; only from v1.5 onward; v1 models still expect the original CQE-style instruction.
-  ;; The second pattern requires an explicit "-vN" segment so it can't also match a bare v1 name.
-  {#"(?i)snowflake-arctic-embed-(xs|s|m|l)$"    "Represent this sentence for searching relevant passages: "
-   #"(?i)snowflake-arctic-embed-\w+-v\d"        "query: "})
+  [[#"(?i)snowflake-arctic-embed-\w+-v[2-9]" "query: "]
+   [#"(?i)snowflake-arctic-embed"            "Represent this sentence for searching relevant passages: "]])
 
 (defn- default-query-prefix
   [model-name]

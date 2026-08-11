@@ -82,22 +82,29 @@
                             (semantic.settings/ee-embedding-provider! invalid-value))))))
 
 (deftest prefix-search-query-test
-  (let [arctic-v2 {:provider "ai-service" :model-name "Snowflake/snowflake-arctic-embed-l-v2.0" :vector-dimensions 1024}
-        arctic-v1 {:provider "in-process" :model-name "Snowflake/snowflake-arctic-embed-xs" :vector-dimensions 384}
-        openai    {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 1536}]
-    (mt/with-temporary-setting-values [ee-embedding-query-prefix nil]
-      (testing "v1.5+ arctic-family models get the `query: ` prefix by default"
-        (is (= "query: hello" (embedding/prefix-search-query arctic-v2 "hello"))))
-      (testing "v1 arctic-family models get the longer CQE-style prefix, not `query: `"
-        (is (= "Represent this sentence for searching relevant passages: hello"
-               (embedding/prefix-search-query arctic-v1 "hello"))))
-      (testing "models without a known family default are left unprefixed"
-        (is (= "hello" (embedding/prefix-search-query openai "hello")))))
-    (testing "the setting overrides the model-family default, verbatim"
-      (mt/with-temporary-setting-values [ee-embedding-query-prefix "search_query: "]
-        (is (= "search_query: hello" (embedding/prefix-search-query arctic-v2 "hello")))
-        (is (= "search_query: hello" (embedding/prefix-search-query arctic-v1 "hello")))
-        (is (= "search_query: hello" (embedding/prefix-search-query openai "hello")))))))
+  (let [cqe        "Represent this sentence for searching relevant passages: "
+        ->model    (fn [model-name] {:provider "ai-service" :model-name model-name :vector-dimensions 1024})
+        prefix-all (fn [model-names]
+                     (into {}
+                           (map (juxt identity #(embedding/prefix-search-query (->model %) "hello")))
+                           model-names))]
+    (testing "the default prefix follows the Arctic Embed generation, which shortened it at v2.0"
+      (let [expected {"Snowflake/snowflake-arctic-embed-xs"     (str cqe "hello")
+                      "Snowflake/snowflake-arctic-embed-l"      (str cqe "hello")
+                      "Snowflake/snowflake-arctic-embed-m-long" (str cqe "hello")
+                      "Snowflake/snowflake-arctic-embed-m-v1.5" (str cqe "hello")
+                      "Snowflake/snowflake-arctic-embed-l-v2.0" "query: hello"
+                      "Snowflake/snowflake-arctic-embed-m-v2.0" "query: hello"
+                      "text-embedding-3-small"                  "hello"}]
+        (mt/with-temporary-setting-values [ee-embedding-query-prefix nil]
+          (is (= expected (prefix-all (keys expected)))))))
+    (testing "the setting overrides every model-family default, verbatim"
+      (let [model-names ["Snowflake/snowflake-arctic-embed-xs"
+                         "Snowflake/snowflake-arctic-embed-l-v2.0"
+                         "text-embedding-3-small"]]
+        (mt/with-temporary-setting-values [ee-embedding-query-prefix "search_query: "]
+          (is (= (zipmap model-names (repeat "search_query: hello"))
+                 (prefix-all model-names))))))))
 
 (deftest test-openai-provider-validation
   (testing "OpenAIProvider throws when API key not configured"
