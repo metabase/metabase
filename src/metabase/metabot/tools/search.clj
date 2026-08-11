@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.config :as metabot.config]
@@ -76,6 +75,9 @@
       ;; `:is_container true` marks it (like dashboards) as a thing the LLM drills *into* rather than
       ;; queries directly. For a collection row `authority-level` is the collection's own level, so
       ;; here `:official` means "this collection is official" rather than "it sits in one".
+      ;;
+      ;; The set of container types also lives in `llm-shape/container-type?`, which decides the
+      ;; rendered `is_container` attribute — add a new container type to both or neither.
       (-> common-fields
           (merge {:official        official?
                   :is_container    true})
@@ -474,8 +476,7 @@
         ;; resolves to — typically appdb, but could be `in-place` on minimal installs.
         ;; Locking the choice in here (rather than relying on `search-context` to
         ;; default it later) lets downstream code branch on the actual engine.
-        picked-engine   (or (u/seek #{:search.engine/semantic} (search.engine/active-engines))
-                            (search.engine/default-engine))
+        picked-engine   (search.engine/resolved-engine)
         run-engine      (fn [search-string]
                           (let [search-context
                                 (search/search-context
@@ -503,17 +504,12 @@
                                    collection-id       (assoc :collection collection-id)))]
                             (:data (search/search search-context))))
         primary         (run-engine query)
-        ;; Zero-hit fallback is Postgres-appdb-only. The `or`-rewrite relies on Postgres
-        ;; tsquery semantics, where lowercase `or` compiles to `|`. It does NOT hold for:
-        ;;   - the semantic engine, which already fuses keyword + vector matching (redundant);
-        ;;   - the `in-place` engine, whose LIKE-pattern matching has no `|` notion;
-        ;;   - appdb on H2, whose specialization ANDs whitespace-split tokens as LIKE patterns
-        ;;     (see `metabase.search.appdb.specialization.h2/wildcard-tokens`) — there the
-        ;;     `or`-joined query is strictly *narrower*, the opposite of broadening.
-        ;; So we gate on appdb AND a Postgres app-db backend.
+        ;; The `or`-rewrite only broadens where lowercase `or` compiles to a tsquery `|` — see
+        ;; [[search.engine/tsquery-operators-supported?]] for where that holds. Semantic is excluded
+        ;; on top of that: it already fuses keyword + vector matching, so broadening is redundant.
         results         (or (when (and (empty? primary)
-                                       (= picked-engine :search.engine/appdb)
-                                       (= :postgres (mdb/db-type)))
+                                       (not= picked-engine :search.engine/semantic)
+                                       (search.engine/tsquery-operators-supported?))
                               (when-let [broadened (broaden-query query)]
                                 (log/info "[METABOT-SEARCH] Zero hits; retrying with an OR-broadened query")
                                 (not-empty (run-engine broadened))))
@@ -631,14 +627,21 @@
         table-ids (distinct (map :id (get by-model "table")))
         card-refs (for [m ["model" "metric" "question"], r (get by-model m)] {:id (:id r) :type m})
         ms-refs   (for [m ["measure" "segment"], r (get by-model m)] {:id (:id r) :type m})]
+    ;; Same enrichment chain as [[search]] minus `remove-unreadable-transforms`, which can't fire —
+    ;; there is no transform branch above, so a transform ref never reaches here. The collection-path
+    ;; and data-layer steps do run: both paths render through
+    ;; [[metabase.metabot.tools.shared.llm-shape/search-results->xml]], and omitting them would drop
+    ;; `is_library_member` — which the result instructions call the strongest curation signal — from
+    ;; exactly the entities most likely to have it.
     (->> (concat (table-refs->results table-ids)
                  (card-refs->results (distinct card-refs))
                  (measure-segment-refs->results (distinct ms-refs)))
          enrich-with-collection-descriptions
+         enrich-with-collection-paths
          enrich-with-database-engines
          enrich-with-portable-entity-ids
          enrich-with-base-tables
-         remove-unreadable-transforms)))
+         enrich-tables-with-data-layer)))
 
 (defn- format-search-output
   "Format search results as an LLM-ready string. One XML element per result so the agent

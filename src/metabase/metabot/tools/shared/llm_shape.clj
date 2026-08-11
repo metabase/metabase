@@ -709,7 +709,11 @@
       nil)))
 
 (defn- container-type?
-  "Whether a (normalized, keyword) result type is a container the LLM drills into rather than queries."
+  "Whether a (normalized, keyword) result type is a container the LLM drills into rather than queries.
+
+  Second home for \"what counts as a container\": `metabase.metabot.tools.search/postprocess-search-result`
+  sets `:is_container` per entity branch, and this decides the rendered `is_container` attribute. Adding a
+  container type to one without the other silently half-works — keep them in sync."
   [type-kw]
   (#{:dashboard :collection} type-kw))
 
