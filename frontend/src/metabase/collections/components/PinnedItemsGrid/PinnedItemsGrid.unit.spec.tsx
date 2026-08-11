@@ -53,19 +53,16 @@ const modelItem = createMockCollectionItem({
 const defaultItems = [dashboardItem, metricItem, questionItem, modelItem];
 
 function setup({
-  items,
-  collection,
-  selected,
-  onToggleSelected,
+  items = defaultItems,
+  collection = defaultCollection,
+  selected = [],
+  onToggleSelected = jest.fn(),
 }: {
   items?: CollectionItem[];
   collection?: Collection;
   selected?: CollectionItem[];
   onToggleSelected?: OnToggleSelectedWithItem;
 } = {}) {
-  items = items || defaultItems;
-  collection = collection || defaultCollection;
-
   mockOnCopy.mockReset();
   mockOnMove.mockReset();
 
@@ -165,6 +162,14 @@ describe("PinnedItemsGrid", () => {
 
   it("should keep cards as links when selection props are omitted", async () => {
     setup();
+
+    await screen.findByTestId("pinned-items");
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(defaultItems.length);
+  });
+
+  it("should keep cards as links when the selection is empty", async () => {
+    setup({ selected: [], onToggleSelected: jest.fn() });
 
     await screen.findByTestId("pinned-items");
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();

@@ -31,8 +31,8 @@ type Props = {
   collection: Collection;
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
-  selected?: CollectionItem[];
-  onToggleSelected?: OnToggleSelectedWithItem;
+  selected: CollectionItem[];
+  onToggleSelected: OnToggleSelectedWithItem;
 };
 
 export function PinnedItemsGrid({
@@ -75,7 +75,7 @@ export function PinnedItemsGrid({
   }
 
   const canSelect = canSelectItems(collection, onToggleSelected);
-  const isSelectMode = canSelect && (selected?.length ?? 0) > 0;
+  const isSelectMode = canSelect && selected.length > 0;
 
   return (
     <Box mb={rem(48)} pos="relative" data-testid="pinned-items">
@@ -85,12 +85,10 @@ export function PinnedItemsGrid({
           // collection_position isn't guaranteed unique, so drag and drop is
           // keyed by display index instead.
           const pinIndex = index + 1;
-          const isSelected =
-            selected?.some(
-              (selectedItem) =>
-                selectedItem.id === item.id &&
-                selectedItem.model === item.model,
-            ) ?? false;
+          const isSelected = selected.some(
+            (selectedItem) =>
+              selectedItem.id === item.id && selectedItem.model === item.model,
+          );
           return (
             <Box key={`${item.model}-${item.id}`} pos="relative">
               <PinnedItemSortDropTarget

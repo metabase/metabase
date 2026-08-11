@@ -80,4 +80,5 @@
 
 .selectCheckbox {
   flex: 0 0 auto;
+  padding-inline: 2px;
 }
