@@ -41,6 +41,7 @@ function SystemPromptPage(props: SystemPromptPageProps) {
       className={S.wrapper}
     >
       <CodeEditor
+        aria-label={title}
         className={S.editor}
         extensions={extensions}
         language="markdown"
