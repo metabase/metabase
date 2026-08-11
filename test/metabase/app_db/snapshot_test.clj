@@ -49,6 +49,17 @@
   [db-type]
   (when (= db-type :h2) "PUBLIC"))
 
+(defn- column-default
+  "The column's default, with \"no default\" and an explicit `DEFAULT NULL` treated as the same thing.
+
+  A dump writes `DEFAULT NULL` where the original DDL simply omitted the default, and MariaDB reports the two
+  differently -- the string \"NULL\" versus no value at all. For a nullable column they mean the same thing, and a
+  NOT NULL column cannot have `DEFAULT NULL`, so collapsing them cannot hide a real difference."
+  [col]
+  (let [default (some-> (:column_def col) str/trim)]
+    (when-not (= default "NULL")
+      default)))
+
 (defn- columns [^java.sql.Connection conn db-type table]
   (with-open [rs (.getColumns (.getMetaData conn) nil (schema-of db-type) table "%")]
     (into (sorted-map)
@@ -60,7 +71,7 @@
                    :size       (:column_size col)
                    :decimals   (:decimal_digits col)
                    :nullable   (:is_nullable col)
-                   :default    (some-> (:column_def col) str/trim)}]))
+                   :default    (column-default col)}]))
           (jdbc/result-set-seq rs))))
 
 (defn- primary-keys [^java.sql.Connection conn db-type table]
@@ -173,19 +184,22 @@
   outside both measurements, so these are migration cost alone.
 
   This is the same work [[metabase.test.initialize.db/init!]] does once per test JVM, so the difference is what every
-  backend job saves at startup."
+  backend job saves at startup.
+
+  Printed rather than logged: the test log config sends INFO to a file, and this needs to be readable in CI output."
   [db-type full-ms snapshot-ms]
   (let [saved (- full-ms snapshot-ms)]
-    (log/infof (str "app DB snapshot timing [%s]: full changelog %dms, snapshot %s + later changesets %dms "
-                    "-- saves %dms (%.1fx)")
-               (name db-type)
-               full-ms
-               snapshot/snapshot-version
-               snapshot-ms
-               saved
-               (if (pos? snapshot-ms)
-                 (double (/ full-ms snapshot-ms))
-                 ##Inf))))
+    (println (format (str "app DB snapshot timing [%s]: full changelog %dms, snapshot %s + later changesets %dms "
+                          "-- saves %dms (%.1fx)")
+                     (name db-type)
+                     full-ms
+                     snapshot/snapshot-version
+                     snapshot-ms
+                     saved
+                     (if (pos? snapshot-ms)
+                       (double (/ full-ms snapshot-ms))
+                       ##Inf)))
+    (flush)))
 
 ;;; --------------------------------------------------- the tests ---------------------------------------------------
 
@@ -193,42 +207,48 @@
   (testing "the checked-in snapshot loads into an empty app DB and leaves the changelog where its metadata says"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (let [driver driver/*driver*]
-        (if-not (snapshot/available? driver)
-          (log/warnf "No app DB snapshot checked in for %s; skipping" driver)
-          (impl/with-temp-empty-app-db [conn driver]
-            (snapshot/load-snapshot! conn driver)
-            (let [ids      (snapshot/changeset-ids conn)
-                  expected (inc (.indexOf ^java.util.List ids (snapshot/through-changeset-id)))
-                  loaded   (set (keys (changelog-fingerprint conn)))]
-              (is (pos? expected)
-                  "the snapshot's boundary changeset should still exist in the changelog")
-              (is (= expected (count loaded))
-                  "the snapshot should record exactly the changesets up to and including its boundary")
-              (is (= (set (take expected ids)) loaded)
-                  "the snapshot should record the *first* N changesets, with no gaps"))))))))
+        (impl/with-temp-empty-app-db [conn driver]
+          (if-not (snapshot/loadable? conn driver)
+            (log/warnf "No app DB snapshot checked in for %s; skipping" (snapshot/flavor conn driver))
+            (do
+              (snapshot/load-snapshot! conn driver)
+              (let [ids      (snapshot/changeset-ids conn)
+                    expected (inc (.indexOf ^java.util.List ids (snapshot/through-changeset-id)))
+                    loaded   (set (keys (changelog-fingerprint conn)))]
+                (is (pos? expected)
+                    "the snapshot's boundary changeset should still exist in the changelog")
+                (is (= expected (count loaded))
+                    "the snapshot should record exactly the changesets up to and including its boundary")
+                (is (= (set (take expected ids)) loaded)
+                    "the snapshot should record the *first* N changesets, with no gaps")))))))))
 
 (deftest snapshot-matches-full-migration-test
   (testing "loading the snapshot and migrating the rest produces the same DB as migrating everything from scratch"
     (if-not (drift-test-enabled?)
       (log/warn "MB_APP_DB_SNAPSHOT_DRIFT_TEST is not set; skipping app DB snapshot drift comparison")
       (mt/test-drivers #{:h2 :mysql :postgres}
-        (let [driver  driver/*driver*
-              through (snapshot/through-changeset-id)]
-          (when (snapshot/available? driver)
-            (let [full-ms       (volatile! nil)
-                  snapshot-ms   (volatile! nil)
-                  from-scratch  (impl/with-temp-empty-app-db [conn driver]
-                                  (vreset! full-ms
-                                           (timed #(impl/run-migrations-in-range! conn ["v00.00-000" nil])))
-                                  (fingerprint conn driver))
-                  from-snapshot (impl/with-temp-empty-app-db [conn driver]
-                                  (vreset! snapshot-ms
-                                           (timed (fn []
-                                                    (snapshot/load-snapshot! conn driver)
-                                                    (impl/run-migrations-in-range!
-                                                     conn [through nil] {:inclusive-start? false}))))
-                                  (fingerprint conn driver))]
-              (log-timings! driver @full-ms @snapshot-ms)
+        (let [driver      driver/*driver*
+              through     (snapshot/through-changeset-id)
+              full-ms     (volatile! nil)
+              snapshot-ms (volatile! nil)
+              flavor      (volatile! driver)
+              ;; snapshot side first, so a dialect with no snapshot checked in costs nothing to skip
+              from-snapshot (impl/with-temp-empty-app-db [conn driver]
+                              (vreset! flavor (snapshot/flavor conn driver))
+                              (when (snapshot/loadable? conn driver)
+                                (vreset! snapshot-ms
+                                         (timed (fn []
+                                                  (snapshot/load-snapshot! conn driver)
+                                                  (impl/run-migrations-in-range!
+                                                   conn [through nil] {:inclusive-start? false}))))
+                                (fingerprint conn driver)))]
+          (if-not from-snapshot
+            (log/warnf "No app DB snapshot checked in for %s; skipping parity comparison" @flavor)
+            (let [from-scratch (impl/with-temp-empty-app-db [conn driver]
+                                 (vreset! full-ms
+                                          (timed #(impl/run-migrations-in-range! conn ["v00.00-000" nil])))
+                                 (fingerprint conn driver))]
+              (log-timings! @flavor @full-ms @snapshot-ms)
               (testing "same tables"
                 (is (= (set (keys (:schema from-scratch)))
                        (set (keys (:schema from-snapshot))))))
