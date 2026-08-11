@@ -1,5 +1,7 @@
 import type { PropsWithChildren } from "react";
 
+import { Box } from "metabase/ui";
+
 import S from "./CompactPinnedItemCard.module.css";
 
 type Props = PropsWithChildren<{
@@ -17,7 +19,7 @@ export function SelectModeCardWrapper({
   children,
 }: Props) {
   return (
-    <div
+    <Box
       aria-checked={isSelected}
       aria-label={name}
       className={S.link}
@@ -47,6 +49,6 @@ export function SelectModeCardWrapper({
       onMouseLeave={() => onHighlightChange(false)}
     >
       {children}
-    </div>
+    </Box>
   );
 }

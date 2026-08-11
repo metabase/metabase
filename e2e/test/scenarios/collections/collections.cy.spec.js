@@ -854,14 +854,15 @@ describe("scenarios > collection defaults", () => {
 
           cy.log("shift+click a row selects it instead of navigating");
           H.getUnpinnedSection().findByText("Orders").click({ shiftKey: true });
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("1 item selected").should("be.visible");
+          cy.findByTestId("toast-card")
+            .findByText("1 item selected")
+            .should("be.visible");
           cy.location("pathname").should("include", "/collection/root");
 
           cy.log("shift+click the row again clears the selection");
           H.getUnpinnedSection().findByText("Orders").click({ shiftKey: true });
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/).should("not.exist");
+          H.getUnpinnedSection().findByText("Orders").should("be.visible");
+          cy.findByTestId("toast-card").should("not.exist");
 
           cy.log(
             "shift+clicking the ellipsis opens the menu without selecting",
@@ -871,13 +872,14 @@ describe("scenarios > collection defaults", () => {
             .closest("tr")
             .findByRole("button", { name: "Actions" })
             .click({ shiftKey: true });
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/).should("not.exist");
+          H.popover().findByText("Select").should("be.visible");
+          cy.findByTestId("toast-card").should("not.exist");
 
           cy.log("the open overflow menu can start a selection");
           H.popover().findByText("Select").click();
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("1 item selected").should("be.visible");
+          cy.findByTestId("toast-card")
+            .findByText("1 item selected")
+            .should("be.visible");
         });
 
         it("should clean up selection when opening another collection (metabase#16491)", () => {
@@ -885,17 +887,16 @@ describe("scenarios > collection defaults", () => {
             collection_id: ADMIN_PERSONAL_COLLECTION_ID,
           });
           cy.visit("/collection/root");
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Your personal collection").click();
+          H.navigationSidebar().findByText("Your personal collection").click();
 
           selectItemUsingCheckbox("Orders");
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("1 item selected").should("be.visible");
+          cy.findByTestId("toast-card")
+            .findByText("1 item selected")
+            .should("be.visible");
 
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Our analytics").click();
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/).should("not.exist");
+          H.navigationSidebar().findByText("Our analytics").click();
+          cy.location("pathname").should("eq", "/collection/root");
+          cy.findByTestId("toast-card").should("not.exist");
         });
       });
 
@@ -909,8 +910,7 @@ describe("scenarios > collection defaults", () => {
             .button("Move to trash")
             .click();
 
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Orders").should("not.exist");
+          H.getUnpinnedSection().findByText("Orders").should("not.exist");
           cy.findByTestId("toast-card").should("not.exist");
         });
       });
@@ -927,22 +927,17 @@ describe("scenarios > collection defaults", () => {
             cy.button("Move").click();
           });
 
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Orders").should("not.exist");
+          H.getUnpinnedSection().findByText("Orders").should("not.exist");
           cy.findByTestId("toast-card").should("not.exist");
 
           // Check that items were actually moved
           H.navigationSidebar().findByText("First collection").click();
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Orders");
+          H.getUnpinnedSection().findByText("Orders").should("be.visible");
 
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Undo").click();
+          cy.findByTestId("toast-undo").findByText("Undo").click();
           H.navigationSidebar().findByText("Our analytics").click();
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Orders").should("be.visible");
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Undo").should("not.exist");
+          H.getUnpinnedSection().findByText("Orders").should("be.visible");
+          cy.findByTestId("toast-undo").should("not.exist");
         });
 
         it("moving collections should disable moving into any of the moving collections", () => {

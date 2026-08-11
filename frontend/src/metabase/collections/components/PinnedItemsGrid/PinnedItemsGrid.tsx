@@ -13,7 +13,6 @@ import type {
 import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
-import { useIsShiftPressed } from "metabase/common/hooks/use-is-shift-pressed";
 import { Box, SimpleGrid, rem } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -22,6 +21,8 @@ import type {
   CollectionId,
   CollectionItem,
 } from "metabase-types/api";
+
+import { useIsShiftPressed } from "./use-is-shift-pressed";
 
 type Props = {
   databases?: Database[];
