@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { c, t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -614,12 +614,27 @@ const MultiplierFieldSubtitle = () => (
   </Text>
 );
 
-const getDurationUnitOptions = () => [
-  { value: CacheDurationUnit.Seconds, label: t`seconds` },
-  { value: CacheDurationUnit.Minutes, label: t`minutes` },
-  { value: CacheDurationUnit.Hours, label: t`hours` },
-  { value: CacheDurationUnit.Days, label: t`days` },
-];
+const getDurationUnitOptions = (duration: number) => {
+  const count = Number.isFinite(duration) ? duration : 2;
+  return [
+    {
+      value: CacheDurationUnit.Seconds,
+      label: ngettext(msgid`second`, `seconds`, count),
+    },
+    {
+      value: CacheDurationUnit.Minutes,
+      label: ngettext(msgid`minute`, `minutes`, count),
+    },
+    {
+      value: CacheDurationUnit.Hours,
+      label: ngettext(msgid`hour`, `hours`, count),
+    },
+    {
+      value: CacheDurationUnit.Days,
+      label: ngettext(msgid`day`, `days`, count),
+    },
+  ];
+};
 
 const DurationStrategyFormFields = ({
   targetModel,
@@ -630,6 +645,8 @@ const DurationStrategyFormFields = ({
 }) => {
   const { values, setFieldValue } = useFormikContext<CacheStrategy>();
   const unit = values.type === "duration" ? values.unit : undefined;
+  const duration =
+    values.type === "duration" ? Number(values.duration) : Number.NaN;
 
   useEffect(() => {
     if (!unit) {
@@ -651,7 +668,7 @@ const DurationStrategyFormFields = ({
           <PositiveNumberInput strategyType="duration" name="duration" />
           <FormSelect
             name="unit"
-            data={getDurationUnitOptions()}
+            data={getDurationUnitOptions(duration)}
             w="8rem"
             allowDeselect={false}
             aria-label={t`Cache duration unit`}

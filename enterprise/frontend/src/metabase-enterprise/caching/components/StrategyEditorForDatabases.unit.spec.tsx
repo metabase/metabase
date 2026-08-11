@@ -296,6 +296,24 @@ describe("StrategyEditorForDatabases", () => {
     ).toHaveLength(0);
   });
 
+  it("pluralizes the unit options with the entered duration", async () => {
+    await userEvent.click(
+      await screen.findByLabelText(
+        "Edit default policy (currently: Duration: 1h)",
+      ),
+    );
+
+    expect(await screen.findByTestId("duration-unit-select")).toHaveValue(
+      "hour",
+    );
+
+    await changeInput(/Cache duration/, 24, 2);
+
+    expect(await screen.findByTestId("duration-unit-select")).toHaveValue(
+      "hours",
+    );
+  });
+
   it("lets user change the duration unit", async () => {
     await userEvent.click(
       await screen.findByLabelText(
@@ -305,7 +323,7 @@ describe("StrategyEditorForDatabases", () => {
 
     await userEvent.click(await screen.findByTestId("duration-unit-select"));
     await userEvent.click(
-      await screen.findByRole("option", { name: "minutes" }),
+      await screen.findByRole("option", { name: "minute" }),
     );
 
     await userEvent.click(
