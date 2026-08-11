@@ -15,24 +15,17 @@
 ;;; ---------------------------------------------- dependency graph ----------------------------------------------
 
 (def ^:private config
-  "Which fixtures each fixture needs initialized before it can run.
-
-  Component values carry no data. Every component's effect is exogenous -- namespaces loaded, rows written, global
-  vars mutated -- so the refs exist only to order initialization. What `ig/build` returns is thrown away; [[system]]
-  is the copy we keep."
+  "Fixture dependencies. Refs only order initialization -- each component's effect is exogenous (namespaces loaded,
+  rows written, global vars mutated), never a value in the system map."
   {::plugins       {}
    ::test-drivers  {}
-   ;; loads the namespaces that install the system's multimethods, settings, tasks and event handlers. Components
-   ;; below write rows through models whose behavior those methods provide -- e.g. inserting an AuthIdentity
-   ;; dispatches `metabase.auth-identity.provider/validate`, which only exists once `metabase.auth-identity.init` is
-   ;; loaded.
+   ;; installs the multimethods, settings, tasks and event handlers everything below relies on -- e.g. inserting an
+   ;; AuthIdentity dispatches `auth-identity.provider/validate`, which exists only once its init ns is loaded
    ::core-init     {}
-   ;; `register-listeners!` iterates the `def-listener!` implementations loaded at that moment, so every namespace
-   ;; declaring one has to be loaded first. Must precede ::db so listeners (e.g. connection-pool-invalidated) exist
-   ;; when database initialization triggers events.
+   ;; `register-listeners!` only sees `def-listener!` implementations already loaded, and ::db triggers events, so
+   ;; this has to land between them
    ::mq            {:core-init (ig/ref ::core-init)}
-   ;; migrating triggers events (e.g. connection-pool-invalidated) and sets up the scheduler, both of which run
-   ;; handlers installed by the init namespaces
+   ;; migrating triggers events and sets up the scheduler, both of which run handlers from the init namespaces
    ::db            {:core-init (ig/ref ::core-init)
                     :mq        (ig/ref ::mq)}
    ;; the handler routes to API namespaces, and `set!`ting the site name goes through the settings machinery
@@ -50,23 +43,20 @@
    ::row-lock      {:db (ig/ref ::db)}})
 
 (def ^:private step->key
-  "Maps the unqualified keyword callers pass to [[initialize-if-needed!]] onto its [[config]] key."
+  "Unqualified keyword callers pass to [[initialize-if-needed!]] -> its [[config]] key."
   (into {} (map (juxt (comp keyword name) identity)) (keys config)))
 
 ;;; ------------------------------------------------- time budgets -------------------------------------------------
 
 (def ^:private default-budget
-  "Merged under each component's [[ig/annotate]] map, so an annotation may override either key alone."
   {::warn-after-ms (u/seconds->ms 30)
    ::timeout-ms    (u/minutes->ms 5)})
 
-;;; A budget covers a component's own work only: `ig/build` initializes each dependency under its own budget before
-;;; the dependent runs, so nothing here has to leave room for the graph beneath it.
+;;; A budget covers a component's own work only -- dependencies are initialized under their own.
 ;;;
-;;; `::timeout-ms` is a hang detector, not a performance target -- it is set well above anything a healthy run
-;;; produces. `::warn-after-ms` is the knob that surfaces drift. Measured locally against H2: ::db ~10.5s,
-;;; ::web-server ~10s, ::test-users ~1s, ::plugins ~100ms, ::mq ~10ms, ::core-init ~1ms (its namespaces are already
-;;; loaded by the time test discovery finishes). CI, with real app DBs and DRIVERS=all, runs well above these.
+;;; `::timeout-ms` catches hangs; `::warn-after-ms` surfaces drift. Measured locally against H2: ::db ~10.5s,
+;;; ::web-server ~10s, ::test-users ~1s, ::plugins ~100ms, ::mq ~10ms, ::core-init ~1ms. CI, with real app DBs and
+;;; DRIVERS=all, runs well above these.
 (ig/annotate ::db         {::warn-after-ms (u/seconds->ms 60), ::timeout-ms (u/minutes->ms 10)})
 (ig/annotate ::web-server {::warn-after-ms (u/seconds->ms 60)})
 (ig/annotate ::core-init  {::warn-after-ms (u/seconds->ms 60)})
@@ -78,9 +68,8 @@
 ;;; ------------------------------------------------ initialization ------------------------------------------------
 
 (defonce ^{:private true
-           :doc "The keys initialized so far, mapped to what their [[ig/init-key]] returned. Stands in for the system
-                map a normal integrant application would hold onto: every caller here demands fixtures independently,
-                so this is what lets a second demand for an already-running component be a lookup instead of a
+           :doc "Initialized keys -> whatever their [[ig/init-key]] returned. The system map a normal integrant
+                application would hold onto; here it is what makes a repeat demand a lookup rather than a
                 re-initialization."}
   system
   (atom {}))
@@ -104,9 +93,8 @@
         result))))
 
 (defn- init-once!
-  "The function `ig/build` applies to every key. Wraps [[ig/init-key]] with the once-per-JVM guard and the key's time
-  budget. Components are only idempotent because of this guard: their work lands in global state, not in the system
-  map, so running one twice would repeat the side effects."
+  "Adds the once-per-JVM guard and the key's time budget to [[ig/init-key]]. The components are not self-idempotent --
+  their work lands in global state, so a second run would repeat the side effects."
   [k v]
   ;; `contains?`, not truthiness -- plenty of these components return nil
   (if (contains? @system k)
@@ -114,14 +102,15 @@
     (locking k
       (if (contains? @system k)
         (@system k)
-        (u/prog1 (try
-                   (init-with-budget! k v)
-                   (catch Throwable e
-                     (log/fatalf e "Error initializing %s" k)
-                     (when config/is-test?
-                       (System/exit -1))
-                     (throw e)))
-          (swap! system assoc k <>))))))
+        (let [result (try
+                       (init-with-budget! k v)
+                       (catch Throwable e
+                         (log/fatalf e "Error initializing %s" k)
+                         (when config/is-test?
+                           (System/exit -1))
+                         (throw e)))]
+          (swap! system assoc k result)
+          result)))))
 
 (defn initialize-if-needed!
   "Initialize one or more components, and anything they depend on.
@@ -132,13 +121,14 @@
   ;; application DB, or starting up the web server).
   (when-not (= steps [:plugins])
     (mb.hawk.init/assert-tests-are-not-initializing (pr-str (cons 'initialize-if-needed! steps))))
-  (let [ks (mapv (fn [step]
-                   (or (step->key (keyword step))
-                       (throw (ex-info (format "Unknown initialization step: %s" step)
-                                       {:step step, :known-steps (sort (keys step->key))}))))
-                 steps)]
-    ;; `ig/build` rather than `ig/init` so that every key goes through [[init-once!]]; `ig/init` is this same call
-    ;; with `ig/init-key` passed directly, which would give us neither the once-only guard nor the budgets.
+  (let [requested (map keyword steps)
+        ks        (map step->key requested)
+        unknown   (remove step->key requested)]
+    (when (seq unknown)
+      (throw (ex-info (str "Unknown initialization steps: " (str/join ", " unknown))
+                      {:unknown-steps (vec unknown)
+                       :known-steps   (sort (keys step->key))})))
+    ;; `ig/build` rather than `ig/init`: `ig/init` passes `ig/init-key` straight through, losing the guard and budgets
     (ig/build config ks init-once!))
   nil)
 

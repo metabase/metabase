@@ -34,7 +34,13 @@
   (is (thrown? TimeoutException
                (#'initialize/init-with-budget! ::slow {}))))
 
-(deftest unknown-step-is-rejected-test
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                        #"Unknown initialization step: :not-a-fixture"
-                        (initialize/initialize-if-needed! :not-a-fixture))))
+(deftest unknown-steps-are-all-reported-test
+  (testing "every unknown step is named, not just the first"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unknown initialization steps: :not-a-fixture, :also-bogus"
+                          (initialize/initialize-if-needed! :not-a-fixture :db :also-bogus)))
+    (is (= [:not-a-fixture :also-bogus]
+           (-> (try
+                 (initialize/initialize-if-needed! :not-a-fixture :db :also-bogus)
+                 (catch clojure.lang.ExceptionInfo e (ex-data e)))
+               :unknown-steps)))))
