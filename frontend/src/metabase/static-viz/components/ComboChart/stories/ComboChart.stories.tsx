@@ -1090,6 +1090,84 @@ export const StackedChartCustomYAxisRange = {
   },
 };
 
+export const StackedCustomYAxisRangeIntersectsStack75156 = {
+  render: Template,
+  args: {
+    rawSeries: updateIn(
+      data.stackedChartCustomYAxisRange,
+      [0, "card", "visualization_settings"],
+      (val) => ({ ...val, "graph.y_axis.min": 20, "graph.y_axis.max": 30 }),
+    ) as any,
+    renderingContext,
+  },
+};
+
+export const StackedCustomYAxisRangeBelowStack75156 = {
+  render: Template,
+  args: {
+    rawSeries: updateIn(
+      data.stackedChartCustomYAxisRange,
+      [0, "card", "visualization_settings"],
+      (val) => ({ ...val, "graph.y_axis.min": 40, "graph.y_axis.max": 60 }),
+    ) as any,
+    renderingContext,
+  },
+};
+
+export const StackedNormalizedCustomYAxisRangeWithinPercent75156 = {
+  render: Template,
+  args: {
+    rawSeries: updateIn(
+      data.stackedChartCustomYAxisRange,
+      [0, "card", "visualization_settings"],
+      (val) => ({
+        ...val,
+        "stackable.stack_type": "normalized",
+        "graph.y_axis.min": 40,
+        "graph.y_axis.max": 60,
+      }),
+    ) as any,
+    renderingContext,
+  },
+};
+
+export const UnstackedBarCustomYAxisRangeCrossesBars75156 = {
+  render: Template,
+  args: {
+    rawSeries: updateIn(
+      data.stackedChartCustomYAxisRange,
+      [0, "card", "visualization_settings"],
+      (val) => ({
+        ...val,
+        "stackable.stack_type": null,
+        "graph.y_axis.min": 3,
+        "graph.y_axis.max": 8,
+      }),
+    ) as any,
+    renderingContext,
+  },
+};
+
+export const UnstackedAreaCustomYAxisRangeCrossesArea75156 = {
+  render: Template,
+  args: {
+    rawSeries: updateIn(
+      updateIn(data.stackedChartCustomYAxisRange, [0, "card"], (card) => ({
+        ...card,
+        display: "area",
+      })),
+      [0, "card", "visualization_settings"],
+      (val) => ({
+        ...val,
+        "stackable.stack_type": null,
+        "graph.y_axis.min": 3,
+        "graph.y_axis.max": 8,
+      }),
+    ) as any,
+    renderingContext,
+  },
+};
+
 export const SeriesOrderSettingsDoNotMatchSeriesCount = {
   render: Template,
   args: {
