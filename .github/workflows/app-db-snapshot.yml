@@ -34,17 +34,38 @@ concurrency:
 jobs:
   snapshot-drift:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
+        # The oldest and newest server we support for each app DB, mirroring the matrix in app-db.yml. A snapshot is
+        # a dump taken from one server version and replayed into another, so version coverage is the point: this is
+        # where a dump that only newer (or only older) servers can parse would show up.
+        #
+        # MySQL Latest is absent because app-db.yml disables it too -- `mysql:latest` now resolves to 26.x, which
+        # fails in a way that floods the log until the runner cancels the job.
         include:
           - name: H2
             driver: h2
-          - name: Postgres 14
+          - name: Postgres 14.x
             driver: postgres
+            image: postgres:14-alpine
+          - name: Postgres Latest
+            driver: postgres
+            image: postgres:latest
           - name: MySQL 8.0
             driver: mysql
+            image: mysql:8.0
+          - name: MySQL 9
+            driver: mysql
+            image: mysql:9
+          # https://github.com/metabase/metabase-mariadb-docker-image
+          - name: MariaDB 10.6
+            driver: mysql
+            image: metabase/mariadb:10.6
+          - name: MariaDB Latest
+            driver: mysql
+            image: mariadb:latest
     name: "App DB snapshot drift (${{ matrix.name }})"
     env:
       CI: 'true'
@@ -59,17 +80,20 @@ jobs:
       - name: Start Postgres
         if: ${{ matrix.driver == 'postgres' }}
         run: |
-          docker run -d --name pg -p 5432:5432 \
+          docker run -d --name appdb -p 5432:5432 \
             -e POSTGRES_USER=mb_test -e POSTGRES_DB=mb_test -e POSTGRES_HOST_AUTH_METHOD=trust \
-            postgres:14-alpine
+            ${{ matrix.image }}
         shell: bash
 
-      - name: Start MySQL
+      # MariaDB images want MARIADB_*, MySQL images want MYSQL_*; each ignores the other's variables, so setting
+      # both keeps this one step working for the whole MySQL-family matrix.
+      - name: Start MySQL or MariaDB
         if: ${{ matrix.driver == 'mysql' }}
         run: |
-          docker run -d --name mysql -p 3306:3306 \
+          docker run -d --name appdb -p 3306:3306 \
             -e MYSQL_ALLOW_EMPTY_PASSWORD=true -e MYSQL_DATABASE=mb_test \
-            mysql:8.0
+            -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=true -e MARIADB_DATABASE=mb_test \
+            ${{ matrix.image }}
         shell: bash
 
       - name: Prepare back-end environment
@@ -84,6 +108,7 @@ jobs:
             sleep 2
           done
           echo "Database on port $port never came up"
+          docker logs appdb || true
           exit 1
         shell: bash
 

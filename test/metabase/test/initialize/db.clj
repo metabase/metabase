@@ -12,16 +12,16 @@
 (defn- load-snapshot-if-empty!
   "Seed a not-yet-migrated test app DB from the checked-in snapshot, so the Liquibase run that follows only has to
   apply the changesets after the snapshot boundary. No-op when the DB already has tables (a reused app DB) or when no
-  snapshot is checked in for this DB type."
+  snapshot is checked in for this server's dialect."
   []
   (let [db-type (mdb/db-type)]
-    (when (snapshot/available? db-type)
-      (with-open [conn (.getConnection (mdb/data-source))]
-        (when (and (snapshot/loadable? conn db-type)
-                   (empty? (snapshot/user-tables conn db-type)))
-          (log/info (u/format-color 'blue "Loading %s app DB snapshot %s (migrated through %s)..."
-                                    db-type snapshot/snapshot-version (snapshot/through-changeset-id)))
-          (snapshot/load-snapshot! conn db-type))))))
+    (with-open [conn (.getConnection (mdb/data-source))]
+      (when (and (snapshot/loadable? conn db-type)
+                 (empty? (snapshot/user-tables conn db-type)))
+        (log/info (u/format-color 'blue "Loading %s app DB snapshot %s (migrated through %s)..."
+                                  (snapshot/flavor conn db-type) snapshot/snapshot-version
+                                  (snapshot/through-changeset-id)))
+        (snapshot/load-snapshot! conn db-type)))))
 
 (defn init! []
   (log/info (u/format-color 'blue "Setting up %s test DB and running migrations..." (mdb/db-type)))

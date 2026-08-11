@@ -12,6 +12,11 @@
     app_db_snapshots/<version>/h2.sql
     app_db_snapshots/<version>/postgres.sql
     app_db_snapshots/<version>/mysql.sql
+    app_db_snapshots/<version>/mariadb.sql
+    app_db_snapshots/<version>/mariadb_legacy_timestamp.sql
+
+  One file per [[flavor]], which is a dialect rather than a driver: MariaDB has two because the schema its
+  migrations produce depends on a server setting.
 
   A `.sql` file is a list of statements separated by lines containing exactly [[statement-separator]]. Nothing else
   about the file is parsed, so [[load-snapshot!]] cannot be broken by semicolons inside string literals.
@@ -42,14 +47,20 @@
   "Snapshot directory tests boot from."
   "v57")
 
-(def ^:private snapshot-db-types
-  #{:h2 :postgres :mysql})
+(def ^:private snapshot-flavors
+  "Dialects a snapshot is dumped for.
 
-(defn- resource-path [version db-type ext]
-  (format "app_db_snapshots/%s/%s.%s" version (name db-type) ext))
+  MariaDB is not a MySQL alias: MySQL 8 dumps declare functional indexes (`KEY x ((case when ...)))`) that MariaDB
+  cannot parse. It also needs two snapshots of its own, because `explicit_defaults_for_timestamp` changes the schema
+  the very same migrations produce — see [[flavor]]."
+  #{:h2 :postgres :mysql :mariadb :mariadb-legacy-timestamp})
 
-(defn- snapshot-resource [version db-type]
-  (io/resource (resource-path version db-type "sql")))
+(defn- resource-path [version flavor ext]
+  ;; underscores, to match how every other resource in the tree is named
+  (format "app_db_snapshots/%s/%s.%s" version (str/replace (name flavor) "-" "_") ext))
+
+(defn- snapshot-resource [version flavor]
+  (io/resource (resource-path version flavor "sql")))
 
 (defn through-changeset-id
   "ID of the last changeset baked into the snapshot for `version`."
@@ -61,27 +72,41 @@
        (throw (ex-info "No app DB snapshot metadata on the classpath" {:version version})))
      (:through-changeset-id (edn/read-string (slurp resource))))))
 
-(defn available?
-  "Whether a snapshot for `db-type` is checked in."
-  ([db-type]
-   (available? snapshot-version db-type))
-  ([version db-type]
-   (boolean (some->> db-type snapshot-db-types (snapshot-resource version) some?))))
+(defn- legacy-timestamp-handling?
+  "Whether this server gives a `TIMESTAMP NOT NULL` column an implicit `DEFAULT CURRENT_TIMESTAMP`.
 
-(defn- mariadb?
-  "MariaDB identifies itself as MySQL through `MB_DB_TYPE` and the JDBC driver alike; the product name is what
-  actually distinguishes it."
+  That is what `explicit_defaults_for_timestamp = 0` does, and it means the same migrations leave behind a different
+  schema. MariaDB 10.6 ships it off; 11.x and later ship it on, as MySQL 8 already did."
   [^java.sql.Connection conn]
-  (= "MariaDB" (.getDatabaseProductName (.getMetaData conn))))
+  (with-open [stmt (.createStatement conn)
+              rs   (.executeQuery stmt "SELECT @@explicit_defaults_for_timestamp")]
+    (and (.next rs)
+         (zero? (.getInt rs 1)))))
+
+(defn flavor
+  "Which snapshot dialect `conn` needs.
+
+  Read from the server rather than from `db-type`, for two reasons. Metabase runs MariaDB as `db-type` `:mysql`
+  — the JDBC driver and `MB_DB_TYPE` both say MySQL, and only the product name tells the two apart. MariaDB then
+  splits again on [[legacy-timestamp-handling?]]: a snapshot dumped from a server that adds implicit timestamp
+  defaults is not the schema a newer server would have migrated to.
+
+  Keyed on the setting rather than on a version number, so a new MariaDB release lands on the right snapshot without
+  anyone editing a table of versions."
+  [^java.sql.Connection conn db-type]
+  (if (and (= db-type :mysql)
+           (= "MariaDB" (.getDatabaseProductName (.getMetaData conn))))
+    (if (legacy-timestamp-handling? conn)
+      :mariadb-legacy-timestamp
+      :mariadb)
+    db-type))
 
 (defn loadable?
-  "Whether the checked-in snapshot can actually be loaded over `conn`.
-
-  MariaDB is excluded even though Metabase runs it as `db-type` `:mysql`: mysqldump writes MySQL 8 functional index
-  definitions (`KEY x ((case when ...)))`) that MariaDB cannot parse. It replays the changelog from scratch instead."
-  [^java.sql.Connection conn db-type]
-  (and (available? db-type)
-       (not (mariadb? conn))))
+  "Whether a snapshot this connection can use is checked in."
+  ([^java.sql.Connection conn db-type]
+   (loadable? conn db-type snapshot-version))
+  ([^java.sql.Connection conn db-type version]
+   (boolean (some->> (flavor conn db-type) snapshot-flavors (snapshot-resource version) some?))))
 
 (defn statements
   "Split the contents of a snapshot `.sql` file into individual statements."
@@ -103,7 +128,7 @@
   side effect, before a single changeset has run. The snapshot carries its own copies, complete with the rows saying
   what has already been applied, so clear the empty ones out of the way first.
 
-  Unquoted and upper-case so that all three DBs resolve it: H2 and MySQL store the name upper-case, and Postgres
+  Unquoted and upper-case so that every DB resolves it: H2, MySQL and MariaDB store the name upper-case, and Postgres
   folds the unquoted name down to the lower-case name it stores."
   ["DROP TABLE IF EXISTS DATABASECHANGELOG"
    "DROP TABLE IF EXISTS DATABASECHANGELOGLOCK"])
@@ -111,25 +136,38 @@
 (defn- session-guards
   "`[before after]` statements to run around a snapshot load.
 
-  mysqldump writes tables in alphabetical rather than dependency order, so a foreign key can name a table that does
-  not exist yet; the checks have to be off until the whole schema is in place. pg_dump and H2 both emit in an order
-  that loads cleanly, so they need nothing extra."
-  [db-type]
-  (if (= db-type :mysql)
-    [(into ["SET FOREIGN_KEY_CHECKS = 0"] drop-changelog-tables) ["SET FOREIGN_KEY_CHECKS = 1"]]
+  The MySQL family needs two things relaxed for the duration:
+
+  - Foreign keys, because mysqldump writes tables in alphabetical rather than dependency order, so a constraint can
+    name a table that does not exist yet.
+  - Strict mode, because mariadb-dump lists generated columns (`metabase_field.unique_field_helper`) in its INSERT
+    column lists, and assigning to one is an error under strict mode rather than the warning it is otherwise.
+
+  The previous `sql_mode` is stashed in a user variable, which outlives the individual statements, and put back
+  afterwards so the rest of the session is unaffected. pg_dump and H2 emit an order that loads cleanly and need
+  nothing beyond clearing the changelog tables."
+  [flavor]
+  (if (#{:mysql :mariadb :mariadb-legacy-timestamp} flavor)
+    [(into ["SET FOREIGN_KEY_CHECKS = 0"
+            "SET @mb_snapshot_sql_mode = @@SESSION.sql_mode"
+            "SET SESSION sql_mode = ''"]
+           drop-changelog-tables)
+     ["SET FOREIGN_KEY_CHECKS = 1"
+      "SET SESSION sql_mode = IFNULL(@mb_snapshot_sql_mode, @@SESSION.sql_mode)"]]
     [drop-changelog-tables []]))
 
 (defn load-snapshot!
-  "Load the checked-in snapshot for `db-type` into the empty DB behind `conn`."
+  "Load the checked-in snapshot into the empty DB behind `conn`, picking the dialect from [[flavor]]."
   ([^java.sql.Connection conn db-type]
    (load-snapshot! conn db-type snapshot-version))
   ([^java.sql.Connection conn db-type version]
-   (let [resource         (or (snapshot-resource version db-type)
-                              (throw (ex-info "No app DB snapshot for this DB type"
-                                              {:version version, :db-type db-type})))
+   (let [flavor           (flavor conn db-type)
+         resource         (or (snapshot-resource version flavor)
+                              (throw (ex-info "No app DB snapshot for this dialect"
+                                              {:version version, :db-type db-type, :flavor flavor})))
          stmts            (statements (slurp resource))
-         [before after]   (session-guards db-type)]
-     (log/debugf "Loading %s app db snapshot %s (%d statements)..." db-type version (count stmts))
+         [before after]   (session-guards flavor)]
+     (log/debugf "Loading %s app db snapshot %s (%d statements)..." flavor version (count stmts))
      (with-open [stmt (.createStatement conn)]
        (doseq [sql before]
          (.execute stmt sql))
@@ -139,7 +177,7 @@
              (.execute stmt sql)
              (catch Throwable e
                (throw (ex-info "Error loading app DB snapshot statement"
-                               {:version version, :db-type db-type, :statement sql}
+                               {:version version, :flavor flavor, :statement sql}
                                e)))))
          (finally
            (doseq [sql after]
@@ -210,11 +248,11 @@
 (defmulti ^:private dump-statements
   "Return the statements needed to recreate the DB described by `details` (as returned
   by [[tx/dbdef->connection-details]]), including its DATABASECHANGELOG rows."
-  {:arglists '([db-type details conn])}
-  (fn [db-type _details _conn] db-type))
+  {:arglists '([flavor details conn])}
+  (fn [flavor _details _conn] flavor))
 
 (defmethod dump-statements :h2
-  [_db-type _details conn]
+  [_flavor _details conn]
   ;; H2's SCRIPT command already returns one statement per row, so no parsing is needed. `MEMORY`/`CACHED` is dropped
   ;; so the loading DB picks its own default (in-memory DBs get MEMORY, file-backed ones CACHED); `SET`, `CREATE USER`
   ;; and the version banner describe the DB the dump came from, not the schema.
@@ -228,7 +266,7 @@
         (jdbc/query {:connection conn} ["SCRIPT"])))
 
 (defmethod dump-statements :postgres
-  [_db-type {:keys [host port db user]} _conn]
+  [_flavor {:keys [host port db user]} _conn]
   (dump-lines->statements
    (str/split-lines
     (sh! "pg_dump" "--no-owner" "--no-privileges" "--no-comments" "--inserts"
@@ -262,18 +300,41 @@
               table_name
               (str/replace view_definition qualifier "")))))
 
-(defmethod dump-statements :mysql
-  [_db-type {:keys [host port db user]} conn]
+(defn- mysqldump-command
+  "Binary used to dump MySQL-family DBs, overridable via `MB_SNAPSHOT_MYSQLDUMP`.
+
+  Needed because the two servers want different clients: MySQL 9's `mysqldump` dropped `mysql_native_password` and so
+  cannot authenticate against older MariaDB servers, while MariaDB's `mariadb-dump` is not always on PATH next to it."
+  []
+  (or (System/getenv "MB_SNAPSHOT_MYSQLDUMP") "mysqldump"))
+
+(defn- mysqldump-statements!
+  "Dump a MySQL-family DB. `--protocol=TCP` because the MySQL client silently ignores `--port` and uses a unix socket
+  when the host is `localhost`, which is not necessarily the server the migration just ran against.
+  `--set-gtid-purged` is MySQL-only, so it is passed only when dumping MySQL."
+  [flavor {:keys [host port db user]} conn]
   (into (dump-lines->statements
          (drop-version-gated-blocks
           (str/split-lines
-           ;; `--protocol=TCP` because the MySQL client silently ignores `--port` and uses a unix socket when the host
-           ;; is `localhost`, which is not necessarily the server the migration just ran against.
-           (sh! "mysqldump" "--compact" "--skip-extended-insert" "--skip-add-locks" "--skip-disable-keys"
-                "--skip-set-charset" "--complete-insert" "--no-tablespaces" "--set-gtid-purged=OFF" "--protocol=TCP"
-                (str "--host=" host) (str "--port=" port) (str "--user=" user) (str db)))))
+           (apply sh! (concat [(mysqldump-command) "--compact" "--skip-extended-insert" "--skip-add-locks"
+                               "--skip-disable-keys" "--skip-set-charset" "--complete-insert" "--no-tablespaces"
+                               "--protocol=TCP"]
+                              (when (= flavor :mysql) ["--set-gtid-purged=OFF"])
+                              [(str "--host=" host) (str "--port=" port) (str "--user=" user) (str db)])))))
         ;; views last: they read from the tables above, and none of them reads from another view
         (mysql-view-statements conn db)))
+
+(defmethod dump-statements :mysql
+  [flavor details conn]
+  (mysqldump-statements! flavor details conn))
+
+(defmethod dump-statements :mariadb
+  [flavor details conn]
+  (mysqldump-statements! flavor details conn))
+
+(defmethod dump-statements :mariadb-legacy-timestamp
+  [flavor details conn]
+  (mysqldump-statements! flavor details conn))
 
 (defn- custom-migration-bindings
   "Same bindings [[metabase.app-db.schema-migrations-test.impl/do-with-temp-empty-app-db]] installs: custom migrations
@@ -285,11 +346,11 @@
    (requiring-resolve 'metabase.app-db.custom-migrations.util/*allow-temp-scheduling*)
    false})
 
-(defn- write-snapshot! [version db-type statements]
-  (let [file (io/file "test_resources" (resource-path version db-type "sql"))]
+(defn- write-snapshot! [version flavor statements]
+  (let [file (io/file "test_resources" (resource-path version flavor "sql"))]
     (io/make-parents file)
     (spit file (str "-- Generated by metabase.app-db.snapshot-test-util/generate!. Do not edit by hand.\n"
-                    (format "-- Empty %s application DB migrated through %s.\n" (name db-type)
+                    (format "-- Empty %s application DB migrated through %s.\n" (name flavor)
                             (through-changeset-id version))
                     statement-separator "\n"
                     (str/join (str ";\n" statement-separator "\n") statements)
@@ -300,6 +361,9 @@
   "Regenerate the checked-in snapshot for `db-type`: create a temporary empty app DB, migrate it through
   [[through-changeset-id]], and dump the result. Needs `pg_dump` on PATH for `:postgres` and `mysqldump` for
   `:mysql`, plus the usual `MB_<DB>_TEST_*` env vars pointing at a server it may create databases on.
+
+  Which file gets written follows [[flavor]], so regenerating the MariaDB snapshot means running this with `:mysql`
+  while `MB_MYSQL_TEST_*` points at a MariaDB server.
 
   Deliberately creates its own DB rather than using [[metabase.app-db.schema-migrations-test.impl]]'s harness,
   because the dump tools need the raw connection details that harness hides."
@@ -326,14 +390,16 @@
                              :subname (format "mem:%s;DB_CLOSE_DELAY=-1" (:database-name dbdef))}
                             (details->spec db-type @details)))]
          (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-           (log/info (u/format-color 'blue "Migrating empty %s app db through %s..." db-type through))
-           (with-bindings* (custom-migration-bindings db-type data-source)
-             (fn []
-               (run-range! conn ["v00.00-000" through])))
-           (let [file (write-snapshot! version db-type
-                                       (dump-statements db-type (when-not h2? @details) conn))]
-             (log/info (u/format-color 'green "Wrote %s" (str file)))
-             file)))
+           ;; the server decides which dialect this is, not `db-type`: MariaDB is reached as `:mysql`
+           (let [flavor (flavor conn db-type)]
+             (log/info (u/format-color 'blue "Migrating empty %s app db through %s..." flavor through))
+             (with-bindings* (custom-migration-bindings db-type data-source)
+               (fn []
+                 (run-range! conn ["v00.00-000" through])))
+             (let [file (write-snapshot! version flavor
+                                         (dump-statements flavor (when-not h2? @details) conn))]
+               (log/info (u/format-color 'green "Wrote %s" (str file)))
+               file))))
        (finally
          (when-not h2?
            (destroy-db! db-type dbdef)))))))
