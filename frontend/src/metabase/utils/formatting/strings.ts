@@ -42,7 +42,7 @@ export function conjunct(
     list.slice(0, -1).join(`, `) +
     (list.length > 2 ? `,` : ``) +
     (list.length > 1 ? ` ${conjunction} ` : ``) +
-    (list[list.length - 1] || ``)
+    (list[list.length - 1] ?? ``)
   );
 }
 
