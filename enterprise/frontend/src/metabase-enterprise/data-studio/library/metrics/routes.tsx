@@ -2,7 +2,11 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
 
 /**
- * The Data Studio Library metric pages, in one chunk.
+ * The Data Studio Library metric pages, in the `metrics` chunk.
+ *
+ * They name the same chunk as the core metric pages they wrap. Two names for
+ * code shared between them leaves the shared half in neither, so one name keeps
+ * everything about a metric in a single request.
  *
  * Each of these wraps the core page of the same name. While they were imported
  * eagerly here, `metabase/metrics/pages/*` could not leave the initial bundle
@@ -10,50 +14,50 @@ import { Route } from "metabase/router";
  * other side.
  */
 const newMetricPage = () =>
-  import(
-    /* webpackChunkName: "data-studio-metrics" */ "./pages/NewMetricPage"
-  ).then(({ DataStudioNewMetricPage }) => ({
-    Component: DataStudioNewMetricPage,
-  }));
+  import(/* webpackChunkName: "metrics" */ "./pages/NewMetricPage").then(
+    ({ DataStudioNewMetricPage }) => ({
+      Component: DataStudioNewMetricPage,
+    }),
+  );
 
 const metricAboutPage = () =>
   import(
-    /* webpackChunkName: "data-studio-metrics" */ "./pages/DataStudioMetricAboutPage"
+    /* webpackChunkName: "metrics" */ "./pages/DataStudioMetricAboutPage"
   ).then(({ DataStudioMetricAboutPage }) => ({
     Component: DataStudioMetricAboutPage,
   }));
 
 const metricOverviewPage = () =>
   import(
-    /* webpackChunkName: "data-studio-metrics" */ "./pages/DataStudioMetricOverviewPage"
+    /* webpackChunkName: "metrics" */ "./pages/DataStudioMetricOverviewPage"
   ).then(({ DataStudioMetricOverviewPage }) => ({
     Component: DataStudioMetricOverviewPage,
   }));
 
 const metricDimensionsPage = () =>
   import(
-    /* webpackChunkName: "data-studio-metrics" */ "./pages/DataStudioMetricDimensionsPage"
+    /* webpackChunkName: "metrics" */ "./pages/DataStudioMetricDimensionsPage"
   ).then(({ DataStudioMetricDimensionsPage }) => ({
     Component: DataStudioMetricDimensionsPage,
   }));
 
 const metricQueryPage = () =>
   import(
-    /* webpackChunkName: "data-studio-metrics" */ "./pages/DataStudioMetricQueryPage"
+    /* webpackChunkName: "metrics" */ "./pages/DataStudioMetricQueryPage"
   ).then(({ DataStudioMetricQueryPage }) => ({
     Component: DataStudioMetricQueryPage,
   }));
 
 const metricDependenciesPage = () =>
   import(
-    /* webpackChunkName: "data-studio-metrics" */ "./pages/DataStudioMetricDependenciesPage"
+    /* webpackChunkName: "metrics" */ "./pages/DataStudioMetricDependenciesPage"
   ).then(({ DataStudioMetricDependenciesPage }) => ({
     Component: DataStudioMetricDependenciesPage,
   }));
 
 const metricHistoryPage = () =>
   import(
-    /* webpackChunkName: "data-studio-metrics" */ "./pages/DataStudioMetricHistoryPage"
+    /* webpackChunkName: "metrics" */ "./pages/DataStudioMetricHistoryPage"
   ).then(({ DataStudioMetricHistoryPage }) => ({
     Component: DataStudioMetricHistoryPage,
   }));
