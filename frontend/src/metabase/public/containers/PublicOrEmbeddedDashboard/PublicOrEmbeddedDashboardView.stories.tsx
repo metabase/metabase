@@ -11,7 +11,10 @@ import {
   createMockSettingsState,
   createMockState,
 } from "__support__/state";
-import { createWaitForResizeToStopDecorator } from "__support__/storybook";
+import {
+  createWaitForChartsDecorator,
+  createWaitForResizeToStopDecorator,
+} from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
@@ -50,7 +53,11 @@ registerVisualization(BarChart);
 export default {
   title: "App/Embed/PublicOrEmbeddedDashboardView",
   component: PublicOrEmbeddedDashboardView,
-  decorators: [ReduxDecorator, createWaitForResizeToStopDecorator()],
+  decorators: [
+    ReduxDecorator,
+    createWaitForChartsDecorator(),
+    createWaitForResizeToStopDecorator(),
+  ],
   parameters: {
     layout: "fullscreen",
     msw: {
