@@ -43,9 +43,7 @@
            [:type [:= :user]]]])
 
 (def ^:private FindingBase
-  "The flat identity every finding response shares: stable id/type columns (`entity_type`, the additive
-  flat `entity_kind`), the per-finding `detected_at` freshness stamp, the display name, the denormalized
-  `created_at`, and the scan-time `collection_name`. Each finding `:merge`s its own top-level column
+  "The flat identity every finding response shares. Each finding `:merge`s its own top-level column
   (`last_active_at` / `duration_ms` / `duplicate_count` / `content_count`) and its typed `details` onto
   this."
   [:map
@@ -56,19 +54,15 @@
    ;; on when given a card sub-kind (question/model/metric);
    ;; nullable (rows can predate the column, and a card deleted mid-scan stamps nil)
    [:card_type           {:optional true} [:maybe :keyword]]
-   ;; additive flat kind - the same vocabulary the entity-types filter and entity-type sort use;
-   ;; `card` only for the deleted-mid-scan fallback. The entity_type/card_type pair stays for
-   ;; shipped FE consumers; prefer entity_kind for new FE work.
    [:entity_kind         :keyword]
    [:entity_id           :int]
    [:detected_at         ms/TemporalInstant]
    [:entity_display_name [:maybe :string]]
    ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
    [:created_at          [:maybe ms/TemporalInstant]]
-   ;; scan-time parent-collection name (the collection sort key) - display twin of entity_display_name;
-   ;; root rows carry the site-locale root label. nil when the caller cannot read the scan-time parent
-   ;; or the row predates the migration. details.collection stays the live, permission-scoped
-   ;; breadcrumb for navigation.
+   ;; scan-time parent-collection name (the collection sort key); root rows carry the site-locale root
+   ;; label. nil when the caller cannot read the scan-time parent or the row predates the migration.
+   ;; details.collection stays the live, permission-scoped breadcrumb for navigation.
    [:collection_name     [:maybe :string]]])
 
 (def ^:private BreadcrumbId
@@ -216,8 +210,7 @@
 
 (def ^:private imbalanced-sort-column->field
   "Sortable imbalanced-list params → their native `content_diagnostics_finding` column: the shared base
-  plus `content-count` (always set on an imbalanced finding) and `finding-type` (the umbrella spans
-  empty/sparse/crowded, so ordering by type groups the page)."
+  plus `content-count` (always set on an imbalanced finding) and `finding-type`."
   (assoc api.common/base-sort-column->field
          :content-count :content_count
          :finding-type  :finding_type))
@@ -419,9 +412,7 @@
   Params: `include-personal-collections` (default false) excludes entities in personal collections.
   `entity-types` and `finding-types` (both repeatable) narrow the results; the card sub-kinds are valid
   `entity-types` values, and `card` means any card type. `query` substring-matches the entity name.
-  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|
-  `content-count`|`finding-type`, default `detected-at`) + `sort-direction` (`asc`|`desc`, default
-  `asc`); `id` breaks ties."
+  `sort-column` (default `detected-at`) + `sort-direction` (default `asc`); `id` breaks ties."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types finding-types query]
     :or   {include-personal-collections false

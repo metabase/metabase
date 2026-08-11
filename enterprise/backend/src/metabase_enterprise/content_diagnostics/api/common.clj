@@ -91,9 +91,8 @@
 
 (defn entity-types-clause
   "WHERE fragment for the flat `entity-types` vocabulary (see [[filter-types]]); nil when nothing was
-  requested. One positive IN on the denormalized `entity_kind`, served by
-  `idx_cd_finding_ftype_entity_kind`. `card` means any card type, so it expands to itself (the
-  deleted-entity fallback) plus the card sub-kinds."
+  requested. `card` means any card type, so it expands to itself (the deleted-entity fallback) plus
+  the card sub-kinds. Kept a positive IN so `idx_cd_finding_ftype_entity_kind` can serve it."
   [entity-types]
   (when-let [types (not-empty (set (u/one-or-many entity-types)))]
     (let [kinds (into #{}
@@ -452,11 +451,10 @@
                                       :details             details*
                                       ;; additive flat kind; coalesce pre-migration rows
                                       :entity_kind         (or entity_kind card_type entity_type)
-                                      ;; scan-time display name for the sortable collection column (root
-                                      ;; rows carry the stored root label), gated on the readability of the
-                                      ;; scan-time parent itself - the entity may have moved since the scan,
-                                      ;; and the live gates say nothing about the old parent's name. Rows
-                                      ;; with no scan-time parent (root label) fall back to the breadcrumb.
+                                      ;; scan-time display name for the collection sort column (root rows
+                                      ;; carry the stored root label), gated on the scan-time parent's
+                                      ;; readability - the live gates only cover the entity's current
+                                      ;; parent. Rows with no scan-time parent fall back to the breadcrumb.
                                       :collection_name     (when (if scope_collection_id
                                                                    (get breadcrumbs scope_collection_id)
                                                                    breadcrumb)

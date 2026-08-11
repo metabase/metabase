@@ -120,10 +120,9 @@
   (get-in entity-spec [entity-type :candidate]))
 
 (defn entity-root-namespace
-  "The namespace of the root a root-resident subject sits under: a collection subject sits under its own
-  tree's root (`collection-namespace`, ignored for the other arms), a transform under the transforms
-  root, everything else the default root. Shared by the scan's root-label stamping and the serve layer's
-  root breadcrumb so the stored sort label and the served breadcrumb can never disagree."
+  "The namespace of the root a root-resident subject sits under (`collection-namespace` applies only to
+  collection subjects). Shared by the scan's root-label stamping and the serve layer's root breadcrumb
+  so the stored sort label and the served breadcrumb agree."
   [entity-type collection-namespace]
   (case entity-type
     :collection collection-namespace

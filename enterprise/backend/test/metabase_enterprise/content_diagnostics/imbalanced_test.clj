@@ -113,9 +113,8 @@
 
 (defn- insert-imbalanced!
   "Insert one imbalanced finding row directly (API tests exercise the read path, not the checker).
-  `:entity-kind` is only needed by fixtures an `entity-types` filter/sort assertion touches.
-  `:entity-collection-name` (with `:scope-collection-id`, the collection it names) is only needed by
-  fixtures a collection_name assertion touches."
+  Optional keys (`:entity-kind`, `:entity-collection-name`, `:scope-collection-id`) are only needed by
+  fixtures whose assertions touch them."
   [{:keys [entity-type entity-id entity-kind finding-type content-count details
            entity-collection-name scope-collection-id]
     nm    :name
