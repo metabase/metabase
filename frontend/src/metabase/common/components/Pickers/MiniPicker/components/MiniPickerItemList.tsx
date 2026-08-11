@@ -12,7 +12,10 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
-import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
+import {
+  canCollectionCardBeUsed,
+  getCollectionItemsOptions,
+} from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useGetIcon } from "metabase/hooks/use-icon";
@@ -420,11 +423,12 @@ function DatabaseItemList({
 }
 
 function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
-  const { setPath, onChange, isFolder, isHidden } = useMiniPickerContext();
+  const { setPath, onChange, isFolder, isHidden, models } =
+    useMiniPickerContext();
 
   const { data, isLoading, isFetching } = useListCollectionItemsQuery({
     id: parent.sourceCollectionId ?? (parent.id === null ? "root" : parent.id),
-    include_can_run_adhoc_query: true,
+    ...getCollectionItemsOptions({ models }),
   });
 
   const allItems: CollectionItem[] = (data?.data ?? []).filter(
