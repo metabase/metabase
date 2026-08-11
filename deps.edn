@@ -350,7 +350,6 @@
    :exec-fn     metabase.test-runner/find-and-run-tests-cli
    :exec-args   {}
    :jvm-opts    ["-Dmb.run.mode=test"
-                 "-Dmb.warehouse.allowed.networks=allow-all"
                  "-Dmacaw.run.mode=test"
                  "-Dmb.db.in.memory=true"
                  "-Dmb.jetty.join=false"
