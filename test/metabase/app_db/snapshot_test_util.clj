@@ -182,6 +182,11 @@
          (finally
            (doseq [sql after]
              (.execute stmt sql)))))
+     ;; Postgres runs DDL inside the transaction, and anything that has already opened Liquibase against this
+     ;; connection has left autocommit off. Liquibase rolls back before taking its changelog lock, which would undo
+     ;; the entire load, so make it durable here.
+     (when-not (.getAutoCommit conn)
+       (.commit conn))
      :done)))
 
 (defn changeset-ids
