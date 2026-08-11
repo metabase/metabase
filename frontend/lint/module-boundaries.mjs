@@ -364,11 +364,10 @@ const elements = [
       mode: "full",
     }),
   ),
-  // The embedding hub is a composition root for a top-level app section: its
-  // routes and layout mount admin-tier pages directly. It stays at app tier
-  // even after the embedding-owned components move out of admin, because the
-  // Permissions and Tenancy tabs mount admin permissions and admin People a
-  // second time on purpose and admin keeps its own copy of both.
+  // App tier only because a feature module may not import another feature
+  // module, and the hub mounts feature/admin pages directly. EMB-2229 moves
+  // the admin components the hub uses into shared/settings; once it lands,
+  // this becomes a feature module.
   createElement({
     type: "app",
     name: "embedding-hub",

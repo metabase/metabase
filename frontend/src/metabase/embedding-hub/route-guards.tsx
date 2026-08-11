@@ -1,6 +1,5 @@
 import { canAccessEmbeddingHub } from "metabase/common/embedding-hub/selectors";
 import {
-  AvailableInEmbedding,
   MetabaseIsSetup,
   UserIsAuthenticated,
   createRedirectGuard,
@@ -12,14 +11,11 @@ const UserCanAccessEmbeddingHub = createRedirectGuard(
   "/unauthorized",
 );
 
-// Must be in sync with canAccessEmbeddingHub in frontend/src/metabase/common/embedding-hub/selectors.ts
 export const CanAccessEmbeddingHub = () => (
   <MetabaseIsSetup>
     <UserIsAuthenticated>
       <UserCanAccessEmbeddingHub>
-        <AvailableInEmbedding>
-          <Outlet />
-        </AvailableInEmbedding>
+        <Outlet />
       </UserCanAccessEmbeddingHub>
     </UserIsAuthenticated>
   </MetabaseIsSetup>
