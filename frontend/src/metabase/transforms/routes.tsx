@@ -8,93 +8,128 @@ import { Route } from "metabase/router";
 import { TransformsNotDisabled } from "./route-guards";
 
 /**
- * The transform pages, in their own chunk. The route guard stays eager: it has
- * to decide before there is anything to show.
+ * The transform pages, in one chunk. Every loader names it, so the section
+ * arrives in a single request. Editing a transform means moving between its
+ * query, run, settings and indexes tabs, and that should not cost a fetch each
+ * time.
+ *
+ * The route guard stays eager: it has to decide before there is anything to
+ * show.
  */
 const transformListPage = () =>
-  import("./pages/TransformListPage").then(({ TransformListPage }) => ({
-    Component: TransformListPage,
-  }));
-
-const runsPage = () =>
-  import("./pages/RunsPage").then(({ RunsPage }) => ({ Component: RunsPage }));
-
-const transformGraphRunListPage = () =>
-  import("./pages/TransformGraphRunListPage").then(
-    ({ TransformGraphRunListPage }) => ({
-      Component: TransformGraphRunListPage,
+  import(/* webpackChunkName: "transforms" */ "./pages/TransformListPage").then(
+    ({ TransformListPage }) => ({
+      Component: TransformListPage,
     }),
   );
 
-const runListPage = () =>
-  import("./pages/RunListPage").then(({ RunListPage }) => ({
-    Component: RunListPage,
+const runsPage = () =>
+  import(/* webpackChunkName: "transforms" */ "./pages/RunsPage").then(
+    ({ RunsPage }) => ({ Component: RunsPage }),
+  );
+
+const transformGraphRunListPage = () =>
+  import(
+    /* webpackChunkName: "transforms" */ "./pages/TransformGraphRunListPage"
+  ).then(({ TransformGraphRunListPage }) => ({
+    Component: TransformGraphRunListPage,
   }));
+
+const runListPage = () =>
+  import(/* webpackChunkName: "transforms" */ "./pages/RunListPage").then(
+    ({ RunListPage }) => ({
+      Component: RunListPage,
+    }),
+  );
 
 const jobSectionLayout = () =>
-  import("./pages/JobSectionLayout").then(({ JobSectionLayout }) => ({
-    Component: JobSectionLayout,
-  }));
+  import(/* webpackChunkName: "transforms" */ "./pages/JobSectionLayout").then(
+    ({ JobSectionLayout }) => ({
+      Component: JobSectionLayout,
+    }),
+  );
 
 const jobListPage = () =>
-  import("./pages/JobListPage").then(({ JobListPage }) => ({
-    Component: JobListPage,
-  }));
+  import(/* webpackChunkName: "transforms" */ "./pages/JobListPage").then(
+    ({ JobListPage }) => ({
+      Component: JobListPage,
+    }),
+  );
 
 const newJobPage = () =>
-  import("./pages/NewJobPage").then(({ NewJobPage }) => ({
-    Component: NewJobPage,
-  }));
+  import(/* webpackChunkName: "transforms" */ "./pages/NewJobPage").then(
+    ({ NewJobPage }) => ({
+      Component: NewJobPage,
+    }),
+  );
 
 const jobPage = () =>
-  import("./pages/JobPage").then(({ JobPage }) => ({ Component: JobPage }));
+  import(/* webpackChunkName: "transforms" */ "./pages/JobPage").then(
+    ({ JobPage }) => ({ Component: JobPage }),
+  );
 
 const jobRunListPage = () =>
-  import("./pages/JobRunListPage").then(({ JobRunListPage }) => ({
-    Component: JobRunListPage,
-  }));
+  import(/* webpackChunkName: "transforms" */ "./pages/JobRunListPage").then(
+    ({ JobRunListPage }) => ({
+      Component: JobRunListPage,
+    }),
+  );
 
 const newQueryTransformPage = () =>
-  import("./pages/NewTransformPage").then(({ NewQueryTransformPage }) => ({
-    Component: NewQueryTransformPage,
-  }));
+  import(/* webpackChunkName: "transforms" */ "./pages/NewTransformPage").then(
+    ({ NewQueryTransformPage }) => ({
+      Component: NewQueryTransformPage,
+    }),
+  );
 
 const newNativeTransformPage = () =>
-  import("./pages/NewTransformPage").then(({ NewNativeTransformPage }) => ({
-    Component: NewNativeTransformPage,
-  }));
+  import(/* webpackChunkName: "transforms" */ "./pages/NewTransformPage").then(
+    ({ NewNativeTransformPage }) => ({
+      Component: NewNativeTransformPage,
+    }),
+  );
 
 const newCardTransformPage = () =>
-  import("./pages/NewTransformPage").then(({ NewCardTransformPage }) => ({
-    Component: NewCardTransformPage,
-  }));
+  import(/* webpackChunkName: "transforms" */ "./pages/NewTransformPage").then(
+    ({ NewCardTransformPage }) => ({
+      Component: NewCardTransformPage,
+    }),
+  );
 
 const transformQueryPage = () =>
-  import("./pages/TransformQueryPage").then(({ TransformQueryPage }) => ({
+  import(
+    /* webpackChunkName: "transforms" */ "./pages/TransformQueryPage"
+  ).then(({ TransformQueryPage }) => ({
     Component: TransformQueryPage,
   }));
 
 const transformRunPage = () =>
-  import("./pages/TransformRunPage").then(({ TransformRunPage }) => ({
-    Component: TransformRunPage,
-  }));
+  import(/* webpackChunkName: "transforms" */ "./pages/TransformRunPage").then(
+    ({ TransformRunPage }) => ({
+      Component: TransformRunPage,
+    }),
+  );
 
 const transformSettingsPage = () =>
-  import("./pages/TransformSettingsPage").then(({ TransformSettingsPage }) => ({
+  import(
+    /* webpackChunkName: "transforms" */ "./pages/TransformSettingsPage"
+  ).then(({ TransformSettingsPage }) => ({
     Component: TransformSettingsPage,
   }));
 
 const transformIndexesPage = () =>
-  import("./pages/TransformIndexesPage").then(({ TransformIndexesPage }) => ({
+  import(
+    /* webpackChunkName: "transforms" */ "./pages/TransformIndexesPage"
+  ).then(({ TransformIndexesPage }) => ({
     Component: TransformIndexesPage,
   }));
 
 const transformDependenciesPage = () =>
-  import("./pages/TransformDependenciesPage").then(
-    ({ TransformDependenciesPage }) => ({
-      Component: TransformDependenciesPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "transforms" */ "./pages/TransformDependenciesPage"
+  ).then(({ TransformDependenciesPage }) => ({
+    Component: TransformDependenciesPage,
+  }));
 
 export function getDataStudioTransformRoutes() {
   return (
