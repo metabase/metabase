@@ -222,7 +222,7 @@
 
 ;;; --------------------------------------------- API family dispatch -------------------------------------------
 
-(def ^:private default-model "anthropic.claude-sonnet-5")
+(def ^:private default-model (metabot.settings/default-model-for-provider "bedrock"))
 
 (def ^:private anthropic-version "2023-06-01")
 
