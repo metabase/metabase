@@ -95,8 +95,8 @@
 
 (defn direct-item-counts
   "`{collection-id -> raw direct item count}` over `collections`: child collections plus the
-  card/dashboard/document/transform items. Empty items still count - all three checkers band this same
-  count (`empty` 0, `sparse` under the floor, `crowded` over the ceiling)."
+  card/dashboard/document/transform items. Empty items still count; all three checkers read this
+  same count."
   [collections]
   (merge-with +
               (frequencies (keep (comp collection/location-path->parent-id :location) collections))

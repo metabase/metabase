@@ -4,9 +4,9 @@
   more than one (a many-tab dashboard with 0 dashcards is both `crowded` and `empty`).
 
   What counts as empty:
-  - Collection: no direct items - the 0 band of the same direct-item count `sparse`/`crowded` read.
-    Items are exactly the covered kinds: child collections, cards, dashboards, documents, transforms;
-    empty items still count (a folder of only-empty dashboards is not `empty` - the dashboards are).
+  - Collection: no direct items, the same count `sparse`/`crowded` use. Items are exactly the covered
+    kinds: child collections, cards, dashboards, documents, transforms; empty items still count (a
+    folder of only-empty dashboards is not `empty` - the dashboards are).
   - Card: its latest clean run (no parameters, sandbox, cache, or error) returned 0 rows; a card never
     run cleanly is left alone. `as_of` is that run's start.
   - Dashboard: no dashcards.
@@ -91,10 +91,8 @@
                                   [:= :mt.active true]]})))
 
 (defn checker
-  "Instance-wide `empty` findings across collections, cards, dashboards, documents, and transforms. The
-  collection arm is the 0 band of the same direct-item count `sparse`/`crowded` read; the entity
-  verdicts (the card probe, dashcard-less dashboards, blank documents, estimate-0 transforms) stand
-  alone."
+  "Instance-wide `empty` findings across collections, cards, dashboards, documents, and transforms.
+  Collections are flagged on their direct-item count alone - the per-item verdicts never roll up."
   []
   (let [empty-card-as-of      (empty-card-id->as-of)
         dashboards            (shared/active-dashboards)
