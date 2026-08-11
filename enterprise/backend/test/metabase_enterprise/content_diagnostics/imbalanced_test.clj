@@ -33,36 +33,35 @@
                  (fn [findings] (into {} (map (juxt :finding_type identity)) findings)))))
 
 ;;; --------------------------------------- cross-type co-occurrence ----------------------------------------
-;;; The point of independent checkers: no precedence, so one entity can be flagged by several at once.
-;;; The single-checker rules themselves are covered in the per-checker test namespaces.
+;;; Independent checkers mean no precedence: an entity can be flagged on several axes at once (dashboard
+;;; tabs vs dashcards). On collections all three band the SAME direct-item count, so there the finding
+;;; types are mutually exclusive. The single-checker rules are covered in the per-checker namespaces.
 
-(deftest imbalanced-collection-cooccurrence-test
-  (testing "a collection can carry several imbalanced findings at once - the checkers share no precedence"
+(deftest imbalanced-collection-disjoint-bands-test
+  (testing "the three checkers band one direct-item count on collections, so the bands never overlap"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-temporary-setting-values [content-diagnostics-crowded-collection-threshold-items 3
                                          content-diagnostics-sparse-collection-threshold-items  3]
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp
-            [;; 4 empty dashboards: raw count 4 > 3 → crowded (and 4 is not < 3, so not sparse), while
-             ;; the cascade sees no non-empty leaf → ALSO empty
-             :model/Collection {crowded-empty :id} {}
-             :model/Dashboard _ {:collection_id crowded-empty}
-             :model/Dashboard _ {:collection_id crowded-empty}
-             :model/Dashboard _ {:collection_id crowded-empty}
-             :model/Dashboard _ {:collection_id crowded-empty}
-             ;; an empty collection holding 1 item: empty via the cascade (its only leaf is empty) AND
-             ;; sparse on the raw count of 1 (< 3)
-             :model/Collection {parent :id} {}
-             :model/Dashboard  _ {:collection_id parent}]
+            [;; 4 empty dashboards: count 4 > 3 → crowded alone - the items' own emptiness never
+             ;; makes their holder empty
+             :model/Collection {crowded-only :id} {}
+             :model/Dashboard _ {:collection_id crowded-only}
+             :model/Dashboard _ {:collection_id crowded-only}
+             :model/Dashboard _ {:collection_id crowded-only}
+             :model/Dashboard _ {:collection_id crowded-only}
+             ;; 1 empty dashboard: count 1 (< 3) → sparse alone
+             :model/Collection {sparse-only :id} {}
+             :model/Dashboard  _ {:collection_id sparse-only}]
             (let [by-entity (imbalanced-findings-by-entity!)]
-              (testing "4 empty dashboards → crowded on the raw count AND empty via the cascade"
-                (let [fs (by-entity [:collection crowded-empty])]
-                  (is (= #{:empty :crowded} (set (keys fs))))
-                  (is (= 4 (:content_count (:crowded fs))))
-                  (is (= 0 (:content_count (:empty fs))))))
-              (testing "an all-empty collection with 1 item is both empty (cascade) and sparse (raw count 1)"
-                (let [fs (by-entity [:collection parent])]
-                  (is (= #{:empty :sparse} (set (keys fs))))
+              (testing "4 empty dashboards → crowded alone, never also empty"
+                (let [fs (by-entity [:collection crowded-only])]
+                  (is (= #{:crowded} (set (keys fs))))
+                  (is (= 4 (:content_count (:crowded fs))))))
+              (testing "1 empty dashboard → sparse alone, never also empty"
+                (let [fs (by-entity [:collection sparse-only])]
+                  (is (= #{:sparse} (set (keys fs))))
                   (is (= 1 (:content_count (:sparse fs)))))))))))))
 
 (deftest imbalanced-dashboard-cooccurrence-test
