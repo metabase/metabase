@@ -1180,4 +1180,83 @@ if (shouldLintCssModules) {
   }
 }
 
+// A route file must reach its page through `import()`, not a static import. A
+// static one keeps the page in the initial bundle however lazy its route is,
+// which is how the admin section held 617 kb and the metric pages 159 kb long
+// after both had been split. See DEV-2614.
+//
+// Appended after the array is built, because flat config replaces a rule rather
+// than merging it: declared earlier these would be discarded by the
+// per-directory blocks above. Core and enterprise are separate, because
+// re-stating the shared core patterns over enterprise files would apply
+// restrictions that do not hold there.
+//
+// Each `ignores` list is the files that still do this. They should only shrink.
+const RESTRICTED_PAGE_IMPORT = {
+  group: [
+    "**/pages/*",
+    "**/pages",
+    "./pages/*",
+    "./pages",
+    "../pages/*",
+    "../pages",
+  ],
+  message:
+    "Load a page with `lazy: () => import(...)` on its route. A static import keeps it in the initial bundle even though the route is lazy.",
+};
+
+configs.push(
+  {
+    files: ["frontend/src/**/routes.ts", "frontend/src/**/routes.tsx"],
+    ignores: [
+      "frontend/src/metabase/admin/permissions/routes.tsx",
+      "frontend/src/metabase/admin/routes.tsx",
+      "frontend/src/metabase/data-studio/data-model/routes.tsx",
+      "frontend/src/metabase/data-studio/glossary/routes.tsx",
+      "frontend/src/metabase/data-studio/routes.tsx",
+      "frontend/src/metabase/data-studio/settings/routes.tsx",
+      "frontend/src/metabase/explorations/routes.tsx",
+      "frontend/src/metabase/metrics/routes.tsx",
+      "frontend/src/metabase/models/routes.tsx",
+      "frontend/src/metabase/routes.tsx",
+      "frontend/src/metabase/transforms/routes.tsx",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: baseMetabaseRestrictedConfig.paths,
+          patterns: [
+            ...baseMetabaseRestrictedConfig.patterns,
+            RESTRICTED_PAGE_IMPORT,
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      "enterprise/frontend/src/**/routes.ts",
+      "enterprise/frontend/src/**/routes.tsx",
+    ],
+    ignores: [
+      "enterprise/frontend/src/metabase-enterprise/ai-controls/routes.tsx",
+      "enterprise/frontend/src/metabase-enterprise/application_permissions/routes.tsx",
+      "enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/routes.tsx",
+      "enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/routes.tsx",
+      "enterprise/frontend/src/metabase-enterprise/data-studio/library/tables/routes.tsx",
+      "enterprise/frontend/src/metabase-enterprise/dependencies/routes.tsx",
+      "enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/routes.tsx",
+      "enterprise/frontend/src/metabase-enterprise/replacement/routes.tsx",
+      "enterprise/frontend/src/metabase-enterprise/schema_viewer/routes.tsx",
+      "enterprise/frontend/src/metabase-enterprise/transforms-inspector/routes.tsx",
+      "enterprise/frontend/src/metabase-enterprise/transforms-python/routes.tsx",
+      "enterprise/frontend/src/metabase-enterprise/writable_connection/routes.tsx",
+    ],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [RESTRICTED_PAGE_IMPORT] }],
+    },
+  },
+);
+
 export default configs;
