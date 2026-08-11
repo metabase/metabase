@@ -3,8 +3,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.core.core :as core]
    [metabase.embeddings.provider :as embeddings.provider]
+   [metabase.embeddings.startup :as embeddings.startup]
    [metabase.plugins.impl :as plugins]
    [metabase.plugins.initialize :as plugin-initialize])
   (:import
@@ -149,7 +149,7 @@
       (plugins/load-plugins!)
       ;; Non-driver plugins are registered eagerly but initialized only when a feature selects them. The provider
       ;; registration lives in the plugin init namespace, so activate this artifact explicitly before exercising it.
-      (plugin-initialize/load-plugin! core/embedder-plugin-name)
+      (plugin-initialize/load-plugin! embeddings.startup/embedder-plugin-name)
       (testing "the implementation was activated through its jar manifest"
         (is (embeddings.provider/registered? "in-process"))
         (is (= "true" (System/getProperty "ai.djl.offline")))
