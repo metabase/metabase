@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { c, msgid, ngettext, t } from "ttag";
+import { c, msgid, t } from "ttag";
 import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -619,19 +619,19 @@ const getDurationUnitOptions = (duration: number) => {
   return [
     {
       value: CacheDurationUnit.Seconds,
-      label: ngettext(msgid`second`, `seconds`, count),
+      label: c("Cache duration unit").ngettext(msgid`second`, `seconds`, count),
     },
     {
       value: CacheDurationUnit.Minutes,
-      label: ngettext(msgid`minute`, `minutes`, count),
+      label: c("Cache duration unit").ngettext(msgid`minute`, `minutes`, count),
     },
     {
       value: CacheDurationUnit.Hours,
-      label: ngettext(msgid`hour`, `hours`, count),
+      label: c("Cache duration unit").ngettext(msgid`hour`, `hours`, count),
     },
     {
       value: CacheDurationUnit.Days,
-      label: ngettext(msgid`day`, `days`, count),
+      label: c("Cache duration unit").ngettext(msgid`day`, `days`, count),
     },
   ];
 };
