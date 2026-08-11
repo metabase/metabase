@@ -16,6 +16,7 @@ import {
   Flex,
   Group,
   Icon,
+  Select,
   Stack,
   Text,
   TextInput,
@@ -51,6 +52,11 @@ export function ProviderConnectionForm({
   const [config, setConfig] = useState<LlmProviderConfig>(
     connection?.config ?? {},
   );
+  const [model, setModel] = useState<string | undefined>(
+    () =>
+      providerTypes.find((option) => option.type === connection?.type)
+        ?.default_model ?? undefined,
+  );
   const [error, setError] = useState<string | undefined>();
 
   const [createProvider, createResult] = useCreateLlmProviderMutation();
@@ -79,6 +85,7 @@ export function ProviderConnectionForm({
       setTypeName(selected.type);
       setName(selected.label);
       setConfig(nextConfig);
+      setModel(selected.default_model ?? undefined);
       setError(undefined);
     },
     [],
@@ -116,11 +123,15 @@ export function ProviderConnectionForm({
     setTypeName(undefined);
     setName("");
     setConfig({});
+    setModel(undefined);
     setError(undefined);
   };
 
   // A required field the registry gives a default is already satisfied — the form shows that value pre-selected,
-  // and the backend fills it in for a connection that never touched it.
+  // and the backend fills it in for a connection that never touched it. A type with alternative credential
+  // groups (Google: a service account key, or an OAuth token with a project ID) additionally needs one group
+  // filled in full; its fields are individually optional because either group will do.
+  const hasValue = (key: string) => (config[key] ?? "").trim() !== "";
   const isComplete =
     providerType != null &&
     providerType.fields
@@ -130,7 +141,9 @@ export function ProviderConnectionForm({
           !field.default &&
           isVisibleField(field, providerType.fields, config),
       )
-      .every((field) => (config[field.key] ?? "").trim() !== "");
+      .every((field) => hasValue(field.key)) &&
+    (providerType.required_any.length === 0 ||
+      providerType.required_any.some((group) => group.every(hasValue)));
 
   const handleSave = async () => {
     if (!providerType) {
@@ -152,11 +165,13 @@ export function ProviderConnectionForm({
             key: connection.key,
             name,
             config: savedConfig,
+            model,
           }).unwrap()
         : await createProvider({
             type: providerType.type,
             name,
             config: savedConfig,
+            model,
           }).unwrap();
       onSaved(saved);
     } catch (caught) {
@@ -206,6 +221,19 @@ export function ProviderConnectionForm({
                 disabled={isSaving}
                 autoFocusFirstField
               />
+              {selected.models.length > 0 && (
+                <Select
+                  label={t`Model`}
+                  description={t`Connecting checks your credentials against this model, and Metabot starts on it.`}
+                  data={selected.models.map(({ id, display_name }) => ({
+                    value: id,
+                    label: display_name,
+                  }))}
+                  value={model ?? null}
+                  onChange={(next) => setModel(next ?? undefined)}
+                  disabled={isSaving}
+                />
+              )}
               <AdvancedSettings
                 isOpened={isAdvancedOpen}
                 onToggle={toggleAdvanced}

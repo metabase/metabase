@@ -120,8 +120,20 @@ describe("ProviderConnectionForm", () => {
 
 const GOOGLE_TYPE = createMockLlmProviderType({
   type: "google",
-  label: "Google Gemini",
+  label: "Google Gemini Enterprise",
+  default_model: "google/gemini-3.5-flash",
+  models: [
+    { id: "google/gemini-3.5-flash", display_name: "gemini-3.5-flash" },
+    { id: "google/gemini-3.6-flash", display_name: "gemini-3.6-flash" },
+  ],
+  required_any: [["service-account-key"], ["oauth-access-token", "project-id"]],
   fields: [
+    createMockLlmProviderField({
+      key: "project-id",
+      label: "Project ID",
+      type: "text",
+      required: false,
+    }),
     createMockLlmProviderField({
       key: "auth-method",
       label: "Authentication method",
@@ -170,7 +182,9 @@ const setupGoogle = (connection?: LlmProviderConnection) => {
 };
 
 const pickGoogle = async () => {
-  await userEvent.click(screen.getByRole("button", { name: /Google Gemini/ }));
+  await userEvent.click(
+    screen.getByRole("button", { name: /Google Gemini Enterprise/ }),
+  );
   await screen.findByLabelText("Authentication method");
 };
 
@@ -217,9 +231,10 @@ describe("ProviderConnectionForm with fields behind a choice", () => {
         ?.request?.json(),
     ).toEqual({
       type: "google",
-      name: "Google Gemini",
+      name: "Google Gemini Enterprise",
       // the authentication method is left to the default the registry already applies
       config: { "service-account-key": key },
+      model: "google/gemini-3.5-flash",
     });
   });
 
@@ -228,7 +243,7 @@ describe("ProviderConnectionForm with fields behind a choice", () => {
       createMockLlmProviderConnection({
         key: "google",
         type: "google",
-        name: "Google Gemini",
+        name: "Google Gemini Enterprise",
         config: {
           "auth-method": "service-account-key",
           "service-account-key": "**********nt",
@@ -251,12 +266,63 @@ describe("ProviderConnectionForm with fields behind a choice", () => {
         .lastCall("express:/api/llm/providers/:key", { method: "PUT" })
         ?.request?.json(),
     ).toEqual({
-      name: "Google Gemini",
+      name: "Google Gemini Enterprise",
       config: {
         "auth-method": "oauth-token",
         "service-account-key": "",
         "oauth-access-token": "ya29.x",
       },
+      model: "google/gemini-3.5-flash",
+    });
+  });
+
+  it("keeps Connect disabled until one credential group is complete", async () => {
+    setupGoogle();
+
+    await pickGoogle();
+
+    expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("radio", { name: "OAuth token" }));
+    await userEvent.type(
+      await screen.findByLabelText("OAuth access token"),
+      "ya29.x",
+    );
+
+    expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText("Project ID"), "my-project");
+
+    expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
+  });
+
+  it("validates the connection against the model picked in the form", async () => {
+    const { onSaved } = setupGoogle();
+    const key = '{"type":"service_account"}';
+
+    await pickGoogle();
+    await userEvent.click(screen.getByLabelText("Model"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "gemini-3.6-flash" }),
+    );
+    await userEvent.upload(
+      screen.getByLabelText("Service account key file file input"),
+      new File([key], "key.json", { type: "application/json" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+    expect(
+      await fetchMock.callHistory
+        .lastCall("path:/api/llm/providers", { method: "POST" })
+        ?.request?.json(),
+    ).toEqual({
+      type: "google",
+      name: "Google Gemini Enterprise",
+      config: { "service-account-key": key },
+      model: "google/gemini-3.6-flash",
     });
   });
 });

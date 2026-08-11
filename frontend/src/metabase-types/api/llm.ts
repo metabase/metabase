@@ -74,6 +74,8 @@ export interface LlmProviderType {
   singleton: boolean;
   available: boolean;
   default_model: string | null;
+  models: LlmModel[];
+  required_any: string[][];
   fields: LlmProviderField[];
 }
 
