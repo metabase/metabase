@@ -300,6 +300,8 @@ If a locked parameter is linked to a dashboard filter that's in turn linked to a
 
 For example, if you have a dashboard filter called "Breakfast" with the values "Hash browns", "Muffin", and "Waffles", and the filter is linked to _any_ SQL question on the dashboard, you can only pass one of those options as the locked parameter value.
 
+For the rest of the ways to filter an embedded dashboard, see [Control dashboard filters from your app](./dashboard.md#control-dashboard-filters-from-your-app).
+
 ## Using locked parameters to power custom widgets in your app
 
 Because Metabase doesn't render locked parameters as filter widgets, you can use them to power custom filter widgets that you build yourself. You may want to build your own filter widget(s) to:
@@ -464,7 +466,7 @@ Admins can find a list of embedded items in **Admin > Embedding** (on Pro and En
 
 ![Powered by Metabase](./images/powered-by-metabase.png)
 
-The banner appears on guest embeds created with Metabase's open-source version. To remove the banner, you'll need to upgrade to a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
+Metabase adds the banner to guest embeds (both charts and dashboards) on the OSS and Starter plans. To remove the banner, upgrade to a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
 
 ## Regenerating the embedding secret key
 
@@ -477,9 +479,7 @@ This key is shared across all guest embeds. Whoever has access to this key could
 
 ## Custom destinations on dashboards in guest embeds
 
-You can only use the **URL** option for [custom destinations](../dashboards/interactive.md#custom-destinations) on dashboards with guest embedding. External URLs will open in a new tab or window.
-
-You can propagate filter values into the external URL, unless the filter is locked.
+You can only use the **URL** option for [custom destinations](../dashboards/interactive.md#custom-destinations) on dashboards with guest embedding. See [Send people elsewhere with custom destinations](./dashboard.md#send-people-elsewhere-with-custom-destinations).
 
 ## Translating embeds
 

@@ -21,6 +21,9 @@ These attributes apply to the `<metabase-question>` web component. For the SDK, 
 
 `StaticQuestion` embeds a [view-only chart](./chart.md#embed-a-view-only-chart).
 
+- [Component](./sdk/api/StaticQuestion.html)
+- [Props](./sdk/api/StaticQuestionProps.html)
+
 {% include_file "{{ dirname }}/sdk/api/snippets/StaticQuestionProps.md" snippet="properties" %}
 
 ## `InteractiveQuestion` props
@@ -28,6 +31,9 @@ These attributes apply to the `<metabase-question>` web component. For the SDK, 
 {% include plans-blockquote.html feature="Interactive charts" convert_pro_link_to_embedding=true is_plural=true %}
 
 `InteractiveQuestion` embeds an [interactive chart](./chart.md#embed-an-interactive-chart) or [a query editor](./query-builder.md).
+
+- [Component](./sdk/api/InteractiveQuestion.html)
+- [Props](./sdk/api/InteractiveQuestionProps.html)
 
 {% include_file "{{ dirname }}/sdk/api/snippets/InteractiveQuestionProps.md" snippet="properties" %}
 
@@ -79,6 +85,7 @@ These components are available via the `InteractiveQuestion` namespace (like `<I
 
 - [Embed a chart](./chart.md)
 - [Embed the query builder](./query-builder.md)
+- [Dashboard component reference](./dashboard-reference.md)
 - [Modular embedding components](./components.md)
 - [Modular embedding parameters](./parameters.md)
 - [Appearance](./appearance.md)

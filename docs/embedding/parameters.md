@@ -7,7 +7,7 @@ summary: Pass parameter values to embedded dashboards and SQL questions in modul
 
 This page covers how to pass parameter values to embedded dashboards and SQL questions.
 
-The props and attributes here set values that whoever's viewing the embed can still change. To set a value your app controls and nobody can see or change, use a [locked parameter](./guest-embedding.md#locked-parameters) on a guest embed, or [data permissions](../permissions/embedding.md) on an SSO embed. See [Control parameters from your app](./chart.md#control-parameters-from-your-app).
+The props and attributes here set values that whoever's viewing the embed can still change. To set a value your app controls and nobody can see or change, use a [locked parameter](./guest-embedding.md#locked-parameters) on a guest embed, or [data permissions](../permissions/embedding.md) on an SSO embed. See [Control dashboard filters from your app](./dashboard.md#control-dashboard-filters-from-your-app) and [Control parameters from your app](./chart.md#control-parameters-from-your-app).
 
 ## Modular embedding SDK (React)
 
@@ -34,7 +34,6 @@ Push values from your app, and observe every applied change via `onParametersCha
 ```
 
 `onParametersChange` receives the [dashboard parameter change payload](#dashboard-parameter-change-payload).
-
 
 > Don't combine `initialParameters` and `parameters` - pick one. For controlled behavior, only use `parameters`.
 

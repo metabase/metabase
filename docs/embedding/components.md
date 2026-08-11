@@ -15,36 +15,8 @@ This page covers what you can embed. For theming your embeds, see [Appearance](.
 
 ## Dashboard
 
-To render a dashboard:
-
-```html
-<metabase-dashboard dashboard-id="1" with-title="true" with-downloads="false">
-</metabase-dashboard>
-```
-
-### Attributes
-
-{% include_file "{{ dirname }}/eajs/snippets/MetabaseDashboardAttributes.md" snippet="properties" %}
-
-For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md), including content from translation dictionaries.
-
-If you surround your attribute value with double quotes, make sure to use single quotes:
-
-```html
-<metabase-dashboard
-  dashboard-id="1"
-  initial-parameters="{ 'productId': '42' }"
-></metabase-dashboard>
-```
-
-If you surround your attribute value with double quotes, make sure to use single quotes:
-
-```html
-<metabase-dashboard
-  dashboard-id="1"
-  hidden-parameters="['productId']"
-></metabase-dashboard>
-```
+- [Embed a dashboard](./dashboard.md)
+- [Dashboard component reference](./dashboard-reference.md), for `<metabase-dashboard>` attributes and SDK props
 
 ## Question
 

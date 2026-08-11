@@ -13,7 +13,7 @@ There are two ways you can embed a chart (called a question, in Metabase parlanc
 - [View-only chart](#embed-a-view-only-chart): people see the results, filter them, and that's it.
 - [Interactive chart](#embed-an-interactive-chart): people can drill through the chart and change the query behind it.
 
-To let people build questions from scratch instead, check out [Embed the query builder](./query-builder.md). To embed an AI chat component, check out [AI chat](./sdk/ai-chat.md).
+To embed a whole dashboard instead, check out [Embed a dashboard](./dashboard.md). To let people build questions from scratch, check out [Embed the query builder](./query-builder.md). To embed an AI chat component, check out [AI chat](./sdk/ai-chat.md).
 
 ## Embed a view-only chart
 
@@ -334,13 +334,12 @@ You can theme an embedded question and toggle parts of its UI. For the full set 
 
 Colors set in a question's visualization settings override theme colors.
 
-### The "Powered by Metabase" banner
-
-Metabase adds a "Powered by Metabase" banner to guest embeds (both charts and dashboards) on the OSS and Starter plans. To remove the banner, upgrade to a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
+On the OSS and Starter plans, Metabase adds a "Powered by Metabase" banner to guest embeds. See [Removing the "Powered by Metabase" banner](./guest-embedding.md#removing-the-powered-by-metabase-banner).
 
 ## Further reading
 
 - [Question component reference](./question-reference.md)
+- [Embed a dashboard](./dashboard.md)
 - [Embed the query builder](./query-builder.md)
 - [Appearance](./appearance.md)
 - [Modular embedding parameters](./parameters.md)

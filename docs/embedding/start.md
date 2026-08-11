@@ -26,6 +26,10 @@ With the Modular embedding SDK, you can embed individual Metabase components wit
 
 Jump to a SDK quickstart with a sample React application.
 
+### [Embed a dashboard](./dashboard.md)
+
+Embed a dashboard, view-only or interactive, with web components or the React SDK. Let people edit and create dashboards from your app.
+
 ### [Embed a chart](./chart.md)
 
 Embed a single chart, view-only or interactive, with web components or the React SDK.
@@ -33,6 +37,10 @@ Embed a single chart, view-only or interactive, with web components or the React
 ### [Embed the query builder](./query-builder.md)
 
 Embed Metabase's visual query builder or SQL editor, so people can build and save their own questions.
+
+### [Dashboard component reference](./dashboard-reference.md)
+
+Every `<metabase-dashboard>` attribute, the `StaticDashboard`, `InteractiveDashboard`, and `EditableDashboard` props, and the `dashboardCardMenu` plugin.
 
 ### [Question component reference](./question-reference.md)
 
