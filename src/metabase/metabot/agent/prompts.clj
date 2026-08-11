@@ -155,10 +155,14 @@
       (let [sql-dialect          (or (get context :sql_dialect)
                                      (get context :sql-dialect))
             {:keys [always-on catalog]} (skills/build-skill-manifest profile (keys tools) capabilities)
-            ;; Runtime gate for engine-aware search guidance in the system prompt.
+            ;; Runtime gates for engine-aware search guidance in the system prompt.
             ;; `supported-engine?` accounts for the premium feature flag, the user setting, and the
             ;; configured URL — matching exactly what the search call path will actually use.
             has-semantic-search? (boolean (search.engine/supported-engine? :search.engine/semantic))
+            ;; Whether the query-operator DSL (`or`, quoted phrases, `-exclusion`) is worth teaching
+            ;; at all: on an engine without tsquery those operators are matched as literal tokens,
+            ;; so advising `or` makes a zero-hit query strictly worse.
+            has-tsquery-operators? (boolean (search.engine/tsquery-operators-supported?))
             perms                (or scope/*current-user-metabot-permissions*
                                      scope/perm-type-defaults)
             ;; The SQL guidance tells the model to load SQL skills and use the SQL tools, so gate it
@@ -171,6 +175,7 @@
                                   :sql_dialect              sql-dialect
                                   :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
                                   :has_semantic_search      has-semantic-search?
+                                  :has_tsquery_operators    has-tsquery-operators?
                                   ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
                                   ;; an empty vector as truthy, which would render the "# Available
                                   ;; skills … load the skill(s) you need" header with nothing to

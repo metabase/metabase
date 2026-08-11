@@ -29,11 +29,11 @@ Never pick a source on its name alone. The few seconds to read it is what makes 
 1. **Meaning (vector) match** — embeds your whole query and finds entities whose *meaning* is close, even with no shared words. This catches synonyms, paraphrases, and other-language phrasings automatically (`"shipments"` can surface an entity named *Fulfillment*; `"how much did we make"` can surface *Revenue*). You do **not** need to enumerate synonyms.
 2. **Keyword (full-text) match** — literal token overlap against names and descriptions, using the operator DSL below. This is what reliably catches exact names, codes, and rare abbreviations the meaning-match may not encode.
 
-Lead with a natural noun phrase or short question and let the meaning-match do the work; reach for the keyword operators only to pin down exact/rare terms.{% else %}Search uses **keyword (full-text) matching only** — there is no meaning awareness. Only literal token overlap against each entity's name and description scores, parsed with the operator DSL below. Because there's no synonym understanding, **you** must supply alternate wordings and abbreviations yourself, and lean toward the entity's likely real name rather than the user's phrasing (`"shipments"` won't match an entity named *Fulfillment* — search `shipments or fulfillment`).{% endif %}
+Lead with a natural noun phrase or short question and let the meaning-match do the work; reach for the keyword operators only to pin down exact/rare terms.{% else %}Search uses **keyword (full-text) matching only** — there is no meaning awareness. Only literal token overlap against each entity's name and description scores, parsed with the operator DSL below. Because there's no synonym understanding, **you** must supply alternate wordings and abbreviations yourself, and lean toward the entity's likely real name rather than the user's phrasing (`"shipments"` won't match an entity named *Fulfillment*{% if has_tsquery_operators %} — search `shipments or fulfillment`{% else %}, so try the likely real name in a follow-up search{% endif %}).{% endif %}
 
 ## Query operators
 
-These drive the keyword match{% if has_semantic_search %} (one half of every search){% endif %}. Matching is case-insensitive and common word endings are stemmed (`orders` matches `order`).
+{% if has_tsquery_operators %}These drive the keyword match{% if has_semantic_search %} (one half of every search){% endif %}. Matching is case-insensitive and common word endings are stemmed (`orders` matches `order`).
 
 - **Spaces = AND.** `customer churn rate` requires *all three* tokens to appear — each extra word narrows, never broadens. Search the core hypothesis, not a padded phrase.
 - **`or` = alternatives.** `shipments or fulfillment`, `LTV or "lifetime value"`. Use it for synonyms/abbreviations you're unsure are indexed.
@@ -44,7 +44,10 @@ These drive the keyword match{% if has_semantic_search %} (one half of every sea
 {% if has_semantic_search %}**These operators only shape the keyword half.** The meaning-match embeds your query *literally* and ignores operator semantics, and results are the union of both halves — so an operator that restricts the keyword half doesn't restrict the meaning half. In practice:
 - `"exact phrase"` and rare/exact tokens compose well — they sharpen the keyword half toward a precise hit.
 - **Negation is unreliable:** `-word` drops the token from the keyword half, but the meaning-match has no notion of "not" and can surface the excluded thing anyway. Don't rely on `-` to exclude; filter it out yourself when reading results.
-- **`or` is wasted effort:** the meaning-match already handles synonyms and paraphrases, and the literal word "or" just dilutes the embedding. Use one natural phrasing instead of OR-listing synonyms.{% else %}If a spaces-only (all-AND) query returns nothing, don't just resend it — reach for `or` yourself, joining the actual synonyms and abbreviations you suspect, so a single stray token can't collapse the result set to empty.{% endif %}
+- **`or` is wasted effort:** the meaning-match already handles synonyms and paraphrases, and the literal word "or" just dilutes the embedding. Use one natural phrasing instead of OR-listing synonyms.{% else %}If a spaces-only (all-AND) query returns nothing, don't just resend it — reach for `or` yourself, joining the actual synonyms and abbreviations you suspect, so a single stray token can't collapse the result set to empty.{% endif %}{% else %}This instance has **no query operator support**: every word is matched as a plain substring and **all** of them must appear. `or`, `"exact phrase"` and `-exclusion` are not parsed — they match as literal text and only narrow the result set further, so never use them.
+
+- **Broaden by removing words**, not by adding alternatives. If `monthly active users` finds nothing, try `active users`, then `users`.
+- **Partial words already match:** `custom` finds `customers`, so a short stem is often the better query. To cover a synonym, search it separately.{% endif %}
 
 ## What is and isn't searched
 
