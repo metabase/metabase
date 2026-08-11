@@ -254,9 +254,7 @@ export function testSearchUrl(
   baseUrl: string,
   test: FailedTest | QuarantineEntry,
 ): string {
-  const base = baseUrl.replace(/\/+$/, "");
-  const query = title(test);
-  return `${base}/tests?${new URLSearchParams({ q: query })}`;
+  return `${baseUrl.replace(/\/+$/, "")}/tests?${new URLSearchParams({ q: test.test_name })}`;
 }
 
 /** Print the verdict (+ dry-run footer) and return the gate result. */

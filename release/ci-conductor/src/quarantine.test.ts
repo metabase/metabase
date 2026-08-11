@@ -144,7 +144,6 @@ describe("matchKey", () => {
 describe("testSearchUrl", () => {
   const base = "https://conductor.coredev.metabase.com";
 
-  // `›` (U+203A) is the separator `title` uses, so it lands percent-encoded.
   it("searches the full `test_path › test_name` title", () => {
     expect(
       testSearchUrl(
@@ -155,19 +154,13 @@ describe("testSearchUrl", () => {
         ),
       ),
     ).toBe(
-      "https://conductor.coredev.metabase.com/tests?q=documents+%E2%80%BA+revision+history+%E2%80%BA+should+be+able+to+view+and+revert+document+revisions",
-    );
-  });
-
-  it("searches the name alone when there's no path", () => {
-    expect(testSearchUrl(base, failed("a test", null))).toBe(
-      `${base}/tests?q=a+test`,
+      "https://conductor.coredev.metabase.com/tests?q=should+be+able+to+view+and+revert+document+revisions",
     );
   });
 
   it("takes a quarantine entry just as happily as a failure", () => {
     expect(testSearchUrl(base, quarantined("a test", "Suite"))).toBe(
-      `${base}/tests?q=Suite+%E2%80%BA+a+test`,
+      `${base}/tests?q=a+test`,
     );
   });
 
