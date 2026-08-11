@@ -20,11 +20,6 @@ export interface NewQuestionMenuItem extends MenuItem {
   value: "native" | "notebook";
 }
 
-/**
- * A new-question entry offered by the command menu. Supplied by the editor's
- * host surface (the document editor), which knows what question types the
- * current user can create.
- */
 export interface NewQuestionOption {
   value: "native" | "notebook";
   label: string;
@@ -36,11 +31,6 @@ export interface NewQuestionModalProps {
   onClose: () => void;
 }
 
-/**
- * The modals rendered when the user picks a new-question type from the
- * command menu. Supplied by the editor's host surface (the document editor)
- * so this module doesn't need to know how questions get authored.
- */
 export interface NewQuestionModals {
   notebook: ComponentType<NewQuestionModalProps>;
   native: ComponentType<NewQuestionModalProps>;
