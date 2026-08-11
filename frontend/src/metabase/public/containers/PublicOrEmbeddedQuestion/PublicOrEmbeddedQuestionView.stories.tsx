@@ -8,7 +8,10 @@ import type { ComponentProps, ComponentType } from "react";
 import { getPublicStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { createWaitForResizeToStopDecorator } from "__support__/storybook";
+import {
+  createWaitForChartsDecorator,
+  createWaitForResizeToStopDecorator,
+} from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import {
   DateTimeColumn,
@@ -44,7 +47,11 @@ registerVisualization(Table);
 export default {
   title: "App/Embed/PublicOrEmbeddedQuestionView",
   component: PublicOrEmbeddedQuestionView,
-  decorators: [ReduxDecorator, createWaitForResizeToStopDecorator()],
+  decorators: [
+    ReduxDecorator,
+    createWaitForChartsDecorator(),
+    createWaitForResizeToStopDecorator(),
+  ],
   parameters: {
     layout: "fullscreen",
     msw: {
