@@ -378,7 +378,15 @@ function assertNoDatabaseSelected() {
 }
 
 function selectDatabase(database) {
-  H.popover().findByText(database).click();
+  // The database picker popover opens automatically. As `GET /api/database`
+  // resolves, its `onQueryStarted` hook re-writes the shared metadata, which hands
+  // the selector a fresh `databases` array reference and re-mounts the AccordionList
+  // rows. A plain `.click()` (even behind `.should("be.visible")`) then enters
+  // Cypress's actionability wait, during which the target row detaches
+  // ("elements ... disappeared from the page"). Clicking with `{ force: true }`
+  // skips that wait and fires on the row the moment it is found + visible, closing
+  // the window in which the re-mount can detach it.
+  H.popover().findByText(database).should("be.visible").click({ force: true });
   cy.findByTestId("selected-database").should("have.text", database);
 }
 
