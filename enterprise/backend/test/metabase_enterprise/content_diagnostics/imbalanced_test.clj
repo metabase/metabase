@@ -34,11 +34,13 @@
 
 ;;; --------------------------------------- cross-type co-occurrence ----------------------------------------
 ;;; Independent checkers mean no precedence: an entity can be flagged on several axes at once (dashboard
-;;; tabs vs dashcards). On collections all three band the SAME direct-item count, so there the finding
-;;; types are mutually exclusive. The single-checker rules are covered in the per-checker namespaces.
+;;; tabs vs dashcards). On collections all three band the SAME direct-item count: `empty` (0) never
+;;; co-occurs with either band, and sparse/crowded stay disjoint while the sparse floor sits at or below
+;;; the crowded ceiling (independent admin settings - nothing validates them against each other). The
+;;; single-checker rules are covered in the per-checker namespaces.
 
 (deftest imbalanced-collection-disjoint-bands-test
-  (testing "the three checkers band one direct-item count on collections, so the bands never overlap"
+  (testing "banding one direct-item count keeps the collection bands disjoint under in-order thresholds"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-temporary-setting-values [content-diagnostics-crowded-collection-threshold-items 3
                                          content-diagnostics-sparse-collection-threshold-items  3]
