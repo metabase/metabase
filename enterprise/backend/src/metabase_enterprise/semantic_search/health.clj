@@ -85,7 +85,11 @@
               index            (:index state)
               table-name       (:table-name index)
               stalled-at       (-> state :metadata-row :indexer_stalled_at)
-              model-mismatch?  (not= (:embedding-model index) (semantic.env/get-configured-embedding-model))
+              ;; `index`'s :embedding-model carries extra bookkeeping keys (:embedding-space-id,
+              ;; :embedding-spi-version, :model-revision) that get-configured-embedding-model doesn't
+              ;; return; compare only the keys settings actually configure.
+              model-mismatch?  (not= (select-keys (:embedding-model index) [:provider :model-name :vector-dimensions])
+                                     (semantic.env/get-configured-embedding-model))
               embedder-problem (when-not model-mismatch? (embedding-health/embedding-problem))
               problems         (cond-> []
                                  (not (active-index-queryable? pgvector table-name))

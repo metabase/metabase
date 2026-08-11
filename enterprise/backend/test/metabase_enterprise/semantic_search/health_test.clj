@@ -26,8 +26,16 @@
 (def ^:private embedding-model
   {:provider "ai-service", :model-name "test-model", :vector-dimensions 3})
 
+(def ^:private active-index-embedding-model
+  "The active index's :embedding-model, as produced by index-metadata/row->index: it carries bookkeeping
+  keys (:embedding-space-id, :embedding-spi-version) that get-configured-embedding-model never returns, so
+  a healthy fixture must include them to catch a comparison that (wrongly) expects an exact map match."
+  (assoc embedding-model
+         :embedding-space-id "emb:v1:sha256:test"
+         :embedding-spi-version 1))
+
 (def ^:private active-state
-  {:index {:table-name "index_test_table", :embedding-model embedding-model}
+  {:index {:table-name "index_test_table", :embedding-model active-index-embedding-model}
    :metadata-row {:id 1
                   :indexer_stalled_at nil
                   :repair_orphan_count nil
