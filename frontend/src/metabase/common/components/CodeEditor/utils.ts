@@ -4,7 +4,11 @@ import { json } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
 import { python } from "@codemirror/lang-python";
 import { sql } from "@codemirror/lang-sql";
-import { StreamLanguage, indentUnit } from "@codemirror/language";
+import {
+  LanguageDescription,
+  StreamLanguage,
+  indentUnit,
+} from "@codemirror/language";
 import { clojure } from "@codemirror/legacy-modes/mode/clojure";
 import { pug } from "@codemirror/legacy-modes/mode/pug";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
@@ -55,7 +59,14 @@ export function getLanguageExtension(language: CodeLanguage | Extension) {
     case "json":
       return json();
     case "markdown":
-      return markdown();
+      return markdown({
+        codeLanguages: [
+          LanguageDescription.of({
+            name: "sql",
+            support: sql(),
+          }),
+        ],
+      });
     case "python":
       return [python(), indentUnit.of("    ")];
     case "mustache":

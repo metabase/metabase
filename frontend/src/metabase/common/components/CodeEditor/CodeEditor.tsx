@@ -1,26 +1,19 @@
 import type { Extension } from "@uiw/react-codemirror";
-import { type FocusEventHandler, useMemo } from "react";
+import { useMemo } from "react";
 
-import { CodeMirror } from "metabase/common/components/CodeMirror";
+import {
+  CodeMirror,
+  type CodeMirrorProps,
+} from "metabase/common/components/CodeMirror";
 
 import type { CodeLanguage } from "./types";
 import { useExtensions } from "./utils";
 
-type Props = {
-  className?: string;
-  highlightRanges?: { start: number; end: number }[];
-  id?: string;
+type Props = Omit<CodeMirrorProps, "onChange"> & {
   language?: CodeLanguage | Extension;
   lineNumbers?: boolean;
-  placeholder?: string;
-  readOnly?: boolean;
-  value: string;
   proposedValue?: string;
-  onBlur?: FocusEventHandler<HTMLDivElement>;
   onChange?: (value: string) => void;
-  extensions?: Extension[];
-  "aria-label"?: string;
-  "data-testid"?: string;
 };
 
 export function CodeEditor({
