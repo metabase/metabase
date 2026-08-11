@@ -610,6 +610,41 @@
                          :type  "external"}
                         (owner-for external-fid)))))))))))
 
+(deftest api-archived-folder-transform-test
+  (testing "GET /stale serves transforms in archived folders - archiving a folder neither archives nor stops its transforms - while archived-folder cards stay hidden"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {xf-folder :id} {:name      "Shelved pipelines"
+                                                            :namespace "transforms"
+                                                            :archived  true}
+                         :model/Transform {xf-id :id} {:collection_id xf-folder}
+                         :model/Collection {card-folder :id} {:archived true}
+                         :model/Card {card-id :id} {:collection_id card-folder}]
+            (let [prefix   (scope-prefix)
+                  insert!  (fn [etype eid]
+                             (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                              {:scan_id "af" :entity_type etype :entity_id eid
+                                                               :entity_name (str prefix "-" eid)
+                                                               :finding_type :stale :details {}})))
+                  xf-fid   (insert! :transform xf-id)
+                  card-fid (insert! :card card-id)
+                  rows-for (fn [user] (:data (mt/user-http-request user :get 200
+                                                                   "ee/content-diagnostics/stale" :query prefix)))
+                  rows     (rows-for :crowberto)
+                  ids      (set (map :id rows))]
+              (testing "the archived-folder transform finding is served"
+                (is (contains? ids xf-fid)))
+              (testing "its breadcrumb names the archived folder"
+                (is (=? {:id        xf-folder
+                         :name      "Shelved pipelines"
+                         :namespace "transforms"}
+                        (get-in (finding-for rows "transform" xf-id) [:details :collection]))))
+              (testing "a card in an archived folder stays hidden"
+                (is (not (contains? ids card-fid))))
+              (testing "archived-folder inclusion does not bypass collection permissions"
+                (is (not (contains? (set (map :id (rows-for :rasta))) xf-fid)))))))))))
+
 (deftest api-threshold-days-filter-test
   (testing "GET /stale threshold-days drops findings less stale than the cutoff; never-used always passes"
     (mt/with-premium-features #{:content-diagnostics}

@@ -52,25 +52,39 @@
 ;;; Resolved live at read time against each entity's *current* collection (not scan-time
 ;;; `scope_collection_id`): visibility (always) + personal-collection exclusion (param-gated).
 
+(def ^:private archived-inclusive-visibility
+  "Visibility config that includes archived collections; permission filtering is unchanged. Used by the
+  transform-serving clauses - see [[visible-findings-clause]] for why."
+  {:include-archived-items :all})
+
 (defn entity-collection-clauses
   "Per entity-type, a clause keeping findings whose entity's current collection satisfies the predicate
-  built by `coll-pred-fn` - a fn of the column holding the entity's collection id. Resolved live against
-  the entity's own table (`common/entity-type->model`); entity-types with no model contribute nothing.
-  For every containable type that column is `:collection_id`; a `:collection` subject *is* the collection,
-  so its predicate is keyed on its own `:id`. Callers combine the seq with `:or`/`:and`."
+  built by `coll-pred-fn` - a fn of the entity-type and the column holding the entity's collection id.
+  Resolved live against the entity's own table (`common/entity-type->model`); entity-types with no model
+  contribute nothing. For every containable type that column is `:collection_id`; a `:collection` subject
+  *is* the collection, so its predicate is keyed on its own `:id`. Callers combine the seq with
+  `:or`/`:and`."
   [coll-pred-fn]
   (for [[etype model] common/entity-type->model]
     [:and
      [:= :entity_type (name etype)]
      [:in :entity_id {:select [:id]
                       :from   [(t2/table-name model)]
-                      :where  (coll-pred-fn (if (= etype :collection) :id :collection_id))}]]))
+                      :where  (coll-pred-fn etype (if (= etype :collection) :id :collection_id))}]]))
 
 (defn visible-findings-clause
   "Keep only findings whose entity is in a collection the current user can read (a collection subject must
-  itself be readable) - always applied. Fail-closed: an entity-type with no collection model is dropped."
+  itself be readable) - always applied. Fail-closed: an entity-type with no collection model is dropped.
+
+  Transform findings also survive an archived folder - archiving a folder neither archives nor stops
+  its transforms. Only the archived exclusion is relaxed; permission filtering is unchanged."
   []
-  (into [:or] (entity-collection-clauses collection/visible-collection-filter-clause)))
+  (into [:or]
+        (entity-collection-clauses
+         (fn [etype coll-col]
+           (collection/visible-collection-filter-clause
+            coll-col
+            (if (= etype :transform) archived-inclusive-visibility {}))))))
 
 (defn- personal-collection-ids
   "Live set of collection ids that are, or are nested under, a personal collection - a `personal_owner_id`
@@ -126,7 +140,7 @@
   (when excluded-personal-ids
     (into [:and]
           (map (fn [clause] [:not clause]))
-          (entity-collection-clauses (fn [coll-col] [:in coll-col excluded-personal-ids])))))
+          (entity-collection-clauses (fn [_etype coll-col] [:in coll-col excluded-personal-ids])))))
 
 (defn findings-where
   "Base WHERE for one endpoint's finding list (one finding-type, or an umbrella's several): the valid +
@@ -221,13 +235,17 @@
 
   A breadcrumb can be a collection the primary gate never checked (a `:collection` subject's breadcrumb
   is its **parent**), so caller visibility is re-applied here - an unreadable breadcrumb collection gets
-  no entry and the finding's `collection` degrades to null, same as root."
+  no entry and the finding's `collection` degrades to null, same as root. Archived collections get an
+  entry, so a transform finding can name the archived folder it lives in. Other types' findings are
+  dropped by the primary gate while their folder is archived, and any archived parent that still shows
+  up here names a folder the caller may read."
   [coll-ids]
   (when (seq coll-ids)
     (let [colls (t2/hydrate (t2/select :model/Collection
                                        {:where [:and
                                                 [:in :id (set coll-ids)]
-                                                (collection/visible-collection-filter-clause :id)]})
+                                                (collection/visible-collection-filter-clause
+                                                 :id archived-inclusive-visibility)]})
                             :effective_ancestors)]
       (into {}
             (map (fn [c]
@@ -271,17 +289,20 @@
 (defn- readable-entities-where
   "HoneySQL WHERE keeping only the rows in `ids` the caller may read at hydration time: caller visibility
   (the same gate as `visible-findings-clause`) always, plus the personal-collection exclusion when
-  `excluded-personal-ids` is provided. Shared by the culprit/peer hydrators so the read-time gate lives in
-  one place - a perms change lands once, not per hydrator."
-  [ids excluded-personal-ids]
-  [:and
-   [:in :id ids]
-   (collection/visible-collection-filter-clause :collection_id)
-   ;; root-collection entities (nil collection_id) must survive the NOT-IN.
-   (when excluded-personal-ids
-     [:or
-      [:= :collection_id nil]
-      [:not [:in :collection_id excluded-personal-ids]]])])
+  `excluded-personal-ids` is provided. `visibility-config` tunes the collection clause (the transform
+  hydrator passes [[archived-inclusive-visibility]]). Shared by the culprit/peer hydrators so the
+  read-time gate lives in one place - a perms change lands once, not per hydrator."
+  ([ids excluded-personal-ids]
+   (readable-entities-where ids excluded-personal-ids {}))
+  ([ids excluded-personal-ids visibility-config]
+   [:and
+    [:in :id ids]
+    (collection/visible-collection-filter-clause :collection_id visibility-config)
+    ;; root-collection entities (nil collection_id) must survive the NOT-IN.
+    (when excluded-personal-ids
+      [:or
+       [:= :collection_id nil]
+       [:not [:in :collection_id excluded-personal-ids]]])]))
 
 (defn- hydrate-slow-entities
   "Card-id set → `{card-id → {:id :name :entity_type :card :card_type <kw> :view_count <int>}}`. The
@@ -332,7 +353,9 @@
   ;; source tables) - the collection clause alone would leak transform names to collection-granted
   ;; non-analysts. It reads :source, so select full rows; peer sets are page-bounded, so the per-row check
   ;; is cheap.
-  (filter mi/can-read? (t2/select :model/Transform {:where (readable-entities-where ids excluded-personal-ids)})))
+  (filter mi/can-read? (t2/select :model/Transform
+                                  {:where (readable-entities-where ids excluded-personal-ids
+                                                                   archived-inclusive-visibility)})))
 
 (defn- hydrate-duplicate-entities
   "The findings' stored `duplicate_entity_ids` → `{[entity-type id] → {:id :name :entity_type <etype>
