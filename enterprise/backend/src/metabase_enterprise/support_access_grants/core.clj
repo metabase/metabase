@@ -8,6 +8,7 @@
    [metabase.events.core :as events]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn- active-grant-exists?
@@ -88,6 +89,20 @@
                    :revoked_by_user_id user-id})
       (-> (t2/select-one :model/SupportAccessGrantLog :id grant-id)
           (t2/hydrate :user_info)))))
+
+(defn expire-ended-grants!
+  "Tear down the support user's access once every grant has ended.
+
+  A no-op when there is no support user, when a grant is still running, or when access is already torn down."
+  []
+  (when-let [{support-user-id :id, superuser? :is_superuser}
+             (t2/select-one [:model/User :id :is_superuser] :email (sag.settings/support-access-grant-email))]
+    (when (or superuser? (t2/exists? :model/Session :user_id support-user-id))
+      (t2/with-transaction [_]
+        ;; Re-check inside the transaction so a grant created concurrently isn't immediately torn down.
+        (when-not (active-grant-exists?)
+          (log/infof "Support access grant has ended; revoking access for support user %d" support-user-id)
+          (sag.model/revoke-support-user-access! support-user-id (t/instant)))))))
 
 (defn list-grants
   "List support access grants with optional filtering and pagination.

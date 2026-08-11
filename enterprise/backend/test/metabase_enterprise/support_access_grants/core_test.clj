@@ -391,3 +391,59 @@
                     diff-seconds (t/as (t/duration expected-end grant-end-time) :seconds)]
                 (is (< (Math/abs ^long diff-seconds) 2)
                     "Grant end time should be approximately duration_minutes in the future")))))))))
+
+(deftest expire-ended-grants-tears-down-support-access-test
+  (testing "a grant that ends naturally, without ever being revoked, has the support user's access torn down"
+    (let [support-email "support-natural-expiry@example.com"]
+      ;; the creator is an admin so the support user isn't the last one, and can actually be demoted
+      (mt/with-temp [:model/User {creator-id :id} {:is_superuser true}]
+        (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
+          (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly support-email)]
+            (let [grant           (grants/create-grant! creator-id 60 "SEC-730" "Time-boxed access")
+                  support-user-id (t2/select-one-pk :model/User :email support-email)]
+              (t2/insert! :model/Session {:id      "sec730natur"
+                                          :user_id support-user-id
+                                          :session_key (str (random-uuid))})
+              (testing "while the grant is still running the sweep leaves everything alone"
+                (grants/expire-ended-grants!)
+                (is (:is_superuser (t2/select-one :model/User :id support-user-id)))
+                (is (t2/exists? :model/Session :user_id support-user-id)))
+              (testing "once the grant window has passed the sweep revokes access"
+                ;; Move the grant's end into the past; `revoked_at` stays nil, so nothing else cleans up.
+                (t2/update! :model/SupportAccessGrantLog (:id grant)
+                            {:grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
+                (grants/expire-ended-grants!)
+                (is (not (:is_superuser (t2/select-one :model/User :id support-user-id)))
+                    "Support user should lose admin access once the grant ends")
+                (is (not (t2/exists? :model/Session :user_id support-user-id))
+                    "Support user sessions should be deleted once the grant ends")
+                (is (every? :expires_at (t2/select :model/AuthIdentity :user_id support-user-id))
+                    "Support user auth identities should be expired once the grant ends"))
+              (testing "the sweep is idempotent"
+                (grants/expire-ended-grants!)
+                (is (not (:is_superuser (t2/select-one :model/User :id support-user-id))))
+                (is (not (t2/exists? :model/Session :user_id support-user-id)))))))))))
+
+(deftest expire-ended-grants-ignores-other-users-test
+  (testing "the natural-expiry sweep only touches the support user"
+    (let [support-email "support-expiry-scope@example.com"]
+      (mt/with-temp [:model/User {creator-id :id} {}
+                     :model/User {other-user-id :id} {:is_superuser true}]
+        (mt/with-model-cleanup [:model/SupportAccessGrantLog :model/AuthIdentity :model/User]
+          (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly support-email)]
+            (let [grant (grants/create-grant! creator-id 60 "SEC-730" "Time-boxed access")]
+              (t2/insert! :model/Session {:id          "sec730other"
+                                          :user_id     other-user-id
+                                          :session_key (str (random-uuid))})
+              (t2/update! :model/SupportAccessGrantLog (:id grant)
+                          {:grant_end_timestamp (t/minus (t/instant) (t/minutes 1))})
+              (grants/expire-ended-grants!)
+              (is (:is_superuser (t2/select-one :model/User :id other-user-id)))
+              (is (t2/exists? :model/Session :user_id other-user-id)))))))))
+
+(deftest expire-ended-grants-no-support-user-test
+  (testing "the natural-expiry sweep is a no-op when no support user exists"
+    (mt/with-dynamic-fn-redefs [sag.settings/support-access-grant-email (constantly "nobody-sec730@example.com")]
+      (is (nil? (grants/expire-ended-grants!)))
+      (is (not (t2/exists? :model/User :email "nobody-sec730@example.com"))
+          "the sweep must not conjure a support user into existence"))))
