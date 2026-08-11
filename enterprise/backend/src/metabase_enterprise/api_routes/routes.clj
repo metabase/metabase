@@ -136,7 +136,11 @@
    "/erd"                          (premium-handler metabase-enterprise.erd.api/routes :schema-viewer)
    "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
    "/replacement"                  (premium-handler metabase-enterprise.replacement.api/routes :dependencies)
-   "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)
+   ;; Deliberately NOT premium-handler-gated: the setup guide is shown to unlicensed
+   ;; admins too -- that is who its upsell is aimed at -- and gating the checklist
+   ;; made every step read as incomplete for them, under-reporting work they had
+   ;; actually done. The endpoint checks superuser itself.
+   "/embedding-hub"                metabase-enterprise.embedding-hub.api/routes
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))

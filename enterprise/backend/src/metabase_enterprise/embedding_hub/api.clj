@@ -3,11 +3,13 @@
   (`/api/ee/embedding-hub/checklist`); the UI it serves is the setup guide."
   (:require
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.appearance.core :as appearance]
    [metabase.audit-app.core :as audit]
    [metabase.embedding.settings :as embedding.settings]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [toucan2.core :as t2]))
@@ -95,6 +97,20 @@
   (or (t2/exists? :model/Card :enable_embedding true)
       (t2/exists? :model/Dashboard :enable_embedding true)))
 
+(defn- has-created-custom-theme? []
+  ;; `is_default` marks the Light/Dark themes Metabase seeds; anything else is
+  ;; the admin's own. Existing instances have no marked rows, so their seeded
+  ;; themes read as custom -- accepted rather than backfilled, since nothing
+  ;; can identify them retroactively.
+  (t2/exists? :model/EmbeddingTheme :is_default false))
+
+(defn- has-configured-ai? []
+  ;; Both halves: credentials for the chosen provider, and embedded Metabot
+  ;; actually switched on. `embedded-metabot-enabled?` defaults to true, so on
+  ;; its own it would report a fresh instance as done.
+  (and (metabot.settings/llm-metabot-configured?)
+       (metabot.settings/embedded-metabot-enabled?)))
+
 (defn- setup-guide-checklist []
   (let [enable-tenants?                  (and (perms/use-tenants)
                                               (has-shared-tenant-collections?))
@@ -109,6 +125,8 @@
       "create-test-embed"                 (or (has-published-guest-embed?)
                                               (embedding.settings/embedding-hub-test-embed-snippet-created))
       "embed-production"                  (embedding.settings/embedding-hub-production-embed-snippet-created)
+      "create-custom-theme"               (has-created-custom-theme?)
+      "configure-ai"                      (has-configured-ai?)
       "data-permissions-and-enable-tenants" (and enable-tenants?
                                                  create-tenants?
                                                  setup-data-segregation-strategy?)
@@ -136,6 +154,8 @@
      ["configure-row-column-security"        :boolean]
      ["create-test-embed"                    :boolean]
      ["embed-production"                     :boolean]
+     ["create-custom-theme"                  :boolean]
+     ["configure-ai"                         :boolean]
      ["sso-configured"                       :boolean]
      ["data-permissions-and-enable-tenants"  :boolean]
      ["enable-tenants"                       :boolean]
@@ -149,6 +169,11 @@
 (api.macros/defendpoint :get "/checklist" :- SetupGuideChecklistResponse
   "Get the setup guide checklist status, indicating which setup steps have been completed."
   []
+  ;; The checklist reports instance setup state, so it is admin-only. This was
+  ;; previously implicit: the route sat behind a premium gate that also kept
+  ;; non-admins out. The gate is gone -- the guide has to work unlicensed -- so
+  ;; the check is stated here instead.
+  (api/check-superuser)
   (setup-guide-checklist))
 
 (def ^{:arglists '([request respond raise])} routes
