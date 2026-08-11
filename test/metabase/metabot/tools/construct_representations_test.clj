@@ -1115,7 +1115,6 @@
                 (let [redo (construct/execute-representations-query (walk/keywordize-keys exported))]
                   (is (= exported (get-in redo [:structured-output :query-json]))))))))))))
 
-
 ;;; ============================================================
 ;;; Metric explicit-join feedback (BOT-1612)
 ;;;
