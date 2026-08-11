@@ -92,15 +92,57 @@ For all modular embeds, you can also set a `locale` in your page-level configura
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
-`dashboardCardMenu` controls the overflow menu on each dashboard card. Pass it to `InteractiveDashboard` (or `EditableDashboard`) through the `plugins` prop, under the `dashboard` key. It takes either a config object or a function returning a React component.
+`dashboardCardMenu` controls the overflow menu on each dashboard card. Pass it through the `plugins` prop, under the `dashboard` key, on any dashboard component. You can also set it globally on `MetabaseProvider`; a component's own `plugins` prop wins over the global one.
 
-| Key             | What it does                                                                                                             |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `withDownloads` | Shows or hides the download button.                                                                                      |
-| `withEditLink`  | Shows or hides the link to edit the question.                                                                            |
-| `customItems`   | Your own menu items. Each element is either an item object or a function that takes the card's question and returns one. |
+It takes either a config object or a function returning a React element.
 
-For examples, see [Customize the menu on dashboard cards](./dashboard.md#customize-the-menu-on-dashboard-cards).
+| Key             | What it does                                                                                                           |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `withDownloads` | Shows or hides the download button.                                                                                    |
+| `withEditLink`  | Shows or hides the link to edit the question.                                                                          |
+| `customItems`   | Your own menu items. Each element is either an item object or a function that receives `{ question }` and returns one. |
+
+Here's the default configuration:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-base-1" %}
+```
+
+Pass it to a dashboard component through the `plugins` prop:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-base-2" %}
+```
+
+### Turn off the default actions
+
+To remove the download button from the menu, set `withDownloads` to `false`. To remove the edit link, set `withEditLink` to `false`.
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-default-actions" %}
+```
+
+### Add your own actions to the menu
+
+Add custom actions by putting objects in the `customItems` array. Each element can be an object, or a function that receives `{ question }` and returns an item:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-custom-action-type" %}
+```
+
+Here's an example:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-custom-actions" %}
+```
+
+### Replace the menu with your own component
+
+To swap out the whole menu, pass a function that returns a React element. The function receives `{ question }`:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-custom-actions-menu" %}
+```
 
 ## Further reading
 

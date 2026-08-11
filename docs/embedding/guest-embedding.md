@@ -479,7 +479,9 @@ This key is shared across all guest embeds. Whoever has access to this key could
 
 ## Custom destinations on dashboards in guest embeds
 
-You can only use the **URL** option for [custom destinations](../dashboards/interactive.md#custom-destinations) on dashboards with guest embedding. See [Send people elsewhere with custom destinations](./dashboard.md#send-people-elsewhere-with-custom-destinations).
+You can only use the **URL** option for [custom destinations](../dashboards/interactive.md#custom-destinations) on dashboards with guest embedding. External URLs will open in a new tab or window.
+
+You can propagate filter values into the external URL, unless the filter is locked.
 
 ## Translating embeds
 

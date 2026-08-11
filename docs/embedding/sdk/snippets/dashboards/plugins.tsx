@@ -27,7 +27,11 @@ const ExampleBase2 = () => (
     dashboardId={1}
     plugins={{
       dashboard: {
-        dashboardCardMenu: () => null,
+        dashboardCardMenu: {
+          withDownloads: true,
+          withEditLink: true,
+          customItems: [],
+        },
       },
     }}
   />

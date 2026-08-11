@@ -15,7 +15,7 @@ There are three ways you can embed a dashboard:
 
 To embed a single chart instead, check out [Embed a chart](./chart.md). To let people build questions from scratch, check out [Embed the query builder](./query-builder.md).
 
-> Embedding more than one dashboard on the same page isn't supported yet.
+> The React SDK doesn't support more than one dashboard component on the same page yet.
 
 ## Embed a view-only dashboard
 
@@ -24,7 +24,7 @@ A view-only (a.k.a. "static") dashboard displays results without letting people 
 View-only isn't tied to one kind of embed. You can make a dashboard view-only in any embedding type:
 
 - **[Guest embeds](./introduction.md#guest-embedding)**: always view-only. Nobody logs in to a guest embed, so Metabase has no account to check permissions against, and no way to tell whether a new query is one that person should be allowed to run. The published dashboard is the only thing Metabase can safely run, which is why there's no drill-through or ad-hoc querying to turn off.
-- **[SSO embeds](./introduction.md#sso-embeds)**: interactive out of the box. To make one view-only, turn off drill-through with `drills="false"` (web component) or `drills={false}` (SDK). In the SDK you can also swap `InteractiveDashboard` for the view-only `StaticDashboard` component. You can also manage what people can do through [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
+- **[SSO embeds](./introduction.md#sso-embeds)**: interactive out of the box. With a web component, make one view-only by turning off drill-through with `drills="false"`. The SDK has no `drills` prop, so use the view-only `StaticDashboard` component instead of `InteractiveDashboard`. You can also manage what people can do through [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
 
 So pick your authentication based on what your app needs---plans, permissions, whether Metabase should know who's viewing---not on whether you want a view-only dashboard. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds).
 
@@ -174,7 +174,7 @@ By default, an embedded dashboard is a dead end: clicking a link to another dash
 ></metabase-dashboard>
 ```
 
-Entity navigation needs `drills` set to `true`. People can still only open content they have [collection permissions](../permissions/collections.md) for.
+Entity navigation needs `drills` set to `true`. In the SDK, the equivalent prop is `enableEntityNavigation`, which is also off by default. People can still only open content they have [collection permissions](../permissions/collections.md) for.
 
 ### Interactive dashboards using the React SDK
 
@@ -206,7 +206,7 @@ To customize that layout, pass a `renderDrillThroughQuestion` prop to `Interacti
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
-`EditableDashboard` does everything `InteractiveDashboard` does, and also lets people add and update questions, content, and the dashboard's layout. It's a good fit for an admin panel in your app, where a few people curate the dashboards everyone else views.
+`EditableDashboard` does everything `InteractiveDashboard` does, and also lets people add and update questions, content, and the dashboard's layout.
 
 ```tsx
 <MetabaseProvider authConfig={authConfig}>
@@ -216,7 +216,7 @@ To customize that layout, pass a `renderDrillThroughQuestion` prop to `Interacti
 
 Editing is only available in the React SDK---there's no `<metabase-dashboard>` attribute that turns it on. With web components, the closest thing is the [browser component](./components.md#browser) with `read-only="false"`, which lets people edit the dashboards they open from a collection.
 
-Whoever's editing needs [curate access](../permissions/collections.md#curate-access) to the collection the dashboard lives in.
+Whoever's editing needs [curate access](../permissions/collections.md#curate-access) to the collection the dashboard lives in. Dashboards in the [usage analytics](../usage-and-performance-tools/usage-analytics.md) collection are always read-only, whatever the permissions say.
 
 For the full list of props, see [`EditableDashboard` props](./dashboard-reference.md#editabledashboard-props).
 
@@ -252,47 +252,7 @@ For the full list of props, see [`CreateDashboardModal` props](./dashboard-refer
 
 Every card on an interactive dashboard gets an overflow menu in its top right corner, with actions like downloading results and editing the question. The `dashboardCardMenu` plugin lets you change what's in that menu, add your own actions, or replace the menu entirely.
 
-Here's the default configuration:
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-base-1" %}
-```
-
-Pass it to `InteractiveDashboard` through the `plugins` prop:
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-base-2" %}
-```
-
-### Turn off the default actions
-
-To remove the download button from the menu, set `withDownloads` to `false`. To remove the edit link, set `withEditLink` to `false`.
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-default-actions" %}
-```
-
-### Add your own actions to the menu
-
-Add custom actions by putting objects in the `customItems` array. Each element can be an object, or a function that takes the card's question and returns an item:
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-custom-action-type" %}
-```
-
-Here's an example:
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-custom-actions" %}
-```
-
-### Replace the menu with your own component
-
-To swap out the whole menu, pass a function that returns a React component. The function receives the card's question:
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-custom-actions-menu" %}
-```
+For the configuration and examples, see [`dashboardCardMenu` plugin](./dashboard-reference.md#dashboardcardmenu-plugin).
 
 ## Customize what happens when someone clicks on a chart
 
@@ -341,7 +301,7 @@ For both the SDK props (`initialParameters`, `parameters`, and `onParametersChan
 
 ### Hide a filter
 
-To hide a filter from the dashboard's UI, use the [`hidden-parameters`](./dashboard-reference.md#metabase-dashboard-web-component-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both require a Pro or Enterprise plan and an SSO embed; `hidden-parameters` has no effect on a guest embed. To hide a filter on a guest embed, set it to **Locked** or leave it **Disabled** in the dashboard's embed settings.
+To hide a filter from the dashboard's UI, use the [`hidden-parameters`](./dashboard-reference.md#metabase-dashboard-web-component-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both require a Pro or Enterprise plan and an SSO embed; `hidden-parameters` isn't supported on guest embeds. To hide a filter on a guest embed, set it to **Locked** or leave it **Disabled** in the dashboard's embed settings.
 
 ## Let people set up dashboard subscriptions
 
@@ -354,12 +314,21 @@ You can let people set up [dashboard subscriptions](../dashboards/subscriptions.
 ></metabase-dashboard>
 ```
 
+Or by passing `withSubscriptions` to a dashboard component in the SDK:
+
+```tsx
+<MetabaseProvider authConfig={authConfig}>
+  <InteractiveDashboard dashboardId={42} withSubscriptions />
+</MetabaseProvider>
+```
+
 Metabase only shows the subscriptions button when all of these are true:
 
-- Your Metabase has [email set up](../configuring-metabase/email.md).
-- The embed is an authenticated (SSO) embed.
-- The person viewing the embed is in a group with the [Subscriptions and alerts](../permissions/application.md#subscriptions-and-alerts) application permission. Metabase grants this permission to the All Users group by default, so admins have to set it to **No** to take it away.
-- The person viewing the embed has [collection permissions](../permissions/collections.md) for the collection that holds the dashboard.
+- Your Metabase has [email set up](../configuring-metabase/email.md). Slack on its own isn't enough.
+- The embed is an authenticated (SSO) embed. Guest embeds don't get subscriptions.
+- The dashboard has at least one card that isn't a text or heading card.
+
+Whoever's viewing also needs [collection permissions](../permissions/collections.md) for the collection that holds the dashboard, and the [Subscriptions and alerts](../permissions/application.md#subscriptions-and-alerts) application permission to create one.
 
 Subscriptions sent from an embedded dashboard exclude links to Metabase items.
 
@@ -374,6 +343,14 @@ To re-run a dashboard's cards on a timer, set `auto-refresh-interval` to a numbe
 ></metabase-dashboard>
 ```
 
+In the SDK, pass the same value in seconds to `autoRefreshInterval`:
+
+```tsx
+<MetabaseProvider authConfig={authConfig}>
+  <InteractiveDashboard dashboardId={42} autoRefreshInterval={60} />
+</MetabaseProvider>
+```
+
 Each refresh re-queries your database, so pick an interval your database can keep up with.
 
 ## Customize dashboard appearance
@@ -382,7 +359,7 @@ You can theme an embedded dashboard and toggle parts of its UI. For the full set
 
 - **Title**: show or hide the dashboard title with `with-title` (web component) or `withTitle` (SDK).
 - **Downloads**: show or hide the button that downloads the dashboard as a PDF, plus the download buttons on each card's results, with `with-downloads` / `withDownloads`. Defaults to `true` on OSS/Starter and `false` on Pro/Enterprise. Disabling downloads requires a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
-- **Height**: dashboard components take the full page height (100vh) by default. Override that with the `style` or `className` props:
+- **Height**: dashboard components fill the height of their container (`min-height: 100%`). Override that with the `style` or `className` props:
 
 ```tsx
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/custom-height.tsx" snippet="example" %}
