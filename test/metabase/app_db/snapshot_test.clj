@@ -245,8 +245,11 @@
           (if-not from-snapshot
             (log/warnf "No app DB snapshot checked in for %s; skipping parity comparison" @flavor)
             (let [from-scratch (impl/with-temp-empty-app-db [conn driver]
-                                 (vreset! full-ms
-                                          (timed #(impl/run-migrations-in-range! conn ["v00.00-000" nil])))
+                                 ;; the snapshot is dumped without the sample content, the way `setup-db!` builds a
+                                 ;; test app DB, so the replay it is compared against has to leave it out too
+                                 (binding [custom-migrations/*create-sample-content* false]
+                                   (vreset! full-ms
+                                            (timed #(impl/run-migrations-in-range! conn ["v00.00-000" nil]))))
                                  (fingerprint conn driver))]
               (log-timings! @flavor @full-ms @snapshot-ms)
               (testing "same tables"
