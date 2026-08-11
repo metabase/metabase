@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 
 import { focusOutlineStyle } from "metabase/common/style/focus-outline";
 
-interface TextAreaRootProps {
+export interface TextAreaRootProps {
   readOnly?: boolean;
   hasError?: boolean;
   fullWidth?: boolean;

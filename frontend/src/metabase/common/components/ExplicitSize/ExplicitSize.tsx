@@ -22,13 +22,17 @@ export const ExplicitSizeRefreshModeContext = createContext<
   RefreshMode | undefined
 >(undefined);
 
+type RefreshModeHandler = (fn: () => void) => () => void;
+const defineRefreshModeHandler = (handler: RefreshModeHandler) => handler;
+
 const REFRESH_MODE = {
-  throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
-  debounce: (fn: () => void) => debounce(fn, WAIT_TIME),
-  debounceLeading: (fn: () => void) =>
+  throttle: defineRefreshModeHandler((fn) => _.throttle(fn, WAIT_TIME)),
+  debounce: defineRefreshModeHandler((fn) => debounce(fn, WAIT_TIME)),
+  debounceLeading: defineRefreshModeHandler((fn) =>
     debounce(fn, WAIT_TIME, { leading: true }),
-  none: (fn: () => void) => fn,
-  layout: (fn: () => void) => () => flushSync(fn),
+  ),
+  none: defineRefreshModeHandler((fn) => fn),
+  layout: defineRefreshModeHandler((fn) => () => flushSync(fn)),
 };
 
 export type RefreshMode = keyof typeof REFRESH_MODE;

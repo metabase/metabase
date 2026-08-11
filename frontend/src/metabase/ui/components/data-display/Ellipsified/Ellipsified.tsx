@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Text, type TextProps, Tooltip, type TooltipProps } from "metabase/ui";
 import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
 
-interface EllipsifiedProps extends TextProps {
+export interface EllipsifiedProps extends TextProps {
   showTooltip?: boolean;
   alwaysShowTooltip?: boolean;
   tooltip?: ReactNode;

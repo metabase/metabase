@@ -32,7 +32,7 @@ function shouldHideDescription(width: number | undefined) {
  */
 const HREF_PLACEHOLDER = "#";
 
-interface LegendCaptionProps {
+export interface LegendCaptionProps {
   className?: string;
   title: string;
   description?: string;

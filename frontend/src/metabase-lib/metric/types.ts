@@ -16,17 +16,17 @@ import type {
   TimeFilterOperator,
 } from "../common";
 
-declare const _MetadataProviderSymbol: unique symbol;
-declare const _MetricMetadataSymbol: unique symbol;
-declare const _MeasureMetadataSymbol: unique symbol;
-declare const _MetricDefinitionSymbol: unique symbol;
-declare const _DimensionMetadataSymbol: unique symbol;
-declare const _FilterClauseSymbol: unique symbol;
-declare const _ProjectionClauseSymbol: unique symbol;
-declare const _TemporalBucketSymbol: unique symbol;
-declare const _BinningStrategySymbol: unique symbol;
-declare const _SourceInstanceSymbol: unique symbol;
-declare const _SegmentMetadataSymbol: unique symbol;
+export declare const _MetadataProviderSymbol: unique symbol;
+export declare const _MetricMetadataSymbol: unique symbol;
+export declare const _MeasureMetadataSymbol: unique symbol;
+export declare const _MetricDefinitionSymbol: unique symbol;
+export declare const _DimensionMetadataSymbol: unique symbol;
+export declare const _FilterClauseSymbol: unique symbol;
+export declare const _ProjectionClauseSymbol: unique symbol;
+export declare const _TemporalBucketSymbol: unique symbol;
+export declare const _BinningStrategySymbol: unique symbol;
+export declare const _SourceInstanceSymbol: unique symbol;
+export declare const _SegmentMetadataSymbol: unique symbol;
 
 export type MetadataProvider = unknown & {
   _opaque: typeof _MetadataProviderSymbol;

@@ -8,7 +8,7 @@ import { Icon } from "metabase/ui";
 import { lighten } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
-interface TreeNodeRootProps {
+export interface TreeNodeRootProps {
   isSelected: boolean;
   depth: number;
 }
@@ -39,7 +39,7 @@ export const ExpandToggleButton = styled.button`
   visibility: ${(props) => (props.hidden ? "hidden" : "visible")};
 `;
 
-interface ExpandToggleIconProps extends IconProps {
+export interface ExpandToggleIconProps extends IconProps {
   isExpanded: boolean;
 }
 

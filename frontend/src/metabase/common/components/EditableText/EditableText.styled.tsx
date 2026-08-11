@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-interface EditableTextRootProps {
+export interface EditableTextRootProps {
   isEditing?: boolean;
   isDisabled: boolean;
   isEditingMarkdown?: boolean;
