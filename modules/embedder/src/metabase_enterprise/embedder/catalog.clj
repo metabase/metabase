@@ -188,6 +188,13 @@
                        :configured-dimensions vector-dimensions
                        :vector-dimensions     (:vector-dimensions spec)
                        :reason                :vector-dimensions-mismatch})))
+    (let [arch-sha256 (get-in spec [:architectures arch :sha256])]
+      (when-not arch-sha256
+        (throw (ex-info (format "The bundled model %s has no artifact for architecture %s." (pr-str model-name) arch)
+                        {:provider     provider
+                         :model-name   model-name
+                         :architecture arch
+                         :reason       :architecture-not-bundled}))))
     (let [identity-input [:metabase-embedding-space-v1
                           model-name
                           (:model-revision spec)
