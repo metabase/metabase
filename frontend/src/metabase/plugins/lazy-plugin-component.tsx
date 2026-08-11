@@ -45,3 +45,23 @@ export function lazyPluginComponent<Props extends object>(
     );
   };
 }
+
+/**
+ * A plugin slot with no boundary of its own, for a call site that already has
+ * one above it.
+ *
+ * `modalRoute` is the case this exists for. Its `Suspense` sits outside the
+ * `Modal`, so a slot that suspends keeps the modal closed until it is ready. A
+ * slot made by `lazyPluginComponent` would catch its own suspension instead and
+ * open an empty modal.
+ */
+export function lazyPluginSlot<Props extends object>(
+  load: () => Promise<ComponentType<Props>>,
+): ComponentType<Props> {
+  // Same reason as above: `lazy` describes its props through
+  // `ComponentPropsWithRef`, which TypeScript cannot resolve while `Props` is
+  // still a type variable.
+  return lazy(() =>
+    load().then((Component) => ({ default: Component })),
+  ) as unknown as ComponentType<Props>;
+}

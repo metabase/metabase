@@ -12,7 +12,7 @@ import {
   PLUGIN_DATA_PERMISSIONS,
   PLUGIN_REDUCERS,
   type PermissionOption,
-  lazyPluginComponent,
+  lazyPluginSlot,
 } from "metabase/plugins";
 import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -22,7 +22,7 @@ import { DataPermissionValue } from "metabase-types/api";
  * `modalRoute` takes a component, so a lazy one is a lazy modal route. That is
  * the whole adaptation needed: no lazy variant of `modalRoute` itself.
  */
-const ImpersonationModal = lazyPluginComponent(() =>
+const ImpersonationModal = lazyPluginSlot(() =>
   import("./components/ImpersonationModal").then(
     ({ ImpersonationModal }) => ImpersonationModal,
   ),

@@ -1,6 +1,8 @@
+import { Suspense } from "react";
+
 import { render, screen } from "__support__/ui";
 
-import { lazyPluginComponent } from "./lazy-plugin-component";
+import { lazyPluginComponent, lazyPluginSlot } from "./lazy-plugin-component";
 
 type SlotProps = { label: string; children?: React.ReactNode };
 
@@ -67,5 +69,32 @@ describe("lazyPluginComponent", () => {
     render(<LazySlot label="loaded" />);
     expect(await screen.findByText("loaded")).toBeInTheDocument();
     expect(load).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("lazyPluginSlot", () => {
+  // The point of it: with no boundary of its own, the suspension reaches the
+  // one above, so a `modalRoute` keeps its modal closed rather than opening on
+  // an empty box.
+  it("suspends to the boundary above it", async () => {
+    function LoadedSlot() {
+      return <div>slot</div>;
+    }
+    const Slot = lazyPluginSlot(async () => LoadedSlot);
+
+    render(
+      <Suspense fallback={<div>outer fallback</div>}>
+        <div>
+          <span>chrome</span>
+          <Slot />
+        </div>
+      </Suspense>,
+    );
+
+    expect(screen.getByText("outer fallback")).toBeInTheDocument();
+    expect(screen.queryByText("chrome")).not.toBeInTheDocument();
+
+    expect(await screen.findByText("slot")).toBeInTheDocument();
+    expect(screen.getByText("chrome")).toBeInTheDocument();
   });
 });
