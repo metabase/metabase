@@ -1952,7 +1952,7 @@
                                                              {:models [{:id "anthropic.claude-haiku-4-5"
                                                                         :display_name "anthropic.claude-haiku-4-5"}]})]
         (testing "connecting bedrock saves the credentials and selects the default bedrock model"
-          (is (=? {:value "bedrock/anthropic.claude-opus-4-8"}
+          (is (=? {:value "bedrock/anthropic.claude-sonnet-5"}
                   (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                         {:provider    "bedrock"
                                          :credentials {:access-key-id     "AKIAIOSFODNN7EXAMPLE"

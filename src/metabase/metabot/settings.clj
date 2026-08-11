@@ -114,7 +114,7 @@
 
 (def ^:private default-bedrock-llm-metabot-model
   "Default Bedrock model used for Metabot when no explicit model is selected."
-  "anthropic.claude-opus-4-8")
+  "anthropic.claude-sonnet-5")
 
 (def ^:private default-mistral-llm-metabot-model
   "Default Mistral model used for Metabot when no explicit model is selected."

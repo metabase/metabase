@@ -222,7 +222,7 @@
 
 ;;; --------------------------------------------- API family dispatch -------------------------------------------
 
-(def ^:private default-model "anthropic.claude-opus-4-8")
+(def ^:private default-model "anthropic.claude-sonnet-5")
 
 (def ^:private anthropic-version "2023-06-01")
 
