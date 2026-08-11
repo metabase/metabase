@@ -25,62 +25,70 @@
 (def ^:private provider-types
   "Every provider type that could be configured by its own settings, in the order the connection list shows them.
 
-  `:settings` maps a `:config` key to the setting that carried it. `:credentials` are the keys that have to be
+  `:settings` maps a `:config` key to the setting that carried it. `:required-keys` are the keys that have to be
   present for the provider to count as configured — the rest are optional, or carry a default of their own.
   `:model-fields` name the config keys that compose the model such a connection serves, which for Azure is where its
   `{family}/{deployment}` pair ends up."
-  [{:type        "anthropic"
-    :name        "Anthropic"
-    :settings    {:api-key "llm-anthropic-api-key" :base-url "llm-anthropic-api-base-url"}
-    :credentials [:api-key]}
-   {:type        "openai"
-    :name        "OpenAI"
-    :settings    {:api-key "llm-openai-api-key" :base-url "llm-openai-api-base-url"}
-    :credentials [:api-key]}
-   {:type        "openrouter"
-    :name        "OpenRouter"
-    :settings    {:api-key "llm-openrouter-api-key" :base-url "llm-openrouter-api-base-url"}
-    :credentials [:api-key]}
-   {:type        "mistral"
-    :name        "Mistral"
-    :settings    {:api-key "llm-mistral-api-key" :base-url "llm-mistral-api-base-url"}
-    :credentials [:api-key]}
-   {:type        "zai"
-    :name        "Z.AI"
-    :settings    {:api-key "llm-zai-api-key" :base-url "llm-zai-api-base-url"}
-    :credentials [:api-key]}
-   {:type        "moonshot"
-    :name        "Moonshot AI"
-    :settings    {:api-key "llm-moonshot-api-key" :base-url "llm-moonshot-api-base-url"}
-    :credentials [:api-key]}
-   {:type         "azure"
-    :name         "Microsoft Azure"
-    :settings     {:api-key         "llm-azure-api-key"
-                   :base-url        "llm-azure-api-base-url"
-                   :model-family    "llm-azure-model-family"
-                   :deployment-name "llm-azure-deployment-name"}
-    :credentials  [:api-key :base-url]
-    :model-fields [:model-family :deployment-name]}
-   {:type        "google"
-    :name        "Google Gemini"
-    :settings    {:service-account-key "llm-google-service-account-key"
-                  :oauth-access-token  "llm-google-oauth-access-token"
-                  :project-id          "llm-google-project-id"
-                  :location            "llm-google-location"
-                  :base-url            "llm-google-api-base-url"}
+  [{:type          "anthropic"
+    :name          "Anthropic"
+    :settings      {:api-key "llm-anthropic-api-key" :base-url "llm-anthropic-api-base-url"}
+    :required-keys [:api-key]}
+   {:type          "openai"
+    :name          "OpenAI"
+    :settings      {:api-key "llm-openai-api-key" :base-url "llm-openai-api-base-url"}
+    :required-keys [:api-key]}
+   {:type          "openrouter"
+    :name          "OpenRouter"
+    :settings      {:api-key "llm-openrouter-api-key" :base-url "llm-openrouter-api-base-url"}
+    :required-keys [:api-key]}
+   {:type          "mistral"
+    :name          "Mistral"
+    :settings      {:api-key "llm-mistral-api-key" :base-url "llm-mistral-api-base-url"}
+    :required-keys [:api-key]}
+   {:type          "zai"
+    :name          "Z.AI"
+    :settings      {:api-key "llm-zai-api-key" :base-url "llm-zai-api-base-url"}
+    :required-keys [:api-key]}
+   {:type          "moonshot"
+    :name          "Moonshot AI"
+    :settings      {:api-key "llm-moonshot-api-key" :base-url "llm-moonshot-api-base-url"}
+    :required-keys [:api-key]}
+   {:type          "azure"
+    :name          "Microsoft Azure"
+    :settings      {:api-key         "llm-azure-api-key"
+                    :base-url        "llm-azure-api-base-url"
+                    :model-family    "llm-azure-model-family"
+                    :deployment-name "llm-azure-deployment-name"}
+    :required-keys [:api-key :base-url]
+    :model-fields  [:model-family :deployment-name]}
+   {:type          "google"
+    :name          "Google Gemini Enterprise"
+    :settings      {:service-account-key "llm-google-service-account-key"
+                    :oauth-access-token  "llm-google-oauth-access-token"
+                    :project-id          "llm-google-project-id"
+                    :location            "llm-google-location"
+                    :base-url            "llm-google-api-base-url"}
     ;; either credential will do, so completeness is checked against the pair rather than against every key
-    :credentials []
-    :any-of      [:service-account-key :oauth-access-token]}
-   {:type        "bedrock"
-    :name        "Amazon Bedrock"
-    :settings    {:access-key-id     "llm-bedrock-access-key-id"
-                  :secret-access-key "llm-bedrock-secret-access-key"
-                  :session-token     "llm-bedrock-session-token"
-                  :region            "llm-bedrock-region"}
-    :credentials [:access-key-id :secret-access-key]}])
+    :required-keys []
+    :any-of        [:service-account-key :oauth-access-token]}
+   {:type          "bedrock"
+    :name          "Amazon Bedrock"
+    :settings      {:access-key-id     "llm-bedrock-access-key-id"
+                    :secret-access-key "llm-bedrock-secret-access-key"
+                    :session-token     "llm-bedrock-session-token"
+                    :region            "llm-bedrock-region"}
+    :required-keys [:access-key-id :secret-access-key]}])
 
 (def ^:private credential-setting-keys
   (into [] (mapcat (comp vals :settings)) provider-types))
+
+(def ^:private sensitive-settings
+  "The settings the pre-migration code stored encrypted (`:sensitive? true`). The downgrade writes them back the
+  same way, and leaves the rest plaintext to match their `:encryption :no` declarations."
+  #{"llm-anthropic-api-key" "llm-openai-api-key" "llm-openrouter-api-key" "llm-mistral-api-key"
+    "llm-zai-api-key" "llm-moonshot-api-key" "llm-azure-api-key"
+    "llm-google-service-account-key" "llm-google-oauth-access-token"
+    "llm-bedrock-access-key-id" "llm-bedrock-secret-access-key" "llm-bedrock-session-token"})
 
 (defn- setting-value
   [setting-key]
@@ -94,9 +102,11 @@
     (not-empty (str/trim value))))
 
 (defn- write-setting!
-  [setting-key value]
+  "Writes `value` for `setting-key`, encrypted only when `encrypt?` — a setting declared `:encryption :no` should
+  not come out of a downgrade holding ciphertext, even though reads would decrypt it opportunistically."
+  [setting-key value encrypt?]
   (t2/query {:delete-from :setting :where [:= :key setting-key]})
-  (t2/insert! :setting {:key setting-key :value (encryption/maybe-encrypt value)}))
+  (t2/insert! :setting {:key setting-key :value (cond-> value encrypt? encryption/maybe-encrypt)}))
 
 ;;; ------------------------------------------------------ Up ------------------------------------------------------
 
@@ -123,9 +133,9 @@
   (into (if (str/starts-with? (str model-ref) (str managed-type "/"))
           [{:key managed-type :type managed-type :name "Metabase AI service" :config {}}]
           [])
-        (keep (fn [{:keys [type name credentials any-of] :as provider}]
+        (keep (fn [{:keys [type name required-keys any-of] :as provider}]
                 (let [config (stored-config provider)]
-                  (when (and (every? config credentials)
+                  (when (and (every? config required-keys)
                              (or (empty? any-of) (some config any-of)))
                     {:key    type
                      :type   type
@@ -144,7 +154,8 @@
       (when (seq conns)
         (log/infof "Migrating %d LLM provider credential setting(s) onto %s: %s"
                    (count conns) connections-setting (str/join ", " (map :key conns)))
-        (write-setting! connections-setting (json/encode conns)))))
+        ;; the list holds every credential, and the live setting is declared :when-encryption-key-set
+        (write-setting! connections-setting (json/encode conns) true))))
   (t2/query {:delete-from :setting :where [:in :key credential-setting-keys]}))
 
 ;;; ----------------------------------------------------- Down -----------------------------------------------------
@@ -183,11 +194,11 @@
     (let [written (into {} (mapcat connection-settings) conns)
           dropped (remove connection-settings conns)]
       (doseq [[setting-key value] written]
-        (write-setting! setting-key value))
+        (write-setting! setting-key value (contains? sensitive-settings setting-key)))
       (when (seq dropped)
         (log/warnf "Dropping %d LLM provider connection(s) with no equivalent setting: %s"
                    (count dropped) (str/join ", " (map :key dropped))))
       (if-let [model-ref (downgraded-model-ref (setting-value model-ref-setting) conns)]
-        (write-setting! model-ref-setting model-ref)
+        (write-setting! model-ref-setting model-ref false)
         (t2/query {:delete-from :setting :where [:= :key model-ref-setting]}))
       (t2/query {:delete-from :setting :where [:= :key connections-setting]}))))

@@ -3034,7 +3034,7 @@
       (migrate!)
       (is (= [{:key    "google"
                :type   "google"
-               :name   "Google Gemini"
+               :name   "Google Gemini Enterprise"
                :config {:oauth-access-token "ya29.stored-token"
                         :project-id         "my-project"}}]
              (llm-connections))))))
@@ -3102,3 +3102,26 @@
       (testing "and the reference naming it is rewritten to something older code can resolve"
         (is (= {"llm-metabot-provider" "anthropic/claude-opus-4-1"}
                (llm-setting-values ["llm-metabot-provider"])))))))
+
+(deftest rollback-llm-provider-settings-encrypts-only-secrets-test
+  (testing "v64.7qmx3p : the downgrade encrypts what the pre-migration code stored encrypted, and nothing else"
+    (encryption-test/with-secret-key "dont-tell-anyone-about-this"
+      (impl/test-migrations ["v64.7qmx3p"] [migrate!]
+        (insert-llm-settings! {"llm-anthropic-api-key"      "sk-ant-stored"
+                               "llm-anthropic-api-base-url" "https://self-hosted.example"
+                               "llm-metabot-provider"       "anthropic/claude-opus-4-1"})
+        (migrate!)
+        (migrate! :down 63)
+        (let [raw (into {}
+                        (map (juxt :key :value))
+                        (t2/query {:select [:key :value]
+                                   :from   :setting
+                                   :where  [:in :key ["llm-anthropic-api-key"
+                                                      "llm-anthropic-api-base-url"
+                                                      "llm-metabot-provider"]]}))]
+          (testing "the API key is sensitive, so it comes back as ciphertext"
+            (is (not= "sk-ant-stored" (get raw "llm-anthropic-api-key")))
+            (is (= "sk-ant-stored" (encryption/maybe-decrypt (get raw "llm-anthropic-api-key")))))
+          (testing "settings declared :encryption :no come back as the plaintext they were declared to hold"
+            (is (= "https://self-hosted.example" (get raw "llm-anthropic-api-base-url")))
+            (is (= "anthropic/claude-opus-4-1" (get raw "llm-metabot-provider")))))))))
