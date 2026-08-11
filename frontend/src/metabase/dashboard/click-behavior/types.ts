@@ -43,31 +43,33 @@ type ClickBehaviorPropertiesBase = {
 
 // ClickBehavior flattened for uniform destructuring, discriminated on linkType
 // so targetId narrows to the matching id type.
-export type ClickBehaviorProperties =
-  | (ClickBehaviorPropertiesBase & {
-      linkType?: undefined;
-      linkTemplate?: undefined;
-      tabId?: undefined;
-      targetId?: undefined;
-    })
-  | (ClickBehaviorPropertiesBase & {
-      linkType: "url";
-      linkTemplate?: string;
-      tabId?: undefined;
-      targetId?: undefined;
-    })
-  | (ClickBehaviorPropertiesBase & {
-      linkType: "question";
-      linkTemplate?: undefined;
-      tabId?: undefined;
-      targetId?: CardId;
-    })
-  | (ClickBehaviorPropertiesBase & {
-      linkType: "dashboard";
-      linkTemplate?: undefined;
-      tabId?: DashboardTabId;
-      targetId?: DashboardId;
-    });
+export type ClickBehaviorProperties = ClickBehaviorPropertiesBase &
+  (
+    | {
+        linkType?: never;
+        linkTemplate?: never;
+        tabId?: never;
+        targetId?: never;
+      }
+    | {
+        linkType: "url";
+        linkTemplate?: string;
+        tabId?: never;
+        targetId?: never;
+      }
+    | {
+        linkType: "question";
+        linkTemplate?: never;
+        tabId?: never;
+        targetId?: CardId;
+      }
+    | {
+        linkType: "dashboard";
+        linkTemplate?: never;
+        tabId?: DashboardTabId;
+        targetId?: DashboardId;
+      }
+  );
 
 export type ClickBehaviorDataOptions = {
   data: ValueAndColumnForColumnNameDate;

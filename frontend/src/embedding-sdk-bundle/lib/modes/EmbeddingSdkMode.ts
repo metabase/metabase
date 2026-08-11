@@ -18,7 +18,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { CardId, DashboardId, DashboardTabId } from "metabase-types/api";
 
-type ClickBehaviorTargetBase = {
+export type ClickBehaviorTarget = {
   name: string;
   parameters: ParameterValues;
   /**
@@ -27,15 +27,10 @@ type ClickBehaviorTargetBase = {
    * setParameterValue actions (mirrors core app DashboardClickAction).
    */
   parameterIdValuePairs: ParameterIdValuePair[];
-};
-
-export type ClickBehaviorTarget =
-  | (ClickBehaviorTargetBase & {
-      type: "dashboard";
-      id: DashboardId;
-      tabId?: DashboardTabId;
-    })
-  | (ClickBehaviorTargetBase & { type: "question"; id: CardId });
+} & (
+  | { type: "dashboard"; id: DashboardId; tabId?: DashboardTabId }
+  | { type: "question"; id: CardId }
+);
 
 const getClickBehaviorTarget = (
   clicked: ClickObject,
