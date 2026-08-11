@@ -19,13 +19,11 @@ const SHARED_UTILS_LEVELS = [
   ],
   // U1 — the api client.
   ["shared/api"],
-  // U2 — routing facade.
-  ["shared/router"],
-  // U3 — the store slices and hooks.
+  // U2 — the store slices and hooks.
   ["shared/redux"],
-  // U4 — the plugin registry, and instance settings over the api and store.
+  // U3 — the plugin registry, and instance settings over the api and store.
   ["shared/plugins", "shared/settings"],
-  // U5 — app services over the store and registry.
+  // U4 — app services over the store and registry.
   [
     "shared/selectors",
     "shared/content-translation",
@@ -34,7 +32,7 @@ const SHARED_UTILS_LEVELS = [
     "shared/archive",
     "shared/hooks",
   ],
-  // U6 — composition over the levels below.
+  // U5 — composition over the levels below.
   // The store factory composes reducers, plugin middlewares, and the router.
   ["shared/hoc", "shared/upsells", "shared/route-guards", "shared/redux-store"],
 ];
@@ -66,7 +64,6 @@ const SHARED_DOMAIN = [
   "shared/palette",
   "shared/pulse",
   "shared/rich_text_editing",
-  "shared/routes-stable-id-aware",
   "shared/static-viz",
   "shared/status",
   "shared/timelines",
