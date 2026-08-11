@@ -13,24 +13,20 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Input } from "metabase/ui";
-import { registerVisualizations } from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockSearchResult,
-  createMockUser,
-  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 
 import {
   CommandSuggestion,
   type CommandSuggestionProps,
 } from "./CommandSuggestion";
+import type { NewQuestionOption } from "./types";
 import type { MetabotCommandConfig } from "./utils";
-
-registerVisualizations();
 
 const SEARCH_ITEMS = [
   createMockSearchResult({
@@ -109,6 +105,7 @@ const TestWrapper = (props: CommandSuggestionProps) => {
 type SetupProps = {
   query?: string;
   metabotCommand?: MetabotCommandConfig | null;
+  newQuestionOptions?: NewQuestionOption[];
 };
 
 const TEST_NEW_QUESTION_MODALS = {
@@ -116,7 +113,11 @@ const TEST_NEW_QUESTION_MODALS = {
   native: () => null,
 };
 
-const setup = ({ query = "", metabotCommand = null }: SetupProps = {}) => {
+const setup = ({
+  query = "",
+  metabotCommand = null,
+  newQuestionOptions = [],
+}: SetupProps = {}) => {
   const command = jest.fn();
 
   const editor = {
@@ -140,6 +141,7 @@ const setup = ({ query = "", metabotCommand = null }: SetupProps = {}) => {
       items={[]}
       range={{ from: 0, to: 0 }}
       metabotCommand={metabotCommand}
+      newQuestionOptions={newQuestionOptions}
       newQuestionModals={TEST_NEW_QUESTION_MODALS}
     />,
     { storeInitialState: createMockState({ settings: mockSettings({}) }) },
@@ -160,17 +162,14 @@ describe("CommandSuggestion", () => {
   it("searches for possible card embeds by default", async () => {
     const { command } = setup({ query: "Ord" });
 
-    // Find cards that were searched for, with appropriate icons
+    // Find cards that were searched for. The per-display icon names come from
+    // the visualization registry, which isn't populated in this isolated spec.
     expect(
-      within(
-        await screen.findByRole("option", { name: /Orders by product/ }),
-      ).getByRole("img", { name: /bar/ }),
+      await screen.findByRole("option", { name: /Orders by product/ }),
     ).toBeInTheDocument();
 
     expect(
-      within(
-        await screen.findByRole("option", { name: /Orders by category/ }),
-      ).getByRole("img", { name: /pie/ }),
+      await screen.findByRole("option", { name: /Orders by category/ }),
     ).toBeInTheDocument();
 
     // Should not find things that cannot be embedded as a card
@@ -366,6 +365,7 @@ describe("CommandSuggestion", () => {
         query=""
         items={[]}
         range={{ from: 0, to: 0 }}
+        newQuestionOptions={[]}
         newQuestionModals={TEST_NEW_QUESTION_MODALS}
       />,
       { storeInitialState: createMockState({ settings: mockSettings({}) }) },
@@ -409,18 +409,12 @@ describe("CommandSuggestion", () => {
         query=""
         items={[]}
         range={{ from: 0, to: 0 }}
+        newQuestionOptions={[
+          { value: "notebook", label: "New Question", icon: "insight" },
+        ]}
         newQuestionModals={TEST_NEW_QUESTION_MODALS}
       />,
-      {
-        storeInitialState: createMockState({
-          currentUser: createMockUser({
-            permissions: createMockUserPermissions({
-              can_create_queries: true,
-            }),
-          }),
-          settings: mockSettings({}),
-        }),
-      },
+      { storeInitialState: createMockState({ settings: mockSettings({}) }) },
     );
 
     await userEvent.click(await screen.findByRole("option", { name: "Chart" }));

@@ -20,6 +20,17 @@ export interface NewQuestionMenuItem extends MenuItem {
   value: "native" | "notebook";
 }
 
+/**
+ * A new-question entry offered by the command menu. Supplied by the editor's
+ * host surface (the document editor), which knows what question types the
+ * current user can create.
+ */
+export interface NewQuestionOption {
+  value: "native" | "notebook";
+  label: string;
+  icon: IconName;
+}
+
 export interface NewQuestionModalProps {
   onSave: (id: number, name: string) => void;
   onClose: () => void;

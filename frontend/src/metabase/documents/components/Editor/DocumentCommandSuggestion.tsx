@@ -11,9 +11,11 @@ import { useSetting } from "metabase/settings";
 import { CreateNativeQuestionModal } from "../editor-extensions/CardEmbed/modals/CreateNativeQuestionModal";
 import { CreateStructuredQuestionModal } from "../editor-extensions/CardEmbed/modals/CreateStructuredQuestionModal";
 
+import { useNewQuestionOptions } from "./use-new-question-options";
+
 type DocumentCommandSuggestionProps = Omit<
   CommandSuggestionProps,
-  "metabotCommand" | "newQuestionModals"
+  "metabotCommand" | "newQuestionOptions" | "newQuestionModals"
 >;
 
 const NEW_QUESTION_MODALS = {
@@ -27,6 +29,7 @@ export const DocumentCommandSuggestion = forwardRef<
 >(function DocumentCommandSuggestion(props, ref) {
   const { canUseMetabot } = useUserMetabotPermissions();
   const metabotName = useSetting("metabot-name");
+  const newQuestionOptions = useNewQuestionOptions();
 
   const metabotCommand = useMemo(
     () => (canUseMetabot ? { name: metabotName } : null),
@@ -38,6 +41,7 @@ export const DocumentCommandSuggestion = forwardRef<
       {...props}
       ref={ref}
       metabotCommand={metabotCommand}
+      newQuestionOptions={newQuestionOptions}
       newQuestionModals={NEW_QUESTION_MODALS}
     />
   );
