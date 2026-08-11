@@ -9,15 +9,21 @@
 }
 
 .descriptionIcon {
+  opacity: 0;
+  transition:
+    opacity 150ms ease 300ms,
+    visibility 0s linear 300ms;
   visibility: hidden;
 }
 
 .columnName:hover .descriptionIcon {
+  opacity: 1;
   visibility: visible;
 }
 
 @media (hover: none) and (pointer: coarse) {
   .descriptionIcon {
+    opacity: 1;
     visibility: visible;
   }
 }

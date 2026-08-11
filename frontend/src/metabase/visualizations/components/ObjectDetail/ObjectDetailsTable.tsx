@@ -9,6 +9,7 @@ import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Box, Ellipsified, Icon } from "metabase/ui";
 import { displayNameForColumn } from "metabase/utils/formatting";
 import { formatValue } from "metabase/visualizations/lib/formatting";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -29,10 +30,10 @@ import S from "./ObjectDetailsTable.module.css";
 import type { OnVisualizationClickType } from "./types";
 
 export interface DetailsTableCellProps {
-  column: any;
-  value: any;
+  column: DatasetColumn;
+  value?: RowValue;
   isColumnName: boolean;
-  settings: any;
+  settings?: ComputedVisualizationSettings;
   className?: string;
   clicked?: ClickObject;
   onVisualizationClick: OnVisualizationClickType;
@@ -57,11 +58,10 @@ export function DetailsTableCell({
     columnSettings?.["_column_title_full"] || displayNameForColumn(column);
 
   if (isColumnName) {
-    const title = column !== null ? columnTitle : null;
     cellValue = (
       <span className={S.columnName}>
-        <Ellipsified lines={8}>{title}</Ellipsified>
-        {column?.description && (
+        <Ellipsified lines={8}>{columnTitle}</Ellipsified>
+        {column.description && (
           <Icon
             name="info"
             size={14}
@@ -77,11 +77,12 @@ export function DetailsTableCell({
     if (value === null || value === undefined || value === "") {
       cellValue = <span className={CS.textTertiary}>{t`Empty`}</span>;
     } else if (isa(column.semantic_type, TYPE.SerializedJSON)) {
+      const rawJson = String(value);
       let formattedJson;
       try {
-        formattedJson = JSON.stringify(JSON.parse(value), null, 2);
+        formattedJson = JSON.stringify(JSON.parse(rawJson), null, 2);
       } catch (e) {
-        formattedJson = value;
+        formattedJson = rawJson;
       }
       cellValue = (
         <pre className={QueryBuilderS.ObjectJSON}>{formattedJson}</pre>
