@@ -218,6 +218,8 @@ Editing is only available in the React SDK---there's no `<metabase-dashboard>` a
 
 Whoever's editing needs [curate access](../permissions/collections.md#curate-access) to the collection the dashboard lives in. Dashboards in the [usage analytics](../usage-and-performance-tools/usage-analytics.md) collection are always read-only, whatever the permissions say.
 
+When someone adds a new question to a dashboard, `EditableDashboard` opens the query builder. To narrow what they can query, pass `dataPickerProps` with the entity types you want in the data picker. For example, `dataPickerProps={{ entityTypes: ["model"] }}` limits people to [models](../data-modeling/models.md), so they build on your curated data rather than on raw tables.
+
 For the full list of props, see [`EditableDashboard` props](./dashboard-reference.md#editabledashboard-props).
 
 ## Let people create dashboards
@@ -297,7 +299,7 @@ Embeds with **SSO** don't need to lock filters. Since Metabase knows who's viewi
 
 You can set a dashboard's filter values from your app, and keep your app in sync as people change them. Set the values once on load, or hold the values in your app and get a callback whenever they change.
 
-For both the SDK props (`initialParameters`, `parameters`, and `onParametersChange`) and the web component equivalents, see [Modular embedding parameters](./parameters.md#pass-parameter-values-to-a-dashboard).
+For the SDK props (`initialParameters`, `parameters`, and `onParametersChange`), see [Pass parameter values to a dashboard](./parameters.md#pass-parameter-values-to-a-dashboard). For the web component equivalents, see [Pass parameter values to embedded components](./parameters.md#pass-parameter-values-to-embedded-components).
 
 ### Hide a filter
 
@@ -328,7 +330,7 @@ Metabase only shows the subscriptions button when all of these are true:
 - The embed is an authenticated (SSO) embed. Guest embeds don't get subscriptions.
 - The dashboard has at least one card that isn't a text or heading card.
 
-Whoever's viewing also needs [collection permissions](../permissions/collections.md) for the collection that holds the dashboard, and the [Subscriptions and alerts](../permissions/application.md#subscriptions-and-alerts) application permission to create one.
+Whoever's viewing also needs [collection permissions](../permissions/collections.md) for the collection that holds the dashboard, and the [Subscriptions and alerts](../permissions/application.md#subscriptions-and-alerts) application permission to create one. Metabase grants that application permission to the All Users group by default, so admins have to set it to **No** to take it away.
 
 Subscriptions sent from an embedded dashboard exclude links to Metabase items.
 
@@ -358,6 +360,7 @@ Each refresh re-queries your database, so pick an interval your database can kee
 You can theme an embedded dashboard and toggle parts of its UI. For the full set of theming options, see [Appearance](./appearance.md). For every attribute and prop, see the [Dashboard component reference](./dashboard-reference.md).
 
 - **Title**: show or hide the dashboard title with `with-title` (web component) or `withTitle` (SDK).
+- **Card titles**: show or hide the title on each card with `withCardTitle` (SDK only).
 - **Downloads**: show or hide the button that downloads the dashboard as a PDF, plus the download buttons on each card's results, with `with-downloads` / `withDownloads`. Defaults to `true` on OSS/Starter and `false` on Pro/Enterprise. Disabling downloads requires a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
 - **Height**: dashboard components fill the height of their container (`min-height: 100%`). Override that with the `style` or `className` props:
 

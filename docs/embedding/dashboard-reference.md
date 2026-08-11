@@ -102,13 +102,7 @@ It takes either a config object or a function returning a React element.
 | `withEditLink`  | Shows or hides the link to edit the question.                                                                          |
 | `customItems`   | Your own menu items. Each element is either an item object or a function that receives `{ question }` and returns one. |
 
-Here's the default configuration:
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-base-1" %}
-```
-
-Pass it to a dashboard component through the `plugins` prop:
+Pass it to a dashboard component through the `plugins` prop. Here it is with its default values:
 
 ```typescript
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-base-2" %}

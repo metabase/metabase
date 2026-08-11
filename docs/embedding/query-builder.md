@@ -86,6 +86,8 @@ With the SDK, you can build your own layout out of the namespaced components ins
 
 - [Embed a chart](./chart.md)
 - [Question component reference](./question-reference.md)
+- [Embed a dashboard](./dashboard.md)
+- [Dashboard component reference](./dashboard-reference.md)
 - [Modular embedding](./modular-embedding.md)
 - [Modular embedding SDK](./sdk/introduction.md)
 - [Modular embedding components](./components.md)
