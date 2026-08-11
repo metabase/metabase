@@ -170,14 +170,14 @@ export function createWaitForResizeToStopDecorator(timeoutMs: number = 1000) {
  * of hanging.
  */
 export function createWaitForChartsDecorator({
-  count,
+  count = 1,
   settleMs = 1000,
   timeoutMs = 20000,
 }: {
-  count: number;
+  count?: number;
   settleMs?: number;
   timeoutMs?: number;
-}) {
+} = {}) {
   return function WaitForChartsDecorator(Story: ComponentType) {
     const asyncCallback = useMemo(() => createAsyncCallback(), []);
 
@@ -196,12 +196,21 @@ export function createWaitForChartsDecorator({
       };
 
       const poll = () => {
-        const renderedCount = document.querySelectorAll(
+        // Wait until the cards have mounted (`visualization-root`) AND none is
+        // still showing its loading skeleton (`loading-indicator`). React 19
+        // defers the lazy ECharts chunk past a fixed settle, so a card can hold
+        // a skeleton well after its root mounts. Gating on the skeletons being
+        // gone keeps Loki from snapshotting a half-painted chart, and works for
+        // multi-card dashboards where the exact chart count is unknown.
+        const mountedCount = document.querySelectorAll(
           '[data-testid="visualization-root"]',
+        ).length;
+        const stillLoading = document.querySelectorAll(
+          '[data-testid="loading-indicator"]',
         ).length;
         const timedOut = Date.now() - startedAt > timeoutMs;
 
-        if (renderedCount >= count || timedOut) {
+        if ((mountedCount >= count && stillLoading === 0) || timedOut) {
           settleTimer = setTimeout(resolve, settleMs);
           return;
         }
