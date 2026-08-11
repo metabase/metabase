@@ -131,8 +131,10 @@
           (let [arch-var     (ns-resolve 'metabase-enterprise.embedder.catalog 'architecture)
                 without-arch (update spec :architectures dissoc ((var-get arch-var)))]
             (with-redefs-fn {model-spec-var (constantly without-arch)}
-              #(is (thrown-with-msg? clojure.lang.ExceptionInfo #"no artifact for architecture"
-                                     (embeddings.provider/resolve-model requested-model))
+              ;; Assert the :reason, not just the message: callers branch on it.
+              #(is (= :architecture-not-bundled
+                      (:reason (ex-data (try (embeddings.provider/resolve-model requested-model)
+                                             (catch clojure.lang.ExceptionInfo e e)))))
                    "a catalog entry missing this architecture's export fails instead of hashing nil"))))
         (let [libc-var        (ns-resolve 'metabase-enterprise.embedder.catalog 'linux-libc)
               os-var          (ns-resolve 'metabase-enterprise.embedder.catalog 'operating-system)
