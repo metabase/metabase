@@ -41,11 +41,11 @@ function Home() {
   );
 }
 
-function Deep() {
+function RelativeLinkPage() {
   const { pathname } = useLocation();
   return (
     <div>
-      <span data-testid="deep-location">{pathname}</span>
+      <span data-testid="relative-link-location">{pathname}</span>
       {/* An explicit `..` asks for route-relative resolution on purpose. */}
       <Link to="..">up</Link>
     </div>
@@ -58,7 +58,7 @@ const tree = (
     {/* Nested two levels deep on purpose: at depth 1 the parent is the root,
         so "/.." and ".." both land on "/" and the test would pass either way. */}
     <Route path="section" element={<Outlet />}>
-      <Route path="child" element={<Deep />} />
+      <Route path="child" element={<RelativeLinkPage />} />
     </Route>
   </Route>
 );
@@ -186,7 +186,7 @@ describe("Link", () => {
       initialRoute: "/section/child",
     });
 
-    await screen.findByTestId("deep-location");
+    await screen.findByTestId("relative-link-location");
 
     // Anchoring would turn ".." into "/..", which resolves to "/" — a silent
     // navigation to the app root instead of one level up.
