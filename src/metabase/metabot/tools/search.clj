@@ -45,11 +45,19 @@
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
-  [{:keys [verified moderated_status collection official_collection data_authority curated data_layer can_write]
+  [{:keys [verified moderated_status collection collection_authority_level data_authority curated data_layer can_write]
     :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
-        official? (boolean official_collection)
+        ;; `collection_authority_level` is the only authority signal every model carries: on a card /
+        ;; dashboard / document row it's the *parent* collection's level, and on a collection row it's
+        ;; the collection's own. Don't read `official_collection` (cards and dashboards define it, but
+        ;; collections and documents don't) and don't read the nested `:collection` map either —
+        ;; `search.impl/serialize` overwrites that with the *effective parent* for collection rows, so
+        ;; it answers a different question and arrives keywordized. `name` because the index column is
+        ;; a string but the hydrated parent is a keyword.
+        authority-level (some-> collection_authority_level name)
+        official? (= "official" authority-level)
         collection-info (select-keys collection [:id :name :authority_level])
         common-fields {:id                  (:id result)
                        :type                (metabot.search-models/search-model->entity-type model)
@@ -66,13 +74,12 @@
       "collection"
       ;; A collection has no database/base-table; surface its own curation level and parent location.
       ;; `:is_container true` marks it (like dashboards) as a thing the LLM drills *into* rather than
-      ;; queries directly. `:authority_level` is the collection's own curation level (a collection's
-      ;; authority lives on the collection row itself, not a parent), distinct from `:official?`
-      ;; which is derived from `official_collection`.
+      ;; queries directly. For a collection row `authority-level` is the collection's own level, so
+      ;; here `:official` means "this collection is official" rather than "it sits in one".
       (-> common-fields
           (merge {:official        official?
                   :is_container    true})
-          (m/assoc-some :authority_level (:authority_level result)
+          (m/assoc-some :authority_level authority-level
                         :location        (:location result)))
 
       "table"

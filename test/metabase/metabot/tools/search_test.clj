@@ -13,6 +13,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search-core]
    [metabase.search.engine :as search.engine]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -91,11 +92,11 @@
               :name                "Gold"
               :database_id         1
               :table_schema        "public"
-              :curated             true
-              :official_collection true
-              :data_authority      "authoritative"
-              :data_layer          "final"
-              :collection          {:id 3 :name "Official" :authority_level "official"}})))))
+              :curated                    true
+              :collection_authority_level "official"
+              :data_authority             "authoritative"
+              :data_layer                 "final"
+              :collection                 {:id 3 :name "Official" :authority_level "official"}})))))
 
 (deftest ^:parallel search-result-xml-renders-curation-signals-test
   (testing "the XML the LLM actually sees carries curated/data_layer/data_authority for a table result —
@@ -107,11 +108,11 @@
                    :name                "Gold"
                    :database_id         1
                    :table_schema        "public"
-                   :curated             true
-                   :official_collection true
-                   :data_authority      "authoritative"
-                   :data_layer          "final"
-                   :collection          {:id 3 :name "Official" :authority_level "official"}})
+                   :curated                    true
+                   :collection_authority_level "official"
+                   :data_authority             "authoritative"
+                   :data_layer                 "final"
+                   :collection                 {:id 3 :name "Official" :authority_level "official"}})
           xml    (llm-shape/search-result->xml result)]
       (is (str/includes? xml "is_curated=\"true\""))
       (is (str/includes? xml "is_official=\"true\""))
@@ -167,7 +168,7 @@
                   :description "Dashboard desc"
                   :verified false
                   :can_write false
-                  :official_collection true
+                  :collection_authority_level "official"
                   :collection {:id 10 :name "Finance" :authority_level "official"}
                   :updated_at "2024-01-03"
                   :created_at "2024-01-03"}
@@ -187,14 +188,14 @@
 
 (deftest ^:parallel postprocess-document-search-result-test
   (testing "document result postprocessing"
-    (let [result   {:model               "document"
-                    :id                  8
-                    :name                "Quarterly plan"
-                    :can_write           false
-                    :official_collection true
-                    :collection          {:id 10 :name "Finance" :authority_level "official"}
-                    :updated_at          "2024-01-03"
-                    :created_at          "2024-01-02"}
+    (let [result   {:model                      "document"
+                    :id                         8
+                    :name                       "Quarterly plan"
+                    :can_write                  false
+                    :collection_authority_level "official"
+                    :collection                 {:id 10 :name "Finance" :authority_level "official"}
+                    :updated_at                 "2024-01-03"
+                    :created_at                 "2024-01-02"}
           expected {:id                  8
                     :type                "document"
                     :name                "Quarterly plan"
@@ -275,9 +276,8 @@
                   :id 7
                   :name "Marketing"
                   :description "Marketing collection"
-                  :authority_level "official"
+                  :collection_authority_level "official"
                   :location "/"
-                  :official_collection true
                   :updated_at "2024-01-07"
                   :created_at "2024-01-07"}
         expected {:id 7
@@ -427,6 +427,32 @@
                           (filter (fn [{:keys [id type]}] (and (= "dashboard" type) (contains? test-dashboard-ids id))))
                           (map :name)
                           (set)))))))))))
+
+(deftest official-flag-end-to-end-test
+  ;; Runs the real pipeline rather than a hand-written row, because the `official` regression this
+  ;; guards was invisible to unit fixtures: they fed a shape (`official_collection` / a top-level
+  ;; `authority_level`) that the pipeline never actually produces.
+  (testing "is_official is derived from the shape a real search returns"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-test-user :crowberto
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Collection {off-id :id} {:name            "Zx9OfficialColl"
+                                                         :authority_level "official"}
+                         :model/Collection {plain-id :id} {:name "Zx9PlainColl"}
+                         :model/Card      {card-id :id}  {:name "Zx9Card" :collection_id off-id}
+                         :model/Document  {doc-id :id}   {:name "Zx9Doc"  :collection_id off-id}]
+            (let [by-id (->> (search/search {:query        "Zx9"
+                                             :entity-types ["collection" "question" "document"]})
+                             (map (juxt :id identity))
+                             (into {}))]
+              (testing "a collection reports its *own* authority, not its parent's"
+                (is (=? {:official true :authority_level "official" :is_container true}
+                        (by-id off-id)))
+                (is (=? {:official false} (by-id plain-id))))
+              (testing "items inside an official collection inherit the flag"
+                (is (=? {:official true} (by-id card-id)))
+                (testing "including documents, whose spec has no official_collection attr"
+                  (is (=? {:official true} (by-id doc-id))))))))))))
 
 (deftest document-search-test
   (testing "search can discover documents by name"
