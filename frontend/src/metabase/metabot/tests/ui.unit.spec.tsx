@@ -11,7 +11,7 @@ import {
 import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
 import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import { metabotActions } from "metabase/metabot/state";
+import { type MetabotState, metabotActions } from "metabase/metabot/state";
 import {
   createConversation,
   getMetabotInitialState,
@@ -515,6 +515,10 @@ describe("metabot > ui", () => {
   });
 
   describe("conversation history", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     it("lists past conversations when opened, falling back to a placeholder for untitled ones", async () => {
       setup({
         conversations: [
@@ -590,8 +594,9 @@ describe("metabot > ui", () => {
 
     const PAST_CONVERSATION_ID = "11111111-1111-1111-1111-111111111111";
 
-    const setupWithPastConversation = () => {
+    const setupWithPastConversation = (metabotInitialState?: MetabotState) => {
       setup({
+        metabotInitialState,
         conversations: [
           createMockMetabotConversation({
             conversation_id: PAST_CONVERSATION_ID,
@@ -649,6 +654,45 @@ describe("metabot > ui", () => {
           ),
         ).toHaveLength(1);
       });
+    });
+
+    it("positions a loaded conversation before the next frame", async () => {
+      jest.spyOn(window, "requestAnimationFrame").mockReturnValue(1);
+      jest
+        .spyOn(HTMLElement.prototype, "scrollHeight", "get")
+        .mockReturnValue(800);
+      setupWithPastConversation(
+        assocIn(
+          getMetabotInitialState(),
+          ["conversations", "omnibot"],
+          createConversation("omnibot", {
+            visible: true,
+            messages: [
+              {
+                id: "current-user",
+                role: "user",
+                type: "text",
+                message: "Current question",
+              },
+              {
+                id: "current-agent",
+                role: "agent",
+                type: "text",
+                message: "Current answer",
+              },
+            ],
+          }),
+        ),
+      );
+      const previousMessages = await screen.findByTestId(
+        "metabot-chat-messages",
+      );
+      previousMessages.scrollTop = 100;
+
+      await selectPastConversation();
+      await screen.findByText("There are 42 orders.");
+
+      expect(screen.getByTestId("metabot-chat-messages").scrollTop).toBe(800);
     });
 
     it("continues the loaded conversation when a new message is submitted", async () => {
