@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-08-11T09:00:00
+      author: kelvin
+      comment: Add embedding_theme.is_default to distinguish seeded themes from user-created ones
+      changes:
+        - addColumn:
+            tableName: embedding_theme
+            columns:
+              - column:
+                  name: is_default
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True for the Light/Dark themes Metabase seeds on first visit to the themes page. Nothing else can tell them apart - names are stored translated, and seeding is lazy so ids are not ordered. Existing rows are deliberately left false, so instances that already have themes count them as user-created.
+                  constraints:
+                    nullable: false
