@@ -2,8 +2,6 @@
 // MUST be imported BEFORE `react` and `react-dom`
 import "metabase-dev";
 
-import _ from "underscore";
-
 import { Api } from "metabase/api";
 import { PLUGIN_API, api } from "metabase/api/client";
 import { init } from "metabase/app";
@@ -47,7 +45,7 @@ init(mainReducers, getRoutes, (store) => {
     // is `/auth/login/password` instead of `/auth/login`.
     // So if call to api when signing in fails, let’s stay in the current page.
     // Otherwise it will always redirect us to the Google auth interaction.
-    if (_.contains(["/api/session", "/api/session/"], url)) {
+    if (["/api/session", "/api/session/"].includes(url)) {
       return;
     }
 
@@ -65,7 +63,7 @@ init(mainReducers, getRoutes, (store) => {
   // received a 403 response
   api.on(403, (url) => {
     if (NOT_AUTHORIZED_TRIGGERS.some((regex) => regex.test(url))) {
-      return store.dispatch(setErrorPage({ status: 403 }));
+      store.dispatch(setErrorPage({ status: 403 }));
     }
   });
 });

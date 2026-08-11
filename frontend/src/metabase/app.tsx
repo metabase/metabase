@@ -23,6 +23,7 @@ import "metabase/plugins/builtin";
 // Set CSP nonce for dynamic style injection (e.g. CodeMirror)
 import "metabase/utils/csp";
 
+import { type Middleware, isAction } from "@reduxjs/toolkit";
 import { DragDropContextProvider } from "react-dnd";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
@@ -37,7 +38,13 @@ import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-e
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { MetabaseReduxProvider } from "metabase/redux";
-import { LOCATION_CHANGE } from "metabase/router";
+import {
+  LOCATION_CHANGE,
+  type Location,
+  type RouteObject,
+  RouterProvider,
+  createLocationMirror,
+} from "metabase/router";
 import { getUserId } from "metabase/selectors/user";
 import { refetchSiteSettings } from "metabase/settings";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
@@ -50,7 +57,6 @@ import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import MetabaseSettings from "metabase/utils/settings";
 import { registerVisualizations } from "metabase/visualizations/register";
 
-import { RouterProvider, createLocationMirror } from "./router";
 import { getStore } from "./store";
 import { OverlayStackProvider } from "./ui/components/overlays/overlay-stack";
 
@@ -58,17 +64,29 @@ setBasename(window.MetabaseRoot);
 
 initializePlugins();
 
-function _init(reducers, getRoutes, callback) {
+type Store = ReturnType<typeof getStore>;
+
+function isLocationChangeAction(
+  action: unknown,
+): action is { type: typeof LOCATION_CHANGE; payload?: Location } {
+  return isAction(action) && action.type === LOCATION_CHANGE;
+}
+
+function _init(
+  reducers: Parameters<typeof getStore>[0],
+  getRoutes: (store: Store) => RouteObject[],
+  callback?: (store: Store) => void,
+) {
   // Initialize distributed tracing if enabled via MB_TRACING_ENABLED.
   // Uses bootstrap data so it's available before the first API call.
-  const extraMiddlewares = [];
+  const extraMiddlewares: Middleware[] = [];
   if (window.MetabaseBootstrap?.["tracing-enabled"]) {
     initTracing();
     // Rotate trace ID on route changes so all API calls within a single page
     // view share one trace. The router emits LOCATION_CHANGE on navigation.
-    let lastPathname;
+    let lastPathname: string | undefined;
     extraMiddlewares.push(() => (next) => (action) => {
-      if (action?.type === LOCATION_CHANGE) {
+      if (isLocationChangeAction(action)) {
         const pathname = action.payload?.pathname;
         if (pathname !== lastPathname) {
           lastPathname = pathname;
@@ -90,7 +108,12 @@ function _init(reducers, getRoutes, callback) {
 
   initializeInteractiveEmbedding(store.dispatch);
 
-  const root = createRoot(document.getElementById("root"));
+  const rootElement = document.getElementById("root");
+  if (!rootElement) {
+    console.error("no #root element found");
+    return;
+  }
+  const root = createRoot(rootElement);
 
   root.render(
     <MetabaseReduxProvider store={store}>
@@ -134,7 +157,7 @@ function _init(reducers, getRoutes, callback) {
   }
 }
 
-export function init(...args) {
+export function init(...args: Parameters<typeof _init>) {
   if (document.readyState !== "loading") {
     _init(...args);
   } else {
