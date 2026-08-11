@@ -82,16 +82,21 @@
                             (semantic.settings/ee-embedding-provider! invalid-value))))))
 
 (deftest prefix-search-query-test
-  (let [arctic {:provider "ai-service" :model-name "Snowflake/snowflake-arctic-embed-l-v2.0" :vector-dimensions 1024}
-        openai {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 1536}]
+  (let [arctic-v2 {:provider "ai-service" :model-name "Snowflake/snowflake-arctic-embed-l-v2.0" :vector-dimensions 1024}
+        arctic-v1 {:provider "in-process" :model-name "Snowflake/snowflake-arctic-embed-xs" :vector-dimensions 384}
+        openai    {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 1536}]
     (mt/with-temporary-setting-values [ee-embedding-query-prefix nil]
-      (testing "arctic-family models get the `query: ` prefix by default"
-        (is (= "query: hello" (embedding/prefix-search-query arctic "hello"))))
+      (testing "v1.5+ arctic-family models get the `query: ` prefix by default"
+        (is (= "query: hello" (embedding/prefix-search-query arctic-v2 "hello"))))
+      (testing "v1 arctic-family models get the longer CQE-style prefix, not `query: `"
+        (is (= "Represent this sentence for searching relevant passages: hello"
+               (embedding/prefix-search-query arctic-v1 "hello"))))
       (testing "models without a known family default are left unprefixed"
         (is (= "hello" (embedding/prefix-search-query openai "hello")))))
     (testing "the setting overrides the model-family default, verbatim"
       (mt/with-temporary-setting-values [ee-embedding-query-prefix "search_query: "]
-        (is (= "search_query: hello" (embedding/prefix-search-query arctic "hello")))
+        (is (= "search_query: hello" (embedding/prefix-search-query arctic-v2 "hello")))
+        (is (= "search_query: hello" (embedding/prefix-search-query arctic-v1 "hello")))
         (is (= "search_query: hello" (embedding/prefix-search-query openai "hello")))))))
 
 (deftest test-openai-provider-validation

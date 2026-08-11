@@ -654,7 +654,11 @@
   ;; Patterns must be mutually exclusive: lookup scans entries in unspecified order.
   ;; Keep patterns narrow: a false positive is unfixable without a code change, since the
   ;; `ee-embedding-query-prefix` setting can only replace a matched prefix, never suppress it.
-  {#"(?i)snowflake-arctic-embed" "query: "})
+  ;; The v1 family (bundled xs, s, m, l with no version suffix) switched to the short "query: " prefix
+  ;; only from v1.5 onward; v1 models still expect the original CQE-style instruction.
+  ;; The second pattern requires an explicit "-vN" segment so it can't also match a bare v1 name.
+  {#"(?i)snowflake-arctic-embed-(xs|s|m|l)$"    "Represent this sentence for searching relevant passages: "
+   #"(?i)snowflake-arctic-embed-\w+-v\d"        "query: "})
 
 (defn- default-query-prefix
   [model-name]
