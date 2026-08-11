@@ -40,6 +40,8 @@
     FROM ( SELECT * FROM some_table ) __mb_source"
   "__mb_source")
 
+;; TODO (Cam 2026-08-11) "Inner query" is MBQL 4 terminology, since we're using MBQL 5 now, rename this to `stage` and
+;; rename all the `inner-query` function args & local variables to `stage` as well
 (def ^:dynamic *inner-query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
@@ -1600,10 +1602,16 @@
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
 (defn- aggregation-name
-  [inner-query ag-clause]
+  [_inner-query ag-clause]
   (or (::add/desired-alias (lib/options ag-clause))
       (:name (lib/options ag-clause))
-      (lib/column-name inner-query ag-clause)))
+      ;; TODO (Cam 2026-08-11) this won't work because [[lib/column-name]] takes a top-level query, not
+      ;; an "inner-query" (stage), so I'm commenting it out for now. Fortunately things must still be working even
+      ;; without this fallback.
+      ;;
+      ;; Once we update this code to take query + stage-number we should use [[driver-api/mbql-5-aggregation-name]]
+      ;; directly since it has basically the same logic
+      #_(lib/column-name inner-query ag-clause)))
 
 (defmethod apply-top-level-clause [:sql :aggregation]
   [driver _top-level-clause honeysql-form {aggregations :aggregation, :as inner-query}]

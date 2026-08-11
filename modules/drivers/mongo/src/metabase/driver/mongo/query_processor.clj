@@ -201,29 +201,32 @@
   "Compiled pipeline query. Note that this is actually a subset of `:metabase.query-processor.compile/compiled`.
 
   This is also the schema for the value of `:native` in a MBQL stage for MongoDB."
-  [:map
-   {:closed true} ; we should document anything else we add here.
-   [:projections {:optional true} [:maybe ::projections]]
-   [:query       ::pipeline]
-   ;; TODO (Cam 2026-07-17) it's not really clear if `:collection` is supposed to be in the top-level of the stage e.g.
-   ;;
-   ;;    {:lib/type :mbql.stage/native, :collection "X", :native {...}}
-   ;;
-   ;; or within `:native` e.g.
-   ;;
-   ;;    {:lib/type :mbql.stage/native, :native {:collection "X", ...}}
-   ;;
-   ;; [[metabase.query-processor.middleware.fetch-source-query/fix-mongodb-first-stage]] seems to put it in `:native`
-   ;; itself but the [[metabase.driver/execute-reducible-query]] implementation for
-   ;; MongoDB (in [[metabase.driver.mongo]]) assumes it's in the top level.
-   ;;
-   ;; I'm not clear where the FE sets it either.
-   ;;
-   ;; Let's standardize on one or the other and update the Lib schema to enforce the key being in the right
-   ;; place (normalizing if needed).
-   [:collection {:optional true} :string]
-   ;; whether this was compiled from MBQL or not (`false` means the query was native and never compiled from MBQL)
-   [:mbql? {:optional true} [:maybe :boolean]]])
+  [:merge
+   ;; `:query` (native) and `:params` (like JDBC params; empty for MongoDB)
+   [:ref :metabase.query-processor.compile/compiled]
+   [:map
+    {:closed true} ; we should document anything else we add here.
+    [:projections {:optional true} [:maybe ::projections]]
+    [:query       ::pipeline]
+    ;; TODO (Cam 2026-07-17) it's not really clear if `:collection` is supposed to be in the top-level of the stage e.g.
+    ;;
+    ;;    {:lib/type :mbql.stage/native, :collection "X", :native {...}}
+    ;;
+    ;; or within `:native` e.g.
+    ;;
+    ;;    {:lib/type :mbql.stage/native, :native {:collection "X", ...}}
+    ;;
+    ;; [[metabase.query-processor.middleware.fetch-source-query/fix-mongodb-first-stage]] seems to put it in `:native`
+    ;; itself but the [[metabase.driver/execute-reducible-query]] implementation for
+    ;; MongoDB (in [[metabase.driver.mongo]]) assumes it's in the top level.
+    ;;
+    ;; I'm not clear where the FE sets it either.
+    ;;
+    ;; Let's standardize on one or the other and update the Lib schema to enforce the key being in the right
+    ;; place (normalizing if needed).
+    [:collection {:optional true} :string]
+    ;; whether this was compiled from MBQL or not (`false` means the query was native and never compiled from MBQL)
+    [:mbql? {:optional true} [:maybe :boolean]]]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    QP Impl                                                     |
@@ -253,15 +256,27 @@
   the same join alias.
   Note that during the compilation of joins, the field :join-alias is renamed to ::join-local to prevent prefixing the
   fields of the current join to be prefixed with the join alias."
-  [[_ opts field-id :as _field-ref] :- :mbql.clause/field]
-  (some (fn [[a-ref mapped-name]]
-          (when (and (vector? a-ref)
-                     (= (first a-ref) :field)
-                     (= (last a-ref) field-id)
-                     (= (:join-alias (lib/options a-ref)) (:join-alias opts))
-                     (= (::join-local (lib/options a-ref)) (::join-local opts)))
-            mapped-name))
-        *field-mappings*))
+  [[_ opts field-id :as field-ref] :- :mbql.clause/field]
+  (letfn [(lib-match? [a-ref]
+            (and (lib.equality/= a-ref field-ref)
+                 (= (::join-local (lib/options a-ref)) (::join-local opts))))
+          ;; TODO (Cam 2026-08-11) Riley pointed out that this check is probably wrong if we have two breakouts on the
+          ;; same field (e.g. with different temporal units), altho this is the old behavior from the pre-MBQL 5
+          ;; version of the MongoDB driver and somehow things still worked... I'm leaving it in place for now because
+          ;; I don't fully understand what's going on here, maybe we're mapping multiple breakouts on the same field
+          ;; to the same thing anyway
+          (fallback-match? [a-ref]
+            (and (vector? a-ref)
+                 (= (first a-ref) :field)
+                 (= (last a-ref) field-id)
+                 (= (:join-alias (lib/options a-ref)) (:join-alias opts))
+                 (= (::join-local (lib/options a-ref)) (::join-local opts))))
+          (matching-name [match?]
+            (some (fn [[a-ref mapped-name]]
+                    (when (match? a-ref)
+                      mapped-name))
+                  *field-mappings*))]
+    (some matching-name [lib-match? fallback-match?])))
 
 (defn- get-join-alias
   "Calculates the name of the join field used for `join-alias`, if any.
@@ -676,13 +691,16 @@ function(bin) {
    [_ _opts t unit] :- [:or :mbql.clause/absolute-datetime :mbql.clause/time]]
   (let [report-zone (t/zone-id (or (driver-api/report-timezone-id-if-supported :mongo (driver-api/database metadata-providerable))
                                    "UTC"))
-        t           (condp = (class t)
-                      java.time.LocalDate      t
-                      java.time.LocalTime      t
-                      java.time.LocalDateTime  t
-                      java.time.OffsetTime     (t/offset-time t report-zone)
-                      java.time.OffsetDateTime (t/offset-date-time t report-zone)
-                      java.time.ZonedDateTime  (t/offset-date-time t report-zone))]
+        normalize-t (fn [t]
+                      (condp = (class t)
+                        String                   (recur (u.date/parse t))
+                        java.time.LocalDate      t
+                        java.time.LocalTime      t
+                        java.time.LocalDateTime  t
+                        java.time.OffsetTime     (t/offset-time t report-zone)
+                        java.time.OffsetDateTime (t/offset-date-time t report-zone)
+                        java.time.ZonedDateTime  (t/offset-date-time t report-zone)))
+        t           (normalize-t t)]
     (letfn [(extract [unit]
               (u.date/extract t unit))
             (bucket [unit]
@@ -1469,6 +1487,9 @@ function(bin) {
                                   (update-keys #(lib/update-options % assoc ::join-local join-alias)))
         ;; Find the fields the join condition refers to that are not coming from the joined query.
         ;; These have to be bound in the :let property of the $lookup stage, they cannot be referred to directly.
+        ;;
+        ;; TODO (Riley 2026-08-11) Existing issue but I think we should include `:expressions` here too, joining with
+        ;; a custom expression as the LHS fails with mongo but works with postgres
         own-fields (match/match-many conditions
                      [:field (opts :guard (not= (:join-alias opts) join-alias)) _id-or-name] &match)
         ;; Map the own fields to a fresh alias and to its rvalue.
@@ -1492,7 +1513,10 @@ function(bin) {
                                       source-field-mappings
                                       (into {} (map (juxt :field :$alias)) mapping))]
       (let [filters   (localize-join-alias conditions join-alias)
-            pipeline  (-> (handle-filters query -1 {:query pipeline} filters)
+            ;; TODO (Cam 2026-08-11) not clear whether this should be `query` + `stage-number` here or `join-query` +
+            ;; `-1` (for the last stage of the join?). Need to wrap my head around what's going on and then write a
+            ;; note here to clarify.
+            pipeline  (-> (handle-filters query stage-number {:query pipeline} filters)
                           :query)
             lookup-as (get-join-alias join-alias)
             stages    [{$lookup {:from     (find-source-collection query join)
@@ -1554,7 +1578,7 @@ function(bin) {
                   :else 0}}}
 
     [:count-where _opts pred]
-    (&recur (lib/sum-where (lib/value {:effective-type :type/Integer} 1) pred))
+    (&recur (lib/sum-where (lib/value 1) pred))
 
     _
     (throw
@@ -1579,8 +1603,9 @@ function(bin) {
   (let [breakouts    (lib/breakouts query stage-number)
         aggregations (lib/aggregations query stage-number)]
     (concat
-     (for [field-or-expr breakouts]
-       [(field-alias query stage-number field-or-expr) (format "$_id.%s" (field-alias query stage-number field-or-expr))])
+     (for [field-or-expr breakouts
+           :let [field-alias (field-alias query stage-number field-or-expr)]]
+       [field-alias (format "$_id.%s" (field-alias query stage-number field-or-expr))])
      (for [ag-ref aggregations
            :let   [ag-name (driver-api/mbql-5-aggregation-name query stage-number ag-ref)]]
        [ag-name true]))))
@@ -1629,7 +1654,7 @@ function(bin) {
   (let [count-where-expr (name (gensym "$count-where-"))
         count-expr       (name (gensym "$count-"))
         pred             (if (= (first pred) :share)
-                           (second pred)
+                           (nth pred 2)
                            pred)]
     {:group {(subs count-where-expr 1) (aggregation->rvalue query stage-number (lib/count-where pred))
              (subs count-expr 1)       (aggregation->rvalue query stage-number (lib/count))}
@@ -1768,6 +1793,10 @@ function(bin) {
     [(perf/postwalk (fn [x]
                       (if (and (string? x)
                                (distinct-vals x))
+                        ;; TODO (Cam 2026-08-11) sort of icky to be generating random UUIDs like this just to make
+                        ;; Malli schema validation happy, and as Riley pointed out we construct clauses like this in a
+                        ;; bunch of places in the SQL MBQL 5 QP code as well, we should write a Lib helper function
+                        ;; for making clauses this way.
                         [::size {:lib/uuid (str (random-uuid))} x]
                         x))
                     aggr-expr)
@@ -2191,30 +2220,18 @@ function(bin) {
 (mu/defn parse-query-string :- ::pipeline
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
   [^String s :- :string]
-  (let [query (try
-                ;; Only way to parse _ejson array_ using bson library is through `BsonArray/parse`. That results in
-                ;; sequence of `org.bson.BsonDocument`s. Currently `org.bson.Document` fits our needs better as it (1)
-                ;; implements `Map` and (2) converts `BsonValue`s to java types.
-                (mapv (fn [^org.bson.BsonValue v]
-                        (-> v .asDocument .toJson org.bson.Document/parse))
-                      (org.bson.BsonArray/parse s))
-                (catch Throwable e
-                  (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
-                                  {:type  driver-api/qp.error-type.invalid-query
-                                   :query s}
-                                  e))))]
-    query
-    #_(u/prog1 (perf/postwalk
-                (letfn [(bson-map->clj [m]
-                          (into (ordered-map/ordered-map) m))
-                        (bson-map? [x]
-                          (and (instance? java.util.Map x)
-                               (not (map? x))))]
-                  (fn [x]
-                    (cond-> x
-                      (bson-map? x) bson-map->clj)))
-                query)
-        (def %query <>))))
+  (try
+    ;; Only way to parse _ejson array_ using bson library is through `BsonArray/parse`. That results in
+    ;; sequence of `org.bson.BsonDocument`s. Currently `org.bson.Document` fits our needs better as it (1)
+    ;; implements `Map` and (2) converts `BsonValue`s to java types.
+    (mapv (fn [^org.bson.BsonValue v]
+            (-> v .asDocument .toJson org.bson.Document/parse))
+          (org.bson.BsonArray/parse s))
+    (catch Throwable e
+      (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
+                      {:type  driver-api/qp.error-type.invalid-query
+                       :query s}
+                      e)))))
 
 (mu/defn- mbql->native-rec :- ::compiled-pipeline
   "Compile an MBQL 5 query."
@@ -2331,15 +2348,14 @@ function(bin) {
       (driver-api/add-alias-info {:globally-unique-join-aliases? true})
       HACK-update-aliases))
 
-(mr/def ::compiled
+(mr/def ::compiled-pipeline-with-collection
+  "This is the same as `::compiled-pipeline` but `:collection` is required."
   [:merge
-   :metabase.query-processor.compile/compiled
+   [:ref ::compiled-pipeline]
    [:map
-    [:collection  :string]
-    [:projections {:optional true} [:ref ::projections]]
-    [:mbql?       {:optional true} :boolean]]])
+    [:collection :string]]])
 
-(mu/defn mbql->native :- ::compiled
+(mu/defn mbql->native :- ::compiled-pipeline-with-collection
   "Compile an MBQL query."
   [query :- ::lib.schema/query]
   (let [query (preprocess query)]

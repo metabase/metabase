@@ -83,7 +83,7 @@
                                [:unescaped [:maybe [:sequential :string]]]]
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
   thr query result metadata."
-  [{:keys [mbql? projections]} :- ::mongo.qp/compiled
+  [{:keys [mbql? projections]} :- ::mongo.qp/compiled-pipeline-with-collection
    query
    first-row-col-names]
   ;; some of the columns may or may not come back in every row, because of course with mongo some key can be missing.

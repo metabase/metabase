@@ -239,7 +239,7 @@
    x]
   (if-not (string? x)
     x
-    (substitute query stage-number param->value (lib/parse-parameters x false))
+    (substitute query stage-number param->value (lib/parse-parameters x false))))
 
 (mu/defn substitute-native-parameters :- ::lib.schema/query
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."
