@@ -7,7 +7,6 @@ import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type {
-  CacheConfig,
   Card,
   Collection,
   Dashboard,
@@ -26,7 +25,6 @@ import type {
 } from "metabase-types/api";
 
 export const QuestionSchema = new schema.Entity<Card>("questions");
-export const CacheConfigSchema = new schema.Entity<CacheConfig>("cacheConfigs");
 export const DashboardSchema = new schema.Entity<Dashboard>("dashboards");
 export const CollectionSchema = new schema.Entity<Collection>("collections");
 
@@ -152,11 +150,8 @@ MeasureSchema.define({
   table: TableSchema,
 });
 
-CacheConfigSchema.define({});
-
 export const ENTITIES_SCHEMA_MAP = {
   questions: QuestionSchema,
-  cacheConfigs: CacheConfigSchema,
   dashboards: DashboardSchema,
   collections: CollectionSchema,
   segments: SegmentSchema,
