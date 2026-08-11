@@ -398,9 +398,6 @@ const configs = [
     files: [
       "**/*.unit.spec.*",
       "frontend/src/metabase/admin/**/*",
-      // The embedding hub is admin-only, so the same justification applies:
-      // an admin must always see the docs link. The rule scopes by file path,
-      // never by where a component is imported.
       "frontend/src/metabase/embedding-hub/**/*",
       "frontend/src/metabase/monitor/tools/**/*",
       "frontend/src/metabase/setup/**/*",

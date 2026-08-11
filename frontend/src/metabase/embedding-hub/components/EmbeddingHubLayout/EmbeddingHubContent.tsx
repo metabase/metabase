@@ -11,13 +11,9 @@ const CONTENT_MAX_WIDTH = "50rem";
 
 type EmbeddingHubContentProps = {
   children?: ReactNode;
-  fullWidth?: boolean;
 };
 
-export function EmbeddingHubContent({
-  children,
-  fullWidth,
-}: EmbeddingHubContentProps) {
+export function EmbeddingHubContent({ children }: EmbeddingHubContentProps) {
   return (
     <Box
       data-testid="embedding-hub-main"
@@ -36,21 +32,16 @@ export function EmbeddingHubContent({
       >
         <AppSwitcher />
       </Box>
-      <AreaContent fullWidth={fullWidth}>
-        {fullWidth ? (
-          children
-        ) : (
-          // The design caps hub pages at 800px; only Permissions and the theme
-          // editor use the whole area.
-          <Box
-            maw={CONTENT_MAX_WIDTH}
-            mx="auto"
-            w="100%"
-            data-testid="embedding-hub-content-cap"
-          >
-            {children}
-          </Box>
-        )}
+      <AreaContent>
+        {/* The design caps hub pages at 800px. */}
+        <Box
+          maw={CONTENT_MAX_WIDTH}
+          mx="auto"
+          w="100%"
+          data-testid="embedding-hub-content-cap"
+        >
+          {children}
+        </Box>
       </AreaContent>
     </Box>
   );
