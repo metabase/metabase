@@ -13,7 +13,8 @@ import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 /**
- * The admin settings pages, each in its own chunk.
+ * The admin settings pages, in one chunk. Every loader names it, so the section
+ * arrives in a single request rather than one per page.
  *
  * This module holds paths and `import()` calls, so the admin route tree can name
  * it eagerly while none of the pages are in the initial bundle. They are fetched
@@ -25,8 +26,12 @@ import * as Urls from "metabase/urls";
  */
 const settingsLayout = () =>
   Promise.all([
-    import("metabase/admin/components/AdminLayout/AdminSettingsLayout"),
-    import("./settings/components/SettingsNav"),
+    import(
+      /* webpackChunkName: "admin-settings" */ "metabase/admin/components/AdminLayout/AdminSettingsLayout"
+    ),
+    import(
+      /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsNav"
+    ),
   ]).then(([{ AdminSettingsLayout }, { SettingsNav }]) => ({
     Component: function AdminSettingsLayoutRoute() {
       return (
@@ -38,124 +43,128 @@ const settingsLayout = () =>
   }));
 
 const generalSettings = () =>
-  import("./settings/components/SettingsPages/GeneralSettingsPage").then(
-    ({ GeneralSettingsPage }) => ({ Component: GeneralSettingsPage }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/GeneralSettingsPage"
+  ).then(({ GeneralSettingsPage }) => ({ Component: GeneralSettingsPage }));
 
 const updatesSettings = () =>
-  import("./settings/components/SettingsPages/UpdatesSettingsPage").then(
-    ({ UpdatesSettingsPage }) => ({ Component: UpdatesSettingsPage }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/UpdatesSettingsPage"
+  ).then(({ UpdatesSettingsPage }) => ({ Component: UpdatesSettingsPage }));
 
 const emailSettings = () =>
-  import("./settings/components/SettingsPages/EmailSettingsPage").then(
-    ({ EmailSettingsPage }) => ({ Component: EmailSettingsPage }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/EmailSettingsPage"
+  ).then(({ EmailSettingsPage }) => ({ Component: EmailSettingsPage }));
 
 const slackSettings = () =>
-  import("./settings/components/SettingsPages/SlackSettingsPage").then(
-    ({ SlackSettingsPage }) => ({ Component: SlackSettingsPage }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/SlackSettingsPage"
+  ).then(({ SlackSettingsPage }) => ({ Component: SlackSettingsPage }));
 
 const webhooksSettings = () =>
-  import("./settings/components/SettingsPages/WebhooksSettingsPage").then(
-    ({ WebhooksSettingsPage }) => ({ Component: WebhooksSettingsPage }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/WebhooksSettingsPage"
+  ).then(({ WebhooksSettingsPage }) => ({ Component: WebhooksSettingsPage }));
 
 // `route.lazy` supplies a component and no props, so the routes that share this
 // page bind their tab here.
 const authenticationSettings =
   (tab: "authentication" | "user-provisioning" | "api-keys") => () =>
-    import("./settings/components/SettingsPages/AuthenticationSettingsPage").then(
-      ({ AuthenticationSettingsPage }) => ({
-        Component: function AuthenticationSettingsRoute() {
-          return <AuthenticationSettingsPage tab={tab} />;
-        },
-      }),
-    );
+    import(
+      /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/AuthenticationSettingsPage"
+    ).then(({ AuthenticationSettingsPage }) => ({
+      Component: function AuthenticationSettingsRoute() {
+        return <AuthenticationSettingsPage tab={tab} />;
+      },
+    }));
 
 const googleAuth = () =>
-  import("./settings/auth/components/GoogleAuthForm").then(
-    ({ GoogleAuthForm }) => ({ Component: GoogleAuthForm }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/auth/components/GoogleAuthForm"
+  ).then(({ GoogleAuthForm }) => ({ Component: GoogleAuthForm }));
 
 const ldapAuth = () =>
-  import("./settings/components/SettingsLdapForm").then(
-    ({ SettingsLdapForm }) => ({ Component: SettingsLdapForm }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsLdapForm"
+  ).then(({ SettingsLdapForm }) => ({ Component: SettingsLdapForm }));
 
 const remoteSyncSettings = () =>
-  import("./settings/components/SettingsPages/RemoteSyncSettingsPage").then(
-    ({ RemoteSyncSettingsPage }) => ({ Component: RemoteSyncSettingsPage }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/RemoteSyncSettingsPage"
+  ).then(({ RemoteSyncSettingsPage }) => ({
+    Component: RemoteSyncSettingsPage,
+  }));
 
 const mapsSettings = () =>
-  import("./settings/components/SettingsPages/MapsSettingsPage").then(
-    ({ MapsSettingsPage }) => ({ Component: MapsSettingsPage }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/MapsSettingsPage"
+  ).then(({ MapsSettingsPage }) => ({ Component: MapsSettingsPage }));
 
 const localizationSettings = () =>
-  import("./settings/components/SettingsPages/LocalizationSettingsPage").then(
-    ({ LocalizationSettingsPage }) => ({ Component: LocalizationSettingsPage }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/LocalizationSettingsPage"
+  ).then(({ LocalizationSettingsPage }) => ({
+    Component: LocalizationSettingsPage,
+  }));
 
 const customVisualizationsManage = () =>
-  import("./settings/components/SettingsPages/CustomVisualizationsSettingsPage").then(
-    ({ CustomVisualizationsManagePage }) => ({
-      Component: CustomVisualizationsManagePage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/CustomVisualizationsSettingsPage"
+  ).then(({ CustomVisualizationsManagePage }) => ({
+    Component: CustomVisualizationsManagePage,
+  }));
 
 const customVisualizationsForm = () =>
-  import("./settings/components/SettingsPages/CustomVisualizationsSettingsPage").then(
-    ({ CustomVisualizationsFormPage }) => ({
-      Component: CustomVisualizationsFormPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/CustomVisualizationsSettingsPage"
+  ).then(({ CustomVisualizationsFormPage }) => ({
+    Component: CustomVisualizationsFormPage,
+  }));
 
 const customVisualizationsDevelopment = () =>
-  import("./settings/components/SettingsPages/CustomVisualizationsSettingsPage").then(
-    ({ CustomVisualizationsDevelopmentPage }) => ({
-      Component: CustomVisualizationsDevelopmentPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/CustomVisualizationsSettingsPage"
+  ).then(({ CustomVisualizationsDevelopmentPage }) => ({
+    Component: CustomVisualizationsDevelopmentPage,
+  }));
 
 const dataAppsManage = () =>
-  import("./settings/components/SettingsPages/DataAppsSettingsPage").then(
-    ({ DataAppsManagePage }) => ({ Component: DataAppsManagePage }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
+  ).then(({ DataAppsManagePage }) => ({ Component: DataAppsManagePage }));
 
 const uploadSettings = () =>
-  import("./settings/components/SettingsPages/UploadSettingsPage").then(
-    ({ UploadSettingsPage }) => ({ Component: UploadSettingsPage }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/UploadSettingsPage"
+  ).then(({ UploadSettingsPage }) => ({ Component: UploadSettingsPage }));
 
 const publicSharingSettings = () =>
-  import("./settings/components/SettingsPages/PublicSharingSettingsPage").then(
-    ({ PublicSharingSettingsPage }) => ({
-      Component: PublicSharingSettingsPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/PublicSharingSettingsPage"
+  ).then(({ PublicSharingSettingsPage }) => ({
+    Component: PublicSharingSettingsPage,
+  }));
 
 const licenseSettings = () =>
-  import("./settings/components/SettingsPages/LicenseSettingsPage").then(
-    ({ LicenseSettingsPage }) => ({ Component: LicenseSettingsPage }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/LicenseSettingsPage"
+  ).then(({ LicenseSettingsPage }) => ({ Component: LicenseSettingsPage }));
 
 /** The `appearance` page, opened on one of its tabs. */
 const appearanceSettings = (tab?: "branding" | "conceal-metabase") => () =>
-  import("./settings/components/SettingsPages/AppearanceSettingsPage").then(
-    ({ AppearanceSettingsPage }) => ({
-      Component: function AppearanceSettingsRoute() {
-        return <AppearanceSettingsPage tab={tab} />;
-      },
-    }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/AppearanceSettingsPage"
+  ).then(({ AppearanceSettingsPage }) => ({
+    Component: function AppearanceSettingsRoute() {
+      return <AppearanceSettingsPage tab={tab} />;
+    },
+  }));
 
 const cloudSettings = () =>
-  import("./settings/components/SettingsPages/CloudSettingsPage").then(
-    ({ CloudSettingsPage }) => ({ Component: CloudSettingsPage }),
-  );
+  import(
+    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/CloudSettingsPage"
+  ).then(({ CloudSettingsPage }) => ({ Component: CloudSettingsPage }));
 
 export const getSettingsRoutes = (
   store: Store<State>,

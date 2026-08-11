@@ -32,175 +32,196 @@ import {
 } from "./utils";
 
 /**
- * The admin pages, each in its own chunk.
+ * The admin pages, in one chunk. Every loader names it, so the section arrives
+ * in a single request rather than one per page.
  *
  * Route guards, the redirects and the modal routes stay eager: they are small,
  * and a guard has to decide before there is anything to show. The pages behind
  * them are fetched the first time one of these routes is matched.
  */
 const adminApp = () =>
-  import("metabase/admin/app/components/AdminApp").then((module) => ({
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/app/components/AdminApp"
+  ).then((module) => ({
     Component: module.default,
   }));
 
 const databaseList = () =>
-  import("metabase/admin/databases/containers/DatabaseListApp").then(
-    ({ DatabaseListApp }) => ({ Component: DatabaseListApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/databases/containers/DatabaseListApp"
+  ).then(({ DatabaseListApp }) => ({ Component: DatabaseListApp }));
 
 const databasePage = () =>
-  import("metabase/admin/databases/containers/DatabasePage").then(
-    ({ DatabasePage }) => ({ Component: DatabasePage }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/databases/containers/DatabasePage"
+  ).then(({ DatabasePage }) => ({ Component: DatabasePage }));
 
 const databaseEdit = () =>
-  import("metabase/admin/databases/containers/DatabaseEditApp").then(
-    ({ DatabaseEditApp }) => ({ Component: DatabaseEditApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/databases/containers/DatabaseEditApp"
+  ).then(({ DatabaseEditApp }) => ({ Component: DatabaseEditApp }));
 
 const dataModel = () =>
-  import("metabase/metadata/pages/DataModelV1").then(({ DataModelV1 }) => ({
+  import(
+    /* webpackChunkName: "admin" */ "metabase/metadata/pages/DataModelV1"
+  ).then(({ DataModelV1 }) => ({
     Component: DataModelV1,
   }));
 
 const segmentList = () =>
-  import("metabase/admin/datamodel/containers/SegmentListApp").then(
-    ({ SegmentListApp }) => ({ Component: SegmentListApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/datamodel/containers/SegmentListApp"
+  ).then(({ SegmentListApp }) => ({ Component: SegmentListApp }));
 
 const segmentEdit = () =>
-  import("metabase/admin/datamodel/containers/SegmentApp").then(
-    ({ SegmentApp }) => ({ Component: SegmentApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/datamodel/containers/SegmentApp"
+  ).then(({ SegmentApp }) => ({ Component: SegmentApp }));
 
 const segmentRevisions = () =>
-  import("metabase/admin/datamodel/containers/RevisionHistoryApp").then(
-    ({ RevisionHistoryApp }) => ({ Component: RevisionHistoryApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/datamodel/containers/RevisionHistoryApp"
+  ).then(({ RevisionHistoryApp }) => ({ Component: RevisionHistoryApp }));
 
 const peopleApp = () =>
-  import("metabase/admin/people/containers/AdminPeopleApp").then(
-    ({ AdminPeopleApp }) => ({ Component: AdminPeopleApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/people/containers/AdminPeopleApp"
+  ).then(({ AdminPeopleApp }) => ({ Component: AdminPeopleApp }));
 
 const peopleListing = () =>
-  import("metabase/admin/people/containers/PeopleListingApp").then(
-    ({ PeopleListingApp }) => ({ Component: PeopleListingApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/people/containers/PeopleListingApp"
+  ).then(({ PeopleListingApp }) => ({ Component: PeopleListingApp }));
 
 const groupsListing = () =>
-  import("metabase/admin/people/containers/GroupsListingApp").then(
-    ({ GroupsListingApp }) => ({ Component: GroupsListingApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/people/containers/GroupsListingApp"
+  ).then(({ GroupsListingApp }) => ({ Component: GroupsListingApp }));
 
 const groupDetail = () =>
-  import("metabase/admin/people/containers/GroupDetailApp").then(
-    ({ GroupDetailApp }) => ({ Component: GroupDetailApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/people/containers/GroupDetailApp"
+  ).then(({ GroupDetailApp }) => ({ Component: GroupDetailApp }));
 
 const upsellTenants = () =>
-  import("./upsells/UpsellTenants").then(({ UpsellTenants }) => ({
-    Component: UpsellTenants,
-  }));
+  import(/* webpackChunkName: "admin" */ "./upsells/UpsellTenants").then(
+    ({ UpsellTenants }) => ({
+      Component: UpsellTenants,
+    }),
+  );
 
 const embeddingApp = () =>
-  import("metabase/admin/embedding/containers/AdminEmbeddingApp").then(
-    ({ AdminEmbeddingApp }) => ({ Component: AdminEmbeddingApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/embedding/containers/AdminEmbeddingApp"
+  ).then(({ AdminEmbeddingApp }) => ({ Component: AdminEmbeddingApp }));
 
 const embeddingSettings = () =>
-  import("metabase/admin/settings/components/EmbeddingSettings").then(
-    ({ EmbeddingSettings }) => ({ Component: EmbeddingSettings }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/settings/components/EmbeddingSettings"
+  ).then(({ EmbeddingSettings }) => ({ Component: EmbeddingSettings }));
 
 const embeddingSecuritySettings = () =>
-  import("metabase/admin/settings/components/EmbeddingSettings").then(
-    ({ EmbeddingSecuritySettings }) => ({
-      Component: EmbeddingSecuritySettings,
-    }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/settings/components/EmbeddingSettings"
+  ).then(({ EmbeddingSecuritySettings }) => ({
+    Component: EmbeddingSecuritySettings,
+  }));
 
 const guestEmbedsSettings = () =>
-  import("metabase/admin/settings/components/EmbeddingSettings").then(
-    ({ GuestEmbedsSettings }) => ({ Component: GuestEmbedsSettings }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/settings/components/EmbeddingSettings"
+  ).then(({ GuestEmbedsSettings }) => ({ Component: GuestEmbedsSettings }));
 
 const embeddingHub = () =>
-  import("metabase/admin/embedding/embedding-hub").then(
-    ({ EmbeddingHubAdminSettingsPage }) => ({
-      Component: EmbeddingHubAdminSettingsPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/embedding/embedding-hub"
+  ).then(({ EmbeddingHubAdminSettingsPage }) => ({
+    Component: EmbeddingHubAdminSettingsPage,
+  }));
 
 const setupPermissions = () =>
-  import("metabase/embedding/embedding-hub").then(
-    ({ SetupPermissionsAndTenantsPage }) => ({
-      Component: SetupPermissionsAndTenantsPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/embedding/embedding-hub"
+  ).then(({ SetupPermissionsAndTenantsPage }) => ({
+    Component: SetupPermissionsAndTenantsPage,
+  }));
 
 const setupSso = () =>
-  import("metabase/embedding/embedding-hub").then(({ SetupSsoPage }) => ({
+  import(
+    /* webpackChunkName: "admin" */ "metabase/embedding/embedding-hub"
+  ).then(({ SetupSsoPage }) => ({
     Component: SetupSsoPage,
   }));
 
 const themeListing = () =>
-  import("metabase/admin/embedding/components/ThemeListing").then(
-    ({ EmbeddingThemeListingApp }) => ({ Component: EmbeddingThemeListingApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/embedding/components/ThemeListing"
+  ).then(({ EmbeddingThemeListingApp }) => ({
+    Component: EmbeddingThemeListingApp,
+  }));
 
 const themeEditor = () =>
-  import("metabase/admin/embedding/components/ThemeEditor").then(
-    ({ EmbeddingThemeEditorApp }) => ({ Component: EmbeddingThemeEditorApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/embedding/components/ThemeEditor"
+  ).then(({ EmbeddingThemeEditorApp }) => ({
+    Component: EmbeddingThemeEditorApp,
+  }));
 
 const performanceApp = () =>
-  import("metabase/admin/performance/components/PerformanceApp").then(
-    ({ PerformanceApp }) => ({ Component: PerformanceApp }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/performance/components/PerformanceApp"
+  ).then(({ PerformanceApp }) => ({ Component: PerformanceApp }));
 
 const strategyEditorForDatabases = () =>
-  import("./performance/components/StrategyEditorForDatabases").then(
-    ({ StrategyEditorForDatabases }) => ({
-      Component: StrategyEditorForDatabases,
-    }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "./performance/components/StrategyEditorForDatabases"
+  ).then(({ StrategyEditorForDatabases }) => ({
+    Component: StrategyEditorForDatabases,
+  }));
 
 const modelPersistence = () =>
-  import("./performance/components/ModelPersistenceConfiguration").then(
-    ({ ModelPersistenceConfiguration }) => ({
-      Component: ModelPersistenceConfiguration,
-    }),
-  );
+  import(
+    /* webpackChunkName: "admin" */ "./performance/components/ModelPersistenceConfiguration"
+  ).then(({ ModelPersistenceConfiguration }) => ({
+    Component: ModelPersistenceConfiguration,
+  }));
 
 // `route.lazy` supplies a component and no props, so the three routes that
 // share this layout bind theirs here.
 const metabotLayout =
   (props: ComponentProps<typeof MetabotAdminLayout> = {}) =>
   () =>
-    import("./ai/MetabotAdminLayout").then(({ MetabotAdminLayout }) => ({
-      Component: function MetabotAdminLayoutRoute() {
-        return <MetabotAdminLayout {...props} />;
-      },
-    }));
+    import(/* webpackChunkName: "admin" */ "./ai/MetabotAdminLayout").then(
+      ({ MetabotAdminLayout }) => ({
+        Component: function MetabotAdminLayoutRoute() {
+          return <MetabotAdminLayout {...props} />;
+        },
+      }),
+    );
 
 const aiSettings = () =>
-  import("./ai/AISettingsPage").then(({ AISettingsPage }) => ({
-    Component: AISettingsPage,
-  }));
+  import(/* webpackChunkName: "admin" */ "./ai/AISettingsPage").then(
+    ({ AISettingsPage }) => ({
+      Component: AISettingsPage,
+    }),
+  );
 
 const mcpSettings = () =>
-  import("./ai/AISettingsPage").then(({ McpSettingsPage }) => ({
-    Component: McpSettingsPage,
-  }));
+  import(/* webpackChunkName: "admin" */ "./ai/AISettingsPage").then(
+    ({ McpSettingsPage }) => ({
+      Component: McpSettingsPage,
+    }),
+  );
 
 const oauthAuthorizations = () =>
-  import("./ai/OAuthAuthorizationsPage").then(
+  import(/* webpackChunkName: "admin" */ "./ai/OAuthAuthorizationsPage").then(
     ({ OAuthAuthorizationsPage }) => ({ Component: OAuthAuthorizationsPage }),
   );
 
 const help = () =>
-  import("metabase/admin/help").then(({ Help }) => ({ Component: Help }));
+  import(/* webpackChunkName: "admin" */ "metabase/admin/help").then(
+    ({ Help }) => ({ Component: Help }),
+  );
 
 export const getRoutes = (
   store: Store<State>,
