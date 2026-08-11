@@ -336,33 +336,11 @@ export const Columns = {
   ActionMenu: {
     Header: () => <th></th>,
     Col: () => <col style={{ width: "100px" }} />,
-    Cell: ({
-      item,
-      collection,
-      databases,
-      bookmarks,
-      onCopy,
-      onMove,
-      createBookmark,
-      deleteBookmark,
-      isSelected,
-      onToggleSelected,
-    }: ActionMenuProps) => {
+    Cell: (props: ActionMenuProps) => {
       return (
         <ItemCell>
           <RowActionsContainer data-ignore-row-selection>
-            <ActionMenu
-              item={item}
-              collection={collection}
-              databases={databases}
-              bookmarks={bookmarks}
-              onCopy={onCopy}
-              onMove={onMove}
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-              isSelected={isSelected}
-              onToggleSelected={onToggleSelected}
-            />
+            <ActionMenu {...props} />
           </RowActionsContainer>
         </ItemCell>
       );

@@ -16,7 +16,7 @@ import type {
   DeleteBookmark,
   OnCopy,
   OnMove,
-  OnToggleSelectedWithItem,
+  OnToggleSelected,
 } from "metabase/common/collections/types";
 import {
   canArchiveItem,
@@ -52,7 +52,7 @@ export interface ActionMenuProps {
   createBookmark?: CreateBookmark;
   deleteBookmark?: DeleteBookmark;
   isSelected?: boolean;
-  onToggleSelected?: OnToggleSelectedWithItem;
+  onToggleSelected?: OnToggleSelected;
 }
 
 interface ActionMenuStateProps {
@@ -109,10 +109,6 @@ function ActionMenuInner({
   const canDelete = item.can_delete;
   const canCopy = onCopy && canCopyItem(item);
   const canSelect = canSelectItems(collection, onToggleSelected);
-
-  const handleToggleSelected = useCallback(() => {
-    onToggleSelected?.(item);
-  }, [item, onToggleSelected]);
 
   const handlePin = useCallback(() => {
     if (isPinnable(item)) {
@@ -174,7 +170,7 @@ function ActionMenuInner({
         isSelected={isSelected}
         isXrayEnabled={!item.archived && isXrayEnabled}
         onPin={canPin ? handlePin : undefined}
-        onToggleSelected={canSelect ? handleToggleSelected : undefined}
+        onToggleSelected={canSelect ? onToggleSelected : undefined}
         onMove={canMove ? handleMove : undefined}
         onCopy={canCopy ? handleCopy : undefined}
         onArchive={canArchive ? handleArchive : undefined}

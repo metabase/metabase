@@ -203,7 +203,7 @@ export function CompactPinnedItemCard({
               onCopy={onCopy}
               onMove={onMove}
               isSelected={showAsSelected}
-              onToggleSelected={onToggleSelected}
+              onToggleSelected={toggleSelected}
             />
           </EventSandbox>
         </Box>

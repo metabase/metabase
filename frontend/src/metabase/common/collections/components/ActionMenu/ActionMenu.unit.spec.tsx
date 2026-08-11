@@ -104,7 +104,8 @@ describe("ActionMenu", () => {
       await userEvent.click(getIcon("ellipsis"));
       await userEvent.click(await screen.findByText("Select"));
 
-      expect(onToggleSelected).toHaveBeenCalledWith(item);
+      expect(onToggleSelected).toHaveBeenCalledTimes(1);
+      expect(onToggleSelected).toHaveBeenCalledWith();
     });
 
     it("should show Deselect for a selected item", async () => {
