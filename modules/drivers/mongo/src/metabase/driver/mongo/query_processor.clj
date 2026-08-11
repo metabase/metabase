@@ -207,7 +207,7 @@
    [:map
     {:closed true} ; we should document anything else we add here.
     [:projections {:optional true} [:maybe ::projections]]
-    [:query       ::pipeline]
+    [:query       [:ref ::pipeline]]
     ;; TODO (Cam 2026-07-17) it's not really clear if `:collection` is supposed to be in the top-level of the stage e.g.
     ;;
     ;;    {:lib/type :mbql.stage/native, :collection "X", :native {...}}
@@ -2349,10 +2349,12 @@ function(bin) {
       HACK-update-aliases))
 
 (mr/def ::compiled-pipeline-with-collection
-  "This is the same as `::compiled-pipeline` but `:collection` is required."
+  "This is the same as `::compiled-pipeline` but `:collection` is required, and `:query` can remain an unparsed
+  string."
   [:merge
    [:ref ::compiled-pipeline]
    [:map
+    [:query      [:or [:ref ::pipeline] :string]]
     [:collection :string]]])
 
 (mu/defn mbql->native :- ::compiled-pipeline-with-collection
