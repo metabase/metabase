@@ -33,6 +33,34 @@ export function getQueryFingerprint(query: Record<string, unknown>) {
   return { tableId, hash: `v1:sha256:${hash}` };
 }
 
+/** Serializes a resolved query while removing generated Lib UUIDs. */
+export function getCanonicalQueryJson(value: unknown): string {
+  const canonical = canonicalize(value);
+  const generatedIds = new Map<string, number>();
+
+  JSON.stringify(canonical, (key, item) => {
+    if (
+      key === "lib/uuid" &&
+      typeof item === "string" &&
+      !generatedIds.has(item)
+    ) {
+      generatedIds.set(item, generatedIds.size);
+    }
+    return item;
+  });
+
+  return JSON.stringify(canonical, (key, item) => {
+    if (key === "lib/uuid") {
+      return undefined;
+    }
+    const generatedId =
+      typeof item === "string" ? generatedIds.get(item) : undefined;
+    return generatedId === undefined
+      ? item
+      : `generated-query-id:${generatedId}`;
+  });
+}
+
 /** Validates a query value and recursively sorts object keys. */
 function canonicalize(value: unknown, seen = new Set<object>()): unknown {
   const type = typeof value;

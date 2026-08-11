@@ -5,9 +5,16 @@ import ts from "typescript";
 
 import { SDK_PACKAGE_NAME } from "embedding-sdk-package/cli/constants/config";
 
+import type { DiscoveredQuery } from "../types";
+
 export interface QuerySource {
   exportName: string;
   filePath: string;
+}
+
+interface InspectedQuerySource extends QuerySource {
+  object: ts.ObjectLiteralExpression;
+  sourceFile: ts.SourceFile;
 }
 
 const QUERIES_DIRECTORY_PATH = "queries";
@@ -27,6 +34,22 @@ const QUERY_FILE_EXTENSIONS = [
 export function findQuerySources(appRoot: string): QuerySource[] {
   return listQueryFiles(path.join(appRoot, QUERIES_DIRECTORY_PATH)).flatMap(
     inspectQueryFile,
+  );
+}
+
+export function injectSavedQuestionId(query: DiscoveredQuery, id: number) {
+  const source = inspectQueryFile(query.filePath).find(
+    ({ exportName }) => exportName === query.exportName,
+  );
+  if (!source) {
+    throw new Error(`Could not find ${query.exportName} in ${query.filePath}.`);
+  }
+
+  const contents = source.sourceFile.text;
+  const position = source.object.getStart(source.sourceFile) + 1;
+  fs.writeFileSync(
+    query.filePath,
+    `${contents.slice(0, position)}\n  savedQuestionSourceId: ${id},${contents.slice(position)}`,
   );
 }
 
@@ -97,9 +120,12 @@ const isNamedExportStatement = (statement: ts.Node | undefined) =>
     hasExportModifier(statement),
   );
 
-const hasSingleObjectArgument = (node: ts.CallExpression) =>
-  node.arguments.length === 1 &&
-  ts.isObjectLiteralExpression(node.arguments[0]);
+const queryObjectArgument = (node: ts.CallExpression) => {
+  const [argument] = node.arguments;
+  return node.arguments.length === 1 && ts.isObjectLiteralExpression(argument)
+    ? argument
+    : undefined;
+};
 
 const isDirectNamedQueryDefinition = (
   node: ts.CallExpression,
@@ -107,8 +133,7 @@ const isDirectNamedQueryDefinition = (
   statement: ts.Node | undefined,
 ): declaration is ts.VariableDeclaration & { name: ts.Identifier } =>
   isDirectVariableInitialization(declaration, node) &&
-  isNamedExportStatement(statement) &&
-  hasSingleObjectArgument(node);
+  isNamedExportStatement(statement);
 
 const isDefineQueryCall = (
   node: ts.Node,
@@ -118,7 +143,7 @@ const isDefineQueryCall = (
   ts.isIdentifier(node.expression) &&
   names.has(node.expression.text);
 
-function inspectQueryFile(filePath: string): QuerySource[] {
+function inspectQueryFile(filePath: string): InspectedQuerySource[] {
   const contents = fs.readFileSync(filePath, "utf8");
 
   const sourceFile = ts.createSourceFile(
@@ -145,20 +170,29 @@ function inspectQueryFile(filePath: string): QuerySource[] {
     }
   }
 
-  const querySources: QuerySource[] = [];
+  const querySources: InspectedQuerySource[] = [];
 
   const visit = (node: ts.Node) => {
     if (isDefineQueryCall(node, defineQueryNames)) {
       const declaration = node.parent;
       const statement = declaration.parent?.parent;
+      const object = queryObjectArgument(node);
 
-      if (!isDirectNamedQueryDefinition(node, declaration, statement)) {
+      if (
+        !isDirectNamedQueryDefinition(node, declaration, statement) ||
+        !object
+      ) {
         throw new Error(
           `${filePath}: defineQuery must directly initialize a named exported variable with one object literal.`,
         );
       }
 
-      querySources.push({ exportName: declaration.name.text, filePath });
+      querySources.push({
+        exportName: declaration.name.text,
+        filePath,
+        object,
+        sourceFile,
+      });
     }
 
     ts.forEachChild(node, visit);

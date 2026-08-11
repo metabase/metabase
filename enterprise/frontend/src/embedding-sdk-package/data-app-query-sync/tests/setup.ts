@@ -42,3 +42,9 @@ export function writeQuery(appRoot: string, body: string) {
 
   return filePath;
 }
+
+export const jsonResponse = (body: unknown, status = 200) =>
+  new Response(status === 204 ? null : JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });

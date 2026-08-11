@@ -20,6 +20,13 @@
               :bundle       (.getBytes "BUNDLE" "UTF-8")
               :bundle_hash  "abc123"))
 
+(defn- view-data-permission [group-id database-id]
+  (t2/select-one-fn :perm_value :model/DataPermissions
+                    :group_id group-id
+                    :db_id database-id
+                    :table_id nil
+                    :perm_type :perms/view-data))
+
 (def ^:private fake-sha "0123456789abcdef0123456789abcdef01234567")
 
 (defn- snapshot
@@ -104,6 +111,22 @@
                                            :source-table (mt/id :venues)
                                            :limit 5}]}}
                 response))))))
+
+(deftest superuser-can-reconcile-query-database-permissions-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-temp [:model/Database {first-database-id :id}  {}
+                     :model/Database {second-database-id :id} {}]
+        (create-app!)
+        (let [{group-id :permission_group_id}
+              (mt/user-http-request :crowberto :put 200 "apps/demo/query-sync/permissions"
+                                    {:database_ids [first-database-id]})]
+          (is (= :unrestricted (view-data-permission group-id first-database-id)))
+          (is (= :blocked (view-data-permission group-id second-database-id)))
+          (mt/user-http-request :crowberto :put 200 "apps/demo/query-sync/permissions"
+                                {:database_ids [second-database-id]})
+          (is (= :blocked (view-data-permission group-id first-database-id)))
+          (is (= :unrestricted (view-data-permission group-id second-database-id))))))))
 
 (deftest query-definition-must-use-a-table-source-test
   (mt/with-premium-features #{:data-apps-preview}

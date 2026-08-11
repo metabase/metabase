@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -97,6 +98,10 @@
   [:map
    [:database_id ms/PositiveInt]
    [:dataset_query ms/Map]])
+
+(def ^:private query-sync-permissions-request
+  [:map
+   [:database_ids [:sequential {:distinct true} ms/PositiveInt]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -214,6 +219,18 @@
   (api/check-400 (data-app.config/valid-slug? slug)
                  "Data app draft slugs must use lowercase letters, numbers, and dashes.")
   (data-app.sync/ensure-draft! slug)
+  (data-app/select-one-non-blob :name slug))
+
+(api.macros/defendpoint :put ["/:slug/query-sync/permissions" :slug slug-regex] :- DataAppResponse
+  "Reconcile the database view-data permissions required by a data app's queries."
+  [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
+   _query-params
+   {database-ids :database_ids} :- query-sync-permissions-request]
+  (api/check-superuser)
+  (let [app (api/check-404 (data-app/select-one-non-blob :name slug))]
+    (data-app.resources/ensure-resources! app)
+    (-> (data-app/select-one-non-blob :id (:id app))
+        (data-app.resources/reconcile-view-data! (set database-ids))))
   (data-app/select-one-non-blob :name slug))
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
