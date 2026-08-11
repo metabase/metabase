@@ -134,9 +134,11 @@
           (core/rethrow-api-error! "mistral" mistral-error-msg e))))))
 
 (def ^:private stop-reasons
-  "Mistral adds `model_length` — the model's own context limit, which OpenAI's dialect has no equivalent for and which
-  is a truncation just like `length`."
-  (assoc chat-completions/stop-reasons "model_length" "length"))
+  "Mistral adds `model_length` — the model's own context limit, a truncation just like `length` — and reports a
+  mid-generation failure as a finish reason instead of an error event."
+  (assoc chat-completions/stop-reasons
+         "model_length" "length"
+         "error"        "error"))
 
 (defn mistral->aisdk-chunks-xf
   "Translates Mistral Chat Completions streaming chunks into AI SDK v5 protocol chunks."

@@ -62,7 +62,8 @@
    "max_tokens"                    "length"
    "model_context_window_exceeded" "length"
    "tool_use"                      "tool-calls"
-   "refusal"                       "content-filter"})
+   "refusal"                       "content-filter"
+   "pause_turn"                    "stop"})
 
 (defn claude->aisdk-chunks-xf
   "Translates Claude /v1/messages streaming events into AI SDK v5 protocol chunks.

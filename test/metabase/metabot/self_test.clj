@@ -586,6 +586,11 @@
       :openai           "content_filter"
       :chat-completions "content_filter"
       :zai              "sensitive"))
+  (testing "upstream failure, which some dialects report as a finish reason rather than an error event"
+    (are [provider raw] (= "error" (self.core/stop-reason->finish-reason (provider-stop-reasons provider) raw))
+      :mistral    "error"
+      :openrouter "error"
+      :zai        "network_error"))
   (testing "unmapped → \"other\"; nil → nil"
     (is (= "other" (self.core/stop-reason->finish-reason @#'self.claude/stop-reasons "something_new")))
     ;; a stop reason belonging to another provider is not silently translated
