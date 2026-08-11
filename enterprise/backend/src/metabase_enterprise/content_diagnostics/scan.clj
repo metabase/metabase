@@ -83,10 +83,9 @@
 (defn- attach-collection-names
   "Stamp each finding with `:entity-collection-name` - the scan-time name of its `:scope-collection-id`
   collection. Root-resident entities store the namespace-scoped root label (\"Our analytics\";
-  \"Transforms\" for a transform) - `root-breadcrumb`'s served vocabulary, stored so the sort places
-  root rows under their displayed label. The root namespace mirrors `entity-breadcrumb`: a collection
-  subject names its OWN tree's root; a transform names the transforms root; everything else the
-  default root. Frozen in the site locale: no user locale is bound in the scan job (decision 8)."
+  \"Transforms\" for a transform) via [[common/entity-root-namespace]] - the serve layer's breadcrumb
+  vocabulary, stored so the sort places root rows under their displayed label. Frozen in the site
+  locale: no user locale is bound in the scan job."
   [findings]
   (let [ids        (into #{} (keep :scope-collection-id) findings)
         id->name   (when (seq ids)
@@ -109,10 +108,7 @@
             (assoc finding :entity-collection-name
                    (if scope-collection-id
                      (get id->name scope-collection-id)
-                     (root-label (case entity-type
-                                   :collection (get id->ns entity-id)
-                                   :transform  collection/transforms-ns
-                                   nil)))))
+                     (root-label (common/entity-root-namespace entity-type (get id->ns entity-id))))))
           findings)))
 
 (def ^:private insert-batch-size

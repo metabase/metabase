@@ -449,9 +449,9 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
           (mt/with-temp [:model/Collection {coll-id :id} {}
-                         :model/Card {q-id :id}    {:collection_id coll-id}
-                         :model/Card {m-id :id}    {:collection_id coll-id}
-                         :model/Dashboard {d-id :id} {:collection_id coll-id}]
+                         :model/Card {question-id :id} {:collection_id coll-id}
+                         :model/Card {model-id :id}    {:collection_id coll-id}
+                         :model/Dashboard {dash-id :id} {:collection_id coll-id}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
             (let [prefix (scope-prefix)
                   insert (fn [row]
@@ -460,17 +460,19 @@
                                                                     :details {}}
                                                                    row))))
                   ;; ids inserted in an order that differs from the expected sort, to isolate the column
-                  q-fid (insert {:entity_type :card :entity_id q-id :card_type :question
-                                 :entity_kind :question :entity_name (str prefix " q")})
-                  d-fid (insert {:entity_type :dashboard :entity_id d-id
-                                 :entity_kind :dashboard :entity_name (str prefix " d")})
-                  m-fid (insert {:entity_type :card :entity_id m-id :card_type :model
-                                 :entity_kind :model :entity_name (str prefix " m")})
+                  question-fid (insert {:entity_type :card :entity_id question-id :card_type :question
+                                        :entity_kind :question :entity_name (str prefix " q")})
+                  dash-fid     (insert {:entity_type :dashboard :entity_id dash-id
+                                        :entity_kind :dashboard :entity_name (str prefix " d")})
+                  model-fid    (insert {:entity_type :card :entity_id model-id :card_type :model
+                                        :entity_kind :model :entity_name (str prefix " m")})
                   order (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
                                                             "ee/content-diagnostics/stale"
                                                             :query prefix kvs))))]
-              (is (= [d-fid m-fid q-fid] (order :sort-column "entity-type" :sort-direction "asc")))
-              (is (= [q-fid m-fid d-fid] (order :sort-column "entity-type" :sort-direction "desc"))))))))))
+              (is (= [dash-fid model-fid question-fid]
+                     (order :sort-column "entity-type" :sort-direction "asc")))
+              (is (= [question-fid model-fid dash-fid]
+                     (order :sort-column "entity-type" :sort-direction "desc"))))))))))
 
 (deftest api-sort-by-entity-attrs-test
   (testing "GET /stale sorts by denormalized entity columns (name / created-at / created-by / last-active-at)"
@@ -536,7 +538,7 @@
                                                                     :finding_type :stale :details {}}
                                                                    row))))
                   ;; collection order (alpha < Beta) inverts entity-name order so the column under test is
-                  ;; isolated. Lowercase-first fixture pins CASE-INSENSITIVE ordering (OQ5): a bytewise
+                  ;; isolated. Lowercase-first fixture pins CASE-INSENSITIVE ordering: a bytewise
                   ;; sort would put "Beta" (B = 0x42) before "alpha" (a = 0x61).
                   a-fid  (insert {:entity_id card-b
                                   :entity_name (str prefix " b")
@@ -818,10 +820,12 @@
                                                                              :finding_type :stale :details {}}
                                                                             row))))
                   in-fid   (insert {:entity_id card-a :entity_name (str prefix " in")
+                                    :scope_collection_id coll-id
                                     :entity_collection_name "Scan Time Name"})
                   ;; pre-migration shape: NULL entity_collection_name on a root-resident row - the
                   ;; breadcrumb (root sentinel) passes the gate, the nil comes from the column.
-                  ;; Post-migration scans stamp root rows with the root label (Task 2 covers that).
+                  ;; Post-migration scans stamp root rows with the root label (pinned by
+                  ;; scan-denormalizes-collection-name-test).
                   ;; Queried as :crowberto - the root-resident row is excluded from :rasta's response
                   ;; entirely (root perms are stripped by with-non-admin-groups-no-root-collection-perms),
                   ;; which would make the nil assertion vacuous rather than exercising the gate.

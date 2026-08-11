@@ -251,10 +251,10 @@
     (mt/with-temp [:model/Card      {model-id :id} {:type :model}
                    :model/Card      {q-id :id}     {:type :question}
                    :model/Dashboard {dash-id :id}  {}]
-      (let [[m q d] (common/attach-entity-attrs
-                     [{:entity-type :card      :entity-id model-id}
-                      {:entity-type :card      :entity-id q-id}
-                      {:entity-type :dashboard :entity-id dash-id}])]
-        (is (= :model     (:entity-kind m)))
-        (is (= :question  (:entity-kind q)))
-        (is (= :dashboard (:entity-kind d)))))))
+      (is (=? [{:entity-kind :model}
+               {:entity-kind :question}
+               {:entity-kind :dashboard}]
+              (common/attach-entity-attrs
+               [{:entity-type :card      :entity-id model-id}
+                {:entity-type :card      :entity-id q-id}
+                {:entity-type :dashboard :entity-id dash-id}]))))))

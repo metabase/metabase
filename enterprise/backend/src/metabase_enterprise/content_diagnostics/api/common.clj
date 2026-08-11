@@ -253,12 +253,7 @@
   (when entity
     (if-let [parent-id (:collection_id entity)]
       (get breadcrumbs parent-id)
-      (root-breadcrumb (case entity-type
-                         ;; a collection subject's own namespace names the root it sits under
-                         :collection (:namespace entity)
-                         ;; transforms live only in transforms-namespace collections
-                         :transform  collection/transforms-ns
-                         nil)))))
+      (root-breadcrumb (common/entity-root-namespace entity-type (:namespace entity))))))
 
 (defn- readable-entities-where
   "HoneySQL WHERE keeping only the rows in `ids` the caller may read at hydration time: caller visibility
