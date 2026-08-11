@@ -7,12 +7,19 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { SetupGuideXrayPickerModal } from "../components/SetupGuideXrayPickerModal";
 import type { SetupGuideModalToTrigger } from "../types/setup-guide";
 
+// Where the admin guide lives, for callers that do not say where they are.
+const ADMIN_SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
+
 /**
  * The checklist's modals and the state that opens them, so the stepper on the
  * home page and the card grid in the embedding hub drive the same set rather
  * than keeping two copies in sync.
+ *
+ * @param returnTo path of the guide that is rendering these modals. Flows that
+ * leave the guide -- connecting a database, for one -- carry it so they can
+ * return to the host the user actually started from.
  */
-export function useSetupGuideModals() {
+export function useSetupGuideModals(returnTo: string = ADMIN_SETUP_GUIDE_PATH) {
   const [openedModal, setOpenedModal] =
     useState<SetupGuideModalToTrigger | null>(null);
 
@@ -26,7 +33,7 @@ export function useSetupGuideModals() {
         initialTab={
           openedModal?.type === "add-data" ? openedModal?.initialTab : undefined
         }
-        fromEmbeddingSetupGuide
+        returnToSetupGuide={returnTo}
       />
       <CreateDashboardModal
         opened={openedModal?.type === "new-dashboard"}
@@ -42,5 +49,5 @@ export function useSetupGuideModals() {
     </>
   );
 
-  return { openedModal, setOpenedModal, closeModal, modals };
+  return { setOpenedModal, modals };
 }

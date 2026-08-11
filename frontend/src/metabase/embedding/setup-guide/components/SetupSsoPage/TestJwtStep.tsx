@@ -9,8 +9,6 @@ import { useHelpUrl } from "metabase/embedding/setup-guide/hooks";
 import { useUpdateSettingsMutation } from "metabase/settings";
 import { Button, Group, Stack, Text, Title } from "metabase/ui";
 
-const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
-
 export const TestJwtStep = () => {
   const [sendToast] = useToast();
   const [updateSettings] = useUpdateSettingsMutation();
@@ -48,12 +46,7 @@ export const TestJwtStep = () => {
           {t`No, I couldn't log in`}
         </Button>
 
-        <Button
-          component={Link}
-          to={SETUP_GUIDE_PATH}
-          variant="filled"
-          onClick={onDone}
-        >
+        <Button component={Link} to=".." variant="filled" onClick={onDone}>
           {t`Log in works, I'm done`}
         </Button>
       </Group>
@@ -119,7 +112,9 @@ const SsoTroubleshootingView = ({ onDone }: { onDone: () => void }) => {
 
         <Button
           component={Link}
-          to={SETUP_GUIDE_PATH}
+          // Relative so the wizard returns to whichever host mounted it: the
+          // admin setup guide, or the embedding hub's Get started tab.
+          to=".."
           variant="filled"
           onClick={onDone}
         >
