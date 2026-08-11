@@ -18,7 +18,8 @@
   "Which fixtures each fixture needs initialized before it can run.
 
   Component values carry no data. Every component's effect is exogenous -- namespaces loaded, rows written, global
-  vars mutated -- so the refs exist only to order initialization, and the system map `ig/build` returns is discarded."
+  vars mutated -- so the refs exist only to order initialization. What `ig/build` returns is thrown away; [[system]]
+  is the copy we keep."
   {::plugins       {}
    ::test-drivers  {}
    ;; loads the namespaces that install the system's multimethods, settings, tasks and event handlers. Components
@@ -76,7 +77,13 @@
 
 ;;; ------------------------------------------------ initialization ------------------------------------------------
 
-(defonce ^:private initialized (atom #{}))
+(defonce ^{:private true
+           :doc "The keys initialized so far, mapped to what their [[ig/init-key]] returned. Stands in for the system
+                map a normal integrant application would hold onto: every caller here demands fixtures independently,
+                so this is what lets a second demand for an already-running component be a lookup instead of a
+                re-initialization."}
+  system
+  (atom {}))
 
 (defn- log-init-message [task-name]
   (let [body   (format "| Initializing %s... |" task-name)
@@ -101,11 +108,12 @@
   budget. Components are only idempotent because of this guard: their work lands in global state, not in the system
   map, so running one twice would repeat the side effects."
   [k v]
-  (if (@initialized k)
-    ::already-initialized
+  ;; `contains?`, not truthiness -- plenty of these components return nil
+  (if (contains? @system k)
+    (@system k)
     (locking k
-      (if (@initialized k)
-        ::already-initialized
+      (if (contains? @system k)
+        (@system k)
         (u/prog1 (try
                    (init-with-budget! k v)
                    (catch Throwable e
@@ -113,7 +121,7 @@
                      (when config/is-test?
                        (System/exit -1))
                      (throw e)))
-          (swap! initialized conj k))))))
+          (swap! system assoc k <>))))))
 
 (defn initialize-if-needed!
   "Initialize one or more components, and anything they depend on.
@@ -137,7 +145,7 @@
 (defn initialized?
   "Has this component been initialized?"
   [k & more]
-  (let [done @initialized]
+  (let [done @system]
     (every? #(contains? done (step->key (keyword %))) (cons k more))))
 
 (defn all-components
