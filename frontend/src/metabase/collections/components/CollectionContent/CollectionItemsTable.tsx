@@ -111,7 +111,7 @@ const DefaultEmptyContentComponent = ({
   collection?: Collection;
 }) => {
   return (
-    <Box mt="calc(20vh - 3.5rem)">
+    <Box mt="15vh">
       <CollectionEmptyState collection={collection} />
     </Box>
   );
