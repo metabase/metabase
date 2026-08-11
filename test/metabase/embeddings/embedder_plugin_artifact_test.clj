@@ -126,7 +126,14 @@
               equivalent     (with-redefs-fn {model-spec-var (constantly reordered)}
                                #(embeddings.provider/resolve-model requested-model))]
           (is (= (:embedding-space-id normal) (:embedding-space-id equivalent))
-              "equivalent catalog map order does not change model identity"))
+              "equivalent catalog map order does not change model identity")
+          ;; Without the guard this hashes a nil sha256 into a well-formed but meaningless space id.
+          (let [arch-var     (ns-resolve 'metabase-enterprise.embedder.catalog 'architecture)
+                without-arch (update spec :architectures dissoc ((var-get arch-var)))]
+            (with-redefs-fn {model-spec-var (constantly without-arch)}
+              #(is (thrown-with-msg? clojure.lang.ExceptionInfo #"no artifact for architecture"
+                                     (embeddings.provider/resolve-model requested-model))
+                   "a catalog entry missing this architecture's export fails instead of hashing nil"))))
         (let [libc-var        (ns-resolve 'metabase-enterprise.embedder.catalog 'linux-libc)
               os-var          (ns-resolve 'metabase-enterprise.embedder.catalog 'operating-system)
               detect-libc-var (ns-resolve 'metabase-enterprise.embedder.catalog 'detect-linux-libc)
