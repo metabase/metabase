@@ -8,6 +8,7 @@
   A full replay of the changelog is slow, so the comparison is off unless `MB_APP_DB_SNAPSHOT_DRIFT_TEST=true`; the
   `app-db-snapshot` CI workflow sets it. Everything else about the snapshot is cheap enough to check every run."
   (:require
+   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -15,6 +16,7 @@
    [metabase.app-db.custom-migrations :as custom-migrations]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.app-db.snapshot-test-util :as snapshot]
+   [metabase.app-db.snapshot-test-util.generate :as generate]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.test :as mt]
@@ -217,6 +219,43 @@
                  (double (/ full-ms snapshot-ms))
                  ##Inf))))
 
+(def ^:private unstable-literals
+  "Values two dumps of the very same migrations disagree on, and what to put in their place. Wall-clock times, and the
+  freshly generated hashes and tokens [[generated-columns]] drops on the row comparison -- here they are masked in the
+  SQL text instead, since that is what is being compared.
+
+  A migration that starts seeding some other random value will fail this comparison on that value; add it here."
+  [[#"'\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[+-]\d{2}(?::?\d{2})?)?'" "'<timestamp>'"]
+   [#"'\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}'"                                         "'<password-hash>'"]
+   [#"'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'"               "'<uuid>'"]])
+
+(defn- unstable-values-masked [statement]
+  (as-> statement stmt
+    (reduce (fn [sql [pattern replacement]] (str/replace sql pattern replacement))
+            stmt
+            unstable-literals)
+    ;; the id Liquibase gives the deployment that ran the changesets, and only ever that
+    (cond-> stmt
+      (str/includes? (u/lower-case-en stmt) "databasechangelog")
+      (str/replace #"'\d{10}'" "'<deployment-id>'"))))
+
+(defn- comparable-statements [snapshot-text]
+  (mapv unstable-values-masked (snapshot/statements snapshot-text)))
+
+(defn- first-difference
+  "The first statement two snapshots of the same dialect disagree on, as `{:index _, :checked-in _, :regenerated _}`,
+  or nil when they agree. One statement rather than a whole-file diff, because a snapshot runs to thousands of lines
+  and a report of all of it says nothing about where to look."
+  [checked-in regenerated]
+  (or (first (keep-indexed (fn [i [in-file fresh]]
+                             (when (not= in-file fresh)
+                               {:index i, :checked-in in-file, :regenerated fresh}))
+                           (map vector checked-in regenerated)))
+      (when (not= (count checked-in) (count regenerated))
+        {:index       (min (count checked-in) (count regenerated))
+         :checked-in  (format "%d statements" (count checked-in))
+         :regenerated (format "%d statements" (count regenerated))})))
+
 ;;; --------------------------------------------------- the tests ---------------------------------------------------
 
 (deftest snapshot-loads-cleanly-test
@@ -285,3 +324,27 @@
               (testing "same seeded rows"
                 (is (= (:data from-scratch)
                        (:data from-snapshot)))))))))))
+
+(defn- dump-snapshot-if-tool-available
+  "What regenerating `driver`'s snapshot would write, or nil when the dump tool it needs is not installed. A missing
+  tool says nothing about the snapshot; a tool that runs and disagrees with the file is exactly the drift being
+  looked for."
+  [driver]
+  (try
+    (generate/dump-snapshot driver)
+    (catch java.io.IOException e
+      (log/warnf "Cannot dump %s (%s); skipping regeneration check" driver (ex-message e))
+      nil)))
+
+(deftest snapshot-is-what-generating-it-today-writes-test
+  (testing "the checked-in snapshot is the file a regeneration would write, so nobody has to guess whether it is stale"
+    (if-not (drift-test-enabled?)
+      (log/warn "MB_APP_DB_SNAPSHOT_DRIFT_TEST is not set; skipping app DB snapshot regeneration check")
+      (mt/test-drivers #{:h2 :mysql :postgres}
+        (when-let [{:keys [flavor content]} (dump-snapshot-if-tool-available driver/*driver*)]
+          (if-let [checked-in (io/resource (snapshot/resource-path snapshot/snapshot-version flavor "sql"))]
+            (is (nil? (first-difference (comparable-statements (slurp checked-in))
+                                        (comparable-statements content)))
+                (format "the %s snapshot is stale; regenerate it with snapshot-test-util.generate/generate!"
+                        (name flavor)))
+            (log/warnf "No app DB snapshot checked in for %s; skipping" flavor)))))))
