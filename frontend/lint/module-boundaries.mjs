@@ -28,6 +28,10 @@ const createElement = ({
   };
 };
 
+// Element precedence, verified against the @boundaries/elements matcher:
+// mode: "full" entries are matched against the whole file path first,
+// so an exact-path entry claims its file regardless of declaration order.
+// Between overlapping folder patterns, the first declared match wins.
 const elements = [
   // lib
   createElement({ type: "lib", name: "analytics", enforcePublicApi: true }),
@@ -186,7 +190,6 @@ const elements = [
   createElement({ type: "feature", name: "models" }),
   createElement({ type: "shared", name: "monitor" }),
   createElement({ type: "shared", name: "nav", enforceSharedTiers: false }),
-  createElement({ type: "shared", name: "new" }),
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
@@ -211,6 +214,9 @@ const elements = [
   createElement({ type: "shared", name: "selectors" }),
   createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
   createElement({ type: "feature", name: "setup" }),
+  // The bundle entry point (static-viz/index.tsx) is carved out to app/misc
+  // by its mode: "full" entry below.
+  createElement({ type: "shared", name: "static-viz" }),
   createElement({ type: "shared", name: "status" }),
   createElement({
     type: "shared",
@@ -336,7 +342,9 @@ const elements = [
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
-    // NewModals is used very high in the hierarchy and imports the EAJS wizard that uses EAJS (app level)
+    // NewModals is rendered at the app root and imports the app-tier embed wizard
+    // from embedding-iframe-sdk-setup, so it is app tier.
+    // It is the only file under metabase/new/, so that folder has no element of its own.
     "frontend/src/metabase/new/components/NewModals/NewModals.tsx",
     // Its spec mounts NewModals to assert menu clicks open modals, so the test is app-tier too.
     "frontend/src/metabase/common/components/NewItemMenu/NewItemMenu.unit.spec.tsx",
@@ -359,11 +367,6 @@ const elements = [
     name: "nav",
     pattern: "frontend/src/metabase/app/nav/**",
   }),
-  // static-viz must come after the app entries rather than in the
-  // alphabetical shared list: its entry point (static-viz/index.tsx) is app
-  // tier, and the first matching element wins.
-  createElement({ type: "shared", name: "static-viz" }),
-
   // Loose files living directly under frontend/src/metabase that have not yet
   // been pulled into a module folder.
   ...["frontend/src/metabase/dev.ts", "frontend/src/metabase/dev-noop.ts"].map(
