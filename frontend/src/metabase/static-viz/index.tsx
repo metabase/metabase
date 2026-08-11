@@ -1,8 +1,6 @@
 import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
 
-// eslint-disable-next-line import/order
-import enterpriseOverrides from "ee-overrides";
 import "metabase/utils/dayjs";
 
 import {
@@ -12,12 +10,15 @@ import {
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { LegacyStaticChart } from "metabase/static-viz/containers/LegacyStaticChart";
 import type { LegacyStaticChartType } from "metabase/static-viz/containers/LegacyStaticChart/LegacyStaticChart";
+import {
+  getRawSeriesWithDashcardSettings,
+  initializeContext,
+  toRenderedChart,
+} from "metabase/static-viz/lib/entrypoint";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import { updateStartOfWeek } from "metabase/utils/i18n";
-import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { createDataSource } from "metabase/visualizer/utils/data-source";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
@@ -28,12 +29,10 @@ import {
 } from "metabase/visualizer/utils/split-series";
 import type {
   Card,
-  DashCardVisualizationSettings,
   Dataset,
   DatasetData,
   GeoJSONData,
   RawSeries,
-  SettingKey,
   VisualizerDataSourceId,
   VisualizerVizDefinition,
 } from "metabase-types/api";
@@ -53,6 +52,11 @@ export type {
   RenderedChart,
 } from "./types";
 
+export {
+  initializeContext,
+  registerCustomVizPlugin,
+} from "metabase/static-viz/lib/entrypoint";
+
 setPlatformAPI({
   measureText: measureTextEChartsAdapter,
 });
@@ -64,22 +68,6 @@ function LegacyRenderChart(type: LegacyStaticChartType, options: unknown) {
   return ReactDOMServer.renderToStaticMarkup(
     <LegacyStaticChart type={type} options={options} />,
   );
-}
-
-function getRawSeriesWithDashcardSettings(
-  rawSeries: RawSeries,
-  dashcardSettings: DashCardVisualizationSettings,
-): RawSeries {
-  return rawSeries.map((series, index) => {
-    const isMainCard = index === 0;
-    if (isMainCard) {
-      return {
-        ...series,
-        card: extendCardWithDashcardSettings(series.card, dashcardSettings),
-      };
-    }
-    return series;
-  });
 }
 
 function getVisualizerRawSeries(
@@ -122,18 +110,7 @@ function RenderChart(
   dashcardSettings: RenderChartDashcardSettings,
   options: RenderChartOptions,
 ) {
-  MetabaseSettings.set("token-features", options.tokenFeatures);
-  MetabaseSettings.set(
-    // Unjustified type cast. FIXME
-    "application-colors" as SettingKey,
-    options.applicationColors,
-  );
-
-  if (typeof enterpriseOverrides === "function") {
-    enterpriseOverrides();
-  }
-
-  MetabaseSettings.set("custom-formatting", options.customFormatting);
+  initializeContext(options);
 
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,
@@ -240,7 +217,7 @@ export function renderChart(input: RenderChartInput): RenderedChart {
         input.options,
       );
   }
-  return { type: content.startsWith("<svg") ? "svg" : "html", content };
+  return toRenderedChart(content);
 }
 
 function buildCellBackgroundGetter(

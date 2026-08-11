@@ -1,0 +1,69 @@
+import type {
+  CustomStaticVisualizationProps,
+  RenderingContext as CustomVizRenderingContext,
+} from "custom-viz";
+
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
+import { getVisualizationTransformed } from "metabase/visualizations";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type { StaticVisualizationProps } from "metabase/visualizations/types";
+import { isCustomVizDisplay } from "metabase-types/guards";
+
+type PluginStaticProps = CustomStaticVisualizationProps<
+  Record<string, unknown>
+>;
+
+export const CustomStaticVisualization = ({
+  rawSeries,
+  renderingContext,
+  width,
+  height,
+}: StaticVisualizationProps) => {
+  const display = rawSeries[0].card.display;
+
+  if (!isCustomVizDisplay(display)) {
+    throw new Error(
+      `Unsupported display type for custom static visualization: ${display}`,
+    );
+  }
+
+  const customViz = PLUGIN_CUSTOM_VIZ.customVizRegistry.get(display);
+
+  if (!customViz?.StaticVisualizationComponent) {
+    // Return null so the Clojure side gets an empty string and falls back to table.
+    return null;
+  }
+
+  const transformedSeries = getVisualizationTransformed(rawSeries).series;
+  const settings = getComputedSettingsForSeries(transformedSeries);
+  const { StaticVisualizationComponent } = customViz;
+
+  const customVizRenderingContext: CustomVizRenderingContext = {
+    getColor: renderingContext.getColor,
+    measureText: (text, style) => {
+      const fullStyle = {
+        ...style,
+        family: style.family ?? renderingContext.fontFamily,
+      };
+      return {
+        width: renderingContext.measureText(text, fullStyle),
+        height: renderingContext.measureTextHeight(text, fullStyle),
+      };
+    },
+    fontFamily: renderingContext.fontFamily,
+    colorScheme: "light",
+  };
+
+  return (
+    <StaticVisualizationComponent
+      series={rawSeries}
+      renderingContext={customVizRenderingContext}
+      // The runtime value is the host's computed settings; the types clash
+      // only on the `column` function, whose plugin-facing parameter type is
+      // a looser public mirror of the host column type (contravariance).
+      settings={settings as unknown as PluginStaticProps["settings"]}
+      width={width}
+      height={height}
+    />
+  );
+};

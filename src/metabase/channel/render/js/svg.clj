@@ -11,7 +11,8 @@
    [metabase.channel.render.js.renderer :as renderer]
    [metabase.channel.render.style :as style]
    [metabase.lib-be.core :as lib-be]
-   [metabase.premium-features.core :as premium-features])
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util.i18n :as i18n])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
@@ -176,20 +177,26 @@
       svg-string->bytes))
 
 (defn ^:dynamic *javascript-visualization*
-  "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
-  [cards-with-data dashcard-viz-settings]
-  (-> (js.protocol/chart
-       (renderer/renderer)
-       {:rawSeries        cards-with-data
-        :dashcardSettings dashcard-viz-settings
-        :options          (cond-> {:applicationColors (appearance/application-colors)
-                                   :startOfWeek (lib-be/start-of-week)
-                                   :customFormatting (appearance/custom-formatting)
-                                   :tokenFeatures (premium-features/token-features)}
-                            *chart-size*
-                            (assoc :width (:width *chart-size*)
-                                   :height (:height *chart-size*)
-                                   :fitWithinBounds (boolean (:fit-within? *chart-size*))))})      (update :type (fnil keyword "unknown"))))
+  "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes.
+   `custom-viz-bundles` is an optional seq of `{:identifier str :plugin-id int :source str}` maps for custom
+   visualization plugins; when present, rendering happens on an isolated context with the plugin bundles
+   evaluated and registered first."
+  [cards-with-data dashcard-viz-settings custom-viz-bundles]
+  (let [input {:rawSeries        cards-with-data
+               :dashcardSettings dashcard-viz-settings
+               :options          (cond-> {:applicationColors (appearance/application-colors)
+                                          :startOfWeek (lib-be/start-of-week)
+                                          :customFormatting (appearance/custom-formatting)
+                                          :tokenFeatures (premium-features/token-features)
+                                          :locale (i18n/user-locale-string)}
+                                   *chart-size*
+                                   (assoc :width (:width *chart-size*)
+                                          :height (:height *chart-size*)
+                                          :fitWithinBounds (boolean (:fit-within? *chart-size*))))}]
+    (-> (if (seq custom-viz-bundles)
+          (js.protocol/chart-with-custom-viz (renderer/renderer) input custom-viz-bundles)
+          (js.protocol/chart (renderer/renderer) input))
+        (update :type (fnil keyword "unknown")))))
 
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"

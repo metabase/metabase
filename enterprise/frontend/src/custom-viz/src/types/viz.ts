@@ -85,10 +85,16 @@ export type CustomVisualization<TSettings extends BaseVisualizationSettings> = {
   mount: CustomVisualizationMount;
 
   /**
-   * Static visualization renderer (server-side PNG/PDF path, not sandboxed).
-   * Out of scope for the near-membrane hardening; stays as a plain component.
+   * Component that renders the visualization.
    */
   VisualizationComponent: ComponentType<CustomVisualizationProps<TSettings>>;
+
+  /**
+   * Static visualization renderer (server-side PNG/PDF path).
+   */
+  StaticVisualizationComponent?: ComponentType<
+    CustomStaticVisualizationProps<TSettings>
+  >;
 };
 
 export type VisualizationGridSize = {
@@ -115,7 +121,13 @@ export interface RenderingContext {
 export type CustomVisualizationProps<
   TSettings extends BaseVisualizationSettings,
 > = {
+  /**
+   * Container width in pixels. `null` until the container is first measured
+   */
   width: number | null;
+  /**
+   * Container height in pixels. `null` until the container is first measured.
+   */
   height: number | null;
   series: Series;
   settings: CustomVisualizationSettings<TSettings>;
@@ -146,6 +158,24 @@ export type CustomVisualizationMount = <P extends object>(
   initialProps: P,
 ) => CustomVisualizationMountHandle<P>;
 
+export type CustomStaticVisualizationProps<
+  TSettings extends Record<string, unknown>,
+> = {
+  series: Series;
+  settings: CustomVisualizationSettings<TSettings>;
+  renderingContext: RenderingContext;
+  /**
+   * Pixel width of the box to render into, present when the host controls the
+   * layout (e.g. a dashboard grid cell in a PDF export). Undefined for
+   * natural-size rendering (email, Slack).
+   */
+  width?: number;
+  /**
+   * Pixel height of the box to render into. Undefined for natural-size
+   * rendering (email, Slack).
+   */
+  height?: number;
+};
 export type ClickObject<TSettings extends BaseVisualizationSettings> = {
   /** The raw value of the clicked cell. */
   value?: RowValue;

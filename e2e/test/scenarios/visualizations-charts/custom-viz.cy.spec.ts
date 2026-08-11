@@ -1,4 +1,9 @@
-import { SAMPLE_DB_TABLES, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_TABLES,
+  USERS,
+  USER_GROUPS,
+  WEBMAIL_CONFIG,
+} from "e2e/support/cypress_data";
 import {
   type DashboardDetails,
   type StructuredQuestionDetails,
@@ -19,6 +24,16 @@ const { H } = cy;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const AGGREGATED_VALUE = "18760";
 const AGGREGATED_VALUE_FORMATTED = "18,760";
+
+type MaildevEmail = {
+  id: string;
+  html: string;
+  attachments?: {
+    contentType: string;
+    fileName: string;
+    generatedFileName: string;
+  }[];
+};
 
 function drillThroughDemoVizClick() {
   cy.intercept("POST", "/api/dataset").as("demoVizDrillDataset");
@@ -1138,6 +1153,162 @@ describe("admin > custom visualizations", () => {
           "include",
           `${parameter.slug}=${AGGREGATED_VALUE}`,
         );
+      });
+    });
+  });
+
+  describe("static rendering", { tags: "@external" }, () => {
+    const { admin } = USERS;
+
+    const subscriptionQuestionDetails: StructuredQuestionDetails = {
+      name: "Custom Viz Subscription Question",
+      query: {
+        "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      display: H.CUSTOM_VIZ_DISPLAY,
+      visualization_settings: { threshold: 0 },
+    };
+
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+      H.updateSetting("csp-img-enabled", true);
+      H.updateSetting("custom-viz-enabled", true);
+      H.setupSMTP();
+    });
+
+    function setupDashboardWithSubscription(
+      questionDetails: StructuredQuestionDetails,
+    ) {
+      H.createQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails: { name: "Custom Viz Subscription Dashboard" },
+      }).then(({ body: dashcard }) => {
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+
+      H.openAndAddEmailsToSubscriptions([
+        `${admin.first_name} ${admin.last_name}`,
+      ]);
+    }
+
+    it("renders the custom viz server-side in a subscription email and its PDF attachment", () => {
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
+      setupDashboardWithSubscription(subscriptionQuestionDetails);
+
+      cy.findByLabelText("Attach a PDF of the dashboard")
+        .should("not.be.checked")
+        .click({ force: true }); // Input is placed behind the label
+
+      H.sendEmailAndAssert((email: MaildevEmail) => {
+        const { html } = email;
+        expect(html).to.include("Custom Viz Subscription Question");
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+        // The plugin's static SVG rasterizes to a PNG <img>; the table
+        // fallback (asserted present in the next test) would instead print
+        // the aggregated value as text.
+        expect(html).to.include("<img");
+        expect(html).not.to.include(AGGREGATED_VALUE_FORMATTED);
+
+        const pdfAttachment = email.attachments?.find(
+          (attachment) => attachment.contentType === "application/pdf",
+        );
+        if (!pdfAttachment) {
+          throw new Error("Expected the email to have a PDF attachment");
+        }
+        expect(pdfAttachment.fileName).to.include(
+          "Custom Viz Subscription Dashboard",
+        );
+
+        cy.request({
+          url: `http://localhost:${WEBMAIL_CONFIG.WEB_PORT}/email/${email.id}/attachment/${pdfAttachment.generatedFileName}`,
+          encoding: "binary",
+        }).then(({ body }) => {
+          expect(body.slice(0, 5)).to.equal("%PDF-");
+        });
+      });
+    });
+
+    it("falls back to a table in the email when the plugin has no static component", () => {
+      // depends on demo-viz-security having no static component
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_3_SECURITY);
+      setupDashboardWithSubscription({
+        ...subscriptionQuestionDetails,
+        display: `custom:${H.CUSTOM_VIZ_IDENTIFIER_3_SECURITY}` as const,
+      });
+
+      H.sendEmailAndAssert(({ html }: MaildevEmail) => {
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+        expect(html).to.include("Count");
+        expect(html).to.include(AGGREGATED_VALUE_FORMATTED);
+      });
+    });
+
+    it("degrades to an error placeholder in the email when the plugin throws during static rendering", () => {
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
+
+      H.createDashboardWithQuestions({
+        dashboardName: "Custom Viz Throwing Dashboard",
+        questions: [
+          // Throws because plugin's static component does not handle non-numeric values
+          {
+            name: "Custom Viz Throwing Question",
+            native: { query: "select 'not-a-number-throws'" },
+            display: H.CUSTOM_VIZ_DISPLAY,
+            visualization_settings: { threshold: 0 },
+          },
+          // A healthy card of the same plugin
+          subscriptionQuestionDetails,
+        ],
+      }).then(({ dashboard }) => {
+        H.visitDashboard(dashboard.id);
+      });
+
+      H.openAndAddEmailsToSubscriptions([
+        `${admin.first_name} ${admin.last_name}`,
+      ]);
+
+      H.sendEmailAndAssert(({ html }: MaildevEmail) => {
+        // Throwing card produces an error
+        expect(html).to.include(
+          "An error occurred while displaying this card.",
+        );
+        expect(html).to.include("Custom Viz Throwing Question");
+        // The healthy card still rasterizes to a PNG <img>.
+        expect(html).to.include("Custom Viz Subscription Question");
+        expect(html).to.include("<img");
+      });
+    });
+
+    it("renders the custom viz server-side in an alert email for an individual question", () => {
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
+      H.createQuestion(
+        { ...subscriptionQuestionDetails, name: "Custom Viz Alert Question" },
+        { visitQuestion: true },
+      );
+
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Create an alert").click();
+
+      H.sendAlertAndAssert((email: MaildevEmail) => {
+        const { html } = email;
+        expect(html).to.include("Custom Viz Alert Question");
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+
+        // check whether it's not default fallback
+        expect(html).not.to.include(AGGREGATED_VALUE_FORMATTED);
+
+        const imageAttachments = (email.attachments ?? []).filter(
+          (attachment) => attachment.contentType === "image/png",
+        );
+
+        expect(imageAttachments).to.have.length(2);
       });
     });
   });

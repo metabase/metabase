@@ -572,6 +572,19 @@
                        {:description "Number of chart rasterization images backed by a pooled buffer."})
    (prometheus/counter :metabase-notification/image-buffer-unpooled
                        {:description "Number of chart rasterization images too large for the pool, allocated fresh."})
+   (prometheus/counter :metabase-static-viz/untrusted-render
+                       {:description "Number of static-viz renders executed on an untrusted sandbox context."
+                        :labels [:tier]})
+   (prometheus/counter :metabase-static-viz/context-recycles
+                       {:description "Number of pooled untrusted contexts proactively recycled after crossing the cumulative CPU soft limit."
+                        :labels [:tier]})
+   (prometheus/gauge :metabase-static-viz/isolate-contexts
+                     {:description "Number of live untrusted isolate contexts (at most one builtin plus one plugin). 0 means the isolate engine is closed and its native heap freed."})
+   (prometheus/gauge :metabase-static-viz/render-queue
+                     {:description "Number of static-viz renders waiting on the global render lock (excludes the render in progress)."})
+   (prometheus/counter :metabase-static-viz/sandbox-limit-hits
+                       {:description "Number of static-viz renders killed by an untrusted-sandbox resource limit."
+                        :labels [:tier :limit]})
    (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
    (prometheus/counter :metabase-gsheets/connection-creation-error
