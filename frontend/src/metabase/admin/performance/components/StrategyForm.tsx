@@ -665,7 +665,11 @@ const DurationStrategyFormFields = ({
         }
       >
         <Flex align="flex-start" gap="sm">
-          <PositiveNumberInput strategyType="duration" name="duration" />
+          <PositiveNumberInput
+            strategyType="duration"
+            name="duration"
+            placeholder="0"
+          />
           <FormSelect
             name="unit"
             data={getDurationUnitOptions(duration)}
@@ -685,6 +689,8 @@ const DurationStrategyFormFields = ({
   );
 };
 
+const NUMBER_INPUT_WIDTH = "4.5rem";
+
 export const PositiveNumberInput = ({
   strategyType,
   ...props
@@ -702,7 +708,12 @@ export const PositiveNumberInput = ({
         input: {
           // This is like `text-align: right` but it's RTL-friendly
           textAlign: "end",
-          maxWidth: "4.5rem",
+          maxWidth: NUMBER_INPUT_WIDTH,
+        },
+        error: {
+          width: NUMBER_INPUT_WIDTH,
+          overflow: "visible",
+          whiteSpace: "nowrap",
         },
       }}
       autoComplete="off"
