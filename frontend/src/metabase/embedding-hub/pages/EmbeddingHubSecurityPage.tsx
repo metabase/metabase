@@ -14,11 +14,16 @@ import {
   useListEmbeddableCardsQuery,
   useListEmbeddableDashboardsQuery,
 } from "metabase/api";
+import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { UpsellProBanner } from "metabase/embedding-hub/components/UpsellProBanner";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
+import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useSetting } from "metabase/settings";
 import { Box, Title } from "metabase/ui";
+
+const UPSELL_CAMPAIGN = "embedding-hub";
+const UPSELL_LOCATION = "embedding-hub-security";
 
 /**
  * Card order comes from the design: embedding methods, CORS, SameSite, secret
@@ -29,6 +34,17 @@ import { Box, Title } from "metabase/ui";
  */
 export function EmbeddingHubSecurityPage() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
+
+  const upgradeUrl = useSelector((state) =>
+    getUpgradeUrl(state, {
+      utm_campaign: UPSELL_CAMPAIGN,
+      utm_content: UPSELL_LOCATION,
+    }),
+  );
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign: UPSELL_CAMPAIGN,
+    location: UPSELL_LOCATION,
+  });
   const isFullAppEmbeddingEnabled = useSetting("enable-embedding-interactive");
 
   // Keyed on whether anything is actually published, not on the toggle: an
@@ -44,9 +60,14 @@ export function EmbeddingHubSecurityPage() {
       <EmbeddingMethodsCard />
 
       {!hasSimpleEmbedding && (
-        <UpsellProBanner
+        <UpsellBanner
           title={t`Upgrade to Metabase Pro to access the SDK for React and more advanced options.`}
-          location="embedding-hub-security"
+          campaign={UPSELL_CAMPAIGN}
+          location={UPSELL_LOCATION}
+          buttonText={t`Try Metabase Pro`}
+          buttonLink={upgradeUrl}
+          onClick={triggerUpsellFlow}
+          large
         />
       )}
 
