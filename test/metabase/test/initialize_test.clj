@@ -22,6 +22,17 @@
   {::leaf   {}
    ::branch {:leaf (ig/ref ::leaf)}})
 
+(def ^:private init-log (atom []))
+
+(defmethod ig/init-key ::shared-dep [k _] (swap! init-log conj k))
+(defmethod ig/init-key ::consumer-a [k _] (swap! init-log conj k))
+(defmethod ig/init-key ::consumer-b [k _] (swap! init-log conj k))
+
+(def ^:private shared-dep-config
+  {::shared-dep {}
+   ::consumer-a {:shared-dep (ig/ref ::shared-dep)}
+   ::consumer-b {:shared-dep (ig/ref ::shared-dep)}})
+
 (deftest each-component-initializes-once-across-builds-test
   (testing "asking for ::branch also initializes its dependency, and neither runs again on a second build"
     ;; the once-only guard is global and permanent, so this assertion only holds the first time it runs in a JVM
@@ -29,6 +40,14 @@
       (ig/build test-config [::branch] #'initialize/init-once!)
       (ig/build test-config [::branch] #'initialize/init-once!)
       (is (= 2 (- @calls before))))))
+
+(deftest shared-dependency-initializes-once-across-subsets-test
+  (testing "builds requesting different components initialize their common dependency once between them"
+    ;; the once-only guard is global and permanent, so this assertion only holds the first time it runs in a JVM
+    (ig/build shared-dep-config [::consumer-a] #'initialize/init-once!)
+    (ig/build shared-dep-config [::consumer-b] #'initialize/init-once!)
+    (is (= {::shared-dep 1, ::consumer-a 1, ::consumer-b 1}
+           (frequencies @init-log)))))
 
 (deftest component-exceeding-its-annotated-timeout-throws-test
   (is (thrown? TimeoutException
