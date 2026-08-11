@@ -127,7 +127,38 @@
                                                       :model-family    "openai"
                                                       :deployment-name "gpt-4.1-mini"}))))
   (testing "the managed type declares no fields, so any config validates"
-    (is (nil? (llm.provider/validate-config! "metabase" {})))))
+    (is (nil? (llm.provider/validate-config! "metabase" {}))))
+  (testing "a type with alternative credential groups needs one of them in full"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"google needs one of"
+         (llm.provider/validate-config! "google" {})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"google needs one of"
+         (llm.provider/validate-config! "google" {:oauth-access-token "ya29.token"})))
+    (is (nil? (llm.provider/validate-config! "google" {:service-account-key "{\"type\":\"service_account\"}"})))
+    (is (nil? (llm.provider/validate-config! "google" {:oauth-access-token "ya29.token"
+                                                       :project-id         "my-project"}))))
+  (testing "a field's own validator runs on a non-blank value"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"not a valid Google Cloud project ID"
+         (llm.provider/validate-config! "google" {:service-account-key "{\"type\":\"service_account\"}"
+                                                  :project-id          "My Project (name, not ID)"})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"not a valid Google Cloud location"
+         (llm.provider/validate-config! "google" {:service-account-key "{\"type\":\"service_account\"}"
+                                                  :location            "US Central"}))))
+  (testing "a select field's value must be one of its options"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"Invalid Model provider for azure"
+         (llm.provider/validate-config! "azure" {:api-key         "azure-key"
+                                                 :base-url        "https://r.services.ai.azure.com/openai"
+                                                 :model-family    "gemini"
+                                                 :deployment-name "gpt-4.1-mini"})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"Invalid Region for bedrock"
+         (llm.provider/validate-config! "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                   :secret-access-key "test-secret"
+                                                   :region            "mars-north-1"})))))
 
 (deftest connection-model-test
   (testing "Azure composes its model from the family and deployment the admin picked, so neither is typed as a prefix"
@@ -155,6 +186,19 @@
         (is (false? (llm.provider/config-complete? type {:api-key ""})))
         (is (false? (llm.provider/config-complete? type {:api-key nil})))
         (is (false? (llm.provider/config-complete? type nil))))))
+  (testing "google needs a service account key on its own, or an OAuth token together with a project ID"
+    (is (true? (llm.provider/config-complete? "google" {:service-account-key "{\"type\":\"service_account\"}"})))
+    (is (true? (llm.provider/config-complete? "google" {:oauth-access-token "ya29.token"
+                                                        :project-id         "my-project"})))
+    (testing "an empty config is not complete just because every field is individually optional"
+      (is (false? (llm.provider/config-complete? "google" {})))
+      (is (false? (llm.provider/config-complete? "google" nil))))
+    (testing "an OAuth token alone is not enough — nothing carries the project it should bill to"
+      (is (false? (llm.provider/config-complete? "google" {:oauth-access-token "ya29.token"})))
+      (is (false? (llm.provider/config-complete? "google" {:oauth-access-token "ya29.token"
+                                                           :project-id         "  "}))))
+    (testing "a project ID alone authenticates nothing"
+      (is (false? (llm.provider/config-complete? "google" {:project-id "my-project"})))))
   (testing "azure needs an API key and a base URL"
     (is (true? (llm.provider/config-complete? "azure" {:api-key         "azure-key"
                                                        :base-url        "https://r.services.ai.azure.com/openai"
@@ -298,8 +342,7 @@
               :model          "claude-opus-4-1"
               :credentials    {:api-key "sk-ant-db" :base-url "https://api.anthropic.com"}
               :ai-proxy?      false}
-             (llm.provider/resolve-model-ref "anthropic/claude-opus-4-1")))
-      (is (false? (llm.provider/proxied-model-ref? "anthropic/claude-opus-4-1"))))
+             (llm.provider/resolve-model-ref "anthropic/claude-opus-4-1"))))
     (testing "only the first segment names the connection, so a vendor-prefixed model stays intact"
       (is (= {:connection-key "openrouter"
               :type           "openrouter"
@@ -313,13 +356,11 @@
               :model          "claude-sonnet-4-6"
               :credentials    nil
               :ai-proxy?      true}
-             (llm.provider/resolve-model-ref "metabase/anthropic/claude-sonnet-4-6")))
-      (is (true? (llm.provider/proxied-model-ref? "metabase/anthropic/claude-sonnet-4-6"))))
+             (llm.provider/resolve-model-ref "metabase/anthropic/claude-sonnet-4-6"))))
     (testing "an unknown connection key resolves to nil rather than a half-built request"
       (is (nil? (llm.provider/resolve-model-ref "nope/some-model")))
       (is (nil? (llm.provider/resolve-model-ref "openai/gpt-5.4")))
-      (is (nil? (llm.provider/resolve-model-ref nil)))
-      (is (false? (llm.provider/proxied-model-ref? "nope/some-model"))))))
+      (is (nil? (llm.provider/resolve-model-ref nil))))))
 
 (deftest resolve-model-ref-fills-in-field-defaults-test
   (testing "a connection that never set an optional field still resolves with the registry default, so the adapter
@@ -369,6 +410,8 @@
     (is (= #{:api-key} (llm.provider/secret-field-keys "anthropic")))
     (is (= #{:api-key} (llm.provider/secret-field-keys "azure")))
     (is (= #{:access-key-id :secret-access-key :session-token} (llm.provider/secret-field-keys "bedrock")))
+    (testing "google's service account key is a file field, but it is the whole credential"
+      (is (= #{:service-account-key :oauth-access-token} (llm.provider/secret-field-keys "google"))))
     (is (= #{} (llm.provider/secret-field-keys "metabase"))))
   (testing "every type's default model, which is what a first connection of that type gets selected for it"
     (is (= {"anthropic"  "claude-sonnet-4-6"

@@ -104,7 +104,14 @@
               (fields "oauth-access-token")))
       (testing "the models are the fixed catalog every connection of the type offers, not a field of its own"
         (is (nil? (fields "model")))
-        (is (= "google/gemini-3.5-flash" (:default_model google)))))))
+        (is (= "google/gemini-3.5-flash" (:default_model google)))
+        (testing "and the catalog rides along so the connection form can offer the model to validate against"
+          (is (= [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
+                  {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}]
+                 (:models google)))))
+      (testing "the alternative credential groups ride along so the form knows when the config is complete"
+        (is (= [["service-account-key"] ["oauth-access-token" "project-id"]]
+               (:required_any google)))))))
 
 (deftest provider-types-managed-availability-test
   (letfn [(managed [types] (->> types (filter #(= "metabase" (:type %))) first))]
@@ -278,6 +285,73 @@
       (testing "the existing connection keeps its own credentials"
         (is (= {:api-key "sk-ant-first"} (stored-config "anthropic")))
         (is (= {:api-key "sk-ant-second"} (stored-config "anthropic-2")))))))
+
+(deftest create-reserves-the-managed-key-test
+  (testing (str "the metabase/ model-ref prefix means \"route through the AI proxy\", so no other provider type may "
+                "hold the key that grants it")
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+        (is (= "The \"metabase\" connection key is reserved for the Metabase AI service."
+               (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                     {:type   "anthropic"
+                                      :key    "metabase"
+                                      :config {:api-key "sk-ant-valid"}})))
+        (is (= [] (llm.provider/connections))))))
+  (testing "a rogue connection already holding the key blocks the managed provider instead of colliding with it"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (mt/with-temporary-setting-values [llm-providers      [(connection "metabase" "anthropic"
+                                                                         {:api-key "sk-ant-squatter"})]
+                                         llm-proxy-base-url "https://proxy.example.com"]
+        (is (= "Another connection holds the \"metabase\" key. Remove it before connecting the Metabase AI service."
+               (mt/user-http-request :crowberto :post 400 "llm/providers" {:type "metabase"})))))))
+
+(deftest create-drops-blank-config-values-test
+  (testing "a blank field is not part of the connection, so nothing later mistakes it for a configured value"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+        (mt/user-http-request :crowberto :post 200 "llm/providers"
+                              {:type   "google"
+                               :config {:auth-method        "oauth-token"
+                                        :oauth-access-token "ya29.token"
+                                        :project-id         "my-project"
+                                        :service-account-key ""
+                                        :location           "   "}})
+        (is (= {:auth-method        "oauth-token"
+                :oauth-access-token "ya29.token"
+                :project-id         "my-project"}
+               (stored-config "google")))))))
+
+(deftest update-clears-the-credential-the-other-auth-method-used-test
+  (testing "switching Google's authentication method blanks the old credential, and the blank is dropped rather than stored"
+    (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                  {:auth-method         "service-account-key"
+                                                                   :service-account-key "{\"type\":\"service_account\"}"})]]
+      (let [probed (atom nil)]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                               (reset! probed credentials)
+                                                               {:models []})]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                {:config {:auth-method         "oauth-token"
+                                          :oauth-access-token  "ya29.token"
+                                          :project-id          "my-project"
+                                          :service-account-key ""}})
+          (is (= {:auth-method        "oauth-token"
+                  :oauth-access-token "ya29.token"
+                  :project-id         "my-project"}
+                 (stored-config "google")))
+          (testing "so the credential probe runs with the OAuth token rather than the stale service account key"
+            (is (nil? (:service-account-key @probed)))
+            (is (= "ya29.token" (:oauth-access-token @probed)))))))))
+
+(deftest list-providers-masks-the-google-service-account-key-test
+  (testing "the service account key is a file upload rather than a password input, but it is the whole credential"
+    (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                  {:auth-method         "service-account-key"
+                                                                   :service-account-key "{\"private_key\":\"secret\"}"
+                                                                   :project-id          "my-project"})]]
+      (let [config (:config (first (mt/user-http-request :crowberto :get 200 "llm/providers")))]
+        (is (setting/obfuscated-value? (:service-account-key config)))
+        (is (= "my-project" (:project-id config)))))))
 
 (deftest create-managed-connection-skips-credential-verification-test
   (mt/with-premium-features #{:metabase-ai-managed}

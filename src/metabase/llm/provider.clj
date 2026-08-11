@@ -127,24 +127,36 @@
                      :default   "https://api.moonshot.ai/v1"
                      :help      (deferred-tru "Point this at the .cn platform to use it instead; keys are not interchangeable between the two.")}]}
    {:type          "google"
-    :label         (deferred-tru "Google Gemini")
+    ;; "Google Gemini Enterprise" (nearly the official "Gemini Enterprise Agent Platform" name), not "Google
+    ;; Gemini": the Gemini API is a separate surface with its own credentials, and may become a provider type of
+    ;; its own one day.
+    :label         (deferred-tru "Google Gemini Enterprise")
     :default-model "google/gemini-3.5-flash"
     ;; The Gemini Enterprise Agent Platform has no listing endpoint we can trust — the one it exposes reports models
     ;; that are not really available and omits ones that are — so the models Metabot is known to work with are fixed
-    ;; here, and connecting validates the credentials against one of them with a free `countTokens` probe. Which of
-    ;; them a project can actually reach depends on its location.
+    ;; here, and connecting validates the credentials against the model chosen in the connection form with a free
+    ;; `countTokens` probe. Which of them a project can actually reach depends on its location.
     :models        [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
                     {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}]
+    ;; A service account key authenticates on its own (it can carry the project); an OAuth token needs the project
+    ;; named beside it.
+    :required-any  [[:service-account-key] [:oauth-access-token :project-id]]
     :fields        [{:key         :project-id
                      :label       (deferred-tru "Project ID")
                      :type        :text
                      :placeholder (deferred-tru "my-project")
+                     :validate    (fn [value]
+                                    (when-not (llm.settings/valid-google-project-id? value)
+                                      (tru "\"{0}\" is not a valid Google Cloud project ID. Use the project ID — 6 to 30 lowercase letters, digits and hyphens — rather than the project name or number." value)))
                      :help        (deferred-tru "The Google Cloud project to use. Optional if the service account key provides it.")
                      :docs-url    "https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects"}
                     {:key       :location
                      :label     (deferred-tru "Location")
                      :type      :text
                      :placeholder "global"
+                     :validate  (fn [value]
+                                  (when-not (llm.settings/valid-google-location? value)
+                                    (tru "\"{0}\" is not a valid Google Cloud location." value)))
                      :help      (deferred-tru "Optional. Defaults to global.")}
                     {:key       :auth-method
                      :label     (deferred-tru "Authentication method")
@@ -157,6 +169,8 @@
                     {:key         :service-account-key
                      :label       (deferred-tru "Service account key file")
                      :type        :file
+                     ;; the file is the whole credential — private key included — so it is redacted like a password
+                     :secret?     true
                      :show-when   {:field :auth-method :value "service-account-key"}
                      :placeholder (deferred-tru "Click to select a file")
                      :help        (deferred-tru "Upload a service account key file to authenticate with.")
@@ -267,10 +281,12 @@
     (some? (provider-type type-name))))
 
 (defn secret-field-keys
-  "The `:config` keys of `type-name` that hold secrets."
+  "The `:config` keys of `type-name` that hold secrets: every `:password` field, plus any field marked `:secret?`
+  regardless of its input type — Google's service account key is a file upload, but it is the whole credential."
   [type-name]
   (into #{}
-        (comp (filter #(= :password (:type %))) (map :key))
+        (comp (filter (fn [{:keys [type secret?]}] (or (= :password type) secret?)))
+              (map :key))
         (:fields (provider-type type-name))))
 
 (defn singleton-type?
@@ -310,43 +326,71 @@
         (str/join "/" parts)))))
 
 (defn- validate-field!
-  [type-name {:keys [key label required? prefix default]} config]
+  [type-name {:keys [key label required? prefix default options validate]} config]
   (let [value (u/trimmed-string (get config key))]
     (when (and required? (not value) (not default))
       (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
                       {:status-code 400 :field key})))
     (when (and value prefix (not (str/starts-with? value prefix)))
       (throw (ex-info (tru "Invalid {0} for {1}. It must start with ''{2}''." (str label) type-name prefix)
-                      {:status-code 400 :field key})))))
+                      {:status-code 400 :field key})))
+    (when (and value (seq options) (not-any? #(= value (:value %)) options))
+      (throw (ex-info (tru "Invalid {0} for {1}." (str label) type-name)
+                      {:status-code 400 :field key})))
+    (when-let [problem (and value validate (validate value))]
+      (throw (ex-info (str problem) {:status-code 400 :field key})))))
+
+(defn- validate-required-any!
+  "Throw a 400 unless `config` satisfies one of `type-name`'s `:required-any` credential groups — for Google, a
+  service account key on its own or an OAuth token together with a project ID."
+  [type-name config]
+  (let [{:keys [required-any fields]} (provider-type type-name)
+        label-for                     (into {} (map (juxt :key :label)) fields)
+        carried?                      (fn [group] (every? #(u/trimmed-string (get config %)) group))]
+    (when (and (seq required-any) (not-any? carried? required-any))
+      (throw (ex-info (tru "{0} needs one of: {1}."
+                           type-name
+                           (str/join (str " " (tru "or") " ")
+                                     (map (fn [group] (str/join " + " (map (comp str label-for) group)))
+                                          required-any)))
+                      {:status-code 400 :required-any required-any})))))
 
 (defn validate-config!
-  "Check a connection's `:config` against its provider type's field descriptors: required fields are present, and
-  fields that declare a `:prefix` start with it. Throws a 400 on the first problem."
+  "Check a connection's `:config` against its provider type's field descriptors: required fields are present, fields
+  that declare a `:prefix` start with it, `:options` values are among the options, per-field `:validate` hooks pass,
+  and one of the type's `:required-any` credential groups is carried. Throws a 400 on the first problem."
   [type-name config]
   (when-not (provider-type type-name)
     (throw (ex-info (tru "Unknown provider type {0}." (pr-str type-name))
                     {:status-code 400 :type type-name})))
   (doseq [field (:fields (provider-type type-name))]
-    (validate-field! type-name field config)))
+    (validate-field! type-name field config))
+  (validate-required-any! type-name config))
 
 (defn credentials-complete?
   "Whether `config` carries the credentials a request needs.
 
   A required field the registry gives a `:default` counts as carried: [[with-field-defaults]] supplies it when the
-  connection is resolved, so leaving it untouched is the admin accepting the value its form showed.
+  connection is resolved, so leaving it untouched is the admin accepting the value its form showed. A type with
+  `:required-any` groups additionally needs one of them carried in full — Google's fields are individually optional
+  because either credential will do, which without the groups would make an empty config count as complete.
 
   [[model-fields]] are exempt: they name what to call, not what authenticates the call, and a connection can
   legitimately take its model from the `connection-key/model` reference instead — which is where an Azure
   deployment configured before the connection list existed still lives. [[validate-config!]] still requires them
   of anything saved through the API, so only the environment and a hand-written `llm-providers` can omit them."
   [type-name config]
-  (let [model-keys (set (model-fields type-name))]
-    (every? (fn [{:keys [key required? default]}]
-              (or (not required?)
-                  default
-                  (contains? model-keys key)
-                  (u/trimmed-string (get config key))))
-            (:fields (provider-type type-name)))))
+  (let [{:keys [fields required-any]} (provider-type type-name)
+        model-keys                    (set (model-fields type-name))]
+    (and (every? (fn [{:keys [key required? default]}]
+                   (or (not required?)
+                       default
+                       (contains? model-keys key)
+                       (u/trimmed-string (get config key))))
+                 fields)
+         (or (empty? required-any)
+             (boolean (some (fn [group] (every? #(u/trimmed-string (get config %)) group))
+                            required-any))))))
 
 (defn config-complete?
   "Whether a connection of `type-name` can make requests: [[credentials-complete?]], or for the Metabase-managed
@@ -585,11 +629,6 @@
          :model          model
          :credentials    (with-field-defaults type config)
          :ai-proxy?      false}))))
-
-(defn proxied-model-ref?
-  "Whether requests for `model-ref` are routed through the Metabase AI proxy."
-  [model-ref]
-  (boolean (:ai-proxy? (resolve-model-ref model-ref))))
 
 ;;; -------------------------------------------------- Redaction ----------------------------------------------------
 

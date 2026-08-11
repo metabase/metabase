@@ -427,10 +427,10 @@
          (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
                streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
                                        :credentials credentials :ai-proxy? ai-proxy?}
-                                system-msg                    (assoc :system system-msg)
+                                system-msg                  (assoc :system system-msg)
                                 (and (seq tools)
-                                     tool-choice)             (assoc :tool_choice tool-choice)
-                                (:session-id tracking-opts)   (assoc :prompt-cache-key (:session-id tracking-opts)))
+                                     tool-choice)           (assoc :tool_choice tool-choice)
+                                (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
                make-source    (fn []
                                 (eduction (comp (core/tool-executor-xf tools)
                                                 (core/lite-aisdk-xf)

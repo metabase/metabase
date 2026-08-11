@@ -47,6 +47,11 @@
    [:singleton :boolean]
    [:available :boolean]
    [:default_model [:maybe :string]]
+   ;; the fixed catalog, for types whose models cannot be listed from the provider; the connection form offers
+   ;; these so the connect-time credential probe runs against the model the admin actually wants
+   [:models [:sequential [:map [:id :string] [:display_name :string]]]]
+   ;; alternative credential groups: the connection is complete when one group is filled in full
+   [:required_any [:sequential [:sequential :string]]]
    [:fields [:sequential field-response-schema]]])
 
 (def ^:private connection-response-schema
@@ -101,13 +106,15 @@
     show-when   (assoc :show_when {:field (name (:field show-when)) :value (:value show-when)})))
 
 (defn- provider-type-response
-  [{:keys [type label managed? singleton? default-model fields]}]
+  [{:keys [type label managed? singleton? default-model required-any fields]}]
   {:type          type
    :label         (str label)
    :managed       (boolean managed?)
    :singleton     (boolean singleton?)
    :available     (llm.provider/type-available? type)
    :default_model default-model
+   :models        (mapv #(select-keys % [:id :display_name]) (llm.provider/fixed-models type))
+   :required_any  (mapv #(mapv name %) required-any)
    :fields        (mapv field-response fields)})
 
 (defn- connection-response
@@ -205,6 +212,13 @@
     (throw (ex-info (tru "LLM provider connections are set by the {0} environment variable and cannot be changed via the API."
                          (setting/env-var-name :llm-providers))
                     {:status-code 400}))))
+
+(defn- without-blank-values
+  "Drop `config` entries whose value is blank. The form clears a field it hid by sending an empty string — switching
+  Google's authentication method blanks the credential the other method used — and a blank left in the stored config
+  would read as present to everything that checks with `some?` rather than `non-blank`."
+  [config]
+  (into {} (remove (fn [[_ v]] (str/blank? v))) config))
 
 (defn- verify-credentials!
   "Confirm `config` can actually reach `conn`'s provider before anything is persisted, by listing its models.
@@ -313,8 +327,20 @@
     (api/check-400 (not (and (llm.provider/singleton-type? type)
                              (some #(= type (:type %)) (llm.provider/connections))))
                    (tru "The {0} provider is already connected." (pr-str type)))
-    (let [conn-key (llm.provider/unique-key (or (not-empty key) type))
-          config   (or config {})
+    ;; the `metabase/` model-ref prefix means "route through the AI proxy", so a connection of any other type
+    ;; holding that key would smuggle its requests into managed billing and usage accounting
+    (api/check-400 (or (llm.provider/managed-type? type)
+                       (not= llm.provider/managed-connection-key (some-> key str/lower-case str/trim)))
+                   (tru "The {0} connection key is reserved for the Metabase AI service."
+                        (pr-str llm.provider/managed-connection-key)))
+    (api/check-400 (not (and (llm.provider/managed-type? type)
+                             (llm.provider/connection llm.provider/managed-connection-key)))
+                   (tru "Another connection holds the {0} key. Remove it before connecting the Metabase AI service."
+                        (pr-str llm.provider/managed-connection-key)))
+    (let [conn-key (if (llm.provider/managed-type? type)
+                     llm.provider/managed-connection-key
+                     (llm.provider/unique-key (or (not-empty key) type)))
+          config   (without-blank-values config)
           conn     {:key    conn-key
                     :type   type
                     :name   (or (not-empty name) (str (:label provider-type)))
@@ -344,9 +370,10 @@
         existing (nth stored idx)
         _        (check-not-env-connection! (llm.provider/connection conn-key))
         merged   (cond-> existing
-                   (some? config)     (assoc :config (llm.provider/merge-config (:type existing)
-                                                                                (:config existing)
-                                                                                config))
+                   (some? config)     (assoc :config (without-blank-values
+                                                      (llm.provider/merge-config (:type existing)
+                                                                                 (:config existing)
+                                                                                 config)))
                    (not-empty name)   (assoc :name name))]
     (llm.provider/validate-config! (:type merged) (:config merged))
     (verify-credentials! merged (:config merged) model)

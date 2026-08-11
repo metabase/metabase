@@ -31,6 +31,7 @@
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -174,7 +175,13 @@
     (throw (ex-info (tru "AI proxy is not supported for the Google provider")
                     {:api-error  true
                      :error-code :proxy-unsupported})))
-  (let [{:keys [service-account-key oauth-access-token project-id] :as creds} credentials
+  ;; blank credentials count as absent — the environment can hand a setting an empty string, and one credential
+  ;; left blank must not shadow the other or the project ID a service account key carries
+  (let [{:keys [service-account-key oauth-access-token project-id]
+         :as   creds}      (merge credentials
+                                  {:service-account-key (u/trimmed-string (:service-account-key credentials))
+                                   :oauth-access-token  (u/trimmed-string (:oauth-access-token credentials))
+                                   :project-id          (u/trimmed-string (:project-id credentials))})
         sa-creds    (when service-account-key
                       (cached-service-account-credentials service-account-key))
         project-id  (or project-id (some-> sa-creds service-account-project-id))

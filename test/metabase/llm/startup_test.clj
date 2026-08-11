@@ -13,19 +13,23 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- do-with-entitlements!
-  [legacy-result managed-result configured? thunk]
+  [{:keys [metabot-v3? managed-ai? configured?]} thunk]
   (mt/with-temporary-setting-values [has-user-setup true]
     (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature?
                                 (fn [feature]
                                   (case feature
-                                    :metabot-v3          legacy-result
-                                    :metabase-ai-managed managed-result))
-                                metabot.settings/llm-metabot-configured? (constantly configured?)]
+                                    :metabot-v3          metabot-v3?
+                                    :metabase-ai-managed managed-ai?))
+                                metabot.settings/llm-metabot-configured? (constantly (boolean configured?))]
       (thunk))))
 
 (defmacro ^:private with-entitlements
-  [legacy-result managed-result configured? & body]
-  `(do-with-entitlements! ~legacy-result ~managed-result ~configured? (fn [] ~@body)))
+  "Runs `body` with the token features and Metabot configured-ness pinned. `opts` is a map of `:metabot-v3?` and
+  `:managed-ai?` — tri-state, since [[premium-features/canonically-has-feature?]] answers nil before the token
+  status is known — and `:configured?`."
+  {:style/indent 1}
+  [opts & body]
+  `(do-with-entitlements! ~opts (fn [] ~@body)))
 
 (defn- do-with-llm-proxy!
   [url thunk]
@@ -41,7 +45,7 @@
   (with-llm-proxy "https://proxy.example.com"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
-        (with-entitlements true false false
+        (with-entitlements {:metabot-v3? true :managed-ai? false}
           (llm.startup/check-and-sync-settings-on-startup!)
           (is (= metabot.settings/default-metabase-llm-metabot-provider
                  (metabot.settings/llm-metabot-provider))))))))
@@ -50,7 +54,7 @@
   (with-llm-proxy "https://proxy.example.com"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
-        (with-entitlements true false false
+        (with-entitlements {:metabot-v3? true :managed-ai? false}
           (mt/with-temporary-setting-values [has-user-setup false]
             (llm.startup/check-and-sync-settings-on-startup!)
             (is (nil? (setting/db-stored-value :llm-metabot-provider)))
@@ -63,7 +67,7 @@
       (with-llm-proxy "https://proxy.example.com"
         (mt/with-temporary-setting-values [llm-providers []]
           (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
-            (with-entitlements legacy-result managed-result false
+            (with-entitlements {:metabot-v3? legacy-result :managed-ai? managed-result}
               (llm.startup/check-and-sync-settings-on-startup!)
               (is (= (case [legacy-result managed-result]
                        [true false] metabot.settings/default-metabase-llm-metabot-provider
@@ -74,7 +78,7 @@
   (with-llm-proxy "https://proxy.example.com"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
-        (with-entitlements true false true
+        (with-entitlements {:metabot-v3? true :managed-ai? false :configured? true}
           (llm.startup/check-and-sync-settings-on-startup!)
           (is (= metabot.settings/default-llm-metabot-provider
                  (metabot.settings/llm-metabot-provider))))))))
@@ -83,7 +87,7 @@
   (with-llm-proxy "https://proxy.example.com"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temporary-raw-setting-values [llm-metabot-provider "openai/gpt-4.1-mini"]
-        (with-entitlements true false false
+        (with-entitlements {:metabot-v3? true :managed-ai? false}
           (llm.startup/check-and-sync-settings-on-startup!)
           (is (= "openai/gpt-4.1-mini"
                  (metabot.settings/llm-metabot-provider))))))))
@@ -92,7 +96,7 @@
   (with-llm-proxy "https://proxy.example.com"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temporary-raw-setting-values [llm-metabot-provider ""]
-        (with-entitlements true false false
+        (with-entitlements {:metabot-v3? true :managed-ai? false}
           (llm.startup/check-and-sync-settings-on-startup!)
           (is (= metabot.settings/default-metabase-llm-metabot-provider
                  (metabot.settings/llm-metabot-provider))))))))
@@ -102,7 +106,7 @@
     (with-llm-proxy "https://proxy.example.com"
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
-          (with-entitlements true false false
+          (with-entitlements {:metabot-v3? true :managed-ai? false}
             (llm.startup/check-and-sync-settings-on-startup!)
             (is (= [{:key "metabase" :type "metabase" :name "Metabase AI service" :config {}}]
                    (vec (llm.settings/llm-providers))))
@@ -116,7 +120,7 @@
     (with-llm-proxy "https://proxy.example.com"
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
-          (with-entitlements nil nil false
+          (with-entitlements {:metabot-v3? nil :managed-ai? nil}
             (llm.startup/check-and-sync-settings-on-startup!)
             (is (= [] (vec (llm.settings/llm-providers)))))))))
   (testing "an existing connection list keeps its entries"
@@ -126,7 +130,7 @@
                                                          :name   "Anthropic"
                                                          :config {:api-key "sk-ant-stored"}}]]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
-          (with-entitlements true false false
+          (with-entitlements {:metabot-v3? true :managed-ai? false}
             (llm.startup/check-and-sync-settings-on-startup!)
             (is (= ["anthropic" "metabase"] (map :key (llm.settings/llm-providers))))))))))
 
@@ -135,7 +139,7 @@
                 "managed provider would name a connection that never resolves. Leave the selection alone instead.")
     (mt/with-temp-env-var-value! [mb-llm-providers "[{\"key\":\"anthropic\",\"type\":\"anthropic\",\"name\":\"Anthropic\",\"config\":{\"api-key\":\"sk-ant-env\"}}]"]
       (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
-        (with-entitlements true false false
+        (with-entitlements {:metabot-v3? true :managed-ai? false}
           (let [stored-before (setting/db-stored-value :llm-providers)]
             (llm.startup/check-and-sync-settings-on-startup!)
             (is (= stored-before (setting/db-stored-value :llm-providers)))
