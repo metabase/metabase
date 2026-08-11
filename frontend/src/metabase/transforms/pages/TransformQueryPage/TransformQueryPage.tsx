@@ -15,7 +15,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate, useParams } from "metabase/router";
@@ -63,8 +63,13 @@ export function TransformQueryPage() {
     isLoading: isLoadingTransform,
     error: transformError,
   } = useGetTransformQuery(transformId ?? skipToken);
-  const { readOnly, transformsDatabases, isLoadingDatabases, databasesError } =
-    useTransformPermissions({ transform });
+  const {
+    readOnly,
+    remoteSyncReadOnly,
+    transformsDatabases,
+    isLoadingDatabases,
+    databasesError,
+  } = useTransformPermissions({ transform });
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
@@ -84,6 +89,7 @@ export function TransformQueryPage() {
       databases={transformsDatabases}
       isEditRoute={isEditRoute}
       readOnly={readOnly}
+      remoteSyncReadOnly={remoteSyncReadOnly}
     />
   );
 }
@@ -93,6 +99,7 @@ type TransformQueryPageBodyProps = {
   databases: Database[];
   isEditRoute: boolean;
   readOnly?: boolean;
+  remoteSyncReadOnly?: boolean;
 };
 
 function TransformQueryPageBody({
@@ -100,6 +107,7 @@ function TransformQueryPageBody({
   databases,
   isEditRoute,
   readOnly,
+  remoteSyncReadOnly,
 }: TransformQueryPageBodyProps) {
   const {
     source,
@@ -115,9 +123,6 @@ function TransformQueryPageBody({
   });
   const navigate = useNavigate();
   const metadata = useSelector(getMetadata);
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
   const [uiState, setUiState] = useState(getInitialUiState);
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
@@ -159,11 +164,11 @@ function TransformQueryPageBody({
   }, [source.type, isEditMode, setSourceAndRejectProposed, transform.source]);
 
   useEffect(() => {
-    if (isEditMode && isRemoteSyncReadOnly) {
+    if (isEditRoute && remoteSyncReadOnly) {
       // If remote sync is set up to read-only mode, user can't edit transforms
       navigate(Urls.transform(transform.id));
     }
-  }, [isRemoteSyncReadOnly, isEditMode, transform.id, navigate]);
+  }, [remoteSyncReadOnly, isEditRoute, transform.id, navigate]);
 
   const handleSave = async (request: UpdateTransformRequest) => {
     const { error } = await updateTransform(request);

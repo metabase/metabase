@@ -1,7 +1,6 @@
 import { c } from "ttag";
 
-import { getEngines } from "metabase/databases/selectors";
-import { useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
@@ -13,7 +12,7 @@ export const ExistingDatabaseHeader = ({
 }: {
   database: Database;
 }) => {
-  const engines = useSelector(getEngines);
+  const engines = useSetting("engines");
   const engineKey = isEngineKey(database.engine) ? database.engine : undefined;
   const driverName = engineKey
     ? engines[engineKey]?.["driver-name"]

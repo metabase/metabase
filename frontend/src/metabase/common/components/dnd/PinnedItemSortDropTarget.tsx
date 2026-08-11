@@ -11,7 +11,6 @@ import { PinnableDragTypes, isItemDragPayload } from ".";
 interface PinnedItemSortDropTargetOwnProps {
   isFrontTarget: boolean;
   isBackTarget: boolean;
-  itemModel: string;
   pinIndex: number;
   noDrop: boolean;
 }
@@ -33,15 +32,11 @@ export const PinnedItemSortDropTarget = DropTarget(
         return false;
       }
       const { items } = payload;
-      const { isFrontTarget, isBackTarget, itemModel, pinIndex } = props;
+      const { isFrontTarget, isBackTarget, pinIndex } = props;
 
       // NOTE: not necessary to check collection permission here since we
       // enforce it when beginning to drag and item within the same collection
       if (!items.every((item) => isPinnable(item) && isItemPinned(item))) {
-        return false;
-      }
-
-      if (itemModel != null && items.some((item) => item.model !== itemModel)) {
         return false;
       }
 

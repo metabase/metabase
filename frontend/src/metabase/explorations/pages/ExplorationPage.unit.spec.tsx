@@ -1,4 +1,5 @@
 import { act } from "@testing-library/react";
+import fetchMock from "fetch-mock";
 import { useReducer } from "react";
 
 import {
@@ -61,8 +62,21 @@ jest.mock("../components/ExplorationVisualization", () => ({
   ExplorationChartAreaSkeleton: () => null,
 }));
 
+type CapturedSidebarNavProps = {
+  onPreviousPage: () => void;
+  onNextPage: () => void;
+};
+
+let latestSidebarNavProps: CapturedSidebarNavProps | null = null;
+
 jest.mock("../components/ExplorationSidebar", () => ({
-  ExplorationSidebar: () => <div data-testid="sidebar" />,
+  ExplorationSidebar: (props: CapturedSidebarNavProps) => {
+    latestSidebarNavProps = {
+      onPreviousPage: props.onPreviousPage,
+      onNextPage: props.onNextPage,
+    };
+    return <div data-testid="sidebar" />;
+  },
   ExplorationTitle: () => <div data-testid="exploration-title" />,
 }));
 
@@ -116,9 +130,142 @@ function rerenderExplorationPage() {
   fireEvent.click(screen.getByTestId(RERENDER_BUTTON_TESTID));
 }
 
+function makeMultiPageExploration(): Exploration {
+  return makeExploration([
+    makeThread(
+      1,
+      "Initial thread",
+      [
+        createPage({
+          id: 100,
+          name: "Page A",
+          position: 0,
+          query_ids: [1],
+        }),
+        createPage({
+          id: 200,
+          name: "Page B",
+          position: 1,
+          query_ids: [2],
+        }),
+        createPage({
+          id: 300,
+          name: "Page C",
+          position: 2,
+          query_ids: [3],
+        }),
+      ],
+      [
+        createQuery({ id: 1, name: "Query A", status: "done" }),
+        createQuery({ id: 2, name: "Query B", status: "done" }),
+        createQuery({ id: 3, name: "Query C", status: "done" }),
+      ],
+    ),
+  ]);
+}
+
+describe("ExplorationPage page navigation", () => {
+  beforeEach(() => {
+    latestSidebarNavProps = null;
+    explorationData = makeMultiPageExploration();
+    // goToAdjacentPage prefetches the following page's query results
+    fetchMock.get("express:/api/exploration/query/:id", {
+      data: { rows: [], cols: [] },
+    });
+  });
+
+  it("onNextPage navigates to the next page id in sidebar order", async () => {
+    const { router } = renderExplorationPage(
+      `${Urls.exploration(explorationData.id)}/page/100`,
+    );
+    if (!router) {
+      throw new Error("expected router");
+    }
+    expect(latestSidebarNavProps).not.toBeNull();
+
+    await act(async () => {
+      latestSidebarNavProps?.onNextPage();
+    });
+
+    await waitFor(() => {
+      expect(router.location.pathname).toContain("/page/200");
+    });
+  });
+
+  it("onNextPage prefetches the page after the destination", async () => {
+    renderExplorationPage(`${Urls.exploration(explorationData.id)}/page/100`);
+
+    await act(async () => {
+      latestSidebarNavProps?.onNextPage();
+    });
+
+    // A → B; prefetch the page after B (C / query 3), not B itself.
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/exploration/query/3"),
+      ).toBe(true);
+    });
+    expect(fetchMock.callHistory.called("path:/api/exploration/query/2")).toBe(
+      false,
+    );
+  });
+
+  it("onPreviousPage navigates to the previous page id in sidebar order", async () => {
+    const { router } = renderExplorationPage(
+      `${Urls.exploration(explorationData.id)}/page/200`,
+    );
+    if (!router) {
+      throw new Error("expected router");
+    }
+
+    await act(async () => {
+      latestSidebarNavProps?.onPreviousPage();
+    });
+
+    await waitFor(() => {
+      expect(router.location.pathname).toContain("/page/100");
+    });
+  });
+
+  it("onNextPage wraps from the last page to the first", async () => {
+    const { router } = renderExplorationPage(
+      `${Urls.exploration(explorationData.id)}/page/300`,
+    );
+    if (!router) {
+      throw new Error("expected router");
+    }
+
+    await act(async () => {
+      latestSidebarNavProps?.onNextPage();
+    });
+
+    await waitFor(() => {
+      expect(router.location.pathname).toContain("/page/100");
+    });
+  });
+
+  it("onPreviousPage wraps from the first page to the last", async () => {
+    const { router } = renderExplorationPage(
+      `${Urls.exploration(explorationData.id)}/page/100`,
+    );
+    if (!router) {
+      throw new Error("expected router");
+    }
+
+    await act(async () => {
+      latestSidebarNavProps?.onPreviousPage();
+    });
+
+    await waitFor(() => {
+      expect(router.location.pathname).toContain("/page/300");
+    });
+  });
+});
+
 describe("ExplorationPage thread-ready toasts", () => {
   beforeEach(() => {
     sendToastMock.mockClear();
+    latestSidebarNavProps = null;
     explorationData = makeExploration([
       makeThread(
         1,
@@ -142,9 +289,10 @@ describe("ExplorationPage thread-ready toasts", () => {
     expect(sendToastMock).not.toHaveBeenCalled();
   });
 
-  it("waits for the first page before toasting about a new thread", async () => {
+  it("waits for the first page with queries before toasting about a new thread", async () => {
     renderExplorationPage();
 
+    // Thread arrives while query planning is still running — no pages yet.
     explorationData = makeExploration([
       getThreads(explorationData)[0],
       createThread({
@@ -153,6 +301,26 @@ describe("ExplorationPage thread-ready toasts", () => {
         blocks: [],
         queries: [],
       }),
+    ]);
+    rerenderExplorationPage();
+    expect(sendToastMock).not.toHaveBeenCalled();
+
+    // A page can land before it has queries. The sidebar hides pages without
+    // queries, so the toast must wait for the same readiness condition.
+    explorationData = makeExploration([
+      getThreads(explorationData)[0],
+      makeThread(
+        2,
+        "Revenue deep dive",
+        [
+          createPage({
+            id: 200,
+            name: "Follow-up page",
+            query_ids: [],
+          }),
+        ],
+        [],
+      ),
     ]);
     rerenderExplorationPage();
     expect(sendToastMock).not.toHaveBeenCalled();

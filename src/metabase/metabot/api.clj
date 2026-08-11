@@ -485,6 +485,7 @@
   (case provider
     "anthropic"  :llm-anthropic-api-key
     "mistral"    :llm-mistral-api-key
+    "moonshot"   :llm-moonshot-api-key
     "openai"     :llm-openai-api-key
     "openrouter" :llm-openrouter-api-key
     "zai"        :llm-zai-api-key))

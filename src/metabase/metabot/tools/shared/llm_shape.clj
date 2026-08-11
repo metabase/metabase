@@ -18,6 +18,7 @@
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
+   [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -88,8 +89,8 @@
         (str/replace ">" "&gt;")
         (str/replace "\"" "&quot;"))))
 
-(defn- escape-xml-content
-  "Like `escape-xml` but leaves double-quotes intact. Safe for element/table-cell *content*
+(defn escape-xml-content
+  "Like [[escape-xml]] but leaves double-quotes intact. Safe for element/table-cell *content*
   (only `& < >` are structural there), so a value such as a JSON portable-FK array renders
   readably instead of with `&quot;` noise."
   [s]
@@ -852,8 +853,7 @@
     :transform_description     description
     :transform_source_type     (some-> (:type source) clojure.core/name)
     :transform_source_database (when-let [db (:source-database source)] (str db))
-    :transform_source_query    (let [q (:query source)]
-                                 (when (string? q) q))
+    :transform_source_query    (metabot.u/transform-query->text (:query source))
     :transform_target          (when target (pr-str target))}))
 
 (def formatters

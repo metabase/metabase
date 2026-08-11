@@ -17,6 +17,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -145,6 +146,21 @@
       (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
       pulse)))
 
+(def ^:private PulseChannel
+  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
+  [:map
+   [:id             {:optional true}   :any]
+   [:channel_type                      :any]
+   [:enabled        {:optional true}   :any]
+   [:pulse_id       {:optional true}   :any]
+   [:channel_id     {:optional true}   :any]
+   [:details        {:optional true}   ms/Map]
+   [:recipients     {:optional true}   [:sequential ms/Map]]
+   [:schedule_type  {:optional true}   :any]
+   [:schedule_day   {:optional true}   :any]
+   [:schedule_hour  {:optional true}   :any]
+   [:schedule_frame {:optional true}   :any]])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -161,12 +177,12 @@
    :- [:map
        [:name                ms/NonBlankString]
        [:cards               [:+ models.pulse/CoercibleToCardRef]]
-       [:channels            [:+ :map]]
+       [:channels            [:+ PulseChannel]]
        [:skip_if_empty       {:default false} [:maybe :boolean]]
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-       [:parameters          {:optional true} [:maybe [:sequential :map]]]]
+       [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]
    request]
   (create-pulse-with-perm-checks!
    cards
@@ -233,11 +249,12 @@
    {:keys [cards], :as pulse-updates} :- [:map
                                           [:name          {:optional true} [:maybe ms/NonBlankString]]
                                           [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
-                                          [:channels      {:optional true} [:maybe [:+ :map]]]
+                                          [:channels      {:optional true} [:maybe [:+ PulseChannel]]]
                                           [:skip_if_empty {:default false} [:maybe :boolean]]
                                           [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                           [:archived      {:default false} [:maybe :boolean]]
-                                          [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]
+                                          [:parameters    {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]]
   ;; do various perms checks
   (try
     (perms/check-has-application-permission :monitoring)
@@ -321,14 +338,22 @@
   [_route-params
    _query-params
    {:keys [cards channels] :as body} :- [:map
+                                         ;; the saved subscription this is a test send of, when there is one.
+                                         ;; `send-pulse!` builds the non-user unsubscribe link out of it, and the
+                                         ;; email template drops the whole "Unsubscribe" footer without a link
+                                         [:id                  {:optional true} [:maybe ms/PositiveInt]]
                                          [:name                ms/NonBlankString]
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
-                                         [:channels            [:+ :map]]
+                                         [:channels            [:+ PulseChannel]]
                                          [:skip_if_empty       {:default false} [:maybe :boolean]]
                                          [:disable_links       {:default false} [:maybe :boolean]]
                                          [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]]
+                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
+                                         [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
+                                         [:alert_condition     {:optional true} [:maybe models.pulse/AlertConditions]]
+                                         [:alert_first_only    {:optional true} [:maybe :boolean]]
+                                         [:alert_above_goal    {:optional true} [:maybe :boolean]]]
    request]
   ;; Check permissions on cards that exist. Placeholders and iframes don't matter.
   (check-card-read-permissions

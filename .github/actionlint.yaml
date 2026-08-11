@@ -1,0 +1,5 @@
+self-hosted-runner:
+  # Custom runner labels that actionlint cannot know about. Everything else is
+  # selected through `vars.DEFAULT_RUNNER_KEY` and is not checked.
+  labels:
+    - arm-ubuntu-24-2core

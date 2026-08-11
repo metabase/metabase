@@ -34,11 +34,9 @@ import {
   trackUsageReasonSelected,
 } from "./analytics";
 import {
-  getAvailableLocales,
   getIsEmbeddingUseCase,
   getLocale,
   getNextStep,
-  getSetupToken,
   getUsageReason,
 } from "./selectors";
 import { getDefaultLocale, getLocales } from "./utils";
@@ -65,7 +63,7 @@ export const loadLocaleDefaults = createAsyncThunk<
   void,
   ThunkConfig
 >(LOAD_LOCALE_DEFAULTS, async (_, { getState }) => {
-  const data = getAvailableLocales(getState());
+  const data = getSetting(getState(), "available-locales");
   const locale = getDefaultLocale(getLocales(data));
   if (locale) {
     await loadLocalization(locale.code);
@@ -95,7 +93,7 @@ export const updateLocale = createAsyncThunk(
 export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
   "metabase/setup/SUBMIT_USER_INFO",
   async (user: UserInfo, { dispatch, getState, rejectWithValue }) => {
-    const token = getSetupToken(getState());
+    const token = getSetting(getState(), "setup-token");
     const locale = getLocale(getState());
 
     try {
