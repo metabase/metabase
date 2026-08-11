@@ -494,12 +494,12 @@
                                           :context                             :metabot
                                           :archived                            false
                                           :limit                               limit
-                                          :offset                              0}
+                                          :offset                              0
+                                          :weights                             weights}
                                    ;; Don't include search-native-query key if nil so that we don't
                                    ;; inadvertently filter out search models that don't support it
                                    search-native-query (assoc :search-native-query (boolean search-native-query))
                                    use-verified?       (assoc :curated true)
-                                   weights             (assoc :weights weights)
                                    collection-id       (assoc :collection collection-id)))]
                             (:data (search/search search-context))))
         primary         (run-engine query)
@@ -647,7 +647,7 @@
   [query results]
   (let [results-xml (str/join "\n" (map llm-shape/search-result->xml results))]
     (te/lines
-     (str "<results query=\"" (when query (llm-shape/escape-xml query))
+     (str "<results query=\"" (llm-shape/escape-xml query)
           "\" total=\"" (count results) "\">")
      results-xml
      "</results>"
