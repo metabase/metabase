@@ -42,6 +42,10 @@
 
 (driver/register! :databricks, :parent :hive-like)
 
+(defmethod driver/host-carrying-parameters :databricks
+  [_driver]
+  ["ProxyHost" "OAuth2ConnAuthAuthorizationEndPoint" "OAuth2ConnAuthTokenEndpoint"])
+
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :database-routing                true
