@@ -48,8 +48,8 @@ The AI auditing tabs are only available on [Pro and Enterprise plans](https://ww
 
 Who can see each Monitor page depends on their group:
 
-- **Admins** can view every page.
-- **People in the [Data Analysts](../people-and-groups/managing.md#data-analysts) group** can view Dependency diagnostics.
-- **People in groups with [Monitoring access](../permissions/application.md#monitoring-access)** can view every page except Dependency diagnostics and Alerts management.
+- **Admin group** can view every page.
+- **[Data Analysts](../people-and-groups/managing.md#data-analysts) group** can view Dependency diagnostics.\*
+- **Groups with [Monitoring access](../permissions/application.md#monitoring-access)** can view every page except Dependency diagnostics and Alerts management.\*
 
-On OSS, only admins can view Monitor. The Data Analysts group and the Monitoring access permission are only available on [Pro and Enterprise plans](https://www.metabase.com/pricing/).
+\* On OSS, only admins can view Monitor. The Data Analysts group and the Monitoring access permission are only available on [Pro and Enterprise plans](https://www.metabase.com/pricing/).

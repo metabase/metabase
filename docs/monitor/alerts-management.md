@@ -47,12 +47,12 @@ To deselect the alerts, click **Clear**.
 
 ## Alert details
 
-Click an alert to view more information about it in a sidebar, including:
+To view more information about an alert, click on the alert's row to open the sidebar, which displays:
 
-- Error message for failing alerts.
+- Error messages for failing alerts.
 - Link to the question that triggers the alert.
-- **Check history**: The results of the alert's recent checks.
-- **Send history**: The results of the alert's recent send attempts.
+- **Check history**: The status of the alert's recent checks.
+- **Send history**: The status of the alert's recent send attempts.
 
 Use the up and down arrows at the top of the sidebar to move between alerts in the list.
 

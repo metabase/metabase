@@ -60,7 +60,7 @@ The Conversations admin page only shows **Profile**. Source is visible in the **
 
 ### Sources
 
-Each conversation is tagged with a source, i.e. where in Metabase the conversation took place. The **By source** chart in [Usage stats](#usage-stats) groups conversations by a human-readable `source_name`, and the [AI Usage Log](#building-custom-reports) model exposes both `source_name` and a raw `source` ID (e.g. `metabot_agent`, `oss-sql-gen`, `document_generate_content`) for custom reports. Conversations Metabase couldn't classify show up as `(empty)` on the chart.
+Each conversation is tagged with a source (where in Metabase the conversation took place). The **By source** chart in [Usage stats](#usage-stats) groups conversations by a human-readable `source_name`, and the [AI Usage Log](#building-custom-reports) model exposes both `source_name` and a raw `source` ID (like `metabot_agent`, `oss-sql-gen`, `document_generate_content`) for custom reports. Conversations Metabase couldn't classify show up as `(empty)` on the chart.
 
 | Source name         | Where it comes from                                                                                                     |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
