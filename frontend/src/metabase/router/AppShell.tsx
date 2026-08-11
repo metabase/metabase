@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router";
 
-import { setRouterNavigate } from "./navigator";
+import { setNavigationPending, setRouterNavigate } from "./navigator";
 import { RouteLeaveGuards } from "./route-leave-guards";
+import { useIsNavigating } from "./use-is-navigating";
 
 /**
  * The element of the host's pathless layout route.
@@ -18,11 +19,19 @@ import { RouteLeaveGuards } from "./route-leave-guards";
  */
 export function AppShell(): JSX.Element {
   const navigate = useNavigate();
+  const isNavigating = useIsNavigating();
 
   useEffect(() => {
     setRouterNavigate(navigate);
     return () => setRouterNavigate(null);
   }, [navigate]);
+
+  // Published for the callers that cannot hold a hook, the same ones `navigate`
+  // above exists for.
+  useEffect(() => {
+    setNavigationPending(isNavigating);
+    return () => setNavigationPending(false);
+  }, [isNavigating]);
 
   return (
     <RouteLeaveGuards>

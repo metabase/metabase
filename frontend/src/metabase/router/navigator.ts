@@ -39,6 +39,24 @@ export function setRouterExpected(expected: boolean): void {
   isRouterExpected = expected;
 }
 
+/**
+ * Whether the router has accepted a navigation it has not committed yet.
+ *
+ * `AppShell` keeps this in step with `useIsNavigating`, for the same reason it
+ * registers `navigate`: a thunk cannot call a hook. A `route.lazy` destination
+ * makes the window real, and anything that navigates inside it replaces the
+ * pending navigation rather than queueing behind it.
+ */
+let isNavigationPending = false;
+
+export function setNavigationPending(pending: boolean): void {
+  isNavigationPending = pending;
+}
+
+export function getIsNavigationPending(): boolean {
+  return isNavigationPending;
+}
+
 export function setRouterNavigate(navigate: NavigateFunction | null): void {
   currentNavigate = navigate;
   if (!navigate) {
