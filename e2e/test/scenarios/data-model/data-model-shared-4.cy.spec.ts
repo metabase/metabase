@@ -214,7 +214,13 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       verifyAndCloseToast("Failed to disable JSON unfolding for Json");
 
       cy.log("formatting");
-      TablePicker.getDatabase("Sample Database").click();
+      // Switching DBs in-place via the picker (.getDatabase().click() then
+      // .getTable().click()) races the picker re-render: the table click can
+      // land before the new DB's tables list is interactive, so it never
+      // propagates to a URL change and the field list keeps showing the
+      // previous table. Re-anchor with visit() (which waits for picker
+      // bootstrap), matching the "Undos" sibling test below.
+      visit({ databaseId: SAMPLE_DB_ID });
       TablePicker.getTable("Orders").click();
       if (area === "data studio") {
         TableSection.clickFieldsTab();
