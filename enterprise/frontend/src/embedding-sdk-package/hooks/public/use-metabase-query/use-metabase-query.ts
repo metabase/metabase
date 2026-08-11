@@ -27,10 +27,11 @@ const useMetabaseQueryImpl = <
     TEntity,
     TSchema
   >,
+  TDynamic extends MetabaseDynamicQuery | undefined = undefined,
 >(
   query: TQuery,
-  dynamicQuery?: MetabaseDynamicQuery,
-): UseMetabaseQueryResult<TEntity, TQuery> => {
+  dynamicQuery?: TDynamic,
+): UseMetabaseQueryResult<TEntity, TQuery, TDynamic> => {
   const {
     state: {
       internalProps: { reduxStore },
@@ -56,7 +57,7 @@ const useMetabaseQueryImpl = <
 
   const [{ value: data = null, loading: isLoading, error }, fetchQuery] =
     useAsyncFn(async (): Promise<
-      UseMetabaseQueryResult<TEntity, TQuery>["data"]
+      UseMetabaseQueryResult<TEntity, TQuery, TDynamic>["data"]
     > => {
       const currentQuery = queryRef.current;
       const currentDynamicQuery = dynamicQueryRef.current;
