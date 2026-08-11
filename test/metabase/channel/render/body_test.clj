@@ -1208,6 +1208,24 @@
             (testing "Renders with at least one category name visible"
               (is (= "Doohickey" category-text)))))))))
 
+(deftest render-region-map-static-viz-test
+  (testing "The static-viz region (choropleth) map renders as an image, not an error card.
+            React 19's scheduler references MessageChannel, which the GraalJS render context must polyfill."
+    (mt/with-temp [:model/Card card
+                   {:name                   "region-map-test"
+                    :display                :map
+                    :visualization_settings {:map.type      "region"
+                                             :map.region    "us_states"
+                                             :map.dimension "STATE"
+                                             :map.metric    "METRIC"}
+                    :dataset_query          (mt/native-query
+                                             {:query (str "SELECT 'CA' AS state, 99999 AS metric "
+                                                          "UNION ALL SELECT 'NY' AS state, 11111 AS metric")})}]
+      (let [data (:data (qp/process-query (:dataset_query card)))
+            part (body/render :region_map :attachment "UTC" card nil data)]
+        (is (= :img (-> part :content second first))
+            "Region map renders as an image, not a degraded table or an error card")))))
+
 (deftest render-correct-day-of-week-test
   (testing "The static-viz bar chart renders with the correct start of the week."
     (mt/with-temporary-setting-values [start-of-week "monday"]
