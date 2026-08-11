@@ -92,11 +92,7 @@ For all modular embeds, you can also set a `locale` in your page-level configura
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
-`dashboardCardMenu` controls the overflow menu on each dashboard card. Pass it to `InteractiveDashboard` (or `EditableDashboard`) through the `plugins` prop, under the `dashboard` key. It takes either a config object or a function returning a React component:
-
-```typescript
-{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-base-1" %}
-```
+`dashboardCardMenu` controls the overflow menu on each dashboard card. Pass it to `InteractiveDashboard` (or `EditableDashboard`) through the `plugins` prop, under the `dashboard` key. It takes either a config object or a function returning a React component.
 
 | Key             | What it does                                                                                                             |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------ |

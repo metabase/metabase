@@ -24,7 +24,7 @@ A view-only (a.k.a. "static") dashboard displays results without letting people 
 View-only isn't tied to one kind of embed. You can make a dashboard view-only in any embedding type:
 
 - **[Guest embeds](./introduction.md#guest-embedding)**: always view-only. Nobody logs in to a guest embed, so Metabase has no account to check permissions against, and no way to tell whether a new query is one that person should be allowed to run. The published dashboard is the only thing Metabase can safely run, which is why there's no drill-through or ad-hoc querying to turn off.
-- **[SSO embeds](./introduction.md#sso-embeds)**: interactive out of the box. To make one view-only, turn off drill-through with `drills="false"` (web component) or use the `StaticDashboard` component (SDK). You can also manage what people can do through [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
+- **[SSO embeds](./introduction.md#sso-embeds)**: interactive out of the box. To make one view-only, turn off drill-through with `drills="false"` (web component) or `drills={false}` (SDK). In the SDK you can also swap `InteractiveDashboard` for the view-only `StaticDashboard` component. You can also manage what people can do through [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
 
 So pick your authentication based on what your app needs---plans, permissions, whether Metabase should know who's viewing---not on whether you want a view-only dashboard. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds).
 
@@ -381,7 +381,7 @@ Each refresh re-queries your database, so pick an interval your database can kee
 You can theme an embedded dashboard and toggle parts of its UI. For the full set of theming options, see [Appearance](./appearance.md). For every attribute and prop, see the [Dashboard component reference](./dashboard-reference.md).
 
 - **Title**: show or hide the dashboard title with `with-title` (web component) or `withTitle` (SDK).
-- **Downloads**: show or hide download buttons with `with-downloads` / `withDownloads`. Defaults to `true` on OSS/Starter and `false` on Pro/Enterprise. Disabling downloads requires a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
+- **Downloads**: show or hide the button that downloads the dashboard as a PDF, plus the download buttons on each card's results, with `with-downloads` / `withDownloads`. Defaults to `true` on OSS/Starter and `false` on Pro/Enterprise. Disabling downloads requires a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
 - **Height**: dashboard components take the full page height (100vh) by default. Override that with the `style` or `className` props:
 
 ```tsx
