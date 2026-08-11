@@ -6,7 +6,7 @@ import { trackDataStudioCleanupPublicationStarted } from "metabase/common/data-s
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import {
@@ -40,6 +40,7 @@ export function CandidatePanel({
   onTablePublished,
 }: CandidatePanelProps) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDismissModal, setShowDismissModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -78,7 +79,7 @@ export function CandidatePanel({
         : Urls.dataStudioPublishedTableSegment(candidate.table.id, id);
     sendSuccessToast(
       type === "measure" ? t`Measure created` : t`Segment created`,
-      () => dispatch(push(url)),
+      () => navigate(url),
       t`View in Library`,
     );
   };

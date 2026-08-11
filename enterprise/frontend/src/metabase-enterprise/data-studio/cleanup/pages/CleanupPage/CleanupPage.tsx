@@ -5,8 +5,7 @@ import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { trackDataStudioCleanupTableSelected } from "metabase/common/data-studio/analytics";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
-import { useDispatch } from "metabase/redux";
-import { push, replace, useSearchParams } from "metabase/router";
+import { useNavigate, useSearchParams } from "metabase/router";
 import {
   Badge,
   Card,
@@ -37,7 +36,7 @@ import { hasActiveFilters, parseCleanupParams } from "../../utils";
 type CleanupTableNode = UsageMetadataTableSummary & { id: number };
 
 export function CleanupPage() {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const params = parseCleanupParams(searchParams);
   const refresh = useCleanupRefresh();
@@ -109,18 +108,16 @@ export function CleanupPage() {
     getNodeId: (row) => String(row.id),
     onRowActivate: (row) => {
       trackDataStudioCleanupTableSelected(row.original.id);
-      dispatch(
-        push(
-          Urls.dataStudioCleanupTable(row.original.id, {
-            queue: params.queue,
-          }),
-        ),
+      navigate(
+        Urls.dataStudioCleanupTable(row.original.id, {
+          queue: params.queue,
+        }),
       );
     },
   });
 
   const updateParams = (next: Urls.DataStudioCleanupParams) => {
-    dispatch(replace(Urls.dataStudioCleanup(next)));
+    navigate(Urls.dataStudioCleanup(next), { replace: true });
   };
 
   return (
