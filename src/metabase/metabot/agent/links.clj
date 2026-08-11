@@ -34,15 +34,6 @@
   "Normalize a pMBQL query to legacy MBQL. Frontend /question# URLs require legacy
   MBQL format; non-pMBQL values pass through unchanged.
 
-  A query is treated as pMBQL when it is a map carrying either `:lib/type` or the
-  structural `:stages` marker. The `:stages`-without-`:lib/type` case is real: a
-  query that round-trips through the frontend's viewing context (`user_is_viewing`
-  / `chart_configs`) comes back as pMBQL stripped of its internal `:lib/*` keys
-  (`:lib/type`, `:lib/uuid`, `:lib/metadata`). Guarding only on `:lib/type` (the
-  old behavior) let such a query fall through unchanged, so the raw pMBQL leaked
-  into the `/question#<base64>` hash and the frontend crashed with \"Stage 0 does
-  not exist\" (BOT-1604 follow-up).
-
   Normalizing against `::lib.schema/query` re-stamps `:lib/type`/`:lib/uuid` and
   restores canonical enum values, so the subsequent `->legacy-MBQL` conversion
   succeeds regardless of whether the query arrived fresh from a tool (keyword
@@ -50,8 +41,22 @@
   the frontend (no `:lib/*` keys at all)."
   [query]
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (if (and (map? query) (or (:lib/type query) (:stages query)))
-    (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
+  (if (and (map? query)
+           ;; A query is treated as pMBQL when it carries `:lib/type` or the structural
+           ;; `:stages` marker: a query round-tripped through the frontend's viewing
+           ;; context (`user_is_viewing` / `chart_configs`) comes back as pMBQL stripped
+           ;; of its internal `:lib/*` keys, so `:lib/type` alone under-detects it
+           ;; (BOT-1604 follow-up).
+           (or (:lib/type query) (:stages query)))
+    (try
+      (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
+      (catch Exception e
+        ;; Normalizing a `:lib/*`-stripped query can mint fresh `:lib/uuid`s that don't
+        ;; match positional aggregation/expression refs embedded elsewhere in the query
+        ;; (e.g. an order-by on the query's own aggregation), which fails conversion.
+        ;; Fall back to the raw query rather than failing the whole agent turn over a link.
+        (log/warn e "Failed to convert pMBQL query to legacy MBQL for link resolution")
+        query))
     query))
 
 (defn- query->url-hash

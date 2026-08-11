@@ -70,6 +70,19 @@
         (is (map? (:query legacy)))
         (is (some? (:database legacy)))))))
 
+(deftest ^:parallel ->legacy-mbql-stripped-query-with-aggregation-ref-falls-back-test
+  (testing "falls back to the raw query instead of throwing when the stripped query's positional aggregation ref can't be resolved after normalize"
+    ;; Regression: `strip-lib-keys` drops the aggregation's `:lib/uuid`, but an
+    ;; `[:aggregation {} <uuid>]` ref elsewhere in the query (e.g. an order-by on the
+    ;; query's own aggregation) still points at the old uuid. `normalize` mints a fresh
+    ;; uuid, the ref lookup misses, and conversion throws — this used to take down the
+    ;; whole agent turn instead of just producing a broken link.
+    (let [q        (-> (lib.tu/venues-query) (lib/aggregate (lib/count)))
+          q2       (lib/order-by q (lib/aggregation-ref q 0) :desc)
+          stripped (strip-lib-keys q2)]
+      (is (not (contains? stripped :lib/type)))
+      (is (= stripped (links/->legacy-mbql stripped))))))
+
 (deftest ^:parallel resolve-chart-link-lib-type-less-query-test
   (testing "chart link whose query lost :lib/type resolves to a renderable legacy /question# URL"
     (let [chart-id     "chart-fe-1"
