@@ -656,8 +656,9 @@
   ;; longer instruction: v1 (xs, s, m, m-long, l) and v1.5 alike, including the bundled xs model.
   ;; Keep patterns narrow: a false positive is unfixable without a code change, since the
   ;; `ee-embedding-query-prefix` setting can only replace a matched prefix, never suppress it.
-  [[#"(?i)snowflake-arctic-embed-\w+-v[2-9]" "query: "]
-   [#"(?i)snowflake-arctic-embed"            "Represent this sentence for searching relevant passages: "]])
+  ;; Hence the leading anchor, so an unrelated model that merely contains the family name is left alone.
+  [[#"(?i)(?:^|/)snowflake-arctic-embed-\w+-v[2-9]" "query: "]
+   [#"(?i)(?:^|/)snowflake-arctic-embed(?:-|$)"     "Represent this sentence for searching relevant passages: "]])
 
 (defn- default-query-prefix
   [model-name]

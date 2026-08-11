@@ -95,7 +95,9 @@
                       "Snowflake/snowflake-arctic-embed-m-v1.5" (str cqe "hello")
                       "Snowflake/snowflake-arctic-embed-l-v2.0" "query: hello"
                       "Snowflake/snowflake-arctic-embed-m-v2.0" "query: hello"
-                      "text-embedding-3-small"                  "hello"}]
+                      "text-embedding-3-small"                  "hello"
+                      ;; merely containing the family name is not enough: the prefix would be unsuppressable
+                      "acme/my-snowflake-arctic-embed-clone"    "hello"}]
         (mt/with-temporary-setting-values [ee-embedding-query-prefix nil]
           (is (= expected (prefix-all (keys expected)))))))
     (testing "the setting overrides every model-family default, verbatim"
