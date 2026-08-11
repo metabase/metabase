@@ -68,13 +68,19 @@ describe("embedding hub routes", () => {
   });
 
   it.each([
-    ["/embedding", "get-started-page"],
-    ["/embedding/permissions-setup", "permissions-setup-page"],
-    ["/embedding/sso-setup", "sso-setup-page"],
+    ["/embedding/get-started", "get-started-page"],
+    ["/embedding/get-started/permissions-setup", "permissions-setup-page"],
+    ["/embedding/get-started/sso-setup", "sso-setup-page"],
   ])("renders the body for %s", async (route, testId) => {
     setup(route);
 
     expect(await screen.findByTestId(testId)).toBeInTheDocument();
+  });
+
+  it("redirects the hub root to Get started", async () => {
+    setup("/embedding");
+
+    expect(await screen.findByTestId("get-started-page")).toBeInTheDocument();
   });
 
   it("does not render anything when the guard denies access", async () => {
