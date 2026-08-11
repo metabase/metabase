@@ -438,9 +438,6 @@
 
 (sql/register-clause! ::rows-between-unbounded #'format-rows-between-unbounded nil)
 
-;; ClickHouse has no standard lag/lead (25.6+ only adds lowercase-only sugar for them); its lagInFrame/leadInFrame
-;; equivalents respect the window frame, so the frame must explicitly cover the whole partition. Out-of-frame rows
-;; produce the column type's default value (e.g. 0) rather than NULL — toNullable makes that default NULL.
 (defmethod sql.qp/->honeysql [:clickhouse :offset]
   [driver [_offset _opts expr n]]
   {:pre [(integer? n) ((some-fn pos-int? neg-int?) n)]} ; offset not allowed to be zero
