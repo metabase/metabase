@@ -10,7 +10,7 @@
                  :clojure-lsp/unused-public-var                                       8
                  :def-fn                                                              1
                  :deprecated-namespace                                                95
-                 :deprecated-var                                                      79
+                 :deprecated-var                                                      84
                  :discouraged-java-method                                             3
                  :discouraged-namespace                                               79
                  :discouraged-var                                                     107
