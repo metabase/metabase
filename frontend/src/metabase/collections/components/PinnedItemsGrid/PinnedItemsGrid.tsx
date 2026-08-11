@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import { useListCollectionItemsQuery } from "metabase/api";
+import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { PinnedItemSortDropTarget } from "metabase/collections/components/PinnedItemSortDropTarget";
 import { CompactPinnedItemCard } from "metabase/common/collections/components/CompactPinnedItemCard";
 import PinDropZone from "metabase/common/collections/components/PinDropZone";
@@ -41,21 +41,24 @@ export function PinnedItemsGrid({
   onCopy,
   onMove,
 }: Props) {
-  const { data: pinnedItemsData } = useListCollectionItemsQuery({
-    id: collectionId,
-    pinned_state: "is_pinned",
-    sort_column: "name",
-    sort_direction: "asc",
-  });
+  // Trashed items keep their pin position, but the trash never shows a pinned section.
+  const showPinnedItems = !isRootTrashCollection(collection);
+
+  const { data: pinnedItemsData } = useListCollectionItemsQuery(
+    showPinnedItems
+      ? {
+          id: collectionId,
+          pinned_state: "is_pinned",
+          sort_column: "name",
+          sort_direction: "asc",
+        }
+      : skipToken,
+  );
 
   const sortedItems = useMemo(() => {
-    // Trashed items keep their pin position, but the trash never shows a pinned section.
-    if (isRootTrashCollection(collection)) {
-      return [];
-    }
     const items = pinnedItemsData?.data ?? [];
     return _.sortBy(items, (item) => item.collection_position);
-  }, [pinnedItemsData, collection]);
+  }, [pinnedItemsData]);
 
   if (sortedItems.length === 0) {
     return (

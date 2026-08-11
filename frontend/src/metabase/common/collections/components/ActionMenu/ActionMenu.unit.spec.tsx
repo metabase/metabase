@@ -160,6 +160,18 @@ describe("ActionMenu", () => {
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
+
+    it("should not render the menu at all when no actions are available", () => {
+      const item = createMockCollectionItem({
+        name: "My Read Only collection",
+        model: "collection",
+        can_write: false,
+      });
+
+      setup({ item, withBookmarks: false });
+
+      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+    });
   });
 
   describe("x-rays", () => {

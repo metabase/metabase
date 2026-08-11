@@ -82,7 +82,12 @@ export const CollectionContentView = ({
 
   useCollectionChartPaste(collection);
 
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const isBookmarked =
+    bookmarks?.some(
+      (bookmark) =>
+        bookmark.type === "collection" && bookmark.item_id === collectionId,
+    ) ?? false;
+
   const [selectedItems, setSelectedItems] = useState<CollectionItem[] | null>(
     null,
   );
@@ -103,15 +108,6 @@ export const CollectionContentView = ({
       clear();
     }
   }, [previousCollection, collection, clear]);
-
-  useEffect(() => {
-    const shouldBeBookmarked =
-      bookmarks?.some(
-        (bookmark) =>
-          bookmark.type === "collection" && bookmark.item_id === collectionId,
-      ) ?? false;
-    setIsBookmarked(shouldBeBookmarked);
-  }, [bookmarks, collectionId]);
 
   const saveFile = useCallback(
     (file: File) => {
