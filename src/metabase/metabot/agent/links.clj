@@ -51,7 +51,15 @@
   [query]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (if (and (map? query) (or (:lib/type query) (:stages query)))
-    (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
+    (try
+      (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
+      (catch Exception e
+        ;; Normalizing a `:lib/*`-stripped query can mint fresh `:lib/uuid`s that don't
+        ;; match positional aggregation/expression refs embedded elsewhere in the query
+        ;; (e.g. an order-by on the query's own aggregation), which fails conversion.
+        ;; Fall back to the raw query rather than failing the whole agent turn over a link.
+        (log/warn e "Failed to convert MBQL 5 query to legacy MBQL for link resolution")
+        query))
     query))
 
 (defn- query->url-hash
