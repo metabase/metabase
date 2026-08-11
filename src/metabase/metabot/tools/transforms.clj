@@ -3,9 +3,11 @@
   SQL transform tools are implemented directly in OSS.
   Python transform tools use defenterprise (return nil/error in OSS, real impl in EE)."
   (:require
+   [clojure.string :as str]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.dependencies :as deps]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.transforms.write :as transforms-write-tools]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metabot.util :as metabot.u]
@@ -20,16 +22,30 @@
 ;;; Formatting helpers
 ;;; ──────────────────────────────────────────────────────────────────
 
+;; Hand-built rather than `metabot.u/xml` so query and body content stays verbatim:
+;; `clojure.data.xml` escapes `<`/`>`/`&`, and an escaped query breaks `old_string`
+;; matching when the model quotes it back to the write tools.
 (defn- format-transform-details-output
-  [{:keys [id name description source target] :as _transform}]
-  (metabot.u/xml
-   [:transform {:id id :name name}
-    (when description [:description description])
-    (when source
-      [:source {:type (:type source)}
-       (when (:query source) [:query (:query source)])
-       (when (:source-database source) [:database (:source-database source)])])
-    (when target [:target (pr-str target)])]))
+  [{:keys [id description source target] :as transform}]
+  (let [{source-type :type, :keys [query body source-database]} source]
+    (->> [(str "<transform id=\"" id "\" name=\"" (llm-shape/escape-xml (:name transform)) "\">")
+          (when description
+            (str "  <description>" (llm-shape/escape-xml-content description) "</description>"))
+          (when source
+            (str "  <source type=\"" (some-> source-type name) "\">"))
+          (when query
+            (str "    <query>" (metabot.u/transform-query->text query) "</query>"))
+          (when body
+            (str "    <body>" body "</body>"))
+          (when source-database
+            (str "    <database>" source-database "</database>"))
+          (when source
+            "  </source>")
+          (when target
+            (str "  <target>" (llm-shape/escape-xml-content (pr-str target)) "</target>"))
+          "</transform>"]
+         (remove nil?)
+         (str/join "\n"))))
 
 (defn format-transform-write-output
   "Format the output of a transform write operation."
@@ -57,7 +73,7 @@
                        (seq (:bad_questions structured_output))))
           structured_output))
       (catch Exception e
-        (log/error e "Dependency check failed for transform" transform-id)
+        (log/error "Dependency check failed for transform" transform-id (ex-message e))
         nil))))
 
 (defn- format-dependency-warnings

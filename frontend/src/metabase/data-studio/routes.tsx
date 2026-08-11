@@ -4,7 +4,6 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
   PLUGIN_SCHEMA_VIEWER,
-  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -13,7 +12,6 @@ import {
   Route,
   type RouteComponent,
   redirect,
-  withRouteProps,
 } from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
@@ -24,9 +22,9 @@ import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
-import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
+import { CanAccessDataModel, CanAccessDataStudio } from "./route-guards";
 import { getDataStudioSettingsRoutes } from "./settings/routes";
 import {
   DependenciesUpsellPage,
@@ -34,13 +32,7 @@ import {
   SchemaViewerUpsellPage,
 } from "./upsells/pages";
 
-const RoutedTransformsSectionLayout = withRouteProps(TransformsSectionLayout);
-
-export function getDataStudioRoutes(
-  CanAccessDataStudio: RouteComponent,
-  CanAccessDataModel: RouteComponent,
-  IsAdmin: RouteComponent,
-) {
+export function getDataStudioRoutes(IsAdmin: RouteComponent) {
   return (
     <>
       {/* These redirects sit
@@ -59,11 +51,8 @@ export function getDataStudioRoutes(
               {getDataStudioMetadataRoutes(IsAdmin)}
             </Route>
           </Route>
-          <Route path="transforms" element={<RoutedTransformsSectionLayout />}>
+          <Route path="transforms" element={<TransformsSectionLayout />}>
             {getDataStudioTransformRoutes()}
-          </Route>
-          <Route element={<WorkspacesSectionLayout />}>
-            {PLUGIN_WORKSPACES.getDataStudioRoutes()}
           </Route>
           {getDataStudioGlossaryRoutes()}
           {getDataStudioSettingsRoutes()}

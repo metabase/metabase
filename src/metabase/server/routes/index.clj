@@ -76,7 +76,7 @@
     (stencil/render-file path variables)
     (catch IllegalArgumentException e
       (let [message (trs "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?" path)]
-        (log/error e message)
+        (log/error message (ex-message e))
         (throw (Exception. message e))))))
 
 (defn- template-parameters
@@ -100,7 +100,7 @@
      :applicationName        (hiccup.util/escape-html (appearance/application-name))
      :uri                    (hiccup.util/escape-html uri)
      :baseHref               (hiccup.util/escape-html (base-href))
-     :embedCode              (when embeddable? (embed/head uri))
+     :embedCode              (when embeddable? (embed/head (system/site-url) uri))
      :enableGoogleAuth       (boolean google-auth-client-id)
      :enableAnonTracking     (boolean anon-tracking-enabled)}))
 

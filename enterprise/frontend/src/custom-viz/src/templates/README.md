@@ -62,16 +62,17 @@ To develop against a live Metabase instance with hot-reload:
   "name": "__CUSTOM_VIZ_NAME__",
   "icon": "icon.svg",
   "metabase": {
-    "version": ">=1.60.0"
+    "version": ">=1.64 <1.66"
   }
 }
 ```
 
-| Field              | Description                                                                                   |
-| ------------------ | -------------------------------------------------------------------------------------------- |
-| `name`             | Unique identifier for the plugin. Must match the `id` returned by your visualization factory. |
-| `icon`             | Path to the visualization icon (SVG recommended). Served automatically.                      |
-| `metabase.version` | Semver range of compatible Metabase versions (e.g. `">=1.60.0"`, `"^1.60"`).                  |
+| Field              | Description                                                                                        |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `name`             | Unique identifier for the plugin. Must match the `id` returned by your visualization factory.      |
+| `icon`             | Path to the visualization icon (SVG recommended). Served automatically.                            |
+| `metabase.version` | Semver range of compatible Metabase versions (e.g. `">=1.64 <1.66"`). Keep it closed on both ends. |
+| `sdk.version`      | Written automatically at pack time — no need to set it by hand.                                    |
 
 ---
 
@@ -136,15 +137,26 @@ export default createVisualization;
 
 ### VisualizationComponent props
 
-| Prop          | Type                                     | Description                                                                              |
-| ------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `series`      | `Series[]`                               | Query results (rows + column metadata).                                                  |
-| `settings`    | `CustomVisualizationSettings<TSettings>` | Resolved visualization settings.                                                         |
-| `width`       | `number \| null`                         | Container width in pixels (`null` until first measure — render `null` to avoid a flash). |
-| `height`      | `number \| null`                         | Container height in pixels (`null` until first measure).                                 |
-| `colorScheme` | `"light" \| "dark"`                      | Current Metabase color scheme.                                                           |
-| `onClick`     | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point.                                   |
-| `onHover`     | `(hoverObject?) => void`                 | Call to show a tooltip on a data point.                                                  |
+| Prop               | Type                                     | Description                                                                              |
+| ------------------ | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `series`           | `Series`                                 | Query results (rows + column metadata).                                                  |
+| `settings`         | `CustomVisualizationSettings<TSettings>` | Resolved visualization settings.                                                         |
+| `width`            | `number \| null`                         | Container width in pixels (`null` until first measure — render `null` to avoid a flash). |
+| `height`           | `number \| null`                         | Container height in pixels (`null` until first measure).                                 |
+| `renderingContext` | `RenderingContext`                       | Host helpers for colors and text measurement (see below).                                |
+| `onClick`          | `(clickObject) => void`                  | Call to trigger drill-through actions on a data point.                                   |
+| `onHover`          | `(hoverObject?) => void`                 | Call to show a tooltip on a data point.                                                  |
+
+#### `renderingContext`
+
+Host-provided helpers, so measurements and colors match what Metabase renders.
+
+| Field         | Type                                 | Description                                                                                          |
+| ------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `getColor`    | `(colorName) => string`              | Resolves a Metabase color name to its current theme value.                                           |
+| `measureText` | `(text, style) => { width, height }` | Measures the rendered size of a text string in pixels. `style.family` defaults to the instance font. |
+| `fontFamily`  | `string`                             | The font family Metabase is rendering with — use it to style your own markup.                        |
+| `colorScheme` | `"light" \| "dark"`                  | The color scheme the visualization is rendered with. `getColor` already resolves against it.         |
 
 ## Visualization Settings
 
@@ -185,6 +197,12 @@ settings: {
 | `writeDependencies`            | Setting IDs whose current values are persisted when this setting changes.            |
 | `eraseDependencies`            | Setting IDs reset to `null` when this setting changes.                               |
 | `persistDefault`               | When `true`, writes the computed default to stored settings on first render.         |
+
+> **Note:** The setting ids `column_settings` and `column` are reserved by Metabase
+> (they power the built-in column formatting popover). TypeScript rejects them in your
+> `Settings` type, and Metabase ignores setting definitions that use them. To apply
+> the formatting people pick in the popover, pass the result of `settings.column?.(col)`
+> to `formatValue`.
 
 ### Built-in widgets
 

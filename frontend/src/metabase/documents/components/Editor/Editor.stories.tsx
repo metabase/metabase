@@ -26,9 +26,7 @@ import {
 import { Editor, type EditorProps } from "./Editor";
 import Data from "./data/data.json";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(LineChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(PieChart);
 
 const settings = mockSettings();

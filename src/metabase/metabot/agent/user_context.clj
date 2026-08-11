@@ -42,7 +42,7 @@
       :else
       (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME (OffsetDateTime/now)))
     (catch Exception e
-      (log/error e "Error formatting current time")
+      (log/errorf "Error formatting current time: %s" (ex-message e))
       (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME (OffsetDateTime/now)))))
 
 ;;; SQL Dialect Extraction
@@ -135,7 +135,7 @@
         (te/lines preamble (format-fn structured-output))
         (format-simple-entity entity)))
     (catch Exception e
-      (log/error e "Error fetching entity details for viewing context" {:type (:type entity) :id (:id entity)})
+      (log/error "Error fetching entity details for viewing context" {:type (:type entity) :id (:id entity)} (ex-message e))
       (format-simple-entity entity))))
 
 (defmethod format-entity "table"
@@ -354,7 +354,7 @@
               (try
                 (format-entity item)
                 (catch Exception e
-                  (log/error e "Error formatting viewing context item:" (:type item))
+                  (log/error "Error formatting viewing context item:" (:type item) (ex-message e))
                   "")))))
 
 ;;; Recent Views Formatting
@@ -387,7 +387,7 @@
                             :email    email-address
                             :glossary glossary}))
     (catch Exception e
-      (log/error e "Error formatting current user info")
+      (log/errorf "Error formatting current user info: %s" (ex-message e))
       nil)))
 
 ;;; Context Enrichment
@@ -400,7 +400,11 @@
   - :first_day_of_week - Calendar week start (default 'Sunday')
   - :current_user_info - Formatted current user info and glossary
   - :viewing_context - Formatted viewing context
-  - :recent_views - Formatted recent views"
+  - :recent_views - Formatted recent views
+
+  This is the user-message injection context only. Per-profile, feature-specific system-prompt
+  content is contributed separately, via a profile's `:system-prompt-context` hook (see
+  `metabase.metabot.agent.messages/build-system-message`)."
   [context]
   {:current_time (format-current-time context)
    :first_day_of_week (get context :first_day_of_week "Sunday")

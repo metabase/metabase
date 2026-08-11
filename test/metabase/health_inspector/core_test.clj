@@ -1,6 +1,7 @@
 (ns metabase.health-inspector.core-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.health-inspector.core :as hi]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
@@ -48,6 +49,21 @@
     (is (= [100 100] (map :health (runs "test-check"))))
     (is (= ["test check" "test check"] (map :message (runs "test-check"))))
     (is (= [100 100] (map :health (runs "validate-queries"))))))
+
+(deftest save-report-prunes-expired-runs-test
+  (t2/delete! :health_inspector_runs)
+  (let [now (t/offset-date-time)]
+    (doseq [[check-name run-at] [["expired" (t/minus now (t/days 31))]
+                                 ["recent"  (t/minus now (t/days 29))]]]
+      (t2/insert! :health_inspector_runs
+                  {:check_name check-name
+                   :health     100
+                   :message    check-name
+                   :run_at     run-at})))
+  (with-redefs [hi/checks (atom {})]
+    (hi/save-report))
+  (is (= #{"recent"} (set (map :check_name (hi/list-runs 32))))
+      "runs older than 30 days are deleted while recent runs are preserved"))
 
 ;; The test-only checks below are registered into a fresh, test-scoped `checks` registry via with-redefs
 ;; rather than the global one, so a nil/throwing/probe check can't leak into other health-inspector tests in

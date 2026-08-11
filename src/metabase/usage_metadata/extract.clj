@@ -69,7 +69,7 @@
   (try
     (lib/referenced-columns query stage-number clause)
     (catch Throwable e
-      (log/debugf e "usage-metadata: referenced-columns failed (stage %s)" stage-number)
+      (log/debugf "usage-metadata: referenced-columns failed (stage %s): %s" stage-number (ex-message e))
       nil)))
 
 (defn- field-participants-of-clause
@@ -90,7 +90,7 @@
   (try
     (:operator (lib/expression-parts query stage-number aggregation))
     (catch Throwable e
-      (log/debugf e "usage-metadata: aggregation operator extraction failed (stage %s)" stage-number)
+      (log/debugf "usage-metadata: aggregation operator extraction failed (stage %s): %s" stage-number (ex-message e))
       nil)))
 
 (defn- breakout-column-safe
@@ -98,7 +98,7 @@
   (try
     (lib/breakout-column query stage-number breakout)
     (catch Throwable e
-      (log/debugf e "usage-metadata: breakout-column failed (stage %s)" stage-number)
+      (log/debugf "usage-metadata: breakout-column failed (stage %s): %s" stage-number (ex-message e))
       nil)))
 
 (defn- segment-facts-for-clause

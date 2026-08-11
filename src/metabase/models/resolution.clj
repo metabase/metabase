@@ -13,6 +13,7 @@
 
   Tests will check to make sure new models get included in this map."
   '{:model/Action                            metabase.actions.models
+    :model/AgentApiCallLog                   metabase.agent-api.models.agent-api-call-log
     :model/AnalysisFinding                   metabase-enterprise.dependencies.models.analysis-finding
     :model/AnalysisFindingError              metabase-enterprise.dependencies.models.analysis-finding-error
     :model/ApiKey                            metabase.api-keys.models.api-key
@@ -49,6 +50,14 @@
     :model/Document                          metabase.documents.models.document
     :model/DocumentBookmark                  metabase.bookmarks.models.bookmark
     :model/EmbeddingTheme                    metabase.embedding.models.theme
+    :model/Exploration                       metabase.explorations.models.exploration
+    :model/ExplorationBlock                  metabase.explorations.models.exploration-block
+    :model/ExplorationBookmark               metabase.bookmarks.models.bookmark
+    :model/ExplorationPage                   metabase.explorations.models.exploration-page
+    :model/ExplorationQuery                  metabase.explorations.models.exploration-query
+    :model/ExplorationQueryResult            metabase.explorations.models.exploration-query-result
+    :model/ExplorationThread                 metabase.explorations.models.exploration-thread
+    :model/ExplorationThreadTimeline         metabase.explorations.models.exploration-thread-timeline
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
@@ -121,9 +130,10 @@
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
     :model/SsoRelayState                     metabase-enterprise.sso.models.relay-state
+    :model/StoredResult                      metabase.queries.models.stored-result
+    :model/StoredResultUse                   metabase.queries.models.stored-result-use
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
-    :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/TaskRun                           metabase.task-history.models.task-run
     :model/Tenant                            metabase-enterprise.tenants.models
@@ -147,9 +157,7 @@
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
-    :model/ViewLog                           metabase.view-log.models.view-log
-    :model/Workspace                         metabase-enterprise.workspaces.models.workspace
-    :model/WorkspaceDatabase                 metabase-enterprise.workspaces.models.workspace-database})
+    :model/ViewLog                           metabase.view-log.models.view-log})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

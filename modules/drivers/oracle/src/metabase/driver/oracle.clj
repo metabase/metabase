@@ -17,6 +17,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
@@ -47,8 +48,21 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :oracle, :parent #{:sql-jdbc
-                                     ::sql.qp.empty-string-is-null/empty-string-is-null})
+(driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
+
+(defmethod driver/host-carrying-parameters :oracle
+  [_driver]
+  ["oracle.net.httpsProxyHost" "oracle.net.socksProxyHost" "oracle.jdbc.ociIamUrl"])
+
+(defmethod driver/non-host-parameters :oracle
+  [_driver]
+  ["oracle.jdbc.DRCPConnectionPurity" "oracle.jdbc.TcpNoDelay" "oracle.jdbc.azureDatabaseApplicationIdUri"
+   "oracle.jdbc.enableErrorUrl" "oracle.jdbc.localhostName" "oracle.jdbc.proxyClientName"
+   "oracle.jdbc.readOnlyInstanceAllowed" "oracle.jdbc.redirectUri" "oracle.jdbc.tokenLocation"
+   "oracle.net.DOWN_HOSTS_TIMEOUT" "oracle.net.httpsProxyPort" "oracle.net.ldap.security.authentication"
+   "oracle.net.ldap.security.credentials" "oracle.net.ldap.security.principal" "oracle.net.ldap.ssl.walletLocation"
+   "oracle.net.proxyRemoteDNS" "oracle.net.socksProxyPort" "oracle.net.ssl_server_cert_dn"
+   "oracle.net.ssl_server_dn_match" "oracle.net.wallet_location" "server"])
 
 (doseq [[feature supported?] {:convert-timezone                 true
                               :database-routing                 false
@@ -59,6 +73,7 @@
                               :expression-literals              true
                               :expressions/date                 false
                               :identifiers-with-spaces          true
+                              :native-pivot-tables              true
                               :now                              true
                               ;; these don't seem to ERROR on Oracle but they don't work as expected either, see
                               ;; https://github.com/metabase/metabase/pull/66982#issuecomment-3667113995
@@ -251,6 +266,11 @@
   (let [t (h2x/->timestamp v)]
     (h2x/->integer [:floor [::h2x/extract :second t]])))
 
+;; Oracle's `GROUPING()` is single-arg only. `GROUPING_ID(a, b, ...)` is its multi-arg counterpart.
+(defmethod sql.pivot/pivot-grouping-hsql :oracle
+  [_driver exprs]
+  (into [::sql.pivot/grouping-id-fn] exprs))
+
 (defmethod sql.qp/date [:oracle :minute]           [_ _ v] (trunc :mi v))
 ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
 (defmethod sql.qp/date [:oracle :minute-of-hour]   [_ _ v] [::h2x/extract :minute (h2x/->timestamp v)])
@@ -301,7 +321,7 @@
   (h2x/with-database-type-info [:raw "CURRENT_TIMESTAMP"] "timestamp with time zone"))
 
 (defmethod sql.qp/->honeysql [:oracle :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr          (sql.qp/->honeysql driver arg)
         has-timezone? (or (sql.qp.u/field-with-tz? arg)
                           (h2x/is-of-type? expr #"timestamp(\(\d\))? with time zone"))]
@@ -328,13 +348,13 @@
     (driver.impl/truncate-alias s legacy-max-identifier-length)))
 
 (defmethod sql.qp/->honeysql [:oracle :substring]
-  [driver [_ arg start length]]
+  [driver [_ _opts arg start length]]
   (if length
     [:substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length)]
     [:substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start)]))
 
 (defmethod sql.qp/->honeysql [:oracle :concat]
-  [driver [_ & args]]
+  [driver [_ _opts & args]]
   (transduce
    (map (partial sql.qp/->honeysql driver))
    (completing
@@ -347,7 +367,7 @@
    args))
 
 (defmethod sql.qp/->honeysql [:oracle :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defn- num-to-ds-interval [unit v]
@@ -552,7 +572,12 @@
 (defmethod sql.qp/apply-top-level-clause [:oracle :filter]
   [driver _ honeysql-form query]
   (->> (update query :filter boolean->comparison)
-       ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter]) driver :filter honeysql-form)))
+       ((get-method sql.qp/apply-top-level-clause [:sql :filter]) driver :filter honeysql-form)))
+
+(defmethod sql.qp/apply-top-level-clause [:oracle :filters]
+  [driver _ honeysql-form query]
+  (->> (update query :filters #(mapv boolean->comparison %))
+       ((get-method sql.qp/apply-top-level-clause [:sql :filters]) driver :filters honeysql-form)))
 
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:oracle Boolean]
@@ -562,26 +587,26 @@
 (defmethod sql.qp/->honeysql [:oracle :and]
   [driver clause]
   (->> (mapv boolean->comparison clause)
-       ((get-method sql.qp/->honeysql [:sql-jdbc :and]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :and]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle :or]
   [driver clause]
   (->> (mapv boolean->comparison clause)
-       ((get-method sql.qp/->honeysql [:sql-jdbc :or]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :or]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle :not]
   [driver clause]
   (->> (mapv boolean->comparison clause)
-       ((get-method sql.qp/->honeysql [:sql-jdbc :not]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :not]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle :case]
   [driver clause]
   (->> (sql.qp.boolean-to-comparison/case-boolean->comparison clause boolean-field-types)
-       ((get-method sql.qp/->honeysql [:sql-jdbc :case]) driver)))
+       ((get-method sql.qp/->honeysql [:sql :case]) driver)))
 
 (defmethod sql.qp/->honeysql [:oracle ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar2(256)"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar2(256)"]))
 
 (defmethod driver/humanize-connection-error-message :oracle
   [_ messages]
@@ -676,7 +701,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting result set fetch direction to FETCH_FORWARD")))
+          (log/debugf "Error setting result set fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (sql-jdbc.execute/set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -693,7 +718,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting result set fetch direction to FETCH_FORWARD")))
+          (log/debugf "Error setting result set fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       stmt
       (catch Throwable e
         (.close stmt)

@@ -223,6 +223,7 @@ Metabase's reference documentation.
   - [SSO](./embedding/modular-embedding.md)
   - [Guest](./embedding/guest-embedding.md)
   - [SDK](./embedding/sdk/introduction.md)
+  - [Custom visualizations](./embedding/custom-visualizations.md)
 - [Full app embedding](./embedding/full-app-embedding.md)
 - [Securing embeds](./embedding/securing-embeds.md)
 - [AI agent resources](./embedding/ai-agent-resources.md)

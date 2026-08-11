@@ -121,7 +121,7 @@
       (try
         (cap)
         (catch Throwable t
-          (log/warnf t "Error resolving :max-concurrent-batches for %s; treating as unbounded" queue-name)
+          (log/warnf "Error resolving :max-concurrent-batches for %s; treating as unbounded: %s" queue-name (ex-message t))
           nil))
       cap)))
 

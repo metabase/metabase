@@ -11,11 +11,9 @@
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.query-processor.parameters.values :as params.values]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [get-in]])
   (:import
@@ -241,9 +239,7 @@
    x]
   (if-not (string? x)
     x
-    (u/prog1 (substitute query stage-number param->value (lib/parse-parameters x false))
-      (when-not (= x <>)
-        (log/debugf "Substituted %s -> %s" (pr-str x) (pr-str <>))))))
+    (substitute query stage-number param->value (lib/parse-parameters x false))
 
 (mu/defn substitute-native-parameters :- ::lib.schema/query
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."

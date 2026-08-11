@@ -69,7 +69,7 @@ function getTableFields(table: Table | undefined): Field[] {
 function hasMappableNumeralValues(
   fieldValues: FieldValue[] | undefined,
 ): boolean {
-  const remapping = getFieldRemappedValues(fieldValues);
+  const remapping = new Map(getRemappings({ values: fieldValues }));
 
   // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
   // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
@@ -81,14 +81,8 @@ function hasMappableNumeralValues(
   );
 }
 
-export function getFieldRemappedValues(
-  fieldValues: FieldValue[] | undefined,
-): Map<number, string> {
-  return new Map(getRemappings({ values: fieldValues }));
-}
-
 /**
- * Adds 3 extra attributes to every Field, so that DataSelector does not break.
+ * Adds 4 extra attributes to every Field, so that DataSelector does not break.
  * DataSelector component expects metabase-lib/v1/metadata/Field objects (entity framework),
  * but this modern module uses Field from metabase-types/api/field.ts instead.
  */
@@ -105,6 +99,7 @@ export function hydrateTableFields(
       ...field,
       displayName: () => field.display_name,
       icon: () => getColumnIcon(Lib.legacyColumnTypeInfo(field)),
+      getPlainObject: () => field,
       table,
     })),
   };

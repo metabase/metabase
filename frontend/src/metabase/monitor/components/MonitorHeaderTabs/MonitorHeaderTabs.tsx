@@ -1,7 +1,6 @@
 import { LinkTab } from "metabase/common/components/LinkTab";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useSelector } from "metabase/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation } from "metabase/router";
 import { FixedSizeIcon, Tabs } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
@@ -25,7 +24,7 @@ function isTabSelected(tab: MonitorHeaderTab, pathname: string) {
 }
 
 export function MonitorHeaderTabs({ tabs }: MonitorHeaderTabsProps) {
-  const { pathname } = useSelector(getLocation);
+  const { pathname } = useLocation();
   const activeTab = tabs.find((tab) => isTabSelected(tab, pathname));
 
   return (

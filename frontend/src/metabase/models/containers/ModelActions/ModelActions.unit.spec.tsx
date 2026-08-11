@@ -23,7 +23,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { Route, redirect, withRouteProps } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -55,8 +55,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import ModelActions from "./ModelActions";
-
-const RoutedModelActions = withRouteProps(ModelActions);
 
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
@@ -221,11 +219,11 @@ async function setup({
   const slug = `${model.id()}-${name}`;
   const baseUrl = `/model/${slug}/detail`;
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
         <Route index element={redirect("actions")} />
-        <Route path="actions" element={<RoutedModelActions />}>
+        <Route path="actions" element={<ModelActions />}>
           {modalRoute("new", ActionCreator, {
             modalProps: { transitionProps: { duration: 0 } },
           })}
@@ -241,7 +239,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { model, history, baseUrl, metadata, usedByQuestions };
+  return { model, router, baseUrl, metadata, usedByQuestions };
 }
 
 async function setupActions({
@@ -697,13 +695,11 @@ describe("ModelActions", () => {
 
   describe("navigation", () => {
     it("redirects to query builder when trying to open a question", async () => {
-      const { model: question, history } = await setup({
+      const { model: question, router } = await setup({
         model: createSavedStructuredCard(),
       });
 
-      expect(history?.getCurrentLocation().pathname).toBe(
-        Urls.question(question),
-      );
+      expect(router?.location.pathname).toBe(Urls.question(question));
     });
 
     it("shows 404 when opening an archived model", async () => {

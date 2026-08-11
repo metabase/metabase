@@ -28,7 +28,7 @@
    _query-params
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
-  (log/info "Creating transform tag:" name)
+  (log/info "Creating transform tag")
   (api/check-403 (mi/can-create? :model/TransformTag {:name name}))
   (api/check-400 (not (transforms.core/tag-name-exists? name))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
@@ -41,7 +41,7 @@
    _query-params
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
-  (log/info "Updating transform tag" tag-id "with name:" name)
+  (log/info "Updating transform tag" tag-id)
   (api/write-check (t2/select-one :model/TransformTag :id tag-id))
   (api/check-400 (not (transforms.core/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))

@@ -4,6 +4,82 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
+/**
+ * Replaces ORDERS_QUESTION_ID (heavyweight table) with ORDERS_BY_YEAR_QUESTION_ID (lightweight line chart) to save memory
+ * Consider using this instead of DOCUMENT_WITH_TWO_CARDS in tests that are memory-sensitive
+ */
+export const DOCUMENT_WITH_TWO_LIGHTWEIGHT_CARDS = {
+  content: [
+    {
+      type: "paragraph",
+      content: [
+        {
+          type: "text",
+          text: "Testing drag and drop functionality",
+        },
+      ],
+      attrs: {
+        _id: "1",
+      },
+    },
+    {
+      type: "resizeNode",
+      attrs: {
+        height: 350,
+        minHeight: 280,
+        _id: "2",
+      },
+      content: [
+        {
+          type: "cardEmbed",
+          attrs: {
+            id: ORDERS_BY_YEAR_QUESTION_ID,
+            name: null,
+            _id: "2a",
+          },
+        },
+      ],
+    },
+    {
+      type: "paragraph",
+      content: [
+        {
+          type: "text",
+          text: "Some text between cards",
+        },
+      ],
+      attrs: {
+        _id: "3",
+      },
+    },
+    {
+      type: "resizeNode",
+      attrs: {
+        height: 350,
+        minHeight: 280,
+        _id: "4",
+      },
+      content: [
+        {
+          type: "cardEmbed",
+          attrs: {
+            id: ORDERS_COUNT_QUESTION_ID,
+            name: null,
+            _id: "4a",
+          },
+        },
+      ],
+    },
+    {
+      type: "paragraph",
+      attrs: {
+        _id: "5",
+      },
+    },
+  ],
+  type: "doc",
+};
+
 export const DOCUMENT_WITH_TWO_CARDS = {
   content: [
     {

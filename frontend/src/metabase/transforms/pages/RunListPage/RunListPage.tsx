@@ -11,10 +11,8 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
-import { useSetting } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
-import type { Location } from "metabase/router";
-import { replace } from "metabase/router";
+import { useLocation, useNavigate } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
@@ -42,11 +40,8 @@ import {
 
 const EMPTY_RUNS: TransformRun[] = [];
 
-type RunListPageProps = {
-  location: Location;
-};
-
-export function RunListPage({ location }: RunListPageProps) {
+export function RunListPage() {
+  const location = useLocation();
   const params = getParsedParams(location);
   const { page = 0 } = params;
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -56,7 +51,7 @@ export function RunListPage({ location }: RunListPageProps) {
     TransformRunId | undefined
   >();
   const [isPolling, setIsPolling] = useState(false);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const {
     data,
@@ -117,9 +112,9 @@ export function RunListPage({ location }: RunListPageProps) {
 
   const handleParamsChange = useCallback(
     (newParams: Urls.TransformRunListParams) => {
-      dispatch(replace(Urls.transformRunList(newParams)));
+      navigate(Urls.transformRunList(newParams), { replace: true });
     },
-    [dispatch],
+    [navigate],
   );
 
   const handleFilterOptionsChange = useCallback(

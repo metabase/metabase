@@ -1,6 +1,7 @@
 (ns metabase.server.handler
   "Top-level Metabase Ring handler."
   (:require
+   [metabase.agent-api.usage :as agent-api.usage]
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
@@ -69,7 +70,7 @@
     (when (and config/dev-available? (not *compile-files*))
       (requiring-resolve 'dev.server.middleware.proxy/wrap-remote-api-proxy))
     (catch Exception e
-      (log/warn e "Failed to load dev remote API proxy middleware")
+      (log/warnf "Failed to load dev remote API proxy middleware: %s" (ex-message e))
       nil)))
 
 (def ^:private middleware
@@ -83,6 +84,7 @@
         #'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
         #'mw.exceptions/catch-api-exceptions         ; catch exceptions and return them in our expected format
         #'mw.log/log-api-call                        ; log info about the request, db call counts etc.
+        #'agent-api.usage/wrap-record-cli-usage      ; record CLI usage analytics for metabase-cli REST API calls
         #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
         #'mw.security/add-security-headers           ; Add HTTP headers to API responses to prevent them from being cached
         #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request

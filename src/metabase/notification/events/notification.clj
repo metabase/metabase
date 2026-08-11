@@ -10,7 +10,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(derive :metabase/event ::notification)
+(events/derive! :metabase/event ::notification)
 
 (def ^:private supported-topics #{:event/user-invited
                                   :event/notification-create

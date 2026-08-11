@@ -5,20 +5,23 @@ import {
   type DataAttributes,
   type InputDescriptionProps,
   Loader,
-  type SelectOption,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { useAutoSelectFirstOption } from "../useAutoSelectFirstOption";
+import {
+  type CheckpointFieldOption,
+  useClearUnsupportedLookback,
+} from "../useClearUnsupportedLookback";
 
 /**
  * Get filterable numeric/temporal field options from the source table of a query.
- * Returns SelectOption[] with field IDs as string values.
+ * Returns CheckpointFieldOption[] with field IDs as string values.
  */
 export function getSourceFieldOptions(
   query: Lib.Query,
   opts?: { labelPrefix?: string; seenFieldIds?: Set<number> },
-): Array<SelectOption> {
+): Array<CheckpointFieldOption> {
   // Stage 0 is the source stage (raw table data). Keyset pagination requires columns from the
   // actual source table; later stages may have aggregations, joins, or expressions instead.
   const stageIndex = 0;
@@ -36,10 +39,14 @@ export function getSourceFieldOptions(
 
   const sourceColumns = Lib.getColumnsFromColumnGroup(sourceGroup);
   const seenFieldIds = opts?.seenFieldIds ?? new Set<number>();
-  const options: Array<SelectOption> = [];
+  const options: Array<CheckpointFieldOption> = [];
 
   for (const column of sourceColumns) {
-    if (!Lib.isNumeric(column) && !Lib.isTemporal(column)) {
+    // Numeric or date/datetime only — time-only columns are excluded since their
+    // watermarks wrap at midnight
+    const isSupported =
+      (Lib.isNumeric(column) || Lib.isTemporal(column)) && !Lib.isTime(column);
+    if (!isSupported) {
       continue;
     }
 
@@ -55,7 +62,11 @@ export function getSourceFieldOptions(
       ? `${opts.labelPrefix}: ${columnInfo.displayName}`
       : columnInfo.longDisplayName;
 
-    options.push({ value: String(fieldId), label });
+    options.push({
+      value: String(fieldId),
+      label,
+      supportsLookback: Lib.isDateOrDateTime(column),
+    });
   }
 
   return options;
@@ -82,7 +93,7 @@ export function KeysetColumnSelect({
   disabled,
   isLoading,
 }: KeysetColumnSelectProps) {
-  const columnOptions = useMemo((): Array<SelectOption> => {
+  const columnOptions = useMemo((): Array<CheckpointFieldOption> => {
     if (!query) {
       return [];
     }
@@ -103,6 +114,8 @@ export function KeysetColumnSelect({
     options: columnOptions,
     disabled: disabled || isLoading,
   });
+
+  useClearUnsupportedLookback({ name, options: columnOptions });
 
   return (
     <FormSelect

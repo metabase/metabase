@@ -269,7 +269,7 @@
                       (try (hm-get-gdrive-conn conn-id)
                            (catch Exception e
                              (do
-                               (log/errorf e "Exception getting status of connection %s." conn-id)
+                               (log/errorf "Exception getting status of connection %s: %s" conn-id (ex-message e))
                                (throw-error 502 cannot-check-message nil {:gdrive/conn-id conn-id
                                                                           :hm/exception e})))))
         [hm-status {hm-status-code :status hm-body :body hm-err-body :ex-data}] hm-response]

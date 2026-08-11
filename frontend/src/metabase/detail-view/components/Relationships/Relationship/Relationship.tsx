@@ -5,8 +5,8 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Loader, Stack, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";

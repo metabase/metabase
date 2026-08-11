@@ -3,9 +3,11 @@ import { prepareDataForValidation, yupToFormErrors } from "formik";
 import { useCallback, useMemo } from "react";
 import type { AnySchema } from "yup";
 
+export type ValidationSchema<T> = AnySchema | ((values: T) => AnySchema);
+
 export interface UseFormValidationProps<T extends FormikValues, C> {
   initialValues: T;
-  validationSchema?: AnySchema;
+  validationSchema?: ValidationSchema<T>;
   validationContext?: C;
 }
 
@@ -23,16 +25,20 @@ export const useFormValidation = <T extends FormikValues, C>({
     if (validationSchema) {
       return validateSchemaInitial(
         initialValues,
-        validationSchema,
+        resolveSchema(validationSchema, initialValues),
         validationContext,
       );
     }
   }, [initialValues, validationSchema, validationContext]);
 
   const handleValidate = useCallback(
-    (values: FormikValues) => {
+    (values: T) => {
       if (validationSchema) {
-        return validateSchema(values, validationSchema, validationContext);
+        return validateSchema(
+          values,
+          resolveSchema(validationSchema, values),
+          validationContext,
+        );
       }
     },
     [validationSchema, validationContext],
@@ -43,6 +49,9 @@ export const useFormValidation = <T extends FormikValues, C>({
     handleValidate,
   };
 };
+
+const resolveSchema = <T>(schema: ValidationSchema<T>, values: T) =>
+  typeof schema === "function" ? schema(values) : schema;
 
 const validateSchema = async <T extends FormikValues, C>(
   values: T,

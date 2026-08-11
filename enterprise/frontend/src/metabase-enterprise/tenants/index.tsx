@@ -16,7 +16,6 @@ import {
   getCollectionIcon,
 } from "metabase/common/collections/utils";
 import { modalRoute } from "metabase/common/components/ModalRoute";
-import { useSetting } from "metabase/common/hooks/use-setting";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
@@ -24,9 +23,10 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Route, redirect, withRouteProps } from "metabase/router";
+import { Route, redirect } from "metabase/router";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Box, Text } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -69,15 +69,6 @@ import {
   isTenantGroup,
 } from "./utils/utils";
 
-const RoutedTenantCollectionPermissionsPage = withRouteProps(
-  TenantCollectionPermissionsPage,
-);
-const RoutedTenantSpecificCollectionPermissionsPage = withRouteProps(
-  TenantSpecificCollectionPermissionsPage,
-);
-const RoutedExternalGroupDetailApp = withRouteProps(ExternalGroupDetailApp);
-const RoutedExternalPeopleListingApp = withRouteProps(ExternalPeopleListingApp);
-
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
@@ -104,13 +95,13 @@ export function initializePlugin() {
       <>
         <Route
           path="tenant-collections"
-          element={<RoutedTenantCollectionPermissionsPage />}
+          element={<TenantCollectionPermissionsPage />}
         >
           <Route path=":collectionId" />
         </Route>
         <Route
           path="tenant-specific-collections"
-          element={<RoutedTenantSpecificCollectionPermissionsPage />}
+          element={<TenantSpecificCollectionPermissionsPage />}
         >
           <Route path=":collectionId" />
         </Route>
@@ -136,9 +127,9 @@ export function initializePlugin() {
         </Route>
         <Route path="groups">
           <Route index element={<ExternalGroupsListingApp />} />
-          <Route path=":groupId" element={<RoutedExternalGroupDetailApp />} />
+          <Route path=":groupId" element={<ExternalGroupDetailApp />} />
         </Route>
-        <Route path="people" element={<RoutedExternalPeopleListingApp />}>
+        <Route path="people" element={<ExternalPeopleListingApp />}>
           {modalRoute(
             "new",
             (props) => (

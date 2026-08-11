@@ -1,8 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupForTokenCheckEndpoint } from "__support__/server-mocks";
+import {
+  setupForTokenCheckEndpoint,
+  setupMetabaseManagedAiEndpoints,
+} from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { trackLicenseTokenStepSubmitted } from "../analytics";
 
@@ -16,6 +20,7 @@ import {
   setup,
   skipTokenStep,
   skipWelcomeScreen,
+  startAiConfigStep,
   submitUserInfoStep,
 } from "./setup";
 
@@ -157,6 +162,38 @@ describe("setup (EE build, but no token)", () => {
       expect(await submitCall?.request?.json()).toEqual({
         value: sampleToken,
       });
+    });
+  });
+
+  describe("AI config step with the managed AI offer", () => {
+    it("should preselect the managed provider and ask the admin to accept the terms", async () => {
+      await setupEnterprise({
+        tokenFeatures: createMockTokenFeatures({
+          hosting: true,
+          "offer-metabase-ai-managed": true,
+        }),
+      });
+      setupMetabaseManagedAiEndpoints();
+
+      await skipWelcomeScreen();
+      await submitUserInfoStep();
+      await selectUsageReason("self-service-analytics");
+      await clickNextStep();
+      await userEvent.click(screen.getByText("Continue with sample data"));
+      await startAiConfigStep();
+
+      expect(
+        await screen.findByText("About Metabase AI service"),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Provider")).toHaveValue("Metabase");
+      expect(
+        await screen.findByRole("checkbox", {
+          name: /I agree with the Metabase AI Service/i,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Please ask an Admin user to enable this for you."),
+      ).not.toBeInTheDocument();
     });
   });
 });

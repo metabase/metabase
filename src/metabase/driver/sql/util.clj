@@ -78,7 +78,7 @@
 
       :else
       (do
-        (log/errorf "Don't know how to alias %s, expected an h2x/identifier" (pr-str col))
+        (log/errorf "Don't know how to alias %s, expected an h2x/identifier" (class col))
         [col col]))))
 
 (defn select-clause-deduplicate-aliases
@@ -128,6 +128,18 @@
       :backslashes (-> s
                        (str/replace "\\" "\\\\")
                        (str/replace "'" "\\'")))))
+
+(defn quote-literal
+  "Wrap `s` in single quotes as a SQL string literal, escaping embedded quotes per `escape-style`.
+
+    (quote-literal \"Tito's Tacos\" :ansi)        ; -> \"'Tito''s Tacos'\"
+    (quote-literal \"Tito's Tacos\" :backslashes) ; -> \"'Tito\\'s Tacos'\"
+
+  For trusted strings only -- pass user input as a query parameter where the driver supports it."
+  ^String [^String s escape-style]
+  (when s
+    (case escape-style
+      (:ansi :backslashes) (str \' (escape-sql s escape-style) \'))))
 
 (defn validate-convert-timezone-args
   "Validate the arguments of convert-timezone.

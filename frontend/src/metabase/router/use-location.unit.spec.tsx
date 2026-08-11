@@ -1,7 +1,7 @@
-import { renderWithProviders, screen } from "__support__/ui";
+import { MemoryRouter } from "react-router";
 
-import { Route } from "./route";
-import { useLocation } from "./use-location";
+import { renderWithProviders, screen } from "__support__/ui";
+import { Route, useLocation } from "metabase/router";
 
 function LocationProbe() {
   const location = useLocation();
@@ -28,16 +28,18 @@ describe("router/useLocation", () => {
     expect(screen.getByTestId("hash")).toHaveTextContent("#section");
   });
 
-  it("returns exactly the v7 Location fields, without v3's `query`", () => {
+  it("does not carry v3's `query` and `action` fields", () => {
     renderWithProviders(<Route path="foo/bar" element={<LocationProbe />} />, {
       withRouter: true,
       initialRoute: "/foo/bar?x=1",
     });
 
-    // v7's Location is exactly { pathname, search, hash, state, key }, no `query`.
-    expect(screen.getByTestId("keys")).toHaveTextContent(
-      /^hash,key,pathname,search,state$/,
+    const keys = screen.getByTestId("keys").textContent?.split(",");
+    expect(keys).toEqual(
+      expect.arrayContaining(["pathname", "search", "hash"]),
     );
+    expect(keys).not.toContain("query");
+    expect(keys).not.toContain("action");
   });
 
   it("defaults state to null like v7 (not v3's undefined)", () => {
@@ -47,5 +49,16 @@ describe("router/useLocation", () => {
     });
 
     expect(screen.getByTestId("state")).toHaveTextContent(/^null$/);
+  });
+
+  it("works above the route tree, where the facade context is not published", () => {
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/foo/bar?x=1"]}>
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("pathname")).toHaveTextContent("/foo/bar");
+    expect(screen.getByTestId("search")).toHaveTextContent("?x=1");
   });
 });

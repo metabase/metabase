@@ -1,7 +1,8 @@
 (ns metabase.slackbot.events
   "Event definitions for slackbot."
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [malli.core :as mc]))
 
 (def SlackEventsResponse
   "Malli schema for Slack events API response"
@@ -54,7 +55,9 @@
    [:type [:= "event_callback"]]
    [:event [:map
             [:type :string]
-            [:event_ts :string]]]])
+            [:event_ts :string]
+            [::mc/default [:map-of :keyword :any]]]]
+   [::mc/default [:map-of :keyword :any]]])
 
 (defn user-message?
   "Check if event is from a user (not a bot)."

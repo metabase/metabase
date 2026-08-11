@@ -11,7 +11,6 @@ import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics"
 import { useDocsUrl } from "metabase/common/hooks";
 import { PLUGIN_CONTENT_VERIFICATION, PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { canUserCreateQueries } from "metabase/selectors/user";
 import {
   ActionIcon,
@@ -26,6 +25,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import S from "../components/BrowseContainer.module.css";
 
@@ -58,7 +58,7 @@ export function BrowseMetrics() {
   });
 
   const hasDataAccess = useSelector(canUserCreateQueries);
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isEmbeddingIframe = isWithinIframe();
 
   const canCreateMetric = !isEmbeddingIframe && hasDataAccess;
 

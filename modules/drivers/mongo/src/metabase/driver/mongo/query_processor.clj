@@ -2186,8 +2186,7 @@ function(bin) {
 
 (defn- log-aggregation-pipeline [form]
   (when-not driver-api/*disable-qp-logging*
-    (log/tracef "\nMongo aggregation pipeline:\n%s\n"
-                (u/pprint-to-str 'green (perf/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
+    (log/tracef "Compiled Mongo aggregation pipeline with %d stage(s)" (count form))))
 
 (mu/defn parse-query-string :- ::pipeline
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."

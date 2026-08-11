@@ -501,3 +501,12 @@
             (let [out (user-context/format-viewing-context (viewing db-id))]
               (is (str/includes? out "notebook editor"))
               (is (not (str/includes? out "source-table"))))))))))
+
+(deftest ^:parallel enrich-context-omits-research-plan-test
+  (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not
+            leak into the generic user-message injection context. message_injection.selmer has no
+            {{research_plan}} placeholder; the plan is rendered into the system prompt instead (see
+            metabase.metabot.tools.explorations/research-plan-system-context)."
+    (let [plan {:name "Why was revenue down?" :groups [] :timelines []}
+          enriched (user-context/enrich-context-for-template {:research_plan plan})]
+      (is (not (contains? enriched :research_plan))))))

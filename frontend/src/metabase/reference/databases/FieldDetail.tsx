@@ -13,7 +13,6 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import { push } from "metabase/router";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { FieldId, User } from "metabase-types/api";
 
@@ -113,7 +112,6 @@ const mapDispatchToProps = {
   ...metadataActions,
   ...actions,
   onSubmit: actions.rUpdateFieldDetail,
-  onChangeLocation: push,
 };
 
 interface FieldDetailProps {
@@ -286,9 +284,19 @@ const FieldDetail = (props: FieldDetailProps) => {
   );
 };
 
+// What the container has to supply: `params` feeds `mapStateToProps`, and
+// `metadata` is read here but selected by the container. Naming it keeps that
+// contract type-checked.
+type FieldDetailOwnProps = ReferenceRouteProps &
+  Pick<FieldDetailProps, "metadata">;
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-  // Unjustified type cast. FIXME
-)(FieldDetail as unknown as React.ComponentType);
+)(
+  // connect HOC tangle: the `metadataActions` / `actions` spreads in
+  // `mapDispatchToProps` are untyped, so the dispatch props can't be matched
+  // against the component's own props.
+  FieldDetail as unknown as React.ComponentType<FieldDetailOwnProps>,
+);

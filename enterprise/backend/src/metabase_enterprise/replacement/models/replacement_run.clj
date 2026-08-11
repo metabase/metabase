@@ -144,7 +144,7 @@
          (when on-complete
            (deliver on-complete :run/success)))
        (fail-run! [_ throwable]
-         (log/errorf throwable "Replacement run %d failed" run-id)
+         (log/errorf "Replacement run %d failed: %s" run-id (ex-message throwable))
          (fail-run! run-id (ex-message throwable))
          (when on-complete
            (deliver on-complete :run/fail)))))))

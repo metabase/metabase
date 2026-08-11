@@ -20,9 +20,7 @@ export const buildDevCsp = (
     ...(instanceOrigin ? [instanceOrigin] : []),
     ...allowedHosts,
   ];
-  const formAction =
-    allowedHosts.length > 0 ? allowedHosts.join(" ") : "'none'";
-  const frameSrc = ["'self'", ...allowedHosts].join(" ");
 
-  return `connect-src ${sources.join(" ")}; form-action ${formAction}; frame-src ${frameSrc}`;
+  // Match the production iframe CSP
+  return `connect-src ${sources.join(" ")}; form-action 'none'; frame-src 'none'`;
 };
