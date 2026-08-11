@@ -17,8 +17,7 @@ import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout
 import { isCypressActive } from "metabase/env";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { replace, useParams, useSearchParams } from "metabase/router";
+import { useNavigate, useParams, useSearchParams } from "metabase/router";
 import {
   Box,
   Button,
@@ -64,7 +63,7 @@ export function CleanupTablePage() {
   const routeParams = useParams<CleanupTablePageParams>();
   const [searchParams] = useSearchParams();
   const tableId = Urls.extractEntityId(routeParams.tableId);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const params = parseCleanupParams(searchParams);
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -101,7 +100,7 @@ export function CleanupTablePage() {
 
   const updateParams = (next: Urls.DataStudioCleanupParams) => {
     if (tableId != null) {
-      dispatch(replace(Urls.dataStudioCleanupTable(tableId, next)));
+      navigate(Urls.dataStudioCleanupTable(tableId, next), { replace: true });
     }
   };
 
