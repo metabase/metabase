@@ -21,8 +21,6 @@ export const UserCollectionList = () => {
   ];
 
   const items = users
-    // Same condition as before; the predicate only narrows the id for the `.map` below,
-    // which `.filter` on its own does not do.
     .filter(
       (user): user is User & { personal_collection_id: CollectionId } =>
         !!user.personal_collection_id,

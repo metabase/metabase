@@ -71,10 +71,6 @@ export interface User extends BaseUser {
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
   can_write_any_collection: boolean;
-  /**
-   * `null` for API-key users (see `include-personal-collection-ids`
-   * in `collections/models/collection.clj`).
-   */
   personal_collection_id: CollectionId | null;
   tenant_collection_id: CollectionId | null;
   sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | "oidc" | null;
