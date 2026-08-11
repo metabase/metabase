@@ -11,7 +11,7 @@ import {
 import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
 import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import { type MetabotState, metabotActions } from "metabase/metabot/state";
+import { metabotActions } from "metabase/metabot/state";
 import {
   createConversation,
   getMetabotInitialState,
@@ -594,16 +594,7 @@ describe("metabot > ui", () => {
 
     const PAST_CONVERSATION_ID = "11111111-1111-1111-1111-111111111111";
 
-    const setupWithPastConversation = (metabotInitialState?: MetabotState) => {
-      setup({
-        metabotInitialState,
-        conversations: [
-          createMockMetabotConversation({
-            conversation_id: PAST_CONVERSATION_ID,
-            title: "Orders by month",
-          }),
-        ],
-      });
+    const setupWithPastConversation = () => {
       setupGetMetabotConversationEndpoint(
         createMockMetabotConversationDetail({
           conversation_id: PAST_CONVERSATION_ID,
@@ -624,6 +615,14 @@ describe("metabot > ui", () => {
           ],
         }),
       );
+      return setup({
+        conversations: [
+          createMockMetabotConversation({
+            conversation_id: PAST_CONVERSATION_ID,
+            title: "Orders by month",
+          }),
+        ],
+      });
     };
 
     const selectPastConversation = async () => {
@@ -661,12 +660,12 @@ describe("metabot > ui", () => {
       jest
         .spyOn(HTMLElement.prototype, "scrollHeight", "get")
         .mockReturnValue(800);
-      setupWithPastConversation(
-        assocIn(
-          getMetabotInitialState(),
-          ["conversations", "omnibot"],
-          createConversation("omnibot", {
-            visible: true,
+      const { store } = setupWithPastConversation();
+      act(() => {
+        store.dispatch(
+          metabotActions.setConversationSnapshot({
+            agentId: "omnibot",
+            conversationId: "current-conversation",
             messages: [
               {
                 id: "current-user",
@@ -674,16 +673,11 @@ describe("metabot > ui", () => {
                 type: "text",
                 message: "Current question",
               },
-              {
-                id: "current-agent",
-                role: "agent",
-                type: "text",
-                message: "Current answer",
-              },
             ],
+            activeToolCalls: [],
           }),
-        ),
-      );
+        );
+      });
       const previousMessages = await screen.findByTestId(
         "metabot-chat-messages",
       );
@@ -692,7 +686,8 @@ describe("metabot > ui", () => {
       await selectPastConversation();
       await screen.findByText("There are 42 orders.");
 
-      expect(screen.getByTestId("metabot-chat-messages").scrollTop).toBe(800);
+      const messages = screen.getByTestId("metabot-chat-messages");
+      expect(messages.scrollTop).toBe(messages.scrollHeight);
     });
 
     it("continues the loaded conversation when a new message is submitted", async () => {

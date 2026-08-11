@@ -56,7 +56,10 @@ export const MetabotChat = ({
 
   const hasMessages = metabot.messages.length > 0;
 
-  const { scrollContainerRef, fillerRef } = useScrollManager(hasMessages);
+  const { scrollContainerRef, fillerRef } = useScrollManager(
+    hasMessages,
+    metabot.conversationId,
+  );
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {
