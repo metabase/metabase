@@ -214,7 +214,13 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       verifyAndCloseToast("Failed to disable JSON unfolding for Json");
 
       cy.log("formatting");
-      TablePicker.getDatabase("Sample Database").click();
+      // Switching DBs via the picker (.getDatabase().click() then
+      // .getTable().click()) races the picker re-render: the table click can
+      // land before the Sample Database tables list is interactive, so it never
+      // navigates, Orders never loads, and clickField("Quantity") times out on
+      // an empty field list. The sibling test below hit the same flake and was
+      // fixed with visit({ databaseId }) (which waits for picker bootstrap).
+      visit({ databaseId: SAMPLE_DB_ID });
       TablePicker.getTable("Orders").click();
       if (area === "data studio") {
         TableSection.clickFieldsTab();
