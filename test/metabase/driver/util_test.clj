@@ -3,7 +3,6 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
@@ -814,24 +813,15 @@
       (mt/with-premium-features #{}
         (is (= :allow-all (driver.settings/warehouse-allowed-networks)))
         (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
-  (testing "hosted and deployed, with nothing configured, only public addresses are allowed"
+  (testing "hosted, with nothing configured, only public addresses are allowed"
     ;; on Metabase Cloud a warehouse is always reached across the public internet, so anything else is somebody
     ;; reaching for our own infrastructure
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks nil]
       (mt/with-premium-features #{:hosting}
-        (with-redefs [config/is-prod? true]
-          (is (= :external-only (driver.settings/warehouse-allowed-networks)))
-          (is (=? {:status-code 400}
-                  (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))
-          (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "8.8.8.8"})))))))
-  (testing "hosted but not running from a jar, the token is a developer's and not a deployment"
-    ;; `is-hosted?` is a token feature, so it is true in a REPL, in CI, and in E2E whenever the token in use carries
-    ;; `:hosting`. Treating those as Cloud would refuse a warehouse on localhost, which is the ordinary case there.
-    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks nil]
-      (mt/with-premium-features #{:hosting}
-        (with-redefs [config/is-prod? false]
-          (is (= :allow-all (driver.settings/warehouse-allowed-networks)))
-          (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"})))))))
+        (is (= :external-only (driver.settings/warehouse-allowed-networks)))
+        (is (=? {:status-code 400}
+                (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))
+        (is (nil? (driver.u/validate-connection-hosts! :postgres {:host "8.8.8.8"}))))))
   (testing "an explicit setting is honored on Cloud too, in either direction"
     (mt/with-premium-features #{:hosting}
       (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
