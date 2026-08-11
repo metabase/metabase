@@ -110,7 +110,7 @@
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
-  "claude-sonnet-4-6")
+  "claude-sonnet-5")
 
 (def ^:private default-bedrock-llm-metabot-model
   "Default Bedrock model used for Metabot when no explicit model is selected."
@@ -132,7 +132,7 @@
   "Default OpenRouter model used for Metabot when no explicit model is selected.
   Note that OpenRouter model IDs use dots in version numbers (`claude-sonnet-4.6`),
   unlike the Anthropic API's hyphenated IDs (`claude-sonnet-4-6`)."
-  "anthropic/claude-sonnet-4.6")
+  "anthropic/claude-sonnet-5")
 
 (def ^:private default-zai-llm-metabot-model
   "Default Z.AI model used for Metabot when no explicit model is selected."
@@ -164,7 +164,7 @@
   "Providers and models that can be used via the metabase managed AI proxy.
 
   The keys of this map must be a subset of the [[direct-providers]]."
-  {"anthropic" #{"claude-sonnet-4-6"}})
+  {"anthropic" #{"claude-sonnet-4-6" "claude-sonnet-5"}})
 
 (def supported-metabot-providers
   "Set of supported LLM provider prefixes for the `llm-metabot-provider` setting."

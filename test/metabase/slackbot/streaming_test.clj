@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.persistence :as metabot.persistence]
-   [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.premium-features.core :as premium-features]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.events :as slackbot.events]
@@ -156,23 +156,19 @@
 (deftest slackbot-posts-free-trial-limit-error-when-managed-provider-is-locked-test
   (let [posted-message (atom nil)
         event          {:channel "C1" :ts "123.456" :channel_type "im"}]
-    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                       "metabase/anthropic/claude-sonnet-4-6"]
-      (mt/with-dynamic-fn-redefs [premium-features/token-status
-                                  (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
-                                                                                             :is-locked   true}}})
-                                  slackbot.events/event->reply-context
-                                  (constantly {:channel "C1" :thread_ts "123.456"})
-                                  slackbot.events/dm?
-                                  (constantly true)
-                                  slackbot.client/post-thread-reply
-                                  (fn [_ message-ctx text & _]
-                                    (reset! posted-message {:message-ctx message-ctx :text text})
-                                    {:ok true})]
-        (slackbot.streaming/send-response {:token "xoxb-test"} event)
-        (is (= {:message-ctx {:channel "C1" :thread_ts "123.456"}
-                :text        "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."}
-               @posted-message))))))
+    (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly true)
+                                slackbot.events/event->reply-context
+                                (constantly {:channel "C1" :thread_ts "123.456"})
+                                slackbot.events/dm?
+                                (constantly true)
+                                slackbot.client/post-thread-reply
+                                (fn [_ message-ctx text & _]
+                                  (reset! posted-message {:message-ctx message-ctx :text text})
+                                  {:ok true})]
+      (slackbot.streaming/send-response {:token "xoxb-test"} event)
+      (is (= {:message-ctx {:channel "C1" :thread_ts "123.456"}
+              :text        "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."}
+             @posted-message)))))
 
 (deftest slackbot-streaming-sets-ai-proxied-on-messages-test
   (testing "start-turn! receives ai-proxy? = true (and writes it to both user and assistant rows)
