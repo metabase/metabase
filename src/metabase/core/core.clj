@@ -158,6 +158,12 @@
         (catch Exception e
           (log/warnf "Failed to register signal handler for SIG%s: %s" signal-name (ex-message e)))))))
 
+(def embedder-plugin-name
+  "Manifest `info.name` of the in-process embedder. Pinned against the manifest by
+  `metabase.embeddings.embedder-plugin-name-test`; a rename here without one there silently disables
+  the plugin, since `plugins/registered?` looks it up by this exact string."
+  "Metabase In-Process Embedder")
+
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
@@ -180,9 +186,9 @@
   (plugins/load-plugins!)
   ;; The in-process embedder registers its provider during plugin initialization. Its model runtime remains
   ;; lazy, so activating the lightweight registration namespace here does not load DJL or a model at startup.
-  (when (plugins/registered? "Metabase In-Process Embedder")
+  (when (plugins/registered? embedder-plugin-name)
     (try
-      (plugins/load-plugin! "Metabase In-Process Embedder")
+      (plugins/load-plugin! embedder-plugin-name)
       (catch Exception e
         (log/warnf "Unable to activate the in-process embedder plugin: %s" (ex-message e)))))
   (init-status/set-progress! 0.3)

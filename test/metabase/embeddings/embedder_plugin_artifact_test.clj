@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.core.core :as core]
    [metabase.embeddings.provider :as embeddings.provider]
    [metabase.plugins.impl :as plugins]
    [metabase.plugins.initialize :as plugin-initialize])
@@ -18,9 +19,6 @@
 (def ^:private requested-minilm-model
   {:provider   "in-process"
    :model-name "sentence-transformers/all-MiniLM-L6-v2"})
-
-(def ^:private plugin-name
-  "Metabase In-Process Embedder")
 
 (defn- cosine
   [^floats a ^floats b]
@@ -78,7 +76,7 @@
       (plugins/load-plugins!)
       ;; Non-driver plugins are registered eagerly but initialized only when a feature selects them. The provider
       ;; registration lives in the plugin init namespace, so activate this artifact explicitly before exercising it.
-      (plugin-initialize/load-plugin! plugin-name)
+      (plugin-initialize/load-plugin! core/embedder-plugin-name)
       (testing "the implementation was activated through its jar manifest"
         (is (embeddings.provider/registered? "in-process"))
         (is (= "true" (System/getProperty "ai.djl.offline")))
