@@ -20,19 +20,17 @@
 
   A `.sql` file is a list of statements separated by lines containing exactly [[statement-separator]]. Nothing else
   about the file is parsed, so [[load-snapshot!]] cannot be broken by semicolons inside string literals.
-  [[generate!]] is what produces that shape; the two live together so the write and read formats stay in step.
+  [[metabase.app-db.snapshot-test-util.generate/generate!]] is what writes that shape.
 
   Because DATABASECHANGELOG carries the MD5 checksum of every changeset it records, editing a migration at or below
   the snapshot boundary makes Liquibase reject a loaded snapshot. That is intended: those changesets have shipped.
-  Regenerate the snapshot with [[generate!]] when moving the boundary to a newer checkpoint."
+  Regenerate the snapshot when moving the boundary to a newer checkpoint."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
-   [clojure.java.shell :as shell]
    [clojure.string :as str]
    [metabase.app-db.liquibase :as liquibase]
-   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (liquibase.changelog ChangeSet)))
@@ -55,7 +53,9 @@
   the very same migrations produce — see [[flavor]]."
   #{:h2 :postgres :mysql :mariadb :mariadb-legacy-timestamp})
 
-(defn- resource-path [version flavor ext]
+(defn resource-path
+  "Classpath location of the snapshot file for `version` and `flavor`, relative to `test_resources`."
+  [version flavor ext]
   ;; underscores, to match how every other resource in the tree is named
   (format "app_db_snapshots/%s/%s.%s" version (str/replace (name flavor) "-" "_") ext))
 
@@ -203,212 +203,3 @@
        (let [idx (zipmap changeset-ids (range))]
          (when-let [through (idx (through-changeset-id))]
            (boolean (some-> (idx start-id) (> through)))))))
-
-;;; -------------------------------------------------- generation --------------------------------------------------
-;;;
-;;; Dev-time only: nothing below runs during a test. Fragile dump parsing happens here, once, so that the checked-in
-;;; artifact is in the trivially-splittable shape [[statements]] expects.
-
-(defn- literals-closed?
-  "Whether `text` has no unterminated string literal. Quotes escaped either way a dump tool may write them — doubled
-  (`''`, Postgres) or backslashed (`\\'`, MySQL) — are removed before counting, backslash pairs first so that a
-  trailing literal backslash is not mistaken for an escape."
-  [text]
-  (-> text
-      (str/replace "\\\\" "")
-      (str/replace "\\'" "")
-      (str/replace "''" "")
-      (->> (re-seq #"'") count even?)))
-
-(defn- dump-lines->statements
-  "Fold the line-oriented output of a dump tool into whole statements. A statement ends on a line whose trimmed text
-  ends in `;` and that closes every string literal it opened."
-  [lines]
-  (loop [[line & more] lines, current [], acc []]
-    (cond
-      (nil? line)
-      (cond-> acc (seq current) (conj (str/join "\n" current)))
-
-      ;; comments, client directives and session settings are dump-tool noise, not schema
-      (and (empty? current)
-           (or (str/blank? line)
-               (re-matches #"^\s*(--|/\*!|\\).*" line)
-               (re-matches #"(?i)^\s*SET\s+.*" line)
-               (re-matches #"(?i)^\s*SELECT pg_catalog\.set_config.*" line)))
-      (recur more current acc)
-
-      :else
-      (let [current (conj current line)
-            text    (str/join "\n" current)]
-        (if (and (literals-closed? text) (str/ends-with? (str/trimr line) ";"))
-          (recur more [] (conj acc (str/replace text #";\s*$" "")))
-          (recur more current acc))))))
-
-(defn- sh! [& args]
-  (let [{:keys [exit out err]} (apply shell/sh args)]
-    (when-not (zero? exit)
-      (throw (ex-info "Dump command failed" {:command args, :exit exit, :err err})))
-    out))
-
-(defmulti ^:private dump-statements
-  "Return the statements needed to recreate the DB described by `details` (as returned
-  by [[tx/dbdef->connection-details]]), including its DATABASECHANGELOG rows."
-  {:arglists '([flavor details conn])}
-  (fn [flavor _details _conn] flavor))
-
-(defmethod dump-statements :h2
-  [_flavor _details conn]
-  ;; H2's SCRIPT command already returns one statement per row, so no parsing is needed. `MEMORY`/`CACHED` is dropped
-  ;; so the loading DB picks its own default (in-memory DBs get MEMORY, file-backed ones CACHED); `SET`, `CREATE USER`
-  ;; and the version banner describe the DB the dump came from, not the schema.
-  (into []
-        (comp (map :script)
-              (map str/trim)
-              (remove str/blank?)
-              (remove #(re-matches #"(?is)^(CREATE USER|SET|--).*" %))
-              (map #(str/replace % #"(?i)^CREATE (MEMORY|CACHED) TABLE " "CREATE TABLE "))
-              (map #(str/replace % #";\s*$" "")))
-        (jdbc/query {:connection conn} ["SCRIPT"])))
-
-(defmethod dump-statements :postgres
-  [_flavor {:keys [host port db user]} _conn]
-  (dump-lines->statements
-   (str/split-lines
-    (sh! "pg_dump" "--no-owner" "--no-privileges" "--no-comments" "--inserts"
-         "--host" (str host) "--port" (str port) "--username" (str user) (str db)))))
-
-(defn- drop-version-gated-blocks
-  "Remove mysqldump's `/*!NNNNN ... */;` blocks. They carry session character-set juggling, a placeholder
-  `CREATE TABLE` standing in for each view, and the real view DDL — the last split across three blocks and stamped
-  with a `DEFINER` naming the account that produced the dump. [[mysql-view-statements]] rebuilds the views instead."
-  [lines]
-  (loop [[line & more] lines, in-block? false, acc []]
-    (cond
-      (nil? line)              acc
-      in-block?                (recur more (not (str/ends-with? (str/trimr line) "*/;")) acc)
-      (str/starts-with? (str/triml line) "/*!")
-      (recur more (not (str/ends-with? (str/trimr line) "*/;")) acc)
-      :else                    (recur more false (conj acc line)))))
-
-(defn- mysql-view-statements
-  "`CREATE OR REPLACE VIEW` for every view in `db`, read back from `information_schema`.
-
-  MySQL stores view definitions with every table qualified by the schema they were created in, so the name of the
-  throwaway DB used for generation is stripped out — otherwise the snapshot would only load into a DB of that name."
-  [^java.sql.Connection conn db]
-  (let [qualifier (str "`" db "`.")]
-    (for [{:keys [table_name view_definition]}
-          (jdbc/query {:connection conn}
-                      ["SELECT table_name, view_definition FROM information_schema.views WHERE table_schema = ?
-                        ORDER BY table_name" db])]
-      (format "CREATE OR REPLACE VIEW `%s` AS %s"
-              table_name
-              (str/replace view_definition qualifier "")))))
-
-(defn- mysqldump-command
-  "Binary used to dump MySQL-family DBs, overridable via `MB_SNAPSHOT_MYSQLDUMP`.
-
-  Needed because the two servers want different clients: MySQL 9's `mysqldump` dropped `mysql_native_password` and so
-  cannot authenticate against older MariaDB servers, while MariaDB's `mariadb-dump` is not always on PATH next to it."
-  []
-  (or (System/getenv "MB_SNAPSHOT_MYSQLDUMP") "mysqldump"))
-
-(defn- mysqldump-statements!
-  "Dump a MySQL-family DB. `--protocol=TCP` because the MySQL client silently ignores `--port` and uses a unix socket
-  when the host is `localhost`, which is not necessarily the server the migration just ran against.
-  `--set-gtid-purged` is MySQL-only, so it is passed only when dumping MySQL."
-  [flavor {:keys [host port db user]} conn]
-  (into (dump-lines->statements
-         (drop-version-gated-blocks
-          (str/split-lines
-           (apply sh! (concat [(mysqldump-command) "--compact" "--skip-extended-insert" "--skip-add-locks"
-                               "--skip-disable-keys" "--skip-set-charset" "--complete-insert" "--no-tablespaces"
-                               "--protocol=TCP"]
-                              (when (= flavor :mysql) ["--set-gtid-purged=OFF"])
-                              [(str "--host=" host) (str "--port=" port) (str "--user=" user) (str db)])))))
-        ;; views last: they read from the tables above, and none of them reads from another view
-        (mysql-view-statements conn db)))
-
-(defmethod dump-statements :mysql
-  [flavor details conn]
-  (mysqldump-statements! flavor details conn))
-
-(defmethod dump-statements :mariadb
-  [flavor details conn]
-  (mysqldump-statements! flavor details conn))
-
-(defmethod dump-statements :mariadb-legacy-timestamp
-  [flavor details conn]
-  (mysqldump-statements! flavor details conn))
-
-(defn- custom-migration-bindings
-  "Same bindings [[metabase.app-db.schema-migrations-test.impl/do-with-temp-empty-app-db]] installs: custom migrations
-  read the app DB through the dynamic var, must not hand work to Quartz against a DB that is about to vanish, and
-  must not seed the sample content that every test app DB is set up without."
-  [db-type data-source]
-  {(requiring-resolve 'metabase.app-db.connection/*application-db*)
-   ((requiring-resolve 'metabase.app-db.connection/application-db) db-type data-source)
-
-   (requiring-resolve 'metabase.app-db.custom-migrations.util/*allow-temp-scheduling*)
-   false
-
-   (requiring-resolve 'metabase.app-db.custom-migrations/*create-sample-content*)
-   false})
-
-(defn- write-snapshot! [version flavor statements]
-  (let [file (io/file "test_resources" (resource-path version flavor "sql"))]
-    (io/make-parents file)
-    (spit file (str "-- Generated by metabase.app-db.snapshot-test-util/generate!. Do not edit by hand.\n"
-                    (format "-- Empty %s application DB migrated through %s.\n" (name flavor)
-                            (through-changeset-id version))
-                    statement-separator "\n"
-                    (str/join (str ";\n" statement-separator "\n") statements)
-                    ";\n"))
-    file))
-
-(defn generate!
-  "Regenerate the checked-in snapshot for `db-type`: create a temporary empty app DB, migrate it through
-  [[through-changeset-id]], and dump the result. Needs `pg_dump` on PATH for `:postgres` and `mysqldump` for
-  `:mysql`, plus the usual `MB_<DB>_TEST_*` env vars pointing at a server it may create databases on.
-
-  Which file gets written follows [[flavor]], so regenerating the MariaDB snapshot means running this with `:mysql`
-  while `MB_MYSQL_TEST_*` points at a MariaDB server.
-
-  Deliberately creates its own DB rather than using [[metabase.app-db.schema-migrations-test.impl]]'s harness,
-  because the dump tools need the raw connection details that harness hides."
-  ([db-type]
-   (generate! db-type snapshot-version))
-  ([db-type version]
-   (let [run-range!    (requiring-resolve 'metabase.app-db.schema-migrations-test.impl/run-migrations-in-range!)
-         create-db!    (requiring-resolve 'metabase.test.data.interface/create-db!)
-         destroy-db!   (requiring-resolve 'metabase.test.data.interface/destroy-db!)
-         dbdef->conn   (requiring-resolve 'metabase.test.data.interface/dbdef->connection-details)
-         details->spec (requiring-resolve 'metabase.driver.sql-jdbc.connection/connection-details->spec)
-         ->data-source (requiring-resolve 'metabase.app-db.test-util/->ClojureJDBCSpecDataSource)
-         h2?           (= db-type :h2)
-         through       (through-changeset-id version)
-         dbdef         {:database-name (format "app_db_snapshot_%05d" (rand-int 100000))
-                        :table-definitions []}
-         details       (delay (dbdef->conn db-type :db dbdef))]
-     (try
-       (when-not h2?
-         (create-db! db-type dbdef))
-       (let [data-source (->data-source
-                          (if h2?
-                            {:subprotocol "h2", :classname "org.h2.Driver"
-                             :subname (format "mem:%s;DB_CLOSE_DELAY=-1" (:database-name dbdef))}
-                            (details->spec db-type @details)))]
-         (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-           ;; the server decides which dialect this is, not `db-type`: MariaDB is reached as `:mysql`
-           (let [flavor (flavor conn db-type)]
-             (log/info (u/format-color 'blue "Migrating empty %s app db through %s..." flavor through))
-             (with-bindings* (custom-migration-bindings db-type data-source)
-               (fn []
-                 (run-range! conn ["v00.00-000" through])))
-             (let [file (write-snapshot! version flavor
-                                         (dump-statements flavor (when-not h2? @details) conn))]
-               (log/info (u/format-color 'green "Wrote %s" (str file)))
-               file))))
-       (finally
-         (when-not h2?
-           (destroy-db! db-type dbdef)))))))

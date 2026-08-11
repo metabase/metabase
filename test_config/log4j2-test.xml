@@ -7,6 +7,11 @@
         <ThresholdFilter level="FATAL" onMatch="ACCEPT" onMismatch="DENY"/>
       </Filters>
     </Console>
+    <!-- Console without the FATAL threshold below, for the handful of loggers whose output is the point of the job
+         running them. Bare message, since these are read by a person scanning a CI log. -->
+    <Console name="ConsoleRaw" target="SYSTEM_OUT" follow="true">
+      <PatternLayout pattern="%msg%n"/>
+    </Console>
     <File name="File" fileName="logs/test-log.json" append="false">
       <JsonLayout locationInfo="false" properties="true" compact="true" eventEol="true"/>
       <Filters>
@@ -18,6 +23,14 @@
     <Logger name="liquibase" level="INFO"/>
     <Logger name="metabase" level="INFO"/>
     <Logger name="metabase-enterprise" level="INFO"/>
+
+    <!-- The app DB snapshot drift job exists to report what the snapshot saves, and that number is logged rather
+         than asserted, so it needs a console the FATAL threshold does not swallow. Named for the namespace in
+         test/metabase/app_db/snapshot_test.clj: rename that namespace and this goes quiet. -->
+    <Logger name="metabase.app-db.snapshot-test" level="INFO" additivity="false">
+      <AppenderRef ref="ConsoleRaw"/>
+      <AppenderRef ref="File"/>
+    </Logger>
 
     <!-- Eval-trace sink (metabase.ai-tracing): additivity=false with no appender keeps the JSONL
          spans out of the shared test log. Tests that assert on emitted spans attach their own
