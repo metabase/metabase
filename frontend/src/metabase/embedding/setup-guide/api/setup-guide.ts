@@ -14,7 +14,11 @@ type CheckListApiStep =
   | "create-tenants"
   | "setup-data-segregation-strategy"
   | "data-permissions-and-enable-tenants"
-  | "sso-auth-manual-tested";
+  | "sso-auth-manual-tested"
+  // Hub-only steps. The response is a superset of any one host's step list --
+  // the home-page stepper maps its own steps and never looks these up.
+  | "create-custom-theme"
+  | "configure-ai";
 export type SetupGuideChecklist = Record<CheckListApiStep, boolean>;
 
 export type SetupGuideChecklistResponse = {

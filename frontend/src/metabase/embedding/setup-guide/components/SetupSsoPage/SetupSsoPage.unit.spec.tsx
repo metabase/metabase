@@ -20,7 +20,9 @@ import { SetupSsoPage } from "./SetupSsoPage";
 
 const defaultChecklist: SetupGuideChecklist = {
   "add-data": false,
+  "configure-ai": false,
   "configure-row-column-security": false,
+  "create-custom-theme": false,
   "create-dashboard": false,
   "create-tenants": false,
   "create-test-embed": false,
