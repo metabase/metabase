@@ -16,6 +16,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
@@ -330,7 +331,7 @@
     ;; the `metabase/` model-ref prefix means "route through the AI proxy", so a connection of any other type
     ;; holding that key would smuggle its requests into managed billing and usage accounting
     (api/check-400 (or (llm.provider/managed-type? type)
-                       (not= llm.provider/managed-connection-key (some-> key str/lower-case str/trim)))
+                       (not= llm.provider/managed-connection-key (some-> key u/lower-case-en str/trim)))
                    (tru "The {0} connection key is reserved for the Metabase AI service."
                         (pr-str llm.provider/managed-connection-key)))
     (api/check-400 (not (and (llm.provider/managed-type? type)

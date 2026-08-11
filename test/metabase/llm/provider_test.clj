@@ -127,7 +127,9 @@
                                                       :model-family    "openai"
                                                       :deployment-name "gpt-4.1-mini"}))))
   (testing "the managed type declares no fields, so any config validates"
-    (is (nil? (llm.provider/validate-config! "metabase" {}))))
+    (is (nil? (llm.provider/validate-config! "metabase" {})))))
+
+(deftest validate-config!-required-any-test
   (testing "a type with alternative credential groups needs one of them in full"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"google needs one of"
@@ -137,7 +139,9 @@
          (llm.provider/validate-config! "google" {:oauth-access-token "ya29.token"})))
     (is (nil? (llm.provider/validate-config! "google" {:service-account-key "{\"type\":\"service_account\"}"})))
     (is (nil? (llm.provider/validate-config! "google" {:oauth-access-token "ya29.token"
-                                                       :project-id         "my-project"}))))
+                                                       :project-id         "my-project"})))))
+
+(deftest validate-config!-field-validator-test
   (testing "a field's own validator runs on a non-blank value"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"not a valid Google Cloud project ID"
@@ -146,7 +150,9 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"not a valid Google Cloud location"
          (llm.provider/validate-config! "google" {:service-account-key "{\"type\":\"service_account\"}"
-                                                  :location            "US Central"}))))
+                                                  :location            "US Central"})))))
+
+(deftest validate-config!-select-options-test
   (testing "a select field's value must be one of its options"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"Invalid Model provider for azure"
