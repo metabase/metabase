@@ -114,17 +114,20 @@
 (defn- insert-imbalanced!
   "Insert one imbalanced finding row directly (API tests exercise the read path, not the checker).
   `:entity-kind` is only needed by fixtures an `entity-types` filter/sort assertion touches.
-  `:entity-collection-name` is only needed by fixtures a collection_name assertion touches."
-  [{:keys [entity-type entity-id entity-kind name finding-type content-count details
-           entity-collection-name]
+  `:entity-collection-name` (with `:scope-collection-id`, the collection it names) is only needed by
+  fixtures a collection_name assertion touches."
+  [{:keys [entity-type entity-id entity-kind finding-type content-count details
+           entity-collection-name scope-collection-id]
+    nm    :name
     :or   {details {:threshold 5 :unit "items"}}}]
   (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                    {:scan_id                "imb-api"
                                     :entity_type             entity-type
                                     :entity_id               entity-id
                                     :entity_kind             entity-kind
-                                    :entity_name             name
+                                    :entity_name             nm
                                     :entity_collection_name  entity-collection-name
+                                    :scope_collection_id     scope-collection-id
                                     :finding_type            finding-type
                                     :content_count           content-count
                                     :details                 details})))
@@ -420,13 +423,43 @@
                                               :entity-kind :collection
                                               :name (str prefix " child") :finding-type :empty
                                               :content-count 0
+                                              :scope-collection-id parent-id
                                               :entity-collection-name "Hidden Parent"})
                   [finding] (:data (mt/user-http-request :rasta :get 200
                                                          "ee/content-diagnostics/imbalanced"
                                                          :query prefix))]
-              (is (= fid (:id finding)))
-              (is (nil? (:collection_name finding)))
-              (is (nil? (get-in finding [:details :collection]))))))))))
+              (is (=? {:id              fid
+                       :collection_name nil
+                       :details         {:collection nil}}
+                      finding)))))))))
+
+(deftest api-collection-name-relocation-gate-test
+  (testing "entity moved post-scan: the scan-time parent's name is not served when the caller cannot read it"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {hidden-id :id} {:name "Hidden Origin"}
+                         :model/Collection {public-id :id} {}
+                         ;; the card lives in the readable collection NOW; the finding row below says it
+                         ;; sat in the hidden one at scan time
+                         :model/Card {card-id :id} {:collection_id public-id}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) public-id)
+            (let [prefix (scope-prefix)
+                  fid    (insert-imbalanced! {:entity-type :card :entity-id card-id
+                                              :entity-kind :question
+                                              :name (str prefix " moved") :finding-type :empty
+                                              :content-count 0
+                                              :scope-collection-id hidden-id
+                                              :entity-collection-name "Hidden Origin"})
+                  [finding] (:data (mt/user-http-request :rasta :get 200
+                                                         "ee/content-diagnostics/imbalanced"
+                                                         :query prefix))]
+              ;; the row serves (live parent readable) but the scan-time parent's name must not - only
+              ;; its live breadcrumb is the caller's to see
+              (is (=? {:id              fid
+                       :collection_name nil
+                       :details         {:collection {:id public-id}}}
+                      finding)))))))))
 
 (deftest imbalanced-api-as-of-serves-as-a-string-test
   (testing "an evidence-dated empty serves `details.as_of` as an ISO-8601 string"

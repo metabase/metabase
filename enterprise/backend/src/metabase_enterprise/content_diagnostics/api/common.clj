@@ -423,7 +423,9 @@
         coll-ids    (into #{} (keep (fn [{:keys [entity_type entity_id]}]
                                       (get-in ctx-by-type [entity_type entity_id :collection_id])))
                           findings)
-        breadcrumbs (collection-breadcrumbs coll-ids)
+        ;; scan-time parents ride along so the collection_name gate below can check their readability -
+        ;; an entity may have moved since the scan, so they can differ from the live coll-ids
+        breadcrumbs (collection-breadcrumbs (into coll-ids (keep :scope_collection_id) findings))
         ;; Batch-prep runs over whatever the page carries - an absent finding type contributes no ids, so
         ;; its hydrator issues no query.
         culprits    (hydrate-slow-entities (into #{} (mapcat (comp :slow_entity_ids :details)) findings)
@@ -432,7 +434,7 @@
         ctx         {:culprits culprits :entities entities}]
     (mapv (fn [{:keys [id finding_type entity_type entity_id detected_at entity_created_at
                        entity_name entity_creator_id entity_creator_name card_type entity_kind
-                       entity_collection_name details] :as row}]
+                       entity_collection_name scope_collection_id details] :as row}]
             (let [entity     (get-in ctx-by-type [entity_type entity_id])
                   breadcrumb (entity-breadcrumb entity_type entity breadcrumbs)
                   details*   (merge details
@@ -456,10 +458,14 @@
                                       ;; additive flat kind; coalesce pre-migration rows
                                       :entity_kind         (or entity_kind card_type entity_type)
                                       ;; scan-time display name for the sortable collection column (root
-                                      ;; rows carry the stored root label), gated on the live breadcrumb so
-                                      ;; a name details.collection suppresses (unreadable parent / deleted
-                                      ;; entity) is never served; nil otherwise only on pre-migration rows
-                                      :collection_name     (when breadcrumb entity_collection_name)}
+                                      ;; rows carry the stored root label), gated on the readability of the
+                                      ;; scan-time parent itself - the entity may have moved since the scan,
+                                      ;; and the live gates say nothing about the old parent's name. Rows
+                                      ;; with no scan-time parent (root label) fall back to the breadcrumb.
+                                      :collection_name     (when (if scope_collection_id
+                                                                   (get breadcrumbs scope_collection_id)
+                                                                   breadcrumb)
+                                                             entity_collection_name)}
                                ;; keyed on entity type so a card row with NULL card_type still serves
                                ;; the key, as null
                                (= entity_type :card) (assoc :card_type card_type))]
@@ -481,13 +487,10 @@
   "Sortable params common to every finding list → their native `content_diagnostics_finding` column.
   Entity attributes are denormalized at scan time, so sorting is a plain `ORDER BY` with no join. Each
   endpoint `assoc`s its per-finding-type magnitude column (stale `:last-active-at`, slow `:duration-ms`).
-  `entity-type` sorts by the flat `entity_kind` - card sub-kinds order as peers of the other entity types,
-  not clustered under `card`. Name-ish sorts (name, collection-name) are case-insensitive per house
-  convention (cf. collection items, stale enterprise); lower() also makes ordering deterministic across
-  app-db collations.
-  Note: collection-name sorts by the scan-time stored parent name even when the viewer cannot read that
-  parent (whose breadcrumb serves as null) - the ordering position is the accepted, marginal information
-  exposure (OQ3)."
+  `entity-type` sorts by the flat `entity_kind` (card sub-kinds order as peers, not clustered under
+  `card`); name-ish sorts are case-insensitive (and collation-stable) via lower().
+  collection-name orders by the scan-time stored parent name even when the caller cannot read it - the
+  name itself is gated at serve time, and the ordering position is the accepted, marginal exposure."
   {:detected-at      :detected_at
    :entity-type      :entity_kind
    :name             [:lower :entity_name]

@@ -66,8 +66,8 @@
    ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
    [:created_at          [:maybe ms/TemporalInstant]]
    ;; scan-time parent-collection name (the collection sort key) - display twin of entity_display_name;
-   ;; root rows carry the site-locale root label (decision 8). nil when parent unreadable, entity
-   ;; deleted, or the row predates the migration. details.collection stays the live, permission-scoped
+   ;; root rows carry the site-locale root label. nil when the caller cannot read the scan-time parent
+   ;; or the row predates the migration. details.collection stays the live, permission-scoped
    ;; breadcrumb for navigation.
    [:collection_name     [:maybe :string]]])
 
