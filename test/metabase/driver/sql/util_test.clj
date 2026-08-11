@@ -80,7 +80,16 @@
             "\\\\\\\\' OR 1 = 1 --" "\\\\\\\\\\\\\\\\\\' OR 1 = 1 --"
             "\\\\' OR 1 = 1 --"     "\\\\\\\\\\' OR 1 = 1 --"
             "\\' OR 1 = 1 --"       "\\\\\\' OR 1 = 1 --"
-            "' OR 1 = 1 --"         "\\' OR 1 = 1 --"}}
+            "' OR 1 = 1 --"         "\\' OR 1 = 1 --"}
+
+           ;; doubles the backslash *and* the quote, so the literal terminates where we intended whether or not
+           ;; the engine treats `\` as an escape character
+           :ansi+backslashes
+           {"Tito's Tacos"          "Tito''s Tacos"
+            "\\\\\\\\' OR 1 = 1 --" "\\\\\\\\\\\\\\\\'' OR 1 = 1 --"
+            "\\\\' OR 1 = 1 --"     "\\\\\\\\'' OR 1 = 1 --"
+            "\\' OR 1 = 1 --"       "\\\\'' OR 1 = 1 --"
+            "' OR 1 = 1 --"         "'' OR 1 = 1 --"}}
 
           [s expected] s->expected]
     (testing escape-strategy
@@ -95,6 +104,11 @@
   (testing ":backslashes escape style"
     (is (= "'Tito\\'s Tacos'"
            (sql.u/quote-literal "Tito's Tacos" :backslashes))))
+  (testing ":ansi+backslashes escape style"
+    (is (= "'Tito''s Tacos'"
+           (sql.u/quote-literal "Tito's Tacos" :ansi+backslashes)))
+    (is (= "'a\\\\'' OR 1 = 1 --'"
+           (sql.u/quote-literal "a\\' OR 1 = 1 --" :ansi+backslashes))))
   (testing "empty string"
     (is (= "''" (sql.u/quote-literal "" :ansi)))))
 

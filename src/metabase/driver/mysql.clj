@@ -873,6 +873,18 @@
       "UTC"
       offset)))
 
+(defn- utf8-string-expr
+  "A MySQL expression evaluating to the string `s`, hex-encoded so its meaning does not depend on the session's
+  `NO_BACKSLASH_ESCAPES` setting."
+  [^String s]
+  (format "CONVERT(UNHEX('%s') USING utf8mb4)" (codecs/bytes->hex (.getBytes s "UTF-8"))))
+
+(defmethod sql.qp/inline-value [:mysql String]
+  [_driver ^String s]
+  ;; MySQL's interpretation of backslashes in quoted literals depends on `NO_BACKSLASH_ESCAPES`. Use a hex-encoded
+  ;; expression so both the safety and the value of the resulting string are independent of the session's SQL mode.
+  (utf8-string-expr s))
+
 (defmethod sql.qp/inline-value [:mysql OffsetTime]
   [_ t]
   ;; MySQL doesn't support timezone offsets in literals so pass in a local time literal wrapped in a call to convert
@@ -1342,13 +1354,6 @@
             (sql.u/quote-name :mysql :field index-name)
             target
             cols)))
-
-(defn- utf8-string-expr
-  "A MySQL expression evaluating to the string `s`, hex-encoded so there is nothing to escape and SQL injection is
-  impossible. Index names are unvalidated free-form user input and `sql.u/escape-sql` is explicitly not safe for that
-  (a backslash defeats its quote-doubling, and its escaping is session-dependent), so we use the hex pattern instead."
-  [^String s]
-  (format "CONVERT(UNHEX('%s') USING utf8mb4)" (codecs/bytes->hex (.getBytes s "UTF-8"))))
 
 (defmethod driver/compile-create-index :mysql
   [_driver schema table {index-name :name, :keys [if-not-exists] :as structured}]
