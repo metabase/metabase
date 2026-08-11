@@ -45,11 +45,15 @@ const SHARED_PLATFORM_LEVELS = [
   // P1 — query editing composes visualizations.
   ["shared/querying"],
   // P2 — building blocks over querying; mutually independent.
+  // rich_text_editing builds on querying and visualizations (card embeds in
+  // documents) and is composed by domain modules (metabot, comments), so it
+  // is a platform building block, not a domain peer.
   [
     "shared/metadata",
     "shared/parameters",
     "shared/questions",
     "shared/search-ui",
+    "shared/rich_text_editing",
   ],
 ];
 
@@ -65,7 +69,6 @@ const SHARED_DOMAIN = [
   "shared/notifications",
   "shared/palette",
   "shared/pulse",
-  "shared/rich_text_editing",
   "shared/routes-stable-id-aware",
   "shared/static-viz",
   "shared/status",
@@ -129,9 +132,11 @@ const sharedRules = [
       "shared/visualizer",
     ],
   },
+  // visualizations still imports rich_text_editing for the custom-viz loading
+  // view, one file. Delete when that becomes an injection slot (#79500).
   {
-    from: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
-    allow: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
+    from: ["shared/visualizations"],
+    allow: ["shared/rich_text_editing"],
   },
   {
     from: ["shared/nav", "shared/palette"],
