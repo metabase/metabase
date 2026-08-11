@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { act, screen, within } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
@@ -270,6 +271,29 @@ describe("StrategyEditorForDatabases", () => {
       refresh_automatically: false,
     };
     expect(getShortStrategyLabel(strategy)).toBe(expected);
+  });
+
+  it("does not allow saving an empty cache duration", async () => {
+    await userEvent.click(
+      await screen.findByLabelText(
+        "Edit default policy (currently: Duration: 1h)",
+      ),
+    );
+
+    const input = await screen.findByRole("spinbutton", {
+      name: /Cache duration/,
+    });
+    await userEvent.clear(input);
+    await userEvent.click(
+      await screen.findByTestId("strategy-form-submit-button"),
+    );
+
+    expect(
+      await screen.findByText("Enter a positive number."),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls("path:/api/cache", { method: "PUT" }),
+    ).toHaveLength(0);
   });
 
   it("lets user change the duration unit", async () => {

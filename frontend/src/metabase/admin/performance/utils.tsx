@@ -11,7 +11,6 @@ import {
   type StrategyData,
   type StrategyLabel,
   defaultMinDurationMs,
-  strategies,
 } from "metabase/plugins";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type {
@@ -148,7 +147,7 @@ export const strategyValidationSchema = Yup.object().test(
         path: "type",
       });
     }
-    const schema = getStrategyValidationSchema(strategies[type]);
+    const schema = getStrategyValidationSchema(PLUGIN_CACHING.strategies[type]);
     try {
       schema.validateSync(value);
       return true;

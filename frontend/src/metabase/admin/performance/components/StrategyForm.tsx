@@ -647,7 +647,7 @@ const DurationStrategyFormFields = ({
           </Text>
         }
       >
-        <Flex align="center" gap="sm">
+        <Flex align="flex-start" gap="sm">
           <PositiveNumberInput strategyType="duration" name="duration" />
           <FormSelect
             name="unit"
@@ -678,6 +678,8 @@ export const PositiveNumberInput = ({
     <FormTextInput
       type="number"
       name={props.name ?? ""}
+      // Store cleared fields as null: Formik turns "" into undefined before validation
+      nullable
       min={1}
       styles={{
         input: {
