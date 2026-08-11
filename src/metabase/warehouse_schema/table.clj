@@ -197,7 +197,15 @@
       (assoc :db (when-let [database (when (int? database_id)
                                        (or (get databases database_id)
                                            (t2/select-one :model/Database :id database_id)))]
-                   (when (mi/can-read? database) database)))
+                   ;; a readable model or metric is queryable through its collection read perms alone —
+                   ;; the QP never consults the underlying tables' data perms for card-sourced queries
+                   ;; (see [[metabase.query-permissions.impl/legacy-mbql-required-perms]]) — so the
+                   ;; query builder must get the database metadata it needs even when the user has no
+                   ;; database-level perms. Every caller that sets `include-database?` has already
+                   ;; filtered out unreadable cards.
+                   (when (or (#{:model :metric} card-type)
+                             (mi/can-read? database))
+                     database)))
 
       include-fields?
       (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
