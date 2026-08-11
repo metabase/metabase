@@ -43,10 +43,6 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     H.popover().findByText("Count of rows").click();
     cy.findByLabelText(backButtonLabel).should("be.visible");
     H.visualize();
-    // Wait for the query builder to settle into view mode so the unsaved-changes
-    // guard is active before navigating away. React 19's render timing reopens
-    // the race the earlier flaky fix (metabase#76382) closed for the edit flow.
-    cy.findByTestId("view-footer").should("be.visible");
     cy.findByLabelText(backButtonLabel).click();
     H.modal().button("Discard changes").click();
     cy.findByTestId("dashboard-header")
