@@ -53,9 +53,22 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     // request, making `cy.wait("@getSchema")` time out.
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
-    // Wait for the UI to load the database's tables before interacting.
+    // The picker tree keeps mounting after the databases request resolves, so
+    // clicking the database row before its expand handler is wired drops the
+    // click and the schema fetch that populates the tables never fires, making
+    // `cy.wait("@getSchema")` time out. Wait for the expand toggle to render
+    // collapsed, click it, then confirm it expanded so the schema request
+    // reliably occurs before we interact with the tables (mirrors the sibling
+    // "allows publishing and unpublishing multiple tables" test).
+    TablePicker.getDatabaseToggle("Writable Postgres12")
+      .should("have.attr", "aria-expanded", "false")
+      .click();
     cy.wait("@getSchema");
+    TablePicker.getDatabaseToggle("Writable Postgres12").should(
+      "have.attr",
+      "aria-expanded",
+      "true",
+    );
 
     // Capture the expected table IDs from a direct API request rather than the
     // intercepted UI response: under stress the aliased `@getSchema` response
