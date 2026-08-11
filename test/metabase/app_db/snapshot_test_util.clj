@@ -343,12 +343,16 @@
 
 (defn- custom-migration-bindings
   "Same bindings [[metabase.app-db.schema-migrations-test.impl/do-with-temp-empty-app-db]] installs: custom migrations
-  read the app DB through the dynamic var, and must not hand work to Quartz against a DB that is about to vanish."
+  read the app DB through the dynamic var, must not hand work to Quartz against a DB that is about to vanish, and
+  must not seed the sample content that every test app DB is set up without."
   [db-type data-source]
   {(requiring-resolve 'metabase.app-db.connection/*application-db*)
    ((requiring-resolve 'metabase.app-db.connection/application-db) db-type data-source)
 
    (requiring-resolve 'metabase.app-db.custom-migrations.util/*allow-temp-scheduling*)
+   false
+
+   (requiring-resolve 'metabase.app-db.custom-migrations/*create-sample-content*)
    false})
 
 (defn- write-snapshot! [version flavor statements]
