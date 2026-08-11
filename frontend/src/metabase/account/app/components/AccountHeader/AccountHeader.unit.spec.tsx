@@ -1,22 +1,22 @@
+// registers the real predicates that decide who can change a password
+import "metabase/plugins/builtin";
+
 import { mockSettings } from "__support__/settings";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { AccountHeader } from "./AccountHeader";
 
-const getUser = () =>
+const getUser = (opts?: Partial<User>) =>
   createMockUser({
     id: 1,
     first_name: "John",
     last_name: "Doe",
     email: "john@metabase.test",
-    sso_source: "google",
+    ...opts,
   });
-
-const getLdapUser = () => createMockUser({ ...getUser(), sso_source: "ldap" });
 
 type SetupOpts = {
   user?: User;
@@ -41,20 +41,6 @@ function setup({ user = getUser(), isMfaEnabled = false }: SetupOpts = {}) {
 }
 
 describe("AccountHeader", () => {
-  const ORIGINAL_PLUGIN_IS_PASSWORD_USER = [...PLUGIN_IS_PASSWORD_USER];
-
-  beforeEach(() => {
-    PLUGIN_IS_PASSWORD_USER.splice(0);
-  });
-
-  afterEach(() => {
-    PLUGIN_IS_PASSWORD_USER.splice(
-      0,
-      PLUGIN_IS_PASSWORD_USER.length,
-      ...ORIGINAL_PLUGIN_IS_PASSWORD_USER,
-    );
-  });
-
   it("should show all tabs for a regular user", () => {
     setup();
 
@@ -78,38 +64,40 @@ describe("AccountHeader", () => {
   });
 
   describe("authentication tab", () => {
-    it("should show the tab if password changes are enabled by a plugin", () => {
-      PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source === "google");
-
-      setup();
+    it("should show the tab for a user who can change their password", () => {
+      setup({ user: getUser({ sso_source: null }) });
 
       expect(
         screen.getByRole("tab", { name: "Authentication" }),
       ).toBeInTheDocument();
     });
 
-    it("should hide the tab if password changes are disabled by a plugin", () => {
-      PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "google");
+    it("should show the tab for a password user when two-factor authentication is disabled for the instance", () => {
+      setup({ user: getUser({ sso_source: null }), isMfaEnabled: false });
 
-      setup();
+      expect(
+        screen.getByRole("tab", { name: "Authentication" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should hide the tab for an SSO user who cannot enroll in two-factor authentication", () => {
+      setup({ user: getUser({ sso_source: "google" }) });
 
       expect(
         screen.queryByRole("tab", { name: "Authentication" }),
       ).not.toBeInTheDocument();
     });
 
-    it("should show the tab for a password user when two-factor authentication is disabled for the instance", () => {
-      setup({ isMfaEnabled: false });
+    it("should hide the tab for an SSO user even when two-factor authentication is enabled for the instance", () => {
+      setup({ user: getUser({ sso_source: "google" }), isMfaEnabled: true });
 
       expect(
-        screen.getByRole("tab", { name: "Authentication" }),
-      ).toBeInTheDocument();
+        screen.queryByRole("tab", { name: "Authentication" }),
+      ).not.toBeInTheDocument();
     });
 
     it("should show the tab for an LDAP user when two-factor authentication is enabled for the instance", () => {
-      PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "ldap");
-
-      setup({ user: getLdapUser(), isMfaEnabled: true });
+      setup({ user: getUser({ sso_source: "ldap" }), isMfaEnabled: true });
 
       expect(
         screen.getByRole("tab", { name: "Authentication" }),
@@ -117,9 +105,7 @@ describe("AccountHeader", () => {
     });
 
     it("should hide the tab for an LDAP user when two-factor authentication is disabled for the instance", () => {
-      PLUGIN_IS_PASSWORD_USER.push((user) => user.sso_source !== "ldap");
-
-      setup({ user: getLdapUser(), isMfaEnabled: false });
+      setup({ user: getUser({ sso_source: "ldap" }), isMfaEnabled: false });
 
       expect(
         screen.queryByRole("tab", { name: "Authentication" }),

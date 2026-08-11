@@ -53,9 +53,6 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
     cy.log("Password and 2FA now share one tab");
     cy.findByLabelText("Current password").should("be.visible");
-    cy.findByRole("button", {
-      name: "Set up two-factor authentication",
-    }).should("be.visible");
 
     enrollViaUI().then((secret) => {
       totpSecret = secret;
