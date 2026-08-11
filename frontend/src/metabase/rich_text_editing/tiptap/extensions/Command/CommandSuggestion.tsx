@@ -42,7 +42,7 @@ import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 import type { CommandProps } from "./CommandExtension";
 import CommandS from "./CommandSuggestion.module.css";
 import { NewQuestionTypeMenuView } from "./NewQuestionTypeMenuView";
-import type { CommandOption, CommandSection } from "./types";
+import type { CommandOption, CommandSection, NewQuestionModals } from "./types";
 import { useCreateQuestionsMenuItems } from "./use-create-questions-menu-items";
 import { type MetabotCommandConfig, getAllCommandSections } from "./utils";
 
@@ -53,6 +53,7 @@ export interface CommandSuggestionProps {
   range: Range;
   query: string;
   metabotCommand?: MetabotCommandConfig | null;
+  newQuestionModals: NewQuestionModals;
 }
 
 export interface CommandSuggestionRef {
@@ -101,7 +102,7 @@ export const CommandSuggestion = forwardRef<
   CommandSuggestionRef,
   CommandSuggestionProps
 >(function CommandSuggestionComponent(
-  { command, editor, query, metabotCommand },
+  { command, editor, query, metabotCommand, newQuestionModals },
   ref,
 ) {
   const host = useEditorHost();
@@ -399,6 +400,7 @@ export const CommandSuggestion = forwardRef<
 
       {viewMode === "newQuestionType" && (
         <NewQuestionTypeMenuView
+          modals={newQuestionModals}
           menuItems={createQuestionsMenuItems}
           selectedIndex={selectedIndex}
           setSelectedIndex={setSelectedIndex}

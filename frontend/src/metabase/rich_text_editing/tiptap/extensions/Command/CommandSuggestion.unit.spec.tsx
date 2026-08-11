@@ -111,6 +111,11 @@ type SetupProps = {
   metabotCommand?: MetabotCommandConfig | null;
 };
 
+const TEST_NEW_QUESTION_MODALS = {
+  notebook: () => null,
+  native: () => null,
+};
+
 const setup = ({ query = "", metabotCommand = null }: SetupProps = {}) => {
   const command = jest.fn();
 
@@ -135,6 +140,7 @@ const setup = ({ query = "", metabotCommand = null }: SetupProps = {}) => {
       items={[]}
       range={{ from: 0, to: 0 }}
       metabotCommand={metabotCommand}
+      newQuestionModals={TEST_NEW_QUESTION_MODALS}
     />,
     { storeInitialState: createMockState({ settings: mockSettings({}) }) },
   );
@@ -360,6 +366,7 @@ describe("CommandSuggestion", () => {
         query=""
         items={[]}
         range={{ from: 0, to: 0 }}
+        newQuestionModals={TEST_NEW_QUESTION_MODALS}
       />,
       { storeInitialState: createMockState({ settings: mockSettings({}) }) },
     );
@@ -402,6 +409,7 @@ describe("CommandSuggestion", () => {
         query=""
         items={[]}
         range={{ from: 0, to: 0 }}
+        newQuestionModals={TEST_NEW_QUESTION_MODALS}
       />,
       {
         storeInitialState: createMockState({

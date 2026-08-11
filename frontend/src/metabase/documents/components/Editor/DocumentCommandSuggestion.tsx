@@ -8,10 +8,18 @@ import {
 } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
 import { useSetting } from "metabase/settings";
 
+import { CreateNativeQuestionModal } from "../editor-extensions/CardEmbed/modals/CreateNativeQuestionModal";
+import { CreateStructuredQuestionModal } from "../editor-extensions/CardEmbed/modals/CreateStructuredQuestionModal";
+
 type DocumentCommandSuggestionProps = Omit<
   CommandSuggestionProps,
-  "metabotCommand"
+  "metabotCommand" | "newQuestionModals"
 >;
+
+const NEW_QUESTION_MODALS = {
+  notebook: CreateStructuredQuestionModal,
+  native: CreateNativeQuestionModal,
+};
 
 export const DocumentCommandSuggestion = forwardRef<
   CommandSuggestionRef,
@@ -26,6 +34,11 @@ export const DocumentCommandSuggestion = forwardRef<
   );
 
   return (
-    <CommandSuggestion {...props} ref={ref} metabotCommand={metabotCommand} />
+    <CommandSuggestion
+      {...props}
+      ref={ref}
+      metabotCommand={metabotCommand}
+      newQuestionModals={NEW_QUESTION_MODALS}
+    />
   );
 });
