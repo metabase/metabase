@@ -44,10 +44,11 @@ Lead with a natural noun phrase or short question and let the meaning-match do t
 {% if has_semantic_search %}**These operators only shape the keyword half.** The meaning-match embeds your query *literally* and ignores operator semantics, and results are the union of both halves — so an operator that restricts the keyword half doesn't restrict the meaning half. In practice:
 - `"exact phrase"` and rare/exact tokens compose well — they sharpen the keyword half toward a precise hit.
 - **Negation is unreliable:** `-word` drops the token from the keyword half, but the meaning-match has no notion of "not" and can surface the excluded thing anyway. Don't rely on `-` to exclude; filter it out yourself when reading results.
-- **`or` is wasted effort:** the meaning-match already handles synonyms and paraphrases, and the literal word "or" just dilutes the embedding. Use one natural phrasing instead of OR-listing synonyms.{% else %}If a spaces-only (all-AND) query returns nothing, don't just resend it — reach for `or` yourself, joining the actual synonyms and abbreviations you suspect, so a single stray token can't collapse the result set to empty.{% endif %}{% else %}This instance has **no query operator support**: every word is matched as a plain substring and **all** of them must appear. `or`, `"exact phrase"` and `-exclusion` are not parsed — they match as literal text and only narrow the result set further, so never use them.
+- **`or` is wasted effort:** the meaning-match already handles synonyms and paraphrases, and the literal word "or" just dilutes the embedding. Use one natural phrasing instead of OR-listing synonyms.{% else %}If a spaces-only (all-AND) query returns nothing, don't just resend it — reach for `or` yourself, joining the actual synonyms and abbreviations you suspect, so a single stray token can't collapse the result set to empty.{% endif %}{% else %}This instance has **no query operator support**: `or`, `"exact phrase"` and `-exclusion` are not parsed. They match as literal text, so never use them.
 
-- **Broaden by removing words**, not by adding alternatives. If `monthly active users` finds nothing, try `active users`, then `users`.
-- **Partial words already match:** `custom` finds `customers`, so a short stem is often the better query. To cover a synonym, search it separately.{% endif %}
+- **Keep the query to one or two distinctive words.** How multi-word queries combine differs by backend here, so a long phrase is unreliable either way.
+- **Partial words already match:** `custom` finds `customers`, so a short stem is often the better query.
+- **If a query finds nothing, try a different word rather than adding more** — and search a synonym as its own separate call.{% endif %}
 
 ## What is and isn't searched
 

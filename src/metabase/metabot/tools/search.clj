@@ -98,12 +98,18 @@
                   :data_authority  data_authority})
           ;; A *published* table lives in a collection — often a library one (the table spec joins
           ;; Collection on `is_published`). Carry it like any other collection-bearing result so the
-          ;; table picks up `collection_path` and `library_member`. Keyed off the id because an
-          ;; unpublished table still arrives with an all-nil collection map, and most tables are
-          ;; unpublished — no point spending payload on it.
+          ;; table picks up `collection_path` and `library_member`.
+          ;;
+          ;; Both halves of the test earn their keep. A table published at the *root* has no
+          ;; collection row, and the spec coalesces a display name for it, which makes
+          ;; `search.impl/serialize` stamp the id as the string "root" — feeding that to a numeric
+          ;; `:id [:in ...]` lookup downstream fails the whole search. And an *unpublished* table can
+          ;; still carry a stale numeric `collection_id`, but its collection join is gated on
+          ;; `is_published`, so the name comes back nil and we must not claim it lives there.
           (m/assoc-some :curated curated
                         :data_layer data_layer
-                        :collection (when (:id collection) collection-info)))
+                        :collection (when (and (int? (:id collection)) (:name collection))
+                                      collection-info)))
 
       "dashboard"
       (-> common-fields
@@ -164,9 +170,13 @@
   (= "collection" (:type r)))
 
 (defn- result-collection-id
-  "The collection id this result lives in (or, for collection results, the collection's own id)."
+  "The collection id this result lives in (or, for collection results, the collection's own id).
+
+  Only real numeric ids: `search.impl/serialize` uses the string \"root\" to mean \"published at the
+  root\", and every caller here feeds this straight into a numeric `:id [:in ...]` lookup."
   [r]
-  (if (collection-result? r) (:id r) (get-in r [:collection :id])))
+  (let [id (if (collection-result? r) (:id r) (get-in r [:collection :id]))]
+    (when (int? id) id)))
 
 (defn- ancestor-ids
   "Parse a Collection :location string like \"/12/34/\" into [12 34]."
@@ -546,7 +556,8 @@
   (when (seq ids)
     ;; only surface tables the current user can read — a curated entry may point at one they can't access
     (for [t (filter mi/can-read?
-                    (t2/select [:model/Table :id :name :display_name :db_id :schema :description :collection_id]
+                    (t2/select [:model/Table :id :name :display_name :db_id :schema :description
+                                :collection_id :is_published]
                                :id [:in ids]))]
       (cond-> {:id              (:id t)
                :type            "table"
@@ -555,10 +566,12 @@
                :database_id     (:db_id t)
                :database_schema (:schema t)
                :description     (:description t)}
-        ;; A published table has a collection (see [[postprocess-search-result]]'s table branch).
-        ;; Carry it so `enrich-with-collection-paths` reaches these too — otherwise the same library
-        ;; table reports `library_member` true through `search` and false through this path.
-        (:collection_id t) (assoc :collection {:id (:collection_id t)})))))
+        ;; Carry the collection so `enrich-with-collection-paths` reaches these too — otherwise the
+        ;; same library table reports `library_member` true through `search` and false through this
+        ;; path. Gated on `is_published` for the same reason the search path is: an unpublished table
+        ;; can still hold a stale `collection_id` it isn't really published into.
+        (and (:is_published t) (:collection_id t))
+        (assoc :collection {:id (:collection_id t)})))))
 
 (defn- card-refs->results
   "Build post-processed search-result records for card-backed refs (`{:id .. :type \"model\"|\"metric\"|\"question\"}`).

@@ -473,18 +473,21 @@
                          :model/Collection {plain-id :id} {:name "Zx9PlainColl"}
                          :model/Card      {card-id :id}  {:name "Zx9Card" :collection_id off-id}
                          :model/Document  {doc-id :id}   {:name "Zx9Doc"  :collection_id off-id}]
-            (let [by-id (->> (search/search {:query        "Zx9"
-                                             :entity-types ["collection" "question" "document"]})
-                             (map (juxt :id identity))
-                             (into {}))]
+            ;; keyed by [type id]: ids are only unique per table, so a collection and a card can
+            ;; collide and silently overwrite each other here
+            (let [by-ref (->> (search/search {:query        "Zx9"
+                                              :entity-types ["collection" "question" "document"]})
+                              (map (juxt (juxt :type :id) identity))
+                              (into {}))
+                  by-id  (fn [t id] (by-ref [t id]))]
               (testing "a collection reports its *own* authority, not its parent's"
                 (is (=? {:official true :authority_level "official" :is_container true}
-                        (by-id off-id)))
-                (is (=? {:official false} (by-id plain-id))))
+                        (by-id "collection" off-id)))
+                (is (=? {:official false} (by-id "collection" plain-id))))
               (testing "items inside an official collection inherit the flag"
-                (is (=? {:official true} (by-id card-id)))
+                (is (=? {:official true} (by-id "question" card-id)))
                 (testing "including documents, whose spec has no official_collection attr"
-                  (is (=? {:official true} (by-id doc-id))))))))))))
+                  (is (=? {:official true} (by-id "document" doc-id))))))))))))
 
 (deftest published-table-in-library-collection-test
   ;; Tables *can* live in collections: the table search spec joins Collection on `is_published`.
@@ -519,6 +522,35 @@
                   (is (=? {:library_member true} (by-id final-id)))
                   (is (nil? (:collection (by-id final-id)))
                       "an unpublished table carries no collection map"))))))))))
+
+(deftest table-collection-edge-cases-test
+  ;; A table published at the *root* has no collection row, and the table spec coalesces a display
+  ;; name for it, which makes `search.impl/serialize` stamp the collection id as the string "root".
+  ;; Feeding that to a numeric `:id [:in ...]` lookup threw and failed the entire search.
+  (testing "root-published and stale-collection tables neither break search nor claim a collection"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-additional-premium-features #{:library}
+        (mt/with-test-user :crowberto
+          (search.tu/with-temp-index-table
+            (mt/with-temp [:model/Collection {data-id :id} {:name "Pb2Data" :type "library-data"}
+                           :model/Database   {db-id :id}   {:name "Pb2DB"}
+                           :model/Table {root-id :id}  {:name "Pb2RootPublished" :db_id db-id
+                                                        :is_published true :collection_id nil}
+                           ;; unpublished, but still carrying a collection id it isn't published into
+                           :model/Table {stale-id :id} {:name "Pb2StaleUnpublished" :db_id db-id
+                                                        :is_published false :collection_id data-id
+                                                        :data_layer :internal}]
+              (let [by-id (->> (search/search {:query "Pb2" :entity-types ["table"]})
+                               (map (juxt :id identity))
+                               (into {}))]
+                (testing "the search completes at all"
+                  (is (= 2 (count by-id))))
+                (testing "a root-published table carries no collection"
+                  (is (nil? (:collection (by-id root-id))))
+                  (is (nil? (:collection_path (by-id root-id)))))
+                (testing "an unpublished table does not claim a stale collection"
+                  (is (nil? (:collection (by-id stale-id))))
+                  (is (not (:library_member (by-id stale-id)))))))))))))
 
 (deftest document-search-test
   (testing "search can discover documents by name"
