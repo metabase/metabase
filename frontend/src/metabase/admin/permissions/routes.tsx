@@ -19,7 +19,7 @@ import { Route, redirect } from "metabase/router";
 const dataPermissions = () =>
   import(
     /* webpackChunkName: "admin-permissions" */ "./pages/DataPermissionsPage"
-  ).then((module) => ({ Component: module.default }));
+  ).then(({ DataPermissionsPage }) => ({ Component: DataPermissionsPage }));
 
 const databasesPermissions = () =>
   import(

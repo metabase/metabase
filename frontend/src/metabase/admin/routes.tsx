@@ -42,9 +42,7 @@ import {
 const adminApp = () =>
   import(
     /* webpackChunkName: "admin" */ "metabase/admin/app/components/AdminApp"
-  ).then((module) => ({
-    Component: module.default,
-  }));
+  ).then(({ AdminApp }) => ({ Component: AdminApp }));
 
 const databaseList = () =>
   import(
