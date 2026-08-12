@@ -4,9 +4,12 @@ import { Route } from "metabase/router";
 /**
  * The Data Studio Library metric pages, in the `metrics` chunk.
  *
- * They name the same chunk as the core metric pages they wrap. Two names for
- * code shared between them leaves the shared half in neither, so one name keeps
- * everything about a metric in a single request.
+ * They name the same chunk as the core metric pages they wrap, which saves a
+ * request and measures byte-neutral: these wrappers and those pages are each
+ * other's only consumers, so merging the two module sets leaves no third chunk
+ * to copy the shared half into. Sharing a name with a page that other routes
+ * also load does copy it, so measure the total emitted JS before doing this
+ * anywhere else.
  *
  * Each of these wraps the core page of the same name. While they were imported
  * eagerly here, `metabase/metrics/pages/*` could not leave the initial bundle
