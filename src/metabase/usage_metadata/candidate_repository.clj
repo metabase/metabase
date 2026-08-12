@@ -146,7 +146,7 @@
                        :distinct_source_count :recent_view_count]
                       :id [:in ids])
                      {})
-        rows        (mapv candidates ids)
+        rows        (keep candidates ids)
         dismissals  (dismissal-index rows)]
     {:rows  (mapv #(assoc % :dismissed? (dismissed? dismissals %)) rows)
      :total total}))
