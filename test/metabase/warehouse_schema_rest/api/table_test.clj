@@ -22,6 +22,7 @@
    [metabase.upload.core :as upload]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.api.table :as api.table]
    [toucan2.core :as t2]))
 
@@ -1276,11 +1277,16 @@
       (mt/with-premium-features #{:audit-app}
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
                        :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
-          (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
-            (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table))))))
-      (testing "sync called?"
-        (is (true?
-             (deref sync-called? timeout :sync-never-called)))))))
+          ;; the endpoint syncs on a background thread, so the redef has to stay in place until the promise is
+          ;; delivered - otherwise the real `sync-table!` runs and the promise is never delivered.
+          ;; `submit-task!` is redefined so as not to depend on the capacity of the single-threaded quick-task
+          ;; executor.
+          (with-redefs [quick-task/submit-task! future-call
+                        sync/sync-table!       (deliver-when-tbl sync-called? table)]
+            (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table)))
+            (testing "sync called?"
+              (is (true?
+                   (deref sync-called? timeout :sync-never-called))))))))))
 
 (deftest sync-schema-with-manage-table-metadata-permission-test
   (testing "POST /api/table/:id/sync_schema"
