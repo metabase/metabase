@@ -1,6 +1,7 @@
 import type { StoryFn } from "@storybook/react";
 
 import { Markdown, type MarkdownProps } from "./Markdown";
+import { KITCHEN_SINK_MARKDOWN } from "./kitchen-sink-markdown";
 
 export default {
   title: "Components/Ask Before Using/Markdown",
@@ -21,5 +22,31 @@ export const Default = {
   for the features in 0.41.
 
   Here’s a [doc](https://metabase.test) with the findings.`,
+  },
+};
+
+export const KitchenSink = {
+  render: Template,
+
+  args: {
+    children: KITCHEN_SINK_MARKDOWN,
+  },
+};
+
+export const KitchenSinkCompact = {
+  render: Template,
+
+  args: {
+    children: KITCHEN_SINK_MARKDOWN,
+    compact: true,
+  },
+};
+
+export const KitchenSinkWithoutHeadings = {
+  render: Template,
+
+  args: {
+    children: KITCHEN_SINK_MARKDOWN,
+    disallowHeading: true,
   },
 };

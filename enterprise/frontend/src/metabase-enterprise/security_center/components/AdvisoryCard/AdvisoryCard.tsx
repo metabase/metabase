@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { Markdown } from "metabase/common/components/Markdown";
 import { useSetting } from "metabase/settings";
 import {
   Anchor,
@@ -73,7 +74,9 @@ export function AdvisoryCard({
 
         <Title order={4}>{advisory.title}</Title>
 
-        <Text c="text-secondary">{advisory.description}</Text>
+        <Markdown c="text-secondary" disallowHeading>
+          {advisory.description}
+        </Markdown>
 
         {advisory.affected_versions.length > 0 && (
           <Box>
@@ -90,7 +93,9 @@ export function AdvisoryCard({
 
         <Box>
           <Text fw={700} mb="xs">{t`Remediation`}</Text>
-          <Text c="text-secondary">{advisory.remediation}</Text>
+          <Markdown c="text-secondary" disallowHeading>
+            {advisory.remediation}
+          </Markdown>
         </Box>
 
         <Group gap="md" mt="sm">
