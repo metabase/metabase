@@ -11,7 +11,7 @@
 (set! *warn-on-reflection* true)
 
 (defn definition-table-id
-  "Derive the source table ID from a normalized Measure definition."
+  "Derive the source table ID from a normalized Measure definition, or throw a 400 if it has none."
   [normalized-definition]
   (api/check-400 (when (seq normalized-definition)
                    (lib/primary-source-table-id normalized-definition))

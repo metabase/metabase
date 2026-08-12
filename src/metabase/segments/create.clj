@@ -12,13 +12,14 @@
 (set! *warn-on-reflection* true)
 
 (defn definition-table-id
-  "Derive the source table ID from an MBQL5, legacy, or MBQL4 Segment definition."
+  "Derive the source table ID from a segment definition, or throw a 400 if it has none. Handles MBQL5 and legacy full
+  queries as well as MBQL4 fragments (which carry `:source-table` directly)."
   [definition]
   (api/check-400 (when (seq definition)
                    (case (lib/normalized-mbql-version definition)
                      (:mbql-version/mbql5 :mbql-version/legacy)
                      (lib/primary-source-table-id (lib-be/normalize-query definition))
-
+                     ;; default: MBQL4 fragment
                      (let [table-id (:source-table definition)]
                        (when (pos-int? table-id)
                          table-id))))
