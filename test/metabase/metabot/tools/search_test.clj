@@ -523,6 +523,19 @@
                   (is (nil? (:collection (by-id final-id)))
                       "an unpublished table carries no collection map"))))))))))
 
+(deftest official-document-under-in-place-test
+  ;; `official-flag-end-to-end-test` runs on whichever engine resolves by default (appdb here), so it
+  ;; cannot catch the in-place document projection dropping its collection columns again.
+  (testing "a document in an official collection reads as official under the in-place engine too"
+    (mt/with-test-user :crowberto
+      (search.tu/with-legacy-search
+        (mt/with-temp [:model/Collection {off-id :id} {:name "Ip4OfficialColl" :authority_level "official"}
+                       :model/Document {doc-id :id}  {:name "Ip4Doc" :collection_id off-id}]
+          (let [doc (->> (search/search {:query "Ip4" :entity-types ["document"]})
+                         (filter #(= doc-id (:id %)))
+                         first)]
+            (is (=? {:type "document" :official true} doc))))))))
+
 (deftest table-collection-edge-cases-test
   ;; A table published at the *root* has no collection row, and the table spec coalesces a display
   ;; name for it, which makes `search.impl/serialize` stamp the collection id as the string "root".
