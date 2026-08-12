@@ -94,6 +94,30 @@ describe("AgentMessage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("hides the copy action when the agent response has no text", () => {
+    renderWithProviders(
+      <Messages
+        messages={[
+          { id: "u1", role: "user", type: "text", message: "hi" },
+          {
+            id: "a1",
+            role: "agent",
+            type: "data_part",
+            part: { type: "data-todo_list", data: [] },
+          },
+        ]}
+        isDoingScience={false}
+        debug={false}
+        conversationId="convo-1"
+      />,
+    );
+
+    const [, agentMessage] = screen.getAllByTestId("metabot-chat-message");
+    expect(
+      within(agentMessage).queryByTestId("metabot-chat-message-copy"),
+    ).not.toBeInTheDocument();
+  });
+
   describe("feedback controls", () => {
     const conversation: MetabotChatMessage[] = [
       { id: "u1", role: "user", type: "text", message: "hi" },
