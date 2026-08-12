@@ -1,7 +1,9 @@
-import { Badge } from "@mantine/core";
+import type { BadgeFactory } from "@mantine/core";
 
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import BadgeStyles from "./Badge.module.css";
 
@@ -79,7 +81,7 @@ type BadgeRootVars = Partial<
 >;
 
 export const badgeOverrides = {
-  Badge: Badge.extend({
+  Badge: themeComponent<BadgeFactory>({
     classNames: {
       root: BadgeStyles.root,
     },

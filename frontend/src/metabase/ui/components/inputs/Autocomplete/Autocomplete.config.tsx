@@ -1,7 +1,9 @@
-import { Autocomplete, type MantineThemeOverride } from "@mantine/core";
+import type { AutocompleteFactory, MantineThemeOverride } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 export const autocompleteOverrides: MantineThemeOverride["components"] = {
-  Autocomplete: Autocomplete.extend({
+  Autocomplete: themeComponent<AutocompleteFactory>({
     defaultProps: {
       size: "md",
       comboboxProps: {

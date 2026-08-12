@@ -1,9 +1,11 @@
-import { type MantineThemeOverride, Text } from "@mantine/core";
+import type { MantineThemeOverride, TextFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import TextStyles from "./Text.module.css";
 
 export const textOverrides: MantineThemeOverride["components"] = {
-  Text: Text.extend({
+  Text: themeComponent<TextFactory>({
     defaultProps: {
       color: "text-primary",
       size: "md",

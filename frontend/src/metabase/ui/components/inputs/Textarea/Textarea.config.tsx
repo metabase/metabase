@@ -1,9 +1,10 @@
-import { type MantineThemeOverride, Textarea } from "@mantine/core";
+import type { MantineThemeOverride, TextareaFactory } from "@mantine/core";
 
+import { themeComponent } from "../../../utils/theme-component";
 import TextInputStyles from "../TextInput/TextInput.module.css";
 
 export const textareaOverrides: MantineThemeOverride["components"] = {
-  Textarea: Textarea.extend({
+  Textarea: themeComponent<TextareaFactory>({
     defaultProps: {
       size: "md",
       autosize: true,

@@ -1,9 +1,11 @@
-import { NavLink } from "@mantine/core";
+import type { NavLinkFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import S from "./NavLink.module.css";
 
 export const navLinkOverrides = {
-  NavLink: NavLink.extend({
+  NavLink: themeComponent<NavLinkFactory>({
     defaultProps: {
       //@ts-expect-error - this does work, and we want to ensure that the role is set
       role: "link",

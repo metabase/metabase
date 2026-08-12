@@ -1,4 +1,6 @@
-import { Chip, type MantineThemeOverride } from "@mantine/core";
+import type { ChipFactory, MantineThemeOverride } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import S from "./Chip.module.css";
 
@@ -8,7 +10,7 @@ const SIZE_VARS: Record<string, { height: string; paddingInline: string }> = {
 };
 
 export const chipOverrides: MantineThemeOverride["components"] = {
-  Chip: Chip.extend({
+  Chip: themeComponent<ChipFactory>({
     defaultProps: {
       size: "md",
       variant: "light",

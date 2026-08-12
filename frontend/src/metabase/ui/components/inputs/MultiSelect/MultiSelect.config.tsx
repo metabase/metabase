@@ -1,11 +1,12 @@
-import { MultiSelect } from "@mantine/core";
+import type { MultiSelectFactory } from "@mantine/core";
 
+import { themeComponent } from "../../../utils/theme-component";
 import { DefaultSelectItem, selectOverrides } from "../Select";
 
 import S from "./MultiSelect.module.css";
 
 export const multiSelectOverrides = {
-  MultiSelect: MultiSelect.extend({
+  MultiSelect: themeComponent<MultiSelectFactory>({
     defaultProps: {
       radius: "sm",
       size: "md",

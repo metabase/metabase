@@ -1,4 +1,9 @@
-import { Modal } from "@mantine/core";
+import type {
+  ModalCloseButtonProps,
+  ModalFactory,
+  ModalHeaderProps,
+  ModalRootProps,
+} from "@mantine/core";
 import cx from "classnames";
 import { t } from "ttag";
 
@@ -6,12 +11,19 @@ import Animation from "metabase/css/core/animation.module.css";
 import Layout from "metabase/css/core/layout.module.css";
 import ZIndex from "metabase/css/core/z-index.module.css";
 
+import { themeComponent } from "../../../utils/theme-component";
+
 const DEFAULT_MODAL_SPACING = "lg";
 
 import Styles from "./Modal.module.css";
 
+// Mantine does not re-export these payload types from the package root.
+type ModalRootPayload = { props: ModalRootProps };
+type ModalHeaderPayload = { props: ModalHeaderProps };
+type ModalCloseButtonPayload = { props: ModalCloseButtonProps };
+
 export const modalOverrides = {
-  Modal: Modal.extend({
+  Modal: themeComponent<ModalFactory>({
     defaultProps: {
       padding: DEFAULT_MODAL_SPACING,
     },
@@ -26,7 +38,7 @@ export const modalOverrides = {
     },
   }),
 
-  ModalRoot: Modal.Root.extend({
+  ModalRoot: themeComponent<ModalRootPayload>({
     defaultProps: {
       centered: true,
       size: "lg",
@@ -36,13 +48,13 @@ export const modalOverrides = {
     },
   }),
 
-  ModalHeader: Modal.Header.extend({
+  ModalHeader: themeComponent<ModalHeaderPayload>({
     defaultProps: {
       pb: "sm",
     },
   }),
 
-  ModalCloseButton: Modal.CloseButton.extend({
+  ModalCloseButton: themeComponent<ModalCloseButtonPayload>({
     defaultProps: {
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       "aria-label": t`Close`,

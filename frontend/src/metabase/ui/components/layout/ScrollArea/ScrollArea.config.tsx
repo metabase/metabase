@@ -1,9 +1,11 @@
-import { type MantineThemeOverride, ScrollArea } from "@mantine/core";
+import type { MantineThemeOverride, ScrollAreaFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import ScrollAreaStyles from "./ScrollArea.module.css";
 
 export const scrollAreaOverrides: MantineThemeOverride["components"] = {
-  ScrollArea: ScrollArea.extend({
+  ScrollArea: themeComponent<ScrollAreaFactory>({
     classNames: {
       root: ScrollAreaStyles.root,
     },

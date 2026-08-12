@@ -1,9 +1,11 @@
-import { Anchor, type MantineThemeOverride } from "@mantine/core";
+import type { AnchorFactory, MantineThemeOverride } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import AnchorStyles from "./Anchor.module.css";
 
 export const anchorOverrides: MantineThemeOverride["components"] = {
-  Anchor: Anchor.extend({
+  Anchor: themeComponent<AnchorFactory>({
     classNames: {
       root: AnchorStyles.root,
     },

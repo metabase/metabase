@@ -1,9 +1,11 @@
-import { Button } from "@mantine/core";
+import type { ButtonFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import ButtonStyles from "./Button.module.css";
 
 export const buttonOverrides = {
-  Button: Button.extend({
+  Button: themeComponent<ButtonFactory>({
     defaultProps: {
       color: "core-brand",
       variant: "default",

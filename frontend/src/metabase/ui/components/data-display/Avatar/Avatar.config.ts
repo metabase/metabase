@@ -1,6 +1,9 @@
-import { Avatar, rem } from "@mantine/core";
+import type { AvatarFactory } from "@mantine/core";
+import { rem } from "@mantine/core";
 
 import type { ColorName } from "metabase/ui/colors/types";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 const avatarColors: ColorName[] = [
   "core-brand",
@@ -15,7 +18,7 @@ const avatarColors: ColorName[] = [
 ];
 
 export const avatarOverrides = {
-  Avatar: Avatar.extend({
+  Avatar: themeComponent<AvatarFactory>({
     defaultProps: {
       allowedInitialsColors: avatarColors,
       color: "initials",

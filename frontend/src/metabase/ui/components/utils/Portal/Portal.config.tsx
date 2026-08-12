@@ -1,7 +1,12 @@
-import { type MantineThemeOverride, Portal } from "@mantine/core";
+import type { MantineThemeOverride, PortalProps } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
+
+// Mantine does not re-export these payload types from the package root.
+type PortalPayload = { props: PortalProps };
 
 export const portalOverrides: MantineThemeOverride["components"] = {
-  Portal: Portal.extend({
+  Portal: themeComponent<PortalPayload>({
     defaultProps: {
       reuseTargetNode: false,
     },

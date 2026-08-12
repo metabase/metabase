@@ -1,9 +1,11 @@
-import { type MantineThemeOverride, Tabs } from "@mantine/core";
+import type { MantineThemeOverride, TabsFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import TabStyles from "./Tab.module.css";
 
 export const tabsOverrides: MantineThemeOverride["components"] = {
-  Tabs: Tabs.extend({
+  Tabs: themeComponent<TabsFactory>({
     defaultProps: {
       keepMounted: false,
     },

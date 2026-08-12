@@ -1,9 +1,11 @@
-import { type MantineThemeOverride, Progress } from "@mantine/core";
+import type { MantineThemeOverride, ProgressFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import ProgressStyles from "./ProgressStyles.module.css";
 
 export const progressOverrides: MantineThemeOverride["components"] = {
-  Progress: Progress.extend({
+  Progress: themeComponent<ProgressFactory>({
     classNames: {
       root: ProgressStyles.root,
     },

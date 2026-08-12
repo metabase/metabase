@@ -1,4 +1,7 @@
-import { Radio, getSize, rem } from "@mantine/core";
+import type { RadioFactory, RadioIndicatorFactory } from "@mantine/core";
+import { getSize, rem } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import RadioStyles from "./Radio.module.css";
 
@@ -7,7 +10,7 @@ const SIZES: Record<string, string> = {
 };
 
 export const radioOverrides = {
-  Radio: Radio.extend({
+  Radio: themeComponent<RadioFactory>({
     defaultProps: {
       size: "md",
     },
@@ -25,7 +28,7 @@ export const radioOverrides = {
       },
     }),
   }),
-  RadioIndicator: Radio.Indicator.extend({
+  RadioIndicator: themeComponent<RadioIndicatorFactory>({
     classNames: {
       // indicator is visually same as Radio so it needs the same styles
       indicator: RadioStyles.radio,

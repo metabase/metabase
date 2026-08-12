@@ -1,9 +1,10 @@
-import { DatePicker } from "@mantine/dates";
+import type { DatePickerFactory } from "@mantine/dates";
 
+import { themeComponent } from "../../../utils/theme-component";
 import Styles from "../Calendar/Calendar.module.css";
 
 export const datePickerOverrides = {
-  DatePicker: DatePicker.extend({
+  DatePicker: themeComponent<DatePickerFactory>({
     defaultProps: {
       size: "md",
     },

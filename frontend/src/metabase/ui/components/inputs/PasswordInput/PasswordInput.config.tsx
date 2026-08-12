@@ -1,9 +1,11 @@
-import { PasswordInput } from "@mantine/core";
+import type { PasswordInputFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import Styles from "./PasswordInput.module.css";
 
 export const passwordInputOverrides = {
-  PasswordInput: PasswordInput.extend({
+  PasswordInput: themeComponent<PasswordInputFactory>({
     defaultProps: {
       size: "md",
       inputWrapperOrder: ["label", "description", "input", "error"],

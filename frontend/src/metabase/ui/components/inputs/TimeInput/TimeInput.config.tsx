@@ -1,9 +1,11 @@
-import { TimeInput } from "@mantine/dates";
+import type { TimeInputFactory } from "@mantine/dates";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import Styles from "./TimeInput.module.css";
 
 export const timeInputOverrides = {
-  TimeInput: TimeInput.extend({
+  TimeInput: themeComponent<TimeInputFactory>({
     defaultProps: {
       size: "md",
       inputWrapperOrder: ["label", "description", "input", "error"],

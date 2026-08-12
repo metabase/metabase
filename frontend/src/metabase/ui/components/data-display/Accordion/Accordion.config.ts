@@ -1,9 +1,11 @@
-import { Accordion } from "@mantine/core";
+import type { AccordionFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import AccordionStyles from "./Accordion.module.css";
 
 export const accordionOverrides = {
-  Accordion: Accordion.extend({
+  Accordion: themeComponent<AccordionFactory>({
     classNames: {
       control: AccordionStyles.control,
       label: AccordionStyles.label,

@@ -1,15 +1,13 @@
-import {
-  type MantineThemeOverride,
-  Tooltip,
-  getDefaultZIndex,
-} from "@mantine/core";
+import type { MantineThemeOverride, TooltipFactory } from "@mantine/core";
+import { getDefaultZIndex } from "@mantine/core";
 
+import { themeComponent } from "../../../utils/theme-component";
 import { PORTAL_CONTAINER_ID } from "../PortalContainer/constants";
 
 import TooltipStyles from "./Tooltip.module.css";
 
 export const tooltipOverrides: MantineThemeOverride["components"] = {
-  Tooltip: Tooltip.extend({
+  Tooltip: themeComponent<TooltipFactory>({
     defaultProps: {
       arrowSize: 10,
       withArrow: true,

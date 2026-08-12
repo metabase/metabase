@@ -1,11 +1,13 @@
-import { Select } from "@mantine/core";
+import type { SelectFactory } from "@mantine/core";
 import { t } from "ttag";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import S from "./Select.module.css";
 import { DefaultSelectItem } from "./SelectItem";
 
 export const selectOverrides = {
-  Select: Select.extend({
+  Select: themeComponent<SelectFactory>({
     defaultProps: {
       size: "md",
       withScrollArea: false,

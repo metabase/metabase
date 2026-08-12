@@ -1,9 +1,11 @@
-import { Menu } from "@mantine/core";
+import type { MenuFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import MenuStyles from "./Menu.module.css";
 
 export const menuOverrides = {
-  Menu: Menu.extend({
+  Menu: themeComponent<MenuFactory>({
     defaultProps: {
       radius: "sm",
       shadow: "md",

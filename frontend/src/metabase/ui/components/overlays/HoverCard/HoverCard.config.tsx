@@ -1,9 +1,14 @@
-import { HoverCard, type MantineThemeOverride } from "@mantine/core";
+import type { HoverCardProps, MantineThemeOverride } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import HoverCardStyles from "./HoverCard.module.css";
 
+// Mantine does not re-export these payload types from the package root.
+type HoverCardPayload = { props: HoverCardProps; stylesNames: string };
+
 export const hoverCardOverrides: MantineThemeOverride["components"] = {
-  HoverCard: HoverCard.extend({
+  HoverCard: themeComponent<HoverCardPayload>({
     defaultProps: {
       radius: "sm",
       shadow: "md",

@@ -1,4 +1,7 @@
-import { Checkbox, getSize, rem } from "@mantine/core";
+import type { CheckboxFactory } from "@mantine/core";
+import { getSize, rem } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import CheckboxStyles from "./Checkbox.module.css";
 import { CheckboxIcon } from "./CheckboxIcon";
@@ -10,7 +13,7 @@ const SIZES: Record<string, string> = {
 };
 
 export const checkboxOverrides = {
-  Checkbox: Checkbox.extend({
+  Checkbox: themeComponent<CheckboxFactory>({
     defaultProps: {
       icon: CheckboxIcon,
       size: "md",

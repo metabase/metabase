@@ -1,4 +1,11 @@
-import { Input, InputWrapper, rem } from "@mantine/core";
+import type {
+  InputFactory,
+  InputLabelFactory,
+  InputWrapperFactory,
+} from "@mantine/core";
+import { rem } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import Styles from "./Input.module.css";
 
@@ -8,7 +15,7 @@ const UNSTYLED_ICON_WIDTH = 28;
 const BORDER_WIDTH = 1;
 
 export const inputOverrides = {
-  Input: Input.extend({
+  Input: themeComponent<InputFactory>({
     defaultProps: {
       size: "md",
     },
@@ -38,7 +45,7 @@ export const inputOverrides = {
       },
     }),
   }),
-  InputWrapper: InputWrapper.extend({
+  InputWrapper: themeComponent<InputWrapperFactory>({
     defaultProps: {
       size: "md",
       inputWrapperOrder: ["label", "description", "error", "input"],
@@ -50,7 +57,7 @@ export const inputOverrides = {
       required: Styles.required,
     },
   }),
-  InputLabel: Input.Label.extend({
+  InputLabel: themeComponent<InputLabelFactory>({
     classNames: {
       label: Styles.label,
     },

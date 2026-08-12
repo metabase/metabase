@@ -1,4 +1,7 @@
-import { Switch, getSize, rem } from "@mantine/core";
+import type { SwitchFactory } from "@mantine/core";
+import { getSize, rem } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import SwitchStyles from "./Switch.module.css";
 
@@ -47,7 +50,7 @@ const TRACK_PADDING_TOP: Record<string, string> = {
 };
 
 export const switchOverrides = {
-  Switch: Switch.extend({
+  Switch: themeComponent<SwitchFactory>({
     defaultProps: {
       color: "core-brand",
       size: "md",

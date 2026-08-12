@@ -1,15 +1,17 @@
-import {
-  type MantineTheme,
-  type MantineThemeOverride,
-  SegmentedControl,
-  type SegmentedControlProps,
-  rem,
+import type {
+  MantineTheme,
+  MantineThemeOverride,
+  SegmentedControlFactory,
+  SegmentedControlProps,
 } from "@mantine/core";
+import { rem } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import S from "./SegmentedControl.module.css";
 
 export const segmentedControlOverrides: MantineThemeOverride["components"] = {
-  SegmentedControl: SegmentedControl.extend({
+  SegmentedControl: themeComponent<SegmentedControlFactory>({
     defaultProps: {
       size: "md",
       radius: rem(4),

@@ -1,9 +1,11 @@
-import { type MantineThemeOverride, Paper } from "@mantine/core";
+import type { MantineThemeOverride, PaperFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import PaperStyles from "./Paper.module.css";
 
 export const paperOverrides: MantineThemeOverride["components"] = {
-  Paper: Paper.extend({
+  Paper: themeComponent<PaperFactory>({
     defaultProps: {
       radius: "md",
       shadow: "md",

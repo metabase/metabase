@@ -1,13 +1,21 @@
-import {
-  Combobox,
-  ComboboxChevron,
-  type MantineThemeOverride,
+import type {
+  ComboboxChevronProps,
+  ComboboxFactory,
+  MantineThemeOverride,
 } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import S from "./Combobox.module.css";
 
+// Mantine does not re-export these payload types from the package root.
+type ComboboxChevronPayload = {
+  props: ComboboxChevronProps;
+  stylesNames: string;
+};
+
 export const comboboxOverrides: MantineThemeOverride["components"] = {
-  Combobox: Combobox.extend({
+  Combobox: themeComponent<ComboboxFactory>({
     defaultProps: {
       size: "md",
       /**
@@ -26,7 +34,7 @@ export const comboboxOverrides: MantineThemeOverride["components"] = {
       empty: S.empty,
     },
   }),
-  ComboboxChevron: ComboboxChevron.extend({
+  ComboboxChevron: themeComponent<ComboboxChevronPayload>({
     classNames: {
       chevron: S.chevron,
     },

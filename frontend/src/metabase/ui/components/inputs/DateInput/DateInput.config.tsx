@@ -1,9 +1,10 @@
-import { DateInput } from "@mantine/dates";
+import type { DateInputFactory } from "@mantine/dates";
 
+import { themeComponent } from "../../../utils/theme-component";
 import Styles from "../Calendar/Calendar.module.css";
 
 export const dateInputOverrides = {
-  DateInput: DateInput.extend({
+  DateInput: themeComponent<DateInputFactory>({
     defaultProps: {
       size: "md",
       inputWrapperOrder: ["label", "description", "input", "error"],

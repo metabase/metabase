@@ -1,9 +1,11 @@
-import { Code } from "@mantine/core";
+import type { CodeFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import CodeStyles from "./Code.module.css";
 
 export const codeOverrides = {
-  Code: Code.extend({
+  Code: themeComponent<CodeFactory>({
     classNames: {
       root: CodeStyles.root,
     },

@@ -1,9 +1,11 @@
-import { type MantineThemeOverride, Pill } from "@mantine/core";
+import type { MantineThemeOverride, PillFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import S from "./Pill.module.css";
 
 export const pillOverrides: MantineThemeOverride["components"] = {
-  Pill: Pill.extend({
+  Pill: themeComponent<PillFactory>({
     defaultProps: {
       size: "sm",
     },

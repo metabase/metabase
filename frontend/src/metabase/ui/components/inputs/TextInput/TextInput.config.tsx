@@ -1,9 +1,11 @@
-import { TextInput } from "@mantine/core";
+import type { TextInputFactory } from "@mantine/core";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import Styles from "./TextInput.module.css";
 
 export const textInputOverrides = {
-  TextInput: TextInput.extend({
+  TextInput: themeComponent<TextInputFactory>({
     defaultProps: {
       size: "md",
       inputWrapperOrder: ["label", "description", "input", "error"],

@@ -1,7 +1,9 @@
-import { Alert, type MantineThemeOverride } from "@mantine/core";
+import type { AlertFactory, MantineThemeOverride } from "@mantine/core";
 
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
+
+import { themeComponent } from "../../../utils/theme-component";
 
 import AlertStyles from "./Alert.module.css";
 
@@ -71,7 +73,7 @@ const isAlertVariant = (value?: string): value is AlertVariant =>
   value !== undefined && value in ALERT_COLORS_BY_VARIANT;
 
 export const alertOverrides: MantineThemeOverride["components"] = {
-  Alert: Alert.extend({
+  Alert: themeComponent<AlertFactory>({
     defaultProps: {
       variant: "default",
     },
