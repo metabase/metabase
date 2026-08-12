@@ -546,14 +546,19 @@
   (when (seq ids)
     ;; only surface tables the current user can read — a curated entry may point at one they can't access
     (for [t (filter mi/can-read?
-                    (t2/select [:model/Table :id :name :display_name :db_id :schema :description] :id [:in ids]))]
-      {:id              (:id t)
-       :type            "table"
-       :name            (:name t)
-       :display_name    (:display_name t)
-       :database_id     (:db_id t)
-       :database_schema (:schema t)
-       :description     (:description t)})))
+                    (t2/select [:model/Table :id :name :display_name :db_id :schema :description :collection_id]
+                               :id [:in ids]))]
+      (cond-> {:id              (:id t)
+               :type            "table"
+               :name            (:name t)
+               :display_name    (:display_name t)
+               :database_id     (:db_id t)
+               :database_schema (:schema t)
+               :description     (:description t)}
+        ;; A published table has a collection (see [[postprocess-search-result]]'s table branch).
+        ;; Carry it so `enrich-with-collection-paths` reaches these too — otherwise the same library
+        ;; table reports `library_member` true through `search` and false through this path.
+        (:collection_id t) (assoc :collection {:id (:collection_id t)})))))
 
 (defn- card-refs->results
   "Build post-processed search-result records for card-backed refs (`{:id .. :type \"model\"|\"metric\"|\"question\"}`).

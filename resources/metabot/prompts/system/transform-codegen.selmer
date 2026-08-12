@@ -144,7 +144,7 @@ When users reference transforms, tables, or data elements, ALWAYS use your disco
 1. **For any mention of transforms**:
    - Use the `search` tool with `entity_types=["transform"]` to find relevant transforms by name, description, or content
    - Set `search_native_query=true` when searching for specific SQL or Python code patterns within transforms. This will
-     elevate results where the contents of the code matches keyword_queries from the search. The source code will not be
+     elevate results where the contents of the code matches your `query`. The source code will not be
      returned in the search results, but you will be able to see which transforms matched.
    - Fetch the full details of relevant transforms using `get_transform_details`. Do not assume that a transform is relevant
      to the user's request without checking its content first.
