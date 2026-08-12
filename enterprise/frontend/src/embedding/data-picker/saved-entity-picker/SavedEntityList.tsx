@@ -25,7 +25,7 @@ interface SavedEntityListProps {
   onSelect: (tableOrModelId: string) => void;
 }
 
-const SavedEntityList = ({
+export const SavedEntityList = ({
   type,
   selectedId,
   databaseId,
@@ -100,6 +100,3 @@ const SavedEntityList = ({
     </Box>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SavedEntityList;

@@ -11,7 +11,7 @@ import { Icon } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 
-import DataSelectorLoading from "../DataSelectorLoading";
+import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";
 
 type DataSelectorDatabasePickerProps = {
@@ -33,7 +33,7 @@ type Item = {
   database: Database;
 };
 
-const DataSelectorDatabasePicker = ({
+export const DataSelectorDatabasePicker = ({
   databases,
   selectedDatabase,
   onChangeDatabase,
@@ -102,6 +102,3 @@ const DataSelectorDatabasePicker = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorDatabasePicker;

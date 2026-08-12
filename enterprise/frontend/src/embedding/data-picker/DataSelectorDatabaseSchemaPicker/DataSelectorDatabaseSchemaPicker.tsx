@@ -13,7 +13,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 
-import DataSelectorLoading from "../DataSelectorLoading";
+import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";
 
 type DataSelectorDatabaseSchemaPickerProps = {
@@ -39,7 +39,7 @@ type Section = BaseSection<Item> & {
   active: boolean;
 };
 
-const DataSelectorDatabaseSchemaPicker = ({
+export const DataSelectorDatabaseSchemaPicker = ({
   databases,
   selectedDatabase,
   selectedSchema,
@@ -139,6 +139,3 @@ const DataSelectorDatabaseSchemaPicker = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorDatabaseSchemaPicker;

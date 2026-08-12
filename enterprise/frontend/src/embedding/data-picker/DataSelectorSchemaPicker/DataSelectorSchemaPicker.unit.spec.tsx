@@ -6,7 +6,7 @@ import { checkNotNull } from "metabase/utils/types";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
-import DataSelectorSchemaPicker from "./DataSelectorSchemaPicker";
+import { DataSelectorSchemaPicker } from "./DataSelectorSchemaPicker";
 
 describe("DataSelectorSchemaPicker", () => {
   it("displays schema name", () => {

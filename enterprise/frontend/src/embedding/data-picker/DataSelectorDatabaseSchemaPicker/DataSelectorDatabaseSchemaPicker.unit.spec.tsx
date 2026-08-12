@@ -7,7 +7,7 @@ import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
-import DataSelectorDatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
+import { DataSelectorDatabaseSchemaPicker } from "./DataSelectorDatabaseSchemaPicker";
 
 const DEFAULT_PROPS = {
   hasBackButton: false,

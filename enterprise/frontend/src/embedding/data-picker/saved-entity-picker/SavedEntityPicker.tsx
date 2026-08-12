@@ -28,7 +28,7 @@ import type {
 
 import type { SavedEntityType } from "../types";
 
-import SavedEntityList from "./SavedEntityList";
+import { SavedEntityList } from "./SavedEntityList";
 import SavedEntityPickerS from "./SavedEntityPicker.module.css";
 import { CARD_INFO } from "./constants";
 import { findCollectionById } from "./utils";

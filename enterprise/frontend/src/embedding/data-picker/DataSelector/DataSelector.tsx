@@ -46,11 +46,11 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import DataBucketPicker from "../DataSelectorDataBucketPicker";
-import DatabasePicker from "../DataSelectorDatabasePicker";
-import DatabaseSchemaPicker from "../DataSelectorDatabaseSchemaPicker";
-import SchemaPicker from "../DataSelectorSchemaPicker";
-import TablePicker from "../DataSelectorTablePicker";
+import { DataSelectorDataBucketPicker as DataBucketPicker } from "../DataSelectorDataBucketPicker";
+import { DataSelectorDatabasePicker as DatabasePicker } from "../DataSelectorDatabasePicker";
+import { DataSelectorDatabaseSchemaPicker as DatabaseSchemaPicker } from "../DataSelectorDatabaseSchemaPicker";
+import { DataSelectorSchemaPicker as SchemaPicker } from "../DataSelectorSchemaPicker";
+import { DataSelectorTablePicker as TablePicker } from "../DataSelectorTablePicker";
 import {
   TableTrigger,
   Trigger,
