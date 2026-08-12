@@ -170,7 +170,7 @@
                      :label       (deferred-tru "Service account key file")
                      :type        :file
                      ;; the file is the whole credential — private key included — so it is redacted like a password
-                     :secret?     true
+                     :sensitive?  true
                      :show-when   {:field :auth-method :value "service-account-key"}
                      :placeholder (deferred-tru "Click to select a file")
                      :help        (deferred-tru "Upload a service account key file to authenticate with.")
@@ -281,11 +281,12 @@
     (some? (provider-type type-name))))
 
 (defn secret-field-keys
-  "The `:config` keys of `type-name` that hold secrets: every `:password` field, plus any field marked `:secret?`
-  regardless of its input type — Google's service account key is a file upload, but it is the whole credential."
+  "The `:config` keys of `type-name` that hold secrets: every `:password` field, plus any field marked
+  `:sensitive?` — named for the defsetting option it mirrors — regardless of its input type. Google's service
+  account key is a file upload, but it is the whole credential."
   [type-name]
   (into #{}
-        (comp (filter (fn [{:keys [type secret?]}] (or (= :password type) secret?)))
+        (comp (filter (fn [{:keys [type sensitive?]}] (or (= :password type) sensitive?)))
               (map :key))
         (:fields (provider-type type-name))))
 
