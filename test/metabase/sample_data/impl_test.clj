@@ -89,6 +89,62 @@
               (is (= :completed (:status result)))
               (is (pos? (count (mt/rows result)))))))))))
 
+(deftest migrate-sample-database-engine-tolerates-orphan-schema-null-row-test
+  (testing "CLO-5900: the H2 -> SQLite in-place engine swap survives an orphan duplicate table row with
+           schema = NULL (e.g. left behind by a prior failed swap). On Postgres such a row would otherwise
+           trip the partial unique index on (db_id, name) WHERE schema IS NULL when every row's schema is
+           flipped to NULL, failing the whole upgrade at startup."
+    (mt/with-model-cleanup [:model/Database]
+      (let [h2-db (t2/insert-returning-instance! :model/Database
+                                                 {:name "Sample Database" :engine :h2 :is_sample true
+                                                  :details (#'sample-data/try-to-extract-sample-database! :h2)})]
+        (sync/sync-database! h2-db)
+        (let [reviews-id (t2/select-one-pk :model/Table :db_id (:id h2-db) :name "REVIEWS")
+              ;; Simulate leftover state: an orphan inactive REVIEWS row with schema = NULL, which conflicts
+              ;; with the partial unique index once the live REVIEWS row's schema flips to NULL.
+              orphan-id  (t2/insert-returning-pk! :model/Table
+                                                  {:db_id (:id h2-db) :schema nil :name "REVIEWS" :active false})]
+          ;; ---- the migration under test ----
+          (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database :id (:id h2-db)))
+          (testing "the engine flipped to SQLite"
+            (is (= :sqlite (:engine (t2/select-one :model/Database :id (:id h2-db))))))
+          (testing "the original REVIEWS row is the only one with that name, still active, with schema = nil"
+            (is (=? [{:id reviews-id, :active true, :schema nil}]
+                    (t2/select :model/Table :db_id (:id h2-db) :name "REVIEWS"))))
+          (testing "the orphan row survives, renamed out of the way and deactivated"
+            (is (=? {:name   #"REVIEWS__duplicate_[0-9a-f]{8}"
+                     :active false}
+                    (t2/select-one :model/Table :id orphan-id)))))))))
+
+(deftest migrate-sample-database-engine-keeps-content-referenced-duplicate-test
+  (testing "CLO-5900: when the sample DB has duplicate table rows, the swap keeps the row existing content
+           points at, even if sync has since retired it in favor of a fresh row (e.g. after a v63 -> v62
+           downgrade, H2's sync re-creates the PUBLIC tables while cards still reference the original
+           NULL-schema rows the v63 upgrade produced)."
+    (mt/with-model-cleanup [:model/Database :model/Card]
+      (let [h2-db (t2/insert-returning-instance! :model/Database
+                                                 {:name "Sample Database" :engine :h2 :is_sample true
+                                                  :details (#'sample-data/try-to-extract-sample-database! :h2)})]
+        (sync/sync-database! h2-db)
+        ;; The original REVIEWS row from before the downgrade: schema already NULL, retired by H2's sync,
+        ;; but still referenced by a user card.
+        (let [orig-id  (t2/insert-returning-pk! :model/Table
+                                                {:db_id (:id h2-db) :schema nil :name "REVIEWS" :active false})
+              fresh-id (t2/select-one-pk :model/Table :db_id (:id h2-db) :name "REVIEWS" :active true)]
+          (t2/insert! :model/Card {:name "user q" :database_id (:id h2-db) :table_id orig-id
+                                   :display "table" :visualization_settings {} :creator_id (mt/user->id :rasta)
+                                   :dataset_query {:database (:id h2-db) :type :query
+                                                   :query {:source-table orig-id}}})
+          ;; ---- the migration under test ----
+          (#'sample-data/migrate-sample-database-engine-in-place! :sqlite (t2/select-one :model/Database :id (:id h2-db)))
+          (testing "the row content references stays the live REVIEWS table, reactivated by the final sync"
+            (is (=? {:id orig-id, :active true, :schema nil}
+                    (t2/select-one :model/Table :db_id (:id h2-db) :name "REVIEWS"))))
+          (testing "the unreferenced fresh row is the one renamed and deactivated"
+            (is (=? {:name   #"REVIEWS__duplicate_[0-9a-f]{8}"
+                     :active false}
+                    (t2/select-one :model/Table :id fresh-id)))))))))
+
 (deftest migrate-sample-database-engine-in-place-downgrade-test
   (testing "Downgrade path: migrating the sample DB from SQLite back to H2 in place keeps every id, so
            sample and user content survive with no remapping and still query correctly."

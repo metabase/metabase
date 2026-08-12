@@ -140,6 +140,34 @@
                  (str/join ", " (map name (keys disabled))) engine)
       (merge (:settings database) disabled))))
 
+(defn- table-content-refs
+  "Number of cards pointing at this table id."
+  [table-id]
+  (t2/count :model/Card :table_id table-id))
+
+(defn- deduplicate-sample-tables!
+  "Rename and deactivate table rows that share a name with another row of the same database, keeping the row
+  existing content points at (most cards referencing it), then the row sync currently maintains
+  (schema matches `current-schema`), then active, then lowest id. Any such duplicate — e.g. an orphan left
+  behind by a previously failed engine swap — would trip the app DB's unique indexes on (db_id, schema, name)
+  once the swap flips every row to the same schema (CLO-5900). Renaming rather than deleting avoids
+  cascade-deleting content that may still reference the duplicate row."
+  [db-id current-schema]
+  (doseq [[table-name rows] (group-by :name (t2/select [:model/Table :id :name :schema :active] :db_id db-id))
+          :when (next rows)
+          :let [[keeper & dupes] (sort-by (juxt (comp - table-content-refs :id)
+                                                #(not= (:schema %) current-schema)
+                                                (complement :active)
+                                                :id)
+                                          rows)]]
+    (log/warnf "Sample database has %d table rows named %s; renaming duplicate rows with ids %s in favor of %d"
+               (count rows) (pr-str table-name) (str/join ", " (map :id dupes)) (:id keeper))
+    (doseq [{:keys [id]} dupes]
+      (let [suffix   (str "__duplicate_" (subs (str (random-uuid)) 0 8))
+            ;; name is varchar(254); make room for the suffix
+            new-name (str (subs table-name 0 (min (count table-name) (- 254 (count suffix)))) suffix)]
+        (t2/update! :model/Table id {:name new-name, :active false})))))
+
 (defn- migrate-sample-database-engine-in-place!
   "The only app-db differences between the H2 and
   SQLite sample databases are the Database record's engine/details and the tables' schema (H2 = \"PUBLIC\",
@@ -155,6 +183,7 @@
       (t2/update! :model/Database (:id old-sample-db)
                   (cond-> {:engine engine, :details details}
                     settings (assoc :settings settings)))
+      (deduplicate-sample-tables! (:id old-sample-db) (table-schema-for-engine (:engine old-sample-db)))
       (t2/update! :model/Table :db_id (:id old-sample-db) {:schema (table-schema-for-engine engine)})
       ;; Table-level permission rows denormalize the table's schema; keep them matching or schema-scoped
       ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Raw table update:
