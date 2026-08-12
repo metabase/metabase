@@ -28,6 +28,17 @@
 (defn- drift-test-enabled? []
   (= "true" (config/config-str :mb-app-db-snapshot-drift-test)))
 
+(defn- regeneration-server?
+  "Whether this server is the one a snapshot for its dialect is generated from.
+
+  A dump tool describes the same schema differently depending on how old the server it read is -- Postgres 17 gave
+  NOT NULL constraints names of their own, and later releases qualify the columns in a view definition that earlier
+  ones leave bare -- so only one server version per dialect can produce the file that is checked in. The other
+  versions in the matrix still load that file and still compare it against a full migration; what they cannot do is
+  say what regenerating would write. Which server that is, is declared by the workflow that runs them."
+  []
+  (= "true" (config/config-str :mb-app-db-snapshot-regeneration-server)))
+
 ;;; ----------------------------------------------- DB fingerprinting -----------------------------------------------
 ;;;
 ;;; Everything below reads through `DatabaseMetaData` rather than dialect SQL, so one implementation covers H2,
@@ -362,8 +373,8 @@
 
 (deftest snapshot-is-what-generating-it-today-writes-test
   (testing "the checked-in snapshot is the file a regeneration would write, so nobody has to guess whether it is stale"
-    (if-not (drift-test-enabled?)
-      (log/warn "MB_APP_DB_SNAPSHOT_DRIFT_TEST is not set; skipping app DB snapshot regeneration check")
+    (if-not (and (drift-test-enabled?) (regeneration-server?))
+      (log/warn "not the server app DB snapshots are generated from; skipping app DB snapshot regeneration check")
       (mt/test-drivers #{:h2 :mysql :postgres}
         (when-let [{:keys [flavor content]} (dump-snapshot-if-tool-available driver/*driver*)]
           (if-let [checked-in (io/resource (snapshot/resource-path snapshot/snapshot-version flavor "sql"))]

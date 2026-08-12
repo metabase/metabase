@@ -44,15 +44,23 @@ jobs:
         #
         # MySQL Latest is absent because app-db.yml disables it too -- `mysql:latest` now resolves to 26.x, which
         # fails in a way that floods the log until the runner cancels the job.
+        #
+        # `regeneration-server` marks the server a dialect's checked-in snapshot is dumped from, the only one that
+        # can be asked what regenerating would write today. It defaults to true, so an entry added for a server a
+        # snapshot does not come from has to say so, the way Postgres Latest does below.
         include:
           - name: H2
             driver: h2
           - name: Postgres 14.x
             driver: postgres
             image: postgres:14-alpine
+          # Not the server postgres.sql is dumped from: Postgres 17 started giving NOT NULL constraints names of
+          # their own and later releases qualify the columns in a view definition, so a dump taken here is not the
+          # file an older server produces. It still has to load that file and still has to match a full migration.
           - name: Postgres Latest
             driver: postgres
             image: postgres:latest
+            regeneration-server: 'false'
           - name: MySQL 8.0
             driver: mysql
             image: mysql:8.0
@@ -71,6 +79,7 @@ jobs:
       CI: 'true'
       # what turns the from-scratch comparison on; see metabase.app-db.snapshot-test
       MB_APP_DB_SNAPSHOT_DRIFT_TEST: 'true'
+      MB_APP_DB_SNAPSHOT_REGENERATION_SERVER: ${{ matrix.regeneration-server || 'true' }}
       DRIVERS: ${{ matrix.driver }}
       MB_POSTGRESQL_TEST_USER: mb_test
       MB_MYSQL_TEST_USER: root

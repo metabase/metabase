@@ -47,8 +47,9 @@
   the dialect the server turned out to be, and the text its snapshot file should hold. Writes nothing, so a test can
   ask what regenerating would produce without touching what is checked in.
 
-  Needs `pg_dump` on PATH for `:postgres` and `mysqldump` for `:mysql`, plus the usual `MB_<DB>_TEST_*` env vars
-  pointing at a server it may create databases on.
+  Needs a working `docker` for everything but `:h2` -- the dump clients are run out of pinned images, so that what
+  this writes does not depend on which client the machine happens to have -- plus the usual `MB_<DB>_TEST_*` env vars
+  pointing at a server it may create databases on, published on a port reachable from another container.
 
   Deliberately creates its own DB rather than using [[metabase.app-db.schema-migrations-test.impl]]'s harness,
   because the dump tools need the raw connection details that harness hides."
@@ -93,7 +94,11 @@
 
   Which file gets written follows [[metabase.app-db.snapshot-test-util/flavor]], so regenerating the MariaDB snapshot
   means running this with `:mysql` while `MB_MYSQL_TEST_*` points at a MariaDB server. See [[dump-snapshot]] for what
-  has to be on PATH."
+  this needs.
+
+  Point it at the oldest server version the `app-db-snapshot` workflow tests that dialect against, which is the one
+  that workflow leaves `regeneration-server` set on. A dump taken from a newer server can describe the same schema in
+  ways an older one never writes, and a snapshot has to load into every version in that matrix."
   ([db-type]
    (generate! db-type snapshot/snapshot-version))
   ([db-type version]
