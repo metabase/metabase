@@ -65,9 +65,15 @@
 
     [:not-empty opts arg]
     (-> (if (emptyable? arg)
-          (lib.filter/and
-           (lib.filter/!= (lib.util/fresh-uuids arg) nil)
-           (lib.filter/!= (lib.util/fresh-uuids arg) ""))
+          ;; `!=` gets a `col IS NULL` disjunct added by the SQL QP's null-behaviour correction (so a bare
+          ;; `!= ""` filter also matches nulls), which is redundant and self-contradictory once ANDed with
+          ;; the sibling `!= nil` check above -- `col IS NOT NULL AND (col <> '' OR col IS NULL)` (metabase#55252).
+          ;; `not (is-empty)` sidesteps that: `=` doesn't get the same correction, so this compiles to a
+          ;; clean `col IS NOT NULL AND NOT (col = '')` instead.
+          (lib.filter/not
+           (lib.filter/or
+            (lib.filter/= (lib.util/fresh-uuids arg) nil)
+            (lib.filter/= (lib.util/fresh-uuids arg) "")))
           (lib.filter/!= (lib.util/fresh-uuids arg) nil))
         (merge-options opts))))
 
