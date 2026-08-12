@@ -228,7 +228,13 @@
         (is (=? {:total 1
                  :data [{:id (:id second-candidate), :candidate_type "measure"}]}
                 (mt/user-http-request :crowberto :get 200
-                                      "ee/data-studio/usage-metadata/candidates?candidate-type=measure&search=zulu")))))))
+                                      "ee/data-studio/usage-metadata/candidates?candidate-type=measure&search=zulu"))))
+      (testing "limit=0 falls back to the default page size instead of returning an empty page"
+        (is (=? {:total 2
+                 :limit 50
+                 :data [{} {}]}
+                (mt/user-http-request :crowberto :get 200
+                                      "ee/data-studio/usage-metadata/candidates?limit=0")))))))
 
 (deftest table-and-metric-recommendations-are-listable-test
   (mt/with-premium-features #{:library}
