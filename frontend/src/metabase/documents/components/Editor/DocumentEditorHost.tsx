@@ -85,6 +85,7 @@ export const documentEditorHost: EditorHost = {
   useUnresolvedCommentsCount: useUnresolvedDocumentCommentsCount,
   useHighlighted: () => null,
   useVisualizationMode: () => DocumentMode,
+  useCardEmbedSlots: () => ({}),
   useNodeInViewport,
   useReportPrefetchLoading,
   useDraftCardOperations,

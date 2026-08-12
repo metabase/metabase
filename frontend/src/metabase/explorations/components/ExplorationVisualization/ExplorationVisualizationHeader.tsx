@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { useUnresolvedCommentsCount } from "metabase/comments/hooks/use-unresolved-comments-count";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { type Path, useLocation, useNavigate } from "metabase/router";
 import { Ellipsified, Group, Indicator, Stack } from "metabase/ui";
 import type {
@@ -10,6 +9,8 @@ import type {
   ExplorationPageNodeId,
   HydratedExplorationExploreFilter,
 } from "metabase-types/api";
+
+import { ExploreFilterPills } from "../ExploreFilterPills";
 
 interface ExplorationVisualizationHeaderProps {
   name: string;
@@ -60,17 +61,6 @@ export function ExplorationVisualizationHeader({
     />
   ) : null;
 
-  const filterPills =
-    exploreFilters != null && exploreFilters.length > 0 ? (
-      <Group gap="sm" wrap="wrap">
-        {exploreFilters.map((filter, index) => (
-          <FilterPill key={index} readOnly>
-            {getExploreFilterPillLabel(filter)}
-          </FilterPill>
-        ))}
-      </Group>
-    ) : null;
-
   return (
     <Stack gap="sm" style={{ flexShrink: 0 }}>
       <Group h="2rem" justify="space-between" wrap="nowrap" miw={0}>
@@ -87,18 +77,9 @@ export function ExplorationVisualizationHeader({
           )}
         </Group>
       </Group>
-      {filterPills}
+      <ExploreFilterPills filters={exploreFilters ?? []} />
     </Stack>
   );
-}
-
-function getExploreFilterPillLabel(
-  filter: HydratedExplorationExploreFilter,
-): string {
-  if (filter.dimension_name) {
-    return `${filter.dimension_name}: ${filter.display_value}`;
-  }
-  return filter.display_value;
 }
 
 function getNextCommentsUrl(

@@ -1121,6 +1121,18 @@
                   :created_at :updated_at :archived :is_placeholder]
                  :id doc-id))
 
+(defn- page-explore-filters
+  "Hydrated explore-further filters on the block that owns `page-id`, or nil
+  when the page is unfiltered."
+  [page-id]
+  (when-let [block-id (t2/select-one-fn :exploration_block_id
+                                        :model/ExplorationPage
+                                        :id page-id)]
+    (-> (t2/select-one-fn :metrics :model/ExplorationBlock :id block-id)
+        first
+        :explore_filters
+        not-empty)))
+
 (api.macros/defendpoint :post "/:id/summary/append" :- ::ExplorationDocument
   "Append a static `cardEmbed` representing a *composite chart* — built from one or more
   `ExplorationQuery` snapshots combined into a single qp-result — to the exploration's
@@ -1134,7 +1146,8 @@
 
   - `chart_href` / `child_target_id` / `host_data` are written onto the node so the FE
     can deep-link the embed title back to the source page, share that page's comment
-    stream (`child_target_id`), and resolve highlight hover via opaque `host_data`.
+    stream (`child_target_id`), and resolve highlight hover and explore-further filter
+    pills via opaque `host_data`.
   - `display` / `visualization_settings` are required FE-computed render settings (from
     `buildSeries` / `getDisplay`); the BE bakes them onto the ephemeral card.
 
@@ -1146,7 +1159,7 @@
    :- [:map
        [:exploration_query_ids  [:sequential {:min 1} ms/PositiveInt]]
        [:display                :string]
-       [:visualization_settings :map]]]
+       [:visualization_settings ms/Map]]]
   (api/write-check (get-exploration-or-404 id))
   (let [doc (summary-document-or-404 id)]
     (api/check-404 (exploration-query-ids-belong-to-exploration? id exploration_query_ids))
@@ -1157,14 +1170,17 @@
              @api/*current-user*
              {:display                display
               :visualization-settings visualization_settings})
-            page-id     (:page_id primary-eq)
-            chart-href  (explorations.blocks/page-url id page-id)
+            page-id         (:page_id primary-eq)
+            chart-href      (explorations.blocks/page-url id page-id)
+            ;; Snapshot onto host_data so the Summary embed can render pills without a live lookup.
+            explore-filters (page-explore-filters page-id)
             extra-attrs {:stored_result_id stored-result-id
                          :chart_href       chart-href
                          ;; Comment stream key (page id). Distinct from `_id`,
                          ;; which must stay unique per node for duplicate embeds.
                          :child_target_id  (str page-id)
-                         :host_data        {:query_ids exploration_query_ids}}]
+                         :host_data        (cond-> {:query_ids exploration_query_ids}
+                                             explore-filters (assoc :explore_filters explore-filters))}]
         (documents/add-card-to-document!
          (:id doc) card-id nil
          :extra-attrs extra-attrs)))

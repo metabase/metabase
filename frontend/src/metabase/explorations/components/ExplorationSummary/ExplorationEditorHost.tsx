@@ -11,23 +11,31 @@ import {
 } from "metabase/explorations/selectors";
 import type { CommentDrafts } from "metabase/explorations/types";
 import { useSelector } from "metabase/redux";
-import type { Dispatch } from "metabase/redux/store";
-import type { EditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
-import { push } from "metabase/router";
+import type {
+  CardEmbedSlotContext,
+  CardEmbedSlots,
+  EditorHost,
+} from "metabase/rich_text_editing/tiptap/EditorHost";
+import { navigate } from "metabase/router";
+import { Box } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { HighlightedObject } from "metabase/visualizations/types";
 import type { ExplorationQueryId, Series } from "metabase-types/api";
 
 import { resolveHighlightForSeries } from "../ExplorationVisualization/utils";
+import {
+  ExploreFilterPills,
+  parseExploreFilterPills,
+} from "../ExploreFilterPills";
 
 // preserve the search params when navigating to CardEmbed's chart_href
 function navigateToCardFromExploration(url: string) {
-  return (dispatch: Dispatch) => {
+  return () => {
     const pathname = url.split("?")[0] ?? url;
     const destination = Urls.isExplorationUrl(pathname)
       ? Urls.explorationPathWithSearch(pathname, window.location.search)
       : url;
-    dispatch(push(destination));
+    navigate(destination);
   };
 }
 
@@ -70,6 +78,24 @@ function parseHostQueryIds(
     return [];
   }
   return raw;
+}
+
+function useExplorationCardEmbedSlots({
+  hostData,
+}: CardEmbedSlotContext): CardEmbedSlots {
+  return useMemo(() => {
+    const filters = parseExploreFilterPills(hostData?.explore_filters);
+    if (filters.length === 0) {
+      return {};
+    }
+    return {
+      belowTitle: (
+        <Box mt="sm">
+          <ExploreFilterPills filters={filters} />
+        </Box>
+      ),
+    };
+  }, [hostData]);
 }
 
 function useExplorationHighlighted(
@@ -134,4 +160,5 @@ export const explorationEditorHost: EditorHost = {
   useUnresolvedCommentsCount: useUnresolvedExplorationCommentsCount,
   useHighlighted: useExplorationHighlighted,
   useVisualizationMode: useExplorationVisualizationMode,
+  useCardEmbedSlots: useExplorationCardEmbedSlots,
 };

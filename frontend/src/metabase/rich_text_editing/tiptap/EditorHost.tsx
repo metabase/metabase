@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react";
-import { createContext, useContext } from "react";
+import { type ReactNode, createContext, useContext } from "react";
 
 import type { State } from "metabase/redux/store";
 import type {
@@ -89,6 +89,19 @@ export interface EditorDocumentHost {
   };
 }
 
+/**
+ * Host-contributed UI placed into named holes in CardEmbed's layout.
+ * CardEmbed owns placement; hosts interpret `host_data` and fill slots.
+ */
+export type CardEmbedSlots = {
+  belowTitle?: ReactNode;
+};
+
+export type CardEmbedSlotContext = {
+  childTargetId: string;
+  hostData?: Record<string, unknown> | null;
+};
+
 /** Embedding, rendering and authoring cards: the CardEmbed node, the
  *  create/modify-question modals, and the Metabot embed. */
 export interface EditorCardHost {
@@ -114,6 +127,7 @@ export interface EditorCardHost {
     selectedEmbedIndex: number | null,
     regularDataset: Dataset | null | undefined,
   ) => DraftCardOperations;
+  useCardEmbedSlots: (opts: CardEmbedSlotContext) => CardEmbedSlots;
   actions: {
     createDraftCard: (payload: {
       originalCard: Card | undefined;
@@ -259,6 +273,7 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
   }),
   useReportPrefetchLoading: () => undefined,
   useDraftCardOperations: () => ({ ensureDraftCard: () => -1 }),
+  useCardEmbedSlots: () => ({}),
 };
 
 const EditorHostContext = createContext<EditorHost>(DEFAULT_EDITOR_HOST);

@@ -715,9 +715,9 @@
         skip-adhoc-hydration?  (u/prog1 (and include-can-run-adhoc-query
                                              (pos? threshold)
                                              (> card-count threshold))
-                                        (when <>
-                                          (log/warnf "Skipping can_run_adhoc_query hydration for %d cards (threshold: %d)"
-                                                     card-count threshold)))
+                                 (when <>
+                                   (log/warnf "Skipping can_run_adhoc_query hydration for %d cards (threshold: %d)"
+                                              card-count threshold)))
         hydration              (cond-> [:can_write
                                         :can_restore
                                         :can_delete
@@ -1837,6 +1837,7 @@
                                             [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
                                             [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
                                             [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]
+                                            [:show_exploration_documents  {:default false} [:maybe ms/BooleanValue]]
                                             [:q                           {:optional true} [:maybe :string]]
                                             [:include_available_models    {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)

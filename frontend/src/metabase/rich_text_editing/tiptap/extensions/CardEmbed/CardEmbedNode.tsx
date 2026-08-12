@@ -266,6 +266,10 @@ export const CardEmbedComponent = memo(
       childTargetId: commentChildTargetId,
       hostData,
     });
+    const slots = host.useCardEmbedSlots({
+      childTargetId: commentChildTargetId,
+      hostData,
+    });
 
     const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const selectedEmbedIndex = useSelector(
@@ -807,6 +811,7 @@ export const CardEmbedComponent = memo(
                       </Menu>
                     ) : null)}
                 </Flex>
+                {slots.belowTitle}
               </Box>
             )}
             {series && isInViewport ? (

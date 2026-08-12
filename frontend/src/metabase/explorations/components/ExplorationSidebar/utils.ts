@@ -247,10 +247,11 @@ export function getExplorationSidebarTree(
 
   const pruned = pruneEmptyHeadings(topLevel, keepEmptyRestartableThreads);
 
-  // Summary is prepended after filtering so it appears on every tab and is
-  // never dropped by treeItemFilter.
   const summaryNode = getSummaryDocumentNode(exploration.document);
-  return summaryNode != null ? [summaryNode, ...pruned] : pruned;
+  if (summaryNode != null && treeItemFilter(summaryNode)) {
+    return [summaryNode, ...pruned];
+  }
+  return pruned;
 }
 
 type PageKey = string;

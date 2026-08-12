@@ -1032,7 +1032,7 @@ describe("scenarios > explorations > chart click-through", () => {
     });
   });
 
-  it("brushing a timeseries cartesian chart opens Explore further only, posts between explore_filters, and navigates from the new-thread toast", () => {
+  it("brushing a timeseries cartesian chart opens Explore further only, posts between explore_filters, navigates from the new-thread toast, and Add to Summary preserves filter pills", () => {
     cy.request<GetExplorationDataResponse>(
       "GET",
       "/api/exploration/dimensions",
@@ -1146,7 +1146,34 @@ describe("scenarios > explorations > chart click-through", () => {
         cy.findByTestId("filter-pill")
           .should("be.visible")
           .invoke("text")
-          .should("match", /–/);
+          .should("match", /–/)
+          .as("exploreFilterPillText");
+
+        cy.intercept(
+          "POST",
+          `/api/exploration/${explorationId}/summary/append`,
+        ).as("appendSummary");
+
+        cy.findByRole("button", { name: "Add to Summary" }).click();
+        cy.wait("@appendSummary");
+
+        H.undoToastListContainer().within(() => {
+          cy.findByText(/Added to/).should("be.visible");
+          cy.findByRole("button", { name: "View" }).click();
+        });
+
+        cy.location("pathname").should(
+          "eq",
+          `/question/research/${explorationId}/summary`,
+        );
+        cy.findByTestId("document-card-embed", { timeout: 15000 })
+          .should("be.visible")
+          .findByTestId("filter-pill")
+          .should("be.visible")
+          .invoke("text")
+          .then((text) => {
+            cy.get("@exploreFilterPillText").should("eq", text);
+          });
       });
     });
   });

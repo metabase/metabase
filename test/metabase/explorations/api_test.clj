@@ -1682,10 +1682,54 @@
           (is (string? (:chart_href attrs)))
           (is (string? (:child_target_id attrs)))
           (is (= [qid] (get-in attrs [:host_data :query_ids])))
+          (is (nil? (get-in attrs [:host_data :explore_filters]))
+              "unfiltered charts omit explore_filters from host_data")
           (is (uuid? (parse-uuid (str (:_id attrs))))
               "_id is stamped for per-node identity (string after JSON round-trip)")
           (is (false? (:is_placeholder doc))
               "first append clears is_placeholder"))))))
+
+(deftest exploration-append-bakes-explore-filters-into-host-data-test
+  (testing "Appending a chart from an explore-further thread snapshots explore_filters onto host_data"
+    (mt/with-temp [:model/User u {:email "append-filters@example.com"}
+                   :model/Card metric (venues-metric-card (:id u))]
+      (let [filter-value 2
+            field-ref    ["field" {} (mt/id :venues :price)]
+            created      (create-exploration! u
+                                              {:name       "append-filters"
+                                               :metrics    [{:card_id (:id metric)
+                                                             :dimension_mappings (venues-dimension-mappings)}]
+                                               :dimensions [{:dimension_id (duid "category") :display_name "Category"}
+                                                            {:dimension_id (duid "price") :display_name "Price"}]})
+            expl-id      (:id created)
+            page-id      (some :id (filter #(str/includes? (:name %) "Price")
+                                           (-> created :threads first :blocks first :pages)))
+            hydrated     (explore-further-and-hydrate! u expl-id page-id
+                                                       [{:operator      "="
+                                                         :field_ref     field-ref
+                                                         :value         filter-value
+                                                         :display_value "2"}])
+            new-thread   (->> hydrated :threads (sort-by :position) second)
+            qid          (-> new-thread :queries first :id)
+            qp-out       {:status :completed
+                          :data   {:cols [{:name "x" :source :breakout}
+                                          {:name "y" :source :aggregation}]
+                                   :rows [["a" 3] ["b" 1]]}
+                          :row_count 2}]
+        (store-fake-result! qid qp-out)
+        (mark-done! qid)
+        (t2/update! :model/ExplorationQuery qid {:dataset_query (:dataset_query metric)})
+        (let [doc   (mt/user-http-request u :post 200
+                                          (format "exploration/%d/summary/append" expl-id)
+                                          (assoc append-display+viz :exploration_query_ids [qid]))
+              attrs (-> (t2/select-one-fn :document :model/Document :id (:id doc))
+                        :content last :content first :attrs)]
+          (is (= [qid] (get-in attrs [:host_data :query_ids])))
+          (is (=? [{:operator       "="
+                    :value          filter-value
+                    :dimension_name "Price"
+                    :display_value  "2"}]
+                  (get-in attrs [:host_data :explore_filters]))))))))
 
 (deftest exploration-append-rolls-back-on-failure-test
   (testing "When a write fails partway through, the composite StoredResult / Card / use rows all roll back — no orphans"
