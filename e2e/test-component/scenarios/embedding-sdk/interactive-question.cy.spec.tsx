@@ -154,6 +154,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       });
 
       popover().findByRole("option", { name: "weekly" }).click();
+      selectScheduleTime();
       modal().within(() => {
         cy.button("Save changes").click();
         cy.findByRole("heading", { name: "Edit alerts" }).should("be.visible");

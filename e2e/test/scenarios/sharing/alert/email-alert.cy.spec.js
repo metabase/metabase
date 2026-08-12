@@ -167,6 +167,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       .should("have.attr", "value", "weekly")
       .should("have.attr", "aria-selected", "false")
       .click();
+    H.selectScheduleTime();
     cy.button("Save changes").click();
 
     cy.log("Check that /api/card has still only been called once");
