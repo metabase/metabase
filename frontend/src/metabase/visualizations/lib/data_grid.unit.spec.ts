@@ -1,43 +1,62 @@
 import _ from "underscore";
 
+import { checkNotNull } from "metabase/utils/types";
 import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_SHOW_TOTALS,
   COLUMN_SORT_ORDER,
+  type COLUMN_SORT_ORDER_ASC,
+  type COLUMN_SORT_ORDER_DESC,
   COLUMN_SPLIT_SETTING,
+  type MultiLevelPivotData,
   multiLevelPivot,
   pivot,
 } from "metabase/visualizations/lib/data_grid";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { HeaderItem } from "metabase/visualizations/visualizations/PivotTable/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
+import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
-const dimension = (i) => ({
-  name: "D" + i,
-  display_name: "Dimension " + i,
-  base_type: TYPE.Text,
-  source: "breakout",
-});
+const dimension = (i: number) =>
+  createMockColumn({
+    name: "D" + i,
+    display_name: "Dimension " + i,
+    base_type: TYPE.Text,
+    source: "breakout",
+  });
 
 const D1 = dimension(1);
 const D2 = dimension(2);
 const D3 = dimension(3);
 const D4 = dimension(4);
 
-const M = { name: "M", display_name: "Metric", base_type: TYPE.Integer };
+const M = createMockColumn({
+  name: "M",
+  display_name: "Metric",
+  base_type: TYPE.Integer,
+});
 
-function makeData(rows) {
-  return {
+const PIVOT_GROUPING_COLUMN = createMockColumn({
+  name: "pivot-grouping",
+  base_type: TYPE.Text,
+});
+
+function makeData(rows: RowValues[]) {
+  return createMockDatasetData({
     rows: rows,
     cols: [D1, D2, M],
-  };
+  });
 }
 
-function makePivotData(rows, cols) {
-  cols = cols || [D1, D2, M];
-
+function makePivotData(rows: RowValues[], cols: DatasetColumn[] = [D1, D2, M]) {
   const primaryGroup = 0;
   return {
     rows: rows.map((row) => [...row, primaryGroup]),
-    cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
+    cols: [...cols, PIVOT_GROUPING_COLUMN],
   };
 }
 
@@ -134,14 +153,14 @@ describe("data_grid", () => {
     });
 
     it("should format hour-of-day pivot column headers without the date (metabase#74525)", () => {
-      const Dhour = {
+      const Dhour = createMockColumn({
         name: "Dhour",
         display_name: "Created At: Hour of day",
         base_type: TYPE.DateTime,
         unit: "hour-of-day",
         source: "breakout",
-      };
-      const data = {
+      });
+      const data = createMockDatasetData({
         rows: [
           ["a", "2020-01-01T00:00:00", 1],
           ["a", "2020-01-01T06:00:00", 2],
@@ -149,8 +168,8 @@ describe("data_grid", () => {
           ["b", "2020-01-01T06:00:00", 4],
         ],
         cols: [D1, Dhour, M],
-      };
-      const settings = {
+      });
+      const settings: ComputedVisualizationSettings = {
         column: (col) =>
           col === Dhour
             ? {
@@ -196,16 +215,28 @@ describe("data_grid", () => {
   });
 
   describe("multiLevelPivot", () => {
-    const getValues = (items) => _.pluck(items, "value");
-    const getPathsAndValues = (items) =>
+    const getValues = (items: HeaderItem[]) => _.pluck(items, "value");
+    const getPathsAndValues = (items: HeaderItem[]) =>
       items.map((item) => _.pick(item, "path", "value"));
 
-    // This function adds fake field_refs so the settings can be associated with columns in the data
+    type MultiLevelPivotOptions = {
+      collapsedRows?: string[];
+      columnSorts?: (
+        | typeof COLUMN_SORT_ORDER_ASC
+        | typeof COLUMN_SORT_ORDER_DESC
+      )[];
+      columnShowTotals?: (boolean | null)[];
+      showColumnTotals?: boolean;
+      showRowTotals?: boolean;
+      condenseDuplicateTotals?: boolean;
+    };
+
+    // The settings are associated with columns in the data by column name
     const multiLevelPivotForIndexes = (
-      data,
-      columns,
-      rows,
-      values,
+      data: Pick<DatasetData, "rows" | "cols">,
+      columns: number[],
+      rows: number[],
+      values: number[],
       {
         collapsedRows = [],
         columnSorts = [],
@@ -213,14 +244,16 @@ describe("data_grid", () => {
         showColumnTotals = true,
         showRowTotals = true,
         condenseDuplicateTotals = true,
-      } = {},
+      }: MultiLevelPivotOptions = {},
     ) => {
-      const settings = {
+      const settings: ComputedVisualizationSettings = {
         column: (column) => {
-          const columnIndex = column.field_ref[1];
+          const columnIndex = data.cols.findIndex(
+            (col) => col.name === column.name,
+          );
           return {
             column,
-            [COLUMN_SHOW_TOTALS]: columnShowTotals[columnIndex],
+            [COLUMN_SHOW_TOTALS]: columnShowTotals[columnIndex] ?? undefined,
             [COLUMN_SORT_ORDER]: columnSorts[columnIndex],
           };
         },
@@ -228,19 +261,12 @@ describe("data_grid", () => {
           { columns, rows, values },
           (indexes) => indexes.map((index) => data.cols[index].name),
         ),
-        [COLLAPSED_ROWS_SETTING]: { value: collapsedRows },
+        [COLLAPSED_ROWS_SETTING]: { rows: [], value: collapsedRows },
         "pivot.show_row_totals": showRowTotals,
         "pivot.show_column_totals": showColumnTotals,
         "pivot.condense_duplicate_totals": condenseDuplicateTotals,
       };
-      data = {
-        ...data,
-        cols: data.cols.map((col, index) => ({
-          ...col,
-          field_ref: ["fake field ref", index],
-        })),
-      };
-      return multiLevelPivot(data, settings);
+      return checkNotNull(multiLevelPivot(data, settings));
     };
 
     const data = makePivotData([
@@ -347,8 +373,16 @@ describe("data_grid", () => {
         [
           D1,
           D2,
-          { name: "M1", display_name: "Metric 1", base_type: TYPE.Integer },
-          { name: "M2", display_name: "Metric 2", base_type: TYPE.Integer },
+          createMockColumn({
+            name: "M1",
+            display_name: "Metric 1",
+            base_type: TYPE.Integer,
+          }),
+          createMockColumn({
+            name: "M2",
+            display_name: "Metric 2",
+            base_type: TYPE.Integer,
+          }),
         ],
       );
 
@@ -375,13 +409,17 @@ describe("data_grid", () => {
         [
           D1,
           D2,
-          {
+          createMockColumn({
             name: "D3",
             display_name: "Dimension 3",
             base_type: TYPE.Text,
             source: "breakout",
-          },
-          { name: "M1", display_name: "Metric", base_type: TYPE.Integer },
+          }),
+          createMockColumn({
+            name: "M1",
+            display_name: "Metric",
+            base_type: TYPE.Integer,
+          }),
         ],
       );
 
@@ -419,25 +457,25 @@ describe("data_grid", () => {
       const data = makePivotData(
         [[1, "2020-01-01T00:00:00", 1000]],
         [
-          {
+          createMockColumn({
             name: "D1",
             display_name: "Dimension 1",
             base_type: TYPE.Float,
             binning_info: { bin_width: 10 },
             source: "breakout",
-          },
-          {
+          }),
+          createMockColumn({
             name: "D2",
             display_name: "Dimension 2",
             base_type: TYPE.DateTime,
             source: "breakout",
-          },
-          {
+          }),
+          createMockColumn({
             name: "M1",
             display_name: "Metric",
             base_type: TYPE.Integer,
             semantic_type: "type/Currency",
-          },
+          }),
         ],
       );
 
@@ -453,15 +491,15 @@ describe("data_grid", () => {
         [[1, 1000]],
         [
           D1,
-          {
+          createMockColumn({
             name: "M1",
             display_name: "Metric",
             base_type: TYPE.Integer,
             semantic_type: "type/Currency",
-          },
+          }),
         ],
       );
-      let getRowSection;
+      let getRowSection: MultiLevelPivotData["getRowSection"];
       ({ getRowSection } = multiLevelPivotForIndexes(data, [0], [], [1]));
       expect(getValues(getRowSection(0, 0))).toEqual(["1,000"]);
       ({ getRowSection } = multiLevelPivotForIndexes(data, [], [0], [1]));
@@ -478,17 +516,17 @@ describe("data_grid", () => {
         [
           D1,
           D2,
-          {
+          createMockColumn({
             name: "M1",
             display_name: "Metric 1",
             base_type: TYPE.DateTime,
-          },
-          {
+          }),
+          createMockColumn({
             name: "M2",
             display_name: "Metric 2",
             base_type: TYPE.Integer,
             semantic_type: "type/Currency",
-          },
+          }),
         ],
       );
 
@@ -521,7 +559,7 @@ describe("data_grid", () => {
       ];
       const data = {
         rows,
-        cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
+        cols: [...cols, PIVOT_GROUPING_COLUMN],
       };
       const { getRowSection, rowCount, columnCount } =
         multiLevelPivotForIndexes(data, [], [0, 1], [2]);
@@ -594,13 +632,13 @@ describe("data_grid", () => {
       });
 
       it("should numbers correctly", () => {
-        const D = {
+        const D = createMockColumn({
           name: "D",
           display_name: "Dimension",
           base_type: TYPE.Float,
           binning_info: { bin_width: 1 },
           source: "breakout",
-        };
+        });
 
         const data = makePivotData(
           [
@@ -650,7 +688,7 @@ describe("data_grid", () => {
         ];
         const data = {
           rows,
-          cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
+          cols: [...cols, PIVOT_GROUPING_COLUMN],
         };
 
         it("hides single collapsed rows", () => {
@@ -733,7 +771,7 @@ describe("data_grid", () => {
         ];
         const data = {
           rows,
-          cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }, M],
+          cols: [...cols, PIVOT_GROUPING_COLUMN, M],
         };
 
         it("should convert single rows to subtotal rows when collapsed", () => {
@@ -820,7 +858,7 @@ describe("data_grid", () => {
       ];
       const data = {
         rows,
-        cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
+        cols: [...cols, PIVOT_GROUPING_COLUMN],
       };
       const { rowCount, columnCount, getRowSection } =
         multiLevelPivotForIndexes(data, [3], [0, 1, 2], [4]);
