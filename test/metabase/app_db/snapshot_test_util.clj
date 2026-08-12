@@ -171,17 +171,30 @@
      (with-open [stmt (.createStatement conn)]
        (doseq [sql before]
          (.execute stmt sql))
-       (try
-         (doseq [sql stmts]
-           (try
-             (.execute stmt sql)
-             (catch Throwable e
-               (throw (ex-info "Error loading app DB snapshot statement"
-                               {:version version, :flavor flavor, :statement sql}
-                               e)))))
-         (finally
-           (doseq [sql after]
-             (.execute stmt sql)))))
+       ;; The whole load goes in one transaction. A snapshot is thousands of statements, and left in autocommit each
+       ;; one is a transaction of its own: on Postgres that made loading the snapshot cost more than replaying the
+       ;; changelog it stands in for. Statements the MySQL family commits implicitly are unaffected either way.
+       (let [autocommit? (.getAutoCommit conn)]
+         (when autocommit?
+           (.setAutoCommit conn false))
+         (try
+           (doseq [sql stmts]
+             (try
+               (.execute stmt sql)
+               (catch Throwable e
+                 (throw (ex-info "Error loading app DB snapshot statement"
+                                 {:version version, :flavor flavor, :statement sql}
+                                 e)))))
+           (.commit conn)
+           (catch Throwable e
+             ;; without this, restoring autocommit below would commit however much of the load got through
+             (try (.rollback conn) (catch Throwable _))
+             (throw e))
+           (finally
+             (doseq [sql after]
+               (.execute stmt sql))
+             (when autocommit?
+               (.setAutoCommit conn true))))))
      ;; Postgres runs DDL inside the transaction, and anything that has already opened Liquibase against this
      ;; connection has left autocommit off. Liquibase rolls back before taking its changelog lock, which would undo
      ;; the entire load, so make it durable here.
