@@ -10,7 +10,6 @@ import type {
 import type { DrillThruDisplayInfo } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-
 export class Mode implements ClickActionsMode {
   _question: Question;
   _queryMode: QueryClickActionsMode;
