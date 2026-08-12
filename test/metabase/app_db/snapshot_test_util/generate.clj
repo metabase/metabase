@@ -16,9 +16,9 @@
    [metabase.app-db.snapshot-test-util.h2 :as snapshot.h2]
    [metabase.app-db.snapshot-test-util.mysql :as snapshot.mysql]
    [metabase.app-db.snapshot-test-util.postgres :as snapshot.postgres]
+   [metabase.app-db.snapshot-test-util.server :as server]
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -41,68 +41,61 @@
        (str/join (str ";\n" snapshot/statement-separator "\n") statements)
        ";\n"))
 
-(defn dump-snapshot
-  "Migrate a throwaway empty app DB of `db-type` through
-  [[metabase.app-db.snapshot-test-util/through-changeset-id]] and dump it, returning `{:flavor ..., :content ...}`:
-  the dialect the server turned out to be, and the text its snapshot file should hold. Writes nothing, so a test can
-  ask what regenerating would produce without touching what is checked in.
+(defn- migrate-and-dump
+  "Migrate the empty DB `server` is running -- or an in-memory H2 one, when `server` is nil -- through the snapshot
+  boundary and dump it."
+  [flavor version server]
+  (let [db-type     (if server (:db-type server) :h2)
+        through     (snapshot/through-changeset-id version)
+        data-source (mdb.test-util/->ClojureJDBCSpecDataSource
+                     (if server
+                       (sql-jdbc.conn/connection-details->spec db-type (:details server))
+                       {:subprotocol "h2", :classname "org.h2.Driver"
+                        :subname (format "mem:app_db_snapshot_%05d;DB_CLOSE_DELAY=-1" (rand-int 100000))}))]
+    (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
+      ;; the image was chosen for a flavor, but only the running server can confirm it is that flavor -- MariaDB is
+      ;; reached as `:mysql`, and which MariaDB flavor it is depends on how it handles timestamps
+      (let [detected (snapshot/flavor conn db-type)]
+        (when-not (= detected flavor)
+          (throw (ex-info "The server started for this flavor reports a different one"
+                          {:flavor flavor, :detected detected}))))
+      (log/info (u/format-color 'blue "Migrating empty %s app db through %s..." flavor through))
+      ;; the same bindings [[impl/do-with-temp-empty-app-db]] installs, plus the sample content every test app DB is
+      ;; set up without: custom migrations read the app DB through the dynamic var, and must not hand work to Quartz
+      ;; against a DB that is about to vanish
+      (binding [mdb.connection/*application-db*                (mdb.connection/application-db db-type data-source)
+                custom-migrations.util/*allow-temp-scheduling* false
+                custom-migrations/*create-sample-content*      false]
+        (impl/run-migrations-in-range! conn ["v00.00-000" through]))
+      {:flavor  flavor
+       :content (file-content version flavor
+                              (dump/dump-statements (flavor->dumper flavor) server conn))})))
 
-  Needs a working `docker` for everything but `:h2` -- the dump clients are run out of pinned images, so that what
-  this writes does not depend on which client the machine happens to have -- plus the usual `MB_<DB>_TEST_*` env vars
-  pointing at a server it may create databases on, published on a port reachable from another container.
+(defn dump-snapshot!
+  "Migrate an empty app DB of `flavor` through [[metabase.app-db.snapshot-test-util/through-changeset-id]] and dump
+  it, returning `{:flavor ..., :content ...}`: the dialect it was taken as, and the text its snapshot file should
+  hold. Writes nothing, so a test can ask what regenerating would produce without touching what is checked in.
 
-  Deliberately creates its own DB rather than using [[metabase.app-db.schema-migrations-test.impl]]'s harness,
-  because the dump tools need the raw connection details that harness hides."
-  ([db-type]
-   (dump-snapshot db-type snapshot/snapshot-version))
-  ([db-type version]
-   (let [h2?     (= db-type :h2)
-         through (snapshot/through-changeset-id version)
-         dbdef   {:database-name (format "app_db_snapshot_%05d" (rand-int 100000))
-                  :table-definitions []}
-         details (delay (tx/dbdef->connection-details db-type :db dbdef))]
-     (try
-       (when-not h2?
-         (tx/create-db! db-type dbdef))
-       (let [data-source (mdb.test-util/->ClojureJDBCSpecDataSource
-                          (if h2?
-                            {:subprotocol "h2", :classname "org.h2.Driver"
-                             :subname (format "mem:%s;DB_CLOSE_DELAY=-1" (:database-name dbdef))}
-                            (sql-jdbc.conn/connection-details->spec db-type @details)))]
-         (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-           ;; the server decides which dialect this is, not `db-type`: MariaDB is reached as `:mysql`
-           (let [flavor (snapshot/flavor conn db-type)]
-             (log/info (u/format-color 'blue "Migrating empty %s app db through %s..." flavor through))
-             ;; the same bindings [[impl/do-with-temp-empty-app-db]] installs, plus the sample content every test app
-             ;; DB is set up without: custom migrations read the app DB through the dynamic var, and must not hand
-             ;; work to Quartz against a DB that is about to vanish
-             (binding [mdb.connection/*application-db*                (mdb.connection/application-db db-type data-source)
-                       custom-migrations.util/*allow-temp-scheduling* false
-                       custom-migrations/*create-sample-content*      false]
-               (impl/run-migrations-in-range! conn ["v00.00-000" through]))
-             (let [dumper (or (flavor->dumper flavor)
-                              (throw (ex-info "No dumper for this dialect" {:flavor flavor, :db-type db-type})))]
-               {:flavor  flavor
-                :content (file-content version flavor
-                                       (dump/dump-statements dumper (when-not h2? @details) conn))}))))
-       (finally
-         (when-not h2?
-           (tx/destroy-db! db-type dbdef)))))))
+  Everything but `:h2` runs against a server this starts itself, from the image
+  [[metabase.app-db.snapshot-test-util.server]] pins for the flavor, so all it needs is a working `docker` -- no
+  `MB_<DB>_TEST_*` and no server already running. That is what makes the file it produces the same here and in CI."
+  ([flavor]
+   (dump-snapshot! flavor snapshot/snapshot-version))
+  ([flavor version]
+   (if (= flavor :h2)
+     (migrate-and-dump flavor version nil)
+     (server/do-with-server! flavor #(migrate-and-dump flavor version %)))))
 
 (defn generate!
-  "Regenerate the checked-in snapshot for `db-type` and return the file written.
+  "Regenerate the checked-in snapshot for `flavor` and return the file written.
 
-  Which file gets written follows [[metabase.app-db.snapshot-test-util/flavor]], so regenerating the MariaDB snapshot
-  means running this with `:mysql` while `MB_MYSQL_TEST_*` points at a MariaDB server. See [[dump-snapshot]] for what
-  this needs.
-
-  Point it at the oldest server version the `app-db-snapshot` workflow tests that dialect against, which is the one
-  that workflow leaves `regeneration-server` set on. A dump taken from a newer server can describe the same schema in
-  ways an older one never writes, and a snapshot has to load into every version in that matrix."
-  ([db-type]
-   (generate! db-type snapshot/snapshot-version))
-  ([db-type version]
-   (let [{:keys [flavor content]} (dump-snapshot db-type version)
+  `flavor` is the dialect the file is for, one of [[metabase.app-db.snapshot-test-util.server/flavors]] -- there is a
+  file per flavor, so regenerating the MariaDB one means passing `:mariadb`, not the `:mysql` it is reached as. See
+  [[dump-snapshot!]] for what this needs."
+  ([flavor]
+   (generate! flavor snapshot/snapshot-version))
+  ([flavor version]
+   (let [{:keys [flavor content]} (dump-snapshot! flavor version)
          file                     (io/file "test_resources" (snapshot/resource-path version flavor "sql"))]
      (io/make-parents file)
      (spit file content)

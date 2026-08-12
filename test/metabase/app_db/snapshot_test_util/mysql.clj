@@ -1,6 +1,6 @@
 (ns metabase.app-db.snapshot-test-util.mysql
-  "Dumps a MySQL-family app DB with a dump client run out of a pinned client image. Covers MariaDB too: the dump is
-  taken the same way, only the client and a couple of flags differ."
+  "Dumps a MySQL-family app DB with the dump client shipped in the server's own container. Covers MariaDB too: the
+  dump is taken the same way, only the client and a couple of flags differ."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -61,36 +61,33 @@
             default_character_set_name default_collation_name)))
 
 (def ^:private flavor->client
-  "Image and binary each flavor's dump client comes from.
-
-  MySQL and MariaDB need different clients rather than one that covers both: MySQL's asks any server reporting 8.0 or
-  newer for `information_schema.COLUMN_STATISTICS`, a table only MySQL has, so it fails outright against MariaDB 11
-  and up, and it cannot authenticate against a MariaDB old enough to still want `mysql_native_password`. Each entry
-  is the newest of its family, which is what a client has to be to read every server version that writes its file."
-  {:mysql                    ["mysql:9" "mysqldump"]
-   :mariadb                  ["mariadb:latest" "mariadb-dump"]
-   :mariadb-legacy-timestamp ["mariadb:latest" "mariadb-dump"]})
+  "The dump client each flavor's server ships. MySQL and MariaDB do not share one: MySQL's asks any server reporting
+  8.0 or newer for `information_schema.COLUMN_STATISTICS`, a table only MySQL has, and so fails outright against
+  MariaDB 11 and up."
+  {:mysql                    "mysqldump"
+   :mariadb                  "mariadb-dump"
+   :mariadb-legacy-timestamp "mariadb-dump"})
 
 (defrecord MysqlDumper [flavor]
   dump/Dumper
-  (dump-statements [_dumper {:keys [host port db user]} conn]
+  (dump-statements [_dumper {:keys [exec!] {:keys [db user]} :details} conn]
     ;; `--protocol=TCP` because the MySQL client silently ignores `--port` and uses a unix socket when the host is
-    ;; `localhost`, which is not necessarily the server the migration just ran against. `--skip-no-autocommit` because
-    ;; mariadb-dump otherwise wraps the inserts in an autocommit toggle, and the `SET`s around it are dropped as noise
-    ;; while the `COMMIT` between them is not. `--set-gtid-purged` is MySQL-only, so it is passed only for MySQL.
-    (let [[image tool] (flavor->client flavor)
-          dumped       (dump-util/lines->statements
-                        (drop-version-gated-blocks
-                         (drop-sandbox-directive
-                          (str/split-lines
-                           (apply dump-util/sh!
-                                  (concat (dump-util/client-command image tool)
-                                          ["--compact" "--skip-extended-insert" "--skip-add-locks"
-                                           "--skip-disable-keys" "--skip-set-charset" "--complete-insert"
-                                           "--no-tablespaces" "--protocol=TCP" "--skip-no-autocommit"]
-                                          (when (= flavor :mysql) ["--set-gtid-purged=OFF"])
-                                          [(str "--host=" (dump-util/client-host host)) (str "--port=" port)
-                                           (str "--user=" user) (str db)]))))))]
+    ;; `localhost`. `--skip-no-autocommit` because mariadb-dump otherwise wraps the inserts in an autocommit toggle,
+    ;; and the `SET`s around it are dropped as noise while the `COMMIT` between them is not. `--set-gtid-purged` is
+    ;; MySQL-only, so it is passed only for MySQL. The host and port are the ones the server listens on inside its
+    ;; container, not the ones this JVM reaches it by, because `exec!` runs there.
+    (let [dumped (dump-util/lines->statements
+                  (drop-version-gated-blocks
+                   (drop-sandbox-directive
+                    (str/split-lines
+                     (apply exec!
+                            (concat [(flavor->client flavor)
+                                     "--compact" "--skip-extended-insert" "--skip-add-locks"
+                                     "--skip-disable-keys" "--skip-set-charset" "--complete-insert"
+                                     "--no-tablespaces" "--protocol=TCP" "--skip-no-autocommit"]
+                                    (when (= flavor :mysql) ["--set-gtid-purged=OFF"])
+                                    ["--host=127.0.0.1" "--port=3306"
+                                     (str "--user=" user) (str db)]))))))]
       (-> [(database-charset-statement conn db)]
           (into dumped)
           ;; views last: they read from the tables above, and none of them reads from another view
