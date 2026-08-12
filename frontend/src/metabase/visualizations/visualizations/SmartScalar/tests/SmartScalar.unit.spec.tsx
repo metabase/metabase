@@ -24,7 +24,7 @@ const setup = (series: Series, width = 800) =>
 
 describe("SmartScalar", () => {
   describe("current metric display", () => {
-    it("should show metric value and date", () => {
+    it("should show metric value and date", async () => {
       const rows = [
         ["2019-10-01T00:00:00", 100],
         ["2019-11-01T00:00:00", 120],
@@ -33,7 +33,7 @@ describe("SmartScalar", () => {
 
       setup(series({ rows, insights }));
 
-      expect(screen.getByText("120")).toBeInTheDocument();
+      expect(await screen.findByText("120")).toBeInTheDocument();
       expect(screen.getByText("Nov 2019")).toBeInTheDocument();
     });
   });

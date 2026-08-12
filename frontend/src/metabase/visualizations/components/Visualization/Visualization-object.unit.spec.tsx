@@ -52,12 +52,12 @@ function setup({
 }
 
 describe("visualization - object", () => {
-  it("render fields with 'visibility_type' set as 'details-only'", () => {
+  it("render fields with 'visibility_type' set as 'details-only'", async () => {
     const rows = [["John", "John Smith Jr"]];
 
     setup({ rows, longNameVisibility: "details-only" });
 
-    expect(screen.getByText("Long name")).toBeInTheDocument();
+    expect(await screen.findByText("Long name")).toBeInTheDocument();
     expect(screen.getByText("John Smith Jr")).toBeInTheDocument();
   });
 });
