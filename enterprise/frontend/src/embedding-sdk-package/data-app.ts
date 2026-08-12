@@ -26,6 +26,8 @@ export {
 export type {
   LocalFieldReference,
   MetabaseBreakout,
+  MetabaseDynamicColumn,
+  MetabaseDynamicQuery,
   MetabaseOrderBy,
   MetabaseQueryOptions,
   MetabaseQueryObject,
