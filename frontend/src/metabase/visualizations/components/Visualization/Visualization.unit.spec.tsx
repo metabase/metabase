@@ -50,6 +50,32 @@ const MockedVisualization = Object.assign(
 
 registerVisualization(MockedVisualization);
 
+// A cast is needed because the registry is keyed by the known display types.
+const LAZY_MOCK_DISPLAY = "lazy-mocked-visualization" as VisualizationDisplay;
+
+let resolveLazyMockedVisualization: () => void;
+
+// One promise for every call, the way the bundler de-duplicates `import()`.
+const lazyMockedVisualization = new Promise<() => JSX.Element>((resolve) => {
+  resolveLazyMockedVisualization = () =>
+    resolve(() => <div>Hello, I am loaded on demand</div>);
+});
+
+registerVisualization(
+  {
+    getUiName: () => "Lazy Mocked Visualization",
+    identifier: LAZY_MOCK_DISPLAY,
+    iconName: "unknown",
+    noHeader: true,
+    minSize: { width: 1, height: 1 },
+    defaultSize: { width: 4, height: 4 },
+    settings: {},
+    isSensible: () => false,
+    checkRenderable: () => undefined,
+  },
+  () => lazyMockedVisualization,
+);
+
 describe("Visualization", () => {
   const renderViz = async (
     series: RawSeries | undefined,
@@ -153,6 +179,30 @@ describe("Visualization", () => {
     expect(
       await screen.findByTestId("development-watermark"),
     ).toBeInTheDocument();
+  });
+
+  describe("with a component that loads on demand", () => {
+    it("should render the chart once its chunk resolves", async () => {
+      await renderViz([
+        {
+          card: createMockCard({ display: LAZY_MOCK_DISPLAY }),
+          data: createMockDatasetData({
+            cols: [createMockNumericColumn({ name: "Count" })],
+            rows: [[1]],
+          }),
+        },
+      ]);
+
+      expect(
+        screen.queryByText("Hello, I am loaded on demand"),
+      ).not.toBeInTheDocument();
+
+      resolveLazyMockedVisualization();
+
+      expect(
+        await screen.findByText("Hello, I am loaded on demand"),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("scalar", () => {

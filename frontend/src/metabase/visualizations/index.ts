@@ -1,4 +1,5 @@
-import type { ComponentType } from "react";
+import { type ComponentType, lazy } from "react";
+import { isValidElementType } from "react-is";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,6 +16,7 @@ import type {
 import type { RemappingHydratedDatasetColumn } from "./types";
 import type {
   Visualization,
+  VisualizationComponent,
   VisualizationDefinition,
 } from "./types/visualization";
 
@@ -22,9 +24,19 @@ import type {
 // bundles register full components carrying their definition statics.
 export type RegisteredVisualization = Visualization | VisualizationDefinition;
 
+// A definition can be registered together with a loader for its component, so
+// the chart itself stays out of the initial bundle.
+export type VisualizationComponentLoader =
+  () => Promise<VisualizationComponent>;
+
 const visualizations = new Map<VisualizationDisplay, RegisteredVisualization>();
 const aliases = new Map<string, RegisteredVisualization>();
 const settingWidgets = new Map<string, ComponentType<any>>();
+const componentLoaders = new Map<
+  VisualizationDisplay,
+  VisualizationComponentLoader
+>();
+const lazyComponents = new Map<VisualizationDisplay, VisualizationComponent>();
 visualizations.get = function (key) {
   return (
     Map.prototype.get.call(this, key) ||
@@ -40,13 +52,18 @@ export function setDefaultVisualization(
   defaultVisualization = visualization;
 }
 
+// A component is a function, a class, or one of the exotic objects that memo,
+// forwardRef and lazy return. A bare definition is a plain object.
 function isVisualizationComponent(
   visualization: RegisteredVisualization | undefined,
-) {
-  return typeof visualization === "function";
+): visualization is Visualization {
+  return isValidElementType(visualization);
 }
 
-export function registerVisualization(visualization: RegisteredVisualization) {
+export function registerVisualization(
+  visualization: RegisteredVisualization,
+  loadComponent?: VisualizationComponentLoader,
+) {
   if (visualization == null) {
     throw new Error(t`Visualization is null`);
   }
@@ -88,8 +105,62 @@ export function registerVisualization(visualization: RegisteredVisualization) {
     }
   }
   visualizations.set(identifier, visualization);
+  if (loadComponent) {
+    componentLoaders.set(identifier, loadComponent);
+  }
   for (const alias of visualization.aliases || []) {
     aliases.set(alias, visualization);
+  }
+}
+
+/**
+ * The component that renders a display type, wrapped in `lazy` when the
+ * definition was registered with a loader. Callers must render it inside a
+ * Suspense boundary.
+ */
+export function getVisualizationComponent(
+  display: VisualizationDisplay | null,
+): VisualizationComponent | undefined {
+  const visualization = getVisualization(display);
+
+  if (visualization == null) {
+    return undefined;
+  }
+
+  if (isVisualizationComponent(visualization)) {
+    return visualization;
+  }
+
+  const { identifier } = visualization;
+  const cachedComponent = lazyComponents.get(identifier);
+  if (cachedComponent) {
+    return cachedComponent;
+  }
+
+  const loadComponent = componentLoaders.get(identifier);
+  if (!loadComponent) {
+    return undefined;
+  }
+
+  const component = lazy(() =>
+    loadComponent().then((Chart) => ({ default: Chart })),
+  );
+  lazyComponents.set(identifier, component);
+  return component;
+}
+
+/**
+ * Start downloading a chart's chunk before it is rendered, typically while its
+ * data query is still in flight, so the chunk loads in parallel with the data.
+ * The bundler de-duplicates the request with the one `lazy` makes.
+ */
+export function prefetchVisualizationComponent(
+  display: VisualizationDisplay | null,
+) {
+  const visualization = getVisualization(display);
+
+  if (visualization != null && !isVisualizationComponent(visualization)) {
+    void componentLoaders.get(visualization.identifier)?.();
   }
 }
 
