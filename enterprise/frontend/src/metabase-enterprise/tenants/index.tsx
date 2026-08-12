@@ -69,8 +69,9 @@ import {
 /**
  * The tenant people and group pages wrap the admin pages of the same name, so
  * importing them here would hold those admin pages in the initial bundle. They
- * share the `admin` chunk with the pages they wrap: these routes sit under
- * `/admin`, so that chunk is already on its way.
+ * get a chunk of their own rather than the `admin` one: naming an `import()`
+ * into a chunk another site already names merges the two module sets, which
+ * copies whatever they shared into every other chunk that needs it.
  */
 const externalPeopleListing = () =>
   import(
