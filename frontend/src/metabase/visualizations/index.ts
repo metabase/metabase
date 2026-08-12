@@ -13,8 +13,6 @@ export {
   registerSettingWidgets,
   registerVisualization,
   setDefaultVisualization,
+  visualizations,
 } from "./lib/registry";
 export { extractRemappedColumns, extractRemappings } from "./lib/remapping";
-
-// eslint-disable-next-line import/no-default-export
-export { default } from "./lib/registry";

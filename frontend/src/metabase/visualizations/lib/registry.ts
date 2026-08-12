@@ -19,7 +19,10 @@ import type {
 // bundles register full components carrying their definition statics.
 export type RegisteredVisualization = Visualization | VisualizationDefinition;
 
-const visualizations = new Map<VisualizationDisplay, RegisteredVisualization>();
+export const visualizations = new Map<
+  VisualizationDisplay,
+  RegisteredVisualization
+>();
 const aliases = new Map<string, RegisteredVisualization>();
 const settingWidgets = new Map<string, ComponentType<any>>();
 visualizations.get = function (key) {
@@ -186,6 +189,3 @@ export function isCartesianChart(display: VisualizationDisplay) {
     settingNames.includes("graph.metrics")
   );
 }
-
-// eslint-disable-next-line import/no-default-export
-export default visualizations;

@@ -24,7 +24,7 @@ import {
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
-import visualizations, { type RegisteredVisualization } from "./registry";
+import { type RegisteredVisualization, visualizations } from "./registry";
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 const MAX_RECOMMENDED = 12;
