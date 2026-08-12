@@ -94,7 +94,7 @@ export const DefaultItemRenderer = ({
           createBookmark={createBookmark}
           deleteBookmark={deleteBookmark}
           isSelected={isSelected}
-          onToggleSelected={handleSelectionToggled}
+          onToggleSelected={canSelect ? handleSelectionToggled : undefined}
         />
       )}
       {visibleColumnsMap["archive"] && <Columns.Archive.Cell item={item} />}

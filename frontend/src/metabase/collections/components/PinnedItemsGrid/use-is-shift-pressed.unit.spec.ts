@@ -31,4 +31,29 @@ describe("useIsShiftPressed", () => {
 
     expect(result.current).toBe(false);
   });
+
+  it("does not track Shift while disabled", () => {
+    const { result } = renderHook(() => useIsShiftPressed(false));
+
+    fireEvent.keyDown(window, { key: "Shift", shiftKey: true });
+
+    expect(result.current).toBe(false);
+  });
+
+  it("resets when disabled and resumes tracking when re-enabled", () => {
+    let enabled = true;
+    const { result, rerender } = renderHook(() => useIsShiftPressed(enabled));
+
+    fireEvent.keyDown(window, { key: "Shift", shiftKey: true });
+    expect(result.current).toBe(true);
+
+    enabled = false;
+    rerender();
+    expect(result.current).toBe(false);
+
+    enabled = true;
+    rerender();
+    fireEvent.keyDown(window, { key: "Shift", shiftKey: true });
+    expect(result.current).toBe(true);
+  });
 });

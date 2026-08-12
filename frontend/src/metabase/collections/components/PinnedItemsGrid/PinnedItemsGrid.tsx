@@ -64,9 +64,9 @@ export function PinnedItemsGrid({
         }
       : skipToken,
   );
-  const isShiftPressed = useIsShiftPressed();
   const canSelect = canSelectItems(collection, onToggleSelected);
   const isSelectMode = canSelect && selected.length > 0;
+  const isShiftPressed = useIsShiftPressed(canSelect);
   const showSelectAffordance = canSelect && !isSelectMode && isShiftPressed;
 
   const sortedItems = useMemo(() => {

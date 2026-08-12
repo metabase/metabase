@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 
-export function useIsShiftPressed(): boolean {
+export function useIsShiftPressed(enabled = true): boolean {
   const [isShiftPressed, setIsShiftPressed] = useState(false);
 
   useEffect(() => {
+    if (!enabled) {
+      setIsShiftPressed(false);
+      return;
+    }
+
     const syncFromEvent = (event: KeyboardEvent) => {
       setIsShiftPressed(event.shiftKey);
     };
@@ -18,7 +23,7 @@ export function useIsShiftPressed(): boolean {
       window.removeEventListener("keyup", syncFromEvent);
       window.removeEventListener("blur", reset);
     };
-  }, []);
+  }, [enabled]);
 
   return isShiftPressed;
 }
