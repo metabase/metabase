@@ -222,66 +222,19 @@ describe("resetScheduleToTypeDefaults", () => {
     });
   });
 
-  it("should keep the monthly frame and weekday the previous schedule was on", () => {
+  it("should keep the monthly frame the previous schedule was on", () => {
     expect(
       resetScheduleToTypeDefaults(
-        {
-          schedule_type: "monthly",
-          schedule_day: "wed",
-          schedule_frame: "last",
-          schedule_hour: 20,
-          schedule_minute: 0,
-        },
+        { ...daily, schedule_frame: "mid" },
         "monthly",
         getScheduleDefaults,
       ),
     ).toEqual({
       schedule_type: "monthly",
-      schedule_day: "wed",
-      schedule_frame: "last",
-      schedule_hour: 8,
-      schedule_minute: 0,
-    });
-  });
-
-  it("should keep the weekday of a weekly schedule when switching to monthly", () => {
-    expect(
-      resetScheduleToTypeDefaults(
-        {
-          schedule_type: "weekly",
-          schedule_day: "fri",
-          schedule_frame: null,
-          schedule_hour: 20,
-          schedule_minute: 0,
-        },
-        "monthly",
-        getScheduleDefaults,
-      ),
-    ).toEqual({
-      schedule_type: "monthly",
-      schedule_day: "fri",
-      schedule_frame: "first",
-      schedule_hour: 8,
-      schedule_minute: 0,
-    });
-  });
-
-  it("should not keep a weekday the mid frame cannot have", () => {
-    expect(
-      resetScheduleToTypeDefaults(
-        {
-          schedule_type: "monthly",
-          schedule_day: "fri",
-          schedule_frame: "mid",
-          schedule_hour: 20,
-          schedule_minute: 0,
-        },
-        "monthly",
-        getScheduleDefaults,
-      ),
-    ).toMatchObject({
       schedule_day: null,
       schedule_frame: "mid",
+      schedule_hour: 8,
+      schedule_minute: 0,
     });
   });
 
