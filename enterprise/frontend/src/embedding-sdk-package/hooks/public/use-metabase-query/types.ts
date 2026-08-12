@@ -397,6 +397,7 @@ type StageClauses<TDimension, TAggregation, TFilter> = {
 type TableQueryBase<TTable> = {
   source: TTable extends TableSchema ? SourceQuerySpec<TTable> : TableSchema;
   fields?: readonly FieldReference<TTable>[];
+  savedQuestionSourceId?: number;
 } & StageClauses<
   FieldReference<TTable>,
   AnyAggregation<TTable>,
@@ -522,6 +523,44 @@ type InferQuerySchema<TEntity, TQuery> = DefaultSourceRow<TEntity, TQuery> &
     | QueryAggregationColumns<TQuery>
   >;
 
+type DefaultQuestionColumns<TEntity, TQuery> =
+  ReshapesResultColumns<TQuery> extends true
+    ? never
+    : TEntity extends { columns?: infer TColumns }
+      ? TupleElement<NonNullable<TColumns>>
+      : never;
+
+type QueryResultColumn<TEntity, TQuery> =
+  | DefaultTableColumns<TEntity, TQuery>
+  | DefaultQuestionColumns<TEntity, TQuery>
+  | QueryFieldColumns<TQuery>
+  | QueryBreakoutColumns<TQuery>
+  | QueryAggregationColumns<TQuery>;
+
+/**
+ * A column the static query returns — what the dynamic clauses take. Apps
+ * without a generated schema name a result column by hand.
+ */
+export type MetabaseDynamicColumn<TEntity = unknown, TQuery = unknown> = [
+  QueryResultColumn<TEntity, TQuery>,
+] extends [never]
+  ? SchemaColumn & { type: "column" }
+  : QueryResultColumn<TEntity, TQuery>;
+
+/**
+ * Clauses layered on top of a static query — the part a UI changes at runtime.
+ * They run as their own stage, so they see the static query's result columns and
+ * behave the same whether it runs from its table or from its published card.
+ */
+export type MetabaseDynamicQuery<
+  TEntity = unknown,
+  TQuery = unknown,
+> = StageClauses<
+  MetabaseDynamicColumn<TEntity, TQuery>,
+  DimensionAggregation<MetabaseDynamicColumn<TEntity, TQuery>>,
+  never
+>;
+
 type InferQueryEntity<TQuery> = TQuery extends { source: infer TTable }
   ? TTable
   : undefined;
@@ -530,8 +569,19 @@ type QueryEntity<TEntity, TQuery> = [TEntity] extends [undefined]
   ? InferQueryEntity<TQuery>
   : TEntity;
 
-export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
-  data: QueryData<InferQuerySchema<TEntity, TQuery>> | null;
+type InferResultSchema<TEntity, TQuery, TDynamic> =
+  ReshapesResultColumns<TDynamic> extends true
+    ? RowsFromColumns<
+        QueryBreakoutColumns<TDynamic> | QueryAggregationColumns<TDynamic>
+      >
+    : InferQuerySchema<TEntity, TQuery>;
+
+export type UseMetabaseQueryResult<
+  TEntity = unknown,
+  TQuery = unknown,
+  TDynamic = undefined,
+> = {
+  data: QueryData<InferResultSchema<TEntity, TQuery, TDynamic>> | null;
   isLoading: boolean;
   error: unknown;
   refetch: () => Promise<void>;
@@ -541,6 +591,7 @@ export type UseMetabaseQuery = <
   TEntity extends TableSchema | QuestionSchema | undefined = undefined,
   TSchema = unknown,
   const TQuery = MetabaseQueryOptions<TEntity, TSchema>,
+  const TDynamic = undefined,
 >(
   query: TQuery &
     (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
@@ -548,4 +599,8 @@ export type UseMetabaseQuery = <
         ? RequireAggregationsForBreakouts<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
-) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery>;
+  dynamicQuery?: TDynamic &
+    (TDynamic extends MetabaseDynamicQuery<TEntity, TQuery>
+      ? RequireAggregationsForBreakouts<TDynamic>
+      : MetabaseDynamicQuery<TEntity, TQuery>),
+) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery, TDynamic>;

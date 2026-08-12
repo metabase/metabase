@@ -14,6 +14,7 @@ import {
 import { mapDatasetQueryData } from "./map-dataset-query-data";
 import { stableStringifyQuery } from "./stable-query-key";
 import type {
+  MetabaseDynamicQuery,
   MetabaseQueryOptions,
   UseMetabaseQuery,
   UseMetabaseQueryResult,
@@ -26,9 +27,11 @@ const useMetabaseQueryImpl = <
     TEntity,
     TSchema
   >,
+  TDynamic extends MetabaseDynamicQuery | undefined = undefined,
 >(
   query: TQuery,
-): UseMetabaseQueryResult<TEntity, TQuery> => {
+  dynamicQuery?: TDynamic,
+): UseMetabaseQueryResult<TEntity, TQuery, TDynamic> => {
   const {
     state: {
       internalProps: { reduxStore },
@@ -40,20 +43,31 @@ const useMetabaseQueryImpl = <
   const queryDataset = getEmbeddingSdkBundle()?.queryDataset;
   const resolveDatasetQuery = getResolveDatasetQueryFromBundle();
 
-  const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
+  const queryKey = useMemo(
+    () => stableStringifyQuery([query, dynamicQuery]),
+    [query, dynamicQuery],
+  );
   const queryRef = useRef(query);
+  const dynamicQueryRef = useRef(dynamicQuery);
 
   useEffect(() => {
     queryRef.current = query;
-  }, [query, queryKey]);
+    dynamicQueryRef.current = dynamicQuery;
+  }, [query, dynamicQuery, queryKey]);
 
   const [{ value: data = null, loading: isLoading, error }, fetchQuery] =
     useAsyncFn(async (): Promise<
-      UseMetabaseQueryResult<TEntity, TQuery>["data"]
+      UseMetabaseQueryResult<TEntity, TQuery, TDynamic>["data"]
     > => {
       const currentQuery = queryRef.current;
+      const currentDynamicQuery = dynamicQueryRef.current;
 
-      if (currentQuery.enabled === false) {
+      // Either part can gate the query — a UI commonly holds the dynamic part
+      // back until the user has picked a value.
+      if (
+        currentQuery.enabled === false ||
+        currentDynamicQuery?.enabled === false
+      ) {
         return null;
       }
 
@@ -66,8 +80,10 @@ const useMetabaseQueryImpl = <
           return null;
         }
 
-        const datasetQuery =
-          await resolveDatasetQuery(reduxStore)(currentQuery);
+        const datasetQuery = await resolveDatasetQuery(reduxStore)(
+          currentQuery,
+          currentDynamicQuery,
+        );
         const result = await queryDataset(reduxStore)({ datasetQuery });
 
         return mapDatasetQueryData(result);
