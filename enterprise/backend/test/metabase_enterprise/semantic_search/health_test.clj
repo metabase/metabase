@@ -26,12 +26,19 @@
 (def ^:private embedding-model
   {:provider "ai-service", :model-name "test-model", :vector-dimensions 3})
 
+(def ^:private space-id
+  "The embedding space the active index was built in. Health compares this, not the settings keys."
+  "emb:v1:sha256:test")
+
+(def ^:private other-space-id
+  "A space the same settings could resolve to after a provider upgrade."
+  "emb:v1:sha256:old")
+
 (def ^:private active-index-embedding-model
   "The active index's :embedding-model, as produced by index-metadata/row->index: it carries bookkeeping
-  keys (:embedding-space-id, :embedding-spi-version) that get-configured-embedding-model never returns, so
-  a healthy fixture must include them to catch a comparison that (wrongly) expects an exact map match."
+  keys (:embedding-space-id, :embedding-spi-version) that get-configured-embedding-model never returns."
   (assoc embedding-model
-         :embedding-space-id "emb:v1:sha256:test"
+         :embedding-space-id space-id
          :embedding-spi-version 1))
 
 (def ^:private active-state
@@ -50,6 +57,7 @@
      semantic.env/get-pgvector-datasource! (constantly ::pgvector)
      semantic.env/get-index-metadata       (constantly ::index-metadata)
      semantic.env/get-configured-embedding-model (constantly embedding-model)
+     semantic.embedding/resolve-model      (constantly active-index-embedding-model)
      semantic.settings/semantic-search-vector-strategy (constantly :brute-force)
      embedding-health/request-circuit-recovery! (constantly nil)]
     (thunk)))
@@ -140,13 +148,21 @@
           embedding-health/embedding-service-reachable?        (constantly {:reachable? true :error nil})]
          (is (=? {:health 0 :message #".*required HNSW index is missing.*"}
                  (semantic.health/index-health-check)))))
-     (testing "an active index for a different embedding model degrades without probing the wrong model"
+     (testing "an index built in another embedding space degrades without probing the wrong model"
        (mt/with-dynamic-fn-redefs
          [semantic.index-metadata/get-active-index-state
-          (constantly (assoc-in active-state [:index :embedding-model :model-name] "old-model"))
+          (constantly (assoc-in active-state [:index :embedding-model :embedding-space-id] other-space-id))
           semantic.health/active-index-queryable? (constantly true)
           embedding-health/embedding-problem      #(throw (ex-info "must not probe configured model" {}))]
          (is (=? {:health 0 :message #".*active index embedding model does not match configured model.*"}
+                 (semantic.health/index-health-check)))))
+     (testing "a configured model the provider cannot resolve degrades, and is not read as a mismatch"
+       (mt/with-dynamic-fn-redefs
+         [semantic.index-metadata/get-active-index-state (constantly active-state)
+          semantic.health/active-index-queryable?        (constantly true)
+          semantic.embedding/resolve-model               (fn [_] (throw (ex-info "no provider" {})))
+          embedding-health/embedding-problem             #(throw (ex-info "must not probe" {}))]
+         (is (=? {:health 0 :message #".*cannot be resolved: no provider.*"}
                  (semantic.health/index-health-check)))))
      (testing "a non-closed breaker (open or half-open) still probes (so a recovered-but-idle embedder is
               detectable) and degrades identically in both states"
