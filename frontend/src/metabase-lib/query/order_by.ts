@@ -32,7 +32,15 @@ export function orderByClause(
   column: ColumnMetadata,
   direction?: OrderByDirection,
 ): OrderByClause {
-  return ML.order_by_clause(column, direction);
+  const clause = ML.order_by_clause(column, direction);
+  if (!isOrderByClause(clause)) {
+    throw new TypeError("Expected order_by_clause to return a clause");
+  }
+  return clause;
+}
+
+function isOrderByClause(clause: unknown): clause is OrderByClause {
+  return typeof clause === "object" && clause != null;
 }
 
 export function changeDirection(query: Query, clause: OrderByClause): Query {

@@ -24,6 +24,10 @@ jobs:
           # unrelated to embedding (EMB-765)
           echo "::remove-matcher owner=tsc::"
           bun run build-embedding-sdk-package
+      - name: Check release CLJS declarations
+        run: |
+          bun run type-check-generated-cljs:release
+          bun run check-generated-cljs-exports:release
       - name: Prepare Embedding SDK artifact
         uses: actions/upload-artifact@v7
         with:

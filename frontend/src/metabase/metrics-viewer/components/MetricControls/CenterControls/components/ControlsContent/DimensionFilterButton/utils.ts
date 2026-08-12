@@ -27,7 +27,7 @@ function toDatePickerValue(
         value: filter.value,
         offsetUnit: filter.offsetUnit ?? undefined,
         offsetValue: filter.offsetValue ?? undefined,
-        options: filter.options,
+        options: filter.options ?? undefined,
       };
     case "exclude-date":
       return {

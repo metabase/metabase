@@ -17,6 +17,9 @@ export const COLUMN_SORT_ORDER = "pivot_table.column_sort_order";
 export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
 
+/**
+ * @returns {import("../visualizations/PivotTable/types").PivotTableData | null}
+ */
 export function multiLevelPivot(data, settings) {
   if (!settings[COLUMN_SPLIT_SETTING]) {
     return null;
@@ -88,6 +91,14 @@ export function multiLevelPivot(data, settings) {
       makeColorGetter,
     );
 
+    /** @type {import("../visualizations/PivotTable/types").PivotTableData["getRowSection"]} */
+    const getRowSectionForCell = (columnIndex, rowIndex) => {
+      if (typeof getRowSection !== "function") {
+        throw new TypeError("Pivot table row section getter is not callable");
+      }
+      return getRowSection(columnIndex, rowIndex);
+    };
+
     // Ensure we have valid data structures even when totals are disabled
     if (
       !rowIndex ||
@@ -107,7 +118,7 @@ export function multiLevelPivot(data, settings) {
       rowCount: rowIndex.length,
       columnCount: columnIndex.length,
       rowIndex,
-      getRowSection,
+      getRowSection: getRowSectionForCell,
       rowIndexes: rowIndexes,
       columnIndexes: columnIndexes,
       valueIndexes: valueIndexes,

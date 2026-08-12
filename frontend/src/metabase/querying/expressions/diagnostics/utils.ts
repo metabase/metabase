@@ -30,7 +30,7 @@ type Positionable =
   | undefined
   | null;
 
-export function position(x: Positionable):
+export function position(x: unknown):
   | {
       pos?: number;
       len?: number;
@@ -45,7 +45,12 @@ export function position(x: Positionable):
   if ("token" in x) {
     return position(x.token);
   }
-  if ("pos" in x && "len" in x) {
+  if (
+    "pos" in x &&
+    "len" in x &&
+    typeof x.pos === "number" &&
+    typeof x.len === "number"
+  ) {
     return { pos: x.pos, len: x.len };
   }
   if (x instanceof Token) {

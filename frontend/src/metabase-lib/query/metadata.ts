@@ -84,107 +84,140 @@ export function metadataProvider(
   databaseId: DatabaseId | null,
   metadata: Metadata,
 ): MetadataProvider {
-  return ML.metadataProvider(databaseId, metadata);
+  const provider = ML.metadataProvider(databaseId, metadata);
+  if (!isMetadataProvider(provider)) {
+    throw new TypeError(
+      "Expected metadataProvider to return an opaque provider",
+    );
+  }
+  return provider;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
-declare function DisplayInfoFn(
+function isMetadataProvider(provider: unknown): provider is MetadataProvider {
+  return typeof provider === "object" && provider != null;
+}
+
+function isColumnGroup(value: unknown): value is ColumnGroup {
+  return typeof value === "object" && value != null;
+}
+
+function isColumnGroupArray(value: unknown): value is ColumnGroup[] {
+  return Array.isArray(value) && value.every(isColumnGroup);
+}
+
+export function displayInfo(
   query: Query,
   stageIndex: number,
   columnMetadata: ColumnMetadata,
 ): ColumnDisplayInfo;
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
-  columnGroup: ColumnGroup,
-): ColumnGroupDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   cardMetadata: CardMetadata,
 ): CardDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   tableMetadata: TableMetadata,
 ): TableDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   tableLike: CardMetadata | TableMetadata,
 ): CardDisplayInfo | TableDisplayInfo;
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
-  aggregationClause: AggregationClause,
-): AggregationClauseDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   aggregationOperator: AggregationOperator,
 ): AggregationOperatorDisplayInfo;
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
-  breakoutClause: BreakoutClause,
-): BreakoutClauseDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   orderByClause: OrderByClause,
 ): OrderByClauseDisplayInfo;
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
-  clause: Clause,
-): ClauseDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   bucket: Bucket,
 ): BucketDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   metric: MetricMetadata,
 ): MetricDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   measure: MeasureMetadata,
 ): MeasureDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   joinStrategy: JoinStrategy,
 ): JoinStrategyDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   drillThru: DrillThru,
 ): DrillThruDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   filterOperator: FilterOperator,
 ): FilterOperatorDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   segment: SegmentMetadata,
 ): SegmentDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   extraction: ColumnExtraction,
 ): ColumnExtractionInfo;
-
-// x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
-// should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
-export const displayInfo: typeof DisplayInfoFn = ML.display_info;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  metadata: ColumnMetadata | MeasureMetadata | MetricMetadata | SegmentMetadata,
+):
+  | ColumnDisplayInfo
+  | MeasureDisplayInfo
+  | MetricDisplayInfo
+  | SegmentDisplayInfo;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  columnGroup: ColumnGroup,
+): ColumnGroupDisplayInfo;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  breakoutClause: BreakoutClause,
+): BreakoutClauseDisplayInfo;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  aggregationClause: AggregationClause,
+): AggregationClauseDisplayInfo;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  clause: Clause,
+): ClauseDisplayInfo;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  x: unknown,
+): unknown {
+  return ML.display_info(query, stageIndex, x);
+}
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
-  return ML.group_columns(columns);
+  const groups = ML.group_columns(columns);
+  if (!isColumnGroupArray(groups)) {
+    throw new TypeError("Expected group_columns to return column groups");
+  }
+  return groups;
 }
 
 export function getColumnsFromColumnGroup(
@@ -237,14 +270,14 @@ export function fromLegacyColumn(
 }
 
 export function queryDisplayInfo(query: Query): QueryDisplayInfo {
-  /**
-   * Even though it seems weird to pass the same query two times,
-   * this function follows the same pattern as the other display_info overloads.
-   * The first two parameters are always a query, and a stage index.
-   * The third parameter is what you would like to have the info about.
-   * It just only happens that the thing we're examining is (again) the query itself.
-   */
-  return ML.display_info(query, -1, query);
+  const info = ML.display_info(query, -1, query);
+  if (
+    typeof info.isNative !== "boolean" ||
+    typeof info.isEditable !== "boolean"
+  ) {
+    throw new TypeError("Expected display_info to return query display info");
+  }
+  return { isNative: info.isNative, isEditable: info.isEditable };
 }
 
 export function dependentMetadata(
@@ -255,7 +288,7 @@ export function dependentMetadata(
   return ML.dependent_metadata(query, cardId, cardType);
 }
 
-export function columnKey(column: ColumnMetadata): string {
+export function columnKey(column: ColumnMetadata): string | null {
   return ML.column_key(column);
 }
 

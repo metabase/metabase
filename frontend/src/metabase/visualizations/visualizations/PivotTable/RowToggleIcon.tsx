@@ -5,17 +5,18 @@ import { Icon } from "metabase/ui";
 import { COLLAPSED_ROWS_SETTING } from "metabase/visualizations/lib/data_grid";
 import type {
   PivotTableCollapsedRowsSetting,
+  RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import { RowToggleIconRoot } from "./PivotTable.styled";
 
 interface RowToggleIconProps {
-  value: number | string[];
+  value: number | RowValue[] | null;
   settings: VisualizationSettings;
   updateSettings: (settings: VisualizationSettings) => void;
   hideUnlessCollapsed?: boolean;
-  rowIndex?: string[];
+  rowIndex?: RowValue[][];
   "data-testid"?: string;
 }
 

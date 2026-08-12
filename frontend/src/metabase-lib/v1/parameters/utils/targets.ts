@@ -79,7 +79,7 @@ export function getParameterTargetField(
     }
 
     const tagName = targetRef[1];
-    const tag = Lib.templateTags(query)[tagName];
+    const tag = Lib.templateTags(query)?.[tagName];
     if (tag == null || tag.dimension == null) {
       return null;
     }

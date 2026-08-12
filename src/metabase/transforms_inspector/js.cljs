@@ -1,11 +1,26 @@
 (ns metabase.transforms-inspector.js
   "Javascript-facing interface for transform inspector. Wraps functions in metabase.transforms-inspector.core"
   (:require
-   [metabase.transforms-inspector.core :as inspector]))
+   [metabase.transforms-inspector.core :as inspector]
+   [metabase.util.malli :as mu]))
 
 (def ^:private empty-triggers #js {:alerts #js [] :drill_lenses #js []})
 
-(defn ^:export evaluateTriggers
+(mu/defn ^:export evaluateTriggers :- [:any {:ts/object-of [:map
+                                                            [:alerts [:any {:ts/array-of [:map
+                                                                                          [:id :string]
+                                                                                          [:condition [:map
+                                                                                                       [:name :string]
+                                                                                                       [:card_id :string]]]
+                                                                                          [:severity [:enum "info" "warning" "error"]]
+                                                                                          [:message :string]]}]]
+                                                            [:drill_lenses [:any {:ts/array-of [:map
+                                                                                                [:lens_id :string]
+                                                                                                [:condition [:map
+                                                                                                             [:name :string]
+                                                                                                             [:card_id :string]]]
+                                                                                                [:params {:optional true} [:map-of :string [:or :string :int]]]
+                                                                                                [:reason {:optional true} :string]]}]]]}]
   "Evaluate all triggers. Returns {alerts: [...], drill_lenses: [...]}."
   [lens-js card-results-js]
   (if (and (empty? (unchecked-get lens-js "alert_triggers"))
@@ -18,7 +33,7 @@
           result (inspector/evaluate-triggers lens card-results)]
       (clj->js result))))
 
-(defn ^:export computeCardResult
+(mu/defn ^:export computeCardResult :- [:maybe [:any {:ts/object-of [:map-of :string :any]}]]
   "Compute derived fields from first row of query result for a card.
    Returns a JS object with computed fields, or null if no computation needed."
   [lens-id card-js rows-js]
@@ -28,7 +43,14 @@
     (when-let [result (inspector/compute-card-result lens-kw card row)]
       (clj->js result))))
 
-(defn ^:export interestingFields
+(mu/defn ^:export interestingFields :- [:any {:ts/array-of [:map
+                                                            [:name :string]
+                                                            [:id {:optional true} :int]
+                                                            [:display_name {:optional true} :string]
+                                                            [:base_type {:optional true} :string]
+                                                            [:semantic_type {:optional true} :string]
+                                                            [:stats {:optional true} :map]
+                                                            [:interestingness [:map [:score :double]]]]}]
   "Filter and sort fields by interestingness.
    Returns fields with score above threshold, sorted by score descending.
    Options: visited_fields (ignored for now), threshold (default 0.3), limit (default nil = all)."
@@ -40,7 +62,9 @@
                                             :threshold      (or threshold 0.3)
                                             :limit          limit}))))
 
-(defn ^:export isDegenerate
+(mu/defn ^:export isDegenerate :- [:any {:ts/object-of [:map
+                                                        [:degenerate :boolean]
+                                                        [:reason [:maybe :string]]]}]
   "Check if a card result is degenerate and shouldn't be displayed.
    Returns {degenerate: bool, reason: string|null}."
   [card-id display-type card-results-js]
