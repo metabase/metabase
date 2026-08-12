@@ -647,7 +647,9 @@
                 (ssrf-error #(driver.u/validate-connection-hosts! :postgres details)))
             (str "should be refused: " (pr-str details)))))
     (testing "a driver whose database really is a file, rather than a client with a default host, still has no host"
-      (is (nil? (driver.u/validate-connection-hosts! :sqlite {:db "/tmp/whatever.db"}))))
+      ;; master checks :sqlite here, but on this branch sqlite is still a driver module and not on the classpath of
+      ;; every backend test job; :h2 is the file-backed driver that ships in core here.
+      (is (nil? (driver.u/validate-connection-hosts! :h2 {:db "/tmp/whatever.db"}))))
     (testing "auth-provider URLs are fetched by Metabase itself, so they are checked too"
       (is (=? {:status-code 400}
               (ssrf-error #(driver.u/validate-connection-hosts!
