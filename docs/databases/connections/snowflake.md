@@ -63,9 +63,7 @@ Not required. You have the option of using a **Local file path** or an **Uploade
 
 ### Private key passphrase
 
-Only required if your private key is encrypted. Leave this blank if you generated your key with the `-nocrypt` option.
-
-Metabase supports encrypted PKCS#8 keys, which are files that start with `-----BEGIN ENCRYPTED PRIVATE KEY-----`.
+Only required if your private key is encrypted.
 
 ### Warehouse
 
