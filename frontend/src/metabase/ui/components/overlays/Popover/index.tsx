@@ -35,9 +35,9 @@ const PopoverDropdown = forwardRef(function PopoverDropdown(
  * Patches the shared `@mantine/core` object in place on purpose. Combobox, Menu,
  * HoverCard and ColorInput render `Popover.Dropdown` off it, and this is how they
  * inherit `PreventEagerPortal`. A copy would reach only direct `Popover` users.
- * The mutation is an import-time side effect, so `side-effect-free-modules.js`
- * lists this file in `SIDE_EFFECT_FULL_FILES` to keep it out of the
- * `sideEffects: false` rule that covers the rest of `metabase/ui`.
+ * The mutation is an import-time side effect, so this file has to keep running
+ * even when nothing imports `Popover` from it. Any future attempt to mark
+ * `metabase/ui` as `sideEffects: false` must exclude this file.
  */
 export const Popover = Object.assign(MantinePopover, {
   Dropdown: Object.assign(PopoverDropdown, {
