@@ -25,7 +25,10 @@
 (defmethod serdes/make-spec "EmbeddingTheme"
   [_model-name _opts]
   {:copy      [:entity_id :name :settings]
-   :skip      []
+   ;; is_default records whether this instance seeded the row, not anything about
+   ;; the theme, so it does not travel. An imported theme lands as false, i.e. the
+   ;; admin's own -- which is what importing one is.
+   :skip      [:is_default]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)}})
 
