@@ -76,8 +76,8 @@
     (try
       (usage-metadata.store/delete-day! bucket-date)
       (usage-metadata.store/replace-day! bucket-date original)
-      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-      (with-redefs [usage-metadata.store/insert-segment-rollups! (fn [_] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs
+        [usage-metadata.store/insert-segment-rollups! (fn [_] (throw (ex-info "boom" {})))]
         (is (thrown? clojure.lang.ExceptionInfo
                      (usage-metadata.store/replace-day! bucket-date original))))
       (is (= #{"pred-a"}
