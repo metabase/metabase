@@ -4,7 +4,7 @@ import { trackDataStudioCleanupCandidateAction } from "metabase/common/data-stud
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { UsageMetadataCandidateSummary } from "metabase-types/api";
 
-import { getErrorStatus } from "../utils";
+import { isStaleCandidateError } from "../utils";
 
 type CandidateAction = "create" | "dismiss" | "restore";
 
@@ -39,7 +39,7 @@ export function useCandidateAction() {
         result = await request();
       } catch (error) {
         trackCandidateAction(action, candidate, "failure");
-        if (getErrorStatus(error) === 409) {
+        if (isStaleCandidateError(error)) {
           onStale();
         } else {
           sendErrorToast(errorMessage);

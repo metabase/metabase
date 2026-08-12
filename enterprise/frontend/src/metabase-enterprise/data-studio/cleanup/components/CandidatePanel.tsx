@@ -17,7 +17,7 @@ import {
 import type { UsageMetadataCandidateType } from "metabase-types/api";
 
 import { useCandidateAction } from "../hooks/useCandidateAction";
-import { getErrorStatus, isCreationCandidate } from "../utils";
+import { isCreationCandidate, isStaleCandidateError } from "../utils";
 
 import S from "./CandidatePanel.module.css";
 import { CandidatePanelBody } from "./CandidatePanelBody";
@@ -54,7 +54,7 @@ export function CandidatePanel({
   useEffect(() => {
     if (
       candidateId != null &&
-      getErrorStatus(candidateQuery.error) === 409 &&
+      isStaleCandidateError(candidateQuery.error) &&
       staleCandidateId.current !== candidateId
     ) {
       staleCandidateId.current = candidateId;

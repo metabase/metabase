@@ -39,6 +39,13 @@ export function getErrorStatus(error: unknown) {
     : undefined;
 }
 
+// A candidate pruned by a snapshot promotion usually 404s (the row is already gone);
+// it only 409s in the narrow window before the row is actually deleted.
+export function isStaleCandidateError(error: unknown) {
+  const status = getErrorStatus(error);
+  return status === 409 || status === 404;
+}
+
 export function parseCleanupParams(
   searchParams: URLSearchParams,
 ): Urls.DataStudioCleanupParams {
