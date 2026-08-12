@@ -159,6 +159,8 @@ export const DataModel = {
 
 const DEFAULT_BASE_PATH = "/admin/datamodel";
 
+const VISIT_WAIT_OPTIONS = { timeout: 15_000 };
+
 function visit({
   databaseId,
   schemaId,
@@ -196,13 +198,16 @@ function visit({
     );
 
     if (!skipWaiting) {
-      cy.wait([
-        "@datamodel/visit/databases",
-        "@datamodel/visit/database",
-        "@datamodel/visit/schemas",
-        "@datamodel/visit/schema",
-        "@datamodel/visit/metadata",
-      ]);
+      cy.wait(
+        [
+          "@datamodel/visit/databases",
+          "@datamodel/visit/database",
+          "@datamodel/visit/schemas",
+          "@datamodel/visit/schema",
+          "@datamodel/visit/metadata",
+        ],
+        VISIT_WAIT_OPTIONS,
+      );
     }
 
     return;
@@ -214,12 +219,15 @@ function visit({
     );
 
     if (!skipWaiting) {
-      cy.wait([
-        "@datamodel/visit/databases",
-        "@datamodel/visit/schemas",
-        "@datamodel/visit/schema",
-        "@datamodel/visit/metadata",
-      ]);
+      cy.wait(
+        [
+          "@datamodel/visit/databases",
+          "@datamodel/visit/schemas",
+          "@datamodel/visit/schema",
+          "@datamodel/visit/metadata",
+        ],
+        VISIT_WAIT_OPTIONS,
+      );
     }
 
     return;
@@ -229,11 +237,14 @@ function visit({
     cy.visit(`${normalizedBasePath}/database/${databaseId}/schema/${schemaId}`);
 
     if (!skipWaiting) {
-      cy.wait([
-        "@datamodel/visit/databases",
-        "@datamodel/visit/schemas",
-        "@datamodel/visit/schema",
-      ]);
+      cy.wait(
+        [
+          "@datamodel/visit/databases",
+          "@datamodel/visit/schemas",
+          "@datamodel/visit/schema",
+        ],
+        VISIT_WAIT_OPTIONS,
+      );
     }
     return;
   }
@@ -242,18 +253,21 @@ function visit({
     cy.visit(`${normalizedBasePath}/database/${databaseId}`);
 
     if (!skipWaiting) {
-      cy.wait([
-        "@datamodel/visit/databases",
-        "@datamodel/visit/schemas",
-        "@datamodel/visit/schema",
-      ]);
+      cy.wait(
+        [
+          "@datamodel/visit/databases",
+          "@datamodel/visit/schemas",
+          "@datamodel/visit/schema",
+        ],
+        VISIT_WAIT_OPTIONS,
+      );
     }
 
     return;
   }
 
   cy.visit(normalizedBasePath);
-  cy.wait(["@datamodel/visit/databases"]);
+  cy.wait(["@datamodel/visit/databases"], VISIT_WAIT_OPTIONS);
 }
 
 function visitDataStudio(options?: Parameters<typeof visit>[0]) {
