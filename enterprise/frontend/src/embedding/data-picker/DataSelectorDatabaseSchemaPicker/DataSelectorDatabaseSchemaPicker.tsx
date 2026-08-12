@@ -16,18 +16,18 @@ import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import DataSelectorLoading from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";
 
-type DataSelectorDatabaseSchemaPicker = {
+type DataSelectorDatabaseSchemaPickerProps = {
   databases: Database[];
   hasBackButton: boolean;
   hasFiltering: boolean;
   hasInitialFocus: boolean;
   hasNextStep: boolean;
   isLoading: boolean;
-  selectedDatabase: Database;
-  selectedSchema: Schema;
-  onBack: () => void;
+  selectedDatabase?: Database | null;
+  selectedSchema?: Schema | null;
+  onBack?: (() => void) | null;
   onChangeDatabase: (database: Database) => void;
-  onChangeSchema: (item: { schema?: Schema }) => void;
+  onChangeSchema: (schema?: Schema) => void;
 };
 
 type Item = {
@@ -50,7 +50,7 @@ const DataSelectorDatabaseSchemaPicker = ({
   hasBackButton,
   onBack,
   hasInitialFocus,
-}: DataSelectorDatabaseSchemaPicker) => {
+}: DataSelectorDatabaseSchemaPickerProps) => {
   const tc = useTranslateContent();
 
   if (databases.length === 0) {
@@ -79,7 +79,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     const isNavigationSection = hasBackButton && sectionIndex === 0;
 
     if (isNavigationSection) {
-      onBack();
+      onBack?.();
       return false;
     }
 

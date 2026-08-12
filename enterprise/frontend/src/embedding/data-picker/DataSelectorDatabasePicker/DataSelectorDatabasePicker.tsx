@@ -21,9 +21,9 @@ type DataSelectorDatabasePickerProps = {
   hasInitialFocus?: boolean;
   hasNextStep?: boolean;
   isLoading?: boolean;
-  selectedDatabase?: Database;
-  selectedSchema?: Schema;
-  onBack?: () => void;
+  selectedDatabase?: Database | null;
+  selectedSchema?: Schema | null;
+  onBack?: (() => void) | null;
   onChangeDatabase: (database: Database) => void;
 };
 
@@ -88,7 +88,7 @@ const DataSelectorDatabasePicker = ({
       onChange={(item) => onChangeDatabase(item.database)}
       onChangeSection={handleChangeSection}
       itemIsSelected={(item) =>
-        selectedDatabase && item.database.id === selectedDatabase.id
+        selectedDatabase != null && item.database.id === selectedDatabase.id
       }
       renderItemIcon={() => (
         <Icon

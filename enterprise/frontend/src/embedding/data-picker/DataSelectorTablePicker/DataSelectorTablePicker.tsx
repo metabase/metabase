@@ -32,11 +32,11 @@ type DataSelectorTablePickerProps = {
   isLoading?: boolean;
   minTablesToShowSearch?: number;
   schemas: Schema[];
-  selectedDatabase: Database;
-  selectedSchema?: Schema;
-  selectedTable?: Table;
+  selectedDatabase?: Database | null;
+  selectedSchema?: Schema | null;
+  selectedTable?: Table | null;
   tables: Table[];
-  onBack?: () => void;
+  onBack?: (() => void) | null;
   onChangeTable: (table: Table) => void;
 };
 
@@ -48,8 +48,11 @@ type Item = {
 
 type HeaderProps = Pick<
   DataSelectorTablePickerProps,
-  "schemas" | "selectedSchema" | "selectedDatabase" | "onBack"
->;
+  "schemas" | "selectedSchema" | "onBack"
+> & {
+  // narrowed by the caller's early return; the header always has a database
+  selectedDatabase: Database;
+};
 
 const DataSelectorTablePicker = ({
   schemas,
@@ -193,7 +196,11 @@ const Header = ({
 
   return (
     <Flex align="center" wrap="wrap">
-      <Flex align="center" style={{ cursor: "pointer" }} onClick={onBack}>
+      <Flex
+        align="center"
+        style={{ cursor: "pointer" }}
+        onClick={onBack ?? undefined}
+      >
         {onBack && <Icon name="chevronleft" size={18} />}
         <Box component="span" ml="sm" data-testid="source-database">
           {tc(selectedDatabase.name)}
