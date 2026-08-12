@@ -26,11 +26,6 @@ import type {
 
 import type { MetabotConversationDetail } from "./utils/normalize-fetched-chat-messages";
 
-/**
- * Metabot's endpoints live here rather than in metabase/api: some of their
- * response types are this module's own shapes (e.g. the chat-message union),
- * which the api module (a layer below) must not import.
- */
 export const metabotApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listMetabots: builder.query<{ items: MetabotInfo[] }, void>({
