@@ -1,4 +1,4 @@
-import { removeNewLines } from "metabase/utils/formatting/strings";
+import { removeNewLines } from "metabase/utils/formatting";
 import { isURL } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings } from "metabase-types/api";
 
@@ -97,8 +97,4 @@ function getLinkUrl(
   }
 
   return null;
-}
-
-export function slugify(name: string) {
-  return name && encodeURIComponent(name.toLowerCase().replace(/\s/g, "_"));
 }

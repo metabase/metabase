@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 
-import type { CurrencyStyle } from "metabase/utils/formatting";
-
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { SdkIframeEmbedSetupTheme } from "./embedding-theme";
+import type { CurrencyStyle } from "./formatting";
 import type { GroupId } from "./group";
 import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { NotificationRecipient } from "./notification";

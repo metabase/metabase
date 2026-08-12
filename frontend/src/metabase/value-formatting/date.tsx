@@ -9,7 +9,7 @@ import {
   getTimeFormatFromStyle,
   hasDay,
   hasHour,
-} from "metabase/utils/formatting/datetime-utils";
+} from "metabase/utils/formatting";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings } from "metabase-types/api";
@@ -1360,7 +1360,6 @@ export function formatDateTimeWithUnit(
     timeFormat = getTimeFormatFromStyle(
       // Unjustified type cast. FIXME
       options.time_style as string,
-      unit,
       options.time_enabled,
     );
   }
