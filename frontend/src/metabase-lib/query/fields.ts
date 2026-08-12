@@ -1,5 +1,9 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { FieldReference } from "metabase-types/api";
+import type {
+  FieldReference,
+  MetricAgg,
+  SegmentFilter,
+} from "metabase-types/api";
 
 import type {
   Clause,
@@ -52,10 +56,43 @@ export function fieldValuesSearchInfo(
   return ML.field_values_search_info(query, column);
 }
 
+export type LegacyRef = FieldReference | MetricAgg | SegmentFilter;
+
+export function legacyRef(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+): FieldReference;
+export function legacyRef(
+  query: Query,
+  stageIndex: number,
+  column: MetricMetadata,
+): MetricAgg;
+export function legacyRef(
+  query: Query,
+  stageIndex: number,
+  column: SegmentMetadata,
+): SegmentFilter;
 export function legacyRef(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata | MetricMetadata | SegmentMetadata,
-): FieldReference {
-  return ML.legacy_ref(query, stageIndex, column);
+): LegacyRef {
+  const ref = ML.legacy_ref(query, stageIndex, column);
+  if (!isLegacyRef(ref)) {
+    throw new TypeError("Expected legacy_ref to return a legacy reference");
+  }
+  return ref;
+}
+
+function isLegacyRef(value: unknown): value is LegacyRef {
+  return (
+    Array.isArray(value) &&
+    value.length >= 2 &&
+    (value[0] === "field" ||
+      value[0] === "expression" ||
+      value[0] === "aggregation" ||
+      value[0] === "metric" ||
+      value[0] === "segment")
+  );
 }

@@ -1,4 +1,7 @@
-import { describeTemporalInterval } from "./temporal_bucket";
+import {
+  availableTemporalUnits,
+  describeTemporalInterval,
+} from "./temporal_bucket";
 
 describe("describeTemporalInterval", () => {
   it("should return 'Previous 7 days' when include-current is false", () => {
@@ -23,5 +26,15 @@ describe("describeTemporalInterval", () => {
       "include-current": true,
     });
     expect(result).toBe("Previous 7 days or today");
+  });
+});
+
+describe("availableTemporalUnits", () => {
+  it("returns only frontend-supported temporal units", () => {
+    const units = availableTemporalUnits();
+
+    expect(units).toContain("day");
+    expect(units).not.toContain("default");
+    expect(units).not.toContain("second");
   });
 });

@@ -1,3 +1,16 @@
+import type {
+  Metabase_LibMetric_Schema_Binning,
+  Metabase_LibMetric_Schema_BinningOption,
+  Metabase_LibMetric_Schema_DimensionReference,
+  Metabase_LibMetric_Schema_MetadataDimension,
+  Metabase_LibMetric_Schema_MetricDefinition,
+  Metabase_LibMetric_Schema_SourceInstanceJs,
+  Metabase_Lib_Schema_MbqlClause_Clause,
+  Metabase_Lib_Schema_Metadata_Measure,
+  Metabase_Lib_Schema_Metadata_Metric,
+  Metabase_Lib_Schema_Metadata_Segment,
+  Metabase_Lib_Schema_TemporalBucketing_Option,
+} from "cljs/metabase.lib.shared";
 import type { DimensionId, TemporalUnit } from "metabase-types/api";
 
 import type {
@@ -17,60 +30,32 @@ import type {
 } from "../common";
 
 declare const _MetadataProviderSymbol: unique symbol;
-declare const _MetricMetadataSymbol: unique symbol;
-declare const _MeasureMetadataSymbol: unique symbol;
-declare const _MetricDefinitionSymbol: unique symbol;
-declare const _DimensionMetadataSymbol: unique symbol;
-declare const _FilterClauseSymbol: unique symbol;
-declare const _ProjectionClauseSymbol: unique symbol;
-declare const _TemporalBucketSymbol: unique symbol;
-declare const _BinningStrategySymbol: unique symbol;
-declare const _SourceInstanceSymbol: unique symbol;
-declare const _SegmentMetadataSymbol: unique symbol;
 
 export type MetadataProvider = unknown & {
   _opaque: typeof _MetadataProviderSymbol;
 };
 
-export type MetricMetadata = unknown & {
-  _opaque: typeof _MetricMetadataSymbol;
-};
+export type MetricMetadata = Metabase_Lib_Schema_Metadata_Metric;
 
-export type MeasureMetadata = unknown & {
-  _opaque: typeof _MeasureMetadataSymbol;
-};
+export type MeasureMetadata = Metabase_Lib_Schema_Metadata_Measure;
 
-export type MetricDefinition = unknown & {
-  _opaque: typeof _MetricDefinitionSymbol;
-};
+export type MetricDefinition = Metabase_LibMetric_Schema_MetricDefinition;
 
-export type DimensionMetadata = unknown & {
-  _opaque: typeof _DimensionMetadataSymbol;
-};
+export type DimensionMetadata = Metabase_LibMetric_Schema_MetadataDimension;
 
-export type FilterClause = unknown & {
-  _opaque: typeof _FilterClauseSymbol;
-};
+export type FilterClause = Metabase_Lib_Schema_MbqlClause_Clause;
 
-export type ProjectionClause = unknown & {
-  _opaque: typeof _ProjectionClauseSymbol;
-};
+export type ProjectionClause = Metabase_LibMetric_Schema_DimensionReference;
 
-export type TemporalBucket = unknown & {
-  _opaque: typeof _TemporalBucketSymbol;
-};
+export type TemporalBucket = Metabase_Lib_Schema_TemporalBucketing_Option;
 
-export type BinningStrategy = unknown & {
-  _opaque: typeof _BinningStrategySymbol;
-};
+export type BinningStrategy =
+  | Metabase_LibMetric_Schema_Binning
+  | Metabase_LibMetric_Schema_BinningOption;
 
-export type SourceInstance = unknown & {
-  _opaque: typeof _SourceInstanceSymbol;
-};
+export type SourceInstance = Metabase_LibMetric_Schema_SourceInstanceJs;
 
-export type SegmentMetadata = unknown & {
-  _opaque: typeof _SegmentMetadataSymbol;
-};
+export type SegmentMetadata = Metabase_Lib_Schema_Metadata_Segment;
 
 export type SegmentDisplayInfo = {
   name?: string;
@@ -163,7 +148,7 @@ export type StringFilterParts = {
   operator: StringFilterOperator;
   dimension: DimensionMetadata;
   values: string[];
-  options: StringFilterOptions;
+  options?: StringFilterOptions | null;
 };
 
 export type NumberFilterParts = {
@@ -198,7 +183,7 @@ export type RelativeDateFilterParts = {
   value: number;
   offsetUnit: RelativeDateFilterUnit | null;
   offsetValue: number | null;
-  options: RelativeDateFilterOptions;
+  options?: RelativeDateFilterOptions | null;
 };
 
 export type ExcludeDateFilterParts = {

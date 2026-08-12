@@ -12,6 +12,7 @@ import {
   formatDate,
   getDateFilterClause,
   getDateFilterDisplayName,
+  getDatePickerValue,
 } from "./dates";
 
 type DateFilterClauseCase = {
@@ -25,6 +26,19 @@ describe("getDateFilterClause", () => {
   const columns = Lib.filterableColumns(query, stageIndex);
   const findColumn = columnFinder(query, columns);
   const column = findColumn("ORDERS", "CREATED_AT");
+
+  it("should round trip includeCurrent for relative date filters", () => {
+    const value = {
+      type: "relative" as const,
+      value: -2,
+      unit: "year" as const,
+      options: { includeCurrent: true },
+    };
+
+    const filter = getDateFilterClause(column, value);
+
+    expect(getDatePickerValue(query, stageIndex, filter)).toMatchObject(value);
+  });
 
   it.each<DateFilterClauseCase>([
     {
