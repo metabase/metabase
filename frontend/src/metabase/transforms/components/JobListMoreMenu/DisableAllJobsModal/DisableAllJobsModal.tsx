@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { useBulkUpdateTransformJobsActiveMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -8,6 +7,8 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
+
+import { useBulkUpdateTransformJobsActiveMutation } from "../../../api/transform-job";
 
 type DisableAllJobsModalProps = {
   onConfirm: () => void;

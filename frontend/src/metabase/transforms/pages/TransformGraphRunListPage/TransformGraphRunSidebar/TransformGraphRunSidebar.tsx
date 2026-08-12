@@ -9,7 +9,6 @@ import {
   useCancelDagRunMutation,
   useCancelJobRunMutation,
   useListDagRunTransformRunsQuery,
-  useListJobRunTransformRunsQuery,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -40,6 +39,7 @@ import type {
   TransformRunForJobRun,
 } from "metabase-types/api";
 
+import { useListJobRunTransformRunsQuery } from "../../../api/transform-job";
 import { TransformRunItem } from "../../JobRunListPage/JobRunSidebar/TransformRunItem";
 import { RunName, isDeletedRun } from "../TransformGraphRunTable";
 

@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import {
   useListTransformRunsQuery,
-  useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -20,6 +19,8 @@ import { isActiveRunStatus } from "metabase/transforms/utils";
 import { Center, Flex, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformRun, TransformRunId } from "metabase-types/api";
+
+import { useListTransformTagsQuery } from "../../api/transform-tag";
 
 import { RunFilterBar } from "./RunFilterBar";
 import S from "./RunListPage.module.css";

@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 
-import { skipToken, useListJobRunTransformRunsQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import { isActiveRunStatus } from "metabase/transforms/utils";
 import type { TransformJobId, TransformRun } from "metabase-types/api";
 import { PENDING_RUN_ID } from "metabase-types/api";
 
+import { useListJobRunTransformRunsQuery } from "../../../api/transform-job";
 import { POLLING_INTERVAL } from "../../../constants";
 
 import type { TransformRunByTransformId } from "./types";

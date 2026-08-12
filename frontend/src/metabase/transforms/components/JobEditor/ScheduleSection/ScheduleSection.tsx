@@ -1,10 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
 
-import {
-  useCancelJobRunMutation,
-  useRunTransformJobMutation,
-} from "metabase/api";
+import { useCancelJobRunMutation } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Schedule } from "metabase/common/components/Schedule";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
@@ -20,6 +17,7 @@ import type {
 } from "metabase-types/api";
 
 import { trackTransformJobTriggerManualRun } from "../../../analytics";
+import { useRunTransformJobMutation } from "../../../api/transform-job";
 import { RunButton } from "../../RunButton";
 import { RunStatus } from "../../RunStatus";
 import type { TransformJobInfo } from "../types";
