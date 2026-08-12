@@ -34,6 +34,7 @@ Keep the semantic layer and presentation layer separate.
 - `useMetabaseQuery().rows` are keyed objects, not tuple arrays. Never read `row[0]` / `row[1]`, and never silence this with `as unknown as [string, number][]`, `DisplayRow`, or another tuple cast. If TypeScript says property `0` does not exist, it is catching a real bug. For typed `data.rows`, use literal keys such as `row.count` or generated field names such as `row[ordersTable.fields.createdAt.name]`. Use `data.columns` with `rawRows` or after explicitly narrowing a key; do not index typed rows with arbitrary `string` values from `data.columns`.
 - Do not cast query objects to `Parameters<typeof useMetabaseQuery>[0]`. That erases the generated table/metric validation. Use `useMetabaseQuery<typeof table>(...)`, or type a reusable query object with `satisfies MetabaseQueryOptions<typeof table>`.
 - Do not build shared filter arrays with `ReturnType<typeof filter>[]` or `push(...)`; this can collapse overload inference. Pass raw filter state between components and build each query's `filters: [...]` inline with spreads.
+- Keep runtime state out of the base query in `queries/`. A clause whose value comes from a control — a selected plan, a date range, a search box — belongs in the second argument to `useMetabaseQuery`/`useMetabaseQueryObject`, not in the query. See "Static and dynamic query parts".
 - Do not include `fields` in queries with `aggregations` and `breakouts`; breakouts determine grouped result columns. Use `fields` only for row-selection queries.
 - Before rendering a field, verify it exists in the generated schema object and is returned by the query. Do not guess table keys, field keys, or column names from the Metabase API, business intuition, or old mock data; only use entries actually emitted in `src/metabase.data.ts`.
 - Avoid unsupported freshness or operational claims such as "real-time", "live", "understaffed", or "risk" unless the returned data or curated semantic-layer definition supports them.
@@ -178,6 +179,35 @@ Use keyed schema objects:
 - metric dimensions: `schema.metrics.<metric>.dimensions.<group>.<dimension>`
 
 Do not pass raw dimension strings like `"created_at"` or `"segment"`.
+
+## Static and dynamic query parts
+
+Both query hooks take an optional second argument: the clauses that change while the app runs.
+
+```ts
+// revenue.query.ts — static, and identical on every render
+const orders = schema.tables.orders;
+
+export const RevenueQuery = {
+  source: orders,
+  aggregations: [aggregations.sum(orders.fields.total)],
+  breakouts: [
+    breakout(orders.fields.createdAt, { unit: "month" }),
+    breakout(orders.fields.plan),
+  ],
+} satisfies MetabaseQueryOptions<typeof orders>;
+
+// the component supplies only what the UI changes
+const { data } = useMetabaseQuery(RevenueQuery, {
+  filters: plan === null ? [] : [filter(orders.fields.plan, "=", plan)],
+});
+```
+
+Split them this way even when nothing appears to depend on it: the first argument must be identical on every render, and only the second may vary with runtime state.
+
+The dynamic clauses run as their own stage, so they see the **result columns** of the static query, not its source table. That is why `plan` is a breakout above: a control that filters on a source column only works if that column survives into the result. If it does not, add it as a breakout, or leave the static query unaggregated. Likewise, filter an aggregated static query on `count`/`sum`, not on the fields behind them.
+
+Do not remove or hand-edit `savedQuestionSourceId` if you find it on a query object.
 
 ## Table query recipes
 

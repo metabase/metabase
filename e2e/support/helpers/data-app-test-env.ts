@@ -71,6 +71,26 @@ export type DataAppTestEnv = {
     breakoutColumn: QuestionColumnReference;
   };
   /**
+   * `/published-source` page: a static query carrying `savedQuestionSourceId`,
+   * plus the dynamic clauses layered on top of it.
+   */
+  publishedSource?: {
+    savedQuestionSourceId: number;
+    tableSource: TableSource;
+    filterField: LocalFieldReference;
+    filterValue: number;
+    /**
+     * A card published from a static query that *aggregates*, with the clauses
+     * that reproduce it from the table. This is the case the second-stage design
+     * exists for: merged into one stage the dynamic filter would run before the
+     * static aggregation on the table but after it on the card.
+     */
+    aggregatedSourceId: number;
+    breakoutField: LocalFieldReference;
+    countColumn: QuestionColumnReference;
+    minCount: number;
+  };
+  /**
    * `/actions` page: the id of the action the spec creates and `useAction`
    * executes, so it can't be hard-coded in the app. Left out to exercise the "no
    * action id" path, where the hook must not request anything.

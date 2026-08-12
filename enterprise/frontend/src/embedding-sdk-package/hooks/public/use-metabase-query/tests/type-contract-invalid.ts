@@ -176,6 +176,29 @@ function InvalidTypeFixtures() {
   // @ts-expect-error grouped queries return only their breakouts and aggregations
   void groupedQuestionResult.data?.rows[0]?.AMOUNT;
 
+  const staticQuery = {
+    source: TEST_SCHEMA.tables.orders,
+    savedQuestionSourceId: 41,
+  } satisfies MetabaseQueryOptions<OrdersTable>;
+
+  useMetabaseQuery(staticQuery, {
+    // @ts-expect-error the dynamic stage sees result columns, not other tables
+    filters: [filter(TEST_SCHEMA.tables.products.fields.price, ">", 1)],
+  });
+
+  // @ts-expect-error grouped dynamic clauses must include an explicit aggregation
+  useMetabaseQuery(staticQuery, {
+    breakouts: [TEST_SCHEMA.tables.orders.fields.status],
+  });
+
+  const groupedDynamicResult = useMetabaseQuery(staticQuery, {
+    aggregations: [count()],
+    breakouts: [TEST_SCHEMA.tables.orders.fields.status],
+  });
+
+  // @ts-expect-error grouping in the dynamic stage drops the source columns
+  void groupedDynamicResult.data?.rows[0]?.AMOUNT;
+
   return null;
 }
 

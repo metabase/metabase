@@ -169,6 +169,36 @@ function ValidTypeFixtures() {
     ],
   });
 
+  // A static query published as a card, with dynamic clauses layered on top.
+  const staticQuery = {
+    source: TEST_SCHEMA.tables.orders,
+    savedQuestionSourceId: 41,
+  } satisfies MetabaseQueryOptions<OrdersTable>;
+
+  const dynamicResult = useMetabaseQuery(staticQuery, {
+    filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+    aggregations: [count()],
+    breakouts: [TEST_SCHEMA.tables.orders.fields.status],
+  });
+
+  // Grouping in the dynamic stage re-keys the result rows.
+  const dynamicCount: number | null | undefined =
+    dynamicResult.data?.rows[0]?.count;
+
+  void dynamicCount;
+
+  // Filtering alone leaves the static query's rows in place.
+  const filteredResult = useMetabaseQuery(staticQuery, {
+    filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+  });
+
+  const filteredStatus: string | null | undefined =
+    filteredResult.data?.rows[0]?.STATUS;
+
+  void filteredStatus;
+
+  useMetabaseQueryObject(staticQuery, { limit: 10 });
+
   return null;
 }
 

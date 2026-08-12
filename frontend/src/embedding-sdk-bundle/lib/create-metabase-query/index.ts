@@ -1,5 +1,6 @@
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import {
+  type DynamicQueryInput,
   type QueryInput,
   isQueryInput,
   isQuestionInput,
@@ -7,6 +8,7 @@ import {
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { isDataAppDev } from "metabase/embedding-sdk/config";
 import { getMetadataUnfiltered } from "metabase/metadata-store";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
@@ -15,53 +17,88 @@ import type {
   TestColumnSpec,
   TestExpressionSpec,
   TestQuerySpec,
+  TestStageSpec,
   TestStageWithSourceSpec,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { loadReferencedMetricMetadata } from "./metric-metadata";
-import { validateQueryInput } from "./validation";
+import { validateDynamicQuery, validateQueryInput } from "./validation";
 
 export type ResolveDatasetQuery = (
   store: SdkStore,
-) => (input: QueryInput) => Promise<DatasetQuery>;
+) => (
+  input: QueryInput,
+  dynamicQuery?: DynamicQueryInput,
+) => Promise<DatasetQuery>;
 
 export const resolveDatasetQuery: ResolveDatasetQuery =
-  (store) => async (input: QueryInput) => {
+  (store) => async (input: QueryInput, dynamicQuery?: DynamicQueryInput) => {
     if (!isQueryInput(input)) {
       throw new Error(
         'Query object creation requires a source reference like `{ type: "table", id }` or `{ type: "card", id }`.',
       );
     }
 
-    validateQueryInput(input);
+    const sourceInput = toSourceInput(input);
 
-    await loadSourceMetadata(store, input);
+    validateQueryInput(sourceInput);
+    validateDynamicQuery(dynamicQuery);
+
+    await loadSourceMetadata(store, sourceInput);
 
     return resolveQueryFromLoadedMetadata(
-      input,
+      sourceInput,
+      dynamicQuery,
       getMetadataUnfiltered(store.getState()),
     );
   };
 
-function resolveQueryFromLoadedMetadata(
-  input: QueryInput,
-  metadata: Lib.Metadata,
-) {
-  if (!isQueryInput(input)) {
-    throw new Error(
-      'Query object creation requires a source reference like `{ type: "table", id }` or `{ type: "card", id }`.',
-    );
+/**
+ * The query whose source actually runs. Outside the dev preview a published card
+ * replaces the table source: the card is what grants an app's viewers permission
+ * to run the query, through the collection it lives in. Its static clauses are
+ * already baked into the card, so only the source and the dynamic stage remain.
+ */
+function toSourceInput(input: QueryInput): QueryInput {
+  if (
+    !isTableInput(input) ||
+    input.savedQuestionSourceId == null ||
+    // We need to do the swap only for production data apps
+    isDataAppDev()
+  ) {
+    return input;
   }
 
+  return { source: { type: "card", id: input.savedQuestionSourceId } };
+}
+
+function resolveQueryFromLoadedMetadata(
+  input: QueryInput,
+  dynamicQuery: DynamicQueryInput | undefined,
+  metadata: Lib.Metadata,
+) {
   const databaseId = getSourceDatabaseId(input, metadata);
   const provider = Lib.metadataProvider(databaseId, metadata);
+  const sourceStage = toStageSpec(input);
 
-  return Lib.toJsQuery(
+  const datasetQuery = Lib.toJsQuery(
     Lib.createTestQuery(provider, {
-      stages: [toStageSpec(input)],
+      // The dynamic clauses run as their own stage rather than merging into the
+      // source stage. Merged, they would apply before the static aggregation on
+      // a table source but after it on the published card — the same app would
+      // return different numbers in the dev preview and in production.
+      stages: dynamicQuery
+        ? [sourceStage, toResultColumnStageSpec(dynamicQuery)]
+        : [sourceStage],
     } satisfies TestQuerySpec),
   );
+
+  // Lib reads the database off the metadata provider, and a user who may read a
+  // card but not create queries gets none from `/api/card/:id/query_metadata` —
+  // so the query comes back without `:database`, which `/api/dataset` rejects.
+  // The source itself carries the id, so set it explicitly.
+  return { ...datasetQuery, database: databaseId };
 }
 
 function toStageSpec(input: QueryInput): TestStageWithSourceSpec {
@@ -69,10 +106,24 @@ function toStageSpec(input: QueryInput): TestStageWithSourceSpec {
     return input;
   }
 
-  const { source, filters, aggregations, breakouts, orderBys, limit } = input;
-
   return {
-    source: { type: "card", id: source.id },
+    source: { type: "card", id: input.source.id },
+    ...toResultColumnStageSpec(input),
+  };
+}
+
+/**
+ * A stage whose dimensions are the previous stage's result columns — a card
+ * stage or a dynamic stage. Both resolve their columns by name.
+ */
+function toResultColumnStageSpec({
+  filters,
+  aggregations,
+  breakouts,
+  orderBys,
+  limit,
+}: DynamicQueryInput): TestStageSpec {
+  return {
     ...(filters && { filters: filters.map(toResultColumnExpressionSpec) }),
     ...(aggregations && {
       aggregations: aggregations.map(toResultColumnExpressionSpec),
