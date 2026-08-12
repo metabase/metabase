@@ -10,7 +10,7 @@ import type { LoadCustomVizPluginOptions } from "../custom-viz-plugins";
 const FLUSH_DELAY_MS = 300;
 
 const pendingPlugins = new Map<CustomVizPluginId, CustomVizPluginRuntime>();
-let latestOnInfo: LoadCustomVizPluginOptions["onInfo"] | undefined;
+let latestOnMessage: LoadCustomVizPluginOptions["onMessage"] | undefined;
 let flushTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 /**
@@ -18,12 +18,12 @@ let flushTimeoutId: ReturnType<typeof setTimeout> | null = null;
  */
 export function reportUnavailableCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
-  onInfo?: LoadCustomVizPluginOptions["onInfo"],
+  onMessage?: LoadCustomVizPluginOptions["onMessage"],
 ) {
   pendingPlugins.set(plugin.id, plugin);
-  latestOnInfo = onInfo;
+  latestOnMessage = onMessage;
 
-  if (!latestOnInfo) {
+  if (!latestOnMessage) {
     return;
   }
 
@@ -39,7 +39,7 @@ export function reportUnavailableCustomVizPlugin(
 
 export function resetUnavailableCustomVizPluginReports() {
   pendingPlugins.clear();
-  latestOnInfo = undefined;
+  latestOnMessage = undefined;
 
   if (flushTimeoutId != null) {
     clearTimeout(flushTimeoutId);
@@ -49,12 +49,16 @@ export function resetUnavailableCustomVizPluginReports() {
 
 function flushUnavailableCustomVizPluginReports() {
   const plugins = [...pendingPlugins.values()];
-  const onInfo = latestOnInfo;
+  const onMessage = latestOnMessage;
 
   resetUnavailableCustomVizPluginReports();
 
-  if (plugins.length > 0 && onInfo) {
-    onInfo(getUnavailableMessage(plugins));
+  if (plugins.length > 0 && onMessage) {
+    onMessage({
+      icon: "warning_triangle_filled",
+      iconColor: "feedback-warning",
+      message: getUnavailableMessage(plugins),
+    });
   }
 }
 

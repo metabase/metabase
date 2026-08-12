@@ -11,7 +11,7 @@ import { t } from "ttag";
 
 import { api } from "metabase/api/client";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
-import { useToast } from "metabase/common/hooks";
+import { type ToastArgs, useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
@@ -106,7 +106,7 @@ function useCustomVizDevReload(
   display: string | undefined,
   plugins: CustomVizPluginRuntime[] | undefined,
   setLoading: (loading: boolean) => void,
-  onInfo: (message: string) => void,
+  onMessage: (toast: ToastArgs) => void,
   sandboxMode: SandboxMode = "hosted",
 ) {
   useEffect(() => {
@@ -135,7 +135,7 @@ function useCustomVizDevReload(
       try {
         await loadCustomVizPlugin(plugin, {
           cacheBustSuffix: `?t=${Date.now()}`,
-          onInfo,
+          onMessage,
           sandboxMode,
         });
       } finally {
@@ -150,7 +150,7 @@ function useCustomVizDevReload(
     return () => {
       eventSource.close();
     };
-  }, [display, onInfo, plugins, setLoading, sandboxMode]);
+  }, [display, onMessage, plugins, setLoading, sandboxMode]);
 }
 
 export type UseAutoLoadCustomVizPluginOptions = {
@@ -186,13 +186,6 @@ export function useAutoLoadCustomVizPlugin(
     setLoadingState(loadingCountRef.current > 0);
   }, []);
 
-  const onInfo = useCallback(
-    (message: string) => {
-      sendToast({ message });
-    },
-    [sendToast],
-  );
-
   const load = useCallback(
     async (pluginToLoad: CustomVizPluginRuntime) => {
       const identifier = getCustomPluginIdentifier(pluginToLoad);
@@ -211,7 +204,7 @@ export function useAutoLoadCustomVizPlugin(
       setLoading(true);
       try {
         await loadCustomVizPlugin(pluginToLoad, {
-          onInfo,
+          onMessage: sendToast,
           sandboxMode,
         });
       } finally {
@@ -219,7 +212,7 @@ export function useAutoLoadCustomVizPlugin(
         setLoading(false);
       }
     },
-    [onInfo, sandboxMode, setLoading],
+    [sendToast, sandboxMode, setLoading],
   );
 
   useEffect(() => {
@@ -235,7 +228,7 @@ export function useAutoLoadCustomVizPlugin(
     load(plugin);
   }, [display, plugins, load]);
 
-  useCustomVizDevReload(display, plugins, setLoading, onInfo, sandboxMode);
+  useCustomVizDevReload(display, plugins, setLoading, sendToast, sandboxMode);
 
   // `loading` state drives re-renders when async load completes.
   // Without it, the Map-based check alone wouldn't trigger a re-render.
@@ -291,7 +284,7 @@ export function useAutoLoadCustomVizPlugin(
 
 export type LoadCustomVizPluginOptions = {
   cacheBustSuffix?: string;
-  onInfo?: (message: string) => void;
+  onMessage?: (toast: ToastArgs) => void;
   sandboxMode?: SandboxMode;
 };
 
@@ -311,7 +304,7 @@ export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
   options: LoadCustomVizPluginOptions = {},
 ): Promise<string | null> {
-  const { cacheBustSuffix, onInfo, sandboxMode = "hosted" } = options;
+  const { cacheBustSuffix, onMessage, sandboxMode = "hosted" } = options;
   const existing = loadedPlugins.get(plugin.id);
   const currentHash = plugin.bundle_hash ?? null;
   if (
@@ -455,7 +448,7 @@ export async function loadCustomVizPlugin(
     }
     console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
     if (!failedPluginHashes.has(plugin.id)) {
-      reportUnavailableCustomVizPlugin(plugin, onInfo);
+      reportUnavailableCustomVizPlugin(plugin, onMessage);
     }
     failedPluginHashes.set(plugin.id, currentHash);
     return null;

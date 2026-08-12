@@ -13,6 +13,12 @@ const SDK_VERSION_WARNING = {
   tested_sdk_range: "2.x",
 };
 
+const warningToast = (message: string) => ({
+  icon: "warning_triangle_filled",
+  iconColor: "feedback-warning",
+  message,
+});
+
 describe("reportUnavailableCustomVizPlugin", () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -24,78 +30,82 @@ describe("reportUnavailableCustomVizPlugin", () => {
   });
 
   it("shows a toast for a single unavailable plugin", () => {
-    const onInfo = jest.fn();
+    const onMessage = jest.fn();
 
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ display_name: "Viz A" }),
-      onInfo,
+      onMessage,
     );
     jest.advanceTimersByTime(FLUSH_DELAY_MS);
 
-    expect(onInfo).toHaveBeenCalledTimes(1);
-    expect(onInfo).toHaveBeenCalledWith(
-      'The "Viz A" visualization is currently unavailable.',
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage).toHaveBeenCalledWith(
+      warningToast('The "Viz A" visualization is currently unavailable.'),
     );
   });
 
   it("mentions the version mismatch for a single plugin with warnings", () => {
-    const onInfo = jest.fn();
+    const onMessage = jest.fn();
 
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({
         display_name: "Viz A",
         warnings: [SDK_VERSION_WARNING],
       }),
-      onInfo,
+      onMessage,
     );
     jest.advanceTimersByTime(FLUSH_DELAY_MS);
 
-    expect(onInfo).toHaveBeenCalledWith(
-      'The "Viz A" visualization is currently unavailable. It was built for a different version and may need to be updated.',
+    expect(onMessage).toHaveBeenCalledWith(
+      warningToast(
+        'The "Viz A" visualization is currently unavailable. It was built for a different version and may need to be updated.',
+      ),
     );
   });
 
   it("does not show a toast before the flush delay elapses", () => {
-    const onInfo = jest.fn();
+    const onMessage = jest.fn();
 
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime(),
-      onInfo,
+      onMessage,
     );
     jest.advanceTimersByTime(FLUSH_DELAY_MS - 1);
 
-    expect(onInfo).not.toHaveBeenCalled();
+    expect(onMessage).not.toHaveBeenCalled();
   });
 
   it("combines plugins reported within the window into one toast and sorts vizualizations by name", () => {
-    const onInfo = jest.fn();
+    const onMessage = jest.fn();
 
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ id: 1, display_name: "Viz B" }),
-      onInfo,
+      onMessage,
     );
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ id: 2, display_name: "Viz A" }),
-      onInfo,
+      onMessage,
     );
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ id: 3, display_name: "Viz C" }),
-      onInfo,
+      onMessage,
     );
     jest.advanceTimersByTime(FLUSH_DELAY_MS);
 
-    expect(onInfo).toHaveBeenCalledTimes(1);
-    expect(onInfo).toHaveBeenCalledWith(
-      '3 visualizations are currently unavailable: "Viz A", "Viz B", "Viz C".',
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage).toHaveBeenCalledWith(
+      warningToast(
+        '3 visualizations are currently unavailable: "Viz A", "Viz B", "Viz C".',
+      ),
     );
   });
 
   it("mentions the version mismatch when any combined plugin has warnings", () => {
-    const onInfo = jest.fn();
+    const onMessage = jest.fn();
 
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ id: 1, display_name: "Viz B" }),
-      onInfo,
+      onMessage,
     );
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({
@@ -103,77 +113,81 @@ describe("reportUnavailableCustomVizPlugin", () => {
         display_name: "Viz A",
         warnings: [SDK_VERSION_WARNING],
       }),
-      onInfo,
+      onMessage,
     );
     jest.advanceTimersByTime(FLUSH_DELAY_MS);
 
-    expect(onInfo).toHaveBeenCalledWith(
-      '2 visualizations are currently unavailable: "Viz A", "Viz B". They may have been built for a different version and may need to be updated.',
+    expect(onMessage).toHaveBeenCalledWith(
+      warningToast(
+        '2 visualizations are currently unavailable: "Viz A", "Viz B". They may have been built for a different version and may need to be updated.',
+      ),
     );
   });
 
   it("collapses reports of the same plugin into one entry", () => {
-    const onInfo = jest.fn();
+    const onMessage = jest.fn();
     const plugin = createMockCustomVizPluginRuntime({
       display_name: "Viz A",
     });
 
-    reportUnavailableCustomVizPlugin(plugin, onInfo);
-    reportUnavailableCustomVizPlugin(plugin, onInfo);
+    reportUnavailableCustomVizPlugin(plugin, onMessage);
+    reportUnavailableCustomVizPlugin(plugin, onMessage);
     jest.advanceTimersByTime(FLUSH_DELAY_MS);
 
-    expect(onInfo).toHaveBeenCalledTimes(1);
-    expect(onInfo).toHaveBeenCalledWith(
-      'The "Viz A" visualization is currently unavailable.',
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage).toHaveBeenCalledWith(
+      warningToast('The "Viz A" visualization is currently unavailable.'),
     );
   });
 
   it("extends the window while reports keep arriving", () => {
-    const onInfo = jest.fn();
+    const onMessage = jest.fn();
 
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ id: 1, display_name: "Viz B" }),
-      onInfo,
+      onMessage,
     );
     jest.advanceTimersByTime(FLUSH_DELAY_MS - 100);
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ id: 2, display_name: "Viz A" }),
-      onInfo,
+      onMessage,
     );
     jest.advanceTimersByTime(FLUSH_DELAY_MS - 100);
 
-    expect(onInfo).not.toHaveBeenCalled();
+    expect(onMessage).not.toHaveBeenCalled();
 
     jest.advanceTimersByTime(100);
 
-    expect(onInfo).toHaveBeenCalledTimes(1);
-    expect(onInfo).toHaveBeenCalledWith(
-      '2 visualizations are currently unavailable: "Viz A", "Viz B".',
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage).toHaveBeenCalledWith(
+      warningToast(
+        '2 visualizations are currently unavailable: "Viz A", "Viz B".',
+      ),
     );
   });
 
   it("shows a new toast for plugins reported after a flush", () => {
-    const onInfo = jest.fn();
+    const onMessage = jest.fn();
 
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ id: 1, display_name: "Viz B" }),
-      onInfo,
+      onMessage,
     );
     jest.advanceTimersByTime(FLUSH_DELAY_MS);
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ id: 2, display_name: "Viz A" }),
-      onInfo,
+      onMessage,
     );
     jest.advanceTimersByTime(FLUSH_DELAY_MS);
 
-    expect(onInfo).toHaveBeenCalledTimes(2);
-    expect(onInfo).toHaveBeenLastCalledWith(
-      'The "Viz A" visualization is currently unavailable.',
+    expect(onMessage).toHaveBeenCalledTimes(2);
+    expect(onMessage).toHaveBeenLastCalledWith(
+      warningToast('The "Viz A" visualization is currently unavailable.'),
     );
   });
 
   it("keeps collecting reports until a callback arrives", () => {
-    const onInfo = jest.fn();
+    const onMessage = jest.fn();
 
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ id: 1, display_name: "Viz B" }),
@@ -184,31 +198,33 @@ describe("reportUnavailableCustomVizPlugin", () => {
 
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ id: 2, display_name: "Viz A" }),
-      onInfo,
+      onMessage,
     );
     jest.advanceTimersByTime(FLUSH_DELAY_MS);
 
-    expect(onInfo).toHaveBeenCalledTimes(1);
-    expect(onInfo).toHaveBeenCalledWith(
-      '2 visualizations are currently unavailable: "Viz A", "Viz B".',
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage).toHaveBeenCalledWith(
+      warningToast(
+        '2 visualizations are currently unavailable: "Viz A", "Viz B".',
+      ),
     );
   });
 
-  it("uses the most recent onInfo callback for the whole batch", () => {
-    const firstOnInfo = jest.fn();
-    const secondOnInfo = jest.fn();
+  it("uses the most recent onMessage callback for the whole batch", () => {
+    const firstOnMessage = jest.fn();
+    const secondOnMessage = jest.fn();
 
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ id: 1, display_name: "Viz B" }),
-      firstOnInfo,
+      firstOnMessage,
     );
     reportUnavailableCustomVizPlugin(
       createMockCustomVizPluginRuntime({ id: 2, display_name: "Viz A" }),
-      secondOnInfo,
+      secondOnMessage,
     );
     jest.advanceTimersByTime(FLUSH_DELAY_MS);
 
-    expect(firstOnInfo).not.toHaveBeenCalled();
-    expect(secondOnInfo).toHaveBeenCalledTimes(1);
+    expect(firstOnMessage).not.toHaveBeenCalled();
+    expect(secondOnMessage).toHaveBeenCalledTimes(1);
   });
 });
