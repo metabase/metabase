@@ -27,39 +27,24 @@ const REPO_ROOT = path.resolve(__dirname, "../../../..");
  * `frontend/lint/tests/side-effect-free-modules.unit.spec.js` guards the
  * mechanically detectable half of the contract.
  *
+ * A bigger tree is not automatically a better candidate. Adding `metabase/ui` was
+ * measured over two production builds: 69 kB less raw JS, but 11 kB more brotli,
+ * because concatenating more modules trades compressible `__webpack_require__`
+ * boilerplate for unique renamed identifiers. `app-main`, `app-embed` and
+ * `app-public` each paid about 6 kB for wins of 1 kB to 4 kB on the narrower
+ * entries. Measure both raw and compressed before adding a directory.
+ *
  * Only applies to production builds, where `optimization.sideEffects` is on.
  */
 const SIDE_EFFECT_FREE_PATHS = [
   // Trailing separator: rspack prefix-matches `include`, so a bare directory path
   // would also claim a sibling like `router-utils.ts` or a future `router-v8/`.
   path.join(REPO_ROOT, "frontend/src/metabase/router") + path.sep,
-  path.join(REPO_ROOT, "frontend/src/metabase/ui") + path.sep,
-];
-
-/**
- * Files inside those directories that do have an import-time side effect, and so
- * keep rspack's default assumption that they must always run.
- */
-const SIDE_EFFECT_FULL_FILES = [
-  // Mutates the `Popover` object it imports from `@mantine/core` to swap in a
-  // `Dropdown` that adds `PreventEagerPortal` and `OverlayStackItem`. Mantine's
-  // Combobox, Menu, HoverCard and ColorInput render `Popover.Dropdown` off that
-  // same shared object, so the patch is how they inherit the behaviour. Shaking
-  // this file out would strip it from every one of them.
-  path.join(
-    REPO_ROOT,
-    "frontend/src/metabase/ui/components/overlays/Popover/index.tsx",
-  ),
 ];
 
 const SIDE_EFFECT_FREE_RULE = {
   include: SIDE_EFFECT_FREE_PATHS,
-  exclude: SIDE_EFFECT_FULL_FILES,
   sideEffects: false,
 };
 
-module.exports = {
-  SIDE_EFFECT_FREE_PATHS,
-  SIDE_EFFECT_FULL_FILES,
-  SIDE_EFFECT_FREE_RULE,
-};
+module.exports = { SIDE_EFFECT_FREE_PATHS, SIDE_EFFECT_FREE_RULE };
