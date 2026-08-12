@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { displayNameForColumn } from "metabase/value-formatting";
-import { ObjectDetail } from "metabase/visualizations/components/ObjectDetail";
 import {
   columnSettings,
   tableColumnSettings,
@@ -10,10 +9,9 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 
-import type { VisualizationDefinition } from "../types";
-
-const ObjectDetailProperties: VisualizationDefinition = {
+export const OBJECT_DETAIL_DEFINITION: VisualizationDefinition = {
   getUiName() {
     return t`Detail`;
   },
@@ -50,10 +48,3 @@ const ObjectDetailProperties: VisualizationDefinition = {
   isSensible: () => true,
   checkRenderable: () => true,
 };
-
-const ObjectDetailWithProperties = Object.assign(
-  ObjectDetail,
-  ObjectDetailProperties,
-);
-
-export { ObjectDetailWithProperties as ObjectDetail };
