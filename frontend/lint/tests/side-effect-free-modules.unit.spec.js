@@ -1,7 +1,10 @@
 import fs from "fs";
 import path from "path";
 
-import { SIDE_EFFECT_FREE_PATHS } from "../../build/shared/rspack/side-effect-free-modules";
+import {
+  SIDE_EFFECT_FREE_PATHS,
+  SIDE_EFFECT_FULL_FILES,
+} from "../../build/shared/rspack/side-effect-free-modules";
 
 // A directory in SIDE_EFFECT_FREE_PATHS promises rspack that importing any file
 // in it, and using none of its exports, has no observable effect. Rspack cannot
@@ -29,7 +32,9 @@ function filesIn(dir, extensions) {
 
 function sourceFilesIn(dir) {
   return filesIn(dir, SOURCE_EXTENSIONS).filter(
-    (file) => !NON_BUNDLED.some((marker) => file.includes(marker)),
+    (file) =>
+      !NON_BUNDLED.some((marker) => file.includes(marker)) &&
+      !SIDE_EFFECT_FULL_FILES.includes(file),
   );
 }
 
@@ -70,4 +75,10 @@ describe.each(SIDE_EFFECT_FREE_PATHS)("side-effect-free %s", (dir) => {
       expect(UNSCOPED_SELECTOR.test(source)).toBe(false);
     });
   }
+});
+
+// A renamed or moved file would drop off this list silently, putting it back under
+// `sideEffects: false` with nothing to catch it.
+it.each(SIDE_EFFECT_FULL_FILES)("%s still exists", (file) => {
+  expect(fs.existsSync(file)).toBe(true);
 });
