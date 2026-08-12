@@ -170,7 +170,7 @@
           (cond-> result
             @current-type (close!)
             true          (rf)))
- 
+
          ([result {:keys [id model choices usage] :as _chunk}]
           (let [choice        (first choices)
                 delta         (:delta choice)
