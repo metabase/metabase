@@ -54,20 +54,7 @@ import {
 } from "metabase/plugins";
 import { QuestionHashRedirect } from "metabase/query_builder/components/QuestionHashRedirect";
 import type { State } from "metabase/redux/store";
-import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
-import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
-import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
-import FieldListContainer from "metabase/reference/databases/FieldListContainer";
-import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
-import TableListContainer from "metabase/reference/databases/TableListContainer";
-import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
-import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
-import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
-import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
-import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
-import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
-import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
-import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
+import { getReferenceRoutes } from "metabase/reference/routes";
 import {
   CanAccessOnboarding,
   CanAccessSettings,
@@ -437,59 +424,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               { path: "/auto/dashboard/*", element: <AutomaticDashboardApp /> },
 
               // REFERENCE
-              {
-                path: "/reference",
-                children: [
-                  { index: true, element: redirect("/reference/databases") },
-                  { path: "segments", element: <SegmentListContainer /> },
-                  {
-                    path: "segments/:segmentId",
-                    element: <SegmentDetailContainer />,
-                  },
-                  {
-                    path: "segments/:segmentId/fields",
-                    element: <SegmentFieldListContainer />,
-                  },
-                  {
-                    path: "segments/:segmentId/fields/:fieldId",
-                    element: <SegmentFieldDetailContainer />,
-                  },
-                  {
-                    path: "segments/:segmentId/questions",
-                    element: <SegmentQuestionsContainer />,
-                  },
-                  {
-                    path: "segments/:segmentId/revisions",
-                    element: <SegmentRevisionsContainer />,
-                  },
-                  { path: "databases", element: <DatabaseListContainer /> },
-                  {
-                    path: "databases/:databaseId",
-                    element: <DatabaseDetailContainer />,
-                  },
-                  {
-                    path: "databases/:databaseId/tables",
-                    element: <TableListContainer />,
-                  },
-                  {
-                    path: "databases/:databaseId/tables/:tableId",
-                    element: <TableDetailContainer />,
-                  },
-                  {
-                    path: "databases/:databaseId/tables/:tableId/fields",
-                    element: <FieldListContainer />,
-                  },
-                  {
-                    path: "databases/:databaseId/tables/:tableId/fields/:fieldId",
-                    element: <FieldDetailContainer />,
-                  },
-                  {
-                    path: "databases/:databaseId/tables/:tableId/questions",
-                    element: <TableQuestionsContainer />,
-                  },
-                  { path: "glossary", element: <GlossaryContainer /> },
-                ],
-              },
+              ...getReferenceRoutes(),
 
               // ACCOUNT
               ...toRouteObjects(getAccountRoutes(store, IsAuthenticated)),

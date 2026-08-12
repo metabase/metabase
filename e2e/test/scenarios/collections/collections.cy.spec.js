@@ -817,22 +817,36 @@ describe("scenarios > collection defaults", () => {
 
           // Select one
           selectItemUsingCheckbox("Orders");
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("1 item selected").should("be.visible");
+          cy.findByTestId("toast-card")
+            .findByText("1 item selected")
+            .should("be.visible");
           assertSelectAllIsIndeterminate(true);
           getRowCheckbox("Orders").should("be.checked");
+
+          // pinned cards join the same selection
+          H.getPinnedSection()
+            .findByRole("checkbox", { name: "Orders, Count" })
+            .click();
+          cy.findByTestId("toast-card")
+            .findByText("2 items selected")
+            .should("be.visible");
+          assertSelectAllIsIndeterminate(true);
 
           // Select all
           cy.findByLabelText("Select all items").click();
           assertSelectAllIsIndeterminate(false);
-          cy.findByTestId("toast-card").findByText(/\d+ items selected/);
+          H.getPinnedSection()
+            .findByRole("checkbox", { name: "Orders, Count" })
+            .should("have.attr", "aria-checked", "true");
+          cy.findByTestId("toast-card")
+            .findByText(/\d+ items selected/)
+            .should("be.visible");
 
           // Deselect all
           cy.findByLabelText("Select all items").click();
 
           cy.findAllByRole("checkbox").should("not.be.checked");
-          // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/item(s)? selected/).should("not.exist");
+          cy.findByTestId("toast-card").should("not.exist");
         });
 
         it("should clean up selection when opening another collection (metabase#16491)", () => {
@@ -1139,7 +1153,6 @@ describe("scenarios > collection items listing", () => {
         method: "GET",
         pathname: "/api/collection/root/items",
         query: {
-          pinned_state: "is_not_pinned",
           q: query,
         },
       }).as(alias);
@@ -1249,7 +1262,6 @@ describe("scenarios > collection items listing", () => {
         {
           method: "GET",
           pathname: "/api/collection/root/items",
-          query: { pinned_state: "is_not_pinned" },
         },
         (request) => {
           const models = new URL(request.url).searchParams

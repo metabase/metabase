@@ -311,6 +311,7 @@ const configs = [
     settings: {
       "boundaries/elements": boundaryElements,
       "boundaries/ignore": ["**/e2e/**", "test/**"],
+      "boundaries/dependency-nodes": ["import", "dynamic-import"],
     },
     rules: {
       "boundaries/element-types": [
@@ -606,12 +607,6 @@ const configs = [
             "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
         },
       ],
-    },
-  },
-  {
-    files: ["frontend/src/metabase/app.js"],
-    rules: {
-      "import/no-duplicates": "off",
     },
   },
   {

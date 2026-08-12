@@ -47,7 +47,6 @@ import {
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
 import { uuid } from "metabase/utils/uuid";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
@@ -58,6 +57,7 @@ import type {
   DashboardId,
   Dataset,
   JsonQuery,
+  ParameterId,
   ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
@@ -663,7 +663,7 @@ function getDatasetQueryParams(datasetQuery?: JsonQuery) {
     .sort(sortById);
 }
 
-function sortById(a: UiParameter, b: UiParameter) {
+function sortById(a: { id: ParameterId }, b: { id: ParameterId }) {
   return a.id.localeCompare(b.id);
 }
 

@@ -24,7 +24,7 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
+import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { ApiKey } from "metabase-types/api";
 
 import { CreateApiKeyModal } from "./CreateApiKeyModal";

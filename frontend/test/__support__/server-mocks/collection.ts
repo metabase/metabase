@@ -155,6 +155,16 @@ export function setupCollectionVirtualSchemaEndpoints(
   });
 }
 
+function matchesPinnedState(item: CollectionItem, pinnedState: string | null) {
+  if (pinnedState === "is_pinned") {
+    return item.collection_position != null;
+  }
+  if (pinnedState === "is_not_pinned") {
+    return item.collection_position == null;
+  }
+  return true;
+}
+
 function handleCollectionItemsResponse({
   call,
   collectionItems,
@@ -166,13 +176,14 @@ function handleCollectionItemsResponse({
 }) {
   const url = new URL(call.url);
   const models = modelsParam ?? url.searchParams.getAll("models");
+  const pinnedState = url.searchParams.get("pinned_state");
 
   // As in the API, requesting no models at all returns every item.
   const matchedItems: CollectionItem[] = models.includes("no_models")
     ? []
-    : collectionItems.filter(
-        ({ model }) => models.length === 0 || models.includes(model),
-      );
+    : collectionItems
+        .filter(({ model }) => models.length === 0 || models.includes(model))
+        .filter((item) => matchesPinnedState(item, pinnedState));
 
   const q = url.searchParams.get("q")?.toLowerCase().trim();
   const searchedItems = q

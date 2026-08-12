@@ -56,7 +56,10 @@ export const MetabotChat = ({
 
   const hasMessages = metabot.messages.length > 0;
 
-  const { scrollContainerRef, fillerRef } = useScrollManager(hasMessages);
+  const { scrollContainerRef, fillerRef } = useScrollManager(
+    hasMessages,
+    metabot.conversationId,
+  );
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {
@@ -171,6 +174,11 @@ export const MetabotChat = ({
                 messages={metabot.messages}
                 onRetryMessage={
                   config.preventRetryMessage ? undefined : metabot.retryMessage
+                }
+                onContinueMessage={() =>
+                  metabot.submitInput(
+                    t`Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote.`,
+                  )
                 }
                 onRefreshConversation={() => {
                   metabot.setPrompt("");

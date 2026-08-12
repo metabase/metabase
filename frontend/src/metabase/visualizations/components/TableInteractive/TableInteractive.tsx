@@ -20,10 +20,7 @@ import _ from "underscore";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import {
-  memoize,
-  useMemoizedCallback,
-} from "metabase/common/hooks/use-memoized-callback";
+import { useMemoizedCallback } from "metabase/common/hooks/use-memoized-callback";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
@@ -48,7 +45,8 @@ import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { memoize } from "metabase/utils/memoize";
+import { formatValue } from "metabase/value-formatting";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,

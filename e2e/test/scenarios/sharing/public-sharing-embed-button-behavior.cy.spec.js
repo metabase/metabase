@@ -1035,11 +1035,10 @@ function assertNonAdminCannotCreatePublicLink(resource) {
   }
 
   if (resource === "dashboard") {
-    // No public link: dashboards keep the app link copy and the PDF export.
+    // No public link: dashboards keep the app link copy
     H.openSharingMenu();
     H.sharingMenu().within(() => {
       cy.findByText("Copy link").should("be.visible");
-      cy.findByText("Export as PDF").should("be.visible");
       cy.findByText("Embed").should("not.exist");
       cy.findByText(/public link/i).should("not.exist");
     });

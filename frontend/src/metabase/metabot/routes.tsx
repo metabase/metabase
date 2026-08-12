@@ -1,4 +1,5 @@
 import { Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { MetabotConversationPage } from "./components/MetabotConversationPage";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
@@ -9,7 +10,7 @@ export const getMetabotRoutes = () => {
     <>
       {getMetabotQuickLinks()}
       <Route
-        path="metabot/conversation/:convoId"
+        path={`${Urls.CONVERSATION_BASE_PATH}/:convoId`}
         element={<MetabotConversationPage />}
       />
       <Route path="slack-connect-success" element={<SlackConnectSuccess />} />

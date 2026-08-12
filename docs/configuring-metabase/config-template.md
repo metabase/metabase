@@ -222,6 +222,8 @@ config:
     llm-metabot-provider: anthropic/claude-sonnet-4-6
     llm-mistral-api-base-url: https://api.mistral.ai/v1
     llm-mistral-api-key: null
+    llm-moonshot-api-base-url: https://api.moonshot.ai/v1
+    llm-moonshot-api-key: null
     llm-openai-api-base-url: https://api.openai.com
     llm-openai-api-key: null
     llm-openai-model: gpt-5.4
@@ -353,4 +355,5 @@ config:
     usage-metadata-schedule: 0 0 2 * * ? *
     use-native-pivot-tables: false
     user-visibility: all
+    warehouse-allowed-networks: null
 ```
