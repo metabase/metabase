@@ -49,12 +49,13 @@
                :doc "Process query-history rollups and refresh Library cleanup candidates."}
   UsageMetadataProcess
   [_]
-  (let [batch-error
-        (when (usage-metadata.settings/usage-metadata-enabled?)
-          (run-step "Error processing usage metadata rollups"
-                    usage-metadata.batch/run-batch!))
-        candidate-error (run-step "Error refreshing usage metadata candidates"
-                                  run-candidate-refresh!)]
+  (let [enabled?        (usage-metadata.settings/usage-metadata-enabled?)
+        batch-error     (when enabled?
+                          (run-step "Error processing usage metadata rollups"
+                                    usage-metadata.batch/run-batch!))
+        candidate-error (when enabled?
+                          (run-step "Error refreshing usage metadata candidates"
+                                    run-candidate-refresh!))]
     (when-let [error (or batch-error candidate-error)]
       (throw error))))
 
