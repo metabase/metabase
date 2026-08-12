@@ -500,7 +500,7 @@ const IncompleteTurnAlert = ({
       continuable: true,
     }))
     .with("content-filter", () => ({
-      message: t`Response from ${metabotName} was stopped by a content filter`,
+      message: t`Response from ${metabotName} was stopped by a content filter. Try rephrasing your question.`,
       continuable: false,
     }))
     .with("tool-calls", "other", () => ({
