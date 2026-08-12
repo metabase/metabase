@@ -15,6 +15,7 @@ import {
   type MetabotAgentTextChatMessage,
   type MetabotAgentTurnError,
   type MetabotAgentTurnErroredMessage,
+  type MetabotAgentTurnIncompleteMessage,
   type MetabotChatMessage,
   type MetabotDataPart,
   type MetabotDebugToolCallMessage,
@@ -79,6 +80,7 @@ const isUserVisibleMessage = (message: MetabotChatMessage): boolean =>
     .with({ type: "tool_call" }, () => false)
     .with({ type: "chain_of_thought" }, () => true)
     .with({ type: "turn_aborted" }, () => true)
+    .with({ type: "turn_incomplete" }, () => true)
     .with({ type: "turn_errored" }, () => true)
     .with({ type: "turn_in_progress" }, () => false)
     .exhaustive();
@@ -191,6 +193,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   readonly: boolean;
   conversationId: string;
   onRetry?: (messageId: string) => void;
+  onContinue?: () => void;
   onRefreshConversation?: () => void;
   getCopyText: () => string;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
@@ -212,6 +215,7 @@ export const AgentMessage = ({
   conversationId,
   getCopyText,
   onRetry,
+  onContinue,
   onRefreshConversation,
   setFeedbackMessage,
   submittedFeedback,
@@ -266,6 +270,12 @@ export const AgentMessage = ({
         )
         .with({ type: "turn_aborted" }, (m) => (
           <AbortedTurnAlert messageId={m.id} debug={debug} onRetry={onRetry} />
+        ))
+        .with({ type: "turn_incomplete" }, (m) => (
+          <IncompleteTurnAlert
+            finishReason={m.finishReason}
+            onContinue={onContinue}
+          />
         ))
         .with({ type: "turn_errored" }, (m) => (
           <AgentErroredTurnAlert
@@ -476,6 +486,50 @@ const AbortedTurnAlert = ({
   );
 };
 
+const IncompleteTurnAlert = ({
+  finishReason,
+  onContinue,
+}: {
+  finishReason: MetabotAgentTurnIncompleteMessage["finishReason"];
+  onContinue?: () => void;
+}) => {
+  const metabotName = useSetting("metabot-name");
+  const { message, continuable } = match(finishReason)
+    .with("length", () => ({
+      message: t`Response from ${metabotName} was cut off because it hit the maximum length`,
+      continuable: true,
+    }))
+    .with("content-filter", () => ({
+      message: t`Response from ${metabotName} was stopped by a content filter`,
+      continuable: false,
+    }))
+    .with("tool-calls", "other", () => ({
+      message: t`Response from ${metabotName} stopped before it finished`,
+      continuable: false,
+    }))
+    .exhaustive();
+  const canContinue = continuable && !!onContinue;
+  return (
+    <AgentTurnAlert
+      variant="info"
+      message={message}
+      cta={
+        canContinue ? (
+          <Button
+            variant="default"
+            size="compact-xs"
+            fz="xs"
+            onClick={onContinue}
+            data-testid="metabot-chat-message-continue"
+          >
+            {t`Continue`}
+          </Button>
+        ) : null
+      }
+    />
+  );
+};
+
 export const getFullAgentReply = (
   messages: MetabotChatMessage[],
   messageId: string,
@@ -507,6 +561,7 @@ export const getFullAgentReply = (
 export const Messages = ({
   messages,
   onRetryMessage,
+  onContinueMessage,
   onRefreshConversation,
   isDoingScience,
   supportsReasoning = true,
@@ -521,6 +576,7 @@ export const Messages = ({
 }: {
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
+  onContinueMessage?: () => void;
   onRefreshConversation?: () => void;
   isDoingScience: boolean;
   supportsReasoning?: boolean;
@@ -624,6 +680,7 @@ export const Messages = ({
               readonly={readonly}
               conversationId={conversationId}
               onRetry={isLastUserMessage ? onRetryMessage : undefined}
+              onContinue={isLastUserMessage ? onContinueMessage : undefined}
               onRefreshConversation={onRefreshConversation}
               getCopyText={() => getAgentReplyCopyText(message.id)}
               setFeedbackMessage={(data) =>
