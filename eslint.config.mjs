@@ -610,12 +610,6 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/app.js"],
-    rules: {
-      "import/no-duplicates": "off",
-    },
-  },
-  {
     files: ["frontend/src/metabase/**/*.stories.tsx"],
     rules: {
       "import/no-default-export": "off",

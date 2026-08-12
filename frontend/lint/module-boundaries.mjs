@@ -319,9 +319,9 @@ const elements = [
 
   // app
   ...[
-    "frontend/src/metabase/app.js",
+    "frontend/src/metabase/app.tsx",
     "frontend/src/metabase/app-embed-sdk.tsx",
-    "frontend/src/metabase/app-main.js",
+    "frontend/src/metabase/app-main.ts",
     "frontend/src/metabase/app-embed.ts",
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/app-static-viz.ts",
@@ -345,7 +345,7 @@ const elements = [
     // so the test is app-tier too.
     "frontend/src/metabase/common/components/NewItemMenu/NewItemMenu.unit.spec.tsx",
     // Entry point for the static-viz bundle (server-side chart rendering in
-    // GraalJS) - like app.js, it composes OSS + EE code for a build artifact.
+    // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
     "frontend/src/metabase/static-viz/index.tsx",
     // Storybook config is a composition root: preview wires app-tier decorators.
