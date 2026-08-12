@@ -107,12 +107,23 @@ jobs:
       - name: Wait for the database to accept connections
         if: ${{ matrix.driver != 'h2' }}
         run: |
-          port=$([ "${{ matrix.driver }}" = "postgres" ] && echo 5432 || echo 3306)
-          for _ in $(seq 1 60); do
-            if nc -z localhost "$port"; then exit 0; fi
+          # Polls with a client over TCP rather than checking that the port is open. Both image families run a
+          # temporary server while they initialize, and the port is published the moment the container starts, so a
+          # port check can pass well before the real server is up -- that temporary server listens on a unix socket
+          # only, which is what makes a TCP probe the one that waits for the right thing.
+          for _ in $(seq 1 90); do
+            if [ "${{ matrix.driver }}" = "postgres" ]; then
+              if docker exec appdb pg_isready -h 127.0.0.1 -p 5432 -U "$MB_POSTGRESQL_TEST_USER" >/dev/null 2>&1; then
+                exit 0
+              fi
+            elif docker exec appdb sh -c \
+                 'mariadb --protocol=TCP -h127.0.0.1 -uroot -e "SELECT 1" ||
+                  mysql   --protocol=TCP -h127.0.0.1 -uroot -e "SELECT 1"' >/dev/null 2>&1; then
+              exit 0
+            fi
             sleep 2
           done
-          echo "Database on port $port never came up"
+          echo "Database never became ready"
           docker logs appdb || true
           exit 1
         shell: bash
