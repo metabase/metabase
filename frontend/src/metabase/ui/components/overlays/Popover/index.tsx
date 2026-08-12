@@ -31,6 +31,13 @@ const PopoverDropdown = forwardRef(function PopoverDropdown(
   );
 });
 
+/**
+ * Patches the shared `@mantine/core` object in place on purpose. Combobox, Menu,
+ * HoverCard and ColorInput render `Popover.Dropdown` off it, and this is how they
+ * inherit `PreventEagerPortal`. A copy would reach only direct `Popover` users.
+ * The mutation makes this module unsafe to tree-shake: see the contract in
+ * `frontend/build/shared/rspack/side-effect-free-modules.js`.
+ */
 export const Popover = Object.assign(MantinePopover, {
   Dropdown: Object.assign(PopoverDropdown, {
     displayName: MantinePopoverDropdown.displayName,
