@@ -28,6 +28,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { getPathnameWithoutSubPath } from "metabase/utils/dom";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { isNotNull } from "metabase/utils/types";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -602,10 +603,7 @@ function getInitialSelectedTabId(
   siteUrl: string,
   isWebApp: boolean,
 ) {
-  const pathname = Urls.stripSubpathFromPathname(
-    window.location.pathname,
-    siteUrl,
-  );
+  const pathname = getPathnameWithoutSubPath(window.location.pathname, siteUrl);
   const isDashboardUrl = pathname.includes("/dashboard/");
 
   if (isDashboardUrl) {

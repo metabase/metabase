@@ -105,14 +105,27 @@ const getOrigin = (url: string): string | null => {
   }
 };
 
-export function getPathnameWithoutSubPath(pathname: string): string {
+export function getPathnameWithoutSubPath(
+  pathname: string,
+  siteUrl?: string,
+): string {
+  const sitePath =
+    siteUrl === undefined ? getSitePath() : getUrlPathname(siteUrl);
+  const subpath = sitePath.replace(/\/$/, "");
+  if (!subpath) {
+    return pathname;
+  }
+
   const pathnameSections = pathname.split("/");
-  const sitePathSections = getSitePath().split("/");
+  const sitePathSections = subpath.split("/");
 
   return isPathnameContainSitePath(pathnameSections, sitePathSections)
     ? "/" + pathnameSections.slice(sitePathSections.length).join("/")
     : pathname;
 }
+
+const getUrlPathname = (url: string): string =>
+  url ? new URL(url).pathname.toLowerCase() : "";
 
 function isPathnameContainSitePath(
   pathnameSections: string[],
@@ -120,7 +133,7 @@ function isPathnameContainSitePath(
 ): boolean {
   for (let index = 0; index < sitePathSections.length; index++) {
     const sitePathSection = sitePathSections[index].toLowerCase();
-    const pathnameSection = pathnameSections[index].toLowerCase();
+    const pathnameSection = pathnameSections[index]?.toLowerCase();
 
     if (sitePathSection !== pathnameSection) {
       return false;
