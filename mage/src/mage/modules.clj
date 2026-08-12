@@ -359,7 +359,7 @@
   "Set of driver keywords listed with status `\"skip\"` in the top-level `drivers` array of
    ci-test-config.json. Each entry identifies a driver by its short `name` (e.g. \"snowflake\");
    a few names fan out to several jobs. `skip` means: do not run the driver at all (subject to
-   the ci:run-<driver> label). Drivers absent from the config run and gate as usual.
+the ci:run-<driver> label which overrides the `skip` keyword and runs the driver anyways). Drivers absent from the config run and gate as usual.
 
    Whether a driver's failures GATE is a separate question, answered by ci-conductor's
    suite-level quarantine rules at the end of the job -- not by this config.
