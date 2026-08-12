@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 
-import { Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
+import { FixedSizeIcon, Flex, Stack, Text, Tooltip } from "metabase/ui";
 import type { NotificationRunSummary } from "metabase-types/api";
 
 import { formatRelativeDate } from "../NotificationsAdminPage/utils";
@@ -28,7 +28,7 @@ export const NotificationSummary = ({ run, isCompact }: Props) => {
         </Tooltip>
         {isCompact && isFailing && (
           <Tooltip label={error} disabled={!error}>
-            <Icon name="warning_round" c="feedback-negative" />
+            <FixedSizeIcon name="warning_round" c="feedback-negative" />
           </Tooltip>
         )}
       </Flex>
@@ -39,7 +39,7 @@ export const NotificationSummary = ({ run, isCompact }: Props) => {
               {error}
             </Text>
           )}
-          <Icon name="warning_round" c="feedback-negative" />
+          <FixedSizeIcon name="warning_round" c="feedback-negative" />
         </Flex>
       )}
     </Stack>

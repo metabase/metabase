@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { trackTransformRunsViewToggled } from "metabase/transforms/analytics";
 import { Switch } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -17,17 +16,15 @@ export function DetailedViewSwitch({
   detailed,
   params,
 }: DetailedViewSwitchProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleChange = () => {
     const nextView = detailed ? "grouped" : "detailed";
     trackTransformRunsViewToggled({ view: nextView });
-    dispatch(
-      push(
-        detailed
-          ? Urls.transformGraphRunList(params)
-          : Urls.transformRunList(params),
-      ),
+    navigate(
+      detailed
+        ? Urls.transformGraphRunList(params)
+        : Urls.transformRunList(params),
     );
   };
 

@@ -29,7 +29,7 @@ export function GdriveDbMenu() {
   );
 
   const isDwh = databaseInfo?.is_attached_dwh;
-  const showGdrive = useShowGdrive();
+  const { showGdrive } = useShowGdrive();
 
   const showMenu = showGdrive && isDwh;
 

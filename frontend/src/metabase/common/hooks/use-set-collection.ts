@@ -8,6 +8,7 @@ import {
   collectionApi,
   dashboardApi,
   documentApi,
+  explorationApi,
   snippetApi,
   tableApi,
   timelineApi,
@@ -15,6 +16,7 @@ import {
   useUpdateCollectionMutation,
   useUpdateDashboardMutation,
   useUpdateDocumentMutation,
+  useUpdateExplorationMutation,
   useUpdateSnippetMutation,
   useUpdateTableMutation,
   useUpdateTimelineMutation,
@@ -35,6 +37,7 @@ import type {
   CollectionItem,
   Dashboard,
   Document,
+  Exploration,
   NativeQuerySnippet,
   Table,
   Timeline,
@@ -58,6 +61,7 @@ export type MovableItem =
   | Movable<"snippet-collection", Collection>
   | Movable<"snippet", NativeQuerySnippet>
   | Movable<"document", Document>
+  | Movable<"exploration", Exploration>
   | Movable<"table", Table>
   | Movable<"timeline", Timeline, "name">;
 
@@ -72,6 +76,7 @@ const MOVABLE_MODELS = new Set<MovableModel>([
   "snippet-collection",
   "snippet",
   "document",
+  "exploration",
   "timeline",
 ]);
 
@@ -96,6 +101,7 @@ const LABELS = {
   "snippet-collection": () => t`folder`,
   snippet: () => t`snippet`,
   document: () => t`document`,
+  exploration: () => t`research`,
   table: () => t`table`,
   timeline: () => t`timeline`,
 } as const satisfies Record<MovableModel, () => string>;
@@ -118,6 +124,7 @@ export function useSetCollection() {
   const [updateDashboard] = useUpdateDashboardMutation();
   const [updateCollection] = useUpdateCollectionMutation();
   const [updateDocument] = useUpdateDocumentMutation();
+  const [updateExploration] = useUpdateExplorationMutation();
   const [updateSnippet] = useUpdateSnippetMutation();
   const [updateTable] = useUpdateTableMutation();
   const [updateTimeline] = useUpdateTimelineMutation();
@@ -163,6 +170,16 @@ export function useSetCollection() {
             throw new Error("Cannot move a document into a dashboard");
           }
           return updateDocument({
+            id,
+            collection_id: canonicalCollectionId(destination.id),
+            archived,
+          }).unwrap();
+        })
+        .with({ model: "exploration" }, ({ id }) => {
+          if (!isCollectionDestination(destination)) {
+            throw new Error("Cannot move an exploration into a dashboard");
+          }
+          return updateExploration({
             id,
             collection_id: canonicalCollectionId(destination.id),
             archived,
@@ -227,6 +244,7 @@ export function useSetCollection() {
       updateDashboard,
       updateCollection,
       updateDocument,
+      updateExploration,
       updateSnippet,
       updateTable,
       updateTimeline,
@@ -273,6 +291,17 @@ export function useSetCollection() {
               id,
               collection_id: document.collection_id,
               archived: document.archived,
+            });
+        })
+        .with({ model: "exploration" }, async ({ id }) => {
+          const exploration = await dispatch(
+            explorationApi.endpoints.getExploration.initiate(id),
+          ).unwrap();
+          return () =>
+            updateExploration({
+              id,
+              collection_id: exploration.collection_id,
+              archived: exploration.archived,
             });
         })
         .with(
@@ -330,6 +359,7 @@ export function useSetCollection() {
       updateDashboard,
       updateCollection,
       updateDocument,
+      updateExploration,
       updateSnippet,
       updateTable,
       updateTimeline,

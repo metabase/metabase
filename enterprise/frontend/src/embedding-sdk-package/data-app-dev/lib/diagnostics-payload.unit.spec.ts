@@ -10,6 +10,7 @@ import { toPayload } from "./diagnostics-payload";
 const entry = (event: DevDiagnosticEvent): DevDiagnosticEntry => ({
   id: 1,
   time: 1700000000000,
+  buildId: 3,
   ...event,
 });
 
@@ -79,5 +80,10 @@ describe("toPayload for requests", () => {
 
   it("offers no hint for a request — the reason is already the answer", () => {
     expect(toPayload(sdkCall({ status: 400, error: "boom" })).hint).toBeNull();
+  });
+
+  it("carries the build the entry was captured under, so a reader can age it", () => {
+    expect(toPayload(sdkCall()).buildId).toBe(3);
+    expect(toPayload({ ...sdkCall(), buildId: null }).buildId).toBeNull();
   });
 });

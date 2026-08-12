@@ -9,7 +9,6 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  id-token: write
   contents: read
   checks: write
   actions: read
@@ -26,9 +25,9 @@ jobs:
         id: check
         run: |
           if [[ "${{ contains(github.event.pull_request.labels.*.name, 'minimal-tests') }}" == "true" ]]; then
-            echo "result=true" >> $GITHUB_OUTPUT
+            echo "result=true" >> "$GITHUB_OUTPUT"
           else
-            echo "result=false" >> $GITHUB_OUTPUT
+            echo "result=false" >> "$GITHUB_OUTPUT"
           fi
 
   # Postgres app-db tests - single version, single job
@@ -64,22 +63,12 @@ jobs:
         with:
           build-static-viz: true
           junit-name: "minimal-be-tests-postgres-ee"
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
           test-args: >-
             :only '["test" "enterprise/backend/test"]'
             :exclude-tags '[:mb/driver-tests :mb/transforms-python-test]'
             :partition/total 2
             :partition/index 0
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   # Postgres driver tests
   postgres-driver-test:
@@ -113,20 +102,10 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: "minimal-be-tests-postgres-driver-ee"
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
           test-args: >-
             :only-tags [:mb/driver-tests]
             :exclude-tags [:mb/transforms-python-test]
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit/
-          output-name: ${{ github.job }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   # Frontend unit tests
   frontend-unit-tests:
@@ -144,21 +123,32 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      - name: Resolve current job id
+        # Resolve JOB_ID before the long test step so the ci-conductor reporter
+        # below can link failures to this exact job. Best-effort.
+        uses: ./.github/actions/resolve-job-id
       - name: Run frontend unit tests
         id: run-tests
         run: bun run test-unit --silent
+        # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
+      - name: Report failed tests to ci-conductor
+        if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
+        # This step should NEVER fail the job!
+        continue-on-error: true
+        uses: ./.github/actions/report-failures-to-ci-conductor
         with:
-          input-path: ./target/junit
-          output-name: frontend-unit
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.run-tests.outcome }}
+          test-suite: fe-tests-unit
+          adapter: frontend
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
+        continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: frontend
+          test-suite: fe-tests-unit
+          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 
   # Summary job
   minimal-tests-result:

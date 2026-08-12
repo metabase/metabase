@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
@@ -106,6 +107,9 @@
                          [:= :active true]]
                   (contains? opts :table-ids) (conj [:in :id table-ids])
                   (contains? opts :schema)    (conj (schema-clause schema)))]
+      (perms/prime-table-perms-cache (if (contains? opts :table-ids)
+                                       {:table-ids (set table-ids)}
+                                       {:db-ids #{database-id}}))
       (->> (t2/select :model/Table
                       {:select table-select-columns
                        :where  where})

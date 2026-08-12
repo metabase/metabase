@@ -9,6 +9,15 @@
 
 (set! *warn-on-reflection* true)
 
+;; Stubbing the raw index is the only way to hand the tool a hit for an entity the user can't read.
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defmacro ^:private with-unfiltered-search
+  "Run `body` with the index search stubbed to `search-fn`, so a test can hand the tool synthetic hits — the
+  only way to check what it refuses to pass on."
+  [search-fn & body]
+  `(mt/with-dynamic-fn-redefs [cs.core/search-unfiltered ~search-fn]
+     ~@body))
+
 (deftest tool-shape-oss-fallback-test
   (testing "without the library-retrieval feature the tool returns the standard empty result shape"
     ;; Pin the feature off so the defenterprise call takes its OSS fallback regardless of any ambient
@@ -39,13 +48,46 @@
                       :instructions ""
                       :score        {:total_score (- 1.0 (/ id 10.0))
                                      :scores [{:name :similarity :score 0.8}]}}))]
-      (mt/with-dynamic-fn-redefs [cs.core/search (fn [_ _] raw)
-                                  ;; entity 1 (the top hit) is unreadable → dropped during hydration
-                                  tools.search/entity-refs->search-results
-                                  (fn [refs] (for [{:keys [model id]} refs :when (not= 1 id)]
-                                               {:type model :id id :name (str "e" id)}))]
-        (testing "asking for 2 returns the 2 readable entities (2 and 3), not just the 1 below the old top-2 cut"
-          (is (= [2 3] (mapv (comp :id :entity) (build-matches "q" 2)))))))))
+      (with-unfiltered-search (fn [_ _] raw)
+        (mt/with-dynamic-fn-redefs [;; entity 1 (the top hit) is unreadable → dropped during hydration
+                                    tools.search/entity-refs->search-results
+                                    (fn [refs] (for [{:keys [model id]} refs :when (not= 1 id)]
+                                                 {:type model :id id :name (str "e" id)}))
+                                    ;; stub the appdb lookups: this test is about candidate order, not
+                                    ;; instructions or library membership
+                                    cs.core/ai-context-instructions (constantly {})
+                                    cs.core/library-entity-keys    (constantly nil)]
+          (testing "asking for 2 returns the 2 readable entities (2 and 3), not just the 1 below the old top-2 cut"
+            (is (= [2 3] (mapv (comp :id :entity) (build-matches "q" 2))))))))))
+
+(deftest tool-never-exposes-unreadable-index-documents-test
+  (testing "neither output channel carries index text for an entity the current user can't read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {secret-id :id}
+                     {:name "Secret Card" :type :model :collection_id coll-id
+                      :database_id (mt/id) :table_id (mt/id :orders)
+                      :dataset_query {:database (mt/id) :type :query
+                                      :query {:source-table (mt/id :orders)}}}]
+        (let [sentinel "UNREADABLE_INDEX_SENTINEL"
+              raw      [{:entity   {:model "model" :id secret-id}
+                         :doc_type "description"
+                         :doc_text sentinel
+                         :score    {:total_score 0.9
+                                    :scores [{:name :similarity :score 0.9}]}}]
+              search!  #(entity-retrieval/retrieve-library-entities-tool
+                         {:user_search_prompt "secret"})]
+          (with-unfiltered-search (fn [_ _] raw)
+            (mt/with-dynamic-fn-redefs
+              [cs.core/library-entity-keys (constantly #{["model" secret-id]})]
+              (testing "a user who can read the card does get the match, so the check below isn't vacuous"
+                (mt/with-test-user :crowberto
+                  (is (str/includes? (pr-str (search!)) sentinel))))
+              (testing "a user without collection access receives neither the entity nor its matched document"
+                (mt/with-test-user :rasta
+                  (let [result (search!)]
+                    (is (= [] (get-in result [:structured-output :data])))
+                    (is (not (str/includes? (pr-str result) sentinel)))))))))))))
 
 (deftest match->xml-locale-independent-test
   (testing "score/similarity render with a '.' decimal separator even under a comma-decimal default locale"

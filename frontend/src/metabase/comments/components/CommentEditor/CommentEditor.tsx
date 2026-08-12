@@ -1,7 +1,12 @@
 import { Extension } from "@tiptap/core";
 import { Link } from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import { type Editor, EditorContent, useEditor } from "@tiptap/react";
+import {
+  type Editor,
+  EditorContent,
+  type UseEditorOptions,
+  useEditor,
+} from "@tiptap/react";
 import cx from "classnames";
 import { type KeyboardEventHandler, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -17,7 +22,7 @@ import { createMentionSuggestion } from "metabase/rich_text_editing/tiptap/exten
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { LINK_SEARCH_MODELS } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 import type { DocumentContent } from "metabase-types/api";
@@ -36,7 +41,8 @@ const ALLOWED_FORMATTING: FormattingOptions = {
 
 interface Props {
   active?: boolean;
-  autoFocus?: boolean;
+  autoFocus?: UseEditorOptions["autofocus"];
+  className?: string;
   "data-testid"?: string;
   initialContent?: DocumentContent | null;
   placeholder?: string;
@@ -50,6 +56,7 @@ interface Props {
 export const CommentEditor = ({
   active = true,
   autoFocus = false,
+  className,
   "data-testid": dataTestId,
   initialContent,
   placeholder = t`Reply…`,
@@ -184,7 +191,7 @@ export const CommentEditor = ({
   return (
     <Flex
       align="center"
-      className={cx(S.container, {
+      className={cx(S.container, className, {
         [S.readonly]: readonly,
         [S.active]: active,
       })}

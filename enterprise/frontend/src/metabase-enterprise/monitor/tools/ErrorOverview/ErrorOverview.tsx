@@ -16,7 +16,7 @@ import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { Center, Flex } from "metabase/ui";
 import type { CardId } from "metabase-types/api";
 
@@ -36,7 +36,7 @@ import {
 } from "./utils";
 
 export const ErrorOverview = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const [{ page }, { patchUrlState }] = useUrlState(location, urlStateConfig);
   const [filters, setFilters] =
     useState<ErroringQuestionsFilters>(DEFAULT_FILTERS);
@@ -57,10 +57,7 @@ export const ErrorOverview = () => {
   );
   const [runCardQuery] = useLazyGetCardQueryQuery();
 
-  const cards = useMemo(
-    () => (data == null ? [] : getErroringQuestions(data)),
-    [data],
-  );
+  const cards = useMemo(() => (data ? getErroringQuestions(data) : []), [data]);
   const total = data?.total_count ?? 0;
   const pageError = error ?? data?.error;
 
@@ -84,14 +81,14 @@ export const ErrorOverview = () => {
 
   const handlePageChange = (nextPage: number) => {
     setRowSelection({});
-    patchUrlState({ page: nextPage });
+    patchUrlState({ page: nextPage }, { immediate: true });
   };
 
   // A stale/shrunk `?page=N` can point past the result set: the backend returns
   // no rows and a total of 0, which hides the pagination controls and strands
   // the user on an empty page. Once the query settles, recover to the first page.
   const isStrandedPage =
-    !isFetching && pageError == null && cards.length === 0 && page > 0;
+    !isFetching && !pageError && cards.length === 0 && page > 0;
   useEffect(() => {
     if (isStrandedPage) {
       patchUrlState({ page: 0 });
@@ -136,12 +133,9 @@ export const ErrorOverview = () => {
         <MonitorMain>
           <MonitorHeaderTitle mb="sm">{t`Erroring questions`}</MonitorHeaderTitle>
 
-          <ErroringQuestionsSearch
-            hasLoader={isFetching && !isLoading}
-            onFiltersChange={handleFiltersChange}
-          />
+          <ErroringQuestionsSearch onFiltersChange={handleFiltersChange} />
 
-          {pageError != null ? (
+          {pageError ? (
             <Center flex={1}>
               <DelayedLoadingAndErrorWrapper
                 loading={isFetching}

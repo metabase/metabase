@@ -70,7 +70,6 @@ config:
     admin-email: null
     aggregated-query-row-limit: null
     ai-features-enabled: true
-    ai-usage-max-retention-days: null
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -105,7 +104,6 @@ config:
     application-name: Metabase
     attachment-row-limit: null
     attachment-table-row-limit: 20
-    audit-max-retention-days: null
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
@@ -157,6 +155,7 @@ config:
     enable-pivoted-exports: true
     enable-public-sharing: true
     enable-xrays: true
+    explorations-worker-count: 2
     fingerprint-max-fields-per-table: 10000
     follow-up-email-sent: false
     google-auth-auto-create-accounts-domain: null
@@ -170,7 +169,6 @@ config:
     http-channel-host-strategy: external-only
     humanization-strategy: simple
     index-update-thread-count: 2
-    install-analytics-database: true
     jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
     jdbc-data-warehouse-connection-pool-max-pending-checkouts: 0
     jdbc-data-warehouse-max-connection-pool-size: 15
@@ -219,9 +217,13 @@ config:
     llm-bedrock-region: us-east-1
     llm-bedrock-secret-access-key: null
     llm-bedrock-session-token: null
-    llm-connection-timeout-ms: 5000
+    llm-connection-timeout-ms: 10000
     llm-max-tokens: 4096
     llm-metabot-provider: anthropic/claude-sonnet-4-6
+    llm-mistral-api-base-url: https://api.mistral.ai/v1
+    llm-mistral-api-key: null
+    llm-moonshot-api-base-url: https://api.moonshot.ai/v1
+    llm-moonshot-api-key: null
     llm-openai-api-base-url: https://api.openai.com
     llm-openai-api-key: null
     llm-openai-model: gpt-5.4
@@ -229,8 +231,9 @@ config:
     llm-openrouter-api-key: null
     llm-rate-limit-per-ip: 100
     llm-rate-limit-per-user: 20
-    llm-request-timeout-ms: 60000
-    load-analytics-content: true
+    llm-request-timeout-ms: 120000
+    llm-zai-api-base-url: https://api.z.ai/api/paas/v4
+    llm-zai-api-key: null
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
@@ -252,7 +255,6 @@ config:
     not-behind-proxy: false
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
-    notification-temp-file-size-max-bytes: 10485760
     notification-thread-pool-size: 3
     oidc-allowed-networks: allow-all
     oidc-providers: []
@@ -260,9 +262,10 @@ config:
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
+    query-caching-early-refresh-ratio: 0.1
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
-    queue-backend: quartz
+    queue-backend: null
     queue-max-retries: 5
     queue-no-listener-max-age-ms: 86400000
     redirect-all-requests-to-https: false
@@ -306,15 +309,13 @@ config:
     sdk-encryption-validation-key: null
     search-language: null
     search-typeahead-enabled: true
-    send-email-on-first-login-from-new-device: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax
-    session-cookies: null
+    session-cookies: false
     session-timeout: null
     setup-embedding-autoenabled: false
     setup-license-active-at-setup: false
     show-database-syncing-modal: null
-    show-google-sheets-integration: null
     show-homepage-data: true
     show-homepage-xrays: true
     show-metabase-links: true
@@ -352,5 +353,7 @@ config:
     usage-metadata-last-completed-day: null
     usage-metadata-retention-days: 90
     usage-metadata-schedule: 0 0 2 * * ? *
+    use-native-pivot-tables: false
     user-visibility: all
+    warehouse-allowed-networks: null
 ```

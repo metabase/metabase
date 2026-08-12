@@ -79,7 +79,7 @@ export function isPersonalCollection(
 }
 
 export function isRootTrashCollection(
-  collection?: Pick<Collection, "type">,
+  collection?: Pick<Collection, "type"> | Pick<CollectionItem, "type">,
 ): boolean {
   return collection?.type === "trash";
 }
@@ -252,15 +252,6 @@ export function canBookmarkItem({ model, type, archived }: CollectionItem) {
   }
 }
 
-export function canPreviewItem(item: CollectionItem, collection?: Collection) {
-  return (
-    collection?.can_write &&
-    isItemPinned(item) &&
-    (isItemQuestion(item) || isItemMetric(item)) &&
-    !item.archived
-  );
-}
-
 export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   return (
     collection?.can_write &&
@@ -297,18 +288,6 @@ export function canPlaceEntityInCollectionOrDescendants(
     entityType,
     collectionType,
   );
-}
-
-export function isPreviewShown(item: CollectionItem) {
-  return isPreviewEnabled(item) && isFullyParameterized(item);
-}
-
-export function isPreviewEnabled(item: CollectionItem) {
-  return item.collection_preview ?? true;
-}
-
-export function isFullyParameterized(item: CollectionItem) {
-  return item.fully_parameterized ?? true;
 }
 
 export function coerceCollectionId(

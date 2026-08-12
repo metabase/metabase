@@ -34,6 +34,13 @@ export default function App() {
       </div>
 
       <SandboxProbe />
+
+      <button
+        data-testid="dev-app-error-probe"
+        onClick={() => console.error("dev-app probe error")}
+      >
+        Probe error
+      </button>
     </div>
   );
 }

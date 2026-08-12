@@ -10,7 +10,6 @@ import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import * as actions from "metabase/reference/reference";
-import { push } from "metabase/router";
 import { getShallowFields as getFields } from "metabase/selectors/metadata";
 import type { User } from "metabase-types/api";
 
@@ -52,11 +51,10 @@ const mapDispatchToProps = {
   ...metadataActions,
   ...actions,
   onSubmit: actions.rUpdateDatabaseDetail,
-  onChangeLocation: push,
 };
 
 interface DatabaseDetailProps {
-  style: React.CSSProperties;
+  style?: React.CSSProperties;
   entity: StubbedDatabase;
   user: User | null;
   isEditing?: boolean;

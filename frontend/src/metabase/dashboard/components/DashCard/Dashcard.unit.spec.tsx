@@ -18,7 +18,7 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import * as dashboardSelectors from "metabase/dashboard/selectors";
-import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
+import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import {
   createMockDashboardState,
   createMockState,

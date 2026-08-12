@@ -5,9 +5,9 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
 
-(derive ::event :metabase/event)
-(derive :event/card-update.notification-deleted.card-archived ::event)
-(derive :event/card-update.notification-deleted.card-changed ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/card-update.notification-deleted.card-archived ::event)
+(events/derive! :event/card-update.notification-deleted.card-changed ::event)
 
 (methodical/defmethod events/publish-event! ::event
   "When a Card is saved and associated Alerts are deleted send email notifications to recipients of that alert. At the
@@ -48,4 +48,4 @@
                                                   (throw (ex-info "Unknown recipient type" {:recipient recipient}))))))]
       (send-message! card recipients recipients-with-no-links actor))
     (catch Throwable e
-      (log/error e "Error sending notification email"))))
+      (log/errorf "Error sending notification email: %s" (ex-message e)))))

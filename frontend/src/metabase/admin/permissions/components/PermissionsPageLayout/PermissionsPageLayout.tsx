@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -15,10 +15,9 @@ import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/hel
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useDispatch, useSelector } from "metabase/redux";
-import { updateUserSetting } from "metabase/redux/settings";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
+import { useUserSetting } from "metabase/settings";
 import {
   Group,
   Button as NewButton,
@@ -57,7 +56,7 @@ type PermissionsPageLayoutProps = {
   navigateToLocation?: (location: string) => void;
   navigateToTab?: (tab: string) => void;
   helpContent?: ReactNode;
-  showSplitPermsModal?: boolean;
+  canShowSplitPermsModal?: boolean;
 };
 
 const CloseSidebarButtonWithDefault = ({
@@ -76,19 +75,28 @@ export function PermissionsPageLayout({
   onSave,
   onLoad,
   helpContent,
-  showSplitPermsModal: _showSplitPermsModal = false,
+  canShowSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
-  const [showSplitPermsModal, { turnOff: disableSplitPermsModal }] =
-    useToggle(_showSplitPermsModal);
+  const [showModalSetting, setShowModalSetting] = useUserSetting(
+    "show-updated-permission-modal",
+    { shouldDebounce: false },
+  );
+  // Stops the split permissions modal from reopening after the user dismisses it once,
+  // even if the save fails
+  const [isSplitPermsModalDismissed, setIsSplitPermsModalDismissed] =
+    useState(false);
+  const showSplitPermsModal =
+    canShowSplitPermsModal && !!showModalSetting && !isSplitPermsModalDismissed;
 
   const saveError = useSelector((state) => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);
 
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
-    dispatch(push(`/admin/permissions/${tab}`));
+    navigate(`/admin/permissions/${tab}`);
 
   const clearSaveError = () => {
     dispatch(clearPermissionsSaveError());
@@ -99,10 +107,8 @@ export function PermissionsPageLayout({
   }, [dispatch]);
 
   const handleDimissSplitPermsModal = () => {
-    disableSplitPermsModal();
-    dispatch(
-      updateUserSetting({ key: "show-updated-permission-modal", value: false }),
-    );
+    setIsSplitPermsModalDismissed(true);
+    setShowModalSetting(false);
   };
 
   return (

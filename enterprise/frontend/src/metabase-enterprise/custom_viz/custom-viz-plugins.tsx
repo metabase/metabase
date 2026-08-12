@@ -6,7 +6,7 @@ import type {
   ClickObject as CustomVizClickObject,
   HoverObject as CustomVizHoverObject,
 } from "custom-viz";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { api } from "metabase/api/client";
@@ -15,18 +15,16 @@ import { useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import { useColorScheme } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
+import { measureText } from "metabase/utils/measure-text";
 import { retry } from "metabase/utils/retry";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import type {
-  Visualization,
-  VisualizationProps,
-} from "metabase/visualizations/types/visualization";
+import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import type { VisualizationProps } from "metabase/visualizations/types/visualization";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
 import type {
   CustomVizPluginId,
@@ -401,7 +399,7 @@ export async function loadCustomVizPlugin(
     const Wrapper = createCustomVizWrapper(
       vizDef.mount,
       vizDef.VisualizationComponent,
-      plugin.id,
+      plugin,
     );
 
     // core app resolves these to a plain same-origin url like
@@ -413,16 +411,17 @@ export async function loadCustomVizPlugin(
     );
 
     // Attach the required static properties onto the component function
-    const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
-      Wrapper,
-    ) as Visualization;
-    applyDefaultVisualizationProps(Component, vizDef, {
-      identifier,
-      pluginId: plugin.id,
-      getUiName: () => plugin.display_name,
-      iconUrl: resolvedIconUrl,
-      isDev: Boolean(plugin.dev_bundle_url),
-    });
+    const Component = applyDefaultVisualizationProps(
+      ExplicitSize<VisualizationProps>({ wrapped: true })(Wrapper),
+      vizDef,
+      {
+        identifier,
+        plugin,
+        getUiName: () => plugin.display_name,
+        iconUrl: resolvedIconUrl,
+        isDev: Boolean(plugin.dev_bundle_url),
+      },
+    );
 
     if (!isLatest()) {
       return identifier;
@@ -456,7 +455,9 @@ export async function loadCustomVizPlugin(
     console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
     if (!failedPluginHashes.has(plugin.id)) {
       onInfo?.(
-        t`The "${plugin.display_name}" visualization is currently unavailable.`,
+        plugin.warnings.length > 0
+          ? t`The "${plugin.display_name}" visualization is currently unavailable. It was built for a different version and may need to be updated.`
+          : t`The "${plugin.display_name}" visualization is currently unavailable.`,
       );
     }
     failedPluginHashes.set(plugin.id, currentHash);
@@ -501,25 +502,43 @@ function isValidVizDefinition(value: unknown): value is GenericVizDefinition {
 function createCustomVizWrapper(
   mount: GenericVizMount,
   VisualizationComponent: GenericVizDefinition["VisualizationComponent"],
-  pluginId: CustomVizPluginId,
+  plugin: CustomVizPluginRuntime,
 ) {
   return function CustomVizWrapper({
     width,
     height,
     series,
     settings,
+    fontFamily,
     onVisualizationClick,
     onHoverChange,
   }: VisualizationProps) {
-    const { resolvedColorScheme } = useColorScheme();
+    const browserRenderingContext = useBrowserRenderingContext({ fontFamily });
+
+    const renderingContext = useMemo<GenericVizPluginProps["renderingContext"]>(
+      () => ({
+        getColor: browserRenderingContext.getColor,
+        measureText: (text, style) =>
+          measureText(text, {
+            ...style,
+            family: style.family ?? browserRenderingContext.fontFamily,
+          }),
+        fontFamily: browserRenderingContext.fontFamily,
+        colorScheme: browserRenderingContext.colorScheme ?? "light",
+      }),
+      [browserRenderingContext],
+    );
 
     const pluginProps: GenericVizPluginProps = {
       width,
       height,
       // Unjustified type cast. FIXME
       series: series as unknown as GenericVizPluginProps["series"],
-      settings,
-      colorScheme: resolvedColorScheme,
+      // The plugin API mirrors host types with looser public shapes (e.g.
+      // the `column` resolver returns plain strings instead of internal
+      // unions); the runtime value is the host's computed settings.
+      settings: settings as unknown as GenericVizPluginProps["settings"],
+      renderingContext,
       // Unjustified type cast. FIXME
       onClick: onVisualizationClick as unknown as (
         clickObject: CustomVizClickObject<Record<string, unknown>> | null,
@@ -533,12 +552,13 @@ function createCustomVizWrapper(
     const containerRef = usePluginMount<GenericVizPluginProps>(
       (container, props) => mount(VisualizationComponent, container, props),
       pluginProps,
+      plugin,
     );
 
     return (
       <div
         ref={containerRef}
-        data-plugin-sandbox={pluginId}
+        data-plugin-sandbox={plugin.id}
         style={{ width: "100%", height: "100%" }}
       />
     );

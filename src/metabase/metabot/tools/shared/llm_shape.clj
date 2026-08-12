@@ -18,6 +18,7 @@
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
+   [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -88,8 +89,8 @@
         (str/replace ">" "&gt;")
         (str/replace "\"" "&quot;"))))
 
-(defn- escape-xml-content
-  "Like `escape-xml` but leaves double-quotes intact. Safe for element/table-cell *content*
+(defn escape-xml-content
+  "Like [[escape-xml]] but leaves double-quotes intact. Safe for element/table-cell *content*
   (only `& < >` are structural there), so a value such as a JSON portable-FK array renders
   readably instead of with `&quot;` noise."
   [s]
@@ -174,7 +175,7 @@
         (-> (selmer/render template payload)
             str/trim)
         (catch Exception e
-          (log/error e "Error rendering LLM representations template" {:type type})
+          (log/error "Error rendering LLM representations template" {:type type :error (ex-message e)})
           (pr-str payload)))
       (do
         (log/warn "LLM representations template missing" {:template llm-template-name})
@@ -372,6 +373,40 @@
                   (= k :reference) (json-cell-safe (escape-xml-content v))
                   :else            (escape-pipes (escape-xml (str v)))))}))
 
+(defn- format-join-required-dimensions-table
+  "Like [[format-metric-dimensions-table]] but the Reference is the FULL alias-qualified field clause
+  (`[\"field\" {\"join-alias\" …} [db schema table field]]`) carried on each dim's `:reference`. For
+  a join-required dim the bare portable FK does NOT resolve (no FK path); only the alias-qualified
+  clause does, so that is the form the LLM must paste."
+  [dims]
+  (te/markdown-table
+   (map (fn [d] (assoc d :reference (some-> (:reference d) json/encode))) dims)
+   {:name "Field Name" :field_id "Field ID" :type "Type"
+    :reference "Reference (copy verbatim into a field clause)"}
+   {:value-fn (fn [k v]
+                (cond
+                  (nil? v)         ""
+                  (keyword? v)     (escape-pipes (clojure.core/name v))
+                  (= k :reference) (json-cell-safe (escape-xml-content v))
+                  :else            (escape-pipes (escape-xml (str v)))))}))
+
+(defn- format-metric-join-required-dimensions
+  "Render the metric's FK-less join dimensions — the columns the metric reaches through an explicit
+  join that its `queryable-dimensions` cannot advertise (no foreign key). For each such join we tell
+  the LLM to paste the exact join clause into `joins:` and reference each field by its alias-qualified
+  Reference. Without this the LLM guesses at the column and dead-ends on a `no foreign key` error
+  (BOT-1612)."
+  [join-required-dimensions]
+  (str/join
+   "\n"
+   (for [{:keys [target_table join dimensions]} join-required-dimensions]
+     (str "To group or filter this metric by **" target_table
+          "** columns, add this join to your query's `joins:` (the metric reaches these columns "
+          "through a join with **no foreign key**, so the join must be present), then reference a "
+          "field using its alias-qualified Reference from the table below:\n\n"
+          "```json\n" (json/encode join {:pretty true}) "\n```\n\n"
+          (format-join-required-dimensions-table dimensions)))))
+
 (defn metric->xml
   "Format metric for LLM consumption.
    Matches Python Metric.get_llm_representation exactly, except we additionally surface
@@ -379,7 +414,7 @@
    attributes — the three pieces of information the LLM needs to correctly use the metric
    in `construct_notebook_query` (as `aggregation: [[metric, {}, <eid>]]` on top of the
    metric's base table)."
-  [{:keys [id name description verified queryable-dimensions collection
+  [{:keys [id name description verified queryable-dimensions join-required-dimensions collection
            default_time_dimension_field database_name base_table_portable_fk
            portable_entity_id]}]
   (render-llm-template
@@ -397,7 +432,9 @@
     :metric_collection_xml         (when collection (collection->xml collection))
     :metric_default_time_dimension (:name default_time_dimension_field)
     :metric_dimensions_table       (when (seq queryable-dimensions)
-                                     (format-metric-dimensions-table queryable-dimensions))}))
+                                     (format-metric-dimensions-table queryable-dimensions))
+    :metric_join_required_xml      (when (seq join-required-dimensions)
+                                     (format-metric-join-required-dimensions join-required-dimensions))}))
 
 (defn table->xml
   "Format table for LLM consumption.
@@ -852,8 +889,7 @@
     :transform_description     description
     :transform_source_type     (some-> (:type source) clojure.core/name)
     :transform_source_database (when-let [db (:source-database source)] (str db))
-    :transform_source_query    (let [q (:query source)]
-                                 (when (string? q) q))
+    :transform_source_query    (metabot.u/transform-query->text (:query source))
     :transform_target          (when target (pr-str target))}))
 
 (def formatters

@@ -1,3 +1,4 @@
+import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
@@ -76,9 +77,19 @@ export const conversationTitle = () =>
   screen.findByTestId("metabot-conversation-title");
 export const queryConversationTitle = () =>
   screen.queryByTestId("metabot-conversation-title");
-export const chatMessages = () =>
-  screen.findAllByTestId("metabot-chat-message");
-export const lastChatMessage = async () => (await chatMessages()).at(-1);
+export const chatMessages = async ({
+  includeChainOfThought = false,
+}: { includeChainOfThought?: boolean } = {}) => {
+  const messages = await screen.findAllByTestId("metabot-chat-message");
+  return includeChainOfThought
+    ? messages
+    : messages.filter(
+        (el) => !within(el).queryByTestId("metabot-chain-of-thought"),
+      );
+};
+export const lastChatMessage = async (options?: {
+  includeChainOfThought?: boolean;
+}) => (await chatMessages(options)).at(-1);
 export const input = async () => {
   const chatInput = await screen.findByTestId("metabot-chat-input");
   return chatInput.querySelector('[contenteditable="true"]')!;
@@ -99,6 +110,12 @@ export const sendMessageButton = () =>
   screen.findByTestId("metabot-send-message");
 export const stopResponseButton = () =>
   screen.findByTestId("metabot-stop-response");
+export const continueResponseButton = () =>
+  screen.findByTestId("metabot-chat-message-continue");
+export const queryContinueResponseButton = () =>
+  screen.queryByTestId("metabot-chat-message-continue");
+export const queryTurnAlert = () =>
+  screen.queryByTestId("metabot-chat-message-turn-alert");
 export const closeChatButton = () => screen.findByTestId("metabot-close-chat");
 export const responseLoader = () =>
   screen.findByTestId("metabot-response-loader");
@@ -120,6 +137,24 @@ export const mockFeedbackEndpoint = () => {
   };
 };
 
+// Fork helpers
+export const forkButton = (message: HTMLElement) =>
+  within(message).findByTestId("metabot-chat-message-fork");
+export const mockForkEndpoint = (
+  response: Record<string, unknown> = {},
+  status = 200,
+) => {
+  fetchMock.post(
+    "express:/api/metabot/conversations/:id/fork",
+    status === 200 ? { status, body: response } : status,
+    { name: "metabot-fork" },
+  );
+  return {
+    calls: (matcher?: Parameters<typeof fetchMock.callHistory.calls>[1]) =>
+      fetchMock.callHistory.calls("metabot-fork", matcher),
+  };
+};
+
 export const assertVisible = async () =>
   expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
 export const assertNotVisible = async () =>
@@ -127,7 +162,6 @@ export const assertNotVisible = async () =>
     expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
   });
 
-// NOTE: for some reason the keyboard shortcuts won't work with tinykeys while testing, using redux for now...
 export const hideMetabot = (
   dispatch: any,
   agentId: MetabotAgentId = "omnibot",
@@ -186,6 +220,11 @@ export const whoIsYourFavoriteResponse: SSEEvent[] = [
 ];
 
 export const erroredResponse: SSEEvent[] = [
+  { type: "error", errorText: "Anthropic API key expired or invalid" },
+];
+
+export const startedThenErroredResponse: SSEEvent[] = [
+  { type: "start", messageId: "msg_errored" },
   { type: "error", errorText: "Anthropic API key expired or invalid" },
 ];
 
@@ -307,7 +346,7 @@ export function setup(
       <MetabotProvider>{ui}</MetabotProvider>
     );
 
-  const { store, rerender, history } = renderWithProviders(content, {
+  const { store, rerender, router } = renderWithProviders(content, {
     storeInitialState: createMockState({
       ...storeInitialState,
       settings: {
@@ -322,16 +361,18 @@ export function setup(
       metabot: metabotReducer,
     },
     withRouter,
+    withUndos: true,
     ...(initialRoute ? { initialRoute } : {}),
   });
 
   return {
     rerender,
-    history,
+    router,
     conversationIds: Object.keys(metabotState.conversations),
     // Unjustified type cast. FIXME
-    store: store as Omit<typeof store, "getState"> & {
+    store: store as Omit<typeof store, "getState" | "dispatch"> & {
       getState: () => State;
+      dispatch: ThunkDispatch<State, unknown, UnknownAction>;
     },
   };
 }

@@ -162,9 +162,14 @@ See [Remove Metabase branding from exports](./exporting-results.md#remove-metaba
 
 Since people viewing embedded questions likely don't have direct access to your Metabase, Metabase omits links to Metabase items in alerts sent from embedded questions. That way people don't get broken links in their email.
 
+## Custom visualizations fall back to the default chart
+
+Nobody's signed in when Metabase renders an alert, so a question that uses a [custom visualization](./visualizations/custom.md) falls back to the default visualization for its results.
+
 ## Further reading
 
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
+- [Custom visualizations](./visualizations/custom.md)

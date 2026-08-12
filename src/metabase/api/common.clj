@@ -339,7 +339,7 @@
    (try
      (check-403 (mi/can-read? obj))
      (catch clojure.lang.ExceptionInfo e
-       (log/error e "Read permissions failure")
+       (log/errorf "Read permissions failure: %s" (ex-message e))
        (events/publish-event! :event/read-permission-failure {:user-id    *current-user-id*
                                                               :object     obj
                                                               :has-access false})
@@ -613,6 +613,7 @@
    "database"          {:db-model :model/Database           :alias :database}
    "dataset"           {:db-model :model/Card               :alias :card}
    "document"          {:db-model :model/Document           :alias :document}
+   "exploration"       {:db-model :model/Exploration        :alias :exploration}
    "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model-index-value}
    "metric"            {:db-model :model/Card               :alias :card}
    "segment"           {:db-model :model/Segment            :alias :segment}

@@ -5,9 +5,9 @@ import {
   useListSecurityAdvisoriesQuery,
 } from "metabase/api";
 import { Banner } from "metabase/common/components/Banner";
-import { useSetting } from "metabase/common/hooks";
+import { Link } from "metabase/common/components/Link";
 import { getPlan } from "metabase/common/utils/plan";
-import { Link } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { Anchor, Text } from "metabase/ui";
 
 import { isAffected } from "../../utils";
