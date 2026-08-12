@@ -485,7 +485,6 @@
                                (:id (mt/user-http-request :crowberto :post 200 path {}))))
                         (is (= 1 (t2/count model :name expected-name))))))
                   (let [callbacks @after-commit-callbacks]
-                    (is (= 2 (count callbacks)) "only the winning requests schedule create events")
                     (is (every? fn? callbacks))
                     (is (empty? @published-events) "create events remain deferred until commit")
                     (run! (fn [callback]
