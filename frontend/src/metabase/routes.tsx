@@ -66,7 +66,7 @@ import {
 import { SearchApp } from "metabase/search/containers/SearchApp";
 import { RedirectIfSetup } from "metabase/setup/components/RedirectIfSetup";
 import { Setup } from "metabase/setup/components/Setup";
-import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+import { getCollectionTimelineRoutes } from "metabase/timelines/collections/routes";
 
 import { LoadCurrentUser } from "./LoadCurrentUser";
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
@@ -294,21 +294,25 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               {
                 path: "collection/:slug",
                 element: <CollectionLanding />,
-                children: toRouteObjects(
-                  <>
-                    {modalRoute("move", MoveCollectionModal, { noWrap: true })}
-                    {modalRoute("archive", ArchiveCollectionModal, {
-                      noWrap: true,
-                    })}
-                    {modalRoute("permissions", CollectionPermissionsModal)}
-                    {modalRoute(
-                      "move-questions-dashboard",
-                      MoveQuestionsIntoDashboardsModal,
-                    )}
-                    {PLUGIN_COLLECTIONS.cleanUpRoute}
-                    {getCollectionTimelineRoutes()}
-                  </>,
-                ),
+                children: [
+                  ...toRouteObjects(
+                    <>
+                      {modalRoute("move", MoveCollectionModal, {
+                        noWrap: true,
+                      })}
+                      {modalRoute("archive", ArchiveCollectionModal, {
+                        noWrap: true,
+                      })}
+                      {modalRoute("permissions", CollectionPermissionsModal)}
+                      {modalRoute(
+                        "move-questions-dashboard",
+                        MoveQuestionsIntoDashboardsModal,
+                      )}
+                      {PLUGIN_COLLECTIONS.cleanUpRoute}
+                    </>,
+                  ),
+                  ...getCollectionTimelineRoutes(),
+                ],
               },
 
               {

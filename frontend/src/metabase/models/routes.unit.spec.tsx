@@ -1,12 +1,12 @@
 import { lazyLoaders } from "__support__/lazy-routes";
 
-import { getMonitorRoutes } from "./routes";
+import { getRoutes } from "./routes";
 
-describe("monitor routes", () => {
+describe("model routes", () => {
   it("resolves every page", async () => {
-    const loaders = lazyLoaders(getMonitorRoutes());
+    const loaders = lazyLoaders(getRoutes());
 
-    expect(loaders).toHaveLength(12);
+    expect(loaders).toHaveLength(1);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();

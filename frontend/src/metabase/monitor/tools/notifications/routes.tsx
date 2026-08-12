@@ -1,10 +1,15 @@
 import { Route } from "metabase/router";
 
-import { NotificationsAdminPage } from "./NotificationsAdminPage";
+const notificationsAdminPage = () =>
+  import(
+    /* webpackChunkName: "monitor-notifications" */ "./NotificationsAdminPage"
+  ).then(({ NotificationsAdminPage }) => ({
+    Component: NotificationsAdminPage,
+  }));
 
 export const getRoutes = () => (
   <>
-    <Route index element={<NotificationsAdminPage />} />
-    <Route path=":notificationId" element={<NotificationsAdminPage />} />
+    <Route index lazy={notificationsAdminPage} />
+    <Route path=":notificationId" lazy={notificationsAdminPage} />
   </>
 );
