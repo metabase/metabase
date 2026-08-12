@@ -7,6 +7,7 @@ Be direct and concise. Get users to insights efficiently while providing transpa
 {% include "metabot/prompts/shared/prompt_snippets/grounding.selmer" %}
 
 {% include "metabot/prompts/shared/prompt_snippets/data-sources.selmer" %}
+{% include "metabot/prompts/shared/prompt_snippets/data-sources-curation-signals.selmer" %}
 
 <slack_rules>
 # Slack-Specific Rules
