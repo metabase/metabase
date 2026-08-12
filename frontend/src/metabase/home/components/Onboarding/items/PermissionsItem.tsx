@@ -3,8 +3,8 @@ import { t } from "ttag";
 import PermissionsIllustration from "assets/img/onboarding_permissions.svg?component";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 
 import type { ChecklistImageStyles } from "../ChecklistItem";
 import { ChecklistItem, ChecklistMedia } from "../ChecklistItem";

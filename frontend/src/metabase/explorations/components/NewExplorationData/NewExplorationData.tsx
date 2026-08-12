@@ -18,7 +18,6 @@ import { isMetricBlock } from "metabase/explorations/hooks";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
   Button,
@@ -31,6 +30,7 @@ import {
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { getApplicationName } from "metabase/whitelabel";
 import type {
   CollectionId,
   CreateExplorationRequest,
