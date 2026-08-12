@@ -27,24 +27,22 @@
   :export?    true)
 
 (defsetting metabot-name
-  (deferred-tru "The display name for Metabot.")
+  (deferred-tru "The display name for Metabot, shown throughout the Metabase UI.")
   :type       :string
   :default    "Metabot"
   :visibility :public
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-icon
-  (deferred-tru "The icon for Metabot.")
+  (deferred-tru "The icon for Metabot. Set to `metabot` for the default icon, or a data URI for a custom uploaded image (up to 1MB).")
   :type       :string
   :default    "metabot"
   :visibility :public
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-show-illustrations
   (deferred-tru "Whether to show Metabot illustrations in the UI.")
@@ -53,38 +51,34 @@
   :visibility :public
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-chat-system-prompt
-  (deferred-tru "Custom system prompt for the Metabot chat (sidebar AI chat) experience.")
+  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar and embedded Metabot).")
   :type       :string
   :default    ""
   :visibility :admin
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-nlq-system-prompt
-  (deferred-tru "Custom system prompt for the natural language query (AI exploration) experience.")
+  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience.")
   :type       :string
   :default    ""
   :visibility :admin
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-sql-system-prompt
-  (deferred-tru "Custom system prompt for the SQL generation experience.")
+  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the SQL generation experience.")
   :type       :string
   :default    ""
   :visibility :admin
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
@@ -106,7 +100,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "azure" "bedrock" "mistral" "openai" "openrouter" "zai"})
+  #{"anthropic" "azure" "bedrock" "mistral" "moonshot" "openai" "openrouter" "zai"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -119,6 +113,10 @@
 (def ^:private default-mistral-llm-metabot-model
   "Default Mistral model used for Metabot when no explicit model is selected."
   "mistral-medium-3-5")
+
+(def ^:private default-moonshot-llm-metabot-model
+  "Default Moonshot model used for Metabot when no explicit model is selected."
+  "kimi-k3")
 
 (def ^:private default-openai-llm-metabot-model
   "Default OpenAI model used for Metabot when no explicit model is selected."
@@ -146,6 +144,7 @@
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
    "mistral"                              default-mistral-llm-metabot-model
+   "moonshot"                             default-moonshot-llm-metabot-model
    "openai"                               default-openai-llm-metabot-model
    "openrouter"                           default-openrouter-llm-metabot-model
    "zai"                                  default-zai-llm-metabot-model
@@ -267,7 +266,7 @@
     (validate-direct-provider! value)))
 
 (defsetting llm-metabot-provider
-  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.")
+  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `moonshot/kimi-k3`, `openrouter/anthropic/claude-haiku-4.5`.")
   :type             :string
   :encryption       :no
   :default          default-llm-metabot-provider
@@ -311,6 +310,7 @@
                     :session-token     (non-blank (llm.settings/llm-bedrock-session-token))
                     :region            (non-blank (llm.settings/llm-bedrock-region))})
     "mistral"    (configured-api-key-credentials (llm.settings/llm-mistral-api-key))
+    "moonshot"   (configured-api-key-credentials (llm.settings/llm-moonshot-api-key))
     "openai"     (configured-api-key-credentials (llm.settings/llm-openai-api-key))
     "openrouter" (configured-api-key-credentials (llm.settings/llm-openrouter-api-key))
     "zai"        (configured-api-key-credentials (llm.settings/llm-zai-api-key))

@@ -126,6 +126,17 @@
 
 ;;; AISDK5
 
+(def finish-reasons
+  "The AI SDK v5 `FinishReason` values a provider stop reason may be translated to."
+  #{"stop" "length" "content-filter" "tool-calls" "error" "other"})
+
+(defn stop-reason->finish-reason
+  "Translate a raw provider stop reason to an AI SDK v5 `FinishReason` through that provider's `stop-reasons` table.
+  Unmapped reasons → \"other\"; nil → nil."
+  [stop-reasons raw]
+  (when raw
+    (get stop-reasons raw "other")))
+
 (defn- parse-tool-arguments
   "Parse concatenated tool input deltas as JSON.
   Falls back to returning the raw string wrapped in a map when parsing fails,
@@ -368,6 +379,7 @@
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
+           finish-reason     (volatile! nil)
            started?          (volatile! false)
            usage-by-model    (volatile! {})
            ;; non-nil while a text block is open; holds the block id so we can
@@ -411,7 +423,11 @@
                 (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
                 (rf (format-sse-event
                      (cond-> {:type         "finish"
-                              :finishReason (if @error? "error" "stop")}
+                              :finishReason (cond
+                                              (= @finish-reason "length")         "length"
+                                              @error?                             "error"
+                                              (= @finish-reason "content-filter") "content-filter"
+                                              :else                               "stop")}
                        (seq metadata) (assoc :messageMetadata metadata))))
                 (rf done-sse-line)
                 (rf))))
@@ -501,6 +517,8 @@
               ;; cumulative per-model snapshot; last-wins, emitted on finish
               (do
                 (vswap! usage-by-model assoc (or (:model part) "unknown") (:usage part))
+                (when-let [fr (:finish-reason part)]
+                  (vreset! finish-reason fr))
                 result)
 
               ;; Unknown types: emit as data parts
@@ -855,6 +873,24 @@
                          :exception-class exception-class}
                         e))))))
 
+(defn reducible-with-api-errors
+  "Wrap a reducible stream so exceptions thrown during its (lazy) consumption are
+  routed through [[rethrow-api-error!]], the same translation applied to
+  request-time failures. Provider adapters consume their SSE body outside the
+  request `try` (the reduction happens later, in the agent loop), so a
+  mid-stream failure — e.g. a `SocketTimeoutException` between chunks — would
+  otherwise surface raw instead of in the provider-friendly error shape.
+
+  Takes the reducible first so adapters can thread it straight off
+  [[sse-reducible]]/`capture-stream` with `->`."
+  [reducible provider res->message]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (try
+        (reduce rf init reducible)
+        (catch Exception e
+          (rethrow-api-error! provider res->message e))))))
+
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."
   [llm-type]
@@ -880,8 +916,17 @@
           (throw (missing-api-key-ex llm-type))))))
 
 (defn request
-  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`)."
+  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).
+  Forces a connection + socket timeout on every request so a hung upstream can
+  never block the caller forever. The timeouts default to the operator-tunable
+  `llm/llm-connection-timeout-ms` and `llm/llm-request-timeout-ms` settings (read
+  at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
+  override either timeout per request by passing `:connection-timeout` /
+  `:socket-timeout` in `req`."
   [{:keys [url headers]} req]
-  (http/request (-> req
+  (llm/assert-llm-host-allowed! url)
+  (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
+                     :socket-timeout     (llm/llm-request-timeout-ms)}
+                    (merge req)
                     (update :url #(str url %))
                     (update :headers merge headers))))

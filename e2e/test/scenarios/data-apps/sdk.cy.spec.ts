@@ -9,6 +9,7 @@ import {
 import {
   DATA_APP_TEST_ENV as TEST_ENV,
   dataAppNumericField as numericField,
+  dataAppNumericResultColumn as resultColumn,
 } from "./helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -132,6 +133,60 @@ describe("scenarios > data apps > SDK runtime", () => {
             expect(Number($el.text())).to.be.greaterThan(0);
           },
         );
+      });
+    });
+  });
+
+  describe("saved question sources", () => {
+    const setupCardSourceApp = () =>
+      H.createQuestion({
+        name: "Orders as a data-app query source",
+        query: { "source-table": ORDERS_ID },
+      }).then(({ body: card }) => {
+        H.mockDataApp(APP_NAME, {
+          displayName: APP_DISPLAY_NAME,
+          testEnv: {
+            ...TEST_ENV,
+            cardSource: {
+              source: { type: "card", id: card.id },
+              tableSource: { type: "table", id: ORDERS_ID },
+              filterField: numericField(ORDERS.TOTAL, "TOTAL"),
+              filterColumn: resultColumn("TOTAL"),
+              filterValue: 50,
+              breakoutField: numericField(ORDERS.PRODUCT_ID, "PRODUCT_ID"),
+              breakoutColumn: resultColumn("PRODUCT_ID"),
+            },
+          },
+        });
+
+        visitAppRoute("card-source");
+      });
+
+    it("queries a saved question as a source", () => {
+      setupCardSourceApp();
+
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByTestId("card-source-case-source", {
+          timeout: 30000,
+        }).should("have.text", "match");
+
+        // A match on two empty results would be vacuous, so the source has to
+        // have actually returned rows.
+        cy.findByTestId("card-source-total").should(($el) => {
+          expect(Number($el.text())).to.be.greaterThan(0);
+        });
+      });
+    });
+
+    it("applies filters, aggregations, and breakouts on top of a saved question", () => {
+      setupCardSourceApp();
+
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        ["filters", "aggregations", "breakouts"].forEach((clause) => {
+          cy.findByTestId(`card-source-case-${clause}`, {
+            timeout: 30000,
+          }).should("have.text", "match");
+        });
       });
     });
   });

@@ -48,8 +48,20 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :snowflake, :parent #{:sql-jdbc :sql-mbql5
-                                        ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/host-carrying-parameters :snowflake
+  [_driver]
+  ["proxyHost" "host"])
+
+(defmethod driver/connection-hosts :snowflake
+  [_driver {:keys [account host use-hostname]}]
+  (driver/hosts-from-details
+   {:host (if (and use-hostname (string? host) (not (str/blank? host)))
+            host
+            (when (string? account)
+              (str account ".snowflakecomputing.com")))}
+   [:host]))
 
 (doseq [[feature supported?] {:connection-impersonation               true
                               :connection-impersonation-requires-role true
@@ -707,7 +719,7 @@
 (defmethod sql.qp/->honeysql [:snowflake :field]
   [driver [_ opts _ :as field-clause]]
   (let [source-table (get opts driver-api/qp.add.source-table)
-        parent-method (get-method sql.qp/->honeysql [:sql-mbql5 :field])
+        parent-method (get-method sql.qp/->honeysql [:sql :field])
         qualify?      (and
                        ;; `query-db-name` is not currently set, e.g. because we're generating DDL statements for tests
                        (seq (query-db-name))

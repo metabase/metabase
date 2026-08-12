@@ -1,7 +1,7 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 import { t } from "ttag";
 
-import { formatPercent } from "metabase/static-viz/lib/numbers";
+import { formatPercent } from "metabase/utils/formatting";
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import {
   EChartsTooltip,

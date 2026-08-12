@@ -56,6 +56,17 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest ^:parallel connection-hosts-test
+  (are [details expected] (= expected (driver/connection-hosts :snowflake details))
+    {:account "xy12345.us-east-2.aws"}
+    ["xy12345.us-east-2.aws.snowflakecomputing.com"]
+
+    {:account "xy12345" :use-hostname true :host "snowflake.example.com"}
+    ["snowflake.example.com"]
+
+    {:account "xy12345" :use-hostname true :host "https://snowflake.example.com:443"}
+    ["snowflake.example.com"]))
+
 (defn- query->native! [query]
   (let [check-sql-fn (fn [_ _ sql & _]
                        (throw (ex-info "done" {::native-query sql})))]
@@ -1303,7 +1314,7 @@
                                           :details {:use-password false
                                                     :password "abc"}}]
         (is (= {:password "abc" :use-password true} (:details db1)))
-        (is (=? {:password "abc" :private-key-id int? :use-password complement} (:details db2)))
+        (is (=? {:password "abc" :private-key-id int? :use-password :hawk/key-not-present} (:details db2)))
         (is (= {:password "abc" :use-password false} (:details db3)))))))
 
 (deftest ^:parallel normalize-write-data-details-test

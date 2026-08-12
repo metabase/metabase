@@ -254,6 +254,23 @@ describe("DashboardSubscriptionsSidebar", () => {
       expect(hasBasicFilterOptions(screen)).toBe(true);
     });
 
+    it("should show the report timezone in the schedule description (metabase#69496)", async () => {
+      setup({ isAdmin: false, email: false, slack: true });
+
+      await screen.findByText("Send this dashboard to Slack");
+
+      await userEvent.click(screen.getByTestId("select-frequency"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("daily"),
+      );
+
+      expect(
+        await screen.findByText(
+          "Slack messages will be sent at 8:00 AM UTC, your Metabase timezone.",
+        ),
+      ).toBeInTheDocument();
+    });
+
     it("should send the include_pdf channel detail to the backend when the PDF switch is on", async () => {
       setup({ isAdmin: false, email: false, slack: true });
 
@@ -288,6 +305,23 @@ describe("DashboardSubscriptionsSidebar", () => {
       await screen.findByText("Email this dashboard");
 
       expect(hasBasicFilterOptions(screen)).toBe(true);
+    });
+
+    it("should show the report timezone in the schedule description (metabase#69496)", async () => {
+      setup({ isAdmin: false, email: true, slack: false });
+
+      await screen.findByText("Email this dashboard");
+
+      await userEvent.click(screen.getByTestId("select-frequency"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("daily"),
+      );
+
+      expect(
+        await screen.findByText(
+          "Emails will be sent at 8:00 AM UTC, your Metabase timezone.",
+        ),
+      ).toBeInTheDocument();
     });
 
     it("should filter out actions and links when sending a test subscription", async () => {

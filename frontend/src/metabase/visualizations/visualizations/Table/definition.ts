@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { isNative } from "metabase/common/utils/card";
-import { displayNameForColumn } from "metabase/utils/formatting";
+import { displayNameForColumn } from "metabase/value-formatting";
 import {
   trackTableFreezeColumnsEnabled,
   trackTableFreezeRowsEnabled,

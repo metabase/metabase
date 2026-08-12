@@ -48,28 +48,30 @@
   Mirrors the models whitelisted for the direct anthropic and openai providers; note that
   OpenRouter model IDs use dots in version numbers (`claude-haiku-4.5`), unlike the
   Anthropic API's hyphenated IDs (`claude-haiku-4-5`)."
-  {"anthropic/claude-fable-5"     "Claude Fable 5"
-   "anthropic/claude-opus-5"      "Claude Opus 5"
-   "anthropic/claude-opus-4.8"    "Claude Opus 4.8"
-   "anthropic/claude-opus-4.7"    "Claude Opus 4.7"
-   "anthropic/claude-opus-4.6"    "Claude Opus 4.6"
-   "anthropic/claude-opus-4.5"    "Claude Opus 4.5"
-   "anthropic/claude-opus-4.1"    "Claude Opus 4.1"
-   "anthropic/claude-sonnet-5"    "Claude Sonnet 5"
-   "anthropic/claude-sonnet-4.6"  "Claude Sonnet 4.6"
-   "anthropic/claude-sonnet-4.5"  "Claude Sonnet 4.5"
-   "anthropic/claude-haiku-4.5"   "Claude Haiku 4.5"
-   "deepseek/deepseek-v4-pro"     "DeepSeek V4 Pro"
-   "mistralai/mistral-medium-3-5" "Mistral Medium 3.5"
-   "openai/gpt-5.6-sol"           "GPT-5.6 Sol"
-   "openai/gpt-5.6-terra"         "GPT-5.6 Terra"
-   "openai/gpt-5.6-luna"          "GPT-5.6 Luna"
-   "openai/gpt-5.5"               "GPT-5.5"
-   "openai/gpt-5.5-pro"           "GPT-5.5 Pro"
-   "openai/gpt-5.4"               "GPT-5.4"
-   "openai/gpt-5.4-pro"           "GPT-5.4 Pro"
-   "openai/gpt-5.4-mini"          "GPT-5.4 Mini"
-   "z-ai/glm-5.2"                 "GLM-5.2"})
+  {"anthropic/claude-fable-5"        "Claude Fable 5"
+   "anthropic/claude-opus-5"         "Claude Opus 5"
+   "anthropic/claude-opus-4.8"       "Claude Opus 4.8"
+   "anthropic/claude-opus-4.7"       "Claude Opus 4.7"
+   "anthropic/claude-opus-4.6"       "Claude Opus 4.6"
+   "anthropic/claude-opus-4.5"       "Claude Opus 4.5"
+   "anthropic/claude-opus-4.1"       "Claude Opus 4.1"
+   "anthropic/claude-sonnet-5"       "Claude Sonnet 5"
+   "anthropic/claude-sonnet-4.6"     "Claude Sonnet 4.6"
+   "anthropic/claude-sonnet-4.5"     "Claude Sonnet 4.5"
+   "anthropic/claude-haiku-4.5"      "Claude Haiku 4.5"
+   "deepseek/deepseek-v4-pro"        "DeepSeek V4 Pro"
+   "deepseek/deepseek-v4-flash-0731" "DeepSeek V4 Flash"
+   "mistralai/mistral-medium-3-5"    "Mistral Medium 3.5"
+   "moonshotai/kimi-k3"              "Kimi K3"
+   "openai/gpt-5.6-sol"              "GPT-5.6 Sol"
+   "openai/gpt-5.6-terra"            "GPT-5.6 Terra"
+   "openai/gpt-5.6-luna"             "GPT-5.6 Luna"
+   "openai/gpt-5.5"                  "GPT-5.5"
+   "openai/gpt-5.5-pro"              "GPT-5.5 Pro"
+   "openai/gpt-5.4"                  "GPT-5.4"
+   "openai/gpt-5.4-pro"              "GPT-5.4 Pro"
+   "openai/gpt-5.4-mini"             "GPT-5.4 Mini"
+   "z-ai/glm-5.2"                    "GLM-5.2"})
 
 (defn- supported-model?
   "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
@@ -113,12 +115,17 @@
 
 ;;; Streaming response → AISDK v5 chunks
 
+(def ^:private stop-reasons
+  "OpenRouter normalizes each upstream model's reason into the Chat Completions set (the raw value stays in
+  `native_finish_reason`), and adds `error` for a mid-generation upstream failure."
+  (assoc chat-completions/stop-reasons "error" "error"))
+
 (defn openrouter->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
   OpenRouter streams the generic Chat Completions dialect; see
   [[chat-completions/chat-completions->aisdk-chunks-xf]]."
   []
-  (chat-completions/chat-completions->aisdk-chunks-xf))
+  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons))
 
 ;;; HTTP request
 
@@ -173,11 +180,15 @@
                                                 "HTTP-Referer" "https://metabase.com"
                                                 "X-Title"      "Metabase"}
                                       :body    (json/encode req)})]
+          ;; The SSE body is consumed lazily, after this `try` has exited — wrap
+          ;; the reducible so mid-stream IO/timeout failures get the same
+          ;; provider-friendly translation as request-time errors.
           (-> (core/sse-reducible (:body response))
               (debug/capture-stream {:provider "openrouter"
                                      :model    model
                                      :url      "/v1/chat/completions"
-                                     :request  req})))
+                                     :request  req})
+              (core/reducible-with-api-errors "openrouter" openrouter-error-msg)))
         (catch Exception e
           (core/rethrow-api-error! "openrouter" openrouter-error-msg e))))))
 

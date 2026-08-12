@@ -417,6 +417,10 @@
             [:first_name             {:optional true} [:maybe ms/NonBlankString]]
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
+            ;; `invite-user!` passes this through to `create-and-invite-user!`; without it the new user gets a random
+            ;; password and can never log in. Deliberately not `ms/ValidPassword`: admins provisioning accounts here
+            ;; have never been held to the complexity rules that `PUT /api/user/:id/password` enforces.
+            [:password               {:optional true} [:maybe ms/NonBlankString]]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
             [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
             [:source                 {:optional true, :default :admin} [:maybe keyword?]]
@@ -591,7 +595,8 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [password old_password]} :- [:map
-                                       [:password ms/ValidPassword]]
+                                       [:password     ms/ValidPassword]
+                                       [:old_password {:optional true} [:maybe :string]]]
    request]
   (users/check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],

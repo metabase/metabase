@@ -1,3 +1,4 @@
+import { exploration } from "metabase/urls/explorations";
 import type {
   CardId,
   CollectionId,
@@ -93,6 +94,8 @@ export function modelToUrl(item: UrlableModel): string {
         return dataStudioPublishedTableMeasure(item.table_id, item.id);
       }
       return NOT_FOUND_URL;
+    case "exploration":
+      return exploration(item.id);
     default:
       return NOT_FOUND_URL;
   }

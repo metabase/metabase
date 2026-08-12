@@ -1,7 +1,6 @@
 import { DatabaseEngineList } from "metabase/databases/components/DatabaseEngineList";
 import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 
 import { trackDatabaseSelect } from "../analytics";
 
@@ -14,7 +13,7 @@ export const DatabasesPanel = ({
   canSeeContent: boolean;
   fromEmbeddingSetupGuide?: boolean;
 }) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleDatabaseSelect = (key: string) => {
     trackDatabaseSelect(key);
@@ -22,7 +21,7 @@ export const DatabasesPanel = ({
     if (fromEmbeddingSetupGuide) {
       params.set(RETURN_TO_SETUP_GUIDE_PARAM, "true");
     }
-    dispatch(push(`/admin/databases/create?${params.toString()}`));
+    navigate(`/admin/databases/create?${params.toString()}`);
   };
 
   return canSeeContent ? (

@@ -10,7 +10,6 @@ import {
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { ReturnToSetupGuideModal } from "metabase/embedding/components/ReturnToSetupGuideModal";
 import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
@@ -24,6 +23,7 @@ import {
 import { connect, useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
 import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
 

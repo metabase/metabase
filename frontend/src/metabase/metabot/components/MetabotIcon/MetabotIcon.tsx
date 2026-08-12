@@ -1,7 +1,6 @@
 import { forwardRef } from "react";
 
-import { useSetting } from "metabase/common/hooks";
-import { useMetabotName } from "metabase/metabot/hooks";
+import { useSetting } from "metabase/settings";
 import { Box, type BoxProps, Icon } from "metabase/ui";
 
 export interface MetabotIconProps extends BoxProps {
@@ -15,7 +14,7 @@ export interface MetabotIconProps extends BoxProps {
 export const MetabotIcon = forwardRef<HTMLImageElement, MetabotIconProps>(
   function MetabotIcon({ size = 16, ...rest }, ref) {
     const metabotIcon = useSetting("metabot-icon");
-    const metabotName = useMetabotName();
+    const metabotName = useSetting("metabot-name");
 
     const isCustomIcon = metabotIcon && metabotIcon !== "metabot";
 

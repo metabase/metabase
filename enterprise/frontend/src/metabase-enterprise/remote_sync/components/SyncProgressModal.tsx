@@ -52,6 +52,7 @@ export function SyncProgressModal({
         message,
         icon: "warning",
         toastColor: "feedback-negative",
+        timeout: 60000,
       });
 
       if (message.match(/no active task/i)) {

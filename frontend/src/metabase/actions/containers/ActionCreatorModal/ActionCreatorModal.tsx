@@ -3,10 +3,9 @@ import { useEffect } from "react";
 import { skipToken, useGetActionQuery, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import { connect, useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import type { AppErrorDescriptor } from "metabase/redux/store";
-import { type LocationDescriptor, replace } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
@@ -28,26 +27,16 @@ interface EntityLoaderProps {
   loading?: boolean;
 }
 
-interface DispatchProps {
-  setErrorPage: (error: AppErrorDescriptor) => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
-}
-
-type ActionCreatorModalProps = OwnProps & EntityLoaderProps & DispatchProps;
-
-const mapDispatchToProps = {
-  setErrorPage,
-  onChangeLocation: replace,
-};
+type ActionCreatorModalProps = OwnProps & EntityLoaderProps;
 
 function ActionCreatorModal({
   model,
   params,
   loading: isModelLoading,
   onClose,
-  setErrorPage,
-  onChangeLocation,
 }: ActionCreatorModalProps) {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const actionId = Urls.extractEntityId(params.actionId);
   const modelId = Urls.extractEntityId(params.slug);
   const databaseId = model.databaseId() ?? undefined;
@@ -65,9 +54,9 @@ function ActionCreatorModal({
 
       if (notFound || action?.archived) {
         const nextLocation = Urls.modelDetail(model.card(), "actions");
-        onChangeLocation(nextLocation);
+        navigate(nextLocation, { replace: true });
       } else if (hasModelMismatch) {
-        setErrorPage({ status: 404 });
+        dispatch(setErrorPage({ status: 404 }));
       }
     }
     // We only need to run this once, when the action is fetched
@@ -89,11 +78,7 @@ function ActionCreatorModal({
   );
 }
 
-function ActionCreatorModalLoader({
-  params,
-  onClose,
-  ...dispatchProps
-}: ModalComponentProps & DispatchProps) {
+function ActionCreatorModalLoader({ params, onClose }: ModalComponentProps) {
   const modelId = Urls.extractEntityId(params.slug);
   const { isLoading, error } = useGetCardQuery(
     modelId != null ? { id: modelId } : skipToken,
@@ -112,10 +97,9 @@ function ActionCreatorModalLoader({
       onClose={onClose}
       model={model}
       loading={isLoading}
-      {...dispatchProps}
     />
   );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(ActionCreatorModalLoader);
+export default ActionCreatorModalLoader;

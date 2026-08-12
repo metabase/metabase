@@ -25,7 +25,7 @@
                 ;; download perms
                 #{(perms/native-download-permission-for-user user-id db-id)}
                 (do
-                  (perms/prime-table-perms-cache {:table-ids table-ids})
+                  (perms/prime-table-perms-cache {:db-ids #{db-id} :table-ids table-ids})
                   (set (map (fn table-perms-lookup [table-id]
                               (perms/table-permission-for-user user-id :perms/download-results db-id table-id))
                             table-ids))))]

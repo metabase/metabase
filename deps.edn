@@ -353,6 +353,9 @@
                  "-Dmb.jetty.join=false"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.api.key=test-api-key"
+                 ;; Test warehouses live on localhost, so the network policy has to be off by default or every test
+                 ;; that creates one breaks.
+                 "-Dmb.warehouse.allowed.networks=allow-all"
                  ;; Port 0 tells the OS to assign a random free port, allowing parallel test runs.
                  ;; The actual port is read from the running Jetty server via server.instance/server-port.
                  "-Dmb.jetty.port=0"]}
@@ -387,6 +390,14 @@
                "-Duser.timezone=US/Pacific"
                "-Dmb.db.type=h2"
                "-Dmb.enable.test.endpoints=true"
+               ;; Use the in-memory queue backend in e2e. The persistent Quartz backend keeps its
+               ;; durable-job state in the app DB's QRTZ_* tables, but e2e restores app-db snapshots
+               ;; between tests (`H.restore`), which drops those tables out from under the running
+               ;; scheduler while the per-process `ensured-jobs` cache still thinks the jobs exist —
+               ;; so post-restore publishes target a non-existent job and never deliver. e2e is a
+               ;; single node, so the in-memory backend (no app-db state, unaffected by restore) is
+               ;; the correct fit.
+               "-Dmb.queue.backend=memory"
                "-Dmb.dangerous.unsafe.enable.testing.h2.connections.do.not.enable=true"
                ;; Ignore connection URI in favor of the MB_DB_FILE
                "-Dmb.db.connection.uri="

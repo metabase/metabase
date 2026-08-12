@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import TableSkeleton from "metabase/visualizations/components/skeletons/TableSkeleton";
 import {
   getDefaultSize,

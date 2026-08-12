@@ -2,6 +2,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupBugReportingDetailsEndpoint,
   setupPropertiesEndpoints,
+  setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -23,10 +24,9 @@ import { Onboarding } from "../Onboarding";
 
 export type SetupProps = {
   isAdmin?: boolean;
-  applicationName?: string;
-  enableXrays?: boolean;
-  hasExampleDashboard?: boolean;
-  isHosted?: boolean;
+  isAnalyst?: boolean;
+  canWriteToCollections?: boolean;
+  aiFeaturesEnabled?: boolean;
   openItem?: ChecklistItemValue;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
@@ -35,10 +35,9 @@ export type SetupProps = {
 
 export const setup = ({
   isAdmin = true,
-  applicationName,
-  enableXrays = true,
-  hasExampleDashboard = true,
-  isHosted = false,
+  isAnalyst = false,
+  canWriteToCollections = true,
+  aiFeaturesEnabled = true,
   openItem,
   showMetabaseLinks = true,
   tokenFeatures = {},
@@ -47,18 +46,21 @@ export const setup = ({
   const hasTokenFeatures = Object.entries(tokenFeatures).length > 0;
   setupPropertiesEndpoints(createMockSettings());
   setupBugReportingDetailsEndpoint();
+  // The AI item's "Connect to an AI provider" modal reads admin settings.
+  setupSettingsEndpoints([]);
   const state = createMockState({
     app: createMockAppState({
       tempStorage: {
         "last-opened-onboarding-checklist-item": openItem,
       },
     }),
-    currentUser: createMockUser({ is_superuser: isAdmin }),
+    currentUser: createMockUser({
+      is_superuser: isAdmin,
+      is_data_analyst: isAnalyst,
+      can_write_any_collection: canWriteToCollections,
+    }),
     settings: mockSettings({
-      "application-name": applicationName,
-      "enable-xrays": enableXrays,
-      "example-dashboard-id": hasExampleDashboard ? 1 : null,
-      "is-hosted?": isHosted,
+      "ai-features-enabled?": aiFeaturesEnabled,
       "show-metabase-links": showMetabaseLinks,
       "token-features": createMockTokenFeatures(tokenFeatures),
       "token-status": hasTokenFeatures
@@ -71,7 +73,9 @@ export const setup = ({
     setupEnterpriseOnlyPlugin(plugin);
   });
 
-  renderWithProviders(
+  // `store` lets a test assert on actions whose effect is rendered by the
+  // app-level modal host, which lives outside this page's tree.
+  const { store } = renderWithProviders(
     <Route path="/getting-started" element={<Onboarding />} />,
     {
       initialRoute: "/getting-started",
@@ -79,4 +83,6 @@ export const setup = ({
       withRouter: true,
     },
   );
+
+  return { store };
 };

@@ -2,9 +2,9 @@ import { useContext, useId, useRef } from "react";
 import type { Blocker, BlockerFunction } from "react-router";
 import { UNSAFE_RouteContext } from "react-router";
 
-import { useGuardedBlocker } from "./v7/route-leave-guards";
+import { useGuardedBlocker } from "./route-leave-guards";
 
-export { useIsNavigationHeld } from "./v7/route-leave-guards";
+export { useIsNavigationHeld } from "./route-leave-guards";
 
 /**
  * Block navigation that leaves the route this component renders in, replacing

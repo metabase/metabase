@@ -6,12 +6,12 @@ import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { useEmbeddingThemeOverride } from "embedding-sdk-bundle/hooks/private/use-embedding-theme-override";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
-import { useSetting } from "metabase/common/hooks";
 import {
   type MetabaseEmbeddingTheme,
   isEmbeddingThemeV1,
 } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";

@@ -1,5 +1,3 @@
-import type { CurrencyStyle } from "metabase/utils/formatting";
-import type { TimeOnlyOptions } from "metabase/utils/formatting/types";
 import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
@@ -18,6 +16,7 @@ import type { Document, DocumentId } from "./document";
 import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
+import type { CurrencyStyle, TimeOnlyOptions } from "./formatting";
 import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type {
