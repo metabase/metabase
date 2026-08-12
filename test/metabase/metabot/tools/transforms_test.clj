@@ -75,10 +75,8 @@
                          :model/Transform {transform-id :id}
                          {:name   "Private source Card"
                           :source {:type  "query"
-                                   :query {:lib/type :mbql/query
-                                           :database (mt/id)
-                                           :stages   [{:lib/type :mbql.stage/mbql
-                                                       :source-card card-id}]}}}]
+                                   :query (lib/query (mt/metadata-provider)
+                                                     (lib.metadata/card (mt/metadata-provider) card-id))}}]
             (mt/with-current-user (mt/user->id :rasta)
               (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
                 (is (str/includes? output "name=\"Private source Card\""))
