@@ -1,5 +1,4 @@
 import { modalRoute } from "metabase/common/components/ModalRoute";
-import { ModelDetailPage } from "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
 import { Route, redirect } from "metabase/router";
 import {
@@ -8,6 +7,15 @@ import {
 } from "metabase/ui";
 
 import ActionCreatorModal from "./containers/ActionCreatorModal/ActionCreatorModal";
+
+/**
+ * The action pages stay eager: `modalRoute` takes a component rather than a
+ * loader, so deferring them needs more than a route change.
+ */
+const modelDetailPage = () =>
+  import(
+    /* webpackChunkName: "model-detail" */ "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage"
+  ).then(({ ModelDetailPage }) => ({ Component: ModelDetailPage }));
 
 export const getRoutes = () => {
   const modalProps: Partial<ModalProps> = {
@@ -20,7 +28,7 @@ export const getRoutes = () => {
         {modalRoute("new", ActionCreatorModal, { modalProps })}
         {modalRoute(":actionId", ActionCreatorModal, { modalProps })}
       </Route>
-      <Route path=":rowId" element={<ModelDetailPage />} />
+      <Route path=":rowId" lazy={modelDetailPage} />
       <Route index element={redirect("actions")} />
       <Route path="usage" element={redirect("../actions")} />
       <Route path="schema" element={redirect("../actions")} />

@@ -31,7 +31,6 @@ import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbac
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { UserCollectionList } from "metabase/common/components/UserCollectionList";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
-import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
 import { LandingPageRedirect } from "metabase/home/components/LandingPageRedirect";
 import { Onboarding } from "metabase/home/components/Onboarding";
@@ -135,6 +134,11 @@ const metricsViewerPage = () =>
   import("metabase/metrics-viewer").then(({ MetricsViewerPage }) => ({
     Component: MetricsViewerPage,
   }));
+
+const tableDetailPage = () =>
+  import(
+    /* webpackChunkName: "table-detail" */ "metabase/detail-view/pages/TableDetailPage"
+  ).then(({ TableDetailPage }) => ({ Component: TableDetailPage }));
 
 const documentPage = () =>
   import("metabase/documents/routes").then(({ DocumentPageOuter }) => ({
@@ -445,10 +449,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "table",
                 children: [
                   { path: ":slug", lazy: queryBuilder },
-                  {
-                    path: ":tableId/detail/:rowId",
-                    element: <TableDetailPage />,
-                  },
+                  { path: ":tableId/detail/:rowId", lazy: tableDetailPage },
                 ],
               },
 
