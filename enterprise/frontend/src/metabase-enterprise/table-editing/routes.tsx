@@ -1,9 +1,14 @@
 import { Route } from "metabase/router";
 
 /**
- * No prefetch registration: the path carries the database and table ids before
- * the segment that names the page, and the registry matches on a prefix. A
- * prefix short enough to match would cover every browse database page.
+ * This page registers no prefetch, unlike the other pages that were split.
+ *
+ * `registerPagePrefetch` takes a fixed path prefix and matches it against the
+ * start of a hovered link's target. What names this page is the `edit` segment,
+ * and it comes after two ids that differ per table, so no fixed prefix reaches
+ * it. The longest one available stops at `databases`, which every browse
+ * database link also starts with. Registering that would fetch this chunk on
+ * hover of links that do not lead here.
  */
 const editTableDataPage = () =>
   import("./table-edit/EditTableDataContainer").then(

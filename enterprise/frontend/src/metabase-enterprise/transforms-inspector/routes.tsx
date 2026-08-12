@@ -1,9 +1,14 @@
 import { Route } from "metabase/router";
 
 /**
- * No prefetch registration: these paths carry the transform id before the part
- * that identifies the page, and the registry matches on a prefix. A prefix short
- * enough to match would cover every other transform page as well.
+ * These pages register no prefetch, unlike the other pages that were split.
+ *
+ * `registerPagePrefetch` takes a fixed path prefix and matches it against the
+ * start of a hovered link's target. What names these pages is the `inspect`
+ * segment, and it comes after the transform id, so no fixed prefix reaches them.
+ * The longest one available stops before the id, which every other transform
+ * page also starts with. Registering that would fetch this chunk on hover of
+ * links that do not lead here.
  */
 const transformInspectPage = () =>
   import("./pages/TransformInspectPage").then(({ TransformInspectPage }) => ({

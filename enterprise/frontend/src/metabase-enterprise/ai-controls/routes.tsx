@@ -6,10 +6,13 @@ import { RequireMetabotConfigured } from "./components/RequireMetabotConfigured"
 /**
  * The AI settings pages, in one chunk.
  *
- * Every loader names the same chunk, so the whole section arrives in a single
- * request. These pages are tabs of one settings screen, and moving between them
- * should not cost a fetch each time. The gate stays eager: it has to decide
- * before there is anything to show.
+ * These pages are tabs of one settings screen, so every loader below names the
+ * same chunk. The section then arrives in one request, and moving between the
+ * tabs costs no further fetch.
+ *
+ * `RequireMetabotConfigured` is not split. It redirects away when Metabot is
+ * unconfigured, so splitting it would put a fetch in front of a redirect that
+ * renders nothing.
  */
 const metabotFeatureAccessPage = () =>
   import(
