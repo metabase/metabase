@@ -1200,6 +1200,12 @@ const RESTRICTED_PAGE_IMPORT = {
     "./pages",
     "../pages/*",
     "../pages",
+    // Not every page lives in a `pages` directory. Monitor keeps its under
+    // `components`, and a rule that only knew the directory convention passed
+    // those files while 200 kb stayed in the initial bundle.
+    "**/*Page",
+    "./*Page",
+    "../*Page",
   ],
   message:
     "Load a page with `lazy: () => import(...)` on its route. A static import keeps it in the initial bundle even though the route is lazy.",
