@@ -24,11 +24,11 @@ Metrics have three components:
 
 - [**Data source**](#metric-data-sources): metrics are associated with a specific data source and can be used in any question built on that data source.
 - [**Formula**](#metric-formula): the aggregation's definition.
-- [**Optional default time dimension**](#metric-default-time-dimension): a default time dimension to be used when displaying the metric as a standalone card on a dashboard or a pinned item in the collection. This time dimension doesn't affect how the metric is computed.
+- [**Dimensions**](./metric-dimensions.md): the fields people can use to break out and filter the metric, including an optional default dimension Metabase uses to display it.
 
 Metabase will show the metrics as an option in the query builder along with the basic aggregations like Count or Sum.
 
-If you use a metric as you aggregation, Metabase will replace the metric with the saved formula behind the scenes. See [Use metrics in the query builder](#use-metrics-in-the-query-builder).
+If you use a metric as your aggregation, Metabase will replace the metric with the saved formula behind the scenes. See [Use metrics in the query builder](#use-metrics-in-the-query-builder).
 
 Metrics live in collections. You can save metrics into the [Library](../data-studio/library.md) collection to surface your org's official curated metrics and encourage people to use them for their own questions.
 
@@ -42,11 +42,11 @@ Custom metrics work just like built-in metrics (Count, Sum etc): you can break o
 
 ![Metric built on top of other metrics](./images/use-metric-in-qb.png)
 
-You can also pick a metric as a data source when creating a new question. If the metric has a time dimension, Metabase will include the time dimension as a grouping. You can change the groupings to break out the metric by other dimensions.
+You can also pick a metric as a data source when creating a new question. Metabase adds the metric in the **Summarize** step, and you can group the results by any column from the metric's source data.
 
 ## Create a metric
 
-A metric consists of three parts: the data source, the formula that defines how a metric is computed, and an optional time dimension.
+A metric consists of three parts: the data source, the formula that defines how a metric is computed, and its dimensions.
 
 To create a metric:
 
@@ -58,18 +58,19 @@ To create a metric:
 
 2. Select your starting data. You can start from a table, saved question, model, or another metric.
 
-   Metric will be usable only on the data source you defined it on.
+   A metric will be usable only on the data source you defined it on.
 
-3. Define your metric. The metric editor is similar to the regular query builder, with two key differences:
+3. Define your metric. The metric editor is similar to the regular query builder, with one key difference:
 
    - The [**Formula**](#metric-formula) block is where you define your aggregation. You can use [custom expressions](../questions/query-builder/expressions.md) to write the formula, for example `SumIf([Total], [Plan] != 'free')`.
-   - The [**Default time dimension**](#metric-default-time-dimension) is where you can optionally include a default way for Metabase to group the metric by time when displaying the metric on a dashboard, document, or collection card. This time dimension isn't used for computing the metric (you can specify any other dimension when actually using the metric).
 
    ![Formula](./images/formula.png)
 
-   Only the data and formula steps are required to define a metric. You can join and filter data before the formula step, and set a default time dimension to group by.
+   Only the data and formula steps are required to define a metric. You can join and filter data before the formula step.
 
 4. Click **Save**. Metrics live in collections, so you'll need to pick a collection for the metric to save.
+
+   After saving, you can curate the metric's [dimensions](./metric-dimensions.md) on the **Dimensions** tab.
 
 ## Edit a metric
 
@@ -89,15 +90,15 @@ To edit a metric:
 
 ## Explore, compare, and do math with metrics
 
-To break metrics out by different dimensions, compare metrics and [measures](../data-studio/measures.md), and do math with metrics (like add or divide metrics by each other), check out the [Metrics Explorer](../questions/metrics-explorer.md).
+To break metrics out by different dimensions, compare metrics and [measures](../data-studio/measures.md), and do math with metrics (like add or divide metrics by each other), check out the [Metrics explorer](../questions/metrics-explorer.md).
 
 ![Metrics explorer](./images/metric-explorer.png)
 
-To see a metric in the Metrics Explorer, visit the metric and click **Explore** in the top right corner. You can add more metrics, breakouts, and filters to compare metrics along different dimensions.
+To see a metric in the Metrics explorer, visit the metric and click **Explore** in the top right corner. You can add more metrics, breakouts, and filters to compare metrics along different dimensions.
 
 ## Metric data sources
 
-Metrics are attached to a specific data source. This means that if you define a "Net Promoter Score" metric on the `Survey` table, you will be able to use the metric in any question that is build on the `Survey` table, but _only_ in questions that are built on the `Survey` table (and not, for example, any model or saved question that itself uses the `Survey` table).
+Metrics are attached to a specific data source. This means that if you define a "Net Promoter Score" metric on the `Survey` table, you will be able to use the metric in any question that is built on the `Survey` table, but _only_ in questions that are built on the `Survey` table (and not, for example, any model or saved question that itself uses the `Survey` table).
 
 You can build metrics on tables, saved questions, models, and other metrics.
 
@@ -119,15 +120,9 @@ We don't recommend adding filters into the metric definition to avoid filter con
 
 You can reference other metrics when defining the formula for your metric.
 
-## Metric default time dimension
+## Metric dimensions
 
-You can optionally set a default time dimension for the metric. Metabase will use this default time dimension when the metric is opened or displayed on a card in a collection or dashboard. In the image below that shows two pinned metrics at the top of a collection, the left metric lacks a default time dimension, so Metabase displays the metric as a number chart. The right metric has a default time dimension, so Metabase displays it as a line chart.
-
-![Pinned metrics](./images/pinned-metrics.png)
-
-Setting a time dimension doesn't lock the metric to that specific dimension. If someone uses the metric in a question or dashboard, they'll be able to group by other time dimensions and granularities as well.
-
-For example, you could calculate revenue and set a default time dimension of `Created At` by month, but if someone added that metric to a dashboard, they could group revenue by a different time granularity (e.g., by quarter). This is just an FYI so that you don't name a metric "Monthly Revenue" and think that by setting a default time dimension to "month", Metabase will prevent people from slicing revenue by other time granularities.
+You can curate a metric's [dimensions](./metric-dimensions.md) to control which fields people can use to break out and filter a metric, and set the default dimension Metabase uses to display the metric.
 
 ## See all metrics
 
@@ -179,6 +174,7 @@ See [Query caching](../configuring-metabase/caching.md).
 
 ## Further reading
 
+- [Metric dimensions](./metric-dimensions.md)
 - [Measures](../data-studio/measures.md)
 - [Models](./models.md)
 - [Segments](./segments.md)
