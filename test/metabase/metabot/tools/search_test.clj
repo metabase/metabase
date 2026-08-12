@@ -454,6 +454,40 @@
                 (testing "including documents, whose spec has no official_collection attr"
                   (is (=? {:official true} (by-id doc-id))))))))))))
 
+(deftest published-table-in-library-collection-test
+  ;; Tables *can* live in collections: the table search spec joins Collection on `is_published`.
+  ;; Before this, table results dropped `:collection` outright and library membership came only from
+  ;; `data_layer`, so a table sitting in a Library collection reported `is_library_member=false`
+  ;; while a table in no collection at all reported true — exactly backwards.
+  (testing "a published table in a library collection is a library member and has a collection path"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-additional-premium-features #{:library}
+        (mt/with-test-user :crowberto
+          (search.tu/with-temp-index-table
+            (mt/with-temp [:model/Collection {lib-id :id} {:name "Zq7LibColl" :type "library-data"}
+                           :model/Database {db-id :id}   {:name "Zq7DB"}
+                           ;; deliberately *not* on the :final tier, so the only thing that can make
+                           ;; this a library member is the collection it was published into
+                           :model/Table {published-id :id} {:name          "Zq7PublishedTable"
+                                                            :db_id         db-id
+                                                            :is_published  true
+                                                            :collection_id lib-id
+                                                            :data_layer    :internal}
+                           :model/Table {final-id :id}     {:name       "Zq7FinalTable"
+                                                            :db_id      db-id
+                                                            :data_layer :final}]
+              (let [by-id (->> (search/search {:query "Zq7" :entity-types ["table"]})
+                               (map (juxt :id identity))
+                               (into {}))]
+                (is (=? {:library_member  true
+                         :collection_path "Zq7LibColl"
+                         :collection      {:id lib-id :name "Zq7LibColl"}}
+                        (by-id published-id)))
+                (testing "the data-layer route still covers a :final table that is in no collection"
+                  (is (=? {:library_member true} (by-id final-id)))
+                  (is (nil? (:collection (by-id final-id)))
+                      "an unpublished table carries no collection map"))))))))))
+
 (deftest document-search-test
   (testing "search can discover documents by name"
     (mt/with-test-user :crowberto

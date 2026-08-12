@@ -96,7 +96,14 @@
                   :database_schema (:table_schema result)
                   :official        official?
                   :data_authority  data_authority})
-          (m/assoc-some :curated curated :data_layer data_layer))
+          ;; A *published* table lives in a collection — often a library one (the table spec joins
+          ;; Collection on `is_published`). Carry it like any other collection-bearing result so the
+          ;; table picks up `collection_path` and `library_member`. Keyed off the id because an
+          ;; unpublished table still arrives with an all-nil collection map, and most tables are
+          ;; unpublished — no point spending payload on it.
+          (m/assoc-some :curated curated
+                        :data_layer data_layer
+                        :collection (when (:id collection) collection-info)))
 
       "dashboard"
       (-> common-fields
@@ -176,8 +183,8 @@
    the same string is also exposed as :full_path.
 
    :library_member is true when the result's top-level (root) collection is a library-type
-   collection. Tables have no collection; their library membership is set from the data layer
-   by [[enrich-tables-with-data-layer]]."
+   collection. Published tables have a collection too, so they route through here like anything
+   else; [[enrich-tables-with-data-layer]] then covers the tables that don't."
   [results]
   (let [direct-ids   (->> results (keep result-collection-id) distinct)
         ;; Bulk-fetch direct collections (with their effective location, which elides ancestors
@@ -235,9 +242,15 @@
           results)))
 
 (defn- enrich-tables-with-data-layer
-  "Tables aren't in collections, so their library membership comes from the data layer instead:
-   a table is a library member when its `data_layer` is `:final` (the published tier). Gated by
-   the :library premium feature, mirroring [[enrich-with-collection-paths]]."
+  "Second route to `:library_member` for tables: a table whose `data_layer` is `:final` (the tier
+   published for downstream consumption) counts as a library member even when it sits in no
+   collection at all.
+
+   Runs after [[enrich-with-collection-paths]] and never downgrades it: a published table in a
+   library collection is a library member on the strength of that collection, whatever tier it is
+   on — that is the sense [[metabase.search.scoring/library-score-expr]] ranks by. This only fills
+   in the tables that route can't reach. Gated by the :library premium feature, so the key stays
+   absent (rather than false) when the feature is off, mirroring the sibling function."
   [results]
   (let [table-ids (->> results (filter #(= "table" (:type %))) (keep :id) distinct)
         id->layer (when (and (premium-features/has-feature? :library) (seq table-ids))
@@ -245,7 +258,8 @@
     (if id->layer
       (mapv (fn [r]
               (cond-> r
-                (= "table" (:type r)) (assoc :library_member (= :final (id->layer (:id r))))))
+                (and (= "table" (:type r)) (not (:library_member r)))
+                (assoc :library_member (= :final (id->layer (:id r))))))
             results)
       results)))
 
