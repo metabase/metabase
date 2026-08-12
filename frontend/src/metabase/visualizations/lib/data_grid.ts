@@ -231,7 +231,7 @@ export function pivot(
         ...data.cols[cellCol],
         // `name` must be the same for conditional formatting, but put the
         // formatted pivotted value in the `display_name`
-        display_name: String(formatValue(value, pivotColumnSettings)) || "",
+        display_name: String(formatValue(value, pivotColumnSettings) || ""),
         // for onVisualizationClick:
         _dimension: {
           value: value,
