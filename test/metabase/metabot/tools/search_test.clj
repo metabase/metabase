@@ -529,12 +529,18 @@
   (testing "a document in an official collection reads as official under the in-place engine too"
     (mt/with-test-user :crowberto
       (search.tu/with-legacy-search
-        (mt/with-temp [:model/Collection {off-id :id} {:name "Ip4OfficialColl" :authority_level "official"}
-                       :model/Document {doc-id :id}  {:name "Ip4Doc" :collection_id off-id}]
-          (let [doc (->> (search/search {:query "Ip4" :entity-types ["document"]})
-                         (filter #(= doc-id (:id %)))
-                         first)]
-            (is (=? {:type "document" :official true} doc))))))))
+        ;; `with-legacy-search` leaves semantic *active* where it's supported, and metabot resolves
+        ;; through `resolved-engine`, which prefers semantic — so on an instance with the feature on
+        ;; this would quietly stop exercising in-place. Force it, then assert we got there.
+        (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly nil)]
+          (is (= :search.engine/in-place (search.engine/resolved-engine))
+              "this test is only meaningful against the in-place engine")
+          (mt/with-temp [:model/Collection {off-id :id} {:name "Ip4OfficialColl" :authority_level "official"}
+                         :model/Document {doc-id :id}  {:name "Ip4Doc" :collection_id off-id}]
+            (let [doc (->> (search/search {:query "Ip4" :entity-types ["document"]})
+                           (filter #(= doc-id (:id %)))
+                           first)]
+              (is (=? {:type "document" :official true} doc)))))))))
 
 (deftest table-collection-edge-cases-test
   ;; A table published at the *root* has no collection row, and the table spec coalesces a display
