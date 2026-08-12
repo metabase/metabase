@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-studio.api.usage-metadata :as usage-metadata.api]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.measures.test-util :as measures.tu]
@@ -152,6 +153,23 @@
                                                "ee/data-studio/usage-metadata/candidates"))))
         (is (nil? (mt/user-http-request :crowberto :delete 204
                                         (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/dismissal"))))))))
+
+(deftest candidate-detail-reports-table-uneditable-for-read-only-remote-synced-table-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temporary-setting-values [remote-sync-type :read-only]
+      (mt/with-temp [:model/Collection {synced-id :id} {:type             collection/library-data-collection-type
+                                                        :is_remote_synced true}
+                     :model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                           :trigger           :manual
+                                                           :algorithm_version 1
+                                                           :source_config     {}
+                                                           :finished_at       (mi/now)}
+                     :model/UsageMetadataCandidate candidate (candidate-row (:id run))]
+        (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true, :collection_id synced-id}
+          (testing "the Create button is disabled on the detail response, not just the create endpoint"
+            (is (=? {:creation_blockers ["table-uneditable"]}
+                    (mt/user-http-request :crowberto :get 200
+                                          (str "ee/data-studio/usage-metadata/candidates/" (:id candidate)))))))))))
 
 (deftest candidate-detail-uses-snapshot-match-metadata-test
   (mt/with-premium-features #{:library}
