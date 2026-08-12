@@ -1218,6 +1218,8 @@
                 serdes/lookup-by-id (fn [model eid]
                                       (when (and (#{'Card :model/Card} model) (= eid metric-eid))
                                         {:id 700 :database_id 1 :entity_id eid}))
+                construct/permission-aware-content-store (stub-content-store
+                                                          {:id 700 :database_id 1 :entity_id metric-eid})
                 api/read-check  allow-read-check
                 api/query-check allow-read-check
                 ;; `metric-details` gates its base table and every surfaced column on app-db
