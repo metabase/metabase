@@ -264,8 +264,53 @@
       (str/includes? (u/lower-case-en stmt) "databasechangelog")
       (str/replace #"'\d{10}'" "'<deployment-id>'"))))
 
+(defn- value-tuples
+  "The `(...)` tuples of a `VALUES` list, split on the paren closing each one rather than on the commas between them,
+  so that a value holding a comma, a newline or a paren of its own cannot be read as a boundary. Nil unless every
+  character is accounted for, which is what makes it safe to fall back to leaving a statement alone."
+  [^String s]
+  (loop [i 0, depth 0, in-string? false, start nil, acc []]
+    (if (<= (.length s) i)
+      (when (and (zero? depth) (not in-string?) (nil? start))
+        acc)
+      (let [c (.charAt s i)]
+        (cond
+          ;; a doubled '' reads as two toggles, which lands back inside the string, the same as escaping it does
+          in-string? (case c
+                       \\ (recur (+ i 2) depth true start acc)
+                       \' (recur (inc i) depth false start acc)
+                       (recur (inc i) depth true start acc))
+          (= c \')   (recur (inc i) depth true start acc)
+          (= c \()   (recur (inc i) (inc depth) false (or start i) acc)
+          (= c \))   (let [depth (dec depth)]
+                       (if (zero? depth)
+                         (recur (inc i) depth false nil (conj acc (subs s start (inc i))))
+                         (recur (inc i) depth false start acc)))
+          ;; outside a tuple only the separators between them and the terminator ending the list may appear;
+          ;; anything else means this is not a plain list of tuples and is left alone
+          (some? start) (recur (inc i) depth false start acc)
+          (or (= c \,) (= c \;) (Character/isWhitespace c)) (recur (inc i) depth false start acc)
+          :else nil)))))
+
+(defn- single-row-inserts
+  "A multi-row `INSERT ... VALUES (...),(...)` split into one statement per row.
+
+  Two dumps of the very same rows can frame them differently: H2's `SCRIPT` packs rows into multi-row inserts by
+  size, so a value one character longer pushes a row into the next statement. That is a difference in batching, not
+  in content, and comparing statement by statement would report it as drift. Statements that cannot be taken apart
+  with certainty are left exactly as they are."
+  [statement]
+  (or (when-let [[_ prefix tuples] (re-matches #"(?is)^(.*?\bVALUES\s*)(\(.*)$" statement)]
+        (when-let [tuples (value-tuples tuples)]
+          (when (next tuples)
+            (mapv #(str prefix %) tuples))))
+      [statement]))
+
 (defn- comparable-statements [snapshot-text]
-  (mapv unstable-values-masked (snapshot/statements snapshot-text)))
+  (into []
+        (comp (mapcat single-row-inserts)
+              (map unstable-values-masked))
+        (snapshot/statements snapshot-text)))
 
 (defn- first-difference
   "The first statement two snapshots of the same dialect disagree on, as `{:index _, :checked-in _, :regenerated _}`,
