@@ -61,6 +61,9 @@
 (defn- clear-existing-segment-cache! []
   (memoize/memo-clear! @#'insights/existing-segment-facts*-memo))
 
+(defn- clear-existing-metric-signature-cache! []
+  (memoize/memo-clear! @#'insights/existing-metric-signatures*-memo))
+
 (deftest suggested-segments-for-owner-happy-path-test
   (cleanup-composite-rows!)
   (clear-existing-segment-cache!)
@@ -112,3 +115,59 @@
                (composite-opts (mt/id :orders)))))
     (finally
       (clear-existing-segment-cache!))))
+
+(deftest existing-segment-facts-are-memoized-and-shared-test
+  (testing "existing-segment-predicates and existing-composite-atomsets for the same key
+            share one TTL-memoized Segment scan"
+    (clear-existing-segment-cache!)
+    (try
+      (let [segment-selects     (atom 0)
+            original-select     (mt/original-fn #'t2/select)
+            existing-predicates (var-get #'insights/existing-segment-predicates)
+            existing-composites (var-get #'insights/existing-composite-atomsets)
+            opts                (composite-opts (mt/id :orders))]
+        (mt/with-dynamic-fn-redefs
+          [t2/select (fn [& args]
+                       (when (and (sequential? (first args))
+                                  (= :model/Segment (ffirst args)))
+                         (swap! segment-selects inc))
+                       (apply original-select args))]
+          (is (set? (existing-predicates opts)))
+          (is (= 1 @segment-selects) "the first call scans Segments once")
+          (is (set? (existing-composites opts)))
+          (is (= 1 @segment-selects)
+              "the second call, for the same key, reuses the cached scan")))
+      (finally
+        (clear-existing-segment-cache!)))))
+
+(deftest existing-metric-signatures-cached-test
+  (testing "existing-metric-signatures is TTL-memoized — repeated calls hit the DB once"
+    (clear-existing-metric-signature-cache!)
+    (try
+      (let [card-selects           (atom 0)
+            original-select        (mt/original-fn #'t2/select)
+            existing-signatures    (var-get #'insights/existing-metric-signatures)]
+        (mt/with-dynamic-fn-redefs
+          [t2/select (fn [& args]
+                       (when (and (sequential? (first args))
+                                  (= :model/Card (ffirst args)))
+                         (swap! card-selects inc))
+                       (apply original-select args))]
+          (existing-signatures)
+          (existing-signatures)
+          (is (= 1 @card-selects))))
+      (finally
+        (clear-existing-metric-signature-cache!)))))
+
+(deftest ^:parallel rebuild-and-clause-test
+  (let [rebuild-and-clause (var-get #'insights/rebuild-and-clause)
+        fp-a "[\"=\",{},[\"field\",{},1],1]"
+        fp-b "[\">\",{},[\"field\",{},2],0]"]
+    (testing "builds a properly-shaped :and MBQL clause from atom fingerprints"
+      (is (lib/clause-of-type? (rebuild-and-clause [fp-a fp-b]) :and)))
+    (testing "returns nil below the minimum itemset size"
+      (is (nil? (rebuild-and-clause [])))
+      (is (nil? (rebuild-and-clause [fp-a]))))
+    (testing "returns nil when decode-predicate drops everything below the floor"
+      (is (nil? (rebuild-and-clause [nil nil])))
+      (is (nil? (rebuild-and-clause [fp-a nil]))))))
