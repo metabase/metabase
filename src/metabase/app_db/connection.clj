@@ -214,17 +214,21 @@
                                    @*transaction-state*)]
               (try
                 (let [result (f connection)]
-                  (when (= *transaction-depth* 1)
-                    ;; top-level transaction. Run before-commit callbacks first, while the transaction is
-                    ;; still open, so their writes commit atomically with it. They are NOT wrapped in
-                    ;; try/catch — a throwing callback must propagate to the catch below and roll back.
-                    (loop []
-                      (when-let [callbacks (seq (first (reset-vals! *before-commit-callbacks* [])))]
-                        (doseq [cb callbacks] (cb))
-                        ;; a before-commit callback may register more (before- or after-commit); run those too
-                        (recur)))
-                    ;; commit; after-commit side effects run after the transaction bindings unwind
-                    (.commit connection))
+                  (if (= *transaction-depth* 1)
+                    (do
+                      ;; top-level transaction. Run before-commit callbacks first, while the transaction is
+                      ;; still open, so their writes commit atomically with it. They are NOT wrapped in
+                      ;; try/catch — a throwing callback must propagate to the catch below and roll back.
+                      (loop []
+                        (when-let [callbacks (seq (first (reset-vals! *before-commit-callbacks* [])))]
+                          (doseq [cb callbacks] (cb))
+                          ;; a before-commit callback may register more (before- or after-commit); run those too
+                          (recur)))
+                      ;; commit; after-commit side effects run after the transaction bindings unwind
+                      (.commit connection))
+                    ;; nested transaction succeeded; release its savepoint so it doesn't stay open (as a live
+                    ;; subtransaction on postgres) for the rest of the outer transaction
+                    (.releaseSavepoint connection savepoint))
                   result)
                 (catch Throwable txn-e
                   ;; the nested body failed, so its before-/after-commit callbacks must never fire — discard
