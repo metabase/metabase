@@ -7,70 +7,27 @@ import {
 import { createMockParameter } from "metabase-types/api/mocks";
 
 describe("parameters/utils/parameter-values", () => {
-  let field1;
-  let field2;
-  let field3;
-  let field4;
-  let parameter1;
-  let parameter2;
-  let parameter3;
-  let parameterValues;
-
-  beforeEach(() => {
-    field1 = {
-      id: 1,
-      table_id: 1,
-      isNumeric: () => false,
-      isDate: () => false,
-      isBoolean: () => false,
-    };
-    field2 = {
-      id: 2,
-      table_id: 1,
-      isNumeric: () => false,
-      isDate: () => false,
-      isBoolean: () => false,
-    };
-    field3 = {
-      id: 3,
-      table_id: 1,
-      isNumeric: () => false,
-      isDate: () => false,
-      isBoolean: () => false,
-    };
-    field4 = {
-      id: 4,
-      table_id: 1,
-      isNumeric: () => false,
-      isDate: () => false,
-      isBoolean: () => false,
-    };
-
-    parameter1 = {
-      id: 111,
-      slug: "foo",
-      fields: [field1, field4],
-    };
-    parameter2 = {
-      id: 222,
-      slug: "bar",
-      default: "parameter2 default value",
-      fields: [field2],
-    };
-    parameter3 = {
-      id: 333,
-      slug: "baz",
-      default: "parameter3 default value",
-      fields: [field3],
-    };
-
-    // typically generated using getParameterValuesByIdFromQueryParams(parameters, queryParams)
-    parameterValues = {
-      [parameter1.id]: "parameter1 parameterValue",
-      [parameter2.id]: "parameter2 parameterValue",
-      [parameter3.id]: "parameter3 default value",
-    };
+  const parameter1 = createMockParameter({
+    id: "111",
+    slug: "foo",
   });
+  const parameter2 = createMockParameter({
+    id: "222",
+    slug: "bar",
+    default: "parameter2 default value",
+  });
+  const parameter3 = createMockParameter({
+    id: "333",
+    slug: "baz",
+    default: "parameter3 default value",
+  });
+
+  // typically generated using getParameterValuesByIdFromQueryParams(parameters, queryParams)
+  const parameterValues = {
+    [parameter1.id]: "parameter1 parameterValue",
+    [parameter2.id]: "parameter2 parameterValue",
+    [parameter3.id]: "parameter3 default value",
+  };
 
   describe("getValuePopulatedParameters", () => {
     it("should return an array of parameter objects with the `value` property set if it exists in the given `parameterValues` id, value map, and null if it doesn't exist", () => {
@@ -167,18 +124,18 @@ describe("parameters/utils/parameter-values", () => {
     });
 
     it("should not remove any properties with nil values from the map", () => {
-      const defaultedParameter = {
-        id: 999,
+      const defaultedParameter = createMockParameter({
+        id: "999",
         slug: "abc",
         default: 123,
-      };
+      });
 
-      const defaultedParameterWithValue = {
-        id: 888,
+      const defaultedParameterWithValue = createMockParameter({
+        id: "888",
         slug: "def",
         default: 456,
         value: 789,
-      };
+      });
 
       const parameters = [defaultedParameter, defaultedParameterWithValue];
 
@@ -200,10 +157,9 @@ describe("parameters/utils/parameter-values", () => {
 
   describe("getParameterValue", () => {
     const parameter = createMockParameter({
-      id: 333,
+      id: "333",
       slug: "baz",
       default: "parameter default value",
-      fields: [field1],
       required: true,
     });
 

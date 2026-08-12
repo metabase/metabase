@@ -1,5 +1,14 @@
 import _ from "underscore";
 
+import type { ParameterWithTemplateTagTarget } from "metabase-lib/v1/parameters/types";
+import type {
+  NormalizedParameter,
+  NormalizedQueryParameter,
+  Parameter,
+  ParameterValueOrArray,
+  ParameterValuesMap,
+} from "metabase-types/api";
+
 import {
   getQueryType,
   getSourceConfig,
@@ -19,6 +28,11 @@ export function getParameterValue({
   values = {},
   defaultRequired = false,
   lastUsedParameterValue = null,
+}: {
+  parameter: Parameter;
+  values?: ParameterValuesMap | null;
+  defaultRequired?: boolean;
+  lastUsedParameterValue?: ParameterValueOrArray | null;
 }) {
   const value = values?.[parameter.id];
   const useDefault = defaultRequired && parameter.required;
@@ -29,17 +43,17 @@ export function getParameterValue({
 }
 
 /**
- * @import { UiParameter } from "metabase-lib/v1/parameters/types";
- *
  * In some cases, we need to use default parameter value in place of an absent one.
  * Please use this function when dealing with the required parameters.
- *
- * @returns {UiParameter[]}
  */
-export function getValuePopulatedParameters({
+export function getValuePopulatedParameters<P extends Parameter>({
   parameters,
   values = {},
   defaultRequired = false,
+}: {
+  parameters: P[];
+  values?: ParameterValuesMap | null;
+  defaultRequired?: boolean;
 }) {
   return parameters.map((parameter) => ({
     ...parameter,
@@ -51,9 +65,9 @@ export function getValuePopulatedParameters({
   }));
 }
 
-export function getDefaultValuePopulatedParameters(
-  parameters,
-  parameterValues,
+export function getDefaultValuePopulatedParameters<P extends Parameter>(
+  parameters: P[],
+  parameterValues?: ParameterValuesMap | null,
 ) {
   return parameters.map((parameter) => {
     const value = parameterValues?.[parameter.id];
@@ -66,19 +80,14 @@ export function getDefaultValuePopulatedParameters(
 
 // Needed because parameter values might be arrays
 // in which case order of elements isn't guaranteed
-export function areParameterValuesIdentical(a, b) {
+export function areParameterValuesIdentical(a: unknown, b: unknown): boolean {
   return _.isEqual(
     Array.isArray(a) ? a.slice().sort() : a,
     Array.isArray(b) ? b.slice().sort() : b,
   );
 }
 
-/**
- * @import { NormalizedParameter } from "metabase-types/api";
- *
- * @returns {NormalizedParameter}
- */
-export function normalizeParameter(parameter) {
+export function normalizeParameter(parameter: Parameter): NormalizedParameter {
   return {
     id: parameter.id,
     name: parameter.name,
@@ -92,7 +101,9 @@ export function normalizeParameter(parameter) {
   };
 }
 
-export function normalizeParameters(parameters) {
+export function normalizeParameters(
+  parameters: Parameter[],
+): NormalizedQueryParameter[] {
   return parameters
     .filter((parameter) => _.has(parameter, "value"))
     .map(({ id, type, value, target, options }) => ({
@@ -107,7 +118,7 @@ export function normalizeParameters(parameters) {
 // This distinguishes between empty value (deliberately unset), which is null,
 // and no value, which is undefined. Needed in API requests.
 // TODO reconcile with hasNoValueToShow
-export function isParameterValueEmpty(value) {
+export function isParameterValueEmpty(value: unknown): boolean {
   return (
     value === PULSE_PARAM_EMPTY ||
     (Array.isArray(value) && value.length === 0) ||
@@ -118,7 +129,7 @@ export function isParameterValueEmpty(value) {
 // This is a UI-bound function used to render filter widget.
 // Should treat undefined and null equally.
 // TODO reconcile with isParameterValueEmpty
-export function parameterHasNoDisplayValue(value) {
+export function parameterHasNoDisplayValue(value: unknown): boolean {
   return (
     (!value && value !== 0) ||
     value === "" ||
@@ -126,28 +137,37 @@ export function parameterHasNoDisplayValue(value) {
   );
 }
 
-export function normalizeParameterValue(type, value) {
-  const fieldType = getParameterType(type);
+export function normalizeParameterValue(
+  type: string,
+  value: ParameterValueOrArray | null | undefined,
+) {
   if (value === PULSE_PARAM_USE_DEFAULT) {
     return PULSE_PARAM_USE_DEFAULT;
-  } else if (isParameterValueEmpty(value)) {
-    return PULSE_PARAM_EMPTY;
-  } else if (["string", "number"].includes(fieldType)) {
-    return [].concat(value);
-  } else {
-    return value;
   }
+
+  if (value === PULSE_PARAM_EMPTY || isParameterValueEmpty(value)) {
+    return PULSE_PARAM_EMPTY;
+  }
+
+  const fieldType = getParameterType(type);
+  if (["string", "number"].includes(fieldType)) {
+    return Array.isArray(value) ? [...value] : [value];
+  }
+
+  return value;
 }
 
-export function getParameterValuesBySlug(parameters, parameterValuesById) {
-  parameters = parameters ?? [];
-  parameterValuesById = parameterValuesById ?? {};
-
+export function getParameterValuesBySlug(
+  parameters?: Parameter[] | null,
+  parameterValuesById?: ParameterValuesMap | null,
+): Record<string, ParameterValueOrArray | null> {
   return Object.fromEntries(
-    parameters.map((parameter) => [
-      parameter.slug,
-      parameter.value ?? parameterValuesById[parameter.id] ?? null,
-    ]),
+    (parameters ?? []).map(
+      (parameter): [string, ParameterValueOrArray | null] => [
+        parameter.slug,
+        parameter.value ?? parameterValuesById?.[parameter.id] ?? null,
+      ],
+    ),
   );
 }
 
@@ -167,10 +187,12 @@ export function getParameterValuesBySlug(parameters, parameterValuesById) {
  * mapping is changed instead of relying on the `undefined` value and the
  * implicit behavior of this function.
  */
-export function getIsMultiSelect(parameter) {
+export function getIsMultiSelect(
+  parameter: ParameterWithTemplateTagTarget,
+): boolean {
   return parameter.isMultiSelect ?? !parameter.hasVariableTemplateTagTarget;
 }
 
-export function hasValue(value) {
+export function hasValue(value: unknown): boolean {
   return Array.isArray(value) ? value.length > 0 : value != null;
 }
