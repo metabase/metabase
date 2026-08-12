@@ -52,35 +52,43 @@
   [db-type]
   (when (= db-type :h2) "PUBLIC"))
 
-(defn- column-default
-  "The column's default, with \"no default\" and an explicit `DEFAULT NULL` treated as the same thing.
+(def ^:private ignored-metadata
+  "Metadata columns two DBs built by different routes disagree on for reasons that are not drift.
+
+  Everything the driver reports other than these is compared, so a field nobody thought about still gets checked:
+
+  - `table_cat`/`table_schem` and their foreign-key spellings name the database the connection is to, and the two
+    being compared are deliberately different throwaway databases
+  - index, primary key and foreign key names are left for the DB to generate, so they differ run to run
+  - `cardinality` and `pages` are index statistics, not structure
+  - `ordinal_position` is a column's physical position, and a table rebuilt by a later changeset can hold the same
+    columns in a different order. Where it means position *within an index* it is used for ordering before being
+    dropped, so composite index column order is still compared."
+  #{:table_cat :table_schem :pktable_cat :pktable_schem :fktable_cat :fktable_schem
+    :index_name :index_qualifier :pk_name :fk_name
+    :cardinality :pages
+    :ordinal_position})
+
+(defn- comparable-row
+  "A metadata row with the columns above dropped, and a `DEFAULT NULL` collapsed onto no default at all.
 
   A dump writes `DEFAULT NULL` where the original DDL simply omitted the default, and MariaDB reports the two
   differently -- the string \"NULL\" versus no value at all. For a nullable column they mean the same thing, and a
   NOT NULL column cannot have `DEFAULT NULL`, so collapsing them cannot hide a real difference."
-  [col]
-  (let [default (some-> (:column_def col) str/trim)]
-    (when-not (= default "NULL")
-      default)))
+  [row]
+  (cond-> (into (sorted-map) (remove (comp ignored-metadata key)) row)
+    (= "NULL" (some-> (:column_def row) str/trim)) (assoc :column_def nil)))
 
 (defn- columns [^java.sql.Connection conn db-type table]
   (with-open [rs (.getColumns (.getMetaData conn) nil (schema-of db-type) table "%")]
     (into (sorted-map)
-          (map (fn [col]
-                 [(u/upper-case-en (:column_name col))
-                  ;; `ordinal_position` is deliberately excluded: a table rebuilt by a later changeset can end up with
-                  ;; the same columns in a different physical order, which is not drift.
-                  {:type-name  (u/upper-case-en (str (:type_name col)))
-                   :size       (:column_size col)
-                   :decimals   (:decimal_digits col)
-                   :nullable   (:is_nullable col)
-                   :default    (column-default col)}]))
+          (map (juxt (comp u/upper-case-en :column_name) comparable-row))
           (jdbc/result-set-seq rs))))
 
 (defn- primary-keys [^java.sql.Connection conn db-type table]
   (with-open [rs (.getPrimaryKeys (.getMetaData conn) nil (schema-of db-type) table)]
-    (into (sorted-set)
-          (map (comp u/upper-case-en :column_name))
+    (into #{}
+          (map comparable-row)
           (jdbc/result-set-seq rs))))
 
 (defn- indexes
@@ -107,21 +115,18 @@
 (defn- foreign-keys [^java.sql.Connection conn db-type table]
   (with-open [rs (.getImportedKeys (.getMetaData conn) nil (schema-of db-type) table)]
     (into #{}
-          (map (fn [fk]
-                 {:fk-column  (u/upper-case-en (str (:fkcolumn_name fk)))
-                  :pk-table   (u/upper-case-en (str (:pktable_name fk)))
-                  :pk-column  (u/upper-case-en (str (:pkcolumn_name fk)))
-                  :delete-rule (:delete_rule fk)
-                  :update-rule (:update_rule fk)}))
+          (map comparable-row)
           (jdbc/result-set-seq rs))))
 
 (defn- schema-fingerprint
   "Structure of every table in the DB, in a form two DBs can be diffed on."
   [^java.sql.Connection conn db-type]
   (into (sorted-map)
-        (for [table (table-names conn db-type)
+        (for [table-row (snapshot/user-tables conn db-type)
+              :let  [table (:table_name table-row)]
               :when (not (changelog-table? table))]
-          [table {:columns      (columns conn db-type table)
+          [table {:table        (comparable-row table-row)
+                  :columns      (columns conn db-type table)
                   :primary-keys (primary-keys conn db-type table)
                   :indexes      (indexes conn db-type table)
                   :foreign-keys (foreign-keys conn db-type table)}])))
@@ -129,7 +134,7 @@
 (defn- view-fingerprint
   "Each view and the columns it exposes.
 
-  The column list is the point: a view whose body could not be resolved when the snapshot loaded still shows up as a
+  The columns are the point: a view whose body could not be resolved when the snapshot loaded still shows up as a
   view, just with nothing in it, and the instance analytics views are only ever read through the app so nothing else
   here would notice."
   [^java.sql.Connection conn db-type]
@@ -137,8 +142,23 @@
     (into (sorted-map)
           (map (fn [view]
                  [(u/upper-case-en (:table_name view))
-                  (vec (keys (columns conn db-type (:table_name view))))]))
+                  (columns conn db-type (:table_name view))]))
           (jdbc/result-set-seq rs))))
+
+(defn- database-attributes
+  "Settings that belong to the database itself rather than to anything inside it. No table's DDL carries them, and a
+  dump tool only reproduces them when asked, so this is the layer a snapshot most easily loses."
+  [^java.sql.Connection conn db-type]
+  (case db-type
+    :mysql    (first (jdbc/query {:connection conn}
+                                 ["SELECT @@character_set_database AS charset, @@collation_database AS collation"]))
+    :postgres (first (jdbc/query {:connection conn}
+                                 ["SELECT pg_encoding_to_char(encoding) AS encoding, datcollate, datctype
+                                   FROM pg_database WHERE datname = current_database()"]))
+    :h2       (into (sorted-map)
+                    (map (juxt :setting_name :setting_value))
+                    (jdbc/query {:connection conn}
+                                ["SELECT SETTING_NAME, SETTING_VALUE FROM INFORMATION_SCHEMA.SETTINGS"]))))
 
 (defn- changelog-fingerprint
   "Which changesets the DB believes it has run, and their checksums. `dateexecuted`, `orderexecuted`, `deployment_id`
@@ -160,8 +180,8 @@
   generated values listed in [[generated-columns]]."
   [^java.sql.Connection conn db-type table]
   (into generated-columns
-        (keep (fn [[col-name {:keys [type-name]}]]
-                (when (re-find #"(?i)^(TIMESTAMP|DATETIME|DATE|TIME)" type-name)
+        (keep (fn [[col-name {:keys [type_name]}]]
+                (when (re-find #"(?i)^(TIMESTAMP|DATETIME|DATE|TIME)" (str type_name))
                   col-name)))
         (columns conn db-type table)))
 
@@ -186,6 +206,7 @@
 (defn- fingerprint [^java.sql.Connection conn db-type]
   {:schema    (schema-fingerprint conn db-type)
    :views     (view-fingerprint conn db-type)
+   :database  (database-attributes conn db-type)
    :changelog (changelog-fingerprint conn)
    :data      (data-fingerprint conn db-type)})
 
@@ -318,6 +339,9 @@
               (testing "same views"
                 (is (= (:views from-scratch)
                        (:views from-snapshot))))
+              (testing "same database-level settings"
+                (is (= (:database from-scratch)
+                       (:database from-snapshot))))
               (testing "same changesets recorded as run"
                 (is (= (:changelog from-scratch)
                        (:changelog from-snapshot))))

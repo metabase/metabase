@@ -11,10 +11,11 @@
   dump/Dumper
   (dump-statements [_dumper {:keys [host port db user]} _conn]
     ;; `--inserts` so the data comes back as ordinary statements rather than a COPY stream, which the loader would
-    ;; have to speak a second format to replay
+    ;; have to speak a second format to replay. Comments are kept: migrations set them on tables and columns, so
+    ;; `--no-comments` would leave a loaded snapshot short the ones every changeset up to the boundary added.
     (dump-util/lines->statements
      (str/split-lines
-      (dump-util/sh! "pg_dump" "--no-owner" "--no-privileges" "--no-comments" "--inserts"
+      (dump-util/sh! "pg_dump" "--no-owner" "--no-privileges" "--inserts"
                      "--host" (str host) "--port" (str port) "--username" (str user) (str db))))))
 
 (def dumper
