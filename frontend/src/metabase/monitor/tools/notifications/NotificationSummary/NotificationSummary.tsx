@@ -28,7 +28,7 @@ export const NotificationSummary = ({ run, isCompact }: Props) => {
         </Tooltip>
         {isCompact && isFailing && (
           <Tooltip label={error} disabled={!error}>
-            <Icon name="warning_round" c="feedback-negative" />
+            <Icon name="warning_round" c="feedback-negative" flex="0 0 auto" />
           </Tooltip>
         )}
       </Flex>
@@ -39,7 +39,7 @@ export const NotificationSummary = ({ run, isCompact }: Props) => {
               {error}
             </Text>
           )}
-          <Icon name="warning_round" c="feedback-negative" />
+          <Icon name="warning_round" c="feedback-negative" flex="0 0 auto" />
         </Flex>
       )}
     </Stack>
