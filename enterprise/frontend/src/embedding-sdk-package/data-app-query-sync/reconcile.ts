@@ -31,7 +31,7 @@ const lockEntry = (query: DiscoveredQuery, id: number): QueryLockEntry => ({
 export async function reconcileQueries(options: ReconcileOptions) {
   const { appRoot, slug, collectionId, queries, previousEntries, client, log } =
     options;
-  const entries = [...previousEntries];
+  let entries = [...previousEntries];
   const resolved = await Promise.all(
     queries.map(async (query) => {
       try {
@@ -61,18 +61,7 @@ export async function reconcileQueries(options: ReconcileOptions) {
       continue;
     }
 
-    const entry = entries.find(
-      ({ savedQuestionSourceId }) => savedQuestionSourceId === id,
-    );
-    if (!entry) {
-      throw new Error(
-        `${query.exportName} references card ${id}, but the lockfile does not prove ownership.`,
-      );
-    }
     const card = await client.getCard(id);
-    if (card.type !== "question") {
-      throw new Error(`Card ${id} is no longer a saved question.`);
-    }
     const changed =
       card.name !== query.exportName ||
       card.collection_id !== collectionId ||
@@ -89,7 +78,13 @@ export async function reconcileQueries(options: ReconcileOptions) {
     } else {
       log(`unchanged: card ${id}`);
     }
-    Object.assign(entry, lockEntry(query, id));
+    entries = entries.map((entry) =>
+      entry.savedQuestionSourceId === id ? lockEntry(query, id) : entry,
+    );
+    writeQueryLockfile(appRoot, entries);
+  }
+
+  if (resolved.length === 0) {
     writeQueryLockfile(appRoot, entries);
   }
 

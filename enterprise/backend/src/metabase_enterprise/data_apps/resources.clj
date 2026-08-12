@@ -54,12 +54,18 @@
 (defn reconcile-view-data!
   "Make `database-ids` the authoritative view-data permission set for `app`."
   [app database-ids]
-  (let [group (permission-group! app)]
-    (doseq [database-id (t2/select-pks-set :model/Database :router_database_id nil)]
-      (perms/set-database-permission! group database-id :perms/view-data
-                                      (if (contains? database-ids database-id)
-                                        :unrestricted
-                                        :blocked)))))
+  (ensure-resources! app)
+  (let [app (t2/select-one :model/DataApp :id (:id app))]
+    (perms/with-global-permissions-lock
+      (t2/with-transaction [_conn]
+        (let [group            (permission-group! app)
+              all-database-ids (t2/select-pks-set :model/Database :router_database_id nil)
+              permissions     (or (perms/index-database-permissions [(:id group)] all-database-ids) {})]
+          (doseq [database-id all-database-ids]
+            (perms/set-database-permission! permissions group database-id :perms/view-data
+                                            (if (contains? database-ids database-id)
+                                              :unrestricted
+                                              :blocked))))))))
 
 (defn delete-resources!
   "Delete the generated collection and permission group referenced by `app`."

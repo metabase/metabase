@@ -228,9 +228,7 @@
    {database-ids :database_ids} :- query-sync-permissions-request]
   (api/check-superuser)
   (let [app (api/check-404 (data-app/select-one-non-blob :name slug))]
-    (data-app.resources/ensure-resources! app)
-    (-> (data-app/select-one-non-blob :id (:id app))
-        (data-app.resources/reconcile-view-data! (set database-ids))))
+    (data-app.resources/reconcile-view-data! app (set database-ids)))
   (data-app/select-one-non-blob :name slug))
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]

@@ -5,6 +5,7 @@
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -127,6 +128,29 @@
                                 {:database_ids [second-database-id]})
           (is (= :blocked (view-data-permission group-id first-database-id)))
           (is (= :unrestricted (view-data-permission group-id second-database-id))))))))
+
+(deftest query-database-permission-reconciliation-rolls-back-on-error-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-temp [:model/Database {first-database-id :id}  {}
+                     :model/Database {second-database-id :id} {}]
+        (create-app!)
+        (let [{group-id :permission_group_id}
+              (mt/user-http-request :crowberto :put 200 "apps/demo/query-sync/permissions"
+                                    {:database_ids [first-database-id]})
+              original-set-database-permission! perms/set-database-permission!
+              view-data-calls                  (atom 0)]
+          (with-redefs [perms/set-database-permission!
+                        (fn [& args]
+                          (let [permission-type (nth args (- (count args) 2))]
+                            (when (and (= permission-type :perms/view-data)
+                                       (= 2 (swap! view-data-calls inc)))
+                              (throw (ex-info "permission update failed" {})))
+                            (apply original-set-database-permission! args)))]
+            (mt/user-http-request :crowberto :put 500 "apps/demo/query-sync/permissions"
+                                  {:database_ids [second-database-id]}))
+          (is (= :unrestricted (view-data-permission group-id first-database-id)))
+          (is (= :blocked (view-data-permission group-id second-database-id))))))))
 
 (deftest query-definition-must-use-a-table-source-test
   (mt/with-premium-features #{:data-apps-preview}

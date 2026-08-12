@@ -35,12 +35,6 @@ export function readQueryLockfile(appRoot: string): QueryLockEntry[] {
   ) {
     throw new Error(`${QUERY_LOCKFILE} contains an invalid entry.`);
   }
-  const ids = value.map((entry) => entry.savedQuestionSourceId);
-  if (new Set(ids).size !== ids.length) {
-    throw new Error(
-      `${QUERY_LOCKFILE} contains a duplicate saved question ID.`,
-    );
-  }
   return value;
 }
 

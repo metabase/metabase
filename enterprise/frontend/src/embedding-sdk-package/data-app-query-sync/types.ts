@@ -21,7 +21,6 @@ export interface DataAppMetadata {
 export interface MetabaseCard {
   id: number;
   name: string;
-  type: string;
   collection_id: number | null;
   dataset_query: Record<string, unknown>;
 }

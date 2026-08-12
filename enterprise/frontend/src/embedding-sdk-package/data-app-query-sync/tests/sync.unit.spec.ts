@@ -181,4 +181,32 @@ describe("data app query synchronization", () => {
 
     expect(permissionBodies).toEqual([{ database_ids: [] }]);
   });
+
+  it("creates an empty lockfile for a new app without queries", async () => {
+    const appRoot = makeApp();
+    const slug = path.basename(appRoot);
+
+    jest.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const pathname = new URL(String(input)).pathname;
+      if (pathname === `/api/apps/${slug}/draft`) {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
+      }
+      if (pathname === `/api/apps/${slug}/query-sync/permissions`) {
+        return jsonResponse({ name: slug, resource_collection_id: 20 });
+      }
+      throw new Error(`Unexpected request to ${pathname}`);
+    });
+
+    await syncQueries({
+      appRoot,
+      metabaseUrl: "http://metabase.test",
+      apiKey: "secret",
+    });
+
+    expect(
+      JSON.parse(
+        fs.readFileSync(path.join(appRoot, "queries_metadata.json"), "utf8"),
+      ),
+    ).toEqual([]);
+  });
 });
