@@ -1,5 +1,6 @@
 export {
   type RegisteredVisualization,
+  type VisualizationComponentLoader,
   canSavePng,
   getDefaultSize,
   getIconForVisualizationType,
@@ -7,9 +8,11 @@ export {
   getMaxMetricsSupported,
   getSettingWidgetComponent,
   getVisualization,
+  getVisualizationComponent,
   getVisualizationRaw,
   getVisualizationTransformed,
   isCartesianChart,
+  prefetchVisualizationComponent,
   registerSettingWidgets,
   registerVisualization,
   setDefaultVisualization,

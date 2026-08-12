@@ -652,11 +652,12 @@ export type VisualizationGridSize = {
   height: number;
 };
 
-// TODO: add component property for the react component instead of the intersection
-export type Visualization = ComponentType<
+export type VisualizationComponent = ComponentType<
   VisualizationProps & VisualizationPassThroughProps
-> &
-  VisualizationDefinition;
+>;
+
+// TODO: add component property for the react component instead of the intersection
+export type Visualization = VisualizationComponent & VisualizationDefinition;
 
 export type VisualizationDefinition = {
   name?: string;
