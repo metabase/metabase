@@ -5,7 +5,7 @@ import {
   DataGrid,
   useDataGridInstance,
 } from "metabase/data-grid";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/value-formatting";
 import type { RowValue, TestPythonTransformResponse } from "metabase-types/api";
 
 export type Row = Record<string, RowValue>;

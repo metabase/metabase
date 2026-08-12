@@ -2,9 +2,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isNative } from "metabase/common/utils/card";
-import { formatPercent } from "metabase/static-viz/lib/numbers";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { formatChangeWithSign } from "metabase/utils/formatting";
+import { formatChangeWithSign, formatPercent } from "metabase/utils/formatting";
 import { getObjectKeys } from "metabase/utils/objects";
 import {
   getDaylightSavingsChangeTolerance,

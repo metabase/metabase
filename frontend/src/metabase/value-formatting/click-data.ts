@@ -4,7 +4,6 @@ import type { ClickObjectDimension } from "metabase-lib";
 import type { ClickObjectDataRow } from "metabase-lib/v1/queries/drills/types";
 import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import type {
-  ClickBehavior,
   ColumnSettings,
   Dashboard,
   DatasetColumn,
@@ -12,7 +11,6 @@ import type {
   UserAttributeMap,
   VisualizationSettings,
 } from "metabase-types/api";
-import { isImplicitActionClickBehavior } from "metabase-types/guards";
 
 import type { ValueAndColumnForColumnNameDate } from "./link";
 
@@ -109,36 +107,4 @@ export function getDataFromClicked({
   );
 
   return { column, parameter, parameterByName, parameterBySlug, userAttribute };
-}
-
-export function clickBehaviorIsValid(
-  clickBehavior: ClickBehavior | undefined | null,
-): boolean {
-  // opens drill-through menu
-  if (clickBehavior == null) {
-    return true;
-  }
-
-  if (clickBehavior.type === "crossfilter") {
-    return Object.keys(clickBehavior.parameterMapping || {}).length > 0;
-  }
-
-  if (clickBehavior.type === "action") {
-    return isImplicitActionClickBehavior(clickBehavior);
-  }
-
-  if (clickBehavior.type === "link") {
-    const { linkType } = clickBehavior;
-
-    if (linkType === "url") {
-      return (clickBehavior.linkTemplate || "").length > 0;
-    }
-
-    if (linkType === "dashboard" || linkType === "question") {
-      return clickBehavior.targetId != null;
-    }
-  }
-
-  // we've picked "link" without picking a link type
-  return false;
 }

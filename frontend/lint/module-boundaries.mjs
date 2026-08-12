@@ -63,6 +63,11 @@ const elements = [
   // basic
   createElement({ type: "basic", name: "router" }),
   createElement({ type: "basic", name: "ui" }),
+  createElement({
+    type: "basic",
+    name: "value-formatting",
+    enforcePublicApi: true,
+  }),
 
   // shared
   createElement({ type: "feature", name: "account" }),
@@ -413,6 +418,11 @@ const baseRules = [
   {
     from: ["basic/ui"],
     allow: ["lib/lib"],
+  },
+  // The column-vocabulary predicates (isa, column-key) live in metabase-lib/v1.
+  {
+    from: ["basic/value-formatting"],
+    allow: ["basic/mlv1"],
   },
   {
     from: ["shared/*"],

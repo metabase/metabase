@@ -3,7 +3,6 @@ import {
   registerVisualization,
   setDefaultVisualization,
 } from "metabase/visualizations";
-import { registerJsxFormatting } from "metabase/visualizations/lib/formatting/ui";
 
 import { ChartNestedSettingColumns } from "./components/settings/ChartNestedSettingColumns";
 import ChartNestedSettingSeries from "./components/settings/ChartNestedSettingSeries";
@@ -27,6 +26,7 @@ import { ChartSettingSelect } from "./components/settings/ChartSettingSelect";
 import { ChartSettingSeriesOrder } from "./components/settings/ChartSettingSeriesOrder";
 import { ChartSettingTableColumns } from "./components/settings/ChartSettingTableColumns";
 import { ChartSettingToggle } from "./components/settings/ChartSettingToggle";
+import { registerJsxFormatting } from "./lib/register-jsx-formatting";
 import { AreaChart } from "./visualizations/AreaChart";
 import { BarChart } from "./visualizations/BarChart";
 import { BoxPlot } from "./visualizations/BoxPlot";
