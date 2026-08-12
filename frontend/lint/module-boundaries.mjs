@@ -184,7 +184,7 @@ const elements = [
     enforceSharedTiers: false,
   }),
   createElement({ type: "feature", name: "models" }),
-  createElement({ type: "shared", name: "monitor" }),
+  createElement({ type: "feature", name: "monitor" }),
   createElement({ type: "shared", name: "nav", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),

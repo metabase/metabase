@@ -34,21 +34,23 @@ const SHARED_UTILS_LEVELS = [
   ],
   // U5 — composition over the levels below.
   // The store factory composes reducers, plugin middlewares, and the router.
-  ["shared/hoc", "shared/upsells", "shared/route-guards", "shared/redux-store"],
+  [
+    "shared/hoc",
+    "shared/upsells",
+    "shared/route-guards",
+    "shared/redux-store",
+    "shared/search-ui",
+  ],
 ];
 
 const SHARED_PLATFORM_LEVELS = [
   // P0 — independent peers: chart rendering and database metadata/forms.
   ["shared/visualizations", "shared/databases"],
-  // P1 — query editing composes visualizations.
-  ["shared/querying"],
+  // P1 — query editing and subscription editing compose visualizations;
+  // querying and pulse have no edges between them.
+  ["shared/querying", "shared/pulse"],
   // P2 — building blocks over querying; mutually independent.
-  [
-    "shared/metadata",
-    "shared/parameters",
-    "shared/questions",
-    "shared/search-ui",
-  ],
+  ["shared/metadata", "shared/parameters", "shared/questions"],
 ];
 
 const SHARED_DOMAIN = [
@@ -62,7 +64,6 @@ const SHARED_DOMAIN = [
   "shared/nav",
   "shared/notifications",
   "shared/palette",
-  "shared/pulse",
   "shared/rich_text_editing",
   "shared/static-viz",
   "shared/status",
@@ -88,7 +89,7 @@ const levelAllows = (levels, base = []) =>
 
 const sharedRules = [
   // Later rules win, so these must come after the baseline shared/* allow they narrow.
-  // Edges to untiered modules (common, monitor, embedding, types) fall through to that allow.
+  // Edges to untiered modules (common, embedding, types) fall through to that allow.
   {
     from: SHARED_UTILS,
     disallow: TIERED_SHARED,
@@ -133,10 +134,6 @@ const sharedRules = [
   {
     from: ["shared/nav", "shared/palette"],
     allow: ["shared/nav", "shared/palette"],
-  },
-  {
-    from: ["shared/notifications", "shared/pulse"],
-    allow: ["shared/notifications", "shared/pulse"],
   },
 ];
 
