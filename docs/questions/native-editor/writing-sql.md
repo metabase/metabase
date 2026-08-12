@@ -104,6 +104,8 @@ The native SQL editor is designed for asking questions about your data. Don't us
 
 Depending on your connection's privileges, some of the above actions may work, but none are officially supported, and we recommend against using the native query editor for these tasks.
 
+On databases that use [impersonation](../../permissions/impersonation.md), Metabase enforces this: queries must be a single `SELECT` statement, and Metabase will reject multi-statement queries, temporary tables, and DDL.
+
 ## Question version history
 
 For questions, [dashboards](../../dashboards/start.md), and [models](../../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
