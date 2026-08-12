@@ -1221,6 +1221,9 @@ configs.push(
       "frontend/src/metabase/data-studio/glossary/routes.tsx",
       "frontend/src/metabase/data-studio/routes.tsx",
       "frontend/src/metabase/data-studio/settings/routes.tsx",
+      // Not a leak: this file is itself the module a `lazy` loader imports, so
+      // it already sits in the documents chunk with the page it imports.
+      "frontend/src/metabase/documents/routes.tsx",
       "frontend/src/metabase/explorations/routes.tsx",
       "frontend/src/metabase/metrics/routes.tsx",
       "frontend/src/metabase/models/routes.tsx",
