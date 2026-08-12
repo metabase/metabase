@@ -16,18 +16,20 @@
 
 ;;; ----------------------------------- read tool integration tests ---------------------------------------------------
 
+(def ^:private gadget-sql
+  "SELECT * FROM products WHERE price < 100 AND category <> 'Widget'")
+
 (deftest get-transform-details-native-query-test
   (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:name   "Gadget Products"
                       :source {:type  "query"
-                               :query (lib/native-query (mt/metadata-provider)
-                                                        "SELECT * FROM products WHERE price < 100 AND category <> 'Widget'")}}]
+                               :query (lib/native-query (mt/metadata-provider) gadget-sql)}}]
         (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
           (is (str/includes? output "name=\"Gadget Products\""))
           (is (str/includes? output "<source type=\"query\">"))
-          (is (str/includes? output "<query>SELECT * FROM products WHERE price < 100 AND category <> 'Widget'</query>")))))))
+          (is (str/includes? output (str "<query>" gadget-sql "</query>"))))))))
 
 (deftest get-transform-details-notebook-query-test
   (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}

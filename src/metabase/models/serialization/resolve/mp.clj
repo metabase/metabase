@@ -407,9 +407,9 @@
   final pMBQL query can stay paired with the same database-scoped provider used for table and
   field FK export. Guards against accidental cross-database card refs.
 
-  The `entity_id` comes from `content-store` rather than the provider: the provider is
-  deliberately permission-agnostic, so a read-checked store is what keeps the stable id of a
-  Card the current user cannot read out of the exported query."
+  The `entity_id` comes from `content-store`, not the provider: the provider is
+  permission-agnostic, so a read-checked store is what keeps an unreadable Card's stable id
+  out of the export."
   [metadata-provider content-store card-id]
   (when card-id
     (let [current-db-id (:id (lib.metadata/database metadata-provider))
