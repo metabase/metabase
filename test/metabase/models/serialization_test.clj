@@ -296,6 +296,33 @@
             (is (= raw-models (models (#'serdes/mbql-deps-map true raw)))
                 "raw")))))))
 
+(deftest ^:parallel import-pivot-table-bare-string-columns-test
+  (testing (str "pivot_table.column_split rows/columns can be bare column-name strings (e.g. from a native query), "
+                "not just [:field ...] refs -- these must survive import unchanged (metabase#74868)")
+    (is (= {:pivot_table.column_split {:rows ["SOURCE"], :columns ["PLAN"]}}
+           (#'serdes/import-pivot-table {:pivot_table.column_split {:rows ["SOURCE"], :columns ["PLAN"]}})))))
+
+(deftest ^:parallel import-pivot-table-mixed-field-refs-and-bare-strings-test
+  (testing "a bare string column name mixed in with real field refs doesn't break the field refs' remapping"
+    (binding [serdes/*import-field-fk* (constantly 3)]
+      (is (=? {:pivot_table.column_split {:rows    [[:field {:lib/uuid string?} 3] "SOURCE"]
+                                          :columns [[:field {:lib/uuid string?} 3]]}}
+              (#'serdes/import-pivot-table
+               {:pivot_table.column_split {:rows    [["field" {} ["DB" "SCHEMA" "TABLE" "FIELD"]] "SOURCE"]
+                                           :columns [["field" {} ["DB" "SCHEMA" "TABLE" "FIELD"]]]}}))))))
+
+(deftest ^:parallel export-import-pivot-table-round-trip-test
+  (testing "export then import of a pivot table with bare-string columns round-trips to the original shape"
+    (binding [serdes/*export-field-fk* (constantly ["A" "B" "C" "D"])
+              serdes/*import-field-fk* (constantly 3)]
+      (let [exported (#'serdes/export-pivot-table {:pivot_table.column_split {:rows    [[:field {} 1] "SOURCE"]
+                                                                              :columns ["PLAN"]}})]
+        (is (= {:pivot_table.column_split {:rows [[:field {} ["A" "B" "C" "D"]] "SOURCE"] :columns ["PLAN"]}}
+               exported))
+        (is (=? {:pivot_table.column_split {:rows    [[:field {:lib/uuid string?} 3] "SOURCE"]
+                                            :columns ["PLAN"]}}
+                (#'serdes/import-pivot-table exported)))))))
+
 (deftest ^:parallel export-parameters-test
   (binding [serdes/*export-fk*       (fn [id model]
                                        (format "%s___%d" (name model) id))
