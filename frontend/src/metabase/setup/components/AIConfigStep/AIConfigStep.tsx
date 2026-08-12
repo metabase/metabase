@@ -6,6 +6,7 @@ import {
 } from "metabase/api";
 import { AIProviderSetup } from "metabase/metabot";
 import { useDispatch } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import { Button, Flex, Text } from "metabase/ui";
 
 import { skipAiConfig, submitAiConfig } from "../../actions";
@@ -21,7 +22,14 @@ export const AIConfigStep = ({ stepLabel }: NumberedStepProps) => {
   const { data: connections = [], isLoading } = useListLlmProvidersQuery();
   const { data: providerTypes = [] } = useListLlmProviderTypesQuery();
 
-  const connectedProvider = connections.find((connection) => connection.usable);
+  // The provider this step reports is the one Metabot actually landed on, not the first usable
+  // connection: with several connected, the model picked in the picker decides.
+  const modelRef = useSetting("llm-metabot-provider");
+  const modelRefConnectionKey = modelRef?.split("/")[0];
+  const connectedProvider = connections.find(
+    (connection) =>
+      connection.usable && connection.key === modelRefConnectionKey,
+  );
   const connectedLabel = providerTypes.find(
     (providerType) => providerType.type === connectedProvider?.type,
   )?.label;

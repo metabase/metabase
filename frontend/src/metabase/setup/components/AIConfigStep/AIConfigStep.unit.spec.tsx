@@ -78,6 +78,12 @@ const ANTHROPIC_CONNECTION = createMockLlmProviderConnection({
   name: "Anthropic",
 });
 
+const OPENAI_CONNECTION = createMockLlmProviderConnection({
+  key: "openai",
+  type: "openai",
+  name: "OpenAI",
+});
+
 const METABASE_CONNECTION = createMockLlmProviderConnection({
   key: "metabase",
   type: "metabase",
@@ -219,7 +225,10 @@ describe("AIConfigStep", () => {
   });
 
   it("should show the model picker instead of the provider picker when already connected", async () => {
-    setup({ connections: [ANTHROPIC_CONNECTION] });
+    setup({
+      connections: [ANTHROPIC_CONNECTION],
+      settings: { "llm-metabot-provider": "anthropic/claude-sonnet-4-6" },
+    });
 
     expect(
       await screen.findByRole("button", { name: "Done" }),
@@ -257,7 +266,11 @@ describe("AIConfigStep", () => {
   });
 
   it("should advance to the next step after confirming the connection", async () => {
-    setup();
+    // the properties the client refetches after connecting already carry the reference the
+    // backend wrote when it pointed Metabot at the new connection
+    setup({
+      settings: { "llm-metabot-provider": "anthropic/claude-sonnet-4-6" },
+    });
 
     await connectAnthropic();
     await userEvent.click(await screen.findByRole("button", { name: "Done" }));
@@ -270,6 +283,9 @@ describe("AIConfigStep", () => {
 
   it("should connect the managed provider and advance to the next step", async () => {
     setup({
+      settings: {
+        "llm-metabot-provider": "metabase/anthropic/claude-sonnet-4-6",
+      },
       tokenFeatures: {
         "offer-metabase-ai-managed": true,
         "metabase-ai-managed": true,
@@ -303,11 +319,25 @@ describe("AIConfigStep", () => {
   });
 
   it("should show the connected provider when completed after connecting", async () => {
-    setup({ step: "completed", connections: [ANTHROPIC_CONNECTION] });
+    setup({
+      step: "completed",
+      connections: [ANTHROPIC_CONNECTION],
+      settings: { "llm-metabot-provider": "anthropic/claude-sonnet-4-6" },
+    });
 
     expect(
       await screen.findByText("Connected to Anthropic"),
     ).toBeInTheDocument();
+  });
+
+  it("should report the provider the picked model belongs to, not the first usable connection", async () => {
+    setup({
+      step: "completed",
+      connections: [ANTHROPIC_CONNECTION, OPENAI_CONNECTION],
+      settings: { "llm-metabot-provider": "openai/gpt-5.4" },
+    });
+
+    expect(await screen.findByText("Connected to OpenAI")).toBeInTheDocument();
   });
 
   it("should show the skipped title when completed without connecting", async () => {
