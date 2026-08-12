@@ -22,7 +22,8 @@
 
 (defn- paging
   []
-  (let [limit (or (request/limit) default-limit)]
+  (let [raw-limit (request/limit)
+        limit     (if (and raw-limit (pos? raw-limit)) raw-limit default-limit)]
     (api/check-400 (<= limit max-limit) "limit must not exceed 200")
     {:limit limit, :offset (or (request/offset) 0)}))
 
