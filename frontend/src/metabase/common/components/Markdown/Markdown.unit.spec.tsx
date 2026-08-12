@@ -37,12 +37,18 @@ const KNOWN_ELEMENTS = [
 ];
 
 const setup = (props: MarkdownProps) => {
-  const { container } = render(<Markdown {...props} />);
+  render(
+    <div data-testid="markdown-host">
+      <Markdown {...props} />
+    </div>,
+  );
 
-  return { root: checkNotNull(container.firstElementChild) };
+  return {
+    root: checkNotNull(screen.getByTestId("markdown-host").firstElementChild),
+  };
 };
 
-const getRenderedTagNames = (root: Element) => {
+const getTagNames = (root: Element) => {
   const tagNames = [...root.querySelectorAll("*")].map((element) =>
     element.tagName.toLowerCase(),
   );
@@ -54,11 +60,12 @@ describe("Markdown", () => {
   it("does not emit elements outside the set the stylesheet accounts for", () => {
     const { root } = setup({ children: KITCHEN_SINK_MARKDOWN });
 
-    const unaccounted = getRenderedTagNames(root).filter(
-      (tagName) => !KNOWN_ELEMENTS.includes(tagName),
-    );
+    const tagNames = getTagNames(root);
 
-    expect(unaccounted).toEqual([]);
+    expect(tagNames).toContain("table");
+    expect(
+      tagNames.filter((tagName) => !KNOWN_ELEMENTS.includes(tagName)),
+    ).toEqual([]);
   });
 
   it("opens links in a new tab", () => {
@@ -88,12 +95,9 @@ describe("Markdown", () => {
   });
 
   it("strips unsafe url protocols", () => {
-    setup({ children: "A [link](javascript:alert(1))." });
+    const { root } = setup({ children: "A [link](javascript:alert(1))." });
 
-    expect(screen.getByRole("link", { name: "link" })).toHaveAttribute(
-      "href",
-      "",
-    );
+    expect(root.querySelector("a")).toHaveAttribute("href", "");
   });
 
   it("escapes raw html instead of rendering it", () => {
