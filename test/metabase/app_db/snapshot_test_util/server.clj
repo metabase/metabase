@@ -9,7 +9,7 @@
   (:require
    [metabase.util.log :as log])
   (:import
-   (org.testcontainers.containers GenericContainer)
+   (org.testcontainers.containers Container$ExecResult GenericContainer)
    (org.testcontainers.utility DockerImageName)))
 
 (set! *warn-on-reflection* true)
@@ -59,10 +59,15 @@
 
 (def ^:private ready-timeout-ms (* 3 60 1000))
 
+(defn- exec
+  "Run `args` inside `c`, returning its `ExecResult`."
+  ^Container$ExecResult [^GenericContainer c args]
+  (.execInContainer c ^String/1 (into-array String args)))
+
 (defn- exec!
   "Run `args` inside `c`, returning its stdout. Throws with the command and stderr if it exits non-zero."
   [^GenericContainer c args]
-  (let [r (.execInContainer c (into-array String args))]
+  (let [r (exec c args)]
     (when-not (zero? (.getExitCode r))
       (throw (ex-info "Command failed inside the database container"
                       {:command args, :exit (.getExitCode r), :err (.getStderr r)})))
@@ -74,7 +79,7 @@
   [^GenericContainer c ready]
   (let [deadline (+ (System/currentTimeMillis) ready-timeout-ms)]
     (loop []
-      (let [r (.execInContainer c (into-array String ready))]
+      (let [r (exec c ready)]
         (cond
           (zero? (.getExitCode r))                   :ready
           (< deadline (System/currentTimeMillis))    (throw (ex-info "Database container never became ready"
@@ -93,7 +98,7 @@
         (or (flavor->server flavor)
             (throw (ex-info "No pinned server for this flavor" {:flavor flavor, :known (keys flavor->server)})))
         c (GenericContainer. (DockerImageName/parse image))]
-    (.withExposedPorts c (into-array Integer [(int port)]))
+    (.withExposedPorts c ^Integer/1 (into-array Integer [(int port)]))
     (doseq [[k v] env]
       (.withEnv c ^String k ^String v))
     (try
