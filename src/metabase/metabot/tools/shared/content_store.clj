@@ -16,7 +16,8 @@
   runs under an authenticated request. The symmetry across all six methods (both
   `-by-entity-id` import-direction and `-by-id` export-direction) is intentional: the export
   direction may surface entity_ids of Cards / Measures / Segments referenced inside an
-  exported query body, so those lookups need the same permission checks as imports."
+  exported query body, and a missing check on those branches is exactly the N1 ACL gap that
+  motivated this namespace."
   (:require
    [metabase.api.common :as api]
    [metabase.models.serialization.resolve.mp :as resolve.mp]))
