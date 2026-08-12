@@ -171,7 +171,7 @@ Connection impersonation doesn't apply to people in the Metabase Admins group, a
 
 ## Impersonated queries must be a single SELECT statement
 
-When a database uses impersonation, Metabase checks each native query before running it and rejects anything that isn't a single `SELECT` statement. Common table expressions (`WITH`) and set operations (`UNION`, `INTERSECT`, `EXCEPT`) count as a single `SELECT` statement, so those queries will run.
+When people with impersonated access use the native SQL editor, they will only be able to write queries with a single select statement. Metabase will check each native query before running it and reject anything that isn't a single `SELECT` statement. Common table expressions (`WITH`) and set operations (`UNION`, `INTERSECT`, `EXCEPT`) count as a single `SELECT` statement, so those queries will run.
 
 Examples of queries Metabase will reject:
 
