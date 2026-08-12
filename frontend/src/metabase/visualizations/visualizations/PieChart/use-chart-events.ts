@@ -8,7 +8,6 @@ import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import { getTotalValue } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type {
   PieChartModel,
@@ -32,6 +31,8 @@ import type {
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import type { ClickObjectDimension } from "metabase-lib";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+
+import { getTotalValue } from "../../echarts/tooltip/utils";
 
 export const getTooltipModel = (
   sliceKeyPath: string[],

@@ -15,11 +15,6 @@ import type {
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import {
-  getPercent,
-  getTotalValue,
-} from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
-import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
-import {
   INDEX_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
@@ -81,6 +76,9 @@ import type {
   RowValue,
 } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
+
+import { formatValueForTooltip } from "../../echarts/tooltip/format";
+import { getPercent, getTotalValue } from "../../echarts/tooltip/utils";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;

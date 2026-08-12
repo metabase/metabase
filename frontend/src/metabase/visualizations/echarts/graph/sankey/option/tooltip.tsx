@@ -7,7 +7,6 @@ import {
   EChartsTooltip,
   type EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import { getPercent } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import {
   getMarkerColorClass,
   getTooltipBaseOption,
@@ -15,6 +14,7 @@ import {
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
+import { getPercent } from "../../../tooltip/utils";
 import type { SankeyChartModel } from "../model/types";
 
 interface ChartItemTooltipProps {
