@@ -336,9 +336,9 @@
                                               (lib/sum-where subtotal (lib/> subtotal 10)))
         exact-signature   (candidate-definitions/existing-signature
                            :measure table-id measure-definition)
-        original-aggregation-clause candidate-definitions/aggregation-clause
-        original-existing-entity-index candidate-repository/existing-entity-index
-        original-insert!   t2/insert!
+        original-aggregation-clause (mt/original-fn #'candidate-definitions/aggregation-clause)
+        original-existing-entity-index (mt/original-fn #'candidate-repository/existing-entity-index)
+        original-insert!   (mt/original-fn #'t2/insert!)
         normalization-count (atom 0)
         index-load-count   (atom 0)
         match-insert-count (atom 0)]
