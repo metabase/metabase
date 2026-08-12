@@ -10,7 +10,6 @@ import type {
   DashboardId,
 } from "metabase-types/api";
 
-// Both type-only, so they add no runtime edge to the modules they name.
 import type { NewDashboardCard } from "../utils";
 
 import type { fetchDashboard } from "./data-fetching";
