@@ -17,9 +17,14 @@
   [:candidate_type :table_id :signature_version :signature_hash])
 
 (defn with-snapshot-action-lock
-  "Run `f` while snapshot promotion and candidate actions are mutually exclusive across the cluster."
+  "Run `f` while snapshot promotion and candidate actions are mutually exclusive across the cluster.
+
+  Uses a detached lock so `f`'s appdb writes commit on their own, outside the lock's transaction —
+  Measure/Segment creation publishes domain events after commit and needs those events to see the
+  same semantics as their normal REST creation endpoints. `f` must be idempotent/self-healing: on a
+  throw, work `f` already committed is not rolled back."
   [f]
-  (cluster-lock/with-cluster-lock {:lock ::snapshot-promotion-or-action, :timeout-seconds 30}
+  (cluster-lock/with-detached-cluster-lock {:lock ::snapshot-promotion-or-action, :timeout-seconds 30}
     (f)))
 
 (defn candidate
