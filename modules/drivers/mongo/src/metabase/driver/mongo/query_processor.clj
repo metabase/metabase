@@ -1605,7 +1605,7 @@ function(bin) {
     (concat
      (for [field-or-expr breakouts
            :let [field-alias (field-alias query stage-number field-or-expr)]]
-       [field-alias (format "$_id.%s" (field-alias query stage-number field-or-expr))])
+       [field-alias (format "$_id.%s" field-alias)])
      (for [ag-ref aggregations
            :let   [ag-name (driver-api/mbql-5-aggregation-name query stage-number ag-ref)]]
        [ag-name true]))))
