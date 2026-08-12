@@ -156,7 +156,6 @@ export const assertNotVisible = async () =>
     expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
   });
 
-// NOTE: for some reason the keyboard shortcuts won't work with tinykeys while testing, using redux for now...
 export const hideMetabot = (
   dispatch: any,
   agentId: MetabotAgentId = "omnibot",

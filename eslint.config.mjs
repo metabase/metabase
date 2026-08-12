@@ -311,6 +311,7 @@ const configs = [
     settings: {
       "boundaries/elements": boundaryElements,
       "boundaries/ignore": ["**/e2e/**", "test/**"],
+      "boundaries/dependency-nodes": ["import", "dynamic-import"],
     },
     rules: {
       "boundaries/element-types": [

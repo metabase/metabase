@@ -55,9 +55,10 @@ describe("scenarios > metrics > collection", () => {
     H.getPinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
+    // Pinned items also stay in the contents list below the pinned section
     H.getUnpinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
-      .should("not.exist");
+      .should("be.visible");
     H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
     H.popover().findByText("Unpin").click();
     H.getPinnedSection().should("not.exist");
@@ -71,7 +72,7 @@ describe("scenarios > metrics > collection", () => {
       .should("be.visible");
     H.getUnpinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
-      .should("not.exist");
+      .should("be.visible");
   });
 
   it("should be possible to add and remove a metric from bookmarks", () => {
