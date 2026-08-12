@@ -6,7 +6,7 @@ import { useLlmConnectionModels } from "metabase/metabot/hooks";
 import { useAdminSetting } from "metabase/settings";
 import { DefaultSelectItem, Select, Stack } from "metabase/ui";
 
-export type LlmModelSettingKey = "llm-metabot-provider" | "llm-title-model";
+export type LlmModelSettingKey = "llm-metabot-provider" | "llm-mini-model";
 
 export function LlmModelPicker({
   settingKey = "llm-metabot-provider",

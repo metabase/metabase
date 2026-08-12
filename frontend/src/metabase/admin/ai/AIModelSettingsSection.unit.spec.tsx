@@ -49,21 +49,21 @@ type SetupOpts = {
   models?: LlmConnectionModels[];
   metabotModel?: string | null;
   metabotModelEnvVar?: string;
-  titleModel?: string | null;
+  miniModel?: string | null;
 };
 
 function renderSection({
   models = CONNECTION_MODELS,
   metabotModel = "anthropic/claude-sonnet-4-5",
   metabotModelEnvVar,
-  titleModel = "anthropic/claude-haiku-4-5",
+  miniModel = "anthropic/claude-haiku-4-5",
 }: SetupOpts = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
 
   const sessionProperties = createMockSettings({
     "llm-metabot-provider": metabotModel,
-    "llm-title-model": titleModel,
+    "llm-mini-model": miniModel,
   });
 
   setupPropertiesEndpoints(sessionProperties);
@@ -74,7 +74,7 @@ function renderSection({
       is_env_setting: metabotModelEnvVar != null,
       env_name: metabotModelEnvVar,
     }),
-    createMockSettingDefinition({ key: "llm-title-model", value: titleModel }),
+    createMockSettingDefinition({ key: "llm-mini-model", value: miniModel }),
   ]);
   setupUpdateSettingEndpoint();
   setupLlmModelsEndpoint(models);
@@ -113,7 +113,7 @@ describe("AIModelSettingsSection", () => {
 
     expect(screen.getByText("Models")).toBeInTheDocument();
     expect(screen.getByLabelText("Default model")).toBeDisabled();
-    expect(screen.getByLabelText("Conversation titles")).toBeDisabled();
+    expect(screen.getByLabelText("Mini model")).toBeDisabled();
     expect(screen.getAllByPlaceholderText("Loading models...")).toHaveLength(2);
   });
 
@@ -123,7 +123,7 @@ describe("AIModelSettingsSection", () => {
     expect(screen.getByLabelText("Default model")).toHaveValue(
       "Anthropic · Claude Sonnet 4.5",
     );
-    expect(screen.getByLabelText("Conversation titles")).toHaveValue(
+    expect(screen.getByLabelText("Mini model")).toHaveValue(
       "Anthropic · Claude Haiku 4.5",
     );
   });
@@ -177,10 +177,10 @@ describe("AIModelSettingsSection", () => {
     expect(screen.getByLabelText("Default model")).toBeDisabled();
   });
 
-  it("saves the title model separately from the default model", async () => {
+  it("saves the mini model separately from the default model", async () => {
     await setup();
 
-    const listbox = await openPicker("Conversation titles");
+    const listbox = await openPicker("Mini model");
 
     await userEvent.click(
       within(listbox).getByRole("option", { name: "GPT-5" }),
@@ -188,7 +188,7 @@ describe("AIModelSettingsSection", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.called("path:/api/setting/llm-title-model", {
+        fetchMock.callHistory.called("path:/api/setting/llm-mini-model", {
           method: "PUT",
           body: { value: "azure-prod/gpt-5" },
         }),

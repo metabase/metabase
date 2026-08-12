@@ -18,9 +18,9 @@ export function AIModelSettingsSection({ id }: { id?: string }) {
           description={t`Metabot, AI explorations and SQL generation all run on this model.`}
         />
         <LlmModelPicker
-          settingKey="llm-title-model"
-          label={t`Conversation titles`}
-          description={t`Naming a conversation is a short, frequent task, so it defaults to the fastest model from the same provider as the default model.`}
+          settingKey="llm-mini-model"
+          label={t`Mini model`}
+          description={t`Quick tasks, like naming conversations, run on this cheaper model. Defaults to the fastest model from the same provider as the default model.`}
         />
       </Stack>
     </SettingsSection>

@@ -621,23 +621,23 @@
         (mt/user-http-request :crowberto :delete 204 "llm/providers/anthropic")
         (is (= "azure/openai/gpt-4.1-mini" (metabot.settings/llm-metabot-provider)))))))
 
-(deftest delete-clears-a-title-model-on-the-deleted-connection-test
-  (testing "an explicit title model pointing at the deleted connection goes back to being derived"
+(deftest delete-clears-a-mini-model-on-the-deleted-connection-test
+  (testing "an explicit mini model pointing at the deleted connection goes back to being derived"
     (mt/with-temporary-raw-setting-values [llm-metabot-provider "openai/gpt-5.4"
-                                           llm-title-model "anthropic/claude-haiku-4-5"]
+                                           llm-mini-model "anthropic/claude-haiku-4-5"]
       (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})
                                                         (connection "openai" "openai" {:api-key "sk-stored"})]]
         (mt/user-http-request :crowberto :delete 204 "llm/providers/anthropic")
-        (is (nil? (setting/db-stored-value :llm-title-model)))
-        (is (= "openai/gpt-5.4-mini" (metabot.settings/llm-title-model)))))))
+        (is (nil? (setting/db-stored-value :llm-mini-model)))
+        (is (= "openai/gpt-5.4-mini" (metabot.settings/llm-mini-model)))))))
 
-(deftest delete-leaves-an-unrelated-title-model-alone-test
+(deftest delete-leaves-an-unrelated-mini-model-alone-test
   (mt/with-temporary-raw-setting-values [llm-metabot-provider "openai/gpt-5.4"
-                                         llm-title-model "openai/gpt-5.4-mini"]
+                                         llm-mini-model "openai/gpt-5.4-mini"]
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})
                                                       (connection "openai" "openai" {:api-key "sk-stored"})]]
       (mt/user-http-request :crowberto :delete 204 "llm/providers/anthropic")
-      (is (= "openai/gpt-5.4-mini" (setting/db-stored-value :llm-title-model))))))
+      (is (= "openai/gpt-5.4-mini" (setting/db-stored-value :llm-mini-model))))))
 
 (deftest delete-unknown-connection-is-a-404-test
   (mt/with-temporary-setting-values [llm-providers []]

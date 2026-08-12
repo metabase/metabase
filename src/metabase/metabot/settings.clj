@@ -180,34 +180,35 @@
     (when-let [model (llm.provider/mini-model (:type (llm.provider/connection conn-key)))]
       (str conn-key "/" model))))
 
-(defn explicit-title-model
-  "The model reference [[llm-title-model]] was explicitly set to, or nil while it is being derived
-  from [[llm-metabot-provider]]. Callers that act on the admin's choice rather than on the model titles happen to
-  run on want this: [[llm-title-model]] itself resolves, so it names a connection even when none was ever picked."
+(defn explicit-mini-model
+  "The model reference [[llm-mini-model]] was explicitly set to, or nil while it is being derived
+  from [[llm-metabot-provider]]. Callers that act on the admin's choice rather than on the model quick tasks happen
+  to run on want this: [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked."
   []
-  (setting/get-value-of-type :string :llm-title-model))
+  (setting/get-value-of-type :string :llm-mini-model))
 
-(defn- -llm-title-model
-  "Titles are a short, high-volume call that does not need the model Metabot chats on, so with nothing stored this
-  resolves to the fastest model of the connection [[llm-metabot-provider]] names. Connections whose provider type
-  has no such model — the ones that name the single model they serve, and the managed provider — fall through to
-  the Metabot model itself, so this always names a model as long as Metabot does."
+(defn- -llm-mini-model
+  "Quick background tasks — naming a conversation, and whatever short, high-volume calls come next — do not need the
+  model Metabot chats on, so with nothing stored this resolves to the fastest model of the
+  connection [[llm-metabot-provider]] names. Connections whose provider type has no such model — the ones that name
+  the single model they serve, and the managed provider — fall through to the Metabot model itself, so this always
+  names a model as long as Metabot does."
   []
-  (or (explicit-title-model)
+  (or (explicit-mini-model)
       (let [metabot-ref (llm-metabot-provider)]
         (or (mini-model-ref metabot-ref) metabot-ref))))
 
-(defsetting llm-title-model
-  (deferred-tru "The AI provider connection and model used to name Metabot conversations, in the same connection-key/model-name format as `llm-metabot-provider`. Defaults to the fastest model offered by the connection Metabot runs on.")
+(defsetting llm-mini-model
+  (deferred-tru "The AI provider connection and model used for quick background tasks, such as naming Metabot conversations, in the same connection-key/model-name format as `llm-metabot-provider`. Defaults to the fastest model offered by the connection Metabot runs on.")
   :type       :string
   :encryption :no
   :visibility :settings-manager
   :export?    false
-  :getter     #'-llm-title-model
+  :getter     #'-llm-mini-model
   :setter     (fn [new-value]
                 (when new-value
                   (validate-model-ref! new-value))
-                (setting/set-value-of-type! :string :llm-title-model new-value)))
+                (setting/set-value-of-type! :string :llm-mini-model new-value)))
 
 (defsetting llm-metabot-configured?
   "Whether the connection selected for Metabot has the credentials it needs."
