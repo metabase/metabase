@@ -8,7 +8,7 @@ import {
   setupGetMetabotConversationEndpoint,
   setupGetMetabotConversationEndpointError,
 } from "__support__/server-mocks";
-import { act, screen, waitFor, within } from "__support__/ui";
+import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
 import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
@@ -125,6 +125,44 @@ describe("metabot > ui", () => {
 
     await userEvent.click(await closeChatButton());
     await assertNotVisible();
+  });
+
+  describe("keyboard shortcut", () => {
+    // jsdom reports an empty navigator.platform, so tinykeys binds $mod to Control.
+    const pressShortcut = () =>
+      fireEvent.keyDown(window, { key: "e", ctrlKey: true });
+
+    it("should toggle visibility", async () => {
+      const { store } = setup({
+        withRouter: true,
+        initialRoute: "/question/123",
+      });
+      expect(await chat()).toBeInTheDocument();
+
+      hideMetabot(store.dispatch);
+      await assertNotVisible();
+
+      pressShortcut();
+      expect(await chat()).toBeInTheDocument();
+    });
+
+    it.each([
+      "/question/ask",
+      "/question/ask/",
+      "/metabot/conversation/past-conversation-id",
+    ])(
+      "should do nothing on the full-page metabot surface (%s)",
+      async (initialRoute) => {
+        const { store } = setup({ withRouter: true, initialRoute });
+        expect(await chat()).toBeInTheDocument();
+
+        hideMetabot(store.dispatch);
+        await assertNotVisible();
+
+        pressShortcut();
+        await assertNotVisible();
+      },
+    );
   });
 
   it("should be able to hide metabot via a prop", async () => {
