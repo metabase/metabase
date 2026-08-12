@@ -691,6 +691,8 @@ describe("admin > custom visualizations", () => {
 
       it("shows a single combined toast when multiple plugin bundles fail to load (metabase#GDGT-3076)", () => {
         H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_2);
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_3_SECURITY);
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_4_SECURITY_COMPONENT);
 
         cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
           statusCode: 500,
@@ -699,14 +701,25 @@ describe("admin > custom visualizations", () => {
 
         H.visitQuestion("@questionId");
         cy.findByTestId("viz-type-button").click();
-        cy.wait(["@failedBundle", "@failedBundle"]);
+        cy.wait([
+          "@failedBundle",
+          "@failedBundle",
+          "@failedBundle",
+          "@failedBundle",
+        ]);
 
         H.undoToastList()
           .should("have.length", 1)
           .findByText(
-            '2 visualizations are currently unavailable: "demo-viz", "demo-viz-2".',
+            '4 visualizations are currently unavailable: "demo-viz", "demo-viz-2", "demo-viz-security", "demo-viz-security-component".',
           )
-          .should("be.visible");
+          .should("be.visible")
+          // The message must wrap instead of truncating, i.e. be taller than one line
+          .invoke("outerHeight")
+          .should("be.gt", 30);
+
+        // The message must not collapse to min-content
+        H.undoToastList().invoke("outerWidth").should("be.within", 300, 700);
       });
 
       it("falls back to the default viz when the bundle endpoint fails, then recovers on revisit", () => {
