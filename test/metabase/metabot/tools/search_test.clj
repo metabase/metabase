@@ -294,6 +294,38 @@
                   :created_at "2024-01-07"}]
     (is (= expected (#'search/postprocess-search-result result)))))
 
+(deftest weights-always-reach-the-search-context-test
+  ;; `weights` is merged with `metabot-weight-overrides` before the context is built, so it can never
+  ;; be nil — which is why the `cond->` guard that used to wrap it was dead. Asserted rather than
+  ;; reasoned about, since dropping the guard relies on it.
+  (testing "the curator-boost overrides are always applied, with caller weights winning per key"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    api/*current-user-id* 1]
+        (testing "no caller weights -> the overrides alone"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:weights context))
+                                                             {:data []})]
+              (search/search {:query "x"}))
+            (is (=? {:official-collection 4 :verified 5 :view-count 3} @captured))))
+        (testing "caller weights override per key, leaving the rest of the boosts in place"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:weights context))
+                                                             {:data []})]
+              (search/search {:query "x" :weights {:verified 99}}))
+            (is (=? {:official-collection 4 :verified 99 :view-count 3} @captured))))))))
+
+(deftest entity-refs-ignore-transform-refs-test
+  ;; `entity-refs->search-results` has no transform branch, which is why dropping
+  ;; `remove-unreadable-transforms` from its pipeline was safe. Pin that: a transform ref must
+  ;; produce nothing rather than an unfiltered record.
+  (testing "a transform ref yields no result, so there is nothing for a transform filter to remove"
+    (mt/with-test-user :crowberto
+      (is (empty? (search/entity-refs->search-results [{:model "transform" :id 1}]))))))
+
 (deftest search-native-query-test
   (mt/with-test-user :rasta
     (with-redefs [perms/impersonated-user? (fn [] false)
