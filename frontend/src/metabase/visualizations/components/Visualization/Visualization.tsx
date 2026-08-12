@@ -42,7 +42,6 @@ import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
-import { prefetchEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer/lazy";
 import { getChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
@@ -359,33 +358,22 @@ class Visualization extends PureComponent<
       this.updateWarnings();
     }
     if (prevState.visualization !== this.state.visualization) {
-      this.maybePrefetchEChartsRenderer();
       this.prefetchVisualizationComponent();
     }
   }
 
   componentDidMount() {
     this.updateWarnings();
-    this.maybePrefetchEChartsRenderer();
     this.prefetchVisualizationComponent();
   }
 
   // Charts are loaded on demand. Start the download as the card mounts, while
-  // its data query is still in flight, rather than once the data is ready.
+  // its data query is still in flight, rather than once the data is ready. A
+  // chart that uses echarts pulls the library in with its own chunk.
   prefetchVisualizationComponent() {
     const { visualization } = this.state;
     if (visualization) {
       prefetchVisualizationComponent(visualization.identifier);
-    }
-  }
-
-  // Kick off loading the (lazy) echarts chunk as soon as an echarts-based chart
-  // mounts — typically while its data query is still in flight — so the library
-  // downloads in parallel with the data rather than only once the chart is
-  // ready to render.
-  maybePrefetchEChartsRenderer() {
-    if (this.state.visualization?.usesEChartsRenderer) {
-      prefetchEChartsRenderer();
     }
   }
 
