@@ -103,14 +103,14 @@ export function LegacyBrowseRedirect() {
  * every later navigation to the query builder is synchronous again.
  */
 const queryBuilder = () =>
-  import("metabase/query_builder/containers/QueryBuilder").then(
-    ({ QueryBuilder }) => ({ Component: QueryBuilder }),
-  );
+  import(
+    /* webpackChunkName: "query-builder" */ "metabase/query_builder/containers/QueryBuilder"
+  ).then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
 
 const metabotQueryBuilder = () =>
-  import("metabase/query_builder/components/MetabotQueryBuilder").then(
-    ({ MetabotQueryBuilder }) => ({ Component: MetabotQueryBuilder }),
-  );
+  import(
+    /* webpackChunkName: "metabot-query-builder" */ "metabase/query_builder/components/MetabotQueryBuilder"
+  ).then(({ MetabotQueryBuilder }) => ({ Component: MetabotQueryBuilder }));
 
 /**
  * Documents, in their own chunk. It carries the rich text editing stack, which
@@ -121,17 +121,19 @@ const metabotQueryBuilder = () =>
  * opening one does not depend on the page chunk having arrived.
  */
 const dashboardApp = () =>
-  import("metabase/dashboard/containers/DashboardApp/DashboardApp").then(
-    ({ DashboardApp }) => ({ Component: DashboardApp }),
-  );
+  import(
+    /* webpackChunkName: "dashboard" */ "metabase/dashboard/containers/DashboardApp/DashboardApp"
+  ).then(({ DashboardApp }) => ({ Component: DashboardApp }));
 
 const automaticDashboardApp = () =>
-  import("metabase/dashboard/containers/AutomaticDashboardApp").then(
-    ({ AutomaticDashboardApp }) => ({ Component: AutomaticDashboardApp }),
-  );
+  import(
+    /* webpackChunkName: "automatic-dashboard" */ "metabase/dashboard/containers/AutomaticDashboardApp"
+  ).then(({ AutomaticDashboardApp }) => ({ Component: AutomaticDashboardApp }));
 
 const metricsViewerPage = () =>
-  import("metabase/metrics-viewer").then(({ MetricsViewerPage }) => ({
+  import(
+    /* webpackChunkName: "metrics-viewer" */ "metabase/metrics-viewer"
+  ).then(({ MetricsViewerPage }) => ({
     Component: MetricsViewerPage,
   }));
 
@@ -141,14 +143,16 @@ const tableDetailPage = () =>
   ).then(({ TableDetailPage }) => ({ Component: TableDetailPage }));
 
 const documentPage = () =>
-  import("metabase/documents/routes").then(({ DocumentPageOuter }) => ({
-    Component: DocumentPageOuter,
-  }));
+  import(/* webpackChunkName: "documents" */ "metabase/documents/routes").then(
+    ({ DocumentPageOuter }) => ({
+      Component: DocumentPageOuter,
+    }),
+  );
 
 const commentsSidesheet = () =>
-  import("metabase/documents/components/CommentsSidesheet").then(
-    ({ CommentsSidesheet }) => CommentsSidesheet,
-  );
+  import(
+    /* webpackChunkName: "comments-sidesheet" */ "metabase/documents/components/CommentsSidesheet"
+  ).then(({ CommentsSidesheet }) => CommentsSidesheet);
 
 /**
  * Hovering a link into one of these chunks starts the fetch, so it is usually in
@@ -340,7 +344,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                   lazyModalRoute(
                     "move",
                     () =>
-                      import("metabase/dashboard/components/DashboardMoveModal").then(
+                      import(
+                        /* webpackChunkName: "dashboard-move-modal" */ "metabase/dashboard/components/DashboardMoveModal"
+                      ).then(
                         ({ DashboardMoveModalConnected }) =>
                           DashboardMoveModalConnected,
                       ),
@@ -349,7 +355,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                   lazyModalRoute(
                     "copy",
                     () =>
-                      import("metabase/dashboard/components/DashboardCopyModal").then(
+                      import(
+                        /* webpackChunkName: "dashboard-copy-modal" */ "metabase/dashboard/components/DashboardCopyModal"
+                      ).then(
                         ({ DashboardCopyModalConnected }) =>
                           DashboardCopyModalConnected,
                       ),
@@ -358,7 +366,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                   lazyModalRoute(
                     "archive",
                     () =>
-                      import("metabase/dashboard/containers/ArchiveDashboardModal").then(
+                      import(
+                        /* webpackChunkName: "dashboard-archive-modal" */ "metabase/dashboard/containers/ArchiveDashboardModal"
+                      ).then(
                         ({ ArchiveDashboardModalConnected }) =>
                           ArchiveDashboardModalConnected,
                       ),
