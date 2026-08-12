@@ -22,6 +22,12 @@
       (recur more (not (str/ends-with? (str/trimr line) "*/;")) acc)
       :else                    (recur more false (conj acc line)))))
 
+(defn- drop-sandbox-directive
+  "Remove the `/*M!999999\\- enable the sandbox mode */` line mariadb-dump opens with. It is a client directive rather
+  than schema, and only recent clients write it -- left in, the snapshot would record which client dumped it."
+  [lines]
+  (remove #(str/starts-with? (str/triml %) "/*M!999999\\-") lines))
+
 (defn- view-statements
   "`CREATE OR REPLACE VIEW` for every view in `db`, read back from `information_schema`.
 
@@ -36,6 +42,23 @@
       (format "CREATE OR REPLACE VIEW `%s` AS %s"
               table_name
               (str/replace view_definition qualifier "")))))
+
+(defn- database-charset-statement
+  "`ALTER DATABASE` carrying the schema's own default character set and collation.
+
+  A migration sets these, and nothing in a table's DDL records them: mysqldump only emits database-level DDL under
+  `--databases`, which would also stamp the dump with a `CREATE DATABASE`/`USE` naming the throwaway DB it came from.
+  The database name is left off here, which makes the statement apply to whichever DB the snapshot is loaded into.
+
+  Without this, a loaded snapshot keeps the server's default collation, and every column a later changeset adds
+  without naming one inherits that instead of what a full migration run would have given it."
+  [^java.sql.Connection conn db]
+  (let [{:keys [default_character_set_name default_collation_name]}
+        (first (jdbc/query {:connection conn}
+                           ["SELECT default_character_set_name, default_collation_name
+                             FROM information_schema.schemata WHERE schema_name = ?" db]))]
+    (format "ALTER DATABASE CHARACTER SET %s COLLATE %s"
+            default_character_set_name default_collation_name)))
 
 (defn- mysqldump-command
   "Binary used to dump MySQL-family DBs, overridable via `MB_SNAPSHOT_MYSQLDUMP`.
@@ -52,17 +75,20 @@
     ;; `--protocol=TCP` because the MySQL client silently ignores `--port` and uses a unix socket when the host is
     ;; `localhost`, which is not necessarily the server the migration just ran against. `--set-gtid-purged` is
     ;; MySQL-only, so it is passed only when dumping MySQL.
-    (into (dump-util/lines->statements
-           (drop-version-gated-blocks
-            (str/split-lines
-             (apply dump-util/sh!
-                    (concat [(mysqldump-command) "--compact" "--skip-extended-insert" "--skip-add-locks"
-                             "--skip-disable-keys" "--skip-set-charset" "--complete-insert" "--no-tablespaces"
-                             "--protocol=TCP"]
-                            (when (= flavor :mysql) ["--set-gtid-purged=OFF"])
-                            [(str "--host=" host) (str "--port=" port) (str "--user=" user) (str db)])))))
+    (let [dumped (dump-util/lines->statements
+                  (drop-version-gated-blocks
+                   (drop-sandbox-directive
+                    (str/split-lines
+                     (apply dump-util/sh!
+                            (concat [(mysqldump-command) "--compact" "--skip-extended-insert" "--skip-add-locks"
+                                     "--skip-disable-keys" "--skip-set-charset" "--complete-insert"
+                                     "--no-tablespaces" "--protocol=TCP"]
+                                    (when (= flavor :mysql) ["--set-gtid-purged=OFF"])
+                                    [(str "--host=" host) (str "--port=" port) (str "--user=" user) (str db)]))))))]
+      (-> [(database-charset-statement conn db)]
+          (into dumped)
           ;; views last: they read from the tables above, and none of them reads from another view
-          (view-statements conn db))))
+          (into (view-statements conn db))))))
 
 (defn dumper
   "Dumps the MySQL-family app DB of dialect `flavor`, which decides only whether the MySQL-only flags are passed."
