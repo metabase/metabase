@@ -220,6 +220,21 @@
       (finally
         (candidate-repository/restore! first-candidate)))))
 
+(deftest candidate-page-drops-a-row-deleted-mid-page-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
+                                                       :trigger           :manual
+                                                       :algorithm_version 1
+                                                       :source_config     {}
+                                                       :finished_at       (mi/now)}
+                 :model/UsageMetadataCandidate candidate (candidate-row (:id run) (mt/id :orders))]
+    (let [original-select-pk->fn (mt/original-fn #'t2/select-pk->fn)]
+      (mt/with-dynamic-fn-redefs
+        [t2/select-pk->fn (fn [f model & args]
+                            (dissoc (apply original-select-pk->fn f model args) (:id candidate)))]
+        (testing "a row that disappears between the id query and the row query is dropped, not returned as a null id"
+          (is (=? {:total 1, :rows []}
+                  (candidate-repository/candidate-page (:id run) {} {:limit 10, :offset 0}))))))))
+
 (deftest candidate-repository-detail-hydrates-related-records-test
   (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :succeeded
                                                        :trigger           :manual
