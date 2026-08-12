@@ -4,14 +4,13 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { skipToken, useGetMetabotSettingsQuery } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
 import {
   AIProviderConfigurationForm,
   getProviderOptions,
   parseProviderAndModel,
 } from "metabase/metabot";
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { useAdminSetting, useSetting } from "metabase/settings";
 import { Badge, Flex, Group } from "metabase/ui";
 
 export function AIProviderSettingsSection({ id }: { id?: string }) {

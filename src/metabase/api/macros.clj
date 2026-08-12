@@ -308,7 +308,15 @@
    (mtx/json-transformer)
    (mtx/default-value-transformer)
    {:name :api}
-   {:name :normalize}))
+   {:name :normalize}
+   ;; A param map drops the keys it doesn't declare instead of rejecting them, so a client sending a field the
+   ;; endpoint has no use for is still served -- which in turn means every key an endpoint reads has to be declared,
+   ;; at every level of nesting. `ms/Map` (and any other `{:closed false}` map) opts out, for values we deliberately
+   ;; pass through as they arrived: a query, viz settings, database details, a settings bag.
+   ;;
+   ;; Runs last: `:normalize` renames keys into the ones the schema declares, so stripping any earlier would drop
+   ;; them before they are recognized.
+   (mtx/strip-extra-keys-transformer)))
 
 (def ^:private encode-transformer
   (mtx/transformer
@@ -360,7 +368,11 @@
 (defn- invalid-params-specific-errors [explanation]
   (-> explanation
       (update :value redact-files)
-      (update :errors (partial mapv #(update % :value redact-files)))
+      ;; `:in` and `:path` come back lazy for some schemas (`:multi`, for one) and spell checking `peek`s them
+      (update :errors (partial mapv #(-> %
+                                         (update :value redact-files)
+                                         (m/update-existing :in vec)
+                                         (m/update-existing :path vec))))
       me/with-spell-checking
       (me/humanize {:wrap mu/humanize-include-value})))
 
@@ -794,7 +806,7 @@
                                {:api.docs/request-rebuild
                                 (requiring-resolve 'metabase.api.docs/request-spec-regeneration!)})
         (catch Throwable e
-          (log/debug e "Failed to publish api-handler-update event"))))))
+          (log/debugf "Failed to publish api-handler-update event: %s" (ex-message e)))))))
 
 (defn- quote-parsed-args
   "Quote the appropriate parts of the parsed [[defendpoint]] args (body and param bindings) so they can be emitted in

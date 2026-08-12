@@ -13,13 +13,13 @@ import {
   Text,
   TextInputBlurChange,
 } from "metabase/ui";
-import { clickBehaviorIsValid } from "metabase/visualizations/lib/formatting/click-data";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
   DashboardCard,
 } from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
 
 import LinkOptionsS from "../LinkOptions/LinkOptions.module.css";
 import { SidebarItem } from "../SidebarItem";

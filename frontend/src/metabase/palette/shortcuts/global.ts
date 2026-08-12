@@ -21,6 +21,16 @@ export const globalShortcuts = {
     shortcut: ["c n"],
     shortcutGroup: "global" as const,
   },
+  "create-new-research": {
+    get name() {
+      return t`Create a research`;
+    },
+    get keywords() {
+      return t`add research, add exploration, research mode`;
+    },
+    shortcut: ["c r"],
+    shortcutGroup: "global" as const,
+  },
   "create-new-dashboard": {
     get name() {
       return t`Create a dashboard`;

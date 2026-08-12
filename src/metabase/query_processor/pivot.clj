@@ -36,9 +36,9 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
-   [metabase.util.experiment :as experiment]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -194,7 +194,7 @@
                       (seq info) (qp/userland-query info))]
           (qp/process-query query rff))
         (catch Throwable e
-          (log/error e "Error processing additional pivot table query")
+          (log/errorf "Error processing additional pivot table query: %s" (ex-message e))
           (throw e))))))
 
 (mu/defn- process-queries-append-results
@@ -394,7 +394,7 @@
                                                   legacy-ref
                                                   breakouts))
                                           (catch Throwable e
-                                            (log/errorf e "Error finding matching column for ref %s" (pr-str legacy-ref))
+                                            (log/errorf "Error finding matching column for ref %s: %s" (pr-str legacy-ref) (ex-message e))
                                             nil)))
         process-refs                  (fn process-refs [refs]
                                         (when (seq refs)
@@ -637,28 +637,44 @@
   6)
 
 (defn- round-numeric
-  "If `x` is fractional (Double / Float / BigDecimal), quantise it to a `BigDecimal` at
-  [[float-compare-decimals]] scale. Integral numbers and non-numbers pass through unchanged. Normalising
-  both floats and BigDecimals to `BigDecimal` at the same scale lets `=` succeed regardless of which type
-  each path returned."
+  "Normalise any numeric `x` to a `BigDecimal` at [[float-compare-decimals]] scale. Non-numbers pass through
+  unchanged."
   [x]
-  (cond
-    (float? x)   (.setScale ^java.math.BigDecimal (bigdec x) (int float-compare-decimals) java.math.RoundingMode/HALF_UP)
-    (decimal? x) (.setScale ^java.math.BigDecimal x          (int float-compare-decimals) java.math.RoundingMode/HALF_UP)
-    :else        x))
+  (if (number? x)
+    (.setScale ^java.math.BigDecimal (bigdec x) (int float-compare-decimals) java.math.RoundingMode/HALF_UP)
+    x))
+
+(defn- cache-updated-at
+  "The `updated_at` timestamp stamped on a result when it was served from the QP cache, or `nil` for a fresh
+  result. Handles both the raw shape (`:cache/details` set by the cache middleware) and the userland-processed
+  shape (`:cached` set by `process-userland-query`)."
+  [result]
+  (or (:cached result)
+      (get-in result [:cache/details :updated_at])))
 
 (defn- pivot-rows-equivalent?
   "Compare pivot result maps from the two pivot paths. The candidate always uses `default-rff` and so carries
   `(:data :rows)` and `:row_count`; the control uses the caller's rff and may carry anything.
 
   When comparing rows, each cell is normalised via [[round-numeric]] to tolerate float-associativity noise
-  between multi-`SUM` per-subquery and native `SUM` over `GROUPING SETS`."
+  between multi-`SUM` per-subquery and native `SUM` over `GROUPING SETS`.
+
+  On mismatch — when at least one side was served from the QP cache — logs each side's cache `updated_at` so
+  that mismatches caused by asymmetric cache freshness (control served from a stale multi-path cache while
+  candidate ran fresh, or vice versa) can be distinguished from true code regressions."
   [r1 r2]
-  (cond
-    (-> r1 :data :rows) (= (frequencies (mapv #(mapv round-numeric %) (-> r1 :data :rows)))
-                           (frequencies (mapv #(mapv round-numeric %) (-> r2 :data :rows))))
-    (:row_count r1)     (= (:row_count r1) (:row_count r2))
-    :else               true))
+  (let [equivalent? (cond
+                      (-> r1 :data :rows) (= (frequencies (mapv #(mapv round-numeric %) (-> r1 :data :rows)))
+                                             (frequencies (mapv #(mapv round-numeric %) (-> r2 :data :rows))))
+                      (:row_count r1)     (= (:row_count r1) (:row_count r2))
+                      :else               true)
+        control-cached-at   (cache-updated-at r1)
+        candidate-cached-at (cache-updated-at r2)]
+    (when (and (not equivalent?)
+               (or control-cached-at candidate-cached-at))
+      (log/warnf "pivot parity mismatch with cache asymmetry — control cache updated_at=%s, candidate cache updated_at=%s"
+                 control-cached-at candidate-cached-at))
+    equivalent?))
 
 (defn- ensure-pivot-clause
   "Return `query` unchanged when its last stage already carries `:pivot`; otherwise attach a default `:pivot`
@@ -683,34 +699,129 @@
         (cond-> (seq (:info query)) qp/userland-query)
         (qp/process-query rff))))
 
+(defn- running-in-clojure-test?
+  "True when a `clojure.test` test is currently on the stack — the presence of `*testing-vars*` is the
+  authoritative signal that a test is running. `resolve` (not `requiring-resolve`) is enough: if
+  `clojure.test` isn't loaded, no test is running."
+  []
+  (boolean (some-> (resolve 'clojure.test/*testing-vars*) deref seq)))
+
+(def ^:dynamic *check-pivot-parity?*
+  "Controls whether [[run-pivot-query]] runs both the native and multi-query pivot paths whenever both are
+  applicable and reports disagreement via [[*on-parity-mismatch*]]. Left at the default sentinel
+  `::default`, parity is on whenever a `clojure.test` test is currently running. Bind to `true` or
+  `false` to override; the [[without-pivot-parity-check]] helper does exactly that for tests whose
+  queries intentionally diverge between the two paths."
+  ::default)
+
+(defn- pivot-parity-enabled?
+  "Resolve [[*check-pivot-parity?*]] to a boolean. `::default` means \"on when a `clojure.test` test is
+  running\"."
+  []
+  (case *check-pivot-parity?*
+    ::default (running-in-clojure-test?)
+    (boolean *check-pivot-parity?*)))
+
+(defn- default-on-parity-mismatch!
+  "Default handler for pivot parity mismatches: reports a `clojure.test` failure when a test is on the
+  stack — the two outcomes are handed to the reporter as `:expected` (multi-query) and `:actual` (native)
+  so the test runner prints the diff — and logs otherwise."
+  [{:keys [native-outcome multi-outcome] :as ctx}]
+  (if (running-in-clojure-test?)
+    ((requiring-resolve 'clojure.test/do-report)
+     {:type     :fail
+      :message  "Pivot parity mismatch — native and multi-query paths disagree"
+      :expected multi-outcome
+      :actual   native-outcome})
+    (log/warnf "Pivot parity mismatch — native and multi-query paths disagree: %s" (pr-str ctx))))
+
+(def ^:dynamic *on-parity-mismatch*
+  "Called with `{:native-outcome ..., :multi-outcome ...}` when the two pivot paths disagree under
+  [[*check-pivot-parity?*]]. Each outcome is either the result map returned by the path, or the
+  `Throwable` it threw. Defaults to [[default-on-parity-mismatch!]]."
+  default-on-parity-mismatch!)
+
+(defn- native-path-applicable?
+  "True when `query` can be served by the native pivot path on `db`'s driver."
+  [db query]
+  (and (driver.u/supports? (:engine db) :native-pivot-tables db)
+       (native-pivot-compatible? query)))
+
+(defn- run-secondary-for-parity
+  "Run the non-primary pivot path with the default rff and result handler purely to capture its outcome
+  for comparison. Returns `{:outcome ...}` on success or `{:throwable ...}` on failure."
+  [runner query]
+  (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
+    (try
+      {:outcome (runner query qp.reducible/default-rff)}
+      (catch Throwable t
+        {:throwable t}))))
+
+(def ^:private throwable-signature
+  (juxt class ex-message ex-data))
+
+(defn- outcomes-match?
+  "True when two `{:outcome ...}`/`{:throwable ...}` maps represent equivalent behavior — both threw
+  throwables with the same signature (see [[throwable-signature]]), or both succeeded with row-equivalent results."
+  [{primary-outcome :outcome primary-t :throwable}
+   {secondary-outcome :outcome secondary-t :throwable}]
+  (cond
+    (and primary-t secondary-t) (= (throwable-signature primary-t) (throwable-signature secondary-t))
+    (or  primary-t secondary-t) false
+    :else                       (pivot-rows-equivalent? primary-outcome secondary-outcome)))
+
+(defn- outcome->reportable
+  "The value inside an outcome map, whether success or failure."
+  [{:keys [outcome throwable]}]
+  (or outcome throwable))
+
+(defn- run-with-parity-check
+  "Run `primary` with the caller's `rff` (this is what the caller receives) and `secondary` with the
+  default rff purely to compare outcomes; report a mismatch via [[*on-parity-mismatch*]]. Returns
+  primary's success value or rethrows its exception."
+  [primary secondary query rff use-native?]
+  (let [primary-outcome   (try {:outcome (primary query rff)}
+                               (catch Throwable t {:throwable t}))
+        secondary-outcome (run-secondary-for-parity secondary query)
+        native-outcome    (if use-native? primary-outcome secondary-outcome)
+        multi-outcome     (if use-native? secondary-outcome primary-outcome)]
+    (when-not (outcomes-match? primary-outcome secondary-outcome)
+      (*on-parity-mismatch* {:native-outcome (outcome->reportable native-outcome)
+                             :multi-outcome  (outcome->reportable multi-outcome)}))
+    (if-let [t (:throwable primary-outcome)]
+      (throw t)
+      (:outcome primary-outcome))))
+
 (mu/defn run-pivot-query
-  "Run the pivot `query` through `rff` via the multi-query path (one query per breakout combination, results
-  concatenated).
+  "Run the pivot `query` through `rff`.
 
-  Wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself.
+  Dispatches between two implementations:
+  * **Native** — a single `GROUPING SETS` query, chosen when [[qp.settings/use-native-pivot-tables]] is on,
+    the driver supports `:native-pivot-tables`, and `query` is [[native-pivot-compatible?]].
+  * **Multi-query** — one query per breakout combination, results concatenated. Used otherwise.
 
-  Experimental candidate: the native MBQL5 pivot path (single `GROUPING SETS` query), chosen when the target
-  driver supports `:native-pivot-tables` and `query` is [[native-pivot-compatible?]]; otherwise falls back to
-  the multi-query path."
+  When [[*check-pivot-parity?*]] is on and both paths are applicable, both run (primary via the caller's
+  rff, secondary via the default rff for comparison) and disagreement is reported via
+  [[*on-parity-mismatch*]]. Parity checking is on by default in clojure.test tests.
+
+  Wrap this call in [[metabase.query-processor.streaming/streaming-response]] yourself."
   ([query]
    (run-pivot-query query nil))
 
   ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
-   (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
+   (log/debug "Running pivot query")
    ;; Do not bind *card-id* here. Callers that run pivot queries for saved cards
    ;; (e.g. card.clj, dashboards) bind *card-id* themselves before calling
    ;; run-pivot-query, so binding it here from the query's :info map would be
    ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
-     (let [query (qp.middleware.normalize/normalize-preprocessing-middleware query)
-           db    (query-database query)]
-       (experiment/experiment {:name           :pivot-native-vs-multi
-                               :comparator-fn  pivot-rows-equivalent?}
-                              (run-pivot-query-multi query rff)
-                              (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
-                                (let [candidate-rff qp.reducible/default-rff]
-                                  (if (and (driver.u/supports? (:engine db) :native-pivot-tables db)
-                                           (native-pivot-compatible? query))
-                                    (run-native-pivot-query query candidate-rff)
-                                    (run-pivot-query-multi  query candidate-rff)))))))))
+     (let [query       (qp.middleware.normalize/normalize-preprocessing-middleware query)
+           db          (query-database query)
+           nativable?  (native-path-applicable? db query)
+           use-native? (and nativable? (qp.settings/use-native-pivot-tables))
+           primary     (if use-native? run-native-pivot-query run-pivot-query-multi)
+           secondary   (if use-native? run-pivot-query-multi run-native-pivot-query)]
+       (if (and nativable? (pivot-parity-enabled?))
+         (run-with-parity-check primary secondary query rff use-native?)
+         (primary query rff))))))

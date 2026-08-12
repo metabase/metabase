@@ -29,7 +29,6 @@
 
 .content {
   display: flex;
-  cursor: pointer;
 
   &:hover {
     background-color: var(--mb-color-background_surface-hover);
@@ -43,6 +42,10 @@
   &:focus-visible {
     box-shadow: inset 0 0 0 2px var(--mb-color-input-focus);
   }
+}
+
+.clickable {
+  cursor: pointer;
 }
 
 .content.active {

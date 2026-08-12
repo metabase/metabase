@@ -5,23 +5,18 @@ import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
 
-import {
-  useMetabotAgent,
-  useMetabotName,
-  useUserMetabotPermissions,
-} from "../../hooks";
+import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
-import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
 const defaultConfig: MetabotConfig = {
@@ -53,9 +48,11 @@ export const MetabotChat = ({
     },
   ] = useDisclosure(false);
   const metabot = useMetabotAgent(config.agentId);
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const { isConfigured } = useUserMetabotPermissions();
   const showIllustrations = useSetting("metabot-show-illustrations");
+  const supportsReasoning =
+    useSetting("llm-metabot-supports-reasoning?") ?? true;
 
   const hasMessages = metabot.messages.length > 0;
 
@@ -73,7 +70,10 @@ export const MetabotChat = ({
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
-  const title = hasMessages ? metabot.title || t`New conversation` : undefined;
+  const untitledLabel = metabot.forkedFromConversationId
+    ? t`Forked conversation`
+    : t`New conversation`;
+  const title = hasMessages ? metabot.title || untitledLabel : undefined;
 
   const handleEditorSubmit = () => metabot.submitInput(metabot.prompt);
   const shouldShowHeader = headerActions || title;
@@ -177,13 +177,11 @@ export const MetabotChat = ({
                   metabot.loadConversation(metabot.conversationId);
                 }}
                 isDoingScience={metabot.isDoingScience}
+                supportsReasoning={supportsReasoning}
                 debug={metabot.debugMode}
+                agentId={config.agentId}
                 conversationId={metabot.conversationId}
               />
-              {/* loading */}
-              {metabot.isDoingScience && (
-                <MetabotThinking toolCalls={metabot.activeToolCalls} />
-              )}
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />
               {/* long convo warning */}

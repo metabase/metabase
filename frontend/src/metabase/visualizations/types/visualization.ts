@@ -18,6 +18,7 @@ import type {
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
+import type { BrushClickObject } from "metabase-lib/query/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -28,6 +29,7 @@ import type {
   DashboardId,
   DatasetColumn,
   DatasetData,
+  Field,
   IconName,
   RawSeries,
   RowValue,
@@ -54,7 +56,7 @@ import type { SmartScalarComparisonWidgetProps } from "../visualizations/SmartSc
 import type { TreemapGroupsPickerProps } from "../visualizations/TreemapChart/TreemapGroupsPicker";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
-import type { HoveredObject } from "./hover";
+import type { HighlightedObject, HoveredObject } from "./hover";
 
 export interface Padding {
   top: number;
@@ -119,6 +121,11 @@ export type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
+export type OnBrush = (options: {
+  clickObject: BrushClickObject;
+  openClickActions: (clicked: ClickObject | null) => void;
+}) => void;
+
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
   series?: (key: LegacySeriesSettingsObjectKey) => SeriesSettings;
@@ -171,6 +178,7 @@ export interface VisualizationProps {
   isRawTable?: boolean;
   scrollToLastColumn?: boolean;
   hovered?: HoveredObject | null;
+  highlighted?: HighlightedObject | null;
   clicked?: ClickObject | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
@@ -196,7 +204,7 @@ export interface VisualizationProps {
   onRenderError: (error?: string) => void;
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
-  onBrush?: ((range: { start: number; end: number }) => void) | null;
+  onBrush?: OnBrush | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (
@@ -206,6 +214,7 @@ export interface VisualizationProps {
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
+  onSeeAllEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;
@@ -230,6 +239,7 @@ export type VisualizationPassThroughProps = {
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
+  onSeeAllEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   // Table
   isShowingDetailsOnlyColumns?: boolean;
@@ -415,6 +425,14 @@ export type DatasetColumnSettingDefinition<
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = VisualizationSettingDefinition<DatasetColumn, TValue, TProps>;
+
+/**
+ * current we work with DatasetColumn and Field, but their shapes are different
+ */
+export type FormattableColumn = Omit<DatasetColumn, "id" | "source"> & {
+  id?: DatasetColumn["id"] | Field["id"];
+  source?: DatasetColumn["source"];
+};
 
 export type SeriesSettingDefinition<
   TValue = unknown,
@@ -670,7 +688,7 @@ export type VisualizationDefinition = {
   isSensible?: (data: DatasetData) => boolean;
   columnSettings?:
     | VisualizationSettingsDefinitions
-    | ((column: DatasetColumn) => VisualizationSettingsDefinitions);
+    | ((column: FormattableColumn) => VisualizationSettingsDefinitions);
   // checkRenderable throws an error if a visualization is not renderable
   checkRenderable: (
     series: Series,

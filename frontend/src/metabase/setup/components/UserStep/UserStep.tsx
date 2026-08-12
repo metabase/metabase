@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/redux";
 import type { UserInfo } from "metabase/redux/store";
-import { getIsHosted } from "metabase/selectors/settings";
+import { useSetting } from "metabase/settings";
 
 import { submitUser } from "../../actions";
 import { getUser } from "../../selectors";
@@ -18,7 +18,7 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("user_info");
 
   const user = useSelector(getUser);
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
 
   const dispatch = useDispatch();
 

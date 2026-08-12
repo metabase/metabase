@@ -1,13 +1,11 @@
 import {
   MemoryRouter,
-  Route as V7Route,
-  Routes as V7Routes,
+  Route as ReactRouterRoute,
+  Routes as ReactRouterRoutes,
 } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
-
-import { Route } from "./route";
-import { useParams } from "./use-params";
+import { Route, useParams } from "metabase/router";
 
 function ParamsProbe() {
   const { segmentId, fieldId } = useParams();
@@ -59,9 +57,9 @@ describe("router/useParams", () => {
   it("works outside the facade route tree, reading the host's own match", () => {
     renderWithProviders(
       <MemoryRouter initialEntries={["/files/a/b"]}>
-        <V7Routes>
-          <V7Route path="files/*" element={<SplatProbe />} />
-        </V7Routes>
+        <ReactRouterRoutes>
+          <ReactRouterRoute path="files/*" element={<SplatProbe />} />
+        </ReactRouterRoutes>
       </MemoryRouter>,
     );
 

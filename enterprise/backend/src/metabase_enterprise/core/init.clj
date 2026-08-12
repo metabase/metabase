@@ -8,6 +8,7 @@
   (:require
    [metabase-enterprise.action-v2.init]
    [metabase-enterprise.advanced-config.init]
+   [metabase-enterprise.agent-api.init]
    [metabase-enterprise.audit-app.init]
    [metabase-enterprise.cache.init]
    [metabase-enterprise.custom-viz-plugin.init]

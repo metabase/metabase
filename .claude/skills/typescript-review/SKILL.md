@@ -13,7 +13,7 @@ allowed-tools: Read, Grep, Bash, Glob, Skill
 
 **Primary standard: the [`typescript-write`](../typescript-write/SKILL.md) skill.** Load it first — it defines the authoring rules this review enforces, alongside `frontend/CLAUDE.md` and `docs/developers-guide/frontend.md`.
 
-Adherence to `typescript-write` is the **highest-priority** review dimension: rank any violation of its provisions above all other findings. Treat its **no-`any` hard rule** (no explicit *or* implicit `any` in new code) as **blocking**, and verify it with the LSP rather than by eye.
+Adherence to `typescript-write` is the **highest-priority** review dimension: rank any violation of its provisions above all other findings. Treat its **no-`any` hard rule** (no explicit *or* implicit `any` in new code) as **blocking**. Use TypeScript LSP tools to inspect inferred types when available; otherwise rely on type-checking and linting.
 
 Review in this priority order:
 

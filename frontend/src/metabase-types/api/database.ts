@@ -94,6 +94,8 @@ export interface DatabaseData {
   id?: DatabaseId;
   name: string;
   engine: string | undefined;
+  /** Hosting provider detected from the connection details, e.g. "AWS RDS" */
+  provider_name?: string | null;
   // If current user lacks write permission to database, `details` will be
   // missing in responses from the backend, cf. implementation of
   // [[metabase.models.interface/to-json]] for `:model/Database`:
@@ -204,7 +206,7 @@ export interface GetDatabaseMetadataRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
-  skip_fields?: boolean;
+  skip_fields: true; // make sure we don't get every field of every table
 }
 
 export interface CreateDatabaseRequest {

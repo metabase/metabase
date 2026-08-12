@@ -2,8 +2,8 @@ import { parse as parseUrl } from "url";
 
 import { isEqualCard } from "metabase/common/utils/card";
 import { createThunkAction } from "metabase/redux";
-import type { LocationDescriptor } from "metabase/router";
-import { push, replace } from "metabase/router";
+import type { Path } from "metabase/router";
+import { navigate } from "metabase/router";
 import { getBasename } from "metabase/utils/basename";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -108,7 +108,7 @@ export const updateUrl = createThunkAction(
         tableUrl ?? getURLForCardState(newState, dirty, queryParams, objectId);
 
       const urlParsed = parseUrl(url);
-      const locationDescriptor: LocationDescriptor = {
+      const to: Partial<Path> = {
         pathname: getPathNameFromQueryBuilderMode({
           pathname: urlParsed.pathname || "",
           queryBuilderMode,
@@ -116,13 +116,12 @@ export const updateUrl = createThunkAction(
         }),
         search: urlParsed.search ?? undefined,
         hash: urlParsed.hash ?? undefined,
-        state: newState,
       };
 
       const isSameURL =
-        locationDescriptor.pathname === window.location.pathname &&
-        (locationDescriptor.search || "") === (window.location.search || "") &&
-        (locationDescriptor.hash || "") === (window.location.hash || "");
+        to.pathname === window.location.pathname &&
+        (to.search || "") === (window.location.search || "") &&
+        (to.hash || "") === (window.location.hash || "");
       const isSameCard =
         currentState && isEqualCard(currentState.card, newState.card);
 
@@ -132,8 +131,7 @@ export const updateUrl = createThunkAction(
 
       if (replaceState == null) {
         const isSameMode =
-          getQueryBuilderModeFromLocation(locationDescriptor)
-            .queryBuilderMode ===
+          getQueryBuilderModeFromLocation(to).queryBuilderMode ===
           getQueryBuilderModeFromLocation(window.location).queryBuilderMode;
 
         // if the serialized card is identical replace the previous state instead of adding a new one
@@ -146,15 +144,14 @@ export const updateUrl = createThunkAction(
 
       try {
         if (replaceState) {
-          const replaceDescriptor = preserveNavbarState
-            ? {
-                ...locationDescriptor,
-                state: { ...locationDescriptor.state, preserveNavbarState },
-              }
-            : locationDescriptor;
-          dispatch(replace(replaceDescriptor));
+          navigate(to, {
+            replace: true,
+            state: preserveNavbarState
+              ? { ...newState, preserveNavbarState }
+              : newState,
+          });
         } else {
-          dispatch(push(locationDescriptor));
+          navigate(to, { state: newState });
         }
       } catch (e) {
         // saving the location state can exceed the session storage quota (metabase#25312)

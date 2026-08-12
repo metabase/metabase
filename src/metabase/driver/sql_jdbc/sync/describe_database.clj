@@ -97,9 +97,8 @@
         ;; outer unrealized resultsets (like the [[all-schemas]] results) may get
         ;; unrecoverably closed
         conn (sql-jdbc.execute/try-ensure-open-conn! driver outer-conn :force-context-local? true)]
-    (log/debugf "have-select-privilege? sql-jdbc: Checking for SELECT privileges for %s with query\n%s"
-                (pr-table table-schema table-name)
-                (pr-str sql-args))
+    (log/debugf "have-select-privilege? sql-jdbc: Checking for SELECT privileges for %s"
+                (pr-table table-schema table-name))
     (try
       (log/debug "have-select-privilege? sql-jdbc: Attempt to execute probe query")
       (execute-select-probe-query driver conn sql-args)
@@ -115,7 +114,7 @@
               allow? (driver/query-canceled? driver e)]
           (if allow?
             (log/infof "%s: Assuming SELECT privileges: caught timeout exception" (pr-table table-schema table-name))
-            (log/debugf e "%s: Assuming no SELECT privileges: caught exception" (pr-table table-schema table-name)))
+            (log/debugf "%s: Assuming no SELECT privileges: caught exception: %s" (pr-table table-schema table-name) (ex-message e)))
           ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
           ;; affecting anything higher
           (try (when-not (.getAutoCommit conn)

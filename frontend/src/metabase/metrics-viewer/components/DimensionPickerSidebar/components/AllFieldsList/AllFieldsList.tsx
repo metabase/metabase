@@ -23,7 +23,6 @@ type AllFieldsListProps = {
   metricSourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   sourceColors: SourceColorMap;
   metricSlots: MetricSlot[];
-  expandAllMetricGroups: boolean;
   onSelect: (item: DimensionPickerItem) => void;
 };
 
@@ -33,7 +32,6 @@ export function AllFieldsList({
   metricSourceDataById,
   sourceColors,
   metricSlots,
-  expandAllMetricGroups,
   onSelect,
 }: AllFieldsListProps) {
   if (sections.length === 0) {
@@ -50,9 +48,7 @@ export function AllFieldsList({
   });
 
   if (metricSlots.length > 1 && metricGroups.length > 1) {
-    const defaultExpandedGroupKeys = expandAllMetricGroups
-      ? metricGroups.map((group) => group.key)
-      : metricGroups.slice(0, 1).map((group) => group.key);
+    const defaultExpandedGroupKeys = metricGroups.map((group) => group.key);
 
     return (
       <MetricAccordionList

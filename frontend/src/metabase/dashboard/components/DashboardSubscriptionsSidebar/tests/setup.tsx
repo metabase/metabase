@@ -141,7 +141,7 @@ export function setup({
       name: "Email",
       allows_recipients: true,
       recipients: ["user", "email"],
-      schedules: ["hourly"],
+      schedules: ["hourly", "daily", "weekly", "monthly"],
       configured: true,
     };
   }
@@ -151,7 +151,7 @@ export function setup({
       type: "slack",
       name: "Slack",
       allows_recipients: false,
-      schedules: ["hourly"],
+      schedules: ["hourly", "daily", "weekly", "monthly"],
       configured: true,
       fields: [
         {

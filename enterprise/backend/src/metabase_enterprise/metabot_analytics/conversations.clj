@@ -75,6 +75,7 @@
    direction). A vector lets a single sort key emit multiple ORDER BY terms that
    share the same direction (e.g. user sort orders by first_name then last_name)."
   {"created_at"        [:c.created_at]
+   "title"             [:c.title]
    "message_count"     [:message_count]
    "total_tokens"      [:total_tokens]
    "cache_read_tokens" [:cache_read_tokens]
@@ -84,7 +85,10 @@
    "ip_address"        [:c.ip_address]})
 
 (def ^:private list-query
-  "Conversation rows with aggregate stats, including deleted attempts."
+  "Conversation rows with aggregate stats, including deleted attempts. Messages
+   a fork copied in from its origin are counted here — the list describes the
+   thread as the reader sees it. `v_metabot_conversations.new_message_count` is
+   the usage-metric counterpart that leaves them out."
   {:select    [:c.*
                [[:count :m.id] :message_count]
                [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
@@ -120,24 +124,25 @@
    renames the conversation's `:id` to `:conversation_id`, trims the hydrated
    user, and keeps only the aggregate fields the summary payload needs."
   [row]
-  {:conversation_id         (:id row)
-   :created_at              (:created_at row)
-   :title                   (:title row)
-   :message_count           (:message_count row)
-   :user_message_count      (:user_message_count row)
-   :assistant_message_count (:assistant_message_count row)
-   :total_tokens            (long (:total_tokens row 0))
-   :cache_read_tokens       (long (:cache_read_tokens row 0))
-   :last_message_at         (:last_message_at row)
-   :profile_id              (:profile_id row)
-   :search_count            (:search_count row 0)
-   :query_count             (:query_count row 0)
-   :ip_address              (:ip_address row)
-   :embedding_hostname      (:embedding_hostname row)
-   :embedding_path          (:embedding_path row)
-   :user_agent              (:user_agent row)
-   :sanitized_user_agent    (:sanitized_user_agent row)
-   :user                    (trim-user (:user row))})
+  {:conversation_id             (:id row)
+   :created_at                  (:created_at row)
+   :title                       (:title row)
+   :message_count               (:message_count row)
+   :user_message_count          (:user_message_count row)
+   :assistant_message_count     (:assistant_message_count row)
+   :total_tokens                (long (:total_tokens row 0))
+   :cache_read_tokens           (long (:cache_read_tokens row 0))
+   :last_message_at             (:last_message_at row)
+   :profile_id                  (:profile_id row)
+   :search_count                (:search_count row 0)
+   :query_count                 (:query_count row 0)
+   :ip_address                  (:ip_address row)
+   :embedding_hostname          (:embedding_hostname row)
+   :embedding_path              (:embedding_path row)
+   :user_agent                  (:user_agent row)
+   :sanitized_user_agent        (:sanitized_user_agent row)
+   :forked_from_conversation_id (:forked_from_conversation_id row)
+   :user                        (trim-user (:user row))})
 
 (defn- hydrate-tool-counts
   "Batch-load `metabot_message` data for a page of conversations and attach
@@ -220,6 +225,17 @@
                                     [:metabot_feedback.user_id :asc]]})]
     (t2/hydrate rows :user)))
 
+(defn- fork-boundary-external-id
+  "The `external_id` of the last message copied in from the parent when this
+   conversation is a fork — the point the message list changes from inherited to
+   new. `nil` when nothing was copied. Messages arrive ordered oldest-first, so
+   the last one carrying `:forked_from_message_id` is the boundary."
+  [ordered-messages]
+  (->> ordered-messages
+       (filter :forked_from_message_id)
+       last
+       :external_id))
+
 (defn fetch-conversation-detail
   "Fetch a conversation detail or throw a 404."
   [conversation-id]
@@ -228,24 +244,27 @@
     (let [all-messages (t2/select :model/MetabotMessage
                                   :conversation_id conversation-id
                                   {:order-by [[:created_at :asc] [:id :asc]]})
+          forked-from  (:forked_from_conversation_id conversation)
           hydrated     (t2/hydrate conversation :user)]
-      {:conversation_id (:id conversation)
-       :created_at      (:created_at conversation)
-       :title           (:title conversation)
-       :user            (trim-user (:user hydrated))
-       :message_count   (count all-messages)
-       :total_tokens    (transduce (keep :total_tokens) + 0 all-messages)
-       :profile_id      (some #(when (= :assistant (:role %)) (:profile_id %)) all-messages)
-       :slack_permalink (slack-permalink conversation)
-       :messages        (metabot-persistence/messages->flat-messages
-                         all-messages {:include-rewound-errors? true})
-       :queries         (analytics.queries/messages->generated-queries all-messages)
-       :search_count    (analytics.queries/count-tool-invocations all-messages "search")
-       :query_count     (analytics.queries/count-tool-invocations
-                         all-messages metabot.tools/query-generation-tool-names)
-       :ip_address           (:ip_address conversation)
-       :embedding_hostname   (:embedding_hostname conversation)
-       :embedding_path       (:embedding_path conversation)
-       :user_agent           (:user_agent conversation)
-       :sanitized_user_agent (:sanitized_user_agent conversation)
-       :feedback             (fetch-conversation-feedback conversation-id)})))
+      {:conversation_id             (:id conversation)
+       :created_at                  (:created_at conversation)
+       :title                       (:title conversation)
+       :user                        (trim-user (:user hydrated))
+       :message_count               (count all-messages)
+       :total_tokens                (transduce (keep :total_tokens) + 0 all-messages)
+       :profile_id                  (some #(when (= :assistant (:role %)) (:profile_id %)) all-messages)
+       :slack_permalink             (slack-permalink conversation)
+       :messages                    (metabot-persistence/messages->flat-messages
+                                     all-messages {:include-rewound-errors? true})
+       :queries                     (analytics.queries/messages->generated-queries all-messages)
+       :search_count                (analytics.queries/count-tool-invocations all-messages "search")
+       :query_count                 (analytics.queries/count-tool-invocations
+                                     all-messages metabot.tools/query-generation-tool-names)
+       :ip_address                  (:ip_address conversation)
+       :embedding_hostname          (:embedding_hostname conversation)
+       :embedding_path              (:embedding_path conversation)
+       :user_agent                  (:user_agent conversation)
+       :sanitized_user_agent        (:sanitized_user_agent conversation)
+       :forked_from_conversation_id forked-from
+       :fork_boundary_message_id    (fork-boundary-external-id all-messages)
+       :feedback                    (fetch-conversation-feedback conversation-id)})))

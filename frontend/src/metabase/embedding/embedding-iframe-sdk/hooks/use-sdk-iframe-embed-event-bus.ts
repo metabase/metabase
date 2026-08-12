@@ -3,18 +3,15 @@ import { match } from "ts-pattern";
 
 import { setGuestTokenFetchError } from "embedding-sdk-bundle/store/guest-embed";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { isWithinIframe } from "metabase/utils/iframe";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import type {
-  SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
 } from "../types/embed";
+import { listenForEajsMessages } from "../utils/post-message";
 
 import { trackEmbeddedAnalyticsJs } from "./analytics";
-
-type Handler = (event: MessageEvent<SdkIframeEmbedMessage>) => void;
 
 type UsageAnalytics = {
   usage: EmbeddedAnalyticsJsEventSchema;
@@ -30,7 +27,7 @@ export function useSdkIframeEmbedEventBus({
   store,
 }: {
   onSettingsChanged?: (settings: SdkIframeEmbedSettings) => void;
-  store: SdkStore;
+  store: Pick<SdkStore, "dispatch">;
 }) {
   const [embedSettings, setEmbedSettings] =
     useState<SdkIframeEmbedSettings | null>(null);
@@ -39,46 +36,40 @@ export function useSdkIframeEmbedEventBus({
   );
 
   useEffect(() => {
-    const messageHandler: Handler = (event) => {
-      if (!isWithinIframe() || !event.data) {
-        return;
-      }
+    const removeMessageListener = listenForEajsMessages({
+      messageSource: "embed.js",
+      handler: (message) =>
+        match(message)
+          .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
+            setEmbedSettings(data);
+            onSettingsChanged?.(data);
+          })
+          .with({ type: "metabase.embed.reportAnalytics" }, ({ data }) => {
+            setUsageAnalytics({
+              usage: data.usageAnalytics,
+              embedHostUrl: data.embedHostUrl,
+            });
+          })
 
-      match(event.data)
-        .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
-          setEmbedSettings(data);
-          onSettingsChanged?.(data);
-        })
-        .with({ type: "metabase.embed.reportAnalytics" }, ({ data }) => {
-          setUsageAnalytics({
-            usage: data.usageAnalytics,
-            embedHostUrl: data.embedHostUrl,
-          });
-        })
-
-        /**
-         * This handler is needed for the guest embed initial token flow. It also handles
-         * the refresh flow, but `request-session-token.ts` handles that too — that file
-         * covers both the SSO and the JWT refresh token flows.
-         */
-        .with(
-          { type: "metabase.embed.reportAuthenticationError" },
-          ({ data }) => {
-            store.dispatch(
-              setGuestTokenFetchError({ message: data.error?.message }),
-            );
-          },
-        );
-    };
-
-    window.addEventListener("message", messageHandler);
+          /**
+           * This handler is needed for the guest embed initial token flow. It also handles
+           * the refresh flow, but `request-session-token.ts` handles that too — that file
+           * covers both the SSO and the JWT refresh token flows.
+           */
+          .with(
+            { type: "metabase.embed.reportAuthenticationError" },
+            ({ data }) => {
+              store.dispatch(
+                setGuestTokenFetchError({ message: data.error?.message }),
+              );
+            },
+          ),
+    });
 
     // notify embed.js that the iframe is ready
     sendMessage({ type: "metabase.embed.iframeReady" });
 
-    return () => {
-      window.removeEventListener("message", messageHandler);
-    };
+    return removeMessageListener;
   }, [onSettingsChanged, store]);
 
   useEffect(() => {

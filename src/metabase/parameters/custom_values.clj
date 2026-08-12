@@ -99,15 +99,12 @@
                                      (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
                                                 card-id))]
         (when-let [value-column (or (lib/find-matching-column query -1 field-ref visible-columns)
-                                    (log/warnf "Cannot get values from Card %d: failed to find column for ref %s\nFound: %s"
-                                               card-id
-                                               (pr-str field-ref)
-                                               (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
+                                    (log/warnf "Cannot get values from Card %d: failed to find matching column for ref"
+                                               card-id))]
           (let [label-column    (when label-field
                                   (or (lib/find-matching-column query -1 label-field visible-columns)
-                                      (log/warnf "Cannot get labels from Card %d: failed to find column for ref %s"
-                                                 card-id
-                                                 (pr-str label-field))))
+                                      (log/warnf "Cannot get labels from Card %d: failed to find matching column for ref"
+                                                 card-id)))
                 search-column   (or label-column value-column)
                 value-textual?  (lib.types.isa/string? value-column)
                 search-textual? (lib.types.isa/string? search-column)

@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
-import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 import { Box, Icon, Modal, Tabs } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
@@ -14,7 +14,7 @@ import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
 import { useAddDataState } from "./use-add-data-state";
-import { type AddDataTab, isValidTab } from "./utils";
+import type { AddDataTab } from "./utils";
 
 interface AddDataModalProps {
   opened: boolean;
@@ -88,8 +88,8 @@ const AddDataModalContent = ({
     return result;
   }, [isHosted]);
 
-  const handleTabChange = (tabValue: string | null) => {
-    if (tabValue === activeTab || !isValidTab(tabValue)) {
+  const handleTabChange = (tabValue: AddDataTab | null) => {
+    if (tabValue === null || tabValue === activeTab) {
       return;
     }
 

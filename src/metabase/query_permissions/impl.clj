@@ -18,6 +18,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.interface :as qp.i]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -190,6 +191,44 @@
      (^:once fn* []
        (preprocess query)))))
 
+(defn- preprocess-without-per-user-lens
+  "[[preprocess-query]], minus the preprocess middlewares that resolve the current user's data-access
+  lens. `do-as-admin` keeps the user's id (and thus their attributes), so database routing and
+  impersonation would still resolve the user's destination db / role — and throw when that
+  configuration exists without its premium feature. Those per-user dimensions are the lens callers
+  are *comparing*, not part of the query's table footprint, so skip them.
+
+  [[qp.i/*skip-middleware-because-app-db-access*]] is a much bigger name than its blast radius:
+  despite \"middleware\" plural, the routing and impersonation preprocess middlewares are the only
+  things that consult it (it exists for preprocess-only contexts like the offline semantic checker,
+  and is slated for replacement — see its docstring)."
+  [query]
+  (binding [qp.i/*skip-middleware-because-app-db-access* true]
+    (preprocess-query query)))
+
+(mu/defn query->resolved-source-ids :- [:maybe :map]
+  "Like [[query->source-ids]], but resolves card-sourced queries (`:source-table \"card__N\"`,
+  card-sourced joins, nested card-on-card chains) first, by preprocessing the query.
+
+  The whole projection, not just its tables: preprocessing is also what surfaces `:card-ids` (via the
+  `:qp/stage-is-from-source-card` annotation it adds), and those drive a read-permission check on
+  each card's collection in [[required-perms-for-query]] — a requirement no projection of the *raw*
+  query can express. Callers keying a permission verdict on this must keep the whole map, or two
+  queries reading the same tables through different cards will look identical.
+
+  Preprocessing runs as admin with per-user lens resolution skipped
+  ([[preprocess-without-per-user-lens]]), so the result is identical for every user. THROWS when the
+  query cannot be preprocessed — e.g. a card in the source chain has been deleted — so callers
+  gating cached reads on it can fail closed instead of treating the query as touching nothing."
+  [query :- :map]
+  (when (seq query)
+    (query->source-ids (preprocess-without-per-user-lens query))))
+
+(mu/defn query->resolved-source-table-ids :- [:maybe [:set ::lib.schema.id/table]]
+  "The Table IDs of [[query->resolved-source-ids]]. Throws on an unpreprocessable query, as it does."
+  [query :- :map]
+  (:table-ids (query->resolved-source-ids query)))
+
 (defn- referenced-card-ids
   "Return the union of all the `:query-permissions/referenced-card-ids` sets anywhere in the query."
   [query]
@@ -252,7 +291,7 @@
                         {:query (or (u/ignore-exceptions (mbql.normalize/normalize query))
                                     query)}
                         e)]
-         (if throw-exceptions? (throw e) (log/error e)))
+         (if throw-exceptions? (throw e) (log/error (ex-message e))))
        {:perms/create-queries {0 :query-builder}})))) ; table 0 will never exist
 
 (defn- mbql5-required-perms
@@ -286,13 +325,14 @@
   "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
   [perm-type required-perm db-id]
   (perms/at-least-as-permissive? perm-type
-                                 (perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
+                                 (perms/full-database-permission-for-user api/*current-user-id* perm-type db-id)
                                  required-perm))
 
 (defn- has-perm-for-table?
   "Checks that the current user has the permissions for tables specified in `table-id->perm`. Returns true if access
   is allowed, otherwise false."
   [perm-type table-id->required-perm db-id]
+  (perms/prime-table-perms-cache {:db-ids #{db-id} :table-ids (set (keys table-id->required-perm))})
   (every? (fn [[table-id required-perm]]
             (perms/user-has-permission-for-table?
              api/*current-user-id*
@@ -323,6 +363,7 @@
         table-ids (into (set (keep (some-fn :table-id :table_id) result-metadata))
                         (when (seq field-ids)
                           (t2/select-fn-set :table_id :model/Field :id [:in field-ids])))]
+    (perms/prime-table-perms-cache {:db-ids #{database-id} :table-ids table-ids})
     (run! #(when-not (perms/user-has-permission-for-table?
                       api/*current-user-id*
                       :perms/view-data

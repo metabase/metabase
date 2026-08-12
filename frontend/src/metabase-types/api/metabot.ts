@@ -9,6 +9,7 @@ import type {
   DraftTransform,
   PaginationRequest,
   PaginationResponse,
+  ResearchPlanContext,
   RowValue,
   SuggestedTransform,
   Transform,
@@ -52,6 +53,7 @@ export type MetabotChatContext = {
   default_database_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
+  research_plan?: ResearchPlanContext;
 };
 
 export type MetabotTool = {
@@ -173,6 +175,7 @@ export type MetabotConversation = {
   profile_id: string | null;
   message_count: number;
   last_message_at: string | null;
+  forked_from_conversation_id: string | null;
 };
 
 export type MetabotConversationTitleResponse =
@@ -193,8 +196,11 @@ export type MetabotProvider =
   | "anthropic"
   | "azure"
   | "bedrock"
+  | "mistral"
+  | "moonshot"
   | "openai"
-  | "openrouter";
+  | "openrouter"
+  | "zai";
 
 export interface BedrockCredentials {
   "access-key-id"?: string | null;
@@ -372,6 +378,11 @@ export interface SaveMetabotEntityRequest {
   conversation_id: string;
   chart_id: string;
   card: CreateCardRequest;
+}
+
+export interface ForkMetabotConversationRequest {
+  conversation_id: string;
+  message_id: string;
 }
 
 /* Metabot v3 - Data Part Types */

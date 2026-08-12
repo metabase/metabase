@@ -19,22 +19,20 @@
 ;;; `:invalidated-at` keys
 (mr/def ::cache-strategy
   "Schema for a caching strategy used internally"
-  [:and
-   :metabase.cache.api/cache-strategy.base.ee
-   [:multi {:dispatch :type}
-    [:nocache  :metabase.cache.api/cache-strategy.nocache]
-    [:ttl      [:merge
-                :metabase.cache.api/cache-strategy.ttl
-                [:map
-                 [:invalidated-at {:optional true} some?]]]]
-    [:duration [:merge
-                :metabase.cache.api/cache-strategy.ee.duration
-                [:map
-                 [:invalidated-at {:optional true} some?]]]]
-    [:schedule [:merge
-                :metabase.cache.api/cache-strategy.ee.schedule
-                [:map
-                 [:invalidated-at {:optional true} some?]]]]]])
+  [:multi {:dispatch :type}
+   [:nocache  :metabase.cache.api/cache-strategy.nocache]
+   [:ttl      [:merge
+               :metabase.cache.api/cache-strategy.ttl
+               [:map
+                [:invalidated-at {:optional true} some?]]]]
+   [:duration [:merge
+               :metabase.cache.api/cache-strategy.ee.duration
+               [:map
+                [:invalidated-at {:optional true} some?]]]]
+   [:schedule [:merge
+               :metabase.cache.api/cache-strategy.ee.schedule
+               [:map
+                [:invalidated-at {:optional true} some?]]]]])
 
 ;;; Querying DB
 

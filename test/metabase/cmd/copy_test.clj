@@ -25,7 +25,8 @@
 
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
-  #{:model/AiUsageLog
+  #{:model/AgentApiCallLog
+    :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
@@ -39,6 +40,7 @@
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
+    :model/ExplorationQueryResult
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog
@@ -66,6 +68,8 @@
     :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
     :model/SsoRelayState
+    :model/StoredResult
+    :model/StoredResultUse
     :model/SupportAccessGrantLog
     :model/TableIndex
     :model/TaskHistory

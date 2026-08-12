@@ -21,9 +21,9 @@ export const getRoutes = () => {
       </Route>
       <Route path=":rowId" element={<ModelDetailPage />} />
       <Route index element={redirect("actions")} />
-      <Route path="usage" element={redirect("actions")} />
-      <Route path="schema" element={redirect("actions")} />
-      <Route path="*" element={redirect("actions")} />
+      <Route path="usage" element={redirect("../actions")} />
+      <Route path="schema" element={redirect("../actions")} />
+      <Route path="*" element={redirect("../actions")} />
     </Route>
   );
 };
