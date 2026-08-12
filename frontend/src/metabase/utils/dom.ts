@@ -111,13 +111,8 @@ export function getPathnameWithoutSubPath(
 ): string {
   const sitePath =
     siteUrl === undefined ? getSitePath() : getUrlPathname(siteUrl);
-  const subpath = sitePath.replace(/\/$/, "");
-  if (!subpath) {
-    return pathname;
-  }
-
   const pathnameSections = pathname.split("/");
-  const sitePathSections = subpath.split("/");
+  const sitePathSections = sitePath.split("/");
 
   return isPathnameContainSitePath(pathnameSections, sitePathSections)
     ? "/" + pathnameSections.slice(sitePathSections.length).join("/")

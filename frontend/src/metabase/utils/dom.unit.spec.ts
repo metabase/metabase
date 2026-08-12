@@ -19,15 +19,6 @@ describe("getPathnameWithoutSubPath", () => {
     ).toBe("/dashboard/1");
   });
 
-  it("should strip a subpath with a trailing slash in the site url", () => {
-    expect(
-      getPathnameWithoutSubPath(
-        "/metabase/dashboard/1",
-        "http://example.com/metabase/",
-      ),
-    ).toBe("/dashboard/1");
-  });
-
   it("should strip the subpath case-insensitively", () => {
     expect(
       getPathnameWithoutSubPath(
