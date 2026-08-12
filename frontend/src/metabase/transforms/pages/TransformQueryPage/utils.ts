@@ -26,7 +26,7 @@ export function isMissingIncrementalTableTag(
 
   const query = getLibQuery(source, metadata);
   const hasTableTag = query
-    ? Object.values(Lib.templateTags(query)).some(
+    ? Object.values(Lib.templateTags(query) ?? {}).some(
         (tag) => tag.type === "table" && tag["table-id"] != null,
       )
     : false;

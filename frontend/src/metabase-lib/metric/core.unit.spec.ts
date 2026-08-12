@@ -971,6 +971,7 @@ describe("metabase-lib/metric/core", () => {
       expect(extractedParts).not.toBeNull();
       expect(extractedParts?.operator).toBe("=");
       expect(extractedParts?.values).toEqual(["Electronics", "Clothing"]);
+      expect(extractedParts?.options).toBeNull();
     });
 
     it("should extract parts from contains filter", () => {
@@ -1096,6 +1097,7 @@ describe("metabase-lib/metric/core", () => {
       expect(extractedParts).not.toBeNull();
       expect(extractedParts?.unit).toBe("day");
       expect(extractedParts?.value).toBe(-30);
+      expect(extractedParts?.options).toBeNull();
     });
 
     it("should extract offset values when present", () => {
@@ -1405,7 +1407,8 @@ describe("metabase-lib/metric/core", () => {
       expect(extractedParts).not.toBeNull();
       expect(extractedParts?.operator).toBe("=");
       expect(extractedParts?.hasTime).toBe(false);
-      expect(extractedParts?.values.length).toBe(1);
+      expect(extractedParts?.values).toHaveLength(1);
+      expect(extractedParts?.values[0]).toBeInstanceOf(Date);
     });
 
     it("should extract parts from between date filter", () => {
@@ -1522,7 +1525,8 @@ describe("metabase-lib/metric/core", () => {
 
       expect(extractedParts).not.toBeNull();
       expect(extractedParts?.operator).toBe(">");
-      expect(extractedParts?.values.length).toBe(1);
+      expect(extractedParts?.values).toHaveLength(1);
+      expect(extractedParts?.values[0]).toBeInstanceOf(Date);
     });
 
     it("should extract parts from between time filter", () => {

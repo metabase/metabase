@@ -40,10 +40,16 @@ export function getColumnIcon(
   return "list";
 }
 
+function isApiMetricDimension(
+  dimension: DimensionMetadata | MetricDimension,
+): dimension is MetricDimension {
+  return "display_name" in dimension;
+}
+
 export function getDimensionIcon(
   dimension: DimensionMetadata | MetricDimension,
 ): IconName {
-  if ("display_name" in dimension) {
+  if (isApiMetricDimension(dimension)) {
     return getColumnIcon(
       Lib.legacyColumnTypeInfo({
         effective_type: dimension.effective_type,

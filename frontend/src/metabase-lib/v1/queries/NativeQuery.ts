@@ -269,7 +269,7 @@ export default class NativeQuery {
   }
 
   templateTagsMap(): TemplateTags {
-    return Lib.templateTags(this._query());
+    return Lib.templateTags(this._query()) ?? {};
   }
 
   templateTags(): TemplateTag[] {
