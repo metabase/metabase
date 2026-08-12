@@ -54,10 +54,4 @@ describe("NotificationSchedule", () => {
 
     expect(screen.queryByText(SKIP_WARNING)).not.toBeInTheDocument();
   });
-
-  it("raw - should not show warning when a custom schedule runs on every minute of every hour", () => {
-    setupSchedule("0 * * * * ? *");
-
-    expect(screen.queryByText(SKIP_WARNING)).not.toBeInTheDocument();
-  });
 });

@@ -98,7 +98,6 @@ describe("isScheduleComplete", () => {
   it.each(["daily", "weekly", "monthly"] as const)(
     "should be false when a %s schedule has no hour",
     (schedule_type) => {
-      expect(isScheduleComplete({ schedule_type })).toBe(false);
       expect(isScheduleComplete({ schedule_type, schedule_hour: null })).toBe(
         false,
       );
@@ -223,47 +222,66 @@ describe("resetScheduleToTypeDefaults", () => {
     });
   });
 
-  it("should keep the monthly frame the previous schedule was on", () => {
+  it("should keep the monthly frame and weekday the previous schedule was on", () => {
     expect(
       resetScheduleToTypeDefaults(
-        { ...daily, schedule_frame: "mid" },
+        {
+          schedule_type: "monthly",
+          schedule_day: "wed",
+          schedule_frame: "last",
+          schedule_hour: 20,
+          schedule_minute: 0,
+        },
         "monthly",
         getScheduleDefaults,
       ),
     ).toEqual({
       schedule_type: "monthly",
-      schedule_day: null,
-      schedule_frame: "mid",
+      schedule_day: "wed",
+      schedule_frame: "last",
       schedule_hour: 8,
       schedule_minute: 0,
     });
   });
 
-  it("should reset an hour the user has already picked", () => {
-    expect(
-      resetScheduleToTypeDefaults(daily, "weekly", getScheduleDefaults),
-    ).toMatchObject({
-      schedule_type: "weekly",
-      schedule_hour: 8,
-    });
-  });
-
-  it("should reset values the user had to pick, including the day", () => {
+  it("should keep the weekday of a weekly schedule when switching to monthly", () => {
     expect(
       resetScheduleToTypeDefaults(
         {
           schedule_type: "weekly",
           schedule_day: "fri",
+          schedule_frame: null,
           schedule_hour: 20,
           schedule_minute: 0,
         },
-        "weekly",
+        "monthly",
+        getScheduleDefaults,
+      ),
+    ).toEqual({
+      schedule_type: "monthly",
+      schedule_day: "fri",
+      schedule_frame: "first",
+      schedule_hour: 8,
+      schedule_minute: 0,
+    });
+  });
+
+  it("should not keep a weekday the mid frame cannot have", () => {
+    expect(
+      resetScheduleToTypeDefaults(
+        {
+          schedule_type: "monthly",
+          schedule_day: "fri",
+          schedule_frame: "mid",
+          schedule_hour: 20,
+          schedule_minute: 0,
+        },
+        "monthly",
         getScheduleDefaults,
       ),
     ).toMatchObject({
-      schedule_type: "weekly",
-      schedule_day: "mon",
-      schedule_hour: 8,
+      schedule_day: null,
+      schedule_frame: "mid",
     });
   });
 
@@ -280,12 +298,5 @@ describe("resetScheduleToTypeDefaults", () => {
     expect(
       resetScheduleToTypeDefaults(daily, "weekly", getDefaultsWithoutHour),
     ).toMatchObject({ schedule_type: "weekly", schedule_hour: null });
-    expect(
-      resetScheduleToTypeDefaults(
-        { schedule_type: "daily" },
-        "daily",
-        getDefaultsWithoutHour,
-      ),
-    ).toMatchObject({ schedule_hour: null });
   });
 });

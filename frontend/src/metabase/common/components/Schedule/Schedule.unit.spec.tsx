@@ -389,10 +389,10 @@ describe("Schedule", () => {
         "0 0 8 1 * ? *",
       ],
       [
-        "switch weekly to monthly drops the weekday",
+        "switch weekly to monthly keeps the weekday",
         "0 0 8 ? * 6 *",
         { frequency: "monthly" },
-        "0 0 8 1 * ? *",
+        "0 0 8 ? * 6#1 *",
       ],
       [
         "switch monthly to daily clears frame and weekday",

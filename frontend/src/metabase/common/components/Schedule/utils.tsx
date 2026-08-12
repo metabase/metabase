@@ -181,14 +181,6 @@ export const clearDayForMidFrame = (
     ? { ...schedule, schedule_day: null }
     : schedule;
 
-const keepMidFrame = (
-  previousValue: ScheduleBuilderValue,
-  schedule: ScheduleBuilderValue,
-): ScheduleBuilderValue =>
-  schedule.schedule_type === "monthly" && previousValue.schedule_frame === "mid"
-    ? { ...schedule, schedule_frame: "mid" }
-    : schedule;
-
 export const resetScheduleToTypeDefaults = (
   previousValue: ScheduleBuilderValue,
   nextType: ScheduleBuilderType,
@@ -199,7 +191,15 @@ export const resetScheduleToTypeDefaults = (
     ...getDefaults(nextType),
   };
 
-  return keepMidFrame(previousValue, nextValue);
+  if (nextType !== "monthly") {
+    return nextValue;
+  }
+
+  return clearDayForMidFrame({
+    ...nextValue,
+    schedule_frame: previousValue.schedule_frame ?? nextValue.schedule_frame,
+    schedule_day: previousValue.schedule_day ?? nextValue.schedule_day,
+  });
 };
 
 export const clearUnusedScheduleFields = (

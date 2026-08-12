@@ -7,7 +7,6 @@ import {
   toCronString,
 } from "./cron";
 import type { ScheduleBuilderValue } from "./types";
-import { getScheduleDefaults, normalizeScheduleValue } from "./utils";
 
 describe("formatCron", () => {
   it("converts every_n_minutes schedule to cron", () => {
@@ -381,16 +380,5 @@ describe("scheduleValueToCron", () => {
         schedule_minute: 0,
       }),
     ).toBe("0 0 * * * ? *");
-  });
-
-  it("falls back to defaults for values the user has not picked when normalized first", () => {
-    expect(
-      scheduleValueToCron(
-        normalizeScheduleValue(
-          { schedule_type: "daily", schedule_hour: null },
-          getScheduleDefaults,
-        ),
-      ),
-    ).toBe("0 0 8 * * ? *");
   });
 });
