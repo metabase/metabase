@@ -122,8 +122,8 @@ export function CompactPinnedItemCard({
   const card = (
     <Card
       className={cx(S.card, {
-        [S.cardSelectable]: handleToggleSelected != null,
-        [S.cardSelected]: showAsSelected,
+        [S.selectable]: handleToggleSelected != null,
+        [S.selected]: showAsSelected,
       })}
       data-testid="pinned-item-card"
       h="5rem"
@@ -131,7 +131,7 @@ export function CompactPinnedItemCard({
       pos="relative"
       withBorder
     >
-      <div className={S.body}>
+      <Box className={S.body}>
         {showCheckbox ? (
           <Checkbox
             aria-hidden
@@ -151,7 +151,7 @@ export function CompactPinnedItemCard({
             color="core-brand"
           />
         )}
-        <div className={S.content}>
+        <Box className={S.content}>
           <Group className={S.titleRow} gap="sm" miw={0} wrap="nowrap">
             <Ellipsified
               fw="bold"
@@ -173,8 +173,8 @@ export function CompactPinnedItemCard({
           >
             {description}
           </MarkdownPreview>
-        </div>
-      </div>
+        </Box>
+      </Box>
       {actionMenuItem && hasActionHandlers && (
         <Box className={S.actions}>
           {/* Used within a `<Link>`, so we must prevent events from triggering the link */}
@@ -197,7 +197,7 @@ export function CompactPinnedItemCard({
 
   if (handleToggleSelected) {
     return (
-      <div
+      <Box
         {...highlightProps}
         aria-checked={showAsSelected}
         aria-label={item.name}
@@ -216,7 +216,7 @@ export function CompactPinnedItemCard({
         }}
       >
         {card}
-      </div>
+      </Box>
     );
   }
 
