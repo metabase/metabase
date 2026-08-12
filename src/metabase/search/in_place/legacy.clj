@@ -418,7 +418,12 @@
 
 (defmethod columns-for-model "document"
   [_]
-  [:id :name :archived :created_at :updated_at :collection_id :creator_id :document])
+  [:id :name :archived :created_at :updated_at :collection_id :creator_id :document
+   ;; the collection join is added by `add-collection-join-and-where-clauses`; without these the
+   ;; UNION pads them to NULL and a document in an official collection never reads as official
+   [:collection.name :collection_name]
+   [:collection.type :collection_type]
+   [:collection.authority_level :collection_authority_level]])
 
 (defmethod columns-for-model "exploration"
   [_]
