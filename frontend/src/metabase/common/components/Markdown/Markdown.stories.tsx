@@ -1,7 +1,12 @@
 import type { StoryFn } from "@storybook/react";
 
+import { Box } from "metabase/ui";
+
 import { Markdown, type MarkdownProps } from "./Markdown";
-import { KITCHEN_SINK_MARKDOWN } from "./kitchen-sink-markdown";
+import {
+  KITCHEN_SINK_MARKDOWN,
+  UNBREAKABLE_TABLE_MARKDOWN,
+} from "./kitchen-sink-markdown";
 
 export default {
   title: "Components/Ask Before Using/Markdown",
@@ -25,28 +30,52 @@ export const Default = {
   },
 };
 
+const DARK_SURFACE_PROPS = {
+  bg: "tooltip-background",
+  c: "tooltip-text",
+  p: "lg",
+} as const;
+
+const KitchenSinkTemplate: StoryFn<MarkdownProps> = ({ dark, ...args }) => {
+  return (
+    <Box {...(dark && DARK_SURFACE_PROPS)}>
+      <Markdown dark={dark} {...args} />
+    </Box>
+  );
+};
+
 export const KitchenSink = {
-  render: Template,
+  render: KitchenSinkTemplate,
 
   args: {
     children: KITCHEN_SINK_MARKDOWN,
+    compact: false,
+    dark: false,
+    disallowHeading: false,
+    unstyleLinks: false,
+  },
+
+  argTypes: {
+    compact: { control: "boolean" },
+    dark: { control: "boolean" },
+    disallowHeading: { control: "boolean" },
+    unstyleLinks: { control: "boolean" },
+    lineClamp: { control: "number" },
   },
 };
 
-export const KitchenSinkCompact = {
-  render: Template,
-
-  args: {
-    children: KITCHEN_SINK_MARKDOWN,
-    compact: true,
-  },
+const NarrowTemplate: StoryFn<MarkdownProps> = (args) => {
+  return (
+    <Box w={320}>
+      <Markdown {...args} />
+    </Box>
+  );
 };
 
-export const KitchenSinkWithoutHeadings = {
-  render: Template,
+export const NarrowContainer = {
+  render: NarrowTemplate,
 
   args: {
-    children: KITCHEN_SINK_MARKDOWN,
-    disallowHeading: true,
+    children: UNBREAKABLE_TABLE_MARKDOWN,
   },
 };

@@ -10,6 +10,7 @@ const KNOWN_ELEMENTS = [
   "br",
   "code",
   "del",
+  "div",
   "em",
   "h1",
   "h2",
@@ -107,6 +108,30 @@ describe("Markdown", () => {
 
     expect(root.querySelector("script")).toBeNull();
     expect(screen.getByText(/window.x = 1/)).toBeInTheDocument();
+  });
+
+  it("wraps tables in their own container so they can scroll", () => {
+    const { root } = setup({
+      children: "| A | B |\n| --- | --- |\n| 1 | 2 |",
+    });
+
+    const table = checkNotNull(root.querySelector("table"));
+    const wrapper = checkNotNull(table.parentElement);
+
+    expect(wrapper.tagName).toBe("DIV");
+    expect(wrapper).not.toBe(root);
+    expect(wrapper.parentElement).toBe(root);
+  });
+
+  it("lets call sites replace the table wrapper", () => {
+    const { root } = setup({
+      children: "| A | B |\n| --- | --- |\n| 1 | 2 |",
+      components: { table: "table" },
+    });
+
+    const table = checkNotNull(root.querySelector("table"));
+
+    expect(table.parentElement).toBe(root);
   });
 
   it("renders headings as paragraphs when they are disallowed", () => {

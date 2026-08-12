@@ -43,3 +43,9 @@ Footnote reference[^1].
 
 [^1]: Footnote definition.
 `;
+
+export const UNBREAKABLE_TABLE_MARKDOWN = `| Setting | Value |
+| --- | --- |
+| Endpoint | \`https://metabase.test/api/setting/report-timezone?include-updated-at=true\` |
+| Token | MB_PREMIUM_EMBEDDING_TOKEN_0123456789abcdef0123456789abcdef |
+`;

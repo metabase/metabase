@@ -27,6 +27,8 @@ import type {
 import { trackSecurityAdvisoryDownloadClicked } from "../../analytics";
 import { getDownloadJarForInstance, isAcknowledged } from "../../utils";
 
+const DISALLOWED_ELEMENTS = ["img"];
+
 interface AdvisoryCardProps {
   advisory: Advisory;
   isAffecting: boolean;
@@ -74,7 +76,11 @@ export function AdvisoryCard({
 
         <Title order={4}>{advisory.title}</Title>
 
-        <Markdown c="text-secondary" disallowHeading>
+        <Markdown
+          c="text-secondary"
+          disallowHeading
+          disallowedElements={DISALLOWED_ELEMENTS}
+        >
           {advisory.description}
         </Markdown>
 
@@ -93,7 +99,11 @@ export function AdvisoryCard({
 
         <Box>
           <Text fw={700} mb="xs">{t`Remediation`}</Text>
-          <Markdown c="text-secondary" disallowHeading>
+          <Markdown
+            c="text-secondary"
+            disallowHeading
+            disallowedElements={DISALLOWED_ELEMENTS}
+          >
             {advisory.remediation}
           </Markdown>
         </Box>

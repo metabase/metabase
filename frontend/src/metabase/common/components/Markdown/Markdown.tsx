@@ -3,6 +3,7 @@ import type {
   AnchorHTMLAttributes,
   CSSProperties,
   ComponentPropsWithRef,
+  TableHTMLAttributes,
 } from "react";
 import { useMemo } from "react";
 import ReactMarkdown, {
@@ -21,6 +22,12 @@ const REMARK_PLUGINS = [remarkGfm];
 
 const MarkdownLink = (props: AnchorHTMLAttributes<HTMLAnchorElement>) => (
   <a {...props} target="_blank" rel="noopener noreferrer" />
+);
+
+const MarkdownTable = (props: TableHTMLAttributes<HTMLTableElement>) => (
+  <div className={S.tableScroll}>
+    <table {...props} />
+  </div>
 );
 
 const HEADINGS_AS_PARAGRAPHS: Components = {
@@ -76,6 +83,7 @@ export const Markdown = ({
   const customizedComponents = useMemo(
     () => ({
       a: MarkdownLink,
+      table: MarkdownTable,
       ...(disallowHeading && HEADINGS_AS_PARAGRAPHS),
       ...components,
     }),

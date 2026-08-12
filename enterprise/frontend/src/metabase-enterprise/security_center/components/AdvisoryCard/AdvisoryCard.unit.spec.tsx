@@ -47,6 +47,20 @@ describe("AdvisoryCard", () => {
     expect(within(card).getByText("v0.59.4").tagName).toBe("CODE");
   });
 
+  it("does not render images from the advisory feed", () => {
+    setup({
+      advisory: createAdvisory({
+        description: "Before ![tracker](https://attacker.test/pixel.png) after",
+        remediation: "![tracker](//attacker.test/pixel.png)",
+      }),
+    });
+
+    const card = screen.getByTestId("advisory-card");
+
+    expect(within(card).queryByRole("img")).not.toBeInTheDocument();
+    expect(card.querySelector("img")).toBeNull();
+  });
+
   it("renders plain text unchanged", () => {
     setup({
       advisory: createAdvisory({
