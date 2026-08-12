@@ -91,10 +91,17 @@ async function setup({
   await screen.findByText(tableQuestion.name);
 }
 
-function getRowSelectionButton(itemName: string) {
+function getRowSelectionCell(itemName: string) {
   const row = screen.getByRole("row", { name: new RegExp(itemName) });
-  const selectionCell = within(row).getByTestId("collection-entry-check");
-  return within(selectionCell).getByRole("button");
+  return within(row).getByTestId("collection-entry-check");
+}
+
+function getRowSelectionButton(itemName: string) {
+  return within(getRowSelectionCell(itemName)).getByRole("button");
+}
+
+function getRowSelectionCheckbox(itemName: string) {
+  return within(getRowSelectionCell(itemName)).getByRole("checkbox");
 }
 
 function getPinnedSection() {
@@ -105,19 +112,61 @@ function getPinnedCard(itemName: string) {
   return getPinnedSection().getByRole("checkbox", { name: itemName });
 }
 
+function getPinnedLink(itemName: string) {
+  return getPinnedSection().getByRole("link", { name: new RegExp(itemName) });
+}
+
 describe("CollectionContent selection", () => {
   it("should render pinned cards as links when nothing is selected", async () => {
     await setup();
 
+    expect(getPinnedLink(pinnedDashboard.name)).toBeInTheDocument();
+    expect(getPinnedLink(pinnedQuestion.name)).toBeInTheDocument();
     expect(
-      getPinnedSection().getByRole("link", { name: pinnedDashboard.name }),
-    ).toBeInTheDocument();
-    expect(
-      getPinnedSection().getByRole("link", { name: pinnedQuestion.name }),
-    ).toBeInTheDocument();
-    expect(
-      getPinnedSection().queryByRole("checkbox", { name: pinnedDashboard.name }),
+      getPinnedSection().queryByRole("checkbox", {
+        name: pinnedDashboard.name,
+      }),
     ).not.toBeInTheDocument();
+  });
+
+  it("should list pinned items as table rows as well as pinned cards", async () => {
+    await setup();
+
+    expect(
+      screen.getByRole("row", { name: new RegExp(pinnedDashboard.name) }),
+    ).toBeInTheDocument();
+    expect(getPinnedLink(pinnedDashboard.name)).toBeInTheDocument();
+  });
+
+  it("should check the table row of a pinned item selected from its card", async () => {
+    await setup();
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    await userEvent.click(getPinnedCard(pinnedDashboard.name));
+
+    expect(await screen.findByText("2 items selected")).toBeInTheDocument();
+    expect(getRowSelectionCheckbox(pinnedDashboard.name)).toBeChecked();
+  });
+
+  it("should check the pinned card of an item selected from its table row", async () => {
+    await setup();
+
+    await userEvent.click(getRowSelectionButton(pinnedDashboard.name));
+
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    expect(getPinnedCard(pinnedDashboard.name)).toBeChecked();
+  });
+
+  it("should toggle the same selection entry from either representation", async () => {
+    await setup();
+
+    await userEvent.click(getRowSelectionButton(pinnedDashboard.name));
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+
+    await userEvent.click(getPinnedCard(pinnedDashboard.name));
+
+    expect(screen.queryByText(/items? selected/)).not.toBeInTheDocument();
+    expect(getRowSelectionCheckbox(pinnedDashboard.name)).not.toBeChecked();
   });
 
   it("should add a pinned card to the same selection as a table row", async () => {
@@ -145,7 +194,7 @@ describe("CollectionContent selection", () => {
     expect(getPinnedCard(pinnedDashboard.name)).not.toBeChecked();
   });
 
-  it("should select pinned cards and table rows with select all", async () => {
+  it("should select every listed item exactly once with select all", async () => {
     await setup();
 
     await userEvent.click(getRowSelectionButton(tableQuestion.name));
@@ -160,7 +209,7 @@ describe("CollectionContent selection", () => {
     expect(getPinnedCard(pinnedQuestion.name)).toBeChecked();
   });
 
-  it("should select pinned cards and table rows with select all from an empty selection", async () => {
+  it("should select every listed item exactly once with select all from an empty selection", async () => {
     await setup();
 
     await userEvent.click(screen.getByLabelText("Select all items"));
@@ -170,21 +219,22 @@ describe("CollectionContent selection", () => {
     expect(getPinnedCard(pinnedQuestion.name)).toBeChecked();
   });
 
-  it("should base the header checkbox state on table rows only", async () => {
+  it("should keep the header checkbox indeterminate while pinned rows stay unselected", async () => {
     await setup();
 
     await userEvent.click(getRowSelectionButton(tableQuestion.name));
     await userEvent.click(getRowSelectionButton(tableDashboard.name));
 
     expect(await screen.findByText("2 items selected")).toBeInTheDocument();
-    expect(screen.getByLabelText("Select all items")).toBeChecked();
+    expect(screen.getByLabelText("Select all items")).toBePartiallyChecked();
+
+    await userEvent.click(getPinnedCard(pinnedDashboard.name));
+    await userEvent.click(getPinnedCard(pinnedQuestion.name));
+
+    expect(await screen.findByText("4 items selected")).toBeInTheDocument();
     expect(
       screen.getByLabelText("Select all items"),
     ).not.toBePartiallyChecked();
-
-    await userEvent.click(screen.getByLabelText("Select all items"));
-
-    expect(screen.queryByText(/items? selected/)).not.toBeInTheDocument();
   });
 
   it("should complete select all from a pinned-only selection", async () => {

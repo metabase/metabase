@@ -52,6 +52,9 @@ const modelItem = createMockCollectionItem({
 
 const defaultItems = [dashboardItem, metricItem, questionItem, modelItem];
 
+const isSameItem = (a: CollectionItem, b: CollectionItem) =>
+  a.id === b.id && a.model === b.model;
+
 function setup({
   items = defaultItems,
   collection = defaultCollection,
@@ -77,6 +80,9 @@ function setup({
       createBookmark={jest.fn()}
       deleteBookmark={jest.fn()}
       selected={selected}
+      getIsSelected={(item) =>
+        selected.some((selectedItem) => isSameItem(selectedItem, item))
+      }
       onToggleSelected={onToggleSelected}
     />,
     {

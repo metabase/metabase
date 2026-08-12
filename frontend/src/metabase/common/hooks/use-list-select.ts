@@ -4,7 +4,6 @@ export type UseListSelectReturnValue<T> = {
   clear: () => void;
   getIsSelected: (item: T) => boolean;
   selected: T[];
-  selectItems: (items: T[]) => void;
   selectOnlyTheseItems: (items: T[]) => void;
   toggleItem: (item: T) => void;
 };
@@ -24,22 +23,6 @@ export function useListSelect<T>(
   const selectOnlyTheseItems = useCallback(
     (items: T[]) => {
       setSelectedByKey(new Map(items.map((item) => [keyFn(item), item])));
-    },
-    [keyFn],
-  );
-
-  const selectItems = useCallback(
-    (items: T[]) => {
-      setSelectedByKey((previous) => {
-        const next = new Map(previous);
-        items.forEach((item) => {
-          const key = keyFn(item);
-          if (!next.has(key)) {
-            next.set(key, item);
-          }
-        });
-        return next;
-      });
     },
     [keyFn],
   );
@@ -73,7 +56,6 @@ export function useListSelect<T>(
     clear,
     getIsSelected,
     selected,
-    selectItems,
     selectOnlyTheseItems,
     toggleItem,
   };

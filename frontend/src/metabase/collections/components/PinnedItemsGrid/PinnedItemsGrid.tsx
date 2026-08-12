@@ -32,6 +32,7 @@ type Props = {
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
   selected: CollectionItem[];
+  getIsSelected: (item: CollectionItem) => boolean;
   onToggleSelected: OnToggleSelectedWithItem;
 };
 
@@ -45,6 +46,7 @@ export function PinnedItemsGrid({
   onCopy,
   onMove,
   selected,
+  getIsSelected,
   onToggleSelected,
 }: Props) {
   // Trashed items keep their pin position, but the trash never shows a pinned section.
@@ -85,10 +87,7 @@ export function PinnedItemsGrid({
           // collection_position isn't guaranteed unique, so drag and drop is
           // keyed by display index instead.
           const pinIndex = index + 1;
-          const isSelected = selected.some(
-            (selectedItem) =>
-              selectedItem.id === item.id && selectedItem.model === item.model,
-          );
+          const isSelected = getIsSelected(item);
           return (
             <Box key={`${item.model}-${item.id}`} pos="relative">
               <PinnedItemSortDropTarget

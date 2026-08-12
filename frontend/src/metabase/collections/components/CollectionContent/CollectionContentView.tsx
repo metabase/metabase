@@ -292,6 +292,7 @@ export const CollectionContentView = ({
             onMove={handleMove}
             onCopy={handleCopy}
             selected={selected}
+            getIsSelected={getIsSelected}
             onToggleSelected={toggleItem}
           />
         </ErrorBoundary>
