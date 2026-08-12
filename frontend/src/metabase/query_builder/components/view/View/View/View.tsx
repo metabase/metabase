@@ -27,7 +27,7 @@ import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor"
 import { connect, useDispatch } from "metabase/redux";
 import { updateQuestionCard } from "metabase/redux/cards";
 import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
-import type { Dispatch, QueryModalType  } from "metabase/redux/store";
+import type { Dispatch, QueryModalType } from "metabase/redux/store";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

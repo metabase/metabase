@@ -10,7 +10,11 @@ import { canExploreResults } from "metabase/query_builder/components/view/ViewHe
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { useSelector } from "metabase/redux";
-import type { DatasetEditorTab, QueryBuilderMode, QueryModalType  } from "metabase/redux/store";
+import type {
+  DatasetEditorTab,
+  QueryBuilderMode,
+  QueryModalType,
+} from "metabase/redux/store";
 import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";

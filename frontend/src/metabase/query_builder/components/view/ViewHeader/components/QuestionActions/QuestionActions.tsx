@@ -11,7 +11,11 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { QuestionMoreActionsMenu } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu";
 import { useDispatch } from "metabase/redux";
-import type { DatasetEditorTab, QueryBuilderMode, QueryModalType  } from "metabase/redux/store";
+import type {
+  DatasetEditorTab,
+  QueryBuilderMode,
+  QueryModalType,
+} from "metabase/redux/store";
 import { UploadMode } from "metabase/redux/store/upload";
 import { uploadFile } from "metabase/redux/uploads";
 import { Box, Divider, Icon, Menu } from "metabase/ui";

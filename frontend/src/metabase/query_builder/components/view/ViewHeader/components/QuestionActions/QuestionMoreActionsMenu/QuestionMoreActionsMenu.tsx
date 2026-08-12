@@ -19,7 +19,11 @@ import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { onOpenQuestionSettings } from "metabase/redux/query-builder";
-import type { DatasetEditorTab, QueryBuilderMode, QueryModalType  } from "metabase/redux/store";
+import type {
+  DatasetEditorTab,
+  QueryBuilderMode,
+  QueryModalType,
+} from "metabase/redux/store";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
