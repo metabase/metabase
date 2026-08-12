@@ -46,7 +46,7 @@ To open a **measure** in the metrics explorer:
 
 When you open a measure or metric in the Metrics explorer, Metabase plots it along the most appropriate dimension. To change how the metric is broken out, click the current breakout dimension in the bottom controls to open the **Break out** sidebar. 
 
-The sidebar lists the metric's or measure's [dimensions](../data-modeling/metric-dimensions.md). The heading reads **Dimensions** when you select a single metric or measure, or **Shared dimensions** when you [compare](#compare-metrics-and-measures) multiple metrics or measures. 
+The sidebar lists the metric's or measure's [dimensions](../data-modeling/metrics.md#metric-dimensions), excluding primary key and foreign key dimensions. The heading reads **Dimensions** when you select a single metric or measure, or **Shared dimensions** when you [compare](#compare-metrics-and-measures) multiple metrics or measures. 
 
 To see the total result without any dimensions, select **No breakout**.
 

@@ -20,10 +20,6 @@ Persist model results for faster loading times.
 
 Create metrics to define the official way to calculate important numbers for your team.
 
-## [Metric dimensions](./metric-dimensions.md)
-
-Curate the dimensions people can use to break out and filter a metric, and set the default dimension Metabase uses to display the metric.
-
 ## [Table metadata admin settings](./metadata-editing.md)
 
 Guide people to the right data by adding display names, hiding outdated tables, configuring filter types, and more.
