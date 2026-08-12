@@ -212,11 +212,13 @@ const config = {
     // but leave the legacy monolithic entry as a single file.
     splitChunks: {
       chunks: (chunk) => {
-        // Only split chunks that belong to the chunked entry
-        // (the entry itself + its runtime). Never split the legacy
-        // monolithic "embedding-sdk" or the bootstrap.
+        // Split chunks that belong to the chunked entry (the entry itself +
+        // its runtime), plus the on-demand (async) chunks, so modules shared
+        // by several async chunks are deduplicated instead of copied into
+        // each one. Never split the legacy monolithic "embedding-sdk" or the
+        // bootstrap.
         const name = chunk.name || "";
-        return name.startsWith(CHUNKED_PREFIX);
+        return name.startsWith(CHUNKED_PREFIX) || !chunk.canBeInitial();
       },
       // Keep chunk count low (~10-12) so HTTP/1.1 clients (no reverse proxy)
       // can load them in 1-2 waves (6 connections per domain).
@@ -227,13 +229,26 @@ const config = {
       cacheGroups: {
         vendors: {
           test: /[\\/]node_modules[\\/]/,
+          // Only the chunked entry's own (initial) chunks: giving async
+          // modules the "vendor" name would merge them into the eagerly
+          // loaded vendor chunks and grow the initial payload.
+          chunks: (chunk) => (chunk.name || "").startsWith(CHUNKED_PREFIX),
           // Use a fixed name prefix so rspack merges vendors into a few chunks
           // (governed by maxSize) rather than one-per-package.
           name: "vendor",
           reuseExistingChunk: true,
         },
+        // Modules shared by two or more async chunks (e.g. echarts, pulled in
+        // by every lazily loaded chart) move into a shared async chunk that
+        // loads alongside whichever chart chunk needs it first.
+        asyncCommons: {
+          chunks: "async",
+          minChunks: 2,
+          reuseExistingChunk: true,
+        },
         default: {
           minChunks: 1,
+          chunks: (chunk) => (chunk.name || "").startsWith(CHUNKED_PREFIX),
           reuseExistingChunk: true,
         },
       },
