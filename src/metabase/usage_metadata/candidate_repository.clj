@@ -58,7 +58,7 @@
 (defn- table-index
   [table-ids]
   (if (seq table-ids)
-    (let [tables (t2/select [:model/Table :id :db_id :schema :display_name :active :is_published]
+    (let [tables (t2/select [:model/Table :id :db_id :schema :display_name :active :is_published :collection_id]
                             :id [:in table-ids])
           db-ids (into #{} (keep :db_id) tables)
           dbs     (if (seq db-ids)
