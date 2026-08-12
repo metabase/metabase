@@ -26,10 +26,14 @@ export function useCleanupRefresh() {
   const [startRefresh, startResult] = useStartUsageMetadataRefreshMutation();
   const status = statusQuery.data;
   const snapshotId = status?.snapshot?.id ?? null;
+  const isActive = status?.active != null;
 
-  useEffect(() => {
-    setIsPolling(status?.active != null);
-  }, [status?.active]);
+  // Adjust during render, not via a useEffect keyed on status?.active: if active is
+  // null both before start() and after the post-start refetch, that dependency never
+  // changes, so an effect would never fire and isPolling would stay stuck on true.
+  if (isPolling !== isActive) {
+    setIsPolling(isActive);
+  }
 
   useEffect(() => {
     if (!statusQuery.isSuccess) {
@@ -51,7 +55,6 @@ export function useCleanupRefresh() {
   }, [dispatch, sendSuccessToast, snapshotId, statusQuery.isSuccess]);
 
   const start = async () => {
-    setIsPolling(true);
     try {
       await startRefresh().unwrap();
       trackDataStudioCleanupRefreshStarted("success");
@@ -61,9 +64,12 @@ export function useCleanupRefresh() {
         trackDataStudioCleanupRefreshStarted("already_running");
       } else {
         trackDataStudioCleanupRefreshStarted("failure");
-        setIsPolling(false);
         sendErrorToast(t`Cleanup analysis could not be started`);
       }
+    } finally {
+      // pick up the fresh active state immediately instead of waiting for the next
+      // poll tick, which wouldn't be scheduled yet if this request settled with
+      // active still null (e.g. the 409 "already running" race)
       await statusQuery.refetch();
     }
   };
@@ -71,7 +77,7 @@ export function useCleanupRefresh() {
   return {
     status,
     isStarting: startResult.isLoading,
-    isRefreshing: status?.active != null || startResult.isLoading,
+    isRefreshing: isActive || startResult.isLoading,
     start,
   };
 }
