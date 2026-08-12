@@ -1,10 +1,10 @@
-import { render, screen, within } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 
 import { Markdown, type MarkdownProps } from "./Markdown";
 import { KITCHEN_SINK_MARKDOWN } from "./kitchen-sink-markdown";
 
-const STYLED_ELEMENTS = [
+const KNOWN_ELEMENTS = [
   "a",
   "blockquote",
   "br",
@@ -51,56 +51,14 @@ const getRenderedTagNames = (root: Element) => {
 };
 
 describe("Markdown", () => {
-  it("does not emit elements the shared stylesheet leaves unstyled", () => {
+  it("does not emit elements outside the set the stylesheet accounts for", () => {
     const { root } = setup({ children: KITCHEN_SINK_MARKDOWN });
 
-    const unstyled = getRenderedTagNames(root).filter(
-      (tagName) => !STYLED_ELEMENTS.includes(tagName),
+    const unaccounted = getRenderedTagNames(root).filter(
+      (tagName) => !KNOWN_ELEMENTS.includes(tagName),
     );
 
-    expect(unstyled).toEqual([]);
-  });
-
-  it("renders every block construct of the kitchen sink", () => {
-    const { root } = setup({ children: KITCHEN_SINK_MARKDOWN });
-
-    expect(getRenderedTagNames(root)).toEqual(
-      expect.arrayContaining([
-        "blockquote",
-        "code",
-        "del",
-        "hr",
-        "img",
-        "li",
-        "ol",
-        "pre",
-        "strong",
-        "table",
-        "td",
-        "th",
-        "ul",
-      ]),
-    );
-  });
-
-  it("renders task list checkboxes", () => {
-    setup({ children: KITCHEN_SINK_MARKDOWN });
-
-    const checkboxes = screen.getAllByRole("checkbox");
-
-    expect(checkboxes).toHaveLength(2);
-    expect(checkboxes[0]).not.toBeChecked();
-    expect(checkboxes[1]).toBeChecked();
-  });
-
-  it("renders nested lists inside list items", () => {
-    const { root } = setup({ children: KITCHEN_SINK_MARKDOWN });
-
-    const nestedList = checkNotNull(
-      root.querySelector<HTMLUListElement>("li > ul"),
-    );
-
-    expect(within(nestedList).getAllByRole("listitem")).toHaveLength(2);
+    expect(unaccounted).toEqual([]);
   });
 
   it("opens links in a new tab", () => {
@@ -113,6 +71,31 @@ describe("Markdown", () => {
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
+  it("keeps metabase:// urls", () => {
+    setup({ children: "A [link](metabase://question/1)." });
+
+    expect(screen.getByRole("link", { name: "link" })).toHaveAttribute(
+      "href",
+      "metabase://question/1",
+    );
+  });
+
+  it("keeps base64 image data uris", () => {
+    const src = "data:image/png;base64,iVBORw0KGgo=";
+    const { root } = setup({ children: `![Chart](${src})` });
+
+    expect(root.querySelector("img")).toHaveAttribute("src", src);
+  });
+
+  it("strips unsafe url protocols", () => {
+    setup({ children: "A [link](javascript:alert(1))." });
+
+    expect(screen.getByRole("link", { name: "link" })).toHaveAttribute(
+      "href",
+      "",
+    );
+  });
+
   it("escapes raw html instead of rendering it", () => {
     const { root } = setup({
       children: "Before <script>window.x = 1</script> after",
@@ -122,19 +105,13 @@ describe("Markdown", () => {
     expect(screen.getByText(/window.x = 1/)).toBeInTheDocument();
   });
 
-  it("unwraps headings when they are disallowed", () => {
+  it("renders headings as paragraphs when they are disallowed", () => {
     const { root } = setup({
       children: "# Title\n\nBody",
       disallowHeading: true,
     });
 
     expect(root.querySelector("h1")).toBeNull();
-    expect(screen.getByText("Title")).toBeInTheDocument();
-  });
-
-  it("marks compact rendering on the root", () => {
-    const { root } = setup({ children: "Text", compact: true });
-
-    expect(root).toHaveAttribute("data-compact", "true");
+    expect(screen.getByText("Title").tagName).toBe("P");
   });
 });

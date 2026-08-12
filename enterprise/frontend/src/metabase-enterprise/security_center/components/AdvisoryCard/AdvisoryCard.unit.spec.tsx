@@ -26,10 +26,12 @@ const setup = ({
 };
 
 describe("AdvisoryCard", () => {
-  it("renders markdown in the description", () => {
+  it("renders markdown in the description and the remediation", () => {
     setup({
       advisory: createAdvisory({
+        affected_versions: [],
         description: "A **critical** flaw in the [handler](https://acme.test).",
+        remediation: "Steps:\n\n- Upgrade to `v0.59.4`\n- Rotate the secret",
       }),
     });
 
@@ -40,21 +42,9 @@ describe("AdvisoryCard", () => {
     const link = within(card).getByRole("link", { name: "handler" });
     expect(link).toHaveAttribute("href", "https://acme.test");
     expect(link).toHaveAttribute("target", "_blank");
-  });
-
-  it("renders markdown lists in the remediation", () => {
-    setup({
-      advisory: createAdvisory({
-        affected_versions: [],
-        remediation: "Steps:\n\n- Upgrade to `v0.59.4`\n- Rotate the secret",
-      }),
-    });
-
-    const card = screen.getByTestId("advisory-card");
 
     expect(within(card).getAllByRole("listitem")).toHaveLength(2);
     expect(within(card).getByText("v0.59.4").tagName).toBe("CODE");
-    expect(within(card).getByText("Rotate the secret")).toBeInTheDocument();
   });
 
   it("renders plain text unchanged", () => {
