@@ -3,6 +3,7 @@
 import { schema } from "normalizr";
 
 import { entityTypeForObject } from "metabase/redux/store/entities";
+import { checkNotNull } from "metabase/utils/types";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
@@ -11,7 +12,6 @@ import type {
   Collection,
   Dashboard,
   Database,
-  DatabaseId,
   Field,
   ForeignKey,
   Measure,
@@ -56,11 +56,11 @@ export const TableSchema = new schema.Entity(
       // Virtual tables ID are strings like "card__45" (where 45 is a question ID)
       const isVirtualSchema = typeof table.id === "string";
 
-      const databaseId = isVirtualSchema
-        ? SAVED_QUESTIONS_VIRTUAL_DB_ID
-        : // tables with a raw string `schema` always carry `db_id`
-          (table.db_id as DatabaseId);
       if (typeof table.schema === "string" || table.schema === null) {
+        // tables with a raw string `schema` always carry `db_id`
+        const databaseId = isVirtualSchema
+          ? SAVED_QUESTIONS_VIRTUAL_DB_ID
+          : checkNotNull(table.db_id);
         table.schema_name = table.schema;
         table.schema = {
           id: generateSchemaId(databaseId, table.schema_name),
