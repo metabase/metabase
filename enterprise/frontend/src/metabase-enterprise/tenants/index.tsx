@@ -35,9 +35,6 @@ import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
 import { CanAccessTenantSpecificRoute } from "./components/CanAccessTenantSpecificRoute";
 import { CreateTenantsOnboardingStep } from "./components/CreateTenantsOnboardingStep";
-import { ExternalGroupDetailApp } from "./components/ExternalGroupDetailApp/ExternalGroupDetailApp";
-import { ExternalGroupsListingApp } from "./components/ExternalGroupsListingApp/ExternalGroupsListingApp";
-import { ExternalPeopleListingApp } from "./components/ExternalPeopleListingApp/ExternalPeopleListingApp";
 import { MainNavSharedCollections } from "./components/MainNavSharedCollections";
 import { ReactivateExternalUserButton } from "./components/ReactivateExternalUserButton";
 import { TenantCollectionItemList } from "./components/TenantCollectionItemList";
@@ -68,6 +65,33 @@ import {
   isTenantCollection,
   isTenantGroup,
 } from "./utils/utils";
+
+/**
+ * The tenant people and group pages wrap the admin pages of the same name, so
+ * importing them here would hold those admin pages in the initial bundle. They
+ * share the `admin` chunk with the pages they wrap: these routes sit under
+ * `/admin`, so that chunk is already on its way.
+ */
+const externalPeopleListing = () =>
+  import(
+    /* webpackChunkName: "tenants" */ "./components/ExternalPeopleListingApp/ExternalPeopleListingApp"
+  ).then(({ ExternalPeopleListingApp }) => ({
+    Component: ExternalPeopleListingApp,
+  }));
+
+const externalGroupsListing = () =>
+  import(
+    /* webpackChunkName: "tenants" */ "./components/ExternalGroupsListingApp/ExternalGroupsListingApp"
+  ).then(({ ExternalGroupsListingApp }) => ({
+    Component: ExternalGroupsListingApp,
+  }));
+
+const externalGroupDetail = () =>
+  import(
+    /* webpackChunkName: "tenants" */ "./components/ExternalGroupDetailApp/ExternalGroupDetailApp"
+  ).then(({ ExternalGroupDetailApp }) => ({
+    Component: ExternalGroupDetailApp,
+  }));
 
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
@@ -126,10 +150,10 @@ export function initializePlugin() {
           {modalRoute("user-strategy", EditUserStrategyModal, { noWrap: true })}
         </Route>
         <Route path="groups">
-          <Route index element={<ExternalGroupsListingApp />} />
-          <Route path=":groupId" element={<ExternalGroupDetailApp />} />
+          <Route index lazy={externalGroupsListing} />
+          <Route path=":groupId" lazy={externalGroupDetail} />
         </Route>
-        <Route path="people" element={<ExternalPeopleListingApp />}>
+        <Route path="people" lazy={externalPeopleListing}>
           {modalRoute(
             "new",
             (props) => (
