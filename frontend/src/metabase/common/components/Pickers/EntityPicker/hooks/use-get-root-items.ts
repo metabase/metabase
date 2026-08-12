@@ -8,6 +8,7 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
+import { getValidCollectionItemModels } from "metabase/common/components/Pickers/utils";
 import {
   useGetPersonalCollection,
   useHasTokenFeature,
@@ -29,7 +30,6 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "../types";
-import { getValidCollectionItemModels } from "../utils";
 
 import { getRootCollectionItem } from "./utils";
 

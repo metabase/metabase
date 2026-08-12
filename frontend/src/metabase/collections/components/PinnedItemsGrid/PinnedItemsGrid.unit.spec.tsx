@@ -1,3 +1,4 @@
+import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
@@ -58,9 +59,11 @@ function setup({
   mockOnCopy.mockReset();
   mockOnMove.mockReset();
 
+  setupCollectionItemsEndpoint({ collection, collectionItems: items });
+
   return renderWithProviders(
     <PinnedItemsGrid
-      items={items}
+      collectionId={collection.id}
       collection={collection}
       onCopy={mockOnCopy}
       onMove={mockOnMove}
@@ -74,17 +77,18 @@ function setup({
 }
 
 describe("PinnedItemsGrid", () => {
-  it("should render pinned items of all types in one section", () => {
+  it("should render pinned items of all types in one section", async () => {
     setup();
-    const section = within(screen.getByTestId("pinned-items"));
+    const section = within(await screen.findByTestId("pinned-items"));
     expect(section.getByText(dashboardItem.name)).toBeInTheDocument();
     expect(section.getByText(metricItem.name)).toBeInTheDocument();
     expect(section.getByText(questionItem.name)).toBeInTheDocument();
     expect(section.getByText(modelItem.name)).toBeInTheDocument();
   });
 
-  it("should not group items into typed sections", () => {
+  it("should not group items into typed sections", async () => {
     setup();
+    await screen.findByTestId("pinned-items");
     expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
     expect(screen.queryByText("Pinned questions")).not.toBeInTheDocument();
     expect(screen.queryByText("Dashboards")).not.toBeInTheDocument();
@@ -95,9 +99,9 @@ describe("PinnedItemsGrid", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should render items sorted by collection_position across types", () => {
+  it("should render items sorted by collection_position across types", async () => {
     setup();
-    const names = screen.getAllByText(
+    const names = await screen.findAllByText(
       /Dashboard Foo|Metric Bar|Question Baz|Model Qux/,
     );
     expect(names.map((name) => name.textContent)).toEqual([

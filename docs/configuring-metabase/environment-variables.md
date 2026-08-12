@@ -1390,7 +1390,7 @@ Maximum tokens for LLM responses.
 - Default: `anthropic/claude-sonnet-4-6`
 - [Configuration file name](./config-file.md): `llm-metabot-provider`
 
-The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.
+The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `moonshot/kimi-k3`, `openrouter/anthropic/claude-haiku-4.5`.
 
 ### `MB_LLM_MISTRAL_API_BASE_URL`
 
@@ -1407,6 +1407,22 @@ The Mistral API base URL used for Chat Completions.
 - [Configuration file name](./config-file.md): `llm-mistral-api-key`
 
 The Mistral API Key.
+
+### `MB_LLM_MOONSHOT_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.moonshot.ai/v1`
+- [Configuration file name](./config-file.md): `llm-moonshot-api-base-url`
+
+The Moonshot AI API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.
+
+### `MB_LLM_MOONSHOT_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-moonshot-api-key`
+
+The Moonshot AI API Key.
 
 ### `MB_LLM_OPENAI_API_BASE_URL`
 
@@ -1556,6 +1572,28 @@ Custom CORS origins for self-hosted MCP clients, space-separated.
 
 Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
 
+### `MB_METABOT_ADVANCED_PERMISSIONS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-advanced-permissions`.
+- [Configuration file name](./config-file.md): `metabot-advanced-permissions`
+
+Whether the AI feature access admin page shows granular, per-tool group permissions instead of a single on/off toggle per group.
+
+### `MB_METABOT_CHAT_SYSTEM_PROMPT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `metabot-chat-system-prompt`.
+- [Configuration file name](./config-file.md): `metabot-chat-system-prompt`
+
+Custom instructions appended to Metabot's system prompt for the chat experience (the AI sidebar and embedded Metabot).
+
 ### `MB_METABOT_ENABLED`
 
 - Type: boolean
@@ -1565,12 +1603,89 @@ Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vs
 
 Whether Metabot is enabled for regular usage.
 
+### `MB_METABOT_ICON`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `metabot`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-icon`.
+- [Configuration file name](./config-file.md): `metabot-icon`
+
+The icon for Metabot. Set to `metabot` for the default icon, or a data URI for a custom uploaded image (up to 1MB).
+
+### `MB_METABOT_LIMIT_RESET_RATE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: keyword
+- Default: `monthly`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-limit-reset-rate`.
+- [Configuration file name](./config-file.md): `metabot-limit-reset-rate`
+
+How often Metabot usage limits reset: `daily`, `weekly`, or `monthly`.
+
+### `MB_METABOT_LIMIT_UNIT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: keyword
+- Default: `tokens`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-limit-unit`.
+- [Configuration file name](./config-file.md): `metabot-limit-unit`
+
+The unit used for Metabot usage limits: `tokens` or `messages`.
+
+### `MB_METABOT_NAME`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `Metabot`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-name`.
+- [Configuration file name](./config-file.md): `metabot-name`
+
+The display name for Metabot, shown throughout the Metabase UI.
+
+### `MB_METABOT_NLQ_SYSTEM_PROMPT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `metabot-nlq-system-prompt`.
+- [Configuration file name](./config-file.md): `metabot-nlq-system-prompt`
+
+Custom instructions appended to Metabot's system prompt for the natural language query (AI exploration) experience.
+
+### `MB_METABOT_QUOTA_REACHED_MESSAGE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `You have reached your AI usage limit for the current period. Please contact your administrator.`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-quota-reached-message`.
+- [Configuration file name](./config-file.md): `metabot-quota-reached-message`
+
+The message shown to users when they reach their usage quota.
+
 ### `MB_METABOT_RECENT_VIEWS_ENABLED`
 
 - Type: boolean
 - Default: `true`
 
 Whether the user's recently viewed items are included in the Metabot system prompt.
+
+### `MB_METABOT_SHOW_ILLUSTRATIONS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `true`
+- [Exported as](../installation-and-operation/serialization.md): `metabot-show-illustrations`.
+- [Configuration file name](./config-file.md): `metabot-show-illustrations`
+
+Whether to show Metabot illustrations in the UI.
 
 ### `MB_METABOT_SLACK_SIGNING_SECRET`
 
@@ -1579,6 +1694,17 @@ Whether the user's recently viewed items are included in the Metabot system prom
 - [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
 
 Signing secret for verifying requests from the Metabot Slack app.
+
+### `MB_METABOT_SQL_SYSTEM_PROMPT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `metabot-sql-system-prompt`.
+- [Configuration file name](./config-file.md): `metabot-sql-system-prompt`
+
+Custom instructions appended to Metabot's system prompt for the SQL generation experience.
 
 ### `MB_MFA_CHALLENGE_SIGNING_KEY`
 
@@ -2666,6 +2792,19 @@ When enabled, run pivot queries as a single native GROUPING SETS query on driver
 - [Configuration file name](./config-file.md): `user-visibility`
 
 Note: Sandboxed users will never see suggestions.
+
+### `MB_WAREHOUSE_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+
+Controls which networks Metabase may connect to for warehouse connections.
+Options:
+- external-only (only globally routable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
+Also covers the SSH tunnel host and the database auth-provider URLs.
 
 ## Other environment variables
 

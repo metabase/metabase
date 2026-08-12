@@ -1,5 +1,5 @@
 import type { ClickBehaviorExtraData } from "metabase/dashboard/utils/click-behavior";
-import type { ValueAndColumnForColumnNameDate } from "metabase/visualizations/lib/formatting/link";
+import type { ValueAndColumnForColumnNameDate } from "metabase/value-formatting";
 import type {
   ClickObject,
   ComputedVisualizationSettings,

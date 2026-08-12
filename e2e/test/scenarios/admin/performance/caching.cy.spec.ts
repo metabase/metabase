@@ -209,7 +209,7 @@ describe("scenarios > admin > performance > caching", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
       H.selectCacheStrategy(/Duration/);
-      cy.findByLabelText(/Cache duration/).type("99");
+      cy.findByRole("spinbutton", { name: /Cache duration/ }).type("99");
       saveCacheStrategyForm();
 
       cy.log("Configure Orders, Count with Adaptive");
@@ -227,7 +227,10 @@ describe("scenarios > admin > performance > caching", () => {
       cy.log("Clicking Duration: 99h opens its form with duration selected");
       cy.findByTestId("cache-config-table").contains("Duration: 99h").click();
       H.cacheStrategySelect().should("have.value", "Duration");
-      cy.findByLabelText(/Cache duration/).should("have.value", "99");
+      cy.findByRole("spinbutton", { name: /Cache duration/ }).should(
+        "have.value",
+        "99",
+      );
 
       cy.log("Close the sidesheet via ESC");
       cy.get("body").type("{esc}");

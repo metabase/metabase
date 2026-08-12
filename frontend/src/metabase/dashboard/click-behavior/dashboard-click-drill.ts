@@ -7,9 +7,11 @@ import {
 } from "metabase/dashboard/utils/click-behavior";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import { getDataFromClicked } from "metabase/visualizations/lib/formatting/click-data";
-import type { ValueAndColumnForColumnNameDate } from "metabase/visualizations/lib/formatting/link";
-import { renderLinkURLForClick } from "metabase/visualizations/lib/formatting/link";
+import type { ValueAndColumnForColumnNameDate } from "metabase/value-formatting";
+import {
+  getDataFromClicked,
+  renderLinkURLForClick,
+} from "metabase/value-formatting";
 import type {
   ClickObject,
   ComputedVisualizationSettings,
