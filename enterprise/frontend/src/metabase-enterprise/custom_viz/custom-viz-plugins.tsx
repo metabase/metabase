@@ -38,6 +38,7 @@ import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
 import type { SandboxMode } from "./sandbox";
 import { usePluginMount } from "./use-plugin-mount";
+import { reportUnavailableCustomVizPlugin } from "./utils/unavailable-toast";
 
 // Track which plugins have already been loaded to avoid re-execution.
 // Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
@@ -454,11 +455,7 @@ export async function loadCustomVizPlugin(
     }
     console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
     if (!failedPluginHashes.has(plugin.id)) {
-      onInfo?.(
-        plugin.warnings.length > 0
-          ? t`The "${plugin.display_name}" visualization is currently unavailable. It was built for a different version and may need to be updated.`
-          : t`The "${plugin.display_name}" visualization is currently unavailable.`,
-      );
+      reportUnavailableCustomVizPlugin(plugin, onInfo);
     }
     failedPluginHashes.set(plugin.id, currentHash);
     return null;

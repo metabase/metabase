@@ -689,6 +689,26 @@ describe("admin > custom visualizations", () => {
           .should("be.visible");
       });
 
+      it("shows a single combined toast when multiple plugin bundles fail to load (metabase#GDGT-3076)", () => {
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_2);
+
+        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+          statusCode: 500,
+          body: "boom",
+        }).as("failedBundle");
+
+        H.visitQuestion("@questionId");
+        cy.findByTestId("viz-type-button").click();
+        cy.wait(["@failedBundle", "@failedBundle"]);
+
+        H.undoToastList()
+          .should("have.length", 1)
+          .findByText(
+            '2 visualizations are currently unavailable: "demo-viz", "demo-viz-2".',
+          )
+          .should("be.visible");
+      });
+
       it("falls back to the default viz when the bundle endpoint fails, then recovers on revisit", () => {
         const bundleMatcher = {
           method: "GET",

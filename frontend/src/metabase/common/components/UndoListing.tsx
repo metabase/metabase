@@ -23,7 +23,7 @@ import {
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
-import { Card, Ellipsified, Portal, Progress } from "metabase/ui";
+import { Card, Portal, Progress, Text } from "metabase/ui";
 import { capitalize, inflect } from "metabase/utils/formatting";
 
 import CS from "./UndoListing.module.css";
@@ -143,7 +143,9 @@ function UndoToast({
           {undo.renderChildren ? (
             undo.renderChildren(undo)
           ) : (
-            <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
+            <Text c="inherit" fz="inherit" lh="inherit">
+              {renderMessage(undo)}
+            </Text>
           )}
         </CardContentSide>
         <ControlsCardContent>
