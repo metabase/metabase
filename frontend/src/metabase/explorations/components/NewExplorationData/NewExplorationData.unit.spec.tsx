@@ -427,14 +427,10 @@ describe("NewExplorationData (Research plan)", () => {
     const metricBlock = mockMetricBlock(revenueMetric, [dimCreatedAt]);
     const userQuestion = "What drives churn?";
 
-    it("does not render the toggle when there are no user messages", () => {
+    it("hides the toggle when there are no user messages", () => {
       setup({ blocks: [metricBlock] });
 
-      expect(
-        screen.queryByRole("switch", {
-          name: /Use AI to order charts by interestingness/,
-        }),
-      ).not.toBeInTheDocument();
+      expect(screen.getByRole("switch", { hidden: true })).not.toBeVisible();
     });
 
     it("renders the toggle on by default when there are user messages", () => {
@@ -445,7 +441,7 @@ describe("NewExplorationData (Research plan)", () => {
 
       expect(
         screen.getByRole("switch", {
-          name: /Use AI to order charts by interestingness/,
+          name: /Use AI to analyze and order results/,
         }),
       ).toBeChecked();
     });
@@ -475,7 +471,7 @@ describe("NewExplorationData (Research plan)", () => {
 
       await userEvent.click(
         screen.getByRole("switch", {
-          name: /Use AI to order charts by interestingness/,
+          name: /Use AI to analyze and order results/,
         }),
       );
       await userEvent.click(

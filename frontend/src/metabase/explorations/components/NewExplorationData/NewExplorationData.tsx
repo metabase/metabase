@@ -333,7 +333,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
 
       <Group justify="space-between" align="center" wrap="nowrap">
         <Switch
-          className={cx(!hasUserPrompt && CS.hidden)}
+          style={!hasUserPrompt ? { visibility: "hidden" } : undefined}
           checked={useContextualInterestingness}
           onChange={(event) =>
             setUseContextualInterestingness(event.currentTarget.checked)
