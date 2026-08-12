@@ -110,8 +110,7 @@ function _init(
 
   const rootElement = document.getElementById("root");
   if (!rootElement) {
-    console.error("no #root element found");
-    return;
+    throw new Error("no #root element found");
   }
   const root = createRoot(rootElement);
 
