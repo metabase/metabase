@@ -32,7 +32,7 @@ import { BarChart } from "./visualizations/BarChart";
 import { BoxPlot } from "./visualizations/BoxPlot";
 import { ComboChart } from "./visualizations/ComboChart";
 import { Funnel } from "./visualizations/Funnel";
-import { Gauge } from "./visualizations/Gauge";
+import { GAUGE_CHART_DEFINITION } from "./visualizations/Gauge/definition";
 import { LineChart } from "./visualizations/LineChart";
 import { ListViz } from "./visualizations/List/components/ListViz";
 import { Map } from "./visualizations/Map";
@@ -57,7 +57,9 @@ function registerVisualizationComponents() {
   registerVisualization(Scalar);
   registerVisualization(SmartScalar);
   registerVisualization(Progress);
-  registerVisualization(Gauge);
+  registerVisualization(GAUGE_CHART_DEFINITION, () =>
+    import("./visualizations/Gauge").then((module) => module.Gauge),
+  );
   registerVisualization(Table);
   registerVisualization(LineChart);
   registerVisualization(AreaChart);
