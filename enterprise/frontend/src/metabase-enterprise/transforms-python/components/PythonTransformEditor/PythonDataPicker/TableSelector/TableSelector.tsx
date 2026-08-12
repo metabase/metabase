@@ -110,7 +110,7 @@ export function TableSelector({
             <ActionIcon
               onClick={onRemove}
               flex="0 0 auto"
-              pr="sm"
+              mr="sm"
               aria-label={t`Remove this table`}
             >
               <Icon name="close" c="text-primary" />
