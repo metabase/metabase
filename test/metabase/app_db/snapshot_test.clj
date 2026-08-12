@@ -17,6 +17,7 @@
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.app-db.snapshot-test-util :as snapshot]
    [metabase.app-db.snapshot-test-util.generate :as generate]
+   [metabase.app-db.snapshot-test-util.server :as server]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.test :as mt]
@@ -28,16 +29,8 @@
 (defn- drift-test-enabled? []
   (= "true" (config/config-str :mb-app-db-snapshot-drift-test)))
 
-(defn- regeneration-server?
-  "Whether this server is the one a snapshot for its dialect is generated from.
-
-  A dump tool describes the same schema differently depending on how old the server it read is -- Postgres 17 gave
-  NOT NULL constraints names of their own, and later releases qualify the columns in a view definition that earlier
-  ones leave bare -- so only one server version per dialect can produce the file that is checked in. The other
-  versions in the matrix still load that file and still compare it against a full migration; what they cannot do is
-  say what regenerating would write. Which server that is, is declared by the workflow that runs them."
-  []
-  (= "true" (config/config-str :mb-app-db-snapshot-regeneration-server)))
+(defn- regeneration-test-enabled? []
+  (= "true" (config/config-str :mb-app-db-snapshot-regeneration-test)))
 
 ;;; ----------------------------------------------- DB fingerprinting -----------------------------------------------
 ;;;
@@ -360,26 +353,19 @@
                 (is (= (:data from-scratch)
                        (:data from-snapshot)))))))))))
 
-(defn- dump-snapshot-if-tool-available
-  "What regenerating `driver`'s snapshot would write, or nil when the dump tool it needs is not installed. A missing
-  tool says nothing about the snapshot; a tool that runs and disagrees with the file is exactly the drift being
-  looked for."
-  [driver]
-  (try
-    (generate/dump-snapshot driver)
-    (catch java.io.IOException e
-      (log/warnf "Cannot dump %s (%s); skipping regeneration check" driver (ex-message e))
-      nil)))
-
 (deftest snapshot-is-what-generating-it-today-writes-test
   (testing "the checked-in snapshot is the file a regeneration would write, so nobody has to guess whether it is stale"
-    (if-not (and (drift-test-enabled?) (regeneration-server?))
-      (log/warn "not the server app DB snapshots are generated from; skipping app DB snapshot regeneration check")
-      (mt/test-drivers #{:h2 :mysql :postgres}
-        (when-let [{:keys [flavor content]} (dump-snapshot-if-tool-available driver/*driver*)]
-          (if-let [checked-in (io/resource (snapshot/resource-path snapshot/snapshot-version flavor "sql"))]
-            (is (nil? (first-difference (comparable-statements (slurp checked-in))
-                                        (comparable-statements content)))
-                (format "the %s snapshot is stale; regenerate it with snapshot-test-util.generate/generate!"
-                        (name flavor)))
-            (log/warnf "No app DB snapshot checked in for %s; skipping" flavor)))))))
+    ;; Every flavor is checked here rather than once per driver in the matrix, because regenerating starts the server
+    ;; it dumps -- so which flavors this can speak does not depend on which DB the job it runs in was given. It needs
+    ;; a working docker and nothing else.
+    (if-not (regeneration-test-enabled?)
+      (log/warn "MB_APP_DB_SNAPSHOT_REGENERATION_TEST is not set; skipping app DB snapshot regeneration check")
+      (doseq [flavor server/flavors]
+        (testing (name flavor)
+          (let [{:keys [content]} (generate/dump-snapshot! flavor)]
+            (if-let [checked-in (io/resource (snapshot/resource-path snapshot/snapshot-version flavor "sql"))]
+              (is (nil? (first-difference (comparable-statements (slurp checked-in))
+                                          (comparable-statements content)))
+                  (format "the %s snapshot is stale; regenerate it with (snapshot-test-util.generate/generate! %s)"
+                          (name flavor) flavor))
+              (log/warnf "No app DB snapshot checked in for %s; skipping" flavor))))))))
