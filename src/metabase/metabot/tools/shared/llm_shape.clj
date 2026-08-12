@@ -112,9 +112,8 @@
   fence remains valid when the result is interpolated inside an XML `<query>` element."
   [query]
   (or (when (map? query) (metabot.u/extract-sql-content query))
-      (let [text (export-query-for-llm query)]
-        (if (and (map? query)
-                 (str/starts-with? text "```json\n"))
+      (when-let [text (export-query-for-llm query)]
+        (if (str/starts-with? text "```json\n")
           (format "\n%s\n" text)
           text))))
 
