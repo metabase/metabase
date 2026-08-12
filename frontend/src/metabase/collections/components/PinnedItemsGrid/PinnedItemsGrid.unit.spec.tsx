@@ -1,12 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
-import {
-  fireEvent,
-  renderWithProviders,
-  screen,
-  within,
-} from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
@@ -189,6 +184,7 @@ describe("PinnedItemsGrid", () => {
 
   it("should preview selection while Shift is held", async () => {
     setup({ selected: [], onToggleSelected: jest.fn() });
+    await screen.findByTestId("pinned-items");
     const card = screen.getByRole("link", { name: /Metric Bar/ });
 
     fireEvent.keyDown(window, { key: "Shift", shiftKey: true });

@@ -301,9 +301,7 @@ describe("CollectionContent selection", () => {
   it("should select a pinned card from an empty selection with shift+click", async () => {
     const events = userEvent.setup();
     await setup();
-    const pinnedCard = screen.getByRole("link", {
-      name: new RegExp(pinnedDashboard.name),
-    });
+    const pinnedCard = getPinnedLink(pinnedDashboard.name);
 
     await events.keyboard("{Shift>}");
     await events.click(pinnedCard);
@@ -315,9 +313,7 @@ describe("CollectionContent selection", () => {
 
   it("should select a pinned card from its overflow menu", async () => {
     await setup();
-    const pinnedCard = screen.getByRole("link", {
-      name: new RegExp(pinnedDashboard.name),
-    });
+    const pinnedCard = getPinnedLink(pinnedDashboard.name);
 
     await userEvent.click(
       within(pinnedCard).getByRole("button", { name: "Actions" }),
