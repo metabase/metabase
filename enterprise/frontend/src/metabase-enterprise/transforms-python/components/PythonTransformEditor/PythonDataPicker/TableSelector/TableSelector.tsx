@@ -61,26 +61,46 @@ export function TableSelector({
 
   return (
     <>
-      <Group w="100%" bdrs="xs" gap="xs" className={S.tableSelector}>
+      <Group
+        w="100%"
+        bdrs="xs"
+        gap="xs"
+        wrap="nowrap"
+        className={S.tableSelector}
+      >
         <Button
           flex="1 1 auto"
+          miw={0}
           onClick={open}
           disabled={disabled}
-          classNames={{ inner: S.tableSelectorButtonInner }}
+          classNames={{
+            root: S.tableSelectorButton,
+            inner: S.tableSelectorButtonInner,
+            label: S.tableSelectorButtonLabel,
+          }}
           px="sm"
           py="lg"
           variant="subtle"
         >
-          <Stack gap={0} align="start" justify="center">
+          <Stack w="100%" miw={0} gap="xs" align="start" justify="center">
             {table ? (
               <>
-                <Box fz="sm" c="text-secondary" fw="normal">
+                <Box
+                  fz="sm"
+                  c="text-secondary"
+                  fw="normal"
+                  className={S.tableSelectorText}
+                >
                   {table?.db?.name} / {table?.schema}
                 </Box>
-                <Box c="text-primary">{table?.display_name}</Box>
+                <Box c="text-primary" className={S.tableSelectorText}>
+                  {table?.display_name}
+                </Box>
               </>
             ) : (
-              <Box c="text-primary">{t`Select a table…`}</Box>
+              <Box c="text-primary" className={S.tableSelectorText}>
+                {t`Select a table…`}
+              </Box>
             )}
           </Stack>
         </Button>
@@ -89,6 +109,7 @@ export function TableSelector({
           <Tooltip label={t`Remove this table`}>
             <ActionIcon
               onClick={onRemove}
+              flex="0 0 auto"
               pr="sm"
               aria-label={t`Remove this table`}
             >

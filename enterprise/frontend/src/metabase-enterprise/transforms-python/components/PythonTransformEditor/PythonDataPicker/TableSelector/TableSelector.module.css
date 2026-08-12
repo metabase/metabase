@@ -2,6 +2,24 @@
   border: 1px solid var(--border-color);
 }
 
+.tableSelectorButton,
+.tableSelectorButtonInner,
+.tableSelectorButtonLabel {
+  min-width: 0;
+}
+
 .tableSelectorButtonInner {
   justify-content: start;
+}
+
+.tableSelectorButtonLabel {
+  overflow: hidden;
+}
+
+.tableSelectorText {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
 }
