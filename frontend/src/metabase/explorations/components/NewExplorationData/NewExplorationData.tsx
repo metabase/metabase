@@ -27,7 +27,6 @@ import {
   Stack,
   Switch,
   Title,
-  Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
@@ -332,44 +331,18 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         )}
       </Box>
 
-      <Group
-        justify={hasUserPrompt ? "space-between" : "flex-end"}
-        align="center"
-        wrap="nowrap"
-      >
-        {hasUserPrompt && (
-          <Group gap="sm" align="center" wrap="nowrap">
-            <Switch
-              id="use-contextual-interestingness"
-              checked={useContextualInterestingness}
-              onChange={(event) =>
-                setUseContextualInterestingness(event.currentTarget.checked)
-              }
-              size="sm"
-            />
-            <Box
-              component="label"
-              className={S.contextualInterestingnessToggleLabel}
-              htmlFor="use-contextual-interestingness"
-            >
-              <Box component="span" fz="sm" c="text-secondary">
-                {t`Use AI to order charts by interestingness`}
-              </Box>
-              <Tooltip
-                label={t`Uses AI tokens. Turn off to use basic ordering only.`}
-              >
-                <Icon
-                  name="info"
-                  size={14}
-                  c="text-secondary"
-                  aria-label={t`More information`}
-                />
-              </Tooltip>
-            </Box>
-          </Group>
-        )}
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <Switch
+          className={cx(!hasUserPrompt && CS.hidden)}
+          checked={useContextualInterestingness}
+          onChange={(event) =>
+            setUseContextualInterestingness(event.currentTarget.checked)
+          }
+          size="sm"
+          label={t`Use AI to analyze and order results`}
+        />
         <Button
-          className={cx(!canStart && CS.hidden)} // hide with css to make sure toggle is aligned vertically
+          className={cx(!canStart && CS.hidden)}
           size="sm"
           flex="none"
           variant="filled"
