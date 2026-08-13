@@ -425,6 +425,21 @@
       (prune-old-candidate-snapshots! 9))
     (is (= [[:in #{1 2}] [:in #{3}]] @deleted))))
 
+(deftest old-candidate-snapshots-prune-stops-after-batch-bound-test
+  (let [max-batches   @#'candidate-snapshot/max-prune-batches-per-run
+        pages-served  (atom 0)
+        deleted-count (atom 0)]
+    (mt/with-dynamic-fn-redefs
+      [t2/select-pks-set (fn [_model _query]
+                           (swap! pages-served inc)
+                           #{1})
+       t2/delete!         (fn [_model _id _ids]
+                            (swap! deleted-count inc))]
+      (prune-old-candidate-snapshots! 9))
+    (testing "an inexhaustible backlog stops after max-prune-batches-per-run, not indefinitely"
+      (is (= max-batches @pages-served))
+      (is (= max-batches @deleted-count)))))
+
 (deftest refresh-queue-is-exclusive-test
   (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :queued
                                                        :trigger           :manual
