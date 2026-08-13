@@ -122,6 +122,10 @@ const setup = async ({
       value: undefined,
     }),
     createMockSettingDefinition({
+      key: "llm-moonshot-api-key",
+      value: undefined,
+    }),
+    createMockSettingDefinition({
       key: "llm-vllm-api-key",
       value: undefined,
     }),
@@ -291,14 +295,14 @@ describe("AISettingsPage", () => {
   });
 
   it("switches tabs using a query param without changing the pathname", async () => {
-    const { history } = await setup({
+    const { router } = await setup({
       enableEmbedding: true,
       initialRoute: "/admin/metabot",
     });
 
     await userEvent.click(screen.getByRole("tab", { name: "Embedded" }));
 
-    expect(history?.getCurrentLocation()).toMatchObject({
+    expect(router?.location).toMatchObject({
       pathname: "/admin/metabot",
       search: `?metabot_id=${FIXED_METABOT_IDS.EMBEDDED}`,
       hash: "",

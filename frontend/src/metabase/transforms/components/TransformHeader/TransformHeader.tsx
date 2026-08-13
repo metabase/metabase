@@ -5,8 +5,6 @@ import { Link } from "metabase/common/components/Link/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
 import type { StackProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Transform } from "metabase-types/api";
@@ -31,9 +29,6 @@ export function TransformHeader({
   readOnly,
   ...restProps
 }: TransformHeaderProps) {
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: transform.collection_id,
     namespace: "transforms",
@@ -45,10 +40,7 @@ export function TransformHeader({
       icon="transform"
       menu={
         hasMenu && (
-          <TransformMoreMenu
-            readOnly={readOnly || isRemoteSyncReadOnly}
-            transform={transform}
-          />
+          <TransformMoreMenu readOnly={readOnly} transform={transform} />
         )
       }
       tabs={!isEditMode && <TransformTabs transform={transform} />}
@@ -56,7 +48,7 @@ export function TransformHeader({
       data-testid="transforms-header"
       breadcrumbs={
         <DataStudioBreadcrumbs loading={isLoadingPath}>
-          <Link to={Urls.transformList()}>{t`Transforms`}</Link>
+          <Link to={Urls.transformList()}>{t`Data transformation`}</Link>
           {path?.map((folder) => (
             <Link
               key={folder.id}

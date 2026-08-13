@@ -6,8 +6,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Ellipsified,
   LoadingOverlay,
@@ -51,7 +50,7 @@ export const TaskRunsTable = ({
   taskRuns,
   onSortingOptionsChange,
 }: TaskRunsTableProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const columns = useMemo(() => getColumns(), []);
   const { sortingState, onSortingChange } = useSortingStateChange({
@@ -63,9 +62,9 @@ export const TaskRunsTable = ({
 
   const handleRowActivate = useCallback(
     (row: Row<TaskRun>) => {
-      dispatch(push(Urls.monitorTaskRunDetails(row.original.id)));
+      navigate(Urls.monitorTaskRunDetails(row.original.id));
     },
-    [dispatch],
+    [navigate],
   );
 
   const treeTableInstance = useTreeTableInstance<TaskRun>({

@@ -289,3 +289,14 @@
              clojure.lang.ExceptionInfo
              #"Z\.AI API key expired or invalid"
              (zai/list-models)))))))
+
+(deftest list-models-malformed-catalog-throws-test
+  (testing "a 2xx whose body carries no model list throws instead of reporting an empty catalog"
+    ;; Failing open here would let admin Connect succeed against a base URL we never reached,
+    ;; leaving an empty model picker with no diagnostic.
+    (mt/with-temporary-setting-values [llm.settings/llm-zai-api-key "zai-key.test"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body "<html>Not Found</html>"})]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Z\.AI returned an unexpected model list response"
+             (zai/list-models)))))))

@@ -14,10 +14,10 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useDispatch, useSelector } from "metabase/redux";
-import { type Location, push, useParams } from "metabase/router";
+import { useSelector } from "metabase/redux";
+import { type Location, useNavigate, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -51,12 +51,10 @@ type NewTransformPageProps = {
 function NewTransformPage({ initialSource }: NewTransformPageProps) {
   const {
     transformsDatabases,
+    remoteSyncReadOnly,
     isLoadingDatabases: isLoading,
     databasesError: error,
   } = useTransformPermissions();
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
 
   if (isLoading || error != null || transformsDatabases == null) {
     return (
@@ -66,14 +64,14 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
     );
   }
 
-  if (isRemoteSyncReadOnly) {
+  if (remoteSyncReadOnly) {
     return (
       <PageContainer pos="relative" data-testid="transform-query-editor">
         <PaneHeader
           breadcrumbs={
             <DataStudioBreadcrumbs>
               <Link key="transform-list" to={Urls.transformList()}>
-                {t`Transforms`}
+                {t`Data transformation`}
               </Link>
             </DataStudioBreadcrumbs>
           }
@@ -115,7 +113,7 @@ function NewTransformPageBody({
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const [isLeaveWarningOpen, setIsLeaveWarningOpen] = useState(false);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
   useRegisterMetabotTransformContext(undefined, source, dryRunError);
 
@@ -129,11 +127,11 @@ function NewTransformPageBody({
 
   const handleCreate = (transform: Transform) => {
     isSavedRef.current = true;
-    dispatch(push(Urls.transform(transform.id)));
+    navigate(Urls.transform(transform.id));
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.transformList()));
+    navigate(Urls.transformList());
   };
 
   const isLocationAllowed = useCallback(
@@ -166,7 +164,7 @@ function NewTransformPageBody({
           breadcrumbs={
             <DataStudioBreadcrumbs>
               <Link key="transform-list" to={Urls.transformList()}>
-                {t`Transforms`}
+                {t`Data transformation`}
               </Link>
               {t`New transform`}
             </DataStudioBreadcrumbs>

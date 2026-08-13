@@ -70,6 +70,14 @@ export function getProviderOptions(
         addKeyUrl: "https://console.mistral.ai/api-keys",
       },
     },
+    moonshot: {
+      value: "moonshot",
+      label: "Moonshot AI",
+      apiKey: {
+        placeholder: "sk-...",
+        addKeyUrl: "https://platform.kimi.ai/console/api-keys",
+      },
+    },
     openai: {
       value: "openai",
       label: "OpenAI",
@@ -122,6 +130,7 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
     provider === "bedrock" ||
     provider === "metabase" ||
     provider === "mistral" ||
+    provider === "moonshot" ||
     provider === "openai" ||
     provider === "openrouter" ||
     provider === "vllm" ||
@@ -133,12 +142,14 @@ export const API_KEY_SETTING_BY_PROVIDER: Record<
   MetabotApiKeyProvider,
   | "llm-anthropic-api-key"
   | "llm-mistral-api-key"
+  | "llm-moonshot-api-key"
   | "llm-openai-api-key"
   | "llm-openrouter-api-key"
   | "llm-zai-api-key"
 > = {
   anthropic: "llm-anthropic-api-key",
   mistral: "llm-mistral-api-key",
+  moonshot: "llm-moonshot-api-key",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
   zai: "llm-zai-api-key",

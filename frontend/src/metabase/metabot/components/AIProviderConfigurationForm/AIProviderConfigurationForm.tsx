@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useUpdateMetabotSettingsMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
@@ -27,6 +26,8 @@ import {
   Text,
 } from "metabase/ui";
 import type { MetabotProvider } from "metabase-types/api";
+
+import { useUpdateMetabotSettingsMutation } from "../../api";
 
 import { AIProviderConfigurationContext } from "./AIProviderConfigurationContext";
 import { ApiKeyProviderFields } from "./ApiKeyProviderFields";
@@ -123,6 +124,7 @@ function AIProviderConfigurationFormBody({
     useAdminSettings([
       "llm-anthropic-api-key",
       "llm-mistral-api-key",
+      "llm-moonshot-api-key",
       "llm-openai-api-key",
       "llm-openrouter-api-key",
       "llm-zai-api-key",
@@ -335,6 +337,7 @@ function AIProviderConfigurationFormBody({
               .with(
                 "anthropic",
                 "mistral",
+                "moonshot",
                 "openai",
                 "openrouter",
                 "zai",

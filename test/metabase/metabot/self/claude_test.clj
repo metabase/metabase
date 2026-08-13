@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
@@ -19,6 +20,24 @@
   "Load cached Claude raw chunks, or capture from the API when `*live*` / no cache."
   [fixture-name opts]
   (metabot.tu/raw-fixture fixture-name #(claude/claude-raw (merge {:model "claude-haiku-4-5"} opts))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; e2e localhost safeguard
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest request-e2e-localhost-safeguard-test
+  (testing "during e2e tests, self.core/request refuses a non-localhost URL before hitting the network"
+    (with-redefs [config/is-e2e? true
+                  http/request  (fn [& _] (throw (ex-info "http/request should not be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"non-localhost"
+           (self.core/request {:url "https://api.anthropic.com"} {:method :get :url "/v1/models"})))))
+  (testing "outside e2e mode the safeguard is inert (request proceeds to http/request)"
+    (with-redefs [config/is-e2e? false
+                  http/request  (fn [_] {:status 200 :body "ok"})]
+      (is (= {:status 200 :body "ok"}
+             (self.core/request {:url "https://api.anthropic.com"} {:method :get :url "/v1/models"}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
@@ -166,6 +185,27 @@
           usage  (first (filter #(= :usage (:type %)) chunks))]
       (is (= {:cacheCreationTokens 0 :cacheReadTokens 0}
              (select-keys (:usage usage) [:cacheCreationTokens :cacheReadTokens]))))))
+
+(deftest ^:parallel claude-stop-reason-on-usage-chunk-test
+  (letfn [(usage-chunk [stop-reason]
+            (let [events [{:type "message_start"
+                           :message {:id "msg-1" :model "claude-haiku-4-5" :usage {:input_tokens 10}}}
+                          {:type "content_block_start" :index 0 :content_block {:type "text"}}
+                          {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "hi"}}
+                          {:type "message_delta"
+                           :delta {:stop_reason stop-reason}
+                           :usage {:input_tokens 10 :output_tokens 64}}
+                          {:type "message_stop"}]]
+              (->> (into [] (claude/claude->aisdk-chunks-xf) events)
+                   (filter #(= :usage (:type %)))
+                   first)))]
+    (testing "the AI SDK finish reason rides the usage chunk alongside the raw provider value"
+      (are [raw finish-reason] (=? {:finish-reason finish-reason :raw-finish-reason raw}
+                                   (usage-chunk raw))
+        "max_tokens" "length"
+        "end_turn"   "stop"
+        "pause_turn" "stop"
+        "compaction" "other"))))
 
 (deftest ^:parallel claude-thinking-blocks-translated-test
   (testing "thinking content blocks become reasoning chunks; signature rides the end"
@@ -357,17 +397,19 @@
       (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
                                          llm.settings/llm-proxy-base-url    "https://proxy.example"]
         (testing "Prefers BYOK over ai proxy"
-          (with-redefs [self.core/sse-reducible identity
-                        debug/capture-stream    (fn [r _] r)
-                        http/request            (fn [req] {:body req})]
+          (with-redefs [self.core/sse-reducible             identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
+                        debug/capture-stream                (fn [r _] r)
+                        http/request                        (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://api.anthropic.com/v1/messages"
                      :headers {"x-api-key" "sk-ant-byok"}
                      :body    string?}
                     (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
         (testing "Uses ai proxy when explicitly requested"
-          (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)
+          (with-redefs [llm.settings/llm-anthropic-api-key  (constantly nil)
                         self.core/sse-reducible             identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream                (fn [r _] r)
                         http/request                        (fn [req] {:body req})]
             (is (=? {:method  :post
@@ -438,15 +480,29 @@
       (testing "older budget-token models get no thinking (off in v1)"
         (is (nil? (thinking {:model "claude-haiku-4-5"})))
         (is (nil? (thinking {:model "claude-sonnet-4-5"}))))
-      (testing "thinking raises the max_tokens floor to leave room for the answer"
-        (is (= 16384 (:max_tokens (capture-claude-request-body! {:input input :model "claude-opus-4-8"}))))
-        (is (= 32000 (:max_tokens (capture-claude-request-body! {:input input :model "claude-opus-4-8" :max-tokens 32000})))))
       (testing "forced tool choice is incompatible with thinking, so it is suppressed"
         (is (nil? (thinking {:model "claude-opus-4-8"
                              :schema {:type "object" :properties {:answer {:type "string"}}}})))
         (is (nil? (thinking {:model       "claude-opus-4-8"
                              :tools       [(metabot.tu/get-time-tool)]
                              :tool_choice "required"})))))))
+
+(deftest ^:parallel every-supported-model-has-a-ceiling-test
+  (doseq [[id {:keys [display-name max-tokens]}] @#'claude/supported-models]
+    (is (pos-int? max-tokens) id)
+    (is (seq display-name) id)))
+
+(deftest claude-max-tokens-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
+    (let [max-tokens #(:max_tokens (capture-claude-request-body!
+                                    (merge {:input [{:role :user :content "hi"}]} %)))]
+      (are [opts tokens] (= tokens (max-tokens opts))
+        {:model "claude-opus-4-8"}                             128000
+        {:model "claude-haiku-4-5-20251001"}                    64000
+        {:model "claude-opus-4-8" :max-tokens 32000}            32000
+        ;; Bedrock ids reach us vendor-prefixed
+        {:model "anthropic.claude-opus-4-8"}                   128000
+        {:model "my-deployment-3"} @#'claude/default-max-tokens))))
 
 (deftest claude-auto-cache-breakpoint-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
@@ -515,7 +571,8 @@
                                    #"\{%\s*if\s+current_user_info\s*%\}"
                                    #"\{%\s*if\s+viewing_context\s*%\}"
                                    #"\{\{\s*viewing_context"
-                                   #"\{\{\s*first_day_of_week\s*\}\}"])]
+                                   #"\{\{\s*first_day_of_week\s*\}\}"
+                                   #"\{%\s*if\s+research_plan\s*%\}"])]
           (testing (.getName f)
             (if has-volatile?
               (is (= 1 n) "exactly one sentinel expected when template references volatile context vars")

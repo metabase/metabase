@@ -252,6 +252,7 @@
                 (with-redefs [llm.settings/llm-openrouter-api-key            (constantly "fake-key")
                               llm.settings/llm-openrouter-api-base-url       (constantly llm-url)
                               scope/resolve-user-permissions                 (constantly scope/all-yes-permissions)
+                              conversation-title/ensure-title!               (constantly {:status :missing})
                               ;; The fake LLM server doesn't gzip, but clj-http wraps with
                               ;; GZIPInputStream by default. Closing mid-stream causes ZLIB errors.
                               http/post                                      (fn [url opts]
@@ -595,6 +596,31 @@
                (metabot.settings/llm-metabot-provider)))
         (is (= "mistral-key-fresh"
                (llm.settings/llm-mistral-api-key)))))))
+
+(deftest settings-put-connect-moonshot-defaults-model-test
+  (testing "connecting moonshot with only an api-key switches to the default moonshot model"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                       llm.settings/llm-moonshot-api-key     nil]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
+                                                             ([provider]
+                                                              (is (= "moonshot" provider))
+                                                              {:models [{:id "kimi-k3"
+                                                                         :display_name "Kimi K3"}]})
+                                                             ([provider {:keys [credentials]}]
+                                                              (is (= "moonshot" provider))
+                                                              (is (= {:api-key "sk-moonshot-key-fresh"} credentials))
+                                                              {:models [{:id "kimi-k3"
+                                                                         :display_name "Kimi K3"}]}))]
+        (is (= {:value  "moonshot/kimi-k3"
+                :models [{:id "kimi-k3"
+                          :display_name "Kimi K3"}]}
+               (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                     {:provider "moonshot"
+                                      :api-key  "sk-moonshot-key-fresh"})))
+        (is (= "moonshot/kimi-k3"
+               (metabot.settings/llm-metabot-provider)))
+        (is (= "sk-moonshot-key-fresh"
+               (llm.settings/llm-moonshot-api-key)))))))
 
 (deftest settings-put-updates-metabase-provider-without-api-key-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"]

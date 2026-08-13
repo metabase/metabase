@@ -13,6 +13,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
@@ -109,6 +110,15 @@
 
 ;;; Streaming response → AISDK v5 chunks
 
+(def stop-reasons
+  "Chat Completions `finish_reason` → AI SDK v5 `FinishReason`. Adapters whose dialect adds reasons beyond OpenAI's
+  extend this and pass the result to [[chat-completions->aisdk-chunks-xf]]."
+  {"stop"           "stop"
+   "length"         "length"
+   "tool_calls"     "tool-calls"
+   "function_call"  "tool-calls"
+   "content_filter" "content-filter"})
+
 (defn- delta-reasoning
   "Reasoning text carried by a Chat Completions delta or message, under either spelling. vLLM 0.26
   emits `reasoning` and treats `reasoning_content` as its deprecated name; older builds, Z.AI, and
@@ -137,22 +147,33 @@
 
   Chat Completions has no explicit start/stop events per content block like
   Claude or OpenAI Responses do — we infer transitions from the delta shape.
-  Parallel tool calls arrive with different `index` values; when a new index
-  appears the previous tool is complete.
 
-  `:forward-reasoning?` additionally translates reasoning deltas (see
-  [[delta-reasoning]]) into :reasoning-start / :reasoning-delta / :reasoning-end.
-  Opt-in, because whether a provider's reasoning renders at all is a separate
-  question (see `metabot.settings/llm-metabot-supports-reasoning?`) and chunks
-  nothing consumes only add stream volume."
-  ([] (chat-completions->aisdk-chunks-xf nil))
-  ([{:keys [forward-reasoning?]}]
+  Parallel tool calls are tracked by tool-call `id`, not by `index`, which is
+  never read: a tool-call delta whose `id` differs from the open one closes the
+  previous block and opens a new one. That relies on providers sending `id` only
+  on a tool call's opening chunk — one that repeated it on continuation chunks
+  would lose their arguments, since neither the start branch (needs `:name`) nor
+  the argument-delta branch (needs no `:id`) would fire.
+
+  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]].
+
+  `opts` may carry `:forward-reasoning?`, which additionally translates reasoning
+  deltas (see [[delta-reasoning]]) into :reasoning-start / :reasoning-delta /
+  :reasoning-end. Opt-in, because whether a provider's reasoning renders at all is
+  a separate question (see `metabot.settings/llm-metabot-supports-reasoning?`) and
+  chunks nothing consumes only add stream volume."
+  ([]
+   (chat-completions->aisdk-chunks-xf stop-reasons nil))
+  ([stop-reasons]
+   (chat-completions->aisdk-chunks-xf stop-reasons nil))
+  ([stop-reasons {:keys [forward-reasoning?]}]
    (fn [rf]
      (let [current-type (volatile! nil) ;; :text | :reasoning | :function_call | nil
            current-id   (volatile! nil) ;; active chunk id (text-id, reasoning-id, or tool call_id)
            message-id   (volatile! nil)
            model-name   (volatile! nil)
            payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
+           stop-reason  (volatile! nil)
            close!       (fn [result]
                           (u/prog1 (rf result (merge {:type (case @current-type
                                                               :text          :text-end
@@ -177,11 +198,11 @@
                 ;; Empty-string content (common between tool calls) is ignored
                 ;; to avoid spurious text blocks that would close open tools.
                 chunk-type    (cond
-                                (not-empty (:content delta))           :text
+                                (not-empty (:content delta))  :text
                                 (and forward-reasoning?
-                                     (delta-reasoning delta))          :reasoning
-                                (some? tool-call)                      :function_call
-                                :else                                  nil)
+                                     (delta-reasoning delta)) :reasoning
+                                (some? tool-call)             :function_call
+                                :else                         nil)
                 ;; For new tool calls, the id comes from the chunk; for deltas
                 ;; on the same tool, we keep current-id.
                 chunk-id      (or (:id tool-call) @current-id (core/mkid))]
@@ -244,13 +265,18 @@
                                                                     :toolCallId     (:toolCallId @payload)
                                                                     :inputTextDelta (:arguments (:function tool-call))})
               ;; Finish reason — close whatever is open
-              (some? finish-reason)                            (cond->
-                                                                @current-type (close!))
+              (some? finish-reason)                            (-> (u/prog1
+                                                                     (vreset! stop-reason finish-reason))
+                                                                   (cond->
+                                                                    @current-type (close!)))
               ;; Usage (often on a separate final chunk with empty choices)
-              (some? usage)                                    (rf {:type  :usage
-                                                                    :usage (usage->aisdk-usage usage)
-                                                                    :id    @message-id
-                                                                    :model @model-name})))))))))
+              (some? usage)                                    (rf (cond-> {:type  :usage
+                                                                            :usage (usage->aisdk-usage usage)
+                                                                            :id    @message-id
+                                                                            :model @model-name}
+                                                                     @stop-reason
+                                                                     (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
+                                                                            :raw-finish-reason @stop-reason)))))))))))
 
 ;;; Request body
 
@@ -277,3 +303,27 @@
                                         :else       "auto"))
       temperature (assoc :temperature temperature)
       max-tokens  (assoc :max_tokens max-tokens))))
+
+;;; Model catalog
+
+(defn models-catalog
+  "Extract the model list from an OpenAI-compatible `GET /models` response, failing closed.
+
+  `(get-in res [:body :data])` yields nil for any body shape we don't recognize — a base URL pointing at
+  something that isn't a model endpoint, an HTML error page, a provider that renamed the key. Returning nil
+  leaves the caller's whitelist intersection empty, so the admin Connect flow succeeds against a provider we
+  never actually reached and leaves an empty model picker with no diagnostic. Throw instead.
+
+  `provider-name` is the display name, used in the message. The exception is tagged `:api-error` so the
+  adapter's surrounding [[metabase.metabot.self.core/rethrow-api-error!]] rethrows it unchanged, and carries
+  no `:status`: this isn't a credentials problem, and `metabase.metabot.api`'s `provider-client-error?`
+  renders any 4xx under the admin API-key field, which would attach the wrong message to the wrong input.
+
+  A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes."
+  [provider-name res]
+  (let [data (get-in res [:body :data])]
+    (when-not (sequential? data)
+      (throw (ex-info (tru "{0} returned an unexpected model list response" provider-name)
+                      {:api-error  true
+                       :error-code :malformed-model-catalog})))
+    data))

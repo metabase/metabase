@@ -22,7 +22,7 @@
    [:id                  ms/PositiveInt]
    [:name                ms/NonBlankString]
    [:table_id            ms/PositiveInt]
-   [:definition          :map]
+   [:definition          ms/Map]
    [:description         {:optional true} [:maybe :string]]
    [:archived            :boolean]
    [:creator_id          ms/PositiveInt]
@@ -92,6 +92,15 @@
               metrics/filter-dimensions-for-user)
     (not include-orphaned?) metrics/without-orphaned-dimensions))
 
+(defn- with-api-dimensions
+  "Convert a measure's dimensions/mappings from the internal kebab-case shape to the
+   snake_case API shape (see [[metabase.metrics.dimension/->api-dimension]]). Applied at the
+   response edge only, so event payloads keep the internal shape."
+  [measure]
+  (cond-> measure
+    (:dimensions measure)         (update :dimensions metrics/->api-dimensions)
+    (:dimension_mappings measure) (update :dimension_mappings metrics/->api-dimension-mappings)))
+
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID."
   [{:keys [id]} :- [:map
@@ -99,7 +108,9 @@
    {:keys [include-orphaned]} :- [:map
                                   [:include-orphaned {:optional true} [:maybe ms/BooleanValue]]]]
   (let [measure (hydrated-measure id (boolean include-orphaned))]
-    (assoc measure :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))))
+    (-> measure
+        (assoc :result_column_name (metrics/aggregation-column-name (:database (:definition measure)) (:definition measure)))
+        with-api-dimensions)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::measure]
   "Fetch *all* `Measures`."
@@ -109,8 +120,8 @@
     (perms/prime-table-perms-cache {:db-ids    (when (seq table-ids)
                                                  (t2/select-fn-set :db_id :model/Table :id [:in table-ids]))
                                     :table-ids table-ids})
-    (-> (filterv mi/can-read? measures)
-        (t2/hydrate :creator :definition_description))))
+    (->> (t2/hydrate (filterv mi/can-read? measures) :creator :definition_description)
+         (mapv with-api-dimensions))))
 
 (defn- write-check-and-update-measure!
   "Check whether current user has write permissions, then update Measure with values in `body`. Publishes appropriate
@@ -147,11 +158,11 @@
    _query-params
    body :- [:map
             [:name                    {:optional true} [:maybe ms/NonBlankString]]
-            [:definition              {:optional true} [:maybe :map]]
+            [:definition              {:optional true} [:maybe ms/Map]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]
-  (write-check-and-update-measure! id body))
+  (with-api-dimensions (write-check-and-update-measure! id body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Dimension Value Endpoints                                                |

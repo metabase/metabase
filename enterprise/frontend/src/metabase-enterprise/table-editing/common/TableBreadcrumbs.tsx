@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { HeadBreadcrumbs } from "metabase/query_builder/components/view/ViewHeader/components";
+import { HeadBreadcrumbs } from "metabase/query_builder/components/view/ViewHeader/components/HeaderBreadcrumbs/HeaderBreadcrumbs";
 import type { DataSourcePart } from "metabase/query_builder/components/view/ViewHeader/components/QuestionDataSource/utils";
 import { ViewHeading } from "metabase/query_builder/components/view/ViewSection";
 import * as Urls from "metabase/urls";

@@ -64,6 +64,21 @@
       (is (not (#'agent/should-continue? 0 max-iter no-term [{:type :usage}])))
       (is (not (#'agent/should-continue? 0 max-iter no-term []))))))
 
+(deftest truncated-iteration-test
+  (let [truncated [{:type :tool-input :id "t1"}
+                   {:type :usage :finish-reason "length" :raw-finish-reason "max_tokens"}]
+        complete  [{:type :tool-input :id "t1"}
+                   {:type :usage :finish-reason "tool-calls" :raw-finish-reason "tool_use"}]]
+    (testing "a provider-truncated iteration does not continue, even with a tool call present"
+      (is (not (#'agent/should-continue? 0 20 #{} truncated)))
+      (is (#'agent/should-continue? 0 20 #{} complete)))
+    (testing "finish-reason reports :length ahead of everything else"
+      (is (= :length (#'agent/finish-reason 0 20 #{} truncated)))
+      (is (= :length (#'agent/finish-reason 20 20 #{} truncated))
+          ":length wins over :max-iterations — it is the more specific cause"))
+    (testing "a usage part without a finish reason (older adapters) is not truncation"
+      (is (= :stop (#'agent/finish-reason 0 20 #{} [{:type :text} {:type :usage}]))))))
+
 (deftest terminal-tool-call-test
   (let [terminal #{"edit_sql_query" "create_sql_query" "replace_sql_query"}
         success  [{:type :tool-input :id "a" :function "edit_sql_query"}
@@ -106,7 +121,7 @@
             (is (pos? (count result)))
             ;; Should have state data (final part)
             (is (some #(= :data (:type %)) result)))))
-      (testing "sql profile requests required tool choice, alongside the profile's temperature"
+      (testing "sql profile requests required tool choice"
         (let [captured (atom nil)]
           (mt/with-dynamic-fn-redefs [self/call-llm (fn [_model _system _parts _tools _tracking-opts llm-opts]
                                                       (reset! captured llm-opts)
@@ -117,7 +132,7 @@
                        :state      {}
                        :profile-id :sql
                        :context    {}}))
-            (is (= {:tool-choice "required" :temperature 0.3} @captured)))))
+            (is (= {:tool-choice "required"} @captured)))))
       (testing "runs agent loop with tool execution"
         (let [call-count (atom 0)]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
@@ -142,6 +157,31 @@
               (is (some #(= :data (:type %)) result))
               ;; Should have tool-related parts
               (is (some #(= :tool-input (:type %)) result))))))
+      (testing "a provider-truncated turn stops the loop WITHOUT an error part (truncation is not an error;
+                the partial turn must stay replayable so the user can continue from it)"
+        (let [call-count (atom 0)]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                              (swap! call-count inc)
+                                                              (mut/mock-llm-response
+                                                               [{:type      :tool-input
+                                                                 :id        "t1"
+                                                                 :function  "search"
+                                                                 :arguments {:query "test"}}
+                                                                {:type :usage :model "m"
+                                                                 :usage {:promptTokens 1 :completionTokens 64 :totalTokens 65}
+                                                                 :finish-reason "length" :raw-finish-reason "max_tokens"}]))]
+            (let [result (into [] (agent/run-agent-loop
+                                   {:messages   [{:role :user :content "Hi"}]
+                                    :state      {}
+                                    :profile-id :embedding_next
+                                    :context    {}}))]
+              (is (= 1 @call-count)
+                  "does not iterate on a truncated turn despite the tool call")
+              (is (not-any? #(= :error (:type %)) result)
+                  "no error part — the client learns of the truncation via finishReason \"length\"")
+              (is (some #(and (= :usage (:type %)) (= "length" (:finish-reason %))) result))
+              (is (some #(= :data (:type %)) result)
+                  "state data part still closes the turn")))))
       (testing "handles errors gracefully"
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (throw (ex-info "Mock error" {})))]
@@ -814,16 +854,20 @@
       (testing "sql profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :sql {:permission/metabot :yes :permission/metabot-sql-generation :no})))
-        (is (check! :sql {:permission/metabot :yes :permission/metabot-sql-generation :yes})))
+        (is (nil? (check! :sql {:permission/metabot :yes :permission/metabot-sql-generation :yes}))))
       (testing "nlq profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :no})))
-        (is (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :yes})))
+        (is (nil? (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :yes}))))
       (testing "transforms_codegen profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :no})))
-        (is (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :yes})))
+        (is (nil? (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :yes}))))
       (testing "document-generate-content profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :no})))
-        (is (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :yes}))))))
+        (is (nil? (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :yes}))))
+      (testing "explorations profile (gated on NLQ permission)"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+                              (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :no})))
+        (is (nil? (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :yes})))))))

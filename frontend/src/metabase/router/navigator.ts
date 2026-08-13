@@ -1,28 +1,89 @@
-import type { NavigateFunction, NavigateOptions, To } from "react-router";
+import type {
+  DataRouter,
+  NavigateFunction,
+  NavigateOptions,
+  To,
+} from "react-router";
 
-import type { RouterNavigator } from "./middleware";
-import type { Location as HistoryLocation, LocationDescriptor } from "./types";
+import type { Location as HistoryLocation } from "./types";
 
 /**
- * The live v7 `navigate`, registered by the host's `AppShell` once the router mounts.
- * The redux navigator adapter is built at store creation, before the router
- * exists, so it reads `navigate` through this holder rather than capturing it.
+ * The live `navigate`, registered by the host's `AppShell` once the router
+ * mounts. Non-component callers reach it through `navigate` below, which reads
+ * this holder rather than capturing it: they run outside React, and much of the
+ * app is constructed before the router exists.
  */
 let currentNavigate: NavigateFunction | null = null;
 
 /**
- * Navigations requested before the router registered its `navigate`. On v3 the
- * history existed at store creation, so a `dispatch(replace(...))` from a mount
- * `useLayoutEffect` (e.g. a guard redirect) took effect immediately. v7's
- * `navigate` only registers in an effect, which runs after descendant layout
- * effects, so buffer these and flush them once it does rather than dropping them.
+ * Navigations requested before the router registered its `navigate`. A
+ * navigation from a mount `useLayoutEffect` (e.g. a guard redirect) is requested
+ * before `AppShell`'s effect runs, since layout effects run first, so hold these
+ * and flush them on registration rather than dropping them.
+ *
+ * They are held as a queue, not as a single latest value, so the history stack
+ * ends up the way it would have without the registration gap. Collapsing a push
+ * and a following replace into just the replace would overwrite the entry the
+ * user arrived on rather than the intermediate one.
  */
 let pendingNavigations: Array<(navigate: NavigateFunction) => void> = [];
+
+/**
+ * Whether a router is on its way. `createAppRouter` and `createMemoryAppRouter`
+ * set this, because both put an `AppShell` above the tree and so guarantee a
+ * registration.
+ *
+ * A host that builds no router never registers a `navigate`, so anything held
+ * for it is held for the life of the page. The SDK is such a host and runs for a
+ * long time. Holding nothing until a router is on its way keeps that queue from
+ * retaining every closure, and the `state` each one captures.
+ */
+let isRouterExpected = false;
+
+export function setRouterExpected(expected: boolean): void {
+  isRouterExpected = expected;
+}
+
+/**
+ * The live router, registered as it is built. Only `getIsNavigationPending`
+ * reads it, and only for state react-router publishes nowhere else outside a
+ * component.
+ */
+let currentRouter: DataRouter | null = null;
+
+export function setRouter(router: DataRouter | null): void {
+  currentRouter = router;
+}
+
+/**
+ * Whether the router has accepted a navigation it has not committed yet.
+ *
+ * `useIsNavigating` answers the same question during a render. This is for the
+ * callers that cannot hold a hook, the same ones `navigate` below exists for.
+ *
+ * A `route.lazy` destination is what makes the window real: the router resolves
+ * the module before it commits the location, so the old page stays mounted at
+ * the old URL. Anything that navigates in that window replaces the pending
+ * navigation rather than queueing behind it, and the destination the user asked
+ * for is dropped. Effects that mirror state into the URL have to sit it out.
+ *
+ * Read from the router rather than tracked alongside it, because the router
+ * updates this synchronously and a React render does not: a caller navigating
+ * from a promise callback can run again before anything re-renders. It is
+ * precise in the other direction too. A navigation to a route that is already
+ * loaded commits during the call, so the window is never open for one, and a
+ * URL sync that follows it still runs.
+ */
+export function getIsNavigationPending(): boolean {
+  return (
+    currentRouter != null && currentRouter.state.navigation.state !== "idle"
+  );
+}
 
 export function setRouterNavigate(navigate: NavigateFunction | null): void {
   currentNavigate = navigate;
   if (!navigate) {
-    // The router unmounted. Anything still buffered was meant for it, not for
+    // The router unmounted. Anything still held was meant for it, not for
     // whatever router mounts next, so drop it rather than replay it later.
     pendingNavigations = [];
     return;
@@ -59,50 +120,31 @@ export function notifyLocationListeners(location: HistoryLocation): void {
 }
 
 /**
- * Turn a `LocationDescriptor` (string or `{ pathname, search, hash, state }`)
- * into v7 `navigate(to, options)` arguments. Shared by the imperative-router
- * shim and the redux navigator so both map descriptors the same way.
+ * `useNavigate`, for code that cannot call a hook: thunks, redux middleware,
+ * reducers, and the permission and visualization config objects. Same signature
+ * and same behaviour, with two differences that follow from having no component
+ * to anchor to.
+ *
+ * A relative target resolves from the root, because `AppShell` sits on a
+ * pathless layout route (see there). A component's `useNavigate` resolves
+ * against its own deepest match instead, so a caller moving between the two must
+ * spell an absolute path.
+ *
+ * A call before the router mounts is held and flushed on registration, so a
+ * mount-time redirect is not lost. Where the host builds no router at all, the
+ * call is a no-op and nothing is retained.
+ *
+ * Prefer `useNavigate` wherever there is a component to hold it.
  */
-export function toNavigateArgs(
-  location: LocationDescriptor,
-  options: NavigateOptions = {},
-): [To, NavigateOptions] {
-  if (typeof location === "string") {
-    return [location, options];
+export function navigate(to: To, options?: NavigateOptions): void;
+export function navigate(delta: number): void;
+export function navigate(to: To | number, options?: NavigateOptions): void {
+  const run = (fn: NavigateFunction) =>
+    typeof to === "number" ? fn(to) : fn(to, options);
+
+  if (currentNavigate) {
+    run(currentNavigate);
+  } else if (isRouterExpected) {
+    pendingNavigations.push(run);
   }
-  return [
-    {
-      pathname: location.pathname,
-      search: location.search,
-      hash: location.hash,
-    },
-    { ...options, state: location.state },
-  ];
-}
-
-/**
- * A `RouterNavigator` (the subset of `history` that `routerMiddleware` drives)
- * backed by the live v7 `navigate`. Passed to the store on v7 so
- * `dispatch(push(...))` navigates the v7 router. A call before the router mounts
- * is buffered and flushed on registration, so a mount-time redirect is not lost.
- */
-export function createRouterNavigator(): RouterNavigator {
-  const navigate = (to: To | number, options?: NavigateOptions) => {
-    const run = (fn: NavigateFunction) =>
-      typeof to === "number" ? fn(to) : fn(to, options);
-    if (currentNavigate) {
-      run(currentNavigate);
-    } else {
-      pendingNavigations.push(run);
-    }
-  };
-
-  return {
-    push: (location) => navigate(...toNavigateArgs(location)),
-    replace: (location) =>
-      navigate(...toNavigateArgs(location, { replace: true })),
-    go: (n) => navigate(n),
-    goBack: () => navigate(-1),
-    goForward: () => navigate(1),
-  };
 }

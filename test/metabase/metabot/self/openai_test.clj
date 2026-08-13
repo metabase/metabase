@@ -468,6 +468,7 @@
   (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
     (let [request-body (fn [opts]
                          (with-redefs [self.core/sse-reducible identity
+                                       self.core/reducible-with-api-errors (fn [r _ _] r)
                                        debug/capture-stream    (fn [r _] r)
                                        http/request            (fn [req] {:body req})]
                            (json/decode+kw (:body (openai/openai-raw
@@ -488,6 +489,7 @@
                                          llm.settings/llm-proxy-base-url "https://proxy.example"]
         (testing "Prefers BYOK over ai proxy"
           (with-redefs [self.core/sse-reducible identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post

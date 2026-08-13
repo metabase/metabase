@@ -65,13 +65,13 @@ describe("AI Auditing routes", () => {
   it.each([false, true])(
     "redirects the section root to Usage stats and preserves the query when upsell is %s",
     async (upsell) => {
-      const { history } = setup({
+      const { router } = setup({
         route: `${Urls.monitorAiAuditing()}?date=past7days~`,
         upsell,
       });
 
       await waitFor(() => {
-        expect(history?.getCurrentLocation()).toMatchObject({
+        expect(router?.location).toMatchObject({
           pathname: Urls.monitorAiAuditingUsage(),
           search: "?date=past7days~",
         });
@@ -83,16 +83,18 @@ describe("AI Auditing routes", () => {
     [Urls.monitorAiAuditingUsage(), "Usage stats page"],
     ["/monitor/ai-auditing/conversations", "Conversations page"],
     ["/monitor/ai-auditing/conversations/42", "Conversation detail page"],
-  ])("blocks %s when AI features are disabled", (route, pageText) => {
+  ])("blocks %s when AI features are disabled", async (route, pageText) => {
     setup({ route, aiFeaturesEnabled: false });
 
-    expect(screen.getByText("AI features are disabled")).toBeInTheDocument();
+    expect(
+      await screen.findByText("AI features are disabled"),
+    ).toBeInTheDocument();
     expect(screen.queryByText(pageText)).not.toBeInTheDocument();
   });
 
   it.each([false, true])(
     "prioritizes globally disabled AI on the MCP route when upsell is %s",
-    (upsell) => {
+    async (upsell) => {
       setup({
         route: "/monitor/ai-auditing/mcp",
         upsell,
@@ -100,7 +102,9 @@ describe("AI Auditing routes", () => {
         mcpEnabled: false,
       });
 
-      expect(screen.getByText("AI features are disabled")).toBeInTheDocument();
+      expect(
+        await screen.findByText("AI features are disabled"),
+      ).toBeInTheDocument();
       expect(screen.queryByText("MCP analytics page")).not.toBeInTheDocument();
       expect(
         screen.getByRole("link", { name: "Go to AI Settings" }),
@@ -108,26 +112,26 @@ describe("AI Auditing routes", () => {
     },
   );
 
-  it("renders Usage stats at the canonical route", () => {
+  it("renders Usage stats at the canonical route", async () => {
     setup({ route: Urls.monitorAiAuditingUsage() });
 
-    expect(screen.getByText("Usage stats page")).toBeInTheDocument();
+    expect(await screen.findByText("Usage stats page")).toBeInTheDocument();
   });
 
-  it("renders full Metabot analytics when enabled and configured", () => {
+  it("renders full Metabot analytics when enabled and configured", async () => {
     setup({ route: "/monitor/ai-auditing/conversations" });
 
-    expect(screen.getByText("Conversations page")).toBeInTheDocument();
+    expect(await screen.findByText("Conversations page")).toBeInTheDocument();
   });
 
-  it("blocks MCP analytics when MCP is disabled", () => {
+  it("blocks MCP analytics when MCP is disabled", async () => {
     setup({ route: "/monitor/ai-auditing/mcp", mcpEnabled: false });
 
-    expect(screen.getByText("MCP is disabled")).toBeInTheDocument();
+    expect(await screen.findByText("MCP is disabled")).toBeInTheDocument();
     expect(screen.queryByText("MCP analytics page")).not.toBeInTheDocument();
   });
 
-  it("keeps the license upsell ahead of AI configuration", () => {
+  it("keeps the license upsell ahead of AI configuration", async () => {
     setup({
       route: Urls.monitorAiAuditingUsage(),
       upsell: true,
@@ -135,7 +139,7 @@ describe("AI Auditing routes", () => {
       isConfigured: false,
     });
 
-    expect(screen.getByText("Usage stats upsell")).toBeInTheDocument();
+    expect(await screen.findByText("Usage stats upsell")).toBeInTheDocument();
     expect(
       screen.queryByText("AI features are disabled"),
     ).not.toBeInTheDocument();
@@ -143,7 +147,7 @@ describe("AI Auditing routes", () => {
 
   it.each([false, true])(
     "renders CLI analytics unconditionally when upsell is %s",
-    (upsell) => {
+    async (upsell) => {
       setup({
         route: Urls.monitorAiAuditingCli(),
         upsell,
@@ -152,18 +156,18 @@ describe("AI Auditing routes", () => {
         mcpEnabled: false,
       });
 
-      expect(screen.getByText("CLI analytics page")).toBeInTheDocument();
+      expect(await screen.findByText("CLI analytics page")).toBeInTheDocument();
     },
   );
 
-  it("applies MCP availability to the upsell route set", () => {
+  it("applies MCP availability to the upsell route set", async () => {
     setup({
       route: "/monitor/ai-auditing/mcp",
       upsell: true,
       mcpEnabled: false,
     });
 
-    expect(screen.getByText("MCP is disabled")).toBeInTheDocument();
+    expect(await screen.findByText("MCP is disabled")).toBeInTheDocument();
     expect(screen.queryByText("MCP analytics page")).not.toBeInTheDocument();
   });
 });

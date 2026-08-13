@@ -110,6 +110,12 @@ export const sendMessageButton = () =>
   screen.findByTestId("metabot-send-message");
 export const stopResponseButton = () =>
   screen.findByTestId("metabot-stop-response");
+export const continueResponseButton = () =>
+  screen.findByTestId("metabot-chat-message-continue");
+export const queryContinueResponseButton = () =>
+  screen.queryByTestId("metabot-chat-message-continue");
+export const queryTurnAlert = () =>
+  screen.queryByTestId("metabot-chat-message-turn-alert");
 export const closeChatButton = () => screen.findByTestId("metabot-close-chat");
 export const responseLoader = () =>
   screen.findByTestId("metabot-response-loader");
@@ -156,7 +162,6 @@ export const assertNotVisible = async () =>
     expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
   });
 
-// NOTE: for some reason the keyboard shortcuts won't work with tinykeys while testing, using redux for now...
 export const hideMetabot = (
   dispatch: any,
   agentId: MetabotAgentId = "omnibot",
@@ -341,7 +346,7 @@ export function setup(
       <MetabotProvider>{ui}</MetabotProvider>
     );
 
-  const { store, rerender, history } = renderWithProviders(content, {
+  const { store, rerender, router } = renderWithProviders(content, {
     storeInitialState: createMockState({
       ...storeInitialState,
       settings: {
@@ -362,7 +367,7 @@ export function setup(
 
   return {
     rerender,
-    history,
+    router,
     conversationIds: Object.keys(metabotState.conversations),
     // Unjustified type cast. FIXME
     store: store as Omit<typeof store, "getState" | "dispatch"> & {

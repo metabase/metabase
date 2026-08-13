@@ -99,7 +99,7 @@ describe("Table editing", () => {
       TablePicker.getTable("Orders")
         .findByTestId("table-published")
         .should("not.exist");
-      H.DataStudio.nav().findByLabelText("Library").click();
+      H.DataStudio.nav().findByLabelText("Semantic layer").click();
       H.DataStudio.Library.allTableItems().should("have.length", 0);
     },
   );

@@ -146,6 +146,12 @@
   `claude-request-body`."
   16384)
 
+(def ^:private default-temperature
+  "Sampling temperature for a caller that supplies none. vLLM's own default is 1.0, which is wrong for
+  the tool-calling and SQL-generation work the agent loop does. The hosted providers pick a sane
+  default server-side; a self-hosted server does not, so the adapter supplies one."
+  0.3)
+
 (defn- preflight-ex
   "A preflight failure, tagged so `metabase.metabot.api` surfaces the message verbatim, not as a 500."
   [msg]
@@ -330,12 +336,13 @@
   Matches what [[chat-completions/request-body]] emits, except that `max_tokens` is always sent —
   without a ceiling vLLM falls back to the remaining context window, so one looping small model
   consumes the whole budget in a single call — and is raised to
-  [[forced-tool-call-token-floor]] or [[reasoning-model-token-floor]] where either applies. Both
-  stay adapter-local rather than moving into the shared builder, which would also change Z.AI,
-  Mistral, and OpenRouter."
-  [{:keys [max-tokens schema tool_choice] :as opts} :- core/LLMRequestOpts]
+  [[forced-tool-call-token-floor]] or [[reasoning-model-token-floor]] where either applies, and
+  `temperature` falls back to [[default-temperature]]. All three stay adapter-local rather than
+  moving into the shared builder, which would also change Z.AI, Mistral, and OpenRouter."
+  [{:keys [max-tokens temperature schema tool_choice] :as opts} :- core/LLMRequestOpts]
   (let [forced? (or (some? schema) (= "required" (some-> tool_choice name)))]
-    (assoc (chat-completions/request-body opts)
+    (assoc (chat-completions/request-body (cond-> opts
+                                            (nil? temperature) (assoc :temperature default-temperature)))
            :max_tokens (cond-> (or max-tokens (llm/llm-max-tokens))
                          forced?                         (max forced-tool-call-token-floor)
                          (llm/llm-vllm-model-reasoning?) (max reasoning-model-token-floor)))))
@@ -426,9 +433,12 @@
 
   A model started with `--reasoning-parser` routes thinking to `delta.reasoning` and its answer back
   to `delta.content`; both are forwarded. The branch is self-gating — the field is present only when
-  the served model reasons — so nothing here needs to know which model is loaded."
+  the served model reasons — so nothing here needs to know which model is loaded.
+
+  vLLM adds no `finish_reason` beyond OpenAI's, so it takes the base stop-reason table."
   []
-  (chat-completions/chat-completions->aisdk-chunks-xf {:forward-reasoning? true}))
+  (chat-completions/chat-completions->aisdk-chunks-xf chat-completions/stop-reasons
+                                                      {:forward-reasoning? true}))
 
 (defn vllm
   "Call a vLLM server's Chat Completions API, return AISDK stream."

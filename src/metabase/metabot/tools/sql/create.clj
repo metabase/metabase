@@ -30,7 +30,12 @@
     (throw (ex-info (tru "Database {0} not found" database-id)
                     {:agent-error? true
                      :database-id database-id})))
-  (api/read-check :model/Database database-id))
+  (try
+    (api/read-check :model/Database database-id)
+    (catch clojure.lang.ExceptionInfo e
+      (throw (if (contains? #{403 404} (:status-code (ex-data e)))
+               (ex-info (ex-message e) (assoc (ex-data e) :agent-error? true) e)
+               e)))))
 
 (mu/defn create-sql-query :- ::metabot.tools.sql.common/operation-result
   "Create a new SQL query in memory.

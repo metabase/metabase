@@ -133,11 +133,22 @@
                                               :properties {:title {:type "string"}}}})))))
 
 (deftest ^:parallel request-body-temperature-test
-  (testing "temperature passes through"
-    (is (= 0.3
+  (testing "a caller's temperature passes through"
+    (is (= 0.7
            (:temperature (vllm/vllm-request-body {:model       "vllm-test"
                                                   :input       [{:role :user :content "hi"}]
-                                                  :temperature 0.3}))))))
+                                                  :temperature 0.7})))))
+  (testing "temperature 0 is honoured rather than treated as absent"
+    (is (= 0
+           (:temperature (vllm/vllm-request-body {:model       "vllm-test"
+                                                  :input       [{:role :user :content "hi"}]
+                                                  :temperature 0}))))))
+
+(deftest ^:parallel request-body-supplies-a-default-temperature-test
+  (testing "a caller that supplies none gets the adapter default rather than vLLM's own 1.0"
+    (is (= @#'vllm/default-temperature
+           (:temperature (vllm/vllm-request-body {:model "vllm-test"
+                                                  :input [{:role :user :content "hi"}]}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion

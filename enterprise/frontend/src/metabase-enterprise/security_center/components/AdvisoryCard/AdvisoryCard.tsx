@@ -82,7 +82,7 @@ export function AdvisoryCard({
               {advisory.affected_versions.map((v) => (
                 <List.Item
                   key={`${v.min}-${v.fixed}`}
-                >{`${v.min} - ${v.fixed}`}</List.Item>
+                >{`>= ${v.min}, < ${v.fixed}`}</List.Item>
               ))}
             </List>
           </Box>

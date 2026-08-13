@@ -1,17 +1,11 @@
 import { t } from "ttag";
 
 import { isNative } from "metabase/common/utils/card";
-import { displayNameForColumn } from "metabase/utils/formatting";
+import { displayNameForColumn } from "metabase/value-formatting";
 import {
   trackTableFreezeColumnsEnabled,
   trackTableFreezeRowsEnabled,
 } from "metabase/visualizations/analytics";
-import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
-import { ChartSettingNumberInput } from "metabase/visualizations/components/settings/ChartSettingNumberInput";
-import {
-  ChartSettingsTableFormatting,
-  isFormattable,
-} from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import {
   columnSettings,
@@ -47,6 +41,8 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { isFormattable } from "../../components/settings/ChartSettingsTableFormatting";
 
 export const TABLE_DEFINITION = {
   getUiName: () => t`Table`,
@@ -108,7 +104,7 @@ export const TABLE_DEFINITION = {
       get title() {
         return t`Number of columns to freeze`;
       },
-      widget: ChartSettingNumberInput,
+      widget: "numberInput",
       default: 1,
       isValid: (_series: Series, settings: VisualizationSettings) =>
         settings["table.freeze_columns_count"] >= 1,
@@ -139,7 +135,7 @@ export const TABLE_DEFINITION = {
       get title() {
         return t`Number of rows to freeze`;
       },
-      widget: ChartSettingNumberInput,
+      widget: "numberInput",
       default: 1,
       isValid: (_series: Series, settings: VisualizationSettings) =>
         settings["table.freeze_rows_count"] >= 1,
@@ -239,7 +235,7 @@ export const TABLE_DEFINITION = {
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
       getSection: () => t`Conditional Formatting`,
-      widget: ChartSettingsTableFormatting,
+      widget: "tableFormatting",
       getDefault: () => [],
       getProps: (series: Series, settings: VisualizationSettings) => ({
         cols: series[0].data.cols.filter(isFormattable),
@@ -364,7 +360,7 @@ export const TABLE_DEFINITION = {
 
     settings["link_text"] = {
       title: t`Link text`,
-      widget: ChartSettingLinkUrlInput,
+      widget: "linkUrlInput",
       hint: linkFieldsHint,
       getDefault: () => null,
       getHidden: (_, settings) =>
@@ -381,7 +377,7 @@ export const TABLE_DEFINITION = {
 
     settings["link_url"] = {
       title: t`Link URL`,
-      widget: ChartSettingLinkUrlInput,
+      widget: "linkUrlInput",
       hint: linkFieldsHint,
       getDefault: () => null,
       getHidden: (_, settings) => settings["view_as"] !== "link",
