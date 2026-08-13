@@ -7,7 +7,6 @@ import { dashboardReducers as dashboard } from "metabase/dashboard/reducers";
 import { documentsReducer as documents } from "metabase/documents/documents.slice";
 import { explorationsReducer as explorations } from "metabase/explorations/explorations.slice";
 import * as parameters from "metabase/parameters/reducers";
-import { reducer as analyticsExport } from "metabase/redux/analytics-export";
 import app from "metabase/redux/app";
 import { reducer as auth } from "metabase/redux/auth";
 import { reducer as downloads } from "metabase/redux/downloads";
@@ -29,7 +28,6 @@ export const commonReducers = {
   entities,
   documents,
   upload,
-  analyticsExport,
   auth,
   [Api.reducerPath]: Api.reducer,
   modal,

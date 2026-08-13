@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
-import { useExportAnalyticsMutation } from "metabase/api";
-import { useSelector } from "metabase/redux";
-import { hasActiveExport } from "metabase/redux/analytics-export";
 import { ActionIcon, Box, Icon, Text, Tooltip } from "metabase/ui";
 
+import { ANALYTICS_EXPORT_CACHE_KEY, useExportAnalyticsMutation } from "../api";
+
 export function CollectionExportAnalytics() {
-  const [exportAnalytics] = useExportAnalyticsMutation();
-  const isExporting = useSelector(hasActiveExport);
+  const [exportAnalytics, { isLoading }] = useExportAnalyticsMutation({
+    fixedCacheKey: ANALYTICS_EXPORT_CACHE_KEY,
+  });
 
   const handleExport = () => {
     exportAnalytics();
@@ -33,7 +33,7 @@ export function CollectionExportAnalytics() {
           size="2rem"
           aria-label={t`Export analytics`}
           onClick={handleExport}
-          disabled={isExporting}
+          disabled={isLoading}
         >
           <Icon name="download" />
         </ActionIcon>
