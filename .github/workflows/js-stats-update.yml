@@ -18,9 +18,9 @@ jobs:
           oss=$(find ./frontend/src/metabase -type f -name "*.js" -o -name "*.jsx" | wc -l)
           ee=$(find ./enterprise/frontend/src/metabase-enterprise -type f -name "*.js" -o -name "*.jsx" | wc -l)
 
-          echo $(($oss+$ee)) javascript files
+          echo $((oss + ee)) javascript files
 
-          echo "JS_FILES=$(($oss+$ee))" >> $GITHUB_OUTPUT
+          echo "JS_FILES=$((oss + ee))" >> "$GITHUB_OUTPUT"
       - name: Upload count to Stats
         uses: actions/github-script@v9
         env:

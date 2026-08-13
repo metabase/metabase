@@ -4,14 +4,14 @@ import {
   getDashboard,
   getDashboardId,
   getIsEditing as getIsEditingDashboard,
-} from "metabase/dashboard/selectors";
+} from "metabase/dashboard/shell-selectors";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getCurrentExploration } from "metabase/explorations/selectors";
 import {
   getIsSavedQuestionChanged,
   getQuestion,
-} from "metabase/query_builder/selectors";
+} from "metabase/query_builder/selectors/question";
 import type { State } from "metabase/redux/store";
 import { type RouterProps, getDetailViewState } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";

@@ -2,13 +2,14 @@ import { type FormikHelpers, useFormikContext } from "formik";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useUpdateMetabotSettingsMutation } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { FormErrorMessage, FormProvider, FormTextInput } from "metabase/forms";
 import { useAdminSettings } from "metabase/settings";
 import { Text } from "metabase/ui";
 import type { BedrockCredentials } from "metabase-types/api";
+
+import { useUpdateMetabotSettingsMutation } from "../../api";
 
 import { useAIProviderConfigurationContext } from "./AIProviderConfigurationContext";
 import {

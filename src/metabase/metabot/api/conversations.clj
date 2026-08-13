@@ -82,9 +82,9 @@
   [:map
    [:name                   ms/NonBlankString]
    [:description            {:optional true} [:maybe :string]]
-   [:dataset_query          :map]
+   [:dataset_query          ms/Map]
    [:display                ms/NonBlankString]
-   [:visualization_settings {:optional true} [:maybe :map]]
+   [:visualization_settings {:optional true} [:maybe ms/Map]]
    [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
@@ -100,9 +100,9 @@
    [:id                      ms/PositiveInt]
    [:name                    ms/NonBlankString]
    [:description             {:optional true} [:maybe :string]]
-   [:dataset_query           :map]
+   [:dataset_query           ms/Map]
    [:display                 :keyword]
-   [:visualization_settings  {:optional true} [:maybe :map]]
+   [:visualization_settings  {:optional true} [:maybe ms/Map]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id            {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_tab_id        {:optional true} [:maybe ms/PositiveInt]]

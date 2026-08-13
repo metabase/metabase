@@ -1,19 +1,119 @@
-import { Route, redirect } from "metabase/router";
+import { Route, redirect, registerPagePrefetch } from "metabase/router";
+import * as Urls from "metabase/urls";
 
-import { CliAnalyticsSectionLayout } from "./cli-analytics/components/CliAnalyticsSectionLayout";
-import { CliCallsPage } from "./cli-analytics/components/CliCallsPage";
-import { CliUsagePage } from "./cli-analytics/components/CliUsagePage";
 import {
   McpAnalyticsAvailabilityLayout,
   MetabotAnalyticsAvailabilityLayout,
 } from "./components/AvailabilityLayouts";
-import { McpAnalyticsSectionLayout } from "./mcp-analytics/components/McpAnalyticsSectionLayout";
-import { McpEventsPage } from "./mcp-analytics/components/McpEventsPage";
-import { McpUsagePage } from "./mcp-analytics/components/McpUsagePage";
-import { ConversationDetailPage } from "./metabot-analytics/components/ConversationDetailPage";
-import { ConversationStatsPage } from "./metabot-analytics/components/ConversationStatsPage";
-import { ConversationsPage } from "./metabot-analytics/components/ConversationsPage";
-import { MetabotAnalyticsUpsellPage } from "./metabot-analytics/components/MetabotAnalyticsUpsellPage/MetabotAnalyticsUpsellPage";
+
+/**
+ * The AI auditing pages, each in its own chunk.
+ *
+ * The plugin registry assigns these routes on every page load, so whatever they
+ * name is in the initial bundle. The pages carry the charting and data grid
+ * stack, which no other page needs on first paint.
+ */
+const conversationStatsPage = () =>
+  import("./metabot-analytics/components/ConversationStatsPage").then(
+    ({ ConversationStatsPage }) => ({ Component: ConversationStatsPage }),
+  );
+
+const conversationsPage = () =>
+  import("./metabot-analytics/components/ConversationsPage").then(
+    ({ ConversationsPage }) => ({ Component: ConversationsPage }),
+  );
+
+const conversationDetailPage = () =>
+  import("./metabot-analytics/components/ConversationDetailPage").then(
+    ({ ConversationDetailPage }) => ({ Component: ConversationDetailPage }),
+  );
+
+const metabotAnalyticsUpsellPage = () =>
+  import("./metabot-analytics/components/MetabotAnalyticsUpsellPage/MetabotAnalyticsUpsellPage").then(
+    ({ MetabotAnalyticsUpsellPage }) => ({
+      Component: MetabotAnalyticsUpsellPage,
+    }),
+  );
+
+const mcpAnalyticsSectionLayout = () =>
+  import("./mcp-analytics/components/McpAnalyticsSectionLayout").then(
+    ({ McpAnalyticsSectionLayout }) => ({
+      Component: McpAnalyticsSectionLayout,
+    }),
+  );
+
+const mcpUsagePage = () =>
+  import("./mcp-analytics/components/McpUsagePage").then(
+    ({ McpUsagePage }) => ({
+      Component: McpUsagePage,
+    }),
+  );
+
+const mcpEventsPage = () =>
+  import("./mcp-analytics/components/McpEventsPage").then(
+    ({ McpEventsPage }) => ({ Component: McpEventsPage }),
+  );
+
+const cliAnalyticsSectionLayout = () =>
+  import("./cli-analytics/components/CliAnalyticsSectionLayout").then(
+    ({ CliAnalyticsSectionLayout }) => ({
+      Component: CliAnalyticsSectionLayout,
+    }),
+  );
+
+const cliUsagePage = () =>
+  import("./cli-analytics/components/CliUsagePage").then(
+    ({ CliUsagePage }) => ({
+      Component: CliUsagePage,
+    }),
+  );
+
+const cliCallsPage = () =>
+  import("./cli-analytics/components/CliCallsPage").then(
+    ({ CliCallsPage }) => ({
+      Component: CliCallsPage,
+    }),
+  );
+
+/**
+ * Hovering a Monitor sidebar link starts the fetch, so the chunk is usually in
+ * hand by the time the click lands.
+ *
+ * `/usage` renders the stats page or the upsell page depending on the license,
+ * so hovering it asks for both. Section links prefetch their shared layout and
+ * default usage page; nested links prefetch their matching leaf page.
+ */
+registerPagePrefetch(Urls.monitorAiAuditingUsage(), conversationStatsPage);
+registerPagePrefetch(Urls.monitorAiAuditingUsage(), metabotAnalyticsUpsellPage);
+registerPagePrefetch(Urls.monitorAiAuditingConversations(), conversationsPage);
+registerPagePrefetch(
+  `${Urls.monitorAiAuditingConversations()}/`,
+  conversationDetailPage,
+);
+registerPagePrefetch(Urls.monitorAiAuditingMcp(), mcpAnalyticsSectionLayout);
+registerPagePrefetch(Urls.monitorAiAuditingMcp(), mcpUsagePage);
+registerPagePrefetch(
+  Urls.monitorAiAuditingMcpUsage(),
+  mcpAnalyticsSectionLayout,
+);
+registerPagePrefetch(Urls.monitorAiAuditingMcpUsage(), mcpUsagePage);
+registerPagePrefetch(
+  Urls.monitorAiAuditingMcpEvents(),
+  mcpAnalyticsSectionLayout,
+);
+registerPagePrefetch(Urls.monitorAiAuditingMcpEvents(), mcpEventsPage);
+registerPagePrefetch(Urls.monitorAiAuditingCli(), cliAnalyticsSectionLayout);
+registerPagePrefetch(Urls.monitorAiAuditingCli(), cliUsagePage);
+registerPagePrefetch(
+  Urls.monitorAiAuditingCliUsage(),
+  cliAnalyticsSectionLayout,
+);
+registerPagePrefetch(Urls.monitorAiAuditingCliUsage(), cliUsagePage);
+registerPagePrefetch(
+  Urls.monitorAiAuditingCliCalls(),
+  cliAnalyticsSectionLayout,
+);
+registerPagePrefetch(Urls.monitorAiAuditingCliCalls(), cliCallsPage);
 
 // The index redirects sit outside the section layouts: the layouts only render their `<Outlet />`
 // once the shared "has any data" query resolves with rows, so an index route nested inside one
@@ -23,9 +123,9 @@ function getMcpAnalyticsRoutes() {
     <Route element={<McpAnalyticsAvailabilityLayout />}>
       <Route path="mcp">
         <Route index element={redirect("usage")} />
-        <Route element={<McpAnalyticsSectionLayout />}>
-          <Route path="usage" element={<McpUsagePage />} />
-          <Route path="events" element={<McpEventsPage />} />
+        <Route lazy={mcpAnalyticsSectionLayout}>
+          <Route path="usage" lazy={mcpUsagePage} />
+          <Route path="events" lazy={mcpEventsPage} />
         </Route>
       </Route>
     </Route>
@@ -36,9 +136,9 @@ function getCliAnalyticsRoutes() {
   return (
     <Route path="cli">
       <Route index element={redirect("usage")} />
-      <Route element={<CliAnalyticsSectionLayout />}>
-        <Route path="usage" element={<CliUsagePage />} />
-        <Route path="calls" element={<CliCallsPage />} />
+      <Route lazy={cliAnalyticsSectionLayout}>
+        <Route path="usage" lazy={cliUsagePage} />
+        <Route path="calls" lazy={cliCallsPage} />
       </Route>
     </Route>
   );
@@ -49,12 +149,9 @@ export function getAiAuditingRoutes() {
     <>
       <Route index element={redirect("usage")} />
       <Route element={<MetabotAnalyticsAvailabilityLayout />}>
-        <Route path="usage" element={<ConversationStatsPage />} />
-        <Route path="conversations" element={<ConversationsPage />} />
-        <Route
-          path="conversations/:convoId"
-          element={<ConversationDetailPage />}
-        />
+        <Route path="usage" lazy={conversationStatsPage} />
+        <Route path="conversations" lazy={conversationsPage} />
+        <Route path="conversations/:convoId" lazy={conversationDetailPage} />
       </Route>
       {getMcpAnalyticsRoutes()}
       {getCliAnalyticsRoutes()}
@@ -66,7 +163,7 @@ export function getAiAuditingUpsellRoutes() {
   return (
     <>
       <Route index element={redirect("usage")} />
-      <Route path="usage" element={<MetabotAnalyticsUpsellPage />} />
+      <Route path="usage" lazy={metabotAnalyticsUpsellPage} />
       {getMcpAnalyticsRoutes()}
       {getCliAnalyticsRoutes()}
     </>

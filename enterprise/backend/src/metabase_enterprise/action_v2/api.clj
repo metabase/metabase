@@ -26,8 +26,11 @@
    :string])
 
 (mr/def ::api-action-expression
-  "A more relaxed version of ::action-expression that can still have opaque identifiers inside inside."
-  :map)
+  "A more relaxed version of ::action-expression that can still have opaque identifiers inside inside.
+
+  Open ([[ms/Map]]) rather than a bare `:map`: the shape is deliberately unspecified here, and a closed map with no
+  declared entries would have every key stripped during request decoding, so the handler would only ever see `{}`."
+  ms/Map)
 
 (mr/def ::api-action-id-or-expression
   "All the various ways of referring to an action with the v2 APIs."
@@ -147,11 +150,13 @@
   [{}
    {}
    {:keys [action scope params input]}
+   ;; `params` and `input` are open ([[ms/Map]]): their keys are the action's parameter names and the table's column
+   ;; names, so nothing here can be declared, and a bare `:map` would be stripped down to `{}` before the handler ran.
    :- [:map
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
-       [:params {:optional true} :map]
-       [:input {:optional true} :map]]]
+       [:params {:optional true} ms/Map]
+       [:input {:optional true} ms/Map]]]
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
@@ -185,10 +190,11 @@
   [{}
    {}
    {:keys [action scope inputs params]}
+   ;; see the note on `POST /execute` for why `inputs` and `params` are open
    :- [:map
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
-       [:inputs [:sequential {:min 1} :map]]
+       [:inputs [:sequential {:min 1} ms/Map]]
        [:params {:optional true} [:map-of :keyword :any]]]]
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.

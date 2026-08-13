@@ -34,8 +34,10 @@ export function generatedEntity(entity: GeneratedEntity) {
   }
 }
 
+export const CONVERSATION_BASE_PATH = "metabot/conversation";
+
 export function metabotConversation(conversationId: string) {
-  return `/metabot/conversation/${conversationId}`;
+  return `/${CONVERSATION_BASE_PATH}/${conversationId}`;
 }
 
 export type ConversationChart = {

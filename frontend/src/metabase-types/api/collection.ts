@@ -170,19 +170,23 @@ export type ListCollectionItemsSortColumn =
 
 export type ListCollectionItemsRequest = {
   id: CollectionId;
-  models?: CollectionItemModel[];
+  models?: (CollectionItemModel | "no_models")[];
+  q?: string;
+  include_available_models?: boolean;
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: CollectionNamespace;
   collection_type?: CollectionType;
   include_can_run_adhoc_query?: boolean;
   show_dashboard_questions?: boolean;
+  include_library?: boolean;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];
   models: CollectionItemModel[] | null;
+  available_models?: string[];
 } & PaginationResponse;
 
 export interface UpdateCollectionRequest {
