@@ -32,7 +32,7 @@ export const setupGuideApi = Api.injectEndpoints({
       query: () => ({
         method: "GET",
         // The path keeps the old name: renaming it would break the endpoint.
-        url: "/api/ee/embedding-hub/checklist",
+        url: "/api/embedding-hub/checklist",
       }),
       providesTags: [listTag("setup-guide-checklist")],
     }),

@@ -56,7 +56,7 @@ function setup({
     "embedded-metabot-enabled?": isEmbeddedMetabotEnabled,
   });
 
-  fetchMock.get("path:/api/ee/embedding-hub/checklist", {
+  fetchMock.get("path:/api/embedding-hub/checklist", {
     checklist,
     "data-isolation-strategy": null,
   });

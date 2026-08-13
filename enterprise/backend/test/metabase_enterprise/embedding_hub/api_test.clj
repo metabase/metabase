@@ -30,13 +30,13 @@
                                                                   :type :query
                                                                   :query {:source-table (mt/id :venues)}}}]
         (testing "returns true when there is a model not in any sample collection"
-          (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
             (is (true? (get-in response [:checklist :create-models]))
                 "Should detect the user model with nil collection_id")))
         (testing "returns false when all models are in sample collections"
           ;; Temporarily archive the user model so only sample collection models remain active
           (mt/with-temp-vals-in-db :model/Card (:id user-model) {:archived true}
-            (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+            (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
               (is (false? (get-in response [:checklist :create-models]))
                   "Should exclude models in both sample collections"))))))))
 
@@ -44,18 +44,18 @@
   (testing "create-tenants returns true when there is an active tenant"
     (mt/with-premium-features #{:embedding}
       (mt/with-temp [:model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}]
-        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
           (is (true? (get-in response [:checklist :create-tenants])))))))
   (testing "create-tenants returns false when tenant is inactive"
     (mt/with-premium-features #{:embedding}
       (mt/with-temp [:model/Tenant _ {:name "Inactive Tenant"
                                       :slug "inactive-tenant"
                                       :is_active false}]
-        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
           (is (false? (get-in response [:checklist :create-tenants])))))))
   (testing "create-tenants returns false when no tenants exist"
     (mt/with-premium-features #{:embedding}
-      (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+      (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
         (is (false? (get-in response [:checklist :create-tenants])))))))
 
 (deftest has-configured-data-segregation-strategy-test
@@ -64,7 +64,7 @@
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/Sandbox _ {:group_id group-id
                                        :table_id (mt/id :venues)}]
-        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
           (is (true? (get-in response [:checklist :setup-data-segregation-strategy])))))))
   (testing "setup-data-segregation-strategy returns true when connection impersonation is configured"
     (mt/with-premium-features #{:embedding}
@@ -72,17 +72,17 @@
                      :model/ConnectionImpersonation _ {:db_id (mt/id)
                                                        :group_id group-id
                                                        :attribute "test-attr"}]
-        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
           (is (true? (get-in response [:checklist :setup-data-segregation-strategy])))))))
   (testing "setup-data-segregation-strategy returns true when database routing is configured"
     (mt/with-premium-features #{:embedding :database-routing}
       (mt/with-temp [:model/DatabaseRouter _ {:database_id (mt/id)
                                               :user_attribute "test-attr"}]
-        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
           (is (true? (get-in response [:checklist :setup-data-segregation-strategy])))))))
   (testing "setup-data-segregation-strategy returns false when none are configured"
     (mt/with-premium-features #{:embedding}
-      (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+      (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
         (is (false? (get-in response [:checklist :setup-data-segregation-strategy])))))))
 
 (deftest enable-tenants-requires-shared-collection-test
@@ -91,12 +91,12 @@
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/Collection _ {:name "Shared collection"
                                             :namespace "shared-tenant-collection"}]
-          (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
             (is (true? (get-in response [:checklist :enable-tenants]))))))))
   (testing "enable-tenants returns false when use-tenants is true but no shared tenant collections exist"
     (mt/with-premium-features #{:embedding :tenants}
       (mt/with-temporary-setting-values [use-tenants true]
-        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
           (is (false? (get-in response [:checklist :enable-tenants]))))))))
 
 (deftest data-permissions-and-enable-tenants-test
@@ -109,7 +109,7 @@
                        :model/PermissionsGroup {group-id :id} {}
                        :model/Sandbox _ {:group_id group-id
                                          :table_id (mt/id :venues)}]
-          (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
             (is (true? (get-in response [:checklist :data-permissions-and-enable-tenants]))))))))
   (testing "returns false when data segregation is not configured even if tenants are created"
     (mt/with-premium-features #{:embedding :tenants}
@@ -117,7 +117,7 @@
         (mt/with-temp [:model/Collection _ {:name "Shared collection"
                                             :namespace "shared-tenant-collection"}
                        :model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}]
-          (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
             (is (false? (get-in response [:checklist :data-permissions-and-enable-tenants]))))))))
   (testing "returns false when tenants are not created even if tenants and data segregation are configured"
     (mt/with-premium-features #{:embedding :sandboxes :tenants}
@@ -127,14 +127,14 @@
                        :model/PermissionsGroup {group-id :id} {}
                        :model/Sandbox _ {:group_id group-id
                                          :table_id (mt/id :venues)}]
-          (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+          (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
             (is (false? (get-in response [:checklist :data-permissions-and-enable-tenants])))))))))
 
 (deftest move-dashboard-to-shared-checklist-test
   (mt/id) ;; force the app-db's own database row to exist so add-data resolves deterministically
   (mt/with-premium-features #{:embedding :tenants}
     (mt/with-temporary-setting-values [use-tenants true]
-      (let [ck (fn [k] (get-in (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist") [:checklist k]))]
+      (let [ck (fn [k] (get-in (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist") [:checklist k]))]
         (is (false? (ck :move-dashboard-to-shared)))
         (mt/with-temp [:model/Collection {sc :id} {:namespace "shared-tenant-collection"}]
           (is (false? (ck :move-dashboard-to-shared)))
@@ -146,7 +146,7 @@
   (testing "served without a licence -- unlicensed admins see the guide, and its upsell is aimed at them"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card _ {:enable_embedding true}]
-        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
           (testing "completion is real rather than all-false"
             (is (true? (get-in response [:checklist :create-test-embed]))))
           (testing "steps reading a paid feature report false rather than erroring"
@@ -155,11 +155,11 @@
   (testing "non-admins are rejected -- the response reports instance setup state"
     (doseq [features [#{} #{:embedding}]]
       (mt/with-premium-features features
-        (mt/user-http-request :rasta :get 403 "/ee/embedding-hub/checklist")))))
+        (mt/user-http-request :rasta :get 403 "/embedding-hub/checklist")))))
 
 (deftest create-custom-theme-checklist-test
   (mt/with-premium-features #{:embedding}
-    (let [ck (fn [] (get-in (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")
+    (let [ck (fn [] (get-in (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")
                             [:checklist :create-custom-theme]))]
       (testing "false when no themes exist"
         (is (false? (ck))))
@@ -172,7 +172,7 @@
 
 (deftest configure-ai-checklist-test
   (mt/with-premium-features #{:embedding}
-    (let [ck (fn [] (get-in (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")
+    (let [ck (fn [] (get-in (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")
                             [:checklist :configure-ai]))]
       (testing "false without provider credentials"
         (is (false? (ck))))
@@ -193,7 +193,7 @@
 (deftest setting-and-sso-checklist-test
   (mt/id) ;; force the app-db's own database row to exist so add-data resolves deterministically
   (mt/with-premium-features #{:embedding}
-    (let [ck (fn [k] (get-in (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist") [:checklist k]))]
+    (let [ck (fn [k] (get-in (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist") [:checklist k]))]
       (testing "create-test-embed reflects a published guest embed"
         (mt/with-temp [:model/Card _ {:enable_embedding true}]
           (is (true? (ck :create-test-embed)))))
@@ -207,24 +207,24 @@
     (mt/with-temporary-setting-values [jwt-shared-secret         "0123456789abcdef0123456789abcdef"
                                        jwt-identity-provider-uri "https://idp.example.com"
                                        jwt-enabled                true]
-      (is (true? (get-in (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")
+      (is (true? (get-in (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")
                          [:checklist :sso-configured])))))
   (mt/with-premium-features #{:embedding}
     (mt/with-temporary-setting-values [embedding-hub-sso-auth-manual-tested true]
-      (is (true? (get-in (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")
+      (is (true? (get-in (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")
                          [:checklist :sso-auth-manual-tested]))))))
 
 (deftest data-isolation-strategy-test
   (testing "data-isolation-strategy is nil when no strategy is configured"
     (mt/with-premium-features #{:embedding}
-      (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+      (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
         (is (nil? (:data-isolation-strategy response))))))
   (testing "data-isolation-strategy is row-column-level-security when sandboxes are configured"
     (mt/with-premium-features #{:embedding :sandboxes}
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/Sandbox _ {:group_id group-id
                                        :table_id (mt/id :venues)}]
-        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
           (is (= "row-column-level-security" (:data-isolation-strategy response)))))))
   (testing "data-isolation-strategy is connection-impersonation when connection impersonation is configured"
     (mt/with-premium-features #{:embedding}
@@ -232,11 +232,11 @@
                      :model/ConnectionImpersonation _ {:db_id (mt/id)
                                                        :group_id group-id
                                                        :attribute "test-attr"}]
-        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
           (is (= "connection-impersonation" (:data-isolation-strategy response)))))))
   (testing "data-isolation-strategy is database-routing when database routing is configured"
     (mt/with-premium-features #{:embedding :database-routing}
       (mt/with-temp [:model/DatabaseRouter _ {:database_id (mt/id)
                                               :user_attribute "test-attr"}]
-        (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
+        (let [response (mt/user-http-request :crowberto :get 200 "/embedding-hub/checklist")]
           (is (= "database-routing" (:data-isolation-strategy response))))))))
