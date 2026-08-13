@@ -25,7 +25,6 @@ export * from "./group-table-access-policy";
 export * from "./index-manager";
 export * from "./llm";
 export * from "./measure";
-export * from "./metabot";
 export * from "./metric";
 export * from "./notification";
 export * from "./parameters";
