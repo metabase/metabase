@@ -174,7 +174,7 @@ describe("Embed flow > Get Code Snippet", () => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
   });
 
-  it("copies the SSO code snippet with only instanceUrl", async () => {
+  it("copies the SSO code snippet with only instanceUrl in the config", async () => {
     jest.mocked(navigator.clipboard.writeText).mockClear();
 
     setup({
