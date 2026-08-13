@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5174",
-    "build": "vite build",
+    "build": "npm run sync-queries && vite build",
     "sync-queries": "embedding-sdk-react data-apps sync-queries",
     "typecheck": "tsc --noEmit"
   },
