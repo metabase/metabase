@@ -8,7 +8,7 @@ export type SetupGuideStepId =
   | "sso-configured"
   | "embed-production"
   | "data-permissions-and-enable-tenants"
-  // Hub-only steps. The home-page stepper never renders these; it maps its own
+  // Embedding hub-only steps. The home-page stepper never renders these; it maps its own
   // step list and simply never looks them up.
   | "create-custom-theme"
   | "configure-ai";

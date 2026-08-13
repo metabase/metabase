@@ -316,7 +316,7 @@ describe("EmbeddingHubGetStartedPage", () => {
   });
 
   describe("useful links", () => {
-    it("tags all three with the hub's docs campaign", async () => {
+    it("tags all three with the embedding hub's docs campaign", async () => {
       setup();
 
       const links = ["Embedding methods", "Demo", "Documentation"];
