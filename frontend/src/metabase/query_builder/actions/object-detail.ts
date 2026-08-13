@@ -10,11 +10,16 @@ import {
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import type { Card, DatasetColumn, Field, FieldId } from "metabase-types/api";
+import type {
+  Card,
+  DatasetColumn,
+  Field,
+  FieldId,
+  ObjectId,
+} from "metabase-types/api";
 
 import {
   getCanZoomNextRow,

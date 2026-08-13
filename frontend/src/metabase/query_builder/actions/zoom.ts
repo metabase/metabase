@@ -1,6 +1,6 @@
 import { ZOOM_IN_ROW } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
+import type { ObjectId } from "metabase-types/api";
 
 import { getPKColumnIndex } from "../selectors";
 

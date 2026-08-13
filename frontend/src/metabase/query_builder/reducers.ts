@@ -85,6 +85,7 @@ import type {
   Dataset,
   Field,
   NativeQuerySnippet,
+  ObjectId,
   ParameterValuesMap,
   TimelineEvent,
 } from "metabase-types/api";
@@ -384,18 +385,18 @@ export const queryStatus = createReducer<QueryBuilderQueryStatus>(
   },
 );
 
-export const zoomedRowObjectId = createReducer<number | string | null>(
+export const zoomedRowObjectId = createReducer<ObjectId | null>(
   null,
   (builder) => {
     builder
       .addCase<
         string,
-        { type: string; payload: { objectId?: number | string } | undefined }
+        { type: string; payload: { objectId?: ObjectId } | undefined }
       >(INITIALIZE_QB, (_state, action) => action.payload?.objectId ?? null)
-      .addCase<
-        string,
-        { type: string; payload: { objectId: number | string } }
-      >(ZOOM_IN_ROW, (_state, action) => action.payload.objectId)
+      .addCase<string, { type: string; payload: { objectId: ObjectId } }>(
+        ZOOM_IN_ROW,
+        (_state, action) => action.payload.objectId,
+      )
       .addCase(RESET_ROW_ZOOM, () => null)
       .addCase(RESET_QB, () => null);
   },

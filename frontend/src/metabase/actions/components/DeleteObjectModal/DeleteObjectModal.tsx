@@ -6,11 +6,11 @@ import { useExecuteActionMutation } from "metabase/api";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { Button } from "metabase/ui";
-import type { WritebackActionId } from "metabase-types/api";
+import type { ObjectId, WritebackActionId } from "metabase-types/api";
 
 interface Props {
   actionId: WritebackActionId | undefined;
-  objectId: number | string | null | undefined;
+  objectId: ObjectId | null | undefined;
   onClose: () => void;
   onSuccess: () => void;
 }

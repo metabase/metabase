@@ -23,7 +23,6 @@ import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
-import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInterval,
@@ -50,6 +49,7 @@ import type {
   DatasetColumn,
   DatasetQuery,
   Field,
+  ObjectId,
   Series,
   Timeline,
   TimelineEvent,
