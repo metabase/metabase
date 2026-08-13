@@ -147,7 +147,7 @@ type VisualizationOwnProps = {
   isVisualizer?: boolean;
   scrollToLastColumn?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
-  /** Shown while a custom viz plugin loads; owning surfaces (documents) supply their own. */
+  /** Shown while a custom viz plugin loads. */
   customVizLoadingView?: ReactNode;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | ClickActionsMode;
@@ -486,8 +486,8 @@ class Visualization extends PureComponent<
       : [];
   }
 
-  // There is no default: composition sites own their mode and must pass it
-  // (or a getter) explicitly; without one, clicks resolve no actions.
+  // There is no default mode: composition sites must pass their own.
+  // Without one, clicks resolve no actions.
   private static getMode(
     modeOrModeGetter: ClickActionModeGetter | ClickActionsMode | undefined,
     question: Question | undefined,
@@ -499,8 +499,8 @@ class Visualization extends PureComponent<
           : undefined
         : modeOrModeGetter;
 
-    // Untyped callers can still sneak in a bare QueryClickActionsMode; treat
-    // anything without actionsForClick as no mode rather than crashing.
+    // Untyped callers can still pass a bare QueryClickActionsMode.
+    // Treat anything without actionsForClick as no mode rather than crashing.
     return isClickActionsMode(mode) ? mode : undefined;
   }
 

@@ -224,7 +224,7 @@ export interface ClickActionsMode {
     settings?: Record<string, any>,
     extraData?: Record<string, any>,
   ): ClickAction[];
-  /** See ClickActionModeGetter; a resolved mode may advertise them the same way. */
+  /** See ClickActionModeGetter. A resolved mode may advertise them the same way. */
   clickActions?: LegacyDrill[];
 }
 
