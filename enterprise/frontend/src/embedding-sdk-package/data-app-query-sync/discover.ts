@@ -82,7 +82,16 @@ export async function discoverQueries(
         throw new Error(`${location} did not evaluate to a query object.`);
       }
 
-      if (canonicalJson(query) !== canonicalJson(repeatedQuery)) {
+      let deterministic: boolean;
+      try {
+        deterministic = canonicalJson(query) === canonicalJson(repeatedQuery);
+      } catch (error) {
+        throw new Error(
+          `${location} could not be canonicalized: ${String(error)}`,
+        );
+      }
+
+      if (!deterministic) {
         throw new Error(`${location} is not deterministic.`);
       }
 

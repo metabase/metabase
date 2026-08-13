@@ -25,6 +25,15 @@ const QUESTION_QUERY_KEYS: readonly string[] = [
   "enabled",
 ] satisfies readonly (keyof QuestionQueryInput)[];
 
+const DYNAMIC_QUERY_KEYS: readonly string[] = [
+  "filters",
+  "aggregations",
+  "breakouts",
+  "orderBys",
+  "limit",
+  "enabled",
+] satisfies readonly (keyof DynamicQueryInput)[];
+
 export function validateQueryInput(input: QueryInput) {
   if (isQuestionQueryInput(input)) {
     validateLimit(input.limit, "Saved question query");
@@ -79,6 +88,18 @@ function validateQuestionScopedInputs(input: QuestionQueryInput) {
 export function validateDynamicQuery(input: DynamicQueryInput | undefined) {
   if (!input) {
     return;
+  }
+
+  const extraKeys = Object.keys(input).filter(
+    (key) => !DYNAMIC_QUERY_KEYS.includes(key),
+  );
+
+  if (extraKeys.length > 0) {
+    throw new Error(
+      `Dynamic queries only support ${DYNAMIC_QUERY_KEYS.join(
+        ", ",
+      )}, but received ${extraKeys.join(", ")}.`,
+    );
   }
 
   validateLimit(input.limit, "Dynamic query");

@@ -84,8 +84,10 @@
     (mt/with-premium-features #{:data-apps-preview}
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
-        (let [app (t2/select-one :model/DataApp :name "demo")]
-          (data-app.resources/ensure-resources! app))
+        (let [app (t2/select-one :model/DataApp :name "demo")
+              {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)]
+          (is (not (some #(= resource_collection_id (:id %))
+                         (mt/user-http-request :rasta :get 200 "collection")))))
         (testing "a superuser can list, read metadata, and serve the bundle"
           (is (=? [{:name "demo" :display_name "Demo"}]
                   (mt/user-http-request :crowberto :get 200 "apps")))

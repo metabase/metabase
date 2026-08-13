@@ -27,4 +27,21 @@ describe("syncQueriesAction", () => {
       apiKey: "secret",
     });
   });
+
+  it("uses the current directory by default", async () => {
+    jest.mocked(getQuerySyncCredentials).mockReturnValue({
+      metabaseUrl: "http://metabase.test",
+      apiKey: "secret",
+    });
+
+    await syncQueriesAction();
+
+    const appRoot = path.resolve(process.cwd());
+    expect(getQuerySyncCredentials).toHaveBeenCalledWith(appRoot);
+    expect(syncQueries).toHaveBeenCalledWith({
+      appRoot,
+      metabaseUrl: "http://metabase.test",
+      apiKey: "secret",
+    });
+  });
 });
