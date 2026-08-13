@@ -159,8 +159,8 @@ const elements = [
     pattern: "enterprise/frontend/src/embedding-sdk-package/**",
   }),
   // Window-global bridges between the SDK bundle and the npm package. They
-  // stay shared tier (both artifacts compile them in), but their payload
-  // types are owned by the bundle, hence the type-only allow rule below.
+  // stay shared tier (both artifacts compile them in) and carry their payloads
+  // as opaque types; each artifact pins the concrete bundle types on its side.
   ...[
     "frontend/src/embedding-sdk-shared/lib/ensure-metabase-provider-props-store.ts",
     "frontend/src/embedding-sdk-shared/lib/metabot-state-channel.ts",
@@ -446,13 +446,6 @@ const baseRules = [
   },
   // Whitelisted cross-tier edges. Keep this list short; every entry should
   // eventually be removed.
-  // Window-bridge ABI: the payload shapes are owned by the bundle.
-  // TODO(embedding-modules): decouple with shared contracts.
-  {
-    from: ["shared/embedding-sdk-window-bridge"],
-    allow: ["app/embedding-sdk-bundle"],
-    importKind: "type",
-  },
   // The admin routes lazy-mount the app-tier theme editor. Remove once the
   // route is registered from the app tier instead.
   {
