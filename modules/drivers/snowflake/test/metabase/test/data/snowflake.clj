@@ -146,34 +146,25 @@
        (apply f stmt args)))))
 
 (defn- drop-datasets!
-  "Drop each named test database and un-track it, returning
-  `{:dropped [name...] :failed [{:name name, :error message}...]}`.
-
-  The dropping half of [[drop-old-datasets!]], split out so the nightly sweep ([[tx/gc-orphans!]]) reuses it rather
-  than growing a second copy. The two differ only in how they decide *what* to drop."
+  "Drop each named test database and un-track it. The dropping half of [[drop-old-datasets!]], split out so the
+  nightly sweep ([[tx/gc-orphans!]]) reuses it rather than carrying a second copy."
   [dataset-names]
-  (if (empty? dataset-names)
-    {:dropped [] :failed []}
+  (when (seq dataset-names)
     (with-write-stmt!
       (fn [^java.sql.Statement stmt]
-        (reduce
-         (fn [report dataset-name]
-           #_{:clj-kondo/ignore [:discouraged-var]}
-           (println "[Snowflake] Deleting old dataset:" dataset-name)
-           (try
-             (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
-             (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
-                                    dataset-name))
-             (update report :dropped conj dataset-name)
-             ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
-             ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
-             ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
-             (catch Throwable e
-               #_{:clj-kondo/ignore [:discouraged-var]}
-               (println "[Snowflake] Error deleting old dataset:" (ex-message e))
-               (update report :failed conj {:name dataset-name, :error (ex-message e)}))))
-         {:dropped [] :failed []}
-         dataset-names)))))
+        (doseq [dataset-name dataset-names]
+          #_{:clj-kondo/ignore [:discouraged-var]}
+          (println "[Snowflake] Deleting old dataset:" dataset-name)
+          (try
+            (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
+            (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
+                                   dataset-name))
+            ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
+            ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
+            ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
+            (catch Throwable e
+              #_{:clj-kondo/ignore [:discouraged-var]}
+              (println "[Snowflake] Error deleting old dataset:" (ex-message e)))))))))
 
 (defn- drop-old-datasets!
   "Drop test datasets (databases) prefixed by `sha_` that too old."
@@ -209,72 +200,37 @@
     (delete-old-test-data!)))
 
 ;;; --------------------------------- Orphan GC ----------------------------------
-;;;
-;;; Out-of-band sweep for databases that leaked past [[tx/after-run]], driven nightly by
-;;; `.github/workflows/test.cleanup-dwh-data.yml`. This is deliberately separate from [[drop-old-datasets!]] above, which
-;;; runs in-process and is currently disabled for causing CI flakes: a sweep that runs in its own job can be as
-;;; aggressive as we like without any risk of failing an unrelated test run.
-
-(def ^:private orphan-db-prefixes
-  "Test database name prefixes that [[qualified-db-name]] generates, mapped to how aggressively the nightly sweep may
-  collect each. The two categories behave very differently and must not share a TTL:
-
-  - `isolate_` names are per-run garbage. CI builds them from a random int, nothing ever reuses one, and every run
-    that dies before [[tx/after-run]] leaves another behind forever. This is the unbounded leak, so it gets the short
-    `:older-than-hours` TTL.
-
-  - `sha_` names are content-addressed and deliberately reused -- [[tx/create-db!]] skips creation when a dataset with
-    that hash already exists -- so they are shared fixtures rather than garbage. Collecting them on the short TTL
-    would make every run rebuild its datasets from scratch and would reintroduce exactly the concurrent
-    half-created-dataset races that hashing them exists to prevent. They do still leak, whenever a dataset definition
-    changes and strands the old hash, but slowly and boundedly, so they get the long `:fixture-hours` TTL.
-
-  Any database not matching one of these prefixes is left alone -- notably `metabase_test_tracking`, which holds the
-  bookkeeping this sweep itself reads."
-  {"isolate_" :older-than-hours
-   "sha_"     :fixture-hours})
 
 (defn- orphan-databases
-  "Names of test databases old enough to be collected, oldest first, given a map of `:older-than-hours` and
-  `:fixture-hours`. See [[orphan-db-prefixes]] for which names each threshold governs.
+  "Names of test databases old enough for the nightly sweep to collect, oldest first. Pure -- reads the catalog and
+  drops nothing, so it doubles as the dry-run preview.
 
-  Pure: reads the catalog and drops nothing, so it doubles as the preview for a dry run. Call it from a REPL to see
-  what the sweep would do.
+  The two shapes [[qualified-db-name]] generates need different TTLs: `isolate_` names are per-run garbage nothing
+  reuses, while `sha_` names are content-addressed and deliberately shared, so collecting those eagerly would make
+  every run rebuild its datasets. Databases matching neither, notably `metabase_test_tracking`, are left alone.
 
-  Deliberately a separate enumeration from [[old-dataset-names]] rather than a parameterization of it: that one reads
-  `accessed_at` out of the tracking table, so it can only ever find databases some run remembered to track, whereas
-  the orphans this sweep exists for are exactly the ones whose bookkeeping never happened. Both feed the same
-  [[drop-datasets!]].
-
-  Snowflake test database names carry no timestamp -- unlike the shared
-  [[metabase.driver.sql.test-util.unique-prefix]] convention the other cloud drivers use, [[qualified-db-name]] builds
-  them from a random int or a dataset hash -- so age has to come from the catalog's `created` column rather than from
-  the name."
-  [thresholds]
-  (let [collectable? (fn [db-name age-hours]
-                       (some (fn [[prefix threshold-key]]
-                               (and (str/starts-with? db-name prefix)
-                                    ;; a catalog row with no `created` can't be aged, so leave it alone
-                                    (some? age-hours)
-                                    (>= age-hours (get thresholds threshold-key))))
-                             orphan-db-prefixes))]
-    (into []
-          (keep (fn [{:keys [database_name age_hours]}]
-                  (when (collectable? database_name age_hours)
-                    database_name)))
-          (jdbc/query (no-db-connection-spec)
-                      ["select database_name,
-                               timestampdiff('hour', created, current_timestamp()) as age_hours
-                        from metabase_test_tracking.information_schema.databases
-                        order by created"]))))
+  Not a parameterization of [[old-dataset-names]]: that reads `accessed_at` from the tracking table, so it only finds
+  databases some run remembered to track, and these orphans are the ones whose bookkeeping never happened."
+  [{:keys [older-than-hours fixture-hours]}]
+  (into []
+        (keep (fn [{:keys [database_name age_hours]}]
+                (when (and age_hours
+                           (cond
+                             (str/starts-with? database_name "isolate_") (>= age_hours older-than-hours)
+                             (str/starts-with? database_name "sha_")     (>= age_hours fixture-hours)))
+                  database_name)))
+        (jdbc/query (no-db-connection-spec)
+                    ["select database_name,
+                             timestampdiff('hour', created, current_timestamp()) as age_hours
+                      from metabase_test_tracking.information_schema.databases
+                      order by created"])))
 
 (defmethod tx/gc-orphans! :snowflake
-  [_driver {:keys [older-than-hours fixture-hours dry-run?] :as options}]
-  {:pre [(pos-int? older-than-hours) (pos-int? fixture-hours)]}
+  [_driver {:keys [dry-run?] :as options}]
   (let [found (orphan-databases options)]
-    (merge (assoc tx/empty-gc-report :found found)
-           (when-not dry-run?
-             (drop-datasets! found)))))
+    (when-not dry-run?
+      (drop-datasets! found))
+    found))
 
 (defn- set-current-user-timezone!
   [timezone]

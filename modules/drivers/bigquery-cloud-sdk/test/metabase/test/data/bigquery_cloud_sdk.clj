@@ -350,14 +350,11 @@
 
 (defn- old-dataset-names
   "Names of test datasets older than `hours`: tracked ones nothing has accessed in that long, plus untracked ones
-  created that long ago. Pure -- reads and returns names, deletes nothing, so it doubles as the preview for a dry run.
+  created that long ago. Pure -- returns names and deletes nothing, so it doubles as the dry-run preview.
 
-  Split out of [[delete-old-datasets!]] (with the fixed 14 days made a parameter) so the nightly sweep
-  ([[tx/gc-orphans!]]) runs this same enumeration on its own threshold instead of carrying a second, subtly different
-  copy of it.
-
-  Excludes the current `test-data`, which [[destroy-dataset!]] refuses to delete anyway -- keeping it out here means
-  the sweep doesn't report a spurious failure for it every single night."
+  Split out of [[delete-old-datasets!]], with its fixed 14 days made a parameter, so the nightly sweep
+  ([[tx/gc-orphans!]]) runs the same enumeration on its own threshold. Excludes the current `test-data`, which
+  [[destroy-dataset!]] refuses to delete anyway."
   [hours]
   (let [current-test-data (test-dataset-id (tx/get-dataset-definition
                                             (data.impl/resolve-dataset-definition *ns* 'test-data)))]
@@ -377,25 +374,8 @@
                     (project-id)
                     hours))))
 
-(defn- drop-datasets!
-  "Delete each named dataset, returning `{:dropped [name...] :failed [{:name name, :error message}...]}`.
-
-  The dropping half of [[delete-old-datasets!]], split out so the nightly sweep reuses it. Unlike the original loop
-  this catches per dataset: one dataset another job deleted concurrently shouldn't abandon the rest of the sweep."
-  [dataset-ids]
-  (reduce (fn [report dataset-id]
-            (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." dataset-id))
-            (try
-              (destroy-dataset! dataset-id)
-              (update report :dropped conj dataset-id)
-              (catch Throwable e
-                (log/warnf "Failed to delete %s, skipping: %s" dataset-id (ex-message e))
-                (update report :failed conj {:name dataset-id, :error (ex-message e)}))))
-          {:dropped [] :failed []}
-          dataset-ids))
-
 (defn delete-old-datasets! []
-  (drop-datasets! (old-dataset-names (* 14 24))))
+  (run! destroy-dataset! (old-dataset-names (* 14 24))))
 
 (defonce ^:private deleted-old-datasets?
   (atom false))
@@ -408,28 +388,20 @@
 
 ;;; --------------------------------- Orphan GC ----------------------------------
 ;;;
-;;; Out-of-band sweep driven nightly by `.github/workflows/test.cleanup-dwh-data.yml`. It shares [[old-dataset-names]]
-;;; and [[drop-datasets!]] with [[delete-old-datasets!]] above and differs only in its threshold -- the in-process
-;;; caller is currently disabled (see [[tx/create-db!]]) for being an unreliable thing to do in the middle of a test
-;;; run, whereas a sweep in its own job can be as aggressive as we like without failing anyone else's tests.
+;;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`). Same enumeration and deletion as
+;;; [[delete-old-datasets!]], only on a different threshold -- that in-process caller is currently disabled (see
+;;; [[tx/create-db!]]) for being unreliable mid-test-run, whereas a sweep in its own job can't fail anyone's tests.
 ;;;
-;;; Note that every BigQuery test dataset is content-addressed by [[test-dataset-id]] and reused across runs, so
-;;; unlike Snowflake there is no per-run garbage here and nothing to collect on a short TTL. Datasets are stranded
-;;; only when a dataset *definition* changes and leaves its old hash behind, which is bounded and slow, so this sweep
-;;; uses the long `:fixture-hours` threshold and ignores `:older-than-hours` entirely. Collecting these aggressively
-;;; would force every run to rebuild its datasets and would reintroduce the concurrent half-created-dataset races that
-;;; hashing them exists to prevent.
-;;;
-;;; Known gap: this sweeps only the default test project. Datasets created under `tx/*use-routing-details*` live in
-;;; whatever project that service account points at and are not collected here.
+;;; Every dataset here is content-addressed by [[test-dataset-id]] and reused across runs, so there is no per-run
+;;; garbage and `:older-than-hours` does not apply -- datasets are stranded only when a definition changes, which is
+;;; slow and bounded. Known gap: only the default test project is swept, not `tx/*use-routing-details*`.
 
 (defmethod tx/gc-orphans! :bigquery-cloud-sdk
   [_driver {:keys [fixture-hours dry-run?]}]
-  {:pre [(pos-int? fixture-hours)]}
   (let [found (old-dataset-names fixture-hours)]
-    (merge (assoc tx/empty-gc-report :found found)
-           (when-not dry-run?
-             (drop-datasets! found)))))
+    (when-not dry-run?
+      (run! destroy-dataset! found))
+    found))
 
 (defn- setup-tracking-dataset!
   "Idempotently create test tracking database"

@@ -207,69 +207,46 @@
    Pure: makes 1-2 catalog queries but does NOT drop anything. Use the
    `drop-orphan-*!` fns to act on the result.
 
-   `hours-threshold` overrides how old a test data schema must be to count as `:old`; the nightly orphan sweep passes
-   a smaller value than the in-process cleanup uses. Defaults to whatever
-   [[metabase.driver.sql.test-util.unique-prefix/old-dataset-name?]] uses. Cache schemas are classified by their own
-   TTL either way and are unaffected by it."
-  ([^java.sql.Connection conn]
-   (orphan-schemas conn nil))
-  ([^java.sql.Connection conn hours-threshold]
-   (let [old? (if hours-threshold
-                #(sql.tu.unique-prefix/old-dataset-name? % hours-threshold)
-                sql.tu.unique-prefix/old-dataset-name?)
-         {old-convention   :old
-          caches-with-info :cache} (reduce (fn [acc s]
-                                             (cond (old? s)
-                                                   (update acc :old conj s)
-                                                   (str/starts-with? s "metabase_cache_")
-                                                   (update acc :cache conj s)
-                                                   :else acc))
-                                           {:old [] :cache []}
-                                           (fetch-schemas conn))
-         {expired-cache      :expired
-          old-style-cache    :old-style-cache
-          lacking-created-at :lacking-created-at} (classify-cache-schemas conn caches-with-info)]
-     {:old                (vec old-convention)
-      :expired-cache      (vec expired-cache)
-      :old-style-cache    (vec old-style-cache)
-      :lacking-created-at (vec lacking-created-at)})))
+   `hours-threshold` is how old a test data schema must be to count as `:old`; nil for the usual default. Cache
+   schemas are classified by their own TTL and are unaffected by it."
+  [^java.sql.Connection conn hours-threshold]
+  (let [{old-convention   :old
+         caches-with-info :cache} (reduce (fn [acc s]
+                                            (cond (sql.tu.unique-prefix/old-dataset-name? s hours-threshold)
+                                                  (update acc :old conj s)
+                                                  (str/starts-with? s "metabase_cache_")
+                                                  (update acc :cache conj s)
+                                                  :else acc))
+                                          {:old [] :cache []}
+                                          (fetch-schemas conn))
+        {expired-cache      :expired
+         old-style-cache    :old-style-cache
+         lacking-created-at :lacking-created-at} (classify-cache-schemas conn caches-with-info)]
+    {:old                (vec old-convention)
+     :expired-cache      (vec expired-cache)
+     :old-style-cache    (vec old-style-cache)
+     :lacking-created-at (vec lacking-created-at)}))
 
 ;;; --------------------------------- Destruction ----------------------------------
-
-(def ^:private orphan-drop-order
-  "Orphan categories from [[orphan-schemas]] in the order we drop them, each with its log line."
-  [[:old                "Dropping old data schema: %s"]
-   [:expired-cache      "Dropping expired cache schema: %s"]
-   [:lacking-created-at "Dropping cache without created-at info: %s"]
-   [:old-style-cache    "Dropping old cache schema without `cache_info` table: %s"]])
-
-(defn- orphan-schema-names
-  "Flatten an [[orphan-schemas]] result into just the schema names, in drop order."
-  [orphans]
-  (into [] (mapcat (fn [[k _]] (get orphans k))) orphan-drop-order))
 
 (defn- drop-orphan-schemas!
   "Drop every schema classified by [[orphan-schemas]] as expired/old. Per-entry
   try/catch: never let one orphan block the rest.
 
   Takes the orphan-map directly so callers can preview-then-drop without
-  re-querying. Caller owns the Statement.
-
-  Returns `{:dropped [name...] :failed [{:name name, :error message}...]}`."
+  re-querying. Caller owns the Statement."
   [^java.sql.Statement stmt orphans]
   (let [drop-sql (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
-    (reduce (fn [report [schema fmt-str]]
-              (log/infof fmt-str schema)
-              (try
-                (.execute stmt (drop-sql schema))
-                (update report :dropped conj schema)
-                (catch Throwable e
-                  (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e))
-                  (update report :failed conj {:name schema, :error (ex-message e)}))))
-            {:dropped [] :failed []}
-            (for [[k fmt-str] orphan-drop-order
-                  schema      (get orphans k)]
-              [schema fmt-str]))))
+    (doseq [[k fmt-str] [[:old                "Dropping old data schema: %s"]
+                         [:expired-cache      "Dropping expired cache schema: %s"]
+                         [:lacking-created-at "Dropping cache without created-at info: %s"]
+                         [:old-style-cache    "Dropping old cache schema without `cache_info` table: %s"]]
+            schema (get orphans k)]
+      (log/infof fmt-str schema)
+      (try
+        (.execute stmt (drop-sql schema))
+        (catch Throwable e
+          (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e)))))))
 
 (defn- delete-old-schemas!
   "Remove unneeded schemas from redshift. Local databases are thrown away after
@@ -279,36 +256,28 @@
   Glue: thin wrapper that calls the enumerator + dropper in order. To preview
   from a REPL, call [[orphan-schemas]] directly."
   [^java.sql.Connection conn]
-  (let [orphans (orphan-schemas conn)]
+  (let [orphans (orphan-schemas conn nil)]
     (with-open [stmt (.createStatement conn)]
       (drop-orphan-schemas! stmt orphans))))
 
 (defmethod tx/gc-orphans! :redshift
   [driver {:keys [older-than-hours dry-run?]}]
-  ;; Unlike Snowflake, Redshift test schema names carry their own creation time via
-  ;; [[sql.tu.unique-prefix/unique-prefix]], so age comes from the name and there is no catalog timestamp to consult.
-  ;; Both clusters get swept, the same pair [[tx/before-run]] sets up; a schema name present on both is reported once
-  ;; per cluster.
-  {:pre [(pos-int? older-than-hours)]}
-  (reduce
-   (fn [report details]
-     (sql-jdbc.execute/do-with-connection-with-options
-      driver
-      (sql-jdbc.conn/connection-details->spec driver details)
-      {:write? true}
-      (fn [^java.sql.Connection conn]
-        (let [orphans (orphan-schemas conn older-than-hours)
-              names   (orphan-schema-names orphans)
-              report  (update report :found into names)]
-          (if (or dry-run? (empty? names))
-            report
-            (with-open [stmt (.createStatement conn)]
-              (let [{:keys [dropped failed]} (drop-orphan-schemas! stmt orphans)]
-                (-> report
-                    (update :dropped into dropped)
-                    (update :failed into failed)))))))))
-   tx/empty-gc-report
-   [@db-connection-details @db-routing-connection-details]))
+  ;; Redshift schema names carry their own creation time via [[sql.tu.unique-prefix/unique-prefix]], so age comes from
+  ;; the name and there is no catalog timestamp to consult. Sweeps both clusters, the same pair [[tx/before-run]] sets
+  ;; up; a name present on both is reported once per cluster.
+  (into []
+        (mapcat (fn [details]
+                  (sql-jdbc.execute/do-with-connection-with-options
+                   driver
+                   (sql-jdbc.conn/connection-details->spec driver details)
+                   {:write? true}
+                   (fn [^java.sql.Connection conn]
+                     (let [orphans (orphan-schemas conn older-than-hours)]
+                       (when-not dry-run?
+                         (with-open [stmt (.createStatement conn)]
+                           (drop-orphan-schemas! stmt orphans)))
+                       (mapcat val orphans))))))
+        [@db-connection-details @db-routing-connection-details]))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]

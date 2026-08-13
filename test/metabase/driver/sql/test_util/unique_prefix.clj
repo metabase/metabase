@@ -83,7 +83,7 @@
   If the date/time is invalid, we return false (not old) to be safe - we only want to delete
   datasets that match our known format."
   ([dataset-name]
-   (old-dataset-name? dataset-name old-dataset-hours-threshold))
+   (old-dataset-name? dataset-name nil))
   ([dataset-name hours-threshold]
    ;; Try new format first: YYYY_MM_DD_HH_<uuid>_...
    (if-let [[_ year month day hour] (re-matches #"^(\d{4})_(\d{2})_(\d{2})_(\d{2})_.*$" dataset-name)]
@@ -92,7 +92,8 @@
                                (catch Throwable _ nil))]
        (if-not dataset-date-time
          false
-         (t/before? dataset-date-time (u.date/add (utc-date-time) :hour (- hours-threshold)))))
+         (t/before? dataset-date-time (u.date/add (utc-date-time)
+                                                  :hour (- (or hours-threshold old-dataset-hours-threshold))))))
      ;; TODO (bryan 12-23-25) Remove old-format checks when this has been running for a few days.
      ;; Fall back to old format: YYYY_MM_DD_<uuid>_...
      (when-let [[_ year month day] (re-matches #"^(\d{4})_(\d{2})_(\d{2})_.*$" dataset-name)]

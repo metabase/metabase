@@ -387,37 +387,18 @@
   [driver]
   (log/infof "%s has no after-run hooks." driver))
 
-(def empty-gc-report
-  "Return value shape for [[gc-orphans!]] when there was nothing to do."
-  {:found [] :dropped [] :failed []})
-
 (defmulti gc-orphans!
-  "Garbage collect orphaned test objects (databases/datasets/schemas) that a previous test run left behind in a shared
-  cloud warehouse. Test runs normally clean up after themselves in [[after-run]], but that never fires when the CI job
-  is cancelled, times out, or is killed, and the leaked objects then accumulate forever and cost real money -- see the
-  `metabase_fan` dynamic table incident. This is the out-of-band sweep that catches them, run nightly rather than
-  in-process so that a flaky sweep can't take CI down with it.
+  "Collect orphaned test data a previous run left behind in a shared cloud warehouse, returning the names collected
+  (or, with `:dry-run? true`, the names that would be). Runs nightly out of band -- see
+  `.github/workflows/test.cleanup-dwh-data.yml` -- because [[after-run]] never fires when a CI job is cancelled or
+  killed, and in-process cleanup has repeatedly been disabled for making CI flaky.
 
-  Implement this ONLY for drivers whose test data lives in a shared cloud account that the tests themselves create
-  objects in. Drivers backed by a throwaway local container don't need it. Drivers whose test data is *preloaded*
-  rather than created by the tests -- Athena and Databricks, both of which default `*allow-database-creation*` to
-  false -- MUST NOT implement it: nothing there is safe to delete.
+  `options` are `:older-than-hours` (per-run garbage), `:fixture-hours` (reusable content-addressed datasets, which
+  runs share and so must not be collected eagerly), and `:dry-run?`.
 
-  `options` is a map of:
-
-    :older-than-hours -- only collect objects created more than this many hours ago. Must stay comfortably above the
-                         longest driver job's `timeout-minutes` so a run in flight can't have its own objects deleted
-                         out from under it.
-    :dry-run?         -- enumerate and report, but delete nothing.
-
-  Returns `{:found [name...] :dropped [name...] :failed [{:name name, :error message}...]}`.
-
-  Implementations must be conservative, because the blast radius here is a shared account that CI depends on:
-
-  - match only name patterns this driver's own test extensions generate, never a bare `*` sweep;
-  - never delete tracking or fixture objects (`metabase_test_tracking`, `test-data`, ...);
-  - keep enumeration pure and separate from destruction, so `:dry-run? true` is a genuine preview;
-  - catch per-object, so one undroppable object can't abort the rest of the sweep."
+  Implement only for drivers whose tests create objects in a shared cloud account. Athena and Databricks must NOT
+  implement it -- their datasets are preloaded, so nothing there is safe to delete. Match only name patterns the
+  driver's own test extensions generate, never a bare wildcard, and never tracking or fixture objects."
   {:arglists '([driver options])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -425,7 +406,7 @@
 (defmethod gc-orphans! ::test-extensions
   [driver _options]
   (log/infof "%s has no orphan GC; skipping." driver)
-  empty-gc-report)
+  [])
 
 (defmulti drop-if-exists-and-create-db!
   "Drop a database named `db-name` if it already exists, then create a new empty one with that name"
