@@ -58,7 +58,7 @@ export function getCommonColumns<
     },
     collection: {
       id: "collection",
-      header: t`Collection`,
+      header: t`Location`,
       enableSorting: false,
       width: "auto",
       minWidth: 120,

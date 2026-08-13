@@ -3,42 +3,42 @@ import { type ReactNode, memo } from "react";
 import { Group } from "metabase/ui";
 
 import { DiagnosticsSearchInput } from "../DiagnosticsSearchInput";
-import { DuplicatedContentFilterPicker } from "../DuplicatedContentFilterPicker";
+import { ImbalancedContentFilterPicker } from "../ImbalancedContentFilterPicker";
 import {
-  areDuplicatedFilterOptionsEqual,
-  getDuplicatedDefaultFilterOptions,
-} from "../duplicated-utils";
-import type { DuplicatedContentFilterOptions } from "../types";
+  areImbalancedFilterOptionsEqual,
+  getImbalancedDefaultFilterOptions,
+} from "../imbalanced-utils";
+import type { ImbalancedContentFilterOptions } from "../types";
 
-type DuplicatedContentFilterBarProps = {
+type ImbalancedContentFilterBarProps = {
   query?: string;
-  filterOptions: DuplicatedContentFilterOptions;
+  filterOptions: ImbalancedContentFilterOptions;
   isLoading: boolean;
   onQueryChange: (query: string | undefined) => void;
   onFilterOptionsChange: (
-    filterOptions: DuplicatedContentFilterOptions,
+    filterOptions: ImbalancedContentFilterOptions,
   ) => void;
   actions?: ReactNode;
 };
 
-export const DuplicatedContentFilterBar = memo(
-  function DuplicatedContentFilterBar({
+export const ImbalancedContentFilterBar = memo(
+  function ImbalancedContentFilterBar({
     query,
     filterOptions,
     isLoading,
     onQueryChange,
     onFilterOptionsChange,
     actions,
-  }: DuplicatedContentFilterBarProps) {
-    const hasDefaultFilterOptions = areDuplicatedFilterOptionsEqual(
+  }: ImbalancedContentFilterBarProps) {
+    const hasDefaultFilterOptions = areImbalancedFilterOptionsEqual(
       filterOptions,
-      getDuplicatedDefaultFilterOptions(),
+      getImbalancedDefaultFilterOptions(),
     );
 
     return (
       <Group gap="md" align="center" wrap="nowrap">
         <DiagnosticsSearchInput query={query} onQueryChange={onQueryChange} />
-        <DuplicatedContentFilterPicker
+        <ImbalancedContentFilterPicker
           filterOptions={filterOptions}
           isDisabled={isLoading}
           hasDefaultOptions={hasDefaultFilterOptions}

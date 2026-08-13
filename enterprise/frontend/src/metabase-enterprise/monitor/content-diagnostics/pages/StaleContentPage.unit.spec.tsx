@@ -320,7 +320,7 @@ describe("StaleContentPage", () => {
     });
     await waitForListToLoad();
 
-    const input = screen.getByTestId("content-diagnostics-search-input");
+    const input = screen.getByLabelText("Search");
     await userEvent.type(input, "sales");
 
     await waitFor(() => {

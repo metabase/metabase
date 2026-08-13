@@ -1,6 +1,7 @@
 import type { CollectionId } from "./collection";
 import type {
   ContentDiagnosticsDuplicatedUserParams,
+  ContentDiagnosticsImbalancedUserParams,
   ContentDiagnosticsSlowUserParams,
   ContentDiagnosticsStaleUserParams,
 } from "./content-diagnostics";
@@ -227,6 +228,21 @@ export type UserKeyValue =
       namespace: "content_diagnostics";
       key: "duplicated";
       value: ContentDiagnosticsDuplicatedUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "empty";
+      value: ContentDiagnosticsImbalancedUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "sparse";
+      value: ContentDiagnosticsImbalancedUserParams;
+    }
+  | {
+      namespace: "content_diagnostics";
+      key: "crowded";
+      value: ContentDiagnosticsImbalancedUserParams;
     }
   | {
       namespace: "schema_viewer";

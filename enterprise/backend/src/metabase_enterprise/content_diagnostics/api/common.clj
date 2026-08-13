@@ -215,7 +215,7 @@
   "For a set of collection ids → `{collection-id → {:id :name :namespace :effective_ancestors [{:id :name} …]}}`.
   Hydrates the permission-filtered `:effective_ancestors` breadcrumb. Selects the full row (the hydrate
   needs `:location`). No entry for root/nil collections. `:namespace` (the tree's namespace: nil for the
-  default tree, `transforms` / `shared-tenant-collections` for the namespaced trees findings can live in)
+  default tree, `transforms` / `shared-tenant-collection` for the namespaced trees findings can live in)
   rides once at the top level - a subtree is namespace-uniform, so it covers the ancestors too - letting
   the FE build the namespace-specific collection URL.
 

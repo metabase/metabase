@@ -1,66 +1,51 @@
 import { P, match } from "ts-pattern";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import type * as Urls from "metabase/urls";
 import type { Sorting } from "metabase/utils/sorting";
 import type {
-  ContentDiagnosticsDuplicatedSortColumn,
   ContentDiagnosticsFilterType,
+  ContentDiagnosticsImbalancedFindingType,
+  ContentDiagnosticsImbalancedSortColumn,
+  ContentDiagnosticsImbalancedUnit,
 } from "metabase-types/api";
 
 import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "./constants";
-import type { DuplicatedContentFilterOptions } from "./types";
+import type { ImbalancedContentFilterOptions } from "./types";
 import { ALL_FILTER_TYPES, areEntityTypesEqual } from "./utils";
 
-type DuplicateCountFilterOption = {
-  value: number;
-  label: string;
-};
-
-export function getDuplicateCountFilterOptions(): DuplicateCountFilterOption[] {
-  return [
-    { value: 2, label: t`2 or more` },
-    { value: 3, label: t`3 or more` },
-    { value: 5, label: t`5 or more` },
-    { value: 10, label: t`10 or more` },
-  ];
-}
-
-export function getDuplicatedDefaultFilterOptions(): DuplicatedContentFilterOptions {
+export function getImbalancedDefaultFilterOptions(): ImbalancedContentFilterOptions {
   return {
     entityTypes: ALL_FILTER_TYPES,
     includePersonalCollections: DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
-    minDuplicateCount: undefined,
   };
 }
 
-export function getDuplicatedFilterOptions(
-  params: Urls.DuplicatedContentParams,
-): DuplicatedContentFilterOptions {
+export function getImbalancedFilterOptions(
+  params: Urls.ImbalancedContentParams,
+): ImbalancedContentFilterOptions {
   return {
     entityTypes: params.entityTypes ?? ALL_FILTER_TYPES,
     includePersonalCollections:
       params.includePersonalCollections ?? DEFAULT_INCLUDE_PERSONAL_COLLECTIONS,
-    minDuplicateCount: params.minDuplicateCount,
   };
 }
 
-export function areDuplicatedFilterOptionsEqual(
-  a: DuplicatedContentFilterOptions,
-  b: DuplicatedContentFilterOptions,
+export function areImbalancedFilterOptionsEqual(
+  a: ImbalancedContentFilterOptions,
+  b: ImbalancedContentFilterOptions,
 ): boolean {
   return (
     areEntityTypesEqual(a.entityTypes, b.entityTypes) &&
-    a.includePersonalCollections === b.includePersonalCollections &&
-    a.minDuplicateCount === b.minDuplicateCount
+    a.includePersonalCollections === b.includePersonalCollections
   );
 }
 
-export function getDuplicatedFilterParams(
-  filterOptions: DuplicatedContentFilterOptions,
+export function getImbalancedFilterParams(
+  filterOptions: ImbalancedContentFilterOptions,
 ): Pick<
-  Urls.DuplicatedContentParams,
-  "entityTypes" | "includePersonalCollections" | "minDuplicateCount"
+  Urls.ImbalancedContentParams,
+  "entityTypes" | "includePersonalCollections"
 > {
   const isAllTypes =
     filterOptions.entityTypes.length === ALL_FILTER_TYPES.length;
@@ -72,16 +57,15 @@ export function getDuplicatedFilterParams(
     includePersonalCollections: isDefaultPersonal
       ? undefined
       : filterOptions.includePersonalCollections,
-    minDuplicateCount: filterOptions.minDuplicateCount,
   };
 }
 
-export function getDuplicatedParamsWithoutDefaults({
+export function getImbalancedParamsWithoutDefaults({
   page,
   entityTypes,
   includePersonalCollections,
   ...params
-}: Urls.DuplicatedContentParams): Urls.DuplicatedContentParams {
+}: Urls.ImbalancedContentParams): Urls.ImbalancedContentParams {
   return {
     ...params,
     page: page === 0 ? undefined : page,
@@ -94,7 +78,7 @@ export function getDuplicatedParamsWithoutDefaults({
   };
 }
 
-export function getDuplicatedEntityTypesParam(
+export function getImbalancedEntityTypesParam(
   entityTypes: ContentDiagnosticsFilterType[],
 ): ContentDiagnosticsFilterType[] | undefined {
   return match(entityTypes)
@@ -105,11 +89,11 @@ export function getDuplicatedEntityTypesParam(
     .otherwise((entityTypes) => entityTypes);
 }
 
-export function getDuplicatedSortOptions({
+export function getImbalancedSortOptions({
   sortColumn,
   sortDirection,
-}: Urls.DuplicatedContentParams):
-  | Sorting<ContentDiagnosticsDuplicatedSortColumn>
+}: Urls.ImbalancedContentParams):
+  | Sorting<ContentDiagnosticsImbalancedSortColumn>
   | undefined {
   return match({ sortColumn, sortDirection })
     .with(
@@ -120,4 +104,33 @@ export function getDuplicatedSortOptions({
       }),
     )
     .otherwise(() => undefined);
+}
+
+export function getImbalancedEmptyStateLabel(
+  mode: ContentDiagnosticsImbalancedFindingType,
+): string {
+  return match(mode)
+    .with("empty", () => t`No empty content found`)
+    .with("sparse", () => t`No sparse content found`)
+    .with("crowded", () => t`No crowded content found`)
+    .exhaustive();
+}
+
+export function getContentCountLabel(
+  count: number,
+  unit: ContentDiagnosticsImbalancedUnit,
+): string {
+  return match(unit)
+    .with("items", () =>
+      ngettext(msgid`${count} item`, `${count} items`, count),
+    )
+    .with("dashcards", () =>
+      ngettext(msgid`${count} dashcard`, `${count} dashcards`, count),
+    )
+    .with("rows", () => ngettext(msgid`${count} row`, `${count} rows`, count))
+    .with("cards", () =>
+      ngettext(msgid`${count} card`, `${count} cards`, count),
+    )
+    .with("tabs", () => ngettext(msgid`${count} tab`, `${count} tabs`, count))
+    .otherwise(() => `${count} ${unit}`);
 }

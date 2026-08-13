@@ -5,6 +5,7 @@ import * as Urls from "metabase/urls";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
   CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
+  type CollectionNamespace,
   type ContentDiagnosticsBaseFinding,
   type ContentDiagnosticsCollection,
   type ContentDiagnosticsDuplicateEntity,
@@ -14,11 +15,10 @@ import {
   type IconName,
 } from "metabase-types/api";
 
-export const ALL_FILTER_TYPES: ContentDiagnosticsNonCollectionFilterType[] = [
-  ...CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
-];
+export const ALL_NON_COLLECTION_FILTER_TYPES: ContentDiagnosticsNonCollectionFilterType[] =
+  [...CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES];
 
-export const ALL_DUPLICATED_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
+export const ALL_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
   ...CONTENT_DIAGNOSTICS_FILTER_TYPES,
 ];
 
@@ -152,8 +152,11 @@ export function getCollectionName(
 
 function getCollectionBreadcrumbUrl(
   entry: ContentDiagnosticsCollectionBreadcrumbEntry,
+  namespace: CollectionNamespace,
 ): string {
-  return Urls.collection({ id: entry.id, name: entry.name });
+  return namespace === "transforms"
+    ? Urls.transformList({ collectionId: entry.id })
+    : Urls.collection({ id: entry.id, name: entry.name });
 }
 
 export function getBreadcrumbLinks(
@@ -172,7 +175,7 @@ export function getBreadcrumbLinks(
       [...collection.effective_ancestors, collection].map((entry, index) => ({
         id: String(entry.id),
         label: entry.name,
-        url: getCollectionBreadcrumbUrl(entry),
+        url: getCollectionBreadcrumbUrl(entry, collection.namespace),
         icon: index === 0 ? ("folder" as const) : undefined,
       })),
     );

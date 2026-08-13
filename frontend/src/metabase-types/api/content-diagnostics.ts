@@ -1,13 +1,22 @@
 import type { CardType } from "./card";
-import type { CollectionId } from "./collection";
+import type { CollectionId, CollectionNamespace } from "./collection";
 import type { PaginationRequest } from "./pagination";
 import type { SortDirection } from "./sorting";
 import type { UserId } from "./user";
+
+export const CONTENT_DIAGNOSTICS_IMBALANCED_FINDING_TYPES = [
+  "empty",
+  "sparse",
+  "crowded",
+] as const;
+export type ContentDiagnosticsImbalancedFindingType =
+  (typeof CONTENT_DIAGNOSTICS_IMBALANCED_FINDING_TYPES)[number];
 
 export const CONTENT_DIAGNOSTICS_FINDING_TYPES = [
   "stale",
   "slow",
   "duplicated",
+  ...CONTENT_DIAGNOSTICS_IMBALANCED_FINDING_TYPES,
 ] as const;
 export type ContentDiagnosticsFindingType =
   (typeof CONTENT_DIAGNOSTICS_FINDING_TYPES)[number];
@@ -79,6 +88,26 @@ export const CONTENT_DIAGNOSTICS_DUPLICATED_SORT_COLUMNS = [
 export type ContentDiagnosticsDuplicatedSortColumn =
   (typeof CONTENT_DIAGNOSTICS_DUPLICATED_SORT_COLUMNS)[number];
 
+export const CONTENT_DIAGNOSTICS_IMBALANCED_SORT_COLUMNS = [
+  "name",
+  "entity-type",
+  "created-by",
+  "created-at",
+  "content-count",
+] as const;
+export type ContentDiagnosticsImbalancedSortColumn =
+  (typeof CONTENT_DIAGNOSTICS_IMBALANCED_SORT_COLUMNS)[number];
+
+export const CONTENT_DIAGNOSTICS_IMBALANCED_UNITS = [
+  "items",
+  "dashcards",
+  "rows",
+  "cards",
+  "tabs",
+] as const;
+export type ContentDiagnosticsImbalancedUnit =
+  (typeof CONTENT_DIAGNOSTICS_IMBALANCED_UNITS)[number];
+
 export type ContentDiagnosticsStaleUserParams = {
   entity_types?: ContentDiagnosticsNonCollectionFilterType[];
   include_personal_collections?: boolean;
@@ -101,6 +130,7 @@ export type ContentDiagnosticsUser =
 export type ContentDiagnosticsCollection = {
   id: CollectionId;
   name: string;
+  namespace: CollectionNamespace;
   effective_ancestors: Array<{ id: CollectionId; name: string }>;
 };
 
@@ -249,6 +279,46 @@ export type ListDuplicatedFindingsRequest = {
 
 export type ListDuplicatedFindingsResponse = {
   data: ContentDiagnosticsDuplicatedFinding[];
+  total: number;
+  limit: number | null;
+  offset: number | null;
+  last_scan_at: string | null;
+};
+
+export type ContentDiagnosticsImbalancedUserParams = {
+  entity_types?: ContentDiagnosticsFilterType[];
+  include_personal_collections?: boolean;
+  sort_column?: ContentDiagnosticsImbalancedSortColumn;
+  sort_direction?: SortDirection;
+};
+
+export type ContentDiagnosticsImbalancedFindingDetails =
+  ContentDiagnosticsBaseFindingDetails & {
+    threshold: number;
+    unit: ContentDiagnosticsImbalancedUnit;
+    as_of?: string;
+  };
+
+export type ContentDiagnosticsImbalancedFinding =
+  ContentDiagnosticsBaseFinding & {
+    finding_type: ContentDiagnosticsImbalancedFindingType;
+    content_count: number;
+    details: ContentDiagnosticsImbalancedFindingDetails;
+  };
+
+// `finding-types` pins the problem type per tab (empty/sparse/crowded); it is not a
+// user-facing filter, so it is absent from `ContentDiagnosticsImbalancedUserParams`.
+export type ListImbalancedFindingsRequest = {
+  query?: string;
+  "entity-types"?: ContentDiagnosticsFilterType[];
+  "finding-types"?: ContentDiagnosticsImbalancedFindingType[];
+  "include-personal-collections"?: boolean;
+  "sort-column"?: ContentDiagnosticsImbalancedSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
+
+export type ListImbalancedFindingsResponse = {
+  data: ContentDiagnosticsImbalancedFinding[];
   total: number;
   limit: number | null;
   offset: number | null;
