@@ -36,15 +36,24 @@
                                :display-name name}])
                 cards)])))
 
+(defn ignoring-exceptions
+  "Evaluate `thunk`. `InterruptedException` is restored on the thread and rethrown; any other
+  Exception is passed to `on-error` and `(fallback)` is returned in its place."
+  [thunk on-error fallback]
+  (try
+    (thunk)
+    (catch InterruptedException e
+      (.interrupt (Thread/currentThread))
+      (throw e))
+    (catch Exception e
+      (on-error e)
+      (fallback))))
+
 (defn wrap-query
   "Wrap raw MBQL in a Lib query backed by the application metadata provider."
   [database-id query-map]
   (when (and (pos-int? database-id) (seq query-map))
-    (try
-      (lib/query (lib-be/application-database-metadata-provider database-id) query-map)
-      (catch InterruptedException e
-        (.interrupt (Thread/currentThread))
-        (throw e))
-      (catch Exception e
-        (log/debugf "Failed to wrap usage-metadata query: %s" (ex-message e))
-        nil))))
+    (ignoring-exceptions
+     #(lib/query (lib-be/application-database-metadata-provider database-id) query-map)
+     #(log/debugf "Failed to wrap usage-metadata query: %s" (ex-message %))
+     (constantly nil))))
