@@ -1,8 +1,11 @@
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { useTableQuery } from "metabase/common/hooks";
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useGetTableQuery,
+} from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { FileUpload } from "metabase/redux/store/upload";
 import { clearAllUploads, getAllUploads } from "metabase/redux/uploads";
@@ -75,10 +78,9 @@ const FileUploadStatusContent = ({
   );
   const isVisible = useStatusVisibility(isActive);
 
-  const { isLoading: tableLoading, data: table } = useTableQuery({
-    id: tableId,
-    enabled: !isEmpty(tableId),
-  });
+  const { isLoading: tableLoading, data: table } = useGetTableQuery(
+    !isEmpty(tableId) && tableId != null ? { id: tableId } : skipToken,
+  );
   const { isLoading: collectionLoading, data: collection } =
     useGetCollectionQuery(
       isEmpty(collectionId) ? skipToken : { id: collectionId },

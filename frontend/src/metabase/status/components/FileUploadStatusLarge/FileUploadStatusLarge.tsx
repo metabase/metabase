@@ -6,8 +6,7 @@ import { Link } from "metabase/common/components/Link";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { type FileUpload, UploadMode } from "metabase/redux/store/upload";
 import { Box, Button, Stack } from "metabase/ui";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { Collection } from "metabase-types/api";
+import type { Collection, Table } from "metabase-types/api";
 
 import {
   isUploadAborted,
