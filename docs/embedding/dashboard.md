@@ -13,8 +13,6 @@ There are three ways you can embed a dashboard:
 - [Interactive dashboard](#embed-an-interactive-dashboard): people can drill through the charts on the dashboard and explore the data behind them.
 - [Editable dashboard](#let-people-edit-dashboards): people can add cards, rearrange the layout, and change the dashboard itself.
 
-To embed a single chart instead, check out [Embed a chart](./chart.md). To let people build questions from scratch, check out [Embed the query builder](./query-builder.md).
-
 > The React SDK doesn't support more than one dashboard component on the same page yet.
 
 ## Embed a view-only dashboard
@@ -110,8 +108,6 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-Note that the `resource` key takes `dashboard` here, where a chart embed takes `question`.
-
 To get this code from the in-app wizard, set the `customer_id` filter to **Locked** and publish the dashboard. See [Locked parameters](./guest-embedding.md#locked-parameters).
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
@@ -199,17 +195,21 @@ To customize that layout, pass a `renderDrillThroughQuestion` prop to `Interacti
 
 `EditableDashboard` does everything `InteractiveDashboard` does, and also lets people add and update questions, content, and the dashboard's layout.
 
-```tsx
-<MetabaseProvider authConfig={authConfig}>
-  <EditableDashboard dashboardId={1} />
-</MetabaseProvider>
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/editable-dashboard.tsx" %}
 ```
 
-Editing is only available in the React SDK---there's no `<metabase-dashboard>` attribute that turns it on. With web components, the closest thing is the [browser component](./components.md#browser) with `read-only="false"`, which lets people edit the dashboards they open from a collection.
+Editing is only available in the React SDK---there's no `<metabase-dashboard>` attribute that turns it on. With web components, the closest thing is the [collection browser](./browser.md) with `read-only="false"`, which lets people edit the dashboards they open from a collection.
 
-Whoever's editing needs [curate access](../permissions/collections.md#curate-access) to the collection the dashboard lives in. Dashboards in the [usage analytics](../usage-and-performance-tools/usage-analytics.md) collection are always read-only, whatever the permissions say.
+Whoever's editing needs [curate access](../permissions/collections.md#curate-access) to the collection the dashboard lives in. Dashboards in the [usage analytics](../usage-and-performance-tools/usage-analytics.md) collection are always read-only, whatever the permissions say. So are dashboards in the shared collection you publish to [tenants](./tenants.md): tenant users can edit dashboards in their own collection, but never the ones you share with every tenant.
 
-When someone adds a new question to a dashboard, `EditableDashboard` opens the query builder. To narrow what they can query, pass `dataPickerProps` with the entity types you want in the data picker. For example, `dataPickerProps={{ entityTypes: ["model"] }}` limits people to [models](../data-modeling/models.md), so they build on your curated data rather than on raw tables.
+If the dashboard renders but the edit pencil doesn't appear, the person viewing it lacks write access to that dashboard---check the `can_write` field on `GET /api/dashboard/:id` as that user.
+
+When someone adds a new question to a dashboard, `EditableDashboard` opens the query builder. To narrow what they can query, pass `dataPickerProps` with the entity types you want in the data picker. For example, limiting people to [models](../data-modeling/models.md) means they build on your curated data rather than on raw tables:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/editable-dashboard-data-picker.tsx" %}
+```
 
 For the full list of props, see [`EditableDashboard` props](./dashboard-reference.md#editabledashboard-props).
 

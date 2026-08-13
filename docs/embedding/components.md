@@ -26,24 +26,8 @@ This page covers what you can embed. For theming your embeds, see [Appearance](.
 
 ## Browser
 
-{% include plans-blockquote.html feature="Browser component" convert_pro_link_to_embedding=true%}
-
-Browser component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
-
-To render a collection browser so people can navigate a collection and open dashboards or questions:
-
-```html
-<metabase-browser
-  initial-collection="14"
-  read-only="false"
-  collection-entity-types="['collection', 'dashboard']"
->
-</metabase-browser>
-```
-
-### Attributes
-
-{% include_file "{{ dirname }}/eajs/snippets/MetabaseBrowserAttributes.md" snippet="properties" %}
+- [Embed a collection browser](./browser.md)
+- [Browser component reference](./browser-reference.md), for `<metabase-browser>` attributes and SDK props
 
 ## AI chat
 

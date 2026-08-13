@@ -109,7 +109,7 @@ Start with one of the quickstarts, then see these pages for more info on compone
 - [Embed a dashboard](../dashboard.md)
 - [Actions](./actions.md)
 - [Appearance](../appearance.md)
-- [Collections](./collections.md)
+- [Embed a collection browser](../browser.md)
 - [Custom visualizations](../custom-visualizations.md)
 - [Plugins](./plugins.md)
 - [Config](./config.md)

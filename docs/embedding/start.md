@@ -38,6 +38,10 @@ Embed a single chart, view-only or interactive, with web components or the React
 
 Embed Metabase's visual query builder or SQL editor, so people can build and save their own questions.
 
+### [Embed a collection browser](./browser.md)
+
+Embed a browsable collection with web components or the React SDK, so people can find and open dashboards and questions themselves.
+
 ### [Dashboard component reference](./dashboard-reference.md)
 
 Every `<metabase-dashboard>` attribute, the `StaticDashboard`, `InteractiveDashboard`, and `EditableDashboard` props, and the `dashboardCardMenu` plugin.
@@ -45,6 +49,10 @@ Every `<metabase-dashboard>` attribute, the `StaticDashboard`, `InteractiveDashb
 ### [Question component reference](./question-reference.md)
 
 Every `<metabase-question>` attribute, the `StaticQuestion` and `InteractiveQuestion` props, and the components you can use to build your own question layout.
+
+### [Browser component reference](./browser-reference.md)
+
+Every `<metabase-browser>` attribute and the `CollectionBrowser` props.
 
 ### [Guest embedding](./guest-embedding.md)
 
