@@ -19,6 +19,8 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private default-drivers
   "Drivers that implement [[tx/gc-orphans!]].
 

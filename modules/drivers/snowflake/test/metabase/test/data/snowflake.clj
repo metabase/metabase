@@ -145,25 +145,40 @@
      (with-open [stmt (.createStatement conn)]
        (apply f stmt args)))))
 
+(defn- drop-datasets!
+  "Drop each named test database and un-track it, returning
+  `{:dropped [name...] :failed [{:name name, :error message}...]}`.
+
+  The dropping half of [[drop-old-datasets!]], split out so the nightly sweep ([[tx/gc-orphans!]]) reuses it rather
+  than growing a second copy. The two differ only in how they decide *what* to drop."
+  [dataset-names]
+  (if (empty? dataset-names)
+    {:dropped [] :failed []}
+    (with-write-stmt!
+      (fn [^java.sql.Statement stmt]
+        (reduce
+         (fn [report dataset-name]
+           #_{:clj-kondo/ignore [:discouraged-var]}
+           (println "[Snowflake] Deleting old dataset:" dataset-name)
+           (try
+             (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
+             (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
+                                    dataset-name))
+             (update report :dropped conj dataset-name)
+             ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
+             ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
+             ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
+             (catch Throwable e
+               #_{:clj-kondo/ignore [:discouraged-var]}
+               (println "[Snowflake] Error deleting old dataset:" (ex-message e))
+               (update report :failed conj {:name dataset-name, :error (ex-message e)}))))
+         {:dropped [] :failed []}
+         dataset-names)))))
+
 (defn- drop-old-datasets!
   "Drop test datasets (databases) prefixed by `sha_` that too old."
   []
-  (when-let [old-datasets (not-empty (old-dataset-names))]
-    (with-write-stmt!
-      (fn [^java.sql.Statement stmt]
-        (doseq [dataset-name old-datasets]
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (println "[Snowflake] Deleting old dataset:" dataset-name)
-          (try
-            (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
-            (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
-                                   dataset-name))
-            ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
-            ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
-            ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
-            (catch Throwable e
-              #_{:clj-kondo/ignore [:discouraged-var]}
-              (println "[Snowflake] Error deleting old dataset:" (ex-message e)))))))))
+  (drop-datasets! (old-dataset-names)))
 
 (defn- delete-old-test-data!
   "Delete old test data: datasets (databases) prefixed by sha_ that haven't been
@@ -226,6 +241,11 @@
   Pure: reads the catalog and drops nothing, so it doubles as the preview for a dry run. Call it from a REPL to see
   what the sweep would do.
 
+  Deliberately a separate enumeration from [[old-dataset-names]] rather than a parameterization of it: that one reads
+  `accessed_at` out of the tracking table, so it can only ever find databases some run remembered to track, whereas
+  the orphans this sweep exists for are exactly the ones whose bookkeeping never happened. Both feed the same
+  [[drop-datasets!]].
+
   Snowflake test database names carry no timestamp -- unlike the shared
   [[metabase.driver.sql.test-util.unique-prefix]] convention the other cloud drivers use, [[qualified-db-name]] builds
   them from a random int or a dataset hash -- so age has to come from the catalog's `created` column rather than from
@@ -251,28 +271,10 @@
 (defmethod tx/gc-orphans! :snowflake
   [_driver {:keys [older-than-hours fixture-hours dry-run?] :as options}]
   {:pre [(pos-int? older-than-hours) (pos-int? fixture-hours)]}
-  (let [found  (orphan-databases options)
-        report (assoc tx/empty-gc-report :found found)]
-    (if (or dry-run? (empty? found))
-      report
-      (with-write-stmt!
-        (fn [^java.sql.Statement stmt]
-          (reduce (fn [report db-name]
-                    (log/infof "[snowflake] dropping orphaned test database %s" db-name)
-                    (try
-                      ;; DROP first: that is the part that actually stops the bleeding, since a leaked database can
-                      ;; contain a dynamic table that Snowflake keeps refreshing on a schedule for as long as it
-                      ;; exists. Un-tracking is bookkeeping, and a stranded tracking row is harmless.
-                      (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" db-name))
-                      (.execute stmt (format "DELETE FROM metabase_test_tracking.PUBLIC.datasets WHERE name = '%s';"
-                                             db-name))
-                      (update report :dropped conj db-name)
-                      (catch Throwable e
-                        ;; most likely another job dropped it at the same moment; log it and keep sweeping
-                        (log/warnf "[snowflake] failed to drop %s: %s" db-name (ex-message e))
-                        (update report :failed conj {:name db-name, :error (ex-message e)}))))
-                  report
-                  found))))))
+  (let [found (orphan-databases options)]
+    (merge (assoc tx/empty-gc-report :found found)
+           (when-not dry-run?
+             (drop-datasets! found)))))
 
 (defn- set-current-user-timezone!
   [timezone]
