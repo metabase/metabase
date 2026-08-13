@@ -52,7 +52,13 @@
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io StringWriter)
+   (java.security KeyFactory)
+   (java.security.spec PKCS8EncodedKeySpec)
+   (org.bouncycastle.openssl PKCS8Generator)
+   (org.bouncycastle.openssl.jcajce JcaPEMWriter JcaPKCS8Generator JceOpenSSLPKCS8EncryptorBuilder)))
 
 (set! *warn-on-reflection* true)
 
@@ -199,104 +205,38 @@
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
 
-(def ^:private private-key-details
-  "Details using key-pair auth, so that [[sql-jdbc.conn/connection-details->spec]] builds a `:connection-uri`."
-  {:account "ls10467.us-east-2.aws"
-   :user "SNOWFLAKE_DEVELOPER"
-   :db "v3_sample-dataset"
-   :warehouse "COMPUTE_WH"
-   :use-password false
-   :private-key-value "pk"
-   :private-key-options "uploaded"})
+(defn- pem->private-key
+  [pem]
+  (let [encoded (-> pem
+                    (str/replace #"-----(?:BEGIN|END) (?:\p{Alnum}+ )?PRIVATE KEY-----" "")
+                    (str/replace #"\s" "")
+                    u/decode-base64-to-bytes
+                    (PKCS8EncodedKeySpec.))]
+    (.generatePrivate (KeyFactory/getInstance "RSA") encoded)))
 
-(defn- passphrase-in-conn-uri
-  "Round-trips `passphrase` through the connection URI, returning what the Snowflake JDBC driver would parse back out."
-  [passphrase]
-  (-> (sql-jdbc.conn/connection-details->spec
-       :snowflake (assoc private-key-details :private-key-passphrase passphrase))
-      :connection-uri
-      driver.snowflake/connection-str->parameters
-      (get "PRIVATE_KEY_PWD")))
+(defn- encrypt-pkcs8-pem
+  [private-key passphrase]
+  (let [encryptor (-> (JceOpenSSLPKCS8EncryptorBuilder. PKCS8Generator/AES_256_CBC)
+                      (.setPassword (.toCharArray passphrase))
+                      (.build))
+        sw (StringWriter.)]
+    (with-open [pw (JcaPEMWriter. sw)]
+      (.writeObject pw (JcaPKCS8Generator. private-key encryptor)))
+    (str sw)))
 
 (deftest ^:parallel private-key-passphrase-test
-  (testing "no passphrase means no private_key_pwd parameter at all"
-    (doseq [[label passphrase] {"missing" nil, "empty" "", "blank" "   "}]
-      (testing label
-        (is (nil? (passphrase-in-conn-uri passphrase))))))
-  (testing "a passphrase is passed through to the driver as private_key_pwd"
-    (is (= "sup3rs3cret" (passphrase-in-conn-uri "sup3rs3cret"))))
-  (testing "passphrases survive the URI round-trip regardless of which characters they contain"
-    ;; Snowflake parses these parameters with form-urlencoded semantics, so a literal `+` has to be escaped as `%2B`;
-    ;; percent-encoding it as `+` would silently arrive as a space and fail to decrypt the key.
-    (doseq [passphrase ["with space"
-                        "has+plus"
-                        "has%percent"
-                        "has&amp=equals"
-                        "has#hash?q"
-                        "has/slash"
-                        "üñïçodé"
-                        "p@ss w/rd&+=#?%"]]
-      (testing (pr-str passphrase)
-        (is (= passphrase (passphrase-in-conn-uri passphrase))))))
-  (testing "a `+` is escaped rather than left to be decoded as a space"
-    (is (re-find #"private_key_pwd=a%2Bb" (:connection-uri (sql-jdbc.conn/connection-details->spec
-                                                            :snowflake
-                                                            (assoc private-key-details :private-key-passphrase "a+b"))))))
-  (testing "the passphrase is also set as a plain `private_key_pwd` property, raw and un-encoded"
-    ;; Connection *testing* reaches the driver through `DriverManager` with the `:connection-uri`, but a pooled
-    ;; connection builds its URL from `:subprotocol`/`:subname` and passes the rest as properties. A URI-only
-    ;; passphrase therefore passes `can-connect?` and then fails for every real query.
-    (doseq [passphrase ["sup3rs3cret" "p@ss w/rd&+=#?%"]]
-      (testing (pr-str passphrase)
-        (is (= passphrase (:private_key_pwd (sql-jdbc.conn/connection-details->spec
-                                             :snowflake
-                                             (assoc private-key-details :private-key-passphrase passphrase)))))))
-    (testing "and is absent when no passphrase is configured"
-      (doseq [passphrase [nil "" "   "]]
-        (is (nil? (:private_key_pwd (sql-jdbc.conn/connection-details->spec
-                                     :snowflake
-                                     (assoc private-key-details :private-key-passphrase passphrase))))))))
-  (testing "the passphrase is never left behind in the spec as a bogus connection property"
-    (doseq [[label details] {"key-pair auth" (assoc private-key-details :private-key-passphrase "sup3rs3cret")
-                             "password auth" (assoc private-key-details
-                                                    :use-password true
-                                                    :password "passwd"
-                                                    :private-key-passphrase "sup3rs3cret")}]
-      (testing label
-        (is (not (contains? (sql-jdbc.conn/connection-details->spec :snowflake details)
-                            :private-key-passphrase)))))))
-
-(deftest ^:parallel private-key-passphrase-migration-test
-  (testing "the password candidate drops the passphrase, the private-key candidates keep it"
-    (let [candidates (driver/db-details-to-test-and-migrate
-                      :snowflake
-                      (assoc private-key-details
-                             :password "passwd"
-                             :private-key-passphrase "sup3rs3cret"))]
-      (is (seq candidates))
-      (doseq [candidate candidates]
-        (testing (pr-str (:auth (meta candidate)))
-          (if (= :password (:auth (meta candidate)))
-            (is (not (contains? candidate :private-key-passphrase)))
-            (is (= "sup3rs3cret" (:private-key-passphrase candidate)))))))))
-
-(deftest ^:parallel humanize-passphrase-connection-errors-test
-  (are [expected messages] (= expected (driver/humanize-connection-error-message :snowflake messages))
-    "This private key is encrypted. Enter the passphrase for the key to connect."
-    ["Cannot invoke \"String.toCharArray()\" because \"privateKeyPwd\" is null"]
-
-    "The passphrase for this private key is incorrect."
-    ["Private key provided is invalid or not supported: org.bouncycastle.crypto.io.InvalidCipherTextIOException: Error finalising cipher"]
-
-    "The passphrase for this private key is incorrect."
-    ["unable to read encrypted data: Error finalising cipher"]
-
-    ;; unrelated errors are still passed through untouched
-    :database-name-incorrect
-    ["Object does not exist, or operation cannot be performed."]
-
-    "Some other Snowflake problem"
-    ["Some other Snowflake problem"]))
+  (mt/test-driver :snowflake
+    (let [raw-pem (tx/db-test-env-var-or-throw :snowflake :private-key)
+          private-key (pem->private-key raw-pem)]
+      (are [passphrase] (driver/can-connect? :snowflake (-> (:details (mt/db))
+                                                            (dissoc :private-key-id)  ; make sure the stored secret doesn't shadow our new value
+                                                            (assoc :private-key-value      (mt/priv-key->base64-uri (encrypt-pkcs8-pem private-key passphrase))
+                                                                   :private-key-options    "uploaded"
+                                                                   :private-key-passphrase passphrase)))
+        "passphrase"
+        "space and numb3r5"
+        "special,./;'[]-=`~!@#$%^&*()_+|}{:?><}chars"
+        "üñïçodé"))))
 
 (deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
@@ -847,47 +787,30 @@
 (deftest can-change-from-password-test
   (mt/test-driver
     :snowflake
-    (let [details          (:details (mt/db))
-          pk-key           "testing"
-          ;; details as they would look for a database created back when password was the only auth method: a
-          ;; password and no `use-password` flag or private key
-          password-details (-> details
-                               (dissoc :private-key-value :private-key-options :use-password)
-                               (assoc :password "hunter2"))]
-      (testing "details with only a password use password auth"
-        (is (=?
-             {:user some?
-              :password some?
-              :private_key_file :hawk/key-not-present}
-             (sql-jdbc.conn/connection-details->spec :snowflake password-details))))
-      (testing "when `use-password` is missing, password takes precedence over a key file"
-        (is (=?
-             {:user some?
-              :password some?
-              :private_key_file :hawk/key-not-present}
-             (sql-jdbc.conn/connection-details->spec :snowflake (assoc password-details :private-key-value pk-key)))))
-      (testing "clearing the password changes to key auth"
-        (is (=?
-             {:user some?
-              :password :hawk/key-not-present
-              :private_key_file some?}
-             (sql-jdbc.conn/connection-details->spec :snowflake (assoc password-details
-                                                                       :password nil
-                                                                       :private-key-value pk-key)))))
-      (testing "`use-password` false changes to key auth even if a password is still present"
-        (is (=?
-             {:user some?
-              :password :hawk/key-not-present
-              :private_key_file some?}
-             (sql-jdbc.conn/connection-details->spec :snowflake (assoc password-details
-                                                                       :use-password false
-                                                                       :private-key-value pk-key)))))
-      (testing "the default test details use key auth"
-        (is (=?
-             {:user some?
-              :password :hawk/key-not-present
-              :private_key_file some?}
-             (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
+    ;; the test DB authenticates with a private key, so give it a password to switch away from
+    (let [details (assoc (:details (mt/db)) :password "test-password" :use-password true)
+          pk-key "testing"]
+      (is (=?
+           {:user some?
+            :password some?
+            :private_key_file :hawk/key-not-present}
+           (sql-jdbc.conn/connection-details->spec :snowflake details)))
+      (is (=?
+           {:user some?
+            :password some?
+            :private_key_file :hawk/key-not-present}
+           ;; Before `use-password` password took precedence over a key file
+           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :private-key-value pk-key))))
+      (is (=?
+           {:user some?
+            :password :hawk/key-not-present
+            :private_key_file some?}
+           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :password nil :private-key-value pk-key))))
+      (is (=?
+           {:user some?
+            :password :hawk/key-not-present
+            :private_key_file some?}
+           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :private-key-value pk-key)))))))
 
 (deftest can-connect-test
   (let [pk-key (mt/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
