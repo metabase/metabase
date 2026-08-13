@@ -1,6 +1,6 @@
 (ns metabase.test.data.gc
   "Entry point for the nightly sweep of orphaned test data in our shared cloud warehouses, driven by
-  `.github/workflows/gc-cloud-test-data.yml`.
+  `.github/workflows/test.cleanup-dwh-data.yml`.
 
   Test runs normally clean up after themselves in [[metabase.test.data.interface/after-run]], but that hook never
   fires when a CI job is cancelled, times out, or is killed, and what it leaves behind costs real money -- a leaked

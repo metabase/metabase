@@ -101,7 +101,7 @@ jobs:
             ":dev:ci:test:ee:ee-dev"                            # backend.yml matrix (ee)
             ":dev:ci:test:oss:oss-dev"                          # backend.yml matrix (oss)
             ":dev:ci:ee:ee-dev:test:cloverage"                  # backend-cloverage.yml
-            ":dev:drivers:drivers-dev:test"                     # gc-cloud-test-data.yml
+            ":dev:drivers:drivers-dev:test"                     # test.cleanup-dwh-data.yml
             ":dev:drivers:build:build-dev:build-test:ci"        # build-scripts.yml
             ":ee:drivers:load-namespaces"                       # backend.yml (load-namespaces)
             ":ee:doc"                                           # docs-generate-base.yml

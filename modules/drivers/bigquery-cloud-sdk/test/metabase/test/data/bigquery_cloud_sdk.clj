@@ -375,7 +375,7 @@
 
 ;;; --------------------------------- Orphan GC ----------------------------------
 ;;;
-;;; Out-of-band sweep driven nightly by `.github/workflows/gc-cloud-test-data.yml`, separate from
+;;; Out-of-band sweep driven nightly by `.github/workflows/test.cleanup-dwh-data.yml`, separate from
 ;;; [[delete-old-datasets!]] above, which runs in-process and is currently disabled (see [[tx/create-db!]]) for being
 ;;; an unreliable thing to do in the middle of a test run.
 ;;;

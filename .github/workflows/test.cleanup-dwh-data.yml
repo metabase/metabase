@@ -1,4 +1,4 @@
-name: GC Cloud Test Data
+name: Cleanup DWH Test Data
 
 # Nightly sweep of orphaned test data in our shared cloud warehouses.
 #
@@ -42,7 +42,7 @@ on:
 
 # Never let two sweeps race each other; the second would just log failures for objects the first already dropped.
 concurrency:
-  group: gc-cloud-test-data
+  group: test-cleanup-dwh-data
   cancel-in-progress: false
 
 permissions:

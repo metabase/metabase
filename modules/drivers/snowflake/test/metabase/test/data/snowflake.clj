@@ -196,7 +196,7 @@
 ;;; --------------------------------- Orphan GC ----------------------------------
 ;;;
 ;;; Out-of-band sweep for databases that leaked past [[tx/after-run]], driven nightly by
-;;; `.github/workflows/gc-cloud-test-data.yml`. This is deliberately separate from [[drop-old-datasets!]] above, which
+;;; `.github/workflows/test.cleanup-dwh-data.yml`. This is deliberately separate from [[drop-old-datasets!]] above, which
 ;;; runs in-process and is currently disabled for causing CI flakes: a sweep that runs in its own job can be as
 ;;; aggressive as we like without any risk of failing an unrelated test run.
 
