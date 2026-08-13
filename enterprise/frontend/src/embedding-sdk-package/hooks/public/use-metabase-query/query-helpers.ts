@@ -86,7 +86,10 @@ export function breakout<const TDimension extends object>(
 
 export function breakout<TDimension extends object>(
   dimension: TDimension,
-  options?: BreakoutOptionsArgument<TDimension>,
+  // The overloads above gate what callers may pass. Here `TDimension` is still
+  // generic, so `BreakoutOptionsArgument` stays deferred as the union of both
+  // its branches; `unit` is intersected back in because only one branch has it.
+  options?: BreakoutOptionsArgument<TDimension> & { unit?: TemporalUnit },
 ) {
   const unit = getTemporalUnit(options);
 
@@ -120,7 +123,7 @@ export function orderBy<const TDimension>(
 export function orderBy<TDimension>(
   dimension: TDimension,
   direction?: OrderByDirection,
-  options?: BreakoutOptionsArgument<TDimension>,
+  options?: BreakoutOptionsArgument<TDimension> & { unit?: TemporalUnit },
 ) {
   const aggregationColumn = getAggregationResultColumn(dimension);
 

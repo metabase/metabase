@@ -7,6 +7,8 @@
    [metabase-enterprise.data-apps.test-util :as data-app.test-util]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase.actions.core :as actions]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -232,18 +234,20 @@
           ;; Its own slug: the `Data App: <slug>` group outlives other tests in
           ;; this namespace, so sharing "demo" collides on the group name.
           (let [{:keys [permission_group_id resource_collection_id]}
-                (data-app.sync/ensure-draft! "action-perms-app")]
+                (data-app.sync/ensure-draft! "action-perms-app")
+                metadata-provider (mt/metadata-provider)
+                venues            (lib.metadata/table metadata-provider (mt/id :venues))]
             (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id)
             (mt/with-temp
               [:model/Collection {source-collection-id :id} {}
                :model/Card       {source-model-id :id}      {:type          :model
                                                              :collection_id source-collection-id
-                                                             :dataset_query (mt/mbql-query venues)}
-               ;; What `npm run sync` produces: a copy of the model in the app's
-               ;; own collection, carrying its own copy of the action.
+                                                             :dataset_query (lib/query metadata-provider venues)}
+               ;; What `npm run sync-resources` produces: a copy of the model in the
+               ;; app's own collection, carrying its own copy of the action.
                :model/Card       {copied-model-id :id}      {:type          :model
                                                              :collection_id resource_collection_id
-                                                             :dataset_query (mt/mbql-query venues)}]
+                                                             :dataset_query (lib/query metadata-provider venues)}]
               (let [action     {:name "Create Venue", :type :implicit, :kind :row/create}
                     source-id  (actions/insert! (assoc action :model_id source-model-id))
                     copied-id  (actions/insert! (assoc action :model_id copied-model-id))]
