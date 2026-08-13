@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { NewModals } from "metabase/new/components/NewModals/NewModals";
+import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
@@ -19,7 +19,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import { NewItemMenu } from "./NewItemMenu";
+import { NewModals } from "./NewModals";
 
 console.warn = jest.fn();
 console.error = jest.fn();
