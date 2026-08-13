@@ -345,13 +345,30 @@
   (let [metric-ids (->> results (filter #(= "metric" (:type %))) (keep :id) distinct)
         card-id->table-id (when (seq metric-ids)
                             (t2/select-pk->fn :table_id :model/Card :id [:in metric-ids]))
-        table-ids (->> card-id->table-id vals (remove nil?) distinct)
-        table-id->info (when (seq table-ids)
-                         (into {}
-                               (comp (filter mi/can-read?)
-                                     (map (juxt :id (juxt :schema :name))))
-                               (t2/select [:model/Table :id :schema :name :db_id]
-                                          :id [:in table-ids])))
+        ;; Measures and segments already carry their binding table's id from the search row; metrics
+        ;; need the extra Card lookup above. Resolve both families in one Table query.
+        bound-table-ids (->> results
+                             (filter #(#{"measure" "segment"} (:type %)))
+                             (keep :base_table_id))
+        table-ids (->> (concat (vals card-id->table-id) bound-table-ids)
+                       (remove nil?)
+                       distinct)
+        table-rows (when (seq table-ids)
+                     (filter mi/can-read?
+                             (t2/select [:model/Table :id :schema :name :db_id
+                                         :collection_id :is_published]
+                                        :id [:in table-ids])))
+        table-id->info (into {} (map (juxt :id (juxt :schema :name))) table-rows)
+        ;; A measure or segment inherits its binding table's collection, so one published into the
+        ;; Library carries `library_member` like the table does. Deliberately wider than
+        ;; `search.scoring/library-score-expr`, which scores these 0 because their spec sets
+        ;; `:collection-id false` and so leaves no root collection to key off. The flag answers "is
+        ;; this governed content the agent can trust", which the binding table settles.
+        table-id->collection (into {}
+                                   (keep (fn [{:keys [id collection_id is_published]}]
+                                           (when (and is_published collection_id)
+                                             [id {:id collection_id}])))
+                                   table-rows)
         attach-portable-fk (fn [r]
                              (let [{:keys [database_name base_table_schema base_table_name]} r]
                                (cond-> r
@@ -372,9 +389,11 @@
                   table-name attach-portable-fk))
 
               (#{"measure" "segment"} (:type r))
-              ;; Table fields were already copied through by postprocess-search-result;
-              ;; just attach the portable FK now that database_name is known.
-              (attach-portable-fk r)
+              ;; Table fields were already copied through by postprocess-search-result; attach the
+              ;; portable FK now that database_name is known, plus the binding table's collection so
+              ;; `enrich-with-collection-paths` can stamp library membership.
+              (-> (attach-portable-fk r)
+                  (m/assoc-some :collection (get table-id->collection (:base_table_id r))))
 
               :else r))
           results)))
@@ -543,11 +562,12 @@
          (take limit)
          (map postprocess-search-result)
          enrich-with-collection-descriptions
-         enrich-with-collection-paths
-         enrich-tables-with-data-layer
          enrich-with-database-engines
          enrich-with-portable-entity-ids
          enrich-with-base-tables
+         ;; after base tables: that step resolves a measure/segment's binding collection
+         enrich-with-collection-paths
+         enrich-tables-with-data-layer
          validate-and-enrich-documents
          remove-unreadable-transforms)))
 
@@ -669,10 +689,11 @@
                  (card-refs->results (distinct card-refs))
                  (measure-segment-refs->results (distinct ms-refs)))
          enrich-with-collection-descriptions
-         enrich-with-collection-paths
          enrich-with-database-engines
          enrich-with-portable-entity-ids
          enrich-with-base-tables
+         ;; after base tables: that step resolves a measure/segment's binding collection
+         enrich-with-collection-paths
          enrich-tables-with-data-layer)))
 
 (defn- format-search-output

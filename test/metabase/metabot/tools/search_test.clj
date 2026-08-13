@@ -523,6 +523,39 @@
                   (is (nil? (:collection (by-id final-id)))
                       "an unpublished table carries no collection map"))))))))))
 
+(deftest measure-segment-inherit-library-membership-test
+  ;; A measure or segment is only surfaced by `retrieve_library_entities` because its binding table
+  ;; was published into the Library, so it must carry the same `library_member` the table does.
+  (testing "measures and segments inherit library membership from their binding table"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-additional-premium-features #{:library}
+        (mt/with-test-user :crowberto
+          (search.tu/with-temp-index-table
+            (mt/with-temp [:model/Collection {data-id :id}  {:name "Pb5Data" :type "library-data"}
+                           :model/Database   {db-id :id}    {:name "Pb5DB"}
+                           :model/Table {lib-tbl :id}       {:name "Pb5LibTable" :db_id db-id
+                                                             :is_published true :collection_id data-id}
+                           :model/Table {plain-tbl :id}     {:name "Pb5PlainTable" :db_id db-id}
+                           :model/Measure {lib-measure :id} {:name "Pb5LibMeasure" :table_id lib-tbl}
+                           :model/Segment {lib-segment :id} {:name "Pb5LibSegment" :table_id lib-tbl}
+                           :model/Measure {plain-measure :id} {:name "Pb5PlainMeasure" :table_id plain-tbl}]
+              (let [by-ref (->> (search/search {:query        "Pb5"
+                                                :entity-types ["table" "measure" "segment"]})
+                                (map (juxt (juxt :type :id) identity))
+                                (into {}))]
+                (is (=? {:library_member true} (by-ref ["measure" lib-measure])))
+                (is (=? {:library_member true} (by-ref ["segment" lib-segment])))
+                (testing "one bound to an unpublished table does not inherit it"
+                  (is (not (:library_member (by-ref ["measure" plain-measure]))))))
+              (testing "and the same holds through the entity-ref path"
+                (let [by-type (->> (search/entity-refs->search-results
+                                    [{:model "measure" :id lib-measure}
+                                     {:model "segment" :id lib-segment}])
+                                   (map (juxt :type identity))
+                                   (into {}))]
+                  (is (=? {:library_member true} (by-type "measure")))
+                  (is (=? {:library_member true} (by-type "segment"))))))))))))
+
 (deftest official-document-under-in-place-test
   ;; `official-flag-end-to-end-test` runs on whichever engine resolves by default (appdb here), so it
   ;; cannot catch the in-place document projection dropping its collection columns again.
