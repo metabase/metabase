@@ -3189,7 +3189,11 @@
            permissions
            premium-features
            settings
-           util}}
+           util}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/PermissionsGroup
+                    :model/Table}}
 
   enterprise/data-complexity-score
   {:team "Metabot"
