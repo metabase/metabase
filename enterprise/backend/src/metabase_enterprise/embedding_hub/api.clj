@@ -10,6 +10,5 @@
   "Whether JWT or SAML is licensed, enabled and configured."
   :feature :embedding
   []
-  (boolean
-   (or (and (premium-features/has-feature? :sso-jwt) (sso-settings/jwt-enabled-and-configured))
-       (and (premium-features/has-feature? :sso-saml) (sso-settings/saml-enabled) (sso-settings/saml-configured)))))
+  (or (and (premium-features/has-feature? :sso-jwt) (sso-settings/jwt-enabled-and-configured))
+      (and (premium-features/has-feature? :sso-saml) (sso-settings/saml-enabled) (sso-settings/saml-configured))))
