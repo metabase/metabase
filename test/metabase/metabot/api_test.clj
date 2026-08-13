@@ -2671,6 +2671,28 @@
         (testing "and the env var keeps supplying the location"
           (is (= "us-central1" (llm.settings/llm-google-location))))))))
 
+(deftest settings-put-google-disconnect-clears-env-shadowed-credential-row-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  "ya29.env-token"
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          "env-project"
+                                mb-llm-google-location            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-location            nil
+                                       metabot.settings/llm-metabot-provider       "google/google/gemini-3.5-flash"]
+      (mt/with-temporary-raw-setting-values [llm-google-oauth-access-token "ya29.stale-db-token"]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider _opts]
+                                                               (is false (str "unexpected list-models call: " provider)))]
+          (testing "disconnect deletes the app-DB row hiding behind the env var"
+            (is (=? {:value "google/google/gemini-3.5-flash"}
+                    (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                          {:provider    "google"
+                                           :credentials nil})))
+            (is (nil? (t2/select-one :model/Setting :key "llm-google-oauth-access-token"))
+                "a skipped clear would let the stale credential resurface once the env var is removed"))
+          (testing "the env var keeps supplying the value on read"
+            (is (= "ya29.env-token" (llm.settings/llm-google-oauth-access-token)))))))))
+
 (deftest settings-put-google-rejects-changing-env-shadowed-location-test
   (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
                                 mb-llm-google-oauth-access-token  nil

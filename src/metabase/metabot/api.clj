@@ -773,8 +773,8 @@
   "Throw a 400 when writing `value` to `setting-key` would be silently ignored because an env var shadows it."
   [setting-key value]
   (when (and (some? (setting/env-var-value setting-key))
-             ;; We only complain as an early warning if caller appears to be trying to change the value.
-             ;; set-setting-unless-env-shadowed! will in any case skip the shadowed write.
+             ;; If value is nil we are attempting to clear the setting. We allow this so that callers can still
+             ;; disconnect a provider even if some settings are shadowed by env vars.
              (some? value)
              (not= value (setting/get setting-key)))
     (throw (ex-info (tru "This setting is set by the {0} environment variable and cannot be changed via the API."
@@ -807,9 +807,11 @@
       (always (provider-api-key-setting-key provider) :api-key))))
 
 (defn- set-setting-unless-env-shadowed!
-  "Write `value` to `setting-key`, unless an env var supplies the setting and would mask the write."
+  "Write `value` to `setting-key`, unless an env var supplies the setting and would mask the write.
+  A nil `value` always goes through. Skipping a clear would leave stale values in the appdb after a disconnect."
   [setting-key value]
-  (when-not (setting/env-var-value setting-key)
+  (when (or (nil? value)
+            (not (setting/env-var-value setting-key)))
     (setting/set! setting-key value)))
 
 (defn- save-credentials!
