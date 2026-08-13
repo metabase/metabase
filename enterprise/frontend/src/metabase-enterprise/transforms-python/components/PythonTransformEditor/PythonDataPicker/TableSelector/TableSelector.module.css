@@ -2,15 +2,6 @@
   border: 1px solid var(--border-color);
 }
 
-.tableSelectorButtonInner,
-.tableSelectorButtonLabel {
-  min-width: 0;
-}
-
 .tableSelectorButtonInner {
   justify-content: start;
-}
-
-.tableSelectorButtonLabel {
-  overflow: hidden;
 }

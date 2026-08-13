@@ -8,6 +8,7 @@ import {
 } from "metabase/common/components/Pickers/DataPicker";
 import {
   ActionIcon,
+  Box,
   Button,
   Ellipsified,
   Group,
@@ -73,10 +74,7 @@ export function TableSelector({
           miw={0}
           onClick={open}
           disabled={disabled}
-          classNames={{
-            inner: S.tableSelectorButtonInner,
-            label: S.tableSelectorButtonLabel,
-          }}
+          classNames={{ inner: S.tableSelectorButtonInner }}
           px="sm"
           py="lg"
           variant="subtle"
@@ -92,9 +90,7 @@ export function TableSelector({
                 </Ellipsified>
               </>
             ) : (
-              <Ellipsified c="text-primary" ta="left">
-                {t`Select a table…`}
-              </Ellipsified>
+              <Box c="text-primary">{t`Select a table…`}</Box>
             )}
           </Stack>
         </Button>
