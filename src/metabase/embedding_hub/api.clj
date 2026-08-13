@@ -13,12 +13,6 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [toucan2.core :as t2]))
 
-(defn- ee-checks-enabled?
-  "The steps below guard their enterprise-only models with this. It short-circuits before Toucan resolves the model,
-  which is what keeps the query from requiring a namespace that a community build does not ship."
-  []
-  (premium-features/has-feature? :embedding))
-
 (defn- has-user-added-database? []
   ;; `boolean`, because the trailing `when-let` yields nil rather than false on an
   ;; instance with no sample database -- and the response schema requires a boolean.
@@ -72,9 +66,10 @@
                                     [:is :collection_id nil]]]}))
 
 (defn- has-user-created-tenants? []
-  (boolean
-   (and (ee-checks-enabled?)
-        (t2/exists? :model/Tenant :is_active true))))
+  ;; the feature check short-circuits before Toucan resolves the model, which is what keeps
+  ;; the query from requiring an enterprise namespace a community build does not ship
+  (and (premium-features/has-feature? :embedding)
+       (t2/exists? :model/Tenant :is_active true)))
 
 (defn- has-shared-tenant-collections? []
   (t2/exists? :model/Collection {:where [:and
@@ -94,23 +89,16 @@
   ;; 1. Row and Column Level Security (Sandboxing)
   ;; 2. Connection Impersonation
   ;; 3. Database Routing
-  (boolean
-   (or (has-configured-sandboxes?)
-       (and (ee-checks-enabled?)
-            (or (t2/exists? :model/ConnectionImpersonation)
-                (t2/exists? :model/DatabaseRouter))))))
+  (or (has-configured-sandboxes?)
+      (and (premium-features/has-feature? :embedding) (t2/exists? :model/ConnectionImpersonation))
+      (and (premium-features/has-feature? :embedding) (t2/exists? :model/DatabaseRouter))))
 
 (defn- active-data-segregation-strategy []
   (cond
-    (has-configured-sandboxes?) "row-column-level-security"
-
-    (ee-checks-enabled?)
-    (cond
-      (t2/exists? :model/ConnectionImpersonation) "connection-impersonation"
-      (t2/exists? :model/DatabaseRouter)          "database-routing"
-      :else                                       nil)
-
-    :else nil))
+    (has-configured-sandboxes?)                                                                  "row-column-level-security"
+    (and (premium-features/has-feature? :embedding) (t2/exists? :model/ConnectionImpersonation)) "connection-impersonation"
+    (and (premium-features/has-feature? :embedding) (t2/exists? :model/DatabaseRouter))          "database-routing"
+    :else                                                                                        nil))
 
 (defn- has-published-guest-embed? []
   ;; Check if at least one card or dashboard has embedding enabled (is published as a guest embed)
