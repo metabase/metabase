@@ -13,9 +13,6 @@ const {
 const {
   bundleStatsPlugins,
 } = require("./frontend/build/shared/rspack/bundle-stats");
-const {
-  CODEMIRROR_CACHE_GROUP,
-} = require("./frontend/build/shared/rspack/codemirror-chunk");
 
 const {
   IS_DEV_MODE,
@@ -270,7 +267,15 @@ const config = {
           name: "vendor",
           priority: -10,
         },
-        codemirror: CODEMIRROR_CACHE_GROUP,
+        // Modules shared by two or more async chunks (e.g. CodeMirror, pulled
+        // in by every lazily loaded editor) move into a shared async chunk
+        // instead of being copied into each one. `vendors` above only claims
+        // initial chunks, so this never grows the initial payload.
+        asyncCommons: {
+          chunks: "async",
+          minChunks: 2,
+          reuseExistingChunk: true,
+        },
         sqlFormatter: {
           test: /[\\/]sql-formatter[\\/]/,
           chunks: "all",
