@@ -4,6 +4,7 @@ import {
 } from "__support__/enterprise";
 import {
   setupDashboardQuestionCandidatesEndpoint,
+  setupUpdateCollectionEndpoint,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -17,7 +18,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { CollectionHeaderProps } from "../CollectionHeader";
-import CollectionHeader from "../CollectionHeader";
+import { CollectionHeader } from "../CollectionHeader";
 
 const getProps = (
   opts?: Partial<CollectionHeaderProps>,
@@ -27,9 +28,8 @@ const getProps = (
   isBookmarked: false,
   canUpload: false,
   uploadsEnabled: true,
-  onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),
-  saveFile: jest.fn(),
+  onSaveFile: jest.fn(),
   onDeleteBookmark: jest.fn(),
   ...opts,
 });
@@ -65,6 +65,8 @@ export const setup = ({
     collection: createMockCollection(collection),
     ...otherProps,
   });
+
+  setupUpdateCollectionEndpoint(props.collection);
 
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(tokenFeatures),

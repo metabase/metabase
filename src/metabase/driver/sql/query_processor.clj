@@ -1127,7 +1127,7 @@
   (when-let [order-bys (not-empty (:order-by (apply-top-level-clause driver :order-by {} inner-query)))]
     {:order-by (vec order-bys)}))
 
-(defn- window-aggregation-over-rows
+(defn window-aggregation-over-rows
   "Generate an OVER (...) window function expression for stuff like `:offset` (`lag` and `lead`)."
   ([driver expr]
    (window-aggregation-over-rows driver expr nil))

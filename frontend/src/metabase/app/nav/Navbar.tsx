@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { getDashboard } from "metabase/dashboard/selectors";
+import { getDashboard } from "metabase/dashboard/shell-selectors";
 import { AdminNavbar } from "metabase/nav/components/AdminNavbar";
 import { MainNavbar } from "metabase/nav/containers/MainNavbar";
 import { connect } from "metabase/redux";

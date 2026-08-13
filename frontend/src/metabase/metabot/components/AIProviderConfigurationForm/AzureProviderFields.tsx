@@ -2,7 +2,6 @@ import { type FormikHelpers, useFormikContext } from "formik";
 import { useMemo } from "react";
 import { c, t } from "ttag";
 
-import { useUpdateMetabotSettingsMutation } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import {
@@ -12,6 +11,8 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { useAdminSettings } from "metabase/settings";
+
+import { useUpdateMetabotSettingsMutation } from "../../api";
 
 import { useAIProviderConfigurationContext } from "./AIProviderConfigurationContext";
 import {

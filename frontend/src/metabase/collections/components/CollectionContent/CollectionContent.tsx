@@ -1,25 +1,15 @@
-import { useCallback } from "react";
-
 import {
-  useCreateBookmarkMutation,
-  useDeleteBookmarkMutation,
   useGetCollectionQuery,
   useListBookmarksQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
-import type { UploadFileProps } from "metabase/redux/uploads";
-import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getSetting } from "metabase/settings";
-import type {
-  BookmarkId,
-  BookmarkType,
-  CollectionId,
-} from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import { CollectionContentView } from "./CollectionContentView";
 
@@ -54,24 +44,6 @@ export function CollectionContent({
 
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const dispatch = useDispatch();
-
-  const [createBookmarkMutation] = useCreateBookmarkMutation();
-  const [deleteBookmarkMutation] = useDeleteBookmarkMutation();
-
-  const createBookmark = (id: BookmarkId, type: BookmarkType) =>
-    createBookmarkMutation({ id, type });
-  const deleteBookmark = (id: BookmarkId, type: BookmarkType) =>
-    deleteBookmarkMutation({ id, type });
-
-  const uploadFile = useCallback(
-    ({ file, modelId, collectionId, tableId, uploadMode }: UploadFileProps) =>
-      dispatch(
-        uploadFileAction({ file, modelId, collectionId, tableId, uploadMode }),
-      ),
-    [dispatch],
-  );
-
   const error =
     bookmarksError || databasesError || collectionsError || collectionError;
 
@@ -89,10 +61,7 @@ export function CollectionContent({
       bookmarks={bookmarks}
       collection={collection}
       collectionId={collectionId}
-      createBookmark={createBookmark}
-      deleteBookmark={deleteBookmark}
       isAdmin={isAdmin}
-      uploadFile={uploadFile}
       uploadsEnabled={uploadsEnabled}
       canCreateUploadInDb={canCreateUploadInDb}
     />

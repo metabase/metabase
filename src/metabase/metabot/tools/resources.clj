@@ -566,16 +566,16 @@
 (defn- fetch-metric [id-str]
   (let [metric-id (parse-long id-str)]
     (check-card-resource-database metric-id)
-    (entity-details/get-metric-details {:metric-id                 metric-id
-                                        :with-queryable-dimensions false
-                                        :with-field-values         false})))
+    (entity-details/get-metric-details {:metric-id                  metric-id
+                                        :with-queryable-dimensions? false
+                                        :with-field-values?         false})))
 
 (defn- fetch-metric-dimensions [id-str]
   (let [metric-id (parse-long id-str)]
     (check-card-resource-database metric-id)
-    (entity-details/get-metric-details {:metric-id                 metric-id
-                                        :with-queryable-dimensions true
-                                        :with-field-values         false})))
+    (entity-details/get-metric-details {:metric-id                  metric-id
+                                        :with-queryable-dimensions? true
+                                        :with-field-values?         false})))
 
 (defn- fetch-metric-dimension [id-str dim-id]
   (let [metric-id (parse-long id-str)]
