@@ -16,7 +16,7 @@ import "metabase/utils/i18n";
 import "metabase/ui/colors";
 
 // NOTE: this loads all builtin plugins
-import "metabase/plugins/builtin";
+import "metabase/auth/plugins";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.

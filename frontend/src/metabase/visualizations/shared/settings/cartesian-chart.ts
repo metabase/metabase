@@ -3,10 +3,6 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
 import {
-  getMaxDimensionsSupported,
-  getMaxMetricsSupported,
-} from "metabase/visualizations";
-import {
   getCardsColumns,
   getCardsReferencedColumns,
 } from "metabase/visualizations/echarts/cartesian/model";
@@ -35,6 +31,11 @@ import type {
   SeriesOrderSetting,
   VisualizationDisplay,
 } from "metabase-types/api";
+
+import {
+  getMaxDimensionsSupported,
+  getMaxMetricsSupported,
+} from "../../lib/registry";
 
 export function getDefaultDimensionFilter(display: string) {
   return display === "scatter" ? isAny : isDimension;
