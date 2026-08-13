@@ -146,9 +146,8 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       onUpdateVisualizationSettings={props.onUpdateVisualizationSettings}
       onVisualizationRendered={props.onVisualizationRendered}
       {...vizSpecificProps}
-      // Visualization no longer falls back to a default mode itself, so
-      // default it here for the consumers that never pass one (dataset
-      // editor, data-studio overview, SDK with a null resolved mode).
+      // Visualization has no default mode,
+      // so surfaces that never pass one get the stock drills here.
       mode={props.mode ?? getDefaultClickActionMode}
     />
   );
