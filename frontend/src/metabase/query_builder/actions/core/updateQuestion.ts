@@ -107,7 +107,7 @@ export const updateQuestion = (
     const computedPivotQuestion = computeQuestionPivotTable({
       question: newQuestion,
       currentQuestion,
-      rawSeries,
+      rawSeries: rawSeries ?? undefined,
     });
 
     newQuestion = computedPivotQuestion.question;
