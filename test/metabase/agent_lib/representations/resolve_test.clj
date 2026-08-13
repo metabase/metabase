@@ -451,8 +451,8 @@
                                        eid))
     (measure-by-entity-id [_ eid] (when (= eid measure-entity-id) {:id 77 :table_id 10}))
     (segment-by-entity-id [_ _] nil)
-    (card-by-id           [_ id] (get {900 {:id 900 :entity_id metric-entity-id}
-                                       902 {:id 902 :entity_id datetime-metric-entity-id}}
+    (card-by-id           [_ id] (get {900 {:id 900 :database_id 1 :entity_id metric-entity-id}
+                                       902 {:id 902 :database_id 1 :entity_id datetime-metric-entity-id}}
                                       id))
     (measure-by-id        [_ _] nil)
     (segment-by-id        [_ _] nil)))
@@ -603,7 +603,7 @@
     (segment-by-entity-id [_ _] nil)
     (card-by-id           [_ id]
       (swap! calls conj id)
-      {:id id :entity_id metric-entity-id})
+      {:id id :database_id 1 :entity_id metric-entity-id})
     (measure-by-id        [_ _] nil)
     (segment-by-id        [_ _] nil)))
 

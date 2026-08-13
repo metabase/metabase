@@ -86,7 +86,8 @@
   "Render a `query` (legacy or pMBQL map, or a pre-resolved string) for the LLM. A query
   map with a `:database` is normalized and exported to the portable representations form
   the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
-  sources pass through; a `pprint`'d map is the last-resort fallback."
+  sources pass through; a `pprint`'d map is the last-resort fallback. A permission-refused
+  export renders nothing at all rather than the fallback."
   [query]
   (cond
     (string? query) query
@@ -94,14 +95,14 @@
     (and (map? query) (:database query))
     (try
       (let [normalized (lib-be/normalize-query query)
-            database-id (:database normalized)
-            mp (when database-id
-                 (lib-be/application-database-metadata-provider database-id))
-            exported (repr.resolve/try-export-query mp normalized shared.content-store/default-store)]
+            mp         (lib-be/application-database-metadata-provider (:database normalized))
+            exported   (repr.resolve/export-query mp normalized shared.content-store/default-store)]
         (or (repr-data->llm-block exported)
             (query-edn-fallback normalized)))
-      (catch Exception _
-        (query-edn-fallback query)))
+      (catch Exception e
+        (when-not (= 403 (:status-code (ex-data e)))
+          (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
+          (query-edn-fallback query))))
     (string? (get-in query [:native :query])) (get-in query [:native :query])
     (map? query) (query-edn-fallback query)
     :else (some-> query str)))

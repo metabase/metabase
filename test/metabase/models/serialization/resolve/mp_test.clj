@@ -106,8 +106,8 @@
     (card-by-entity-id    [_ _entity-id] nil)
     (measure-by-entity-id [_ _entity-id] nil)
     (segment-by-entity-id [_ _entity-id] nil)
-    (card-by-id           [_ card-id] (get {500 {:id 500 :entity_id card-entity-id}
-                                            501 {:id 501 :entity_id metric-entity-id}}
+    (card-by-id           [_ card-id] (get {500 {:id 500 :database_id 1 :entity_id card-entity-id}
+                                            501 {:id 501 :database_id 1 :entity_id metric-entity-id}}
                                            card-id))
     (measure-by-id        [_ _measure-id] nil)
     (segment-by-id        [_ _segment-id] nil)))
@@ -722,18 +722,30 @@
       (is (not= card-entity-id exported)
           "the metadata provider's permission-agnostic entity id is not used"))))
 
+(deftest ^:parallel export-fk-card-cross-database-test
+  (testing "a stored card pinned to another database is rejected"
+    (let [store (map-content-store {"lookup-key" {:id 500 :database_id 999 :entity_id card-entity-id}})
+          er    (resolve.mp/export-resolver mp-with-cards store)]
+      (try
+        (resolve/export-fk er 500 'Card)
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (= :cross-database-card (:error d)))
+            (is (= 999 (:card-database-id d)))))))))
+
 (deftest ^:parallel export-fk-card-missing-entity-id-test
-  (testing "a missing or blank store entity id produces the explicit export error"
-    (doseq [rows [{}
-                  {"lookup-key" {:id 500 :database_id 1}}
-                  {"lookup-key" {:id 500 :database_id 1 :entity_id ""}}
-                  {"lookup-key" {:id 500 :database_id 1 :entity_id "  \t"}}]]
+  (testing "a card the store does not know is distinct from one with a blank entity id"
+    (doseq [[rows expected-error] {{}                                                    :unknown-card-id
+                                   {"lookup-key" {:id 500 :database_id 1}}               :missing-card-entity-id
+                                   {"lookup-key" {:id 500 :database_id 1 :entity_id ""}} :missing-card-entity-id
+                                   {"lookup-key" {:id 500 :database_id 1 :entity_id "  \t"}} :missing-card-entity-id}]
       (let [er (resolve.mp/export-resolver mp-with-cards (map-content-store rows))]
         (try
           (resolve/export-fk er 500 'Card)
           (is false "expected throw")
           (catch clojure.lang.ExceptionInfo e
-            (is (= :missing-card-entity-id (:error (ex-data e))))))))))
+            (is (= expected-error (:error (ex-data e))))))))))
 
 (deftest ^:parallel import-fk-card-via-custom-content-store-happy-path-test
   (testing "a custom ContentStore lets the resolver work without an app DB"

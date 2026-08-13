@@ -1,6 +1,5 @@
 (ns metabase.metabot.tools.shared.llm-shape-test
   (:require
-   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -984,16 +983,11 @@
                           (mt/with-current-user user-id
                             (llm-shape/transform-query->text query)))
             readable    (render-as (mt/user->id :crowberto))
-            unreadable  (render-as (mt/user->id :rasta))
-            exported    (json/decode (second (re-find #"(?s)```json\n(.*)\n```" readable)))
-            fallback-edn (edn/read-string unreadable)]
+            exported    (json/decode (second (re-find #"(?s)```json\n(.*)\n```" readable)))]
         (testing "a user who can read the source Card gets its portable entity id"
           (is (= entity-id (get-in exported ["stages" 0 "source-card"]))))
-        (testing "a user who cannot read the source Card gets a metadata-free fallback, never its entity id"
-          (is (not (str/includes? unreadable entity-id)))
-          (is (not (str/includes? unreadable "```json")))
-          (is (not (contains? fallback-edn :lib/metadata)))
-          (is (= card-id (get-in fallback-edn [:stages 0 :source-card]))))))))
+        (testing "a user who cannot read the source Card gets nothing at all"
+          (is (nil? (render-as (mt/user->id :rasta)))))))))
 
 (deftest ^:parallel transform->xml-source-query-test
   (testing "a native source query renders as verbatim SQL text"

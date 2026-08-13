@@ -166,6 +166,7 @@
         (testing "a user who cannot read the source Card's collection gets a 403, not the entity_id"
           (mt/with-current-user (mt/user->id :rasta)
             (try
-              (is false (str "expected throw, got " (pr-str (export!))))
+              (export!)
+              (is false "expected throw")
               (catch clojure.lang.ExceptionInfo e
                 (is (= 403 (:status-code (ex-data e))))))))))))

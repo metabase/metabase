@@ -32,8 +32,8 @@
             (str "  <description>" (llm-shape/escape-xml-content description) "</description>"))
           (when source
             (str "  <source type=\"" (some-> source-type name) "\">"))
-          (when query
-            (str "    <query>" (llm-shape/transform-query->text query) "</query>"))
+          (when-let [query-text (some-> query llm-shape/transform-query->text)]
+            (str "    <query>" query-text "</query>"))
           (when body
             (str "    <body>" body "</body>"))
           (when source-database

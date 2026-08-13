@@ -81,9 +81,7 @@
               (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
                 (is (str/includes? output "name=\"Private source Card\""))
                 (is (not (str/includes? output entity-id)))
-                (is (not (str/includes? output "```json")))
-                (is (not (str/includes? output ":lib/metadata")))
-                (is (re-find (re-pattern (str ":source-card\\s+" card-id)) output))))))))))
+                (is (not (str/includes? output "<query>")))))))))))
 
 ;;; ----------------------------------- write tool integration tests --------------------------------------------------
 

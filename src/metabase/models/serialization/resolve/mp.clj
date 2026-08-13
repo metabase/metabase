@@ -29,11 +29,9 @@
         `lib.metadata/MetadataProvider`.
       * **Metabase content / assets** (cards, measures, segments, …) is resolved through a
         [[ContentStore]] in both directions, where callers may need permission-aware lookups.
-        Card export still uses the database-scoped metadata provider to validate existence and
-        database scope, but obtains the portable `entity_id` from the content store. The default
-        store is app-DB-backed; a different store (e.g. backed by the checker's YAML index, an
-        in-memory test fixture, or a snapshot) can be supplied for contexts without an application
-        database."
+        The default store is app-DB-backed; a different store (e.g. backed by the checker's YAML
+        index, an in-memory test fixture, or a snapshot) can be supplied for contexts without an
+        application database."
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
@@ -298,7 +296,8 @@
   (card-by-id [this card-id]
     "Return the card row for the given numeric id, or nil. Used by the export direction
     (a numeric `source-card` / metric ref → its portable `entity_id`). The returned map must
-    carry `:entity_id` (or `:entity-id`).")
+    carry `:entity_id` (or `:entity-id`) and `:database_id` (or `:database-id`) for the
+    cross-database guard.")
   (measure-by-id [this measure-id]
     "Return the measure row for the given numeric id, or nil. Same contract as
     `measure-by-entity-id`; used by the export direction (`[:measure {} <id>]` →
@@ -336,7 +335,9 @@
       (when card-id
         ;; `api/read-check` for Cards needs only the parent collection. Avoid loading and
         ;; transforming the entire dataset_query just to export one stable identifier.
-        (t2/select-one [:model/Card :id :entity_id :collection_id] :id card-id)))
+        ;; `:card_schema` must ride along: selecting `:database_id` makes the after-select
+        ;; treat this as a full card row and demand it.
+        (t2/select-one [:model/Card :id :entity_id :collection_id :database_id :card_schema] :id card-id)))
     (measure-by-id [_ measure-id]
       (when measure-id
         (t2/select-one [:model/Measure :id :entity_id :table_id] :id measure-id)))
@@ -403,23 +404,19 @@
 (defn- export-card-by-id
   "Resolve a saved question / model / metric by numeric id to its portable `entity_id`.
 
-  Uses the metadata provider rather than the generic app-DB serdes resolver so exporting a
-  final pMBQL query can stay paired with the same database-scoped provider used for table and
-  field FK export. Guards against accidental cross-database card refs.
-
-  The `entity_id` comes from `content-store`, not the provider: the provider is
+  The row comes from `content-store`, not the metadata provider: the provider is
   permission-agnostic, so a read-checked store is what keeps an unreadable Card's stable id
-  out of the export."
+  out of the export. The stored `database_id` guards against cross-database card refs, like
+  `table-belongs-to-current-database?` does for measures and segments."
   [metadata-provider content-store card-id]
   (when card-id
     (let [current-db-id (:id (lib.metadata/database metadata-provider))
-          card          (lib.metadata.protocols/card metadata-provider card-id)
-          card-db-id    (or (:database-id card) (:database_id card))
-          stored        (when card (card-by-id content-store card-id))
-          entity-id     (or (:entity-id stored) (:entity_id stored))]
+          card          (card-by-id content-store card-id)
+          card-db-id    (when card (or (:database-id card) (:database_id card)))
+          entity-id     (when card (or (:entity-id card) (:entity_id card)))]
       (cond
         (nil? card)
-        (throw (ex-info (tru "No saved question, model, or metric found with id {0} in metadata provider." card-id)
+        (throw (ex-info (tru "No saved question, model, or metric found with id {0}." card-id)
                         {:status-code 400
                          :error       :unknown-card-id
                          :card-id     card-id}))
