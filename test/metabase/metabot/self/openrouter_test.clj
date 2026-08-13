@@ -73,6 +73,54 @@
       (is (= ["user"] (map :role (:messages body)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
+;;; openrouter-request-body tool_choice tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel request-body-no-required-tool-choice-model-downgrades-schema-tool-choice-test
+  (testing "the structured-output forced tool call is downgraded to auto for qwen3.8-max"
+    (let [body (openrouter/openrouter-request-body
+                {:model  "qwen/qwen3.8-max"
+                 :input  [{:role :user :content "hi"}]
+                 :schema {:type "object" :properties {:answer {:type "string"}}}})]
+      (is (=? {:tool_choice "auto"
+               :tools       [{:function {:name "structured_output"}}]}
+              body)))))
+
+(deftest ^:parallel request-body-no-required-tool-choice-model-downgrades-explicit-tool-choice-test
+  (testing "an explicit tool_choice required is downgraded too"
+    (let [body (openrouter/openrouter-request-body
+                {:model       "qwen/qwen3.8-max"
+                 :input       [{:role :user :content "hi"}]
+                 :tools       [{:tool-name "get_thing"
+                                :doc       "Get a thing."
+                                :schema    [:=> [:cat [:map [:id :int]]] :any]
+                                :fn        identity}]
+                 :tool_choice "required"})]
+      (is (= "auto" (:tool_choice body))))))
+
+(deftest ^:parallel request-body-no-required-tool-choice-model-leaves-auto-tool-choice-test
+  (testing "a tool_choice that is already auto is left alone for qwen3.8-max"
+    (let [body (openrouter/openrouter-request-body
+                {:model       "qwen/qwen3.8-max"
+                 :input       [{:role :user :content "hi"}]
+                 :tools       [{:tool-name "get_thing"
+                                :doc       "Get a thing."
+                                :schema    [:=> [:cat [:map [:id :int]]] :any]
+                                :fn        identity}]
+                 :tool_choice "auto"})]
+      (is (= "auto" (:tool_choice body))))))
+
+(deftest ^:parallel request-body-other-models-keep-required-tool-choice-test
+  (testing "models that accept a forced tool call keep tool_choice required"
+    (doseq [model ["anthropic/claude-haiku-4.5" "openai/gpt-5.4" "z-ai/glm-5.2"]]
+      (testing model
+        (let [body (openrouter/openrouter-request-body
+                    {:model  model
+                     :input  [{:role :user :content "hi"}]
+                     :schema {:type "object" :properties {:answer {:type "string"}}}})]
+          (is (= "required" (:tool_choice body))))))))
+
+;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
 ;;; ──────────────────────────────────────────────────────────────────
 

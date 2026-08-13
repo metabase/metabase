@@ -134,6 +134,21 @@
   [model]
   (str/starts-with? (str model) "anthropic/"))
 
+(def ^:private required-tool-choice-unsupported-models
+  "Models that don't support `:tool_choice \"required\"`"
+  #{"qwen/qwen3.8-max"})
+
+(defn- supports-required-tool-choice?
+  "Whether `model` accepts `:tool_choice \"required\"`."
+  [model]
+  (not (contains? required-tool-choice-unsupported-models model)))
+
+(defn- required-tool-choice->auto
+  "Downgrade `:tool_choice \"required\"` to `\"auto\"`."
+  [req]
+  (cond-> req
+    (= "required" (:tool_choice req)) (assoc :tool_choice "auto")))
+
 (mu/defn openrouter-request-body
   "Build the Chat Completions request body for an LLM request.
 
@@ -147,7 +162,10 @@
     :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
   (cond-> (chat-completions/request-body (assoc opts :model model))
     (and system (anthropic-model? model))
-    (update-in [:messages 0 :content] claude/system->cached-content-blocks)))
+    (update-in [:messages 0 :content] claude/system->cached-content-blocks)
+
+    (not (supports-required-tool-choice? model))
+    required-tool-choice->auto))
 
 (mu/defn openrouter-raw
   "Perform a streaming request to the Chat Completions API.
