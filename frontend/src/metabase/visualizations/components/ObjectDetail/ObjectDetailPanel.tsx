@@ -3,7 +3,9 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import { getActionItems } from "metabase/actions/utils";
 import {
   actionApi,
   datasetApi,
@@ -25,7 +27,6 @@ import type {
   WritebackActionId,
 } from "metabase-types/api";
 
-import { DeleteObjectModal } from "./DeleteObjectModal";
 import { ObjectDetailBody } from "./ObjectDetailBody";
 import { ObjectDetailHeader } from "./ObjectDetailHeader";
 import {
@@ -34,12 +35,7 @@ import {
   ObjectDetailLayout,
 } from "./ObjectDetailPanel.styled";
 import type { ObjectDetailProps, ObjectId } from "./types";
-import {
-  getActionItems,
-  getDisplayId,
-  getObjectName,
-  getSinglePKIndex,
-} from "./utils";
+import { getDisplayId, getObjectName, getSinglePKIndex } from "./utils";
 
 function filterByPk(
   query: Lib.Query,

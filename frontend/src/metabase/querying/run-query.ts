@@ -2,11 +2,6 @@ import { RTK_CACHE_KEY_PARAM } from "metabase/api/api";
 import { cardApi } from "metabase/api/card";
 import { dashboardApi } from "metabase/api/dashboard";
 import { datasetApi } from "metabase/api/dataset";
-import {
-  dispatchQueryEndpoint,
-  makePivotAwareQueryRunner,
-  shouldUsePivotEndpoint,
-} from "metabase/api/query-endpoints";
 import type { Dispatch } from "metabase/redux/store";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -19,6 +14,12 @@ import type {
   Dataset,
   DatasetQuery,
 } from "metabase-types/api";
+
+import {
+  dispatchQueryEndpoint,
+  makePivotAwareQueryRunner,
+  shouldUsePivotEndpoint,
+} from "./api/query-endpoints";
 
 type RunQuestionQueryOptions = {
   dispatch: Dispatch;

@@ -10,6 +10,7 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Download diagnostic info](./diagnostic-info.md)
 - [Create a HAR file](./create-har-file.md)
+- [Profiling your Metabase](./profiling-metabase.md)
 
 ## Installation
 

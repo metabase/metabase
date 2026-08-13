@@ -44,20 +44,20 @@ const SHARED_UTILS_LEVELS = [
 ];
 
 const SHARED_PLATFORM_LEVELS = [
-  // P0 — independent peers: chart rendering and database metadata/forms.
+  // P0 — independent peers: the data grid and writeback actions.
+  ["shared/data-grid", "shared/actions"],
+  // P1 — independent peers: chart rendering and database metadata/forms.
   ["shared/visualizations", "shared/databases"],
-  // P1 — query editing and subscription editing compose visualizations;
-  // querying and pulse have no edges between them.
+  // P2 — query editing and subscription editing compose visualizations.
+  // Querying and pulse have no edges between them.
   ["shared/querying", "shared/pulse"],
-  // P2 — building blocks over querying; mutually independent.
+  // P3 — building blocks over querying, mutually independent.
   ["shared/metadata", "shared/parameters", "shared/questions"],
 ];
 
 const SHARED_DOMAIN = [
-  "shared/actions",
   "shared/comments",
   "shared/custom-viz",
-  "shared/data-grid",
   "shared/detail-view",
   "shared/metabot",
   "shared/metrics-ui",
@@ -118,15 +118,6 @@ const sharedRules = [
   ...TIERED_SHARED.map((type) => ({ from: [type], allow: [type] })),
   // Transitional clusters: these domain modules still import each other, so both ways are allowed.
   // Delete each entry once the imports are one-directional.
-  {
-    from: ["shared/visualizations"],
-    allow: [
-      "shared/custom-viz",
-      "shared/data-grid",
-      "shared/static-viz",
-      "shared/visualizer",
-    ],
-  },
   {
     from: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
     allow: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],

@@ -116,7 +116,7 @@ Admins:
 - Admins can add or remove recipients on any alert, even ones that they didn't create themselves.
 - Admins can bulk manage alerts per person from the [People menu in Admin settings](../people-and-groups/managing.md#unsubscribe-from-all-subscriptions-and-alerts).
 
-- Admins can bulk manage all alerts in the instance in [Admin > Tools > Alert management](../installation-and-operation/alert-management.md).
+- Admins can bulk manage all alerts in the instance in [Monitor > Alerts management](../monitor/alerts-management.md).
 
 Metabase will email you when:
 

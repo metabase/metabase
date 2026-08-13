@@ -2,17 +2,17 @@ import { useMemo } from "react";
 
 import { Box, Stack } from "metabase/ui";
 import { color } from "metabase/ui/colors";
-import type { StackedTooltipModel } from "metabase/visualizations/types";
 
-import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
-
-import S from "./StackedDataTooltip.module.css";
 import {
   getPercent,
   getSortedRows,
   getTotalValue,
   groupExcessiveTooltipRows,
-} from "./utils";
+} from "../../../echarts/tooltip/utils";
+import type { StackedTooltipModel } from "../../../types";
+import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
+
+import S from "./StackedDataTooltip.module.css";
 
 const MAX_BODY_ROWS = 8;
 
