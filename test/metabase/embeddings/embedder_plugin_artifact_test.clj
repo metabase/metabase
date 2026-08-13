@@ -65,6 +65,21 @@
       (java.util.Collections/singletonList Proxy/NO_PROXY))
     (connectFailed [_uri _socket-address _exception])))
 
+(defn- check-missing-architecture!
+  "A catalog entry with no export for this architecture must fail rather than hash a nil sha256 into a
+  well-formed but meaningless embedding-space id."
+  [requested-model]
+  (let [model-spec-var (ns-resolve 'metabase-enterprise.embedder.catalog 'model-spec)
+        arch-var       (ns-resolve 'metabase-enterprise.embedder.catalog 'architecture)
+        spec           ((var-get model-spec-var) (:model-name requested-model))
+        without-arch   (update spec :architectures dissoc ((var-get arch-var)))]
+    (with-redefs-fn {model-spec-var (constantly without-arch)}
+      ;; Assert the :reason, not just the message: callers branch on it.
+      #(is (= :architecture-not-bundled
+              (:reason (ex-data (try (embeddings.provider/resolve-model requested-model)
+                                     (catch clojure.lang.ExceptionInfo e e)))))
+           "a catalog entry missing this architecture's export fails instead of hashing nil"))))
+
 (deftest ^:sequential plugin-artifact-smoke-test
   (if-not (= "true" (System/getenv "MB_EMBEDDER_ARTIFACT_TEST"))
     (testing "artifact smoke is enabled only in its dedicated CI process"
@@ -127,15 +142,7 @@
                                #(embeddings.provider/resolve-model requested-model))]
           (is (= (:embedding-space-id normal) (:embedding-space-id equivalent))
               "equivalent catalog map order does not change model identity")
-          ;; Without the guard this hashes a nil sha256 into a well-formed but meaningless space id.
-          (let [arch-var     (ns-resolve 'metabase-enterprise.embedder.catalog 'architecture)
-                without-arch (update spec :architectures dissoc ((var-get arch-var)))]
-            (with-redefs-fn {model-spec-var (constantly without-arch)}
-              ;; Assert the :reason, not just the message: callers branch on it.
-              #(is (= :architecture-not-bundled
-                      (:reason (ex-data (try (embeddings.provider/resolve-model requested-model)
-                                             (catch clojure.lang.ExceptionInfo e e)))))
-                   "a catalog entry missing this architecture's export fails instead of hashing nil"))))
+          (check-missing-architecture! requested-model))
         (let [libc-var        (ns-resolve 'metabase-enterprise.embedder.catalog 'linux-libc)
               os-var          (ns-resolve 'metabase-enterprise.embedder.catalog 'operating-system)
               detect-libc-var (ns-resolve 'metabase-enterprise.embedder.catalog 'detect-linux-libc)
