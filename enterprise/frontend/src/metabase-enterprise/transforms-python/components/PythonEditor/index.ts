@@ -1,2 +1,2 @@
-export { PythonEditor } from "./lazy";
+export { PythonEditor } from "./PythonEditor";
 export type { PythonEditorProps } from "./PythonEditor";
