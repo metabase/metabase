@@ -38,7 +38,8 @@
 (defn creation-blockers
   "Return the reasons that prevent direct creation of `candidate` on `table`."
   [candidate table]
-  (if (candidate-entity-model candidate)
+  (if-not (candidate-entity-model candidate)
+    [:unsupported-candidate-type]
     (cond-> []
       (not (:is_published table))
       (conj :table-not-published)
@@ -47,8 +48,7 @@
       (conj :table-inactive)
 
       (not (table-editable-for-candidate? candidate table))
-      (conj :table-uneditable))
-    []))
+      (conj :table-uneditable))))
 
 (defn dismiss!
   "Dismiss `candidate` for the instance."
@@ -84,7 +84,8 @@
                     :definition  (:definition candidate)}
             entity (case (:candidate_type candidate)
                      :measure (measures.create/create! body)
-                     :segment (segments.create/create! body))]
+                     :segment (segments.create/create! body)
+                     (throw (ex-info "Unsupported candidate type" {:candidate-type (:candidate_type candidate)})))]
         (candidate-repository/mark-modeled! candidate entity)))))
 
 (defn create!

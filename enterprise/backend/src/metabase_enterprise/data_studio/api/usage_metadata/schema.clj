@@ -22,7 +22,7 @@
   [:map [:id ms/PositiveInt] [:name :string]])
 
 (mr/def ::creation-blocker
-  [:enum :table-not-published :table-inactive :table-uneditable])
+  [:enum :table-not-published :table-inactive :table-uneditable :unsupported-candidate-type])
 
 (mr/def ::table
   [:map

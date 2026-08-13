@@ -152,7 +152,9 @@
         (is (= 0 (:total (mt/user-http-request :crowberto :get 200
                                                "ee/data-studio/usage-metadata/candidates"))))
         (is (nil? (mt/user-http-request :crowberto :delete 204
-                                        (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/dismissal"))))))))
+                                        (str "ee/data-studio/usage-metadata/candidates/" (:id candidate) "/dismissal"))))
+        (is (=? {:total 1, :data [{:id (:id candidate), :dismissed false}]}
+                (mt/user-http-request :crowberto :get 200 "ee/data-studio/usage-metadata/candidates")))))))
 
 (deftest candidate-detail-reports-table-uneditable-for-read-only-remote-synced-table-test
   (mt/with-premium-features #{:library}
@@ -284,7 +286,7 @@
                                   :database {:id (mt/id)
                                              :name "Test Database"}
                                   :is_published false}]
-               :creation_blockers []}
+               :creation_blockers ["unsupported-candidate-type"]}
               (mt/user-http-request :crowberto :get 200
                                     (str "ee/data-studio/usage-metadata/candidates/" (:id metric-candidate)))))
       (is (=? {:data [{:candidate_count 2}]}
