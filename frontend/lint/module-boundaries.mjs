@@ -71,10 +71,6 @@ const elements = [
 
   // shared
   createElement({ type: "feature", name: "account" }),
-  // The execution surface of actions (running a writeback action: forms,
-  // modals, hooks) is platform-grade — visualizations and detail-view both
-  // compose it. Carved by pattern from the actions module (metrics-ui
-  // precedent); authoring UI (ActionCreator, ActionPicker) stays domain.
   // Must precede shared/actions: first matching element wins.
   ...[
     "frontend/src/metabase/actions/hooks/**",
