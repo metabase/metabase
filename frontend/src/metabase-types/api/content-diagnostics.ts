@@ -1,5 +1,5 @@
 import type { CardType } from "./card";
-import type { CollectionId } from "./collection";
+import type { CollectionId, CollectionNamespace } from "./collection";
 import type { PaginationRequest } from "./pagination";
 import type { SortDirection } from "./sorting";
 import type { UserId } from "./user";
@@ -130,7 +130,7 @@ export type ContentDiagnosticsUser =
 export type ContentDiagnosticsCollection = {
   id: CollectionId;
   name: string;
-  namespace: string | null;
+  namespace: CollectionNamespace;
   effective_ancestors: Array<{ id: CollectionId; name: string }>;
 };
 

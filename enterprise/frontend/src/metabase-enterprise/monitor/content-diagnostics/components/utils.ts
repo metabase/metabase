@@ -5,6 +5,7 @@ import * as Urls from "metabase/urls";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
   CONTENT_DIAGNOSTICS_NON_COLLECTION_FILTER_TYPES,
+  type CollectionNamespace,
   type ContentDiagnosticsBaseFinding,
   type ContentDiagnosticsCollection,
   type ContentDiagnosticsDuplicateEntity,
@@ -151,7 +152,7 @@ export function getCollectionName(
 
 function getCollectionBreadcrumbUrl(
   entry: ContentDiagnosticsCollectionBreadcrumbEntry,
-  namespace: string | null,
+  namespace: CollectionNamespace,
 ): string {
   return namespace === "transforms"
     ? Urls.transformList({ collectionId: entry.id })
