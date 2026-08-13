@@ -150,6 +150,49 @@
            (mapv :candidate-id
                  (candidate-families [medium-root weak-root strong-child]))))))
 
+(defn- measure-family-candidate
+  [id definition base-name atoms overrides]
+  (merge
+   {:id                    id
+    :table_id              (mt/id :orders)
+    :candidate_type        :measure
+    :modeling_status       :missing
+    :signature_hash        (format "%064d" id)
+    :signature             (str "[\"measure-candidate-" id "\"]")
+    :definition            definition
+    :semantic_details      {:base-name base-name
+                            :condition-atoms (mapv (fn [[signature display-name]]
+                                                     {:signature signature
+                                                      :display-name display-name
+                                                      :kind :category})
+                                                   atoms)}
+    :suggested_name        (str "Measure candidate " id)
+    :verified_source_count 0
+    :official_source_count 0
+    :distinct_source_count 1
+    :complexity            (count atoms)
+    :recent_view_count      10}
+   overrides))
+
+(deftest measure-families-group-by-shared-aggregation-base-test
+  (let [mp         (lib-be/application-database-metadata-provider (mt/id))
+        orders     (lib.metadata/table mp (mt/id :orders))
+        subtotal   (lib.metadata/field mp (mt/id :orders :subtotal))
+        definition (lib/aggregate (lib/query mp orders) (lib/sum subtotal))
+        parent     (measure-family-candidate 1 definition "Revenue"
+                                             [["a-trial" "Trial complete"]] {})
+        child      (measure-family-candidate 2 definition "Revenue"
+                                             [["a-trial" "Trial complete"]
+                                              ["b-created" "Created recently"]]
+                                             {})
+        families   (candidate-families [child parent])
+        child-row  (first (filter #(= 2 (:candidate-id %)) families))]
+    (testing "measures sharing the same aggregation base are grouped into one family, parent first"
+      (is (= [1 2] (mapv :candidate-id families))))
+    (testing "the measure branch of family-display-name combines the base name and inherited conditions"
+      (is (= "Revenue where Trial complete and Created recently"
+             (:display-name child-row))))))
+
 (deftest latest-successful-snapshot-and-durable-dismissal-test
   (mt/with-temp [:model/UsageMetadataCandidateRun _old-run {:status            :succeeded
                                                             :trigger           :scheduled
