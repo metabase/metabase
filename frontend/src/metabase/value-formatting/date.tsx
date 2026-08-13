@@ -3,6 +3,7 @@ import dayjs, { type Dayjs, type OpUnitType, type QUnitType } from "dayjs";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { formatDisplayDate, getDisplayCalendar } from "metabase/utils/calendar";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
@@ -1270,7 +1271,7 @@ export function formatDateTimeWithFormats(
   if (shouldIncludeTime) {
     format.push(timeFormat);
   }
-  return m.format(format.join(", "));
+  return formatDisplayDate(m, format.join(", "));
 }
 
 export function formatDateTimeWithUnit(
@@ -1278,6 +1279,7 @@ export function formatDateTimeWithUnit(
   unit: DatetimeUnit,
   options: ColumnSettings = {},
 ) {
+  const displayCalendar = getDisplayCalendar();
   if (options.isExclude) {
     if (unit === "hour-of-day") {
       return dayjs.utc(value).format("h A");
@@ -1362,6 +1364,16 @@ export function formatDateTimeWithUnit(
       options.time_style as string,
       options.time_enabled,
     );
+  }
+
+  // Month/quarter/week buckets describe Gregorian intervals returned by the
+  // backend. A Persian label would be misleading, so MVP conversion is limited
+  // to exact dates and timestamps.
+  if (
+    displayCalendar === "persian" &&
+    ["year", "quarter", "month", "week"].includes(unit)
+  ) {
+    return m.format(dateFormat);
   }
 
   return formatDateTimeWithFormats(m, dateFormat, timeFormat, options);
