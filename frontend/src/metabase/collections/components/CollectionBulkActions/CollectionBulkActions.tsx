@@ -1,6 +1,5 @@
-import { memo, useMemo, useState } from "react";
-import { msgid, ngettext } from "ttag";
-import _ from "underscore";
+import { memo, useCallback, useMemo, useState } from "react";
+import { msgid, ngettext, t } from "ttag";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
 import {
@@ -9,20 +8,26 @@ import {
 } from "metabase/common/collections/components/QuestionMoveConfirmModal";
 import { isTrashedCollection } from "metabase/common/collections/utils";
 import { BulkActionBar } from "metabase/common/components/BulkActionBar";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { BulkMoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import {
-  type MovableItem,
+  canMoveItem,
   isMovable,
   useSetCollection,
 } from "metabase/common/hooks";
+import {
+  type RegisterShortcutProps,
+  useRegisterShortcut,
+} from "metabase/palette/hooks/useRegisterShortcut";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
 import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
+import { useBulkArchive } from "./use-bulk-archive";
 
 type CollectionBulkActionsProps = {
-  selected: any[];
+  selected: CollectionItem[];
   collection: Collection;
   selectedItems: CollectionItem[] | null;
   setSelectedItems: (items: CollectionItem[] | null) => void;
@@ -44,13 +49,82 @@ export const CollectionBulkActions = memo(
     const [rememberedDestination, setRememberedDestination] =
       useState<Destination | null>(null);
     const setCollection = useSetCollection();
+    const { canArchive, archiveSelected } = useBulkArchive(
+      selected,
+      collection,
+    );
+    const isTrashed = isTrashedCollection(collection);
+    const isTrashConfirmOpen = selectedAction === "trash";
+    const openTrashConfirm = useCallback(
+      () => setSelectedAction("trash"),
+      [setSelectedAction],
+    );
+    const closeTrashConfirm = useCallback(
+      () => setSelectedAction(null),
+      [setSelectedAction],
+    );
+
+    const hasBlockingDialog = selectedAction !== null;
+
+    const canRunSelectionShortcut = useCallback(
+      (event?: KeyboardEvent) => {
+        if (selected.length === 0 || hasBlockingDialog) {
+          return false;
+        }
+
+        return !(
+          event?.target instanceof Element &&
+          event.target.closest('[role="dialog"], [role="menu"]') !== null
+        );
+      },
+      [hasBlockingDialog, selected.length],
+    );
+
+    const handleTrashShortcut = useCallback(
+      (event?: KeyboardEvent) => {
+        if (canRunSelectionShortcut(event) && canArchive) {
+          openTrashConfirm();
+        }
+      },
+      [canArchive, canRunSelectionShortcut, openTrashConfirm],
+    );
+
+    const handleClearSelectionShortcut = useCallback(
+      (event?: KeyboardEvent) => {
+        if (canRunSelectionShortcut(event)) {
+          clearSelected();
+        }
+      },
+      [canRunSelectionShortcut, clearSelected],
+    );
+
+    useBulkActionsShortcuts(
+      handleTrashShortcut,
+      handleClearSelectionShortcut,
+      isTrashed,
+    );
+
+    const handleConfirmTrash = async () => {
+      closeTrashConfirm();
+      try {
+        await archiveSelected();
+      } finally {
+        clearSelected();
+      }
+    };
 
     const isVisible = selected.length > 0 && selectedAction !== "confirm-move";
 
-    const hasSelectedItems = useMemo(
-      () => !!selectedItems && !_.isEmpty(selectedItems),
-      [selectedItems],
+    const hasSelectedItems = selectedItems !== null && selectedItems.length > 0;
+    const canMove = useMemo(
+      () => selected.every((item) => canMoveItem(item, collection)),
+      [selected, collection],
     );
+
+    const handleBulkMoveStart = useCallback(() => {
+      setSelectedItems([...selected]);
+      setSelectedAction("move");
+    }, [selected, setSelectedAction, setSelectedItems]);
 
     const handleCloseModal = () => {
       setSelectedItems(null);
@@ -65,9 +139,6 @@ export const CollectionBulkActions = memo(
       setRememberedDestination(null);
     };
 
-    const tryOrClear = (promise: Promise<any>) =>
-      promise.finally(() => clearSelected());
-
     const handleConfirmedBulkQuestionMove = async () => {
       if (rememberedDestination) {
         handleCloseModal();
@@ -77,14 +148,11 @@ export const CollectionBulkActions = memo(
 
     const doMove = async (destination: Destination) => {
       if (selectedItems) {
-        await tryOrClear(
-          Promise.all(
-            selectedItems
-              .filter(isMovable)
-              // Unjustified type cast. FIXME
-              .map((item) => setCollection(item as MovableItem, destination)),
-          ),
-        );
+        await Promise.all(
+          selectedItems
+            .filter(isMovable)
+            .map((item) => setCollection(item, destination)),
+        ).finally(clearSelected);
       }
       handleCloseModal();
     };
@@ -137,7 +205,7 @@ export const CollectionBulkActions = memo(
     return (
       <>
         <BulkActionBar message={actionMessage} opened={isVisible}>
-          {isTrashedCollection(collection) ? (
+          {isTrashed ? (
             <ArchivedBulkActions
               collection={collection}
               selectedItems={selectedItems}
@@ -149,38 +217,47 @@ export const CollectionBulkActions = memo(
             />
           ) : (
             <UnarchivedBulkActions
-              selected={selected}
-              collection={collection}
-              clearSelected={clearSelected}
-              setSelectedItems={setSelectedItems}
-              setSelectedAction={setSelectedAction}
+              onRequestMove={canMove ? handleBulkMoveStart : undefined}
+              onRequestTrash={canArchive ? openTrashConfirm : undefined}
             />
           )}
         </BulkActionBar>
 
-        {selectedItems && hasSelectedItems && selectedAction === "copy" && (
+        <ConfirmModal
+          opened={isTrashConfirmOpen}
+          data-testid="move-to-trash-confirmation"
+          title={ngettext(
+            msgid`Move ${selected.length} item to trash?`,
+            `Move ${selected.length} items to trash?`,
+            selected.length,
+          )}
+          message={t`You can restore items from the trash.`}
+          confirmButtonText={t`Move to trash`}
+          onConfirm={handleConfirmTrash}
+          onClose={closeTrashConfirm}
+        />
+
+        {hasSelectedItems && selectedAction === "copy" && (
           <CollectionCopyEntityModal
-            entityObject={selectedItems?.[0]}
+            entityObject={selectedItems[0]}
             onClose={handleCloseModal}
             onSaved={handleCloseModal}
           />
         )}
 
-        {selectedItems && hasSelectedItems && selectedAction === "move" && (
+        {hasSelectedItems && selectedAction === "move" && (
           <BulkMoveModal
             selectedItems={selectedItems}
             onClose={handleCancelModal}
             onMove={handleBulkMove}
-            initialCollectionId={
-              isTrashedCollection(collection) ? "root" : collection.id
-            }
+            initialCollectionId={isTrashed ? "root" : collection.id}
             recentAndSearchFilter={recentAndSearchFilter}
           />
         )}
 
         {hasSelectedItems && selectedAction === "confirm-move" && (
           <QuestionMoveConfirmModal
-            selectedItems={selectedItems || []}
+            selectedItems={selectedItems}
             onConfirm={handleConfirmedBulkQuestionMove}
             onClose={handleCloseModal}
             destination={rememberedDestination}
@@ -190,5 +267,39 @@ export const CollectionBulkActions = memo(
     );
   },
 );
+
+function useBulkActionsShortcuts(
+  handleTrashShortcut: (event?: KeyboardEvent) => void,
+  handleClearSelectionShortcut: (event?: KeyboardEvent) => void,
+  isTrashed: boolean,
+) {
+  const trashShortcuts: RegisterShortcutProps[] = [
+    {
+      id: "collection-trash-selected-items",
+      perform: (_action, event) => handleTrashShortcut(event),
+    },
+    {
+      id: "collection-trash-selected-items-backspace",
+      perform: (_action, event) => handleTrashShortcut(event),
+    },
+    {
+      id: "collection-send-items-to-trash",
+      perform: (_action, event) => handleTrashShortcut(event),
+    },
+  ];
+
+  useRegisterShortcut(
+    [
+      {
+        id: "collection-clear-selection",
+        perform: (_action, event) => {
+          handleClearSelectionShortcut(event);
+        },
+      },
+      ...(isTrashed ? [] : trashShortcuts),
+    ],
+    [handleClearSelectionShortcut, handleTrashShortcut, isTrashed],
+  );
+}
 
 CollectionBulkActions.displayName = "CollectionBulkActions";
