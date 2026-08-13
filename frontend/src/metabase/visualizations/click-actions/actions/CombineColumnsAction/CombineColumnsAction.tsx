@@ -4,7 +4,7 @@ import { trackColumnCombineViaPlusModal } from "metabase/querying/analytics";
 import {
   CombineColumns,
   hasCombinations,
-} from "metabase/querying/components/expressions/CombineColumns";
+} from "metabase/querying/components/expressions";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import type { LegacyDrill } from "metabase/visualizations/types";

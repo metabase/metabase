@@ -16,7 +16,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor/utils";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";

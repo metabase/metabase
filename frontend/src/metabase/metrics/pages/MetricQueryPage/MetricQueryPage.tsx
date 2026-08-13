@@ -13,7 +13,7 @@ import type {
   MetricUrls,
 } from "metabase/common/metrics/types";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor/utils";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";

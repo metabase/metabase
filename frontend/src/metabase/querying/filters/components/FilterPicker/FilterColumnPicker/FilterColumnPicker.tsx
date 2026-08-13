@@ -18,7 +18,7 @@ import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   clausesForMode,
   getClauseDefinition,
-} from "metabase/querying/expressions/clause";
+} from "metabase/querying/expressions";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { DelayGroup, Icon } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";

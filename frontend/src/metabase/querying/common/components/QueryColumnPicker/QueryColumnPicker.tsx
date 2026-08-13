@@ -17,7 +17,7 @@ import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   clausesForMode,
   getClauseDefinition,
-} from "metabase/querying/expressions/clause";
+} from "metabase/querying/expressions";
 import { DelayGroup, Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
