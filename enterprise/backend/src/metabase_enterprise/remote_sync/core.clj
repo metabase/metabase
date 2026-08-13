@@ -11,7 +11,6 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -166,15 +165,11 @@
   "`{id collection}` for `ids`, carrying the fields the failure descriptions need. Nil and duplicate ids
   are tolerated so callers can pass raw `:collection_id`s straight from the entities they described."
   [ids]
-  (when-let [ids (seq (distinct (remove nil? ids)))]
-    (into {}
-          (map (juxt :id identity))
-          (t2/select [:model/Collection :id :name :location :personal_owner_id] :id [:in ids]))))
+  (when-let [ids (not-empty (disj (set ids) nil))]
+    (t2/select-pk->fn identity [:model/Collection :id :name :location :personal_owner_id] :id [:in ids])))
 
 (defn- top-level-ancestor-id
-  "Id of the outermost collection containing `collection`. Remote sync settings only offers top-level
-  collections as sync targets, so this — not the entity's own collection — is what an admin can act on.
-  A top-level collection is its own ancestor."
+  "Id of the outermost collection containing `collection`."
   [{:keys [id location]}]
   (or (first (collections/location-path->ids location)) id))
 
@@ -358,41 +353,34 @@
                                                            (t2/select :model/Collection :id [:in sync-on])))
                                        (update :sync-off #(when-let [sync-off (seq %)]
                                                             (t2/select :model/Collection :id [:in sync-off]))))]
-    (try
-      (t2/with-transaction [_]
-        (when (seq sync-on)
-          (t2/query {:update (t2/table-name :model/Collection)
-                     :set {:is_remote_synced true}
-                     :where [:and
-                             [:= :is_remote_synced false]
-                             (subtree-where sync-on)]})
-          (when-let [ids (seq (t2/select-pks-set :model/Collection {:where (subtree-where sync-on)}))]
-            ;; Re-syncing before a recorded removal was pushed must not leave the contents marked for deletion.
-            (restore-removed-rsos! ids)
-            ;; ...and contents that were dropped outright (never-pushed 'create' rows) must be re-tracked, so
-            ;; the next export pushes them rather than silently omitting them.
-            (track-untracked-contents! ids)))
-        (when (seq sync-off)
-          (let [affected-collection-ids
-                (t2/select-pks-set :model/Collection
-                                   {:where [:and
-                                            [:= :is_remote_synced true]
-                                            (subtree-where sync-off)]})]
-            (when (seq affected-collection-ids)
-              (t2/query {:update (t2/table-name :model/Collection)
-                         :set {:is_remote_synced false}
-                         :where [:in :id affected-collection-ids]})
-              (record-removed-rsos! affected-collection-ids))))
-        ;; Both checks read the state the updates above have staged, so they have to run in here. Turning
-        ;; what they found into an API payload does not, and [[rejection]] does it once we are back out.
-        (when-let [failures (not-empty (unsynced-dependency-failures sync-on))]
-          (throw (ex-info (tru "Uses content that is not remote synced.")
-                          {::unsynced-dependencies failures})))
-        (when-let [failure (remote-synced-dependent-failure sync-off)]
-          (throw (ex-info (tru "Used by remote synced content.")
-                          {::remote-synced-dependents failure}))))
-      (catch clojure.lang.ExceptionInfo e
-        (throw (or (rejection e) e))))
+    (t2/with-transaction [_]
+      (when (seq sync-on)
+        (t2/query {:update (t2/table-name :model/Collection)
+                   :set {:is_remote_synced true}
+                   :where [:and
+                           [:= :is_remote_synced false]
+                           (subtree-where sync-on)]})
+        (when-let [ids (seq (t2/select-pks-set :model/Collection {:where (subtree-where sync-on)}))]
+          ;; Re-syncing before a recorded removal was pushed must not leave the contents marked for deletion.
+          (restore-removed-rsos! ids)
+          ;; ...and contents that were dropped outright (never-pushed 'create' rows) must be re-tracked, so
+          ;; the next export pushes them rather than silently omitting them.
+          (track-untracked-contents! ids)))
+      (when (seq sync-off)
+        (let [affected-collection-ids
+              (t2/select-pks-set :model/Collection
+                                 {:where [:and
+                                          [:= :is_remote_synced true]
+                                          (subtree-where sync-off)]})]
+          (when (seq affected-collection-ids)
+            (t2/query {:update (t2/table-name :model/Collection)
+                       :set {:is_remote_synced false}
+                       :where [:in :id affected-collection-ids]})
+            (record-removed-rsos! affected-collection-ids))))
+      (doseq [collection sync-on]
+        (collections/check-non-remote-synced-dependencies collection))
+      (doseq [collection sync-off]
+        (collections/check-remote-synced-dependents collection)))
     (doseq [collection sync-on
             ;; only publish event when this changed
             :when (not (:is_remote_synced collection))]

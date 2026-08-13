@@ -55,13 +55,18 @@ describe("scenarios > collection pinned items overview", () => {
 
     cy.intercept("POST", "/api/card/**/query").as("getCardQuery");
     cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
+    cy.intercept("GET", "/api/**/items?models*").as("getCollectionItems");
   });
 
-  it("should be able to pin a dashboard", () => {
+  it("should be able to pin a dashboard and keep it in the contents list", () => {
     openRootCollection();
     H.openUnpinnedItemMenu(DASHBOARD_NAME);
     H.popover().findByText("Pin this").click();
-    cy.wait("@getPinnedItems");
+    cy.wait(["@getPinnedItems", "@getCollectionItems"]);
+
+    cy.findByTestId("collection-table")
+      .findByText(DASHBOARD_NAME)
+      .should("be.visible");
 
     H.getPinnedSection().within(() => {
       cy.icon("dashboard").should("be.visible");
@@ -227,17 +232,19 @@ describe("scenarios > collection pinned items overview", () => {
     // on specific elements rather than truly simulating mouse movements across the screen
     H.dragAndDrop("draggingViz", "pinnedItems");
 
-    cy.findByTestId("collection-table")
-      .findByText("Orders, Count, Grouped by Created At (year)")
-      .should("not.exist");
-
     cy.findByTestId("pinned-items")
       .findByText("Orders, Count, Grouped by Created At (year)")
       .should("exist");
+
+    // Pinned items stay in the contents list below the pinned section
+    cy.wait("@getCollectionItems");
+    cy.findByTestId("collection-table")
+      .findByText("Orders, Count, Grouped by Created At (year)")
+      .should("be.visible");
   });
 });
 
 const openRootCollection = () => {
   cy.visit("/collection/root");
-  cy.wait("@getPinnedItems");
+  cy.wait(["@getPinnedItems", "@getCollectionItems"]);
 };

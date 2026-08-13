@@ -51,6 +51,8 @@
 
 (defn- list-all-models
   "Fetch the full Mistral model catalog (`GET /models`).
+  A 2xx whose body isn't a recognizable catalog throws rather than yielding an empty picker — see
+  [[chat-completions/models-catalog]].
   `:ai-proxy?` is not supported for Mistral and throws when true."
   [{:keys [credentials ai-proxy?]}]
   (when ai-proxy?
@@ -66,7 +68,7 @@
                                    :url     "/models"
                                    :as      :json
                                    :headers {"Content-Type" "application/json"}})]
-      (get-in res [:body :data]))
+      (chat-completions/models-catalog "Mistral" res))
     (catch Exception e
       (core/rethrow-api-error! "mistral" mistral-error-msg e))))
 
@@ -131,10 +133,17 @@
         (catch Exception e
           (core/rethrow-api-error! "mistral" mistral-error-msg e))))))
 
+(def ^:private stop-reasons
+  "Mistral adds `model_length` — the model's own context limit, a truncation just like `length` — and reports a
+  mid-generation failure as a finish reason instead of an error event."
+  (assoc chat-completions/stop-reasons
+         "model_length" "length"
+         "error"        "error"))
+
 (defn mistral->aisdk-chunks-xf
   "Translates Mistral Chat Completions streaming chunks into AI SDK v5 protocol chunks."
   []
-  (chat-completions/chat-completions->aisdk-chunks-xf))
+  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons))
 
 (defn mistral
   "Call the Mistral Chat Completions API, return AISDK stream."

@@ -49,7 +49,11 @@
     force? :force} :- [:map
                        [:skip-graph {:default false} [:maybe ms/BooleanValue]]
                        [:force      {:default false} [:maybe ms/BooleanValue]]]
-   body :- :map]
+   body :- [:map
+            [:revision ms/Int]
+            ;; keyed by group id, then by application permission type -- `dejsonify-graph` below turns both back
+            ;; into the int and keyword the graph is stored under
+            [:groups   [:map-of :keyword [:map-of :keyword ms/NonBlankString]]]]]
   (api/check-superuser)
   (-> body
       dejsonify-graph

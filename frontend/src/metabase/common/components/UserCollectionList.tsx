@@ -5,7 +5,7 @@ import {
 } from "metabase/common/collections/constants";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
 import * as Urls from "metabase/urls";
-import type { IconName } from "metabase-types/api";
+import type { CollectionId, IconName, User } from "metabase-types/api";
 
 export const UserCollectionList = () => {
   const { data, isLoading } = useListUsersQuery({});
@@ -21,7 +21,10 @@ export const UserCollectionList = () => {
   ];
 
   const items = users
-    .filter((user) => user.personal_collection_id)
+    .filter(
+      (user): user is User & { personal_collection_id: CollectionId } =>
+        !!user.personal_collection_id,
+    )
     .map((user) => ({
       key: user.personal_collection_id,
       name: user.common_name,

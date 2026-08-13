@@ -7,9 +7,9 @@ import {
   useListCommentsQuery,
   useListTimelinesQuery,
 } from "metabase/api";
+import { explorationApi } from "metabase/api/exploration";
 import { getListCommentsQuery } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { useLocation, useNavigate, useParams } from "metabase/router";
@@ -27,7 +27,6 @@ import type {
   TimelineId,
 } from "metabase-types/api";
 import {
-  getExplorationPages,
   isSettledExplorationQueryStatus,
   isTerminalExplorationThreadStatus,
 } from "metabase-types/api";
@@ -37,11 +36,9 @@ import {
   ExplorationTitle,
 } from "../components/ExplorationSidebar";
 import {
-  type ExplorationTreeNode,
   flattenTree,
+  getExplorationSidebarModel,
   getExplorationSidebarTabsInfo,
-  getExplorationSidebarTree,
-  isHiddenTreeItem,
   pickInitialSidebarPage,
 } from "../components/ExplorationSidebar/utils";
 import {
@@ -61,6 +58,8 @@ import {
   type ExplorationSidebarTab,
   isExplorationSidebarTab,
 } from "../types";
+import { getAdjacentById } from "../utils";
+
 const QUERY_POLL_INTERVAL_MS = 2000;
 
 const TIMELINE_QUERY_PARAM = "timeline";
@@ -260,24 +259,16 @@ function ExplorationPageForId() {
     );
   }, [exploration, commentsData?.comments]);
 
-  const tree = useMemo(() => {
+  const { tree, contentMode: sidebarContentMode } = useMemo(() => {
     if (!exploration) {
-      return [];
+      return { tree: [], contentMode: "loading" as const };
     }
-    const tabFilter =
-      explorationSidebarTabsInfo[selectedSidebarTab].treeItemFilter;
-
-    const treeItemFilter = showHidden
-      ? tabFilter
-      : (node: ITreeNodeItem<ExplorationTreeNode>) =>
-          tabFilter(node) && !isHiddenTreeItem(node);
-
-    const hasHiddenPages = getExplorationPages(exploration).some(
-      (page) => page.hidden,
-    );
-
-    return getExplorationSidebarTree(exploration, treeItemFilter, sortOrder, {
-      keepEmptyInitialThread: selectedSidebarTab === "all" && hasHiddenPages,
+    return getExplorationSidebarModel({
+      exploration,
+      selectedSidebarTab,
+      tabsInfo: explorationSidebarTabsInfo,
+      showHidden,
+      sortOrder,
     });
   }, [
     exploration,
@@ -322,31 +313,109 @@ function ExplorationPageForId() {
     return pickInitialSidebarPage(tree);
   }, [params.pageId, tree]);
 
-  const orderedPageIds = useMemo(
+  const pageIdToPageAndQueries: Map<
+    ExplorationPageNodeId,
+    {
+      page: ExplorationPageNode;
+      thread: ExplorationThread;
+      queries: ExplorationQuery[];
+      block: ExplorationBlockNode;
+    }
+  > = useMemo(() => {
+    const map = new Map<
+      ExplorationPageNodeId,
+      {
+        page: ExplorationPageNode;
+        thread: ExplorationThread;
+        queries: ExplorationQuery[];
+        block: ExplorationBlockNode;
+      }
+    >();
+    for (const thread of exploration?.threads ?? []) {
+      const queriesById = new Map((thread.queries ?? []).map((q) => [q.id, q]));
+      for (const block of thread.blocks ?? []) {
+        for (const page of block.pages) {
+          const queries = page.query_ids
+            .map((id) => queriesById.get(id))
+            .filter((q): q is ExplorationQuery => q !== undefined);
+          map.set(String(page.id), { page, thread, queries, block });
+        }
+      }
+    }
+    return map;
+  }, [exploration]);
+
+  const prefetchQueryResult = explorationApi.usePrefetch(
+    "getExplorationQueryResult",
+  );
+
+  const prefetchPage = useCallback(
+    (pageId: ExplorationPageNodeId) => {
+      const entry = pageIdToPageAndQueries.get(pageId);
+      if (!entry) {
+        return;
+      }
+      for (const query of entry.queries) {
+        if (query.status === "done") {
+          prefetchQueryResult(query.id);
+        }
+      }
+    },
+    [pageIdToPageAndQueries, prefetchQueryResult],
+  );
+
+  const orderedPages = useMemo(
     () =>
       flattenTree(tree).flatMap((item) =>
-        item.data?.type === "page" ? [item.data.page_id] : [],
+        item.data?.type === "page" ? [{ id: item.data.page_id }] : [],
       ),
     [tree],
   );
-  const currentPageIndex =
-    selectedPageId != null ? orderedPageIds.indexOf(selectedPageId) : -1;
+  const previousPage = getAdjacentById(orderedPages, selectedPageId, -1);
+  const nextPage = getAdjacentById(orderedPages, selectedPageId, 1);
+  // Undefined when there's nowhere else to go (empty or single-page list).
   const previousPageId =
-    currentPageIndex > 0 ? orderedPageIds[currentPageIndex - 1] : undefined;
-  const nextPageId =
-    currentPageIndex !== -1 && currentPageIndex < orderedPageIds.length - 1
-      ? orderedPageIds[currentPageIndex + 1]
+    previousPage != null && previousPage.id !== selectedPageId
+      ? previousPage.id
       : undefined;
-  const goToPreviousPage = useCallback(() => {
-    if (previousPageId != null) {
-      setSelectedPageId(previousPageId, { scrollIntoView: true });
-    }
-  }, [previousPageId, setSelectedPageId]);
-  const goToNextPage = useCallback(() => {
-    if (nextPageId != null) {
-      setSelectedPageId(nextPageId, { scrollIntoView: true });
-    }
-  }, [nextPageId, setSelectedPageId]);
+  const nextPageId =
+    nextPage != null && nextPage.id !== selectedPageId
+      ? nextPage.id
+      : undefined;
+
+  // Navigate and prefetch the page after the destination in the same
+  // direction — once a user pages once they're likely to page again.
+  // Both directions wrap around the ordered page list.
+  const goToAdjacentPage = useCallback(
+    (direction: 1 | -1) => {
+      const destination = getAdjacentById(
+        orderedPages,
+        selectedPageId,
+        direction,
+      );
+      if (destination == null || destination.id === selectedPageId) {
+        return;
+      }
+      setSelectedPageId(destination.id, { scrollIntoView: true });
+      const following = getAdjacentById(
+        orderedPages,
+        destination.id,
+        direction,
+      );
+      if (following != null) {
+        prefetchPage(following.id);
+      }
+    },
+    [orderedPages, selectedPageId, setSelectedPageId, prefetchPage],
+  );
+  const goToPreviousPage = useCallback(
+    () => goToAdjacentPage(-1),
+    [goToAdjacentPage],
+  );
+  const goToNextPage = useCallback(
+    () => goToAdjacentPage(1),
+    [goToAdjacentPage],
+  );
 
   useEffect(() => {
     if (selectedPageId != null && !readPageIds.has(selectedPageId)) {
@@ -397,38 +466,6 @@ function ExplorationPageForId() {
       }
     }
   }, [exploration, sendToast, setSelectedPageId]);
-
-  const pageIdToPageAndQueries: Map<
-    ExplorationPageNodeId,
-    {
-      page: ExplorationPageNode;
-      thread: ExplorationThread;
-      queries: ExplorationQuery[];
-      block: ExplorationBlockNode;
-    }
-  > = useMemo(() => {
-    const map = new Map<
-      ExplorationPageNodeId,
-      {
-        page: ExplorationPageNode;
-        thread: ExplorationThread;
-        queries: ExplorationQuery[];
-        block: ExplorationBlockNode;
-      }
-    >();
-    for (const thread of exploration?.threads ?? []) {
-      const queriesById = new Map((thread.queries ?? []).map((q) => [q.id, q]));
-      for (const block of thread.blocks ?? []) {
-        for (const page of block.pages) {
-          const queries = page.query_ids
-            .map((id) => queriesById.get(id))
-            .filter((q): q is ExplorationQuery => q !== undefined);
-          map.set(String(page.id), { page, thread, queries, block });
-        }
-      }
-    }
-    return map;
-  }, [exploration]);
 
   const selectedPage = useMemo(() => {
     return selectedPageId != null
@@ -518,7 +555,6 @@ function ExplorationPageForId() {
             getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
             tree={tree}
             selectedPageId={selectedPageId}
-            setSelectedPageId={setSelectedPageId}
             getSelectedPageUrl={getSelectedPageUrl}
             shouldScrollSelectionRef={shouldScrollSelectionRef}
             isOpen={isSidebarOpen}
@@ -527,6 +563,10 @@ function ExplorationPageForId() {
             onToggleShowHidden={() => setShowHidden((prev) => !prev)}
             sortOrder={sortOrder}
             onChangeSortOrder={handleChangeSortOrder}
+            contentMode={sidebarContentMode}
+            onPreviousPage={goToPreviousPage}
+            onNextPage={goToNextPage}
+            onPrefetchPage={prefetchPage}
           />
           {selectedPage && (
             <ExplorationGroupVisualization

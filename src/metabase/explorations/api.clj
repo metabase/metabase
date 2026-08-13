@@ -165,7 +165,7 @@
             ;; are impersonated or routed — and a response schema validates and encodes without
             ;; stripping (see [[redact-query-error]]), so it has to come off here.
             (dissoc (or (get enriched (:id thread))
-                        (assoc thread :queries [] :blocks [] :name nil))
+                        (assoc thread :queries [] :blocks [] :name nil :status "forbidden"))
                     :data_access_token))
           threads)))
 
@@ -178,7 +178,9 @@
     \"canceled\"  — the user stopped it
     \"empty\"     — terminal, the planner had nothing applicable to chart (NOT an error)
     \"failed\"    — terminal, planning failed or every query errored
-    \"completed\" — terminal, at least one chart is available"
+    \"completed\" — terminal, at least one chart is available
+    \"forbidden\" — terminal, the viewer's data-access lens is incompatible with the creator's
+                    (set by [[gate-threads-derived-data]], not [[thread-status]])"
   [{:keys [started_at canceled_at completed_at queries] :as thread}]
   (let [outcome (get-in thread [:query_plan_transcript :outcome])]
     (cond
@@ -448,7 +450,7 @@
    [:started_at                 {:optional true} [:maybe :any]]
    [:canceled_at                {:optional true} [:maybe :any]]
    [:completed_at               {:optional true} [:maybe :any]]
-   [:status                     [:enum "pending" "running" "canceled" "empty" "failed" "completed"]]
+   [:status                     [:enum "pending" "running" "canceled" "empty" "failed" "completed" "forbidden"]]
    [:queries                    {:optional true} [:maybe [:sequential ::ExplorationQuerySummary]]]
    [:blocks                     {:optional true} [:maybe [:sequential ::ExplorationBlockNode]]]
    [:timelines                  {:optional true}

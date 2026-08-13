@@ -58,16 +58,18 @@
    [:and
     {:error/message "Comment content must be valid JSON"
      :json-schema   {:type "object"}}
-    [:map]]
+    ms/Map]
    (deferred-tru "Comment content must be valid JSON.")))
 
 (def CommentContext
-  "Validation for comment context - expects JSON map"
+  "Context stored alongside a comment: a JSON blob whose shape depends on what was commented on. Only `timeline_id` is
+  read back, by [[metabase.comments.models.comment]] when building an exploration comment URL."
   (mu/with-api-error-message
    [:and
     {:error/message "Comment context must be a valid JSON object"
      :json-schema   {:type "object"}}
-    [:map]]
+    [:map {:closed false}
+     [:timeline_id {:optional true} ms/PositiveInt]]]
    (deferred-tru "Comment context must be a valid JSON object.")))
 
 (def CreateComment
