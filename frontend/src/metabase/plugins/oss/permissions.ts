@@ -37,11 +37,11 @@ export interface PermissionAction {
   label: string;
   icon: IconName;
   iconColor: ColorName;
-  actionCreator: (
+  onSelect: (
     entityId: PermissionEntityId | undefined,
     groupId: GroupId,
     view: "database" | "group",
-  ) => Action;
+  ) => void;
 }
 
 export interface PermissionConfirmationProps {

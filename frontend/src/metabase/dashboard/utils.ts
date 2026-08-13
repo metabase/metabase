@@ -15,7 +15,6 @@ import {
   getGenericErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
-import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
@@ -43,6 +42,7 @@ import type {
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params && before.enable_embedding) {
@@ -216,6 +216,13 @@ export function getCurrentTabDashboardCards(
       (dashcard.dashboard_tab_id == null && selectedTabId == null) ||
       dashcard.dashboard_tab_id === selectedTabId,
   );
+}
+
+export function isDashboardOrTabEmpty(
+  dashboard: Dashboard,
+  selectedTabId: SelectedTabId,
+): boolean {
+  return getCurrentTabDashboardCards(dashboard, selectedTabId).length === 0;
 }
 
 export function hasDatabaseActionsEnabled(database: Database) {
@@ -403,8 +410,10 @@ export const isDashboardCacheable = (
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
 
 export function parseTabSlug(location: Location) {
-  const slug = location.query?.tab;
-  if (typeof slug === "string" && slug.length > 0) {
+  const slugs = new URLSearchParams(location.search).getAll("tab");
+  // A repeated `tab` is ambiguous, so treat it as no tab at all.
+  const slug = slugs.length === 1 ? slugs[0] : "";
+  if (slug.length > 0) {
     const id = parseInt(slug, 10);
     return Number.isSafeInteger(id) ? id : null;
   }

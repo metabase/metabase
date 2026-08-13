@@ -18,6 +18,7 @@ import type {
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
+import type { BrushClickObject } from "metabase-lib/query/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -28,6 +29,7 @@ import type {
   DashboardId,
   DatasetColumn,
   DatasetData,
+  Field,
   IconName,
   RawSeries,
   RowValue,
@@ -44,7 +46,6 @@ import type { VisualizationDisplay } from "metabase-types/api/visualization";
 
 import type { ChartSettingGoalInputProps } from "../components/settings/ChartSettingGoalInput";
 import type { ChartSettingMaxCategoriesProps } from "../components/settings/ChartSettingMaxCategories";
-import type { ChartSettingSegmentedControlProps } from "../components/settings/ChartSettingSegmentedControl";
 import type { ChartSettingSegmentsEditorProps } from "../components/settings/ChartSettingSegmentsEditor";
 import type { ChartSettingSeriesOrderProps } from "../components/settings/ChartSettingSeriesOrder";
 import type { ChartSettingTableColumnsProps } from "../components/settings/ChartSettingTableColumns";
@@ -54,7 +55,8 @@ import type { SmartScalarComparisonWidgetProps } from "../visualizations/SmartSc
 import type { TreemapGroupsPickerProps } from "../visualizations/TreemapChart/TreemapGroupsPicker";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
-import type { HoveredObject } from "./hover";
+import type { HighlightedObject, HoveredObject } from "./hover";
+import type { ChartSettingSegmentedControlProps } from "./widget-props";
 
 export interface Padding {
   top: number;
@@ -119,6 +121,11 @@ export type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
+export type OnBrush = (options: {
+  clickObject: BrushClickObject;
+  openClickActions: (clicked: ClickObject | null) => void;
+}) => void;
+
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
   series?: (key: LegacySeriesSettingsObjectKey) => SeriesSettings;
@@ -171,6 +178,7 @@ export interface VisualizationProps {
   isRawTable?: boolean;
   scrollToLastColumn?: boolean;
   hovered?: HoveredObject | null;
+  highlighted?: HighlightedObject | null;
   clicked?: ClickObject | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
@@ -196,7 +204,7 @@ export interface VisualizationProps {
   onRenderError: (error?: string) => void;
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
-  onBrush?: ((range: { start: number; end: number }) => void) | null;
+  onBrush?: OnBrush | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (
@@ -206,6 +214,7 @@ export interface VisualizationProps {
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
+  onSeeAllEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;
@@ -230,6 +239,7 @@ export type VisualizationPassThroughProps = {
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
+  onSeeAllEvents?: (timelineEvents: TimelineEvent[]) => void;
 
   // Table
   isShowingDetailsOnlyColumns?: boolean;
@@ -254,6 +264,12 @@ export type VisualizationPassThroughProps = {
   totalNumGridCols?: number;
   onTogglePreviewing?: () => void;
 
+  /**
+   * Maps a click object to the one click actions should be computed for,
+   * supplied for visualizer cards whose rendered columns are remapped from the underlying questions.
+   */
+  transformClickObject?: (clicked: ClickObject) => ClickObject;
+
   showAllLegendItems?: boolean;
 
   onHeaderColumnReorder?: (columnIndex: number) => void;
@@ -262,7 +278,7 @@ export type VisualizationPassThroughProps = {
    * Items that will be shown in a menu when the title is clicked.
    * Used for visualizer cards to jump to underlying questions
    */
-  titleMenuItems?: ReactNode[];
+  titleMenuItems?: ReactNode;
 
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
@@ -415,6 +431,14 @@ export type DatasetColumnSettingDefinition<
   TValue = unknown,
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = VisualizationSettingDefinition<DatasetColumn, TValue, TProps>;
+
+/**
+ * current we work with DatasetColumn and Field, but their shapes are different
+ */
+export type FormattableColumn = Omit<DatasetColumn, "id" | "source"> & {
+  id?: DatasetColumn["id"] | Field["id"];
+  source?: DatasetColumn["source"];
+};
 
 export type SeriesSettingDefinition<
   TValue = unknown,
@@ -630,10 +654,7 @@ export type VisualizationGridSize = {
 
 // TODO: add component property for the react component instead of the intersection
 export type Visualization = ComponentType<
-  Omit<VisualizationProps, "width" | "height"> & {
-    width?: number | null;
-    height?: number | null;
-  } & VisualizationPassThroughProps
+  VisualizationProps & VisualizationPassThroughProps
 > &
   VisualizationDefinition;
 
@@ -643,7 +664,7 @@ export type VisualizationDefinition = {
   getUiName: () => string;
   identifier: VisualizationDisplay;
   aliases?: string[];
-  iconName: IconName;
+  iconName?: IconName;
   iconUrl?: string;
   hasEmptyState?: boolean;
   isDev?: boolean; // is custom viz in dev mode
@@ -673,7 +694,7 @@ export type VisualizationDefinition = {
   isSensible?: (data: DatasetData) => boolean;
   columnSettings?:
     | VisualizationSettingsDefinitions
-    | ((column: DatasetColumn) => VisualizationSettingsDefinitions);
+    | ((column: FormattableColumn) => VisualizationSettingsDefinitions);
   // checkRenderable throws an error if a visualization is not renderable
   checkRenderable: (
     series: Series,

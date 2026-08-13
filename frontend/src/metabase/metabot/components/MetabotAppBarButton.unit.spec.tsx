@@ -4,11 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  createMockLocation,
-  createMockRoutingState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { UserMetabotPermissions } from "metabase-types/api";
 import { createMockUserMetabotPermissions } from "metabase-types/api/mocks";
@@ -52,9 +48,6 @@ function setup({
       initialRoute: pathname,
       storeInitialState: createMockState({
         settings,
-        routing: createMockRoutingState({
-          locationBeforeTransitions: createMockLocation({ pathname }),
-        }),
       }),
     },
   );
@@ -95,12 +88,19 @@ describe("MetabotAppBarButton", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should disable the button on the full-page AI exploration (/question/ask) surface", async () => {
-    setup({ isMetabotEnabled: true, pathname: "/question/ask" });
-    expect(
-      await screen.findByRole("button", { name: /Chat with Metabot/ }),
-    ).toBeDisabled();
-  });
+  it.each([
+    "/question/ask",
+    "/question/ask/",
+    "/metabot/conversation/past-conversation-id",
+  ])(
+    "should disable the button on the full-page metabot surface (%s)",
+    async (pathname) => {
+      setup({ isMetabotEnabled: true, pathname });
+      expect(
+        await screen.findByRole("button", { name: /Chat with Metabot/ }),
+      ).toBeDisabled();
+    },
+  );
 
   it("should not disable the button on other question pages", async () => {
     setup({ isMetabotEnabled: true, pathname: "/question/123" });

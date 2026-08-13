@@ -87,15 +87,15 @@
         (is (= "VENUES" (:name (first (lib.metadata.protocols/cached-metadatas cached-mp :metadata/table [1]))))))
       ;; now wrap with a transform
       (let [transformed-mp (lib.metadata/transforming-metadata-provider
-                            (tables-transform #(assoc % :schema "workspace_schema" :name "workspace_venues"))
+                            (tables-transform #(assoc % :schema "remapped_schema" :name "remapped_venues"))
                             cached-mp)]
         (testing "metadatas path returns transformed values"
           (let [t (lib.metadata/table transformed-mp 1)]
-            (is (= "workspace_schema" (:schema t)))
-            (is (= "workspace_venues" (:name t)))))
+            (is (= "remapped_schema" (:schema t)))
+            (is (= "remapped_venues" (:name t)))))
         (testing "cached-metadatas also returns transformed values (not stale parent cache)"
           ;; fetch once through metadatas to populate the transforming provider's own cache
           (lib.metadata/table transformed-mp 1)
           (let [cached (first (lib.metadata.protocols/cached-metadatas transformed-mp :metadata/table [1]))]
-            (is (= "workspace_schema" (:schema cached)))
-            (is (= "workspace_venues" (:name cached)))))))))
+            (is (= "remapped_schema" (:schema cached)))
+            (is (= "remapped_venues" (:name cached)))))))))

@@ -5,7 +5,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
-} from "metabase/utils/formatting/datetime-utils";
+} from "metabase/utils/formatting";
 import MetabaseSettings from "metabase/utils/settings";
 
 describe("DateTime", () => {

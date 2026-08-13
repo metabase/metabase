@@ -1,9 +1,10 @@
-import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import {
   createMockCard,
   createMockTableColumnOrderSetting,
 } from "metabase-types/api/mocks";
+
+import { registerVisualization } from "../registry";
 
 import {
   extendCardWithDashcardSettings,
@@ -11,7 +12,6 @@ import {
   sanitizeDashcardSettings,
 } from "./typed-utils";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 
 describe("mergeSettings (metabase#14597)", () => {

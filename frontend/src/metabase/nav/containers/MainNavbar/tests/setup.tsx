@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
+import type { ComponentProps } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -25,7 +26,7 @@ import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route, useLocation, useParams } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type {
   Card,
@@ -43,7 +44,14 @@ import {
 
 import { MainNavbar } from "../MainNavbar";
 
-const RoutedMainNavbar = withRouteProps(MainNavbar);
+/** Feeds `MainNavbar` its route props the way `Navbar` does in the app. */
+function RoutedMainNavbar(
+  props: Omit<ComponentProps<typeof MainNavbar>, "location" | "params">,
+) {
+  const location = useLocation();
+  const params = useParams();
+  return <MainNavbar {...props} location={location} params={params} />;
+}
 
 export type SetupOpts = {
   pathname?: string;

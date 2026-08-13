@@ -42,7 +42,8 @@
   [:map
    [:name                         string?]
    [:type                         :keyword]
-   [:details                      :map]
+   ;; per-channel-type connection config (a Slack token, an HTTP url and auth, ...) -- free-form like database details
+   [:details                      ms/Map]
    [:active      {:optional true} :boolean]
    [:description {:optional true} [:maybe string?]]])
 
@@ -69,8 +70,6 @@
       (assoc :name (u/truncate (format "DEACTIVATED_%d %s" (:id instance) (:name instance)) 254)))))
 
 (defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
-
-(defmethod serdes/hash-fields :model/Channel [_instance] [:name :type])
 
 (defmethod serdes/load-find-local "Channel"
   [path]
@@ -117,16 +116,20 @@
      [:map
       [:body string?]]]]])
 
+(def ^:private channel-template-entries
+  "Entries every channel template has, whatever its `:channel_type`."
+  [[:id           {:optional true} ms/PositiveInt]
+   [:name         {:optional true} ms/NonBlankString]
+   [:channel_type                  [:fn #(= "channel" (-> % keyword namespace))]]])
+
 (mr/def ::ChannelTemplate
   "Channel Template schema."
-  [:merge
-   [:map
-    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
-   [:multi {:dispatch :channel_type}
-    [:channel/email
-     [:map
-      [:details ::ChannelTemplateEmailDetails]]]
-    [::mc/default [:map]]]])
+  (mu/dispatched-map
+   ;; keywordize: the raw JSON body has `:channel_type` as a string, which would match no branch
+   (comp keyword :channel_type)
+   channel-template-entries
+   [[:channel/email [[:details ::ChannelTemplateEmailDetails]]]
+    [::mc/default   []]]))
 
 (mr/def ::ChannelTemplateEmailDetailsUserProvided
   "Email template details schema for API-provided templates. Only handlebars-text is allowed;
@@ -139,34 +142,23 @@
 
 (mr/def ::ChannelTemplateUserProvided
   "Channel Template schema for API-provided templates. Does not allow handlebars-resource."
-  [:merge
-   [:map
-    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
-   [:multi {:dispatch :channel_type}
-    [:channel/email
-     [:map
-      [:details ::ChannelTemplateEmailDetailsUserProvided]]]
-    [::mc/default [:map]]]])
+  (mu/dispatched-map
+   ;; keywordize: the raw JSON body has `:channel_type` as a string, which would match no branch
+   (comp keyword :channel_type)
+   channel-template-entries
+   [[:channel/email [[:details ::ChannelTemplateEmailDetailsUserProvided]]]
+    [::mc/default   []]]))
 
 (defn- check-valid-channel-template
   [channel-template]
   (mu/validate-throw ::ChannelTemplate channel-template))
 
-(defn- user-provided-template?
-  "Returns true if the template details represent a user-provided inline template (handlebars-text)
-  as opposed to a built-in resource template."
-  [details]
-  (= :email/handlebars-text (keyword (:type details))))
-
 (defn- log-template-change!
   "Log template creation or update with relevant details for observability."
   [action {:keys [channel_type details] :as _instance}]
   (let [template-type (keyword (:type details))]
-    (if (user-provided-template? details)
-      (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s body=%s"
-                 (name action) channel_type template-type api/*current-user-id* (pr-str (:body details)))
-      (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s"
-                 (name action) channel_type template-type api/*current-user-id*))
+    (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s"
+               (name action) channel_type template-type api/*current-user-id*)
     (analytics/inc! (case action
                       :create :metabase-notification/template-create
                       :update :metabase-notification/template-update)

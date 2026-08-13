@@ -30,7 +30,11 @@ import {
   TAB_FILTERS,
   TAB_VALUES,
 } from "./constants";
-import type { NotificationsTab, NotificationsUrlState } from "./types";
+import type {
+  NotificationsTab,
+  NotificationsUrlState,
+  TabCountState,
+} from "./types";
 
 const parsePage = (param: QueryParam): number => {
   const value = getFirstParamValue(param);
@@ -197,6 +201,20 @@ export const buildListParams = (
     sort_column: state.sort_column,
     sort_direction: state.sort_direction,
   };
+};
+
+export const getTabCount = (
+  isLoading: boolean,
+  error: unknown,
+  value: number,
+): TabCountState => {
+  if (isLoading) {
+    return { status: "loading" };
+  }
+  if (error !== undefined) {
+    return { status: "error" };
+  }
+  return { status: "loaded", value };
 };
 
 export const getChannelLabel = (channel: NotificationChannelType): string =>

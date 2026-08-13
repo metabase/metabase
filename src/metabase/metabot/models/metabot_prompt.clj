@@ -20,10 +20,6 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/hash-fields :model/MetabotPrompt
-  [_table]
-  [:metabot_id :model :card_id :prompt])
-
 (defmethod serdes/generate-path "MetabotPrompt" [_ entity]
   (conj (serdes/generate-path "Metabot" (t2/select-one :model/Metabot (:metabot_id entity)))
         (serdes/infer-self-path "MetabotPrompt" entity)))

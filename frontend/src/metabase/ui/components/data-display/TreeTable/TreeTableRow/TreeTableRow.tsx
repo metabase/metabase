@@ -5,8 +5,6 @@ import type { MouseEvent } from "react";
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
-// eslint-disable-next-line boundaries/element-types -- this UI-library row renders a routing Link; it predates the metabase/router facade and should move out of metabase/ui
-import { Link } from "metabase/router";
 import { Flex, Loader } from "metabase/ui";
 
 import { ExpandButton } from "../ExpandButton";
@@ -49,6 +47,7 @@ interface TreeTableRowContentProps<
   onRowDoubleClick?: (row: Row<TData>, event: MouseEvent) => void;
   rowProps?: Record<string, unknown>;
   hierarchical?: boolean;
+  isClickable?: boolean;
 }
 
 // Memoized component that does not depend on virtualItem for performance reasons
@@ -77,6 +76,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
   styles,
   rowProps,
   hierarchical = false,
+  isClickable,
 }: TreeTableRowContentProps<TData>) {
   const isKeyboardFocused = activeRowId === row.id;
   const isSelected = selectedRowId === row.id;
@@ -115,6 +115,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
       data-keyboard-active={isKeyboardFocused ? true : undefined}
       data-disabled={isDisabled ? true : undefined}
       className={cx(S.content, classNames?.row, {
+        [S.clickable]: isClickable,
         [S.active]: isActive,
         [classNames?.rowActive ?? ""]: isActive && classNames?.rowActive,
         [S.disabled]: isDisabled,
@@ -248,9 +249,10 @@ export function TreeTableRow<TData extends TreeNodeData>({
   classNames,
   styles,
   getRowProps,
-  href,
+  renderRowLink,
   renderSubRow,
   hierarchical = true,
+  isClickable,
 }: TreeTableRowProps<TData>) {
   const rowProps = useMemo(() => getRowProps?.(row), [getRowProps, row]);
 
@@ -278,22 +280,20 @@ export function TreeTableRow<TData extends TreeNodeData>({
       styles={styles}
       rowProps={rowProps}
       hierarchical={hierarchical}
+      isClickable={isClickable}
     />
   );
 
   const renderContent = () => {
-    const subRowContent = renderSubRow?.(row) ?? null;
-    return href ? (
-      <Link to={href} className={S.link}>
-        {content}
-        {subRowContent}
-      </Link>
-    ) : (
+    const rowContent = (
       <>
         {content}
-        {subRowContent}
+        {renderSubRow?.(row) ?? null}
       </>
     );
+    return renderRowLink
+      ? renderRowLink(row, { className: S.link, children: rowContent })
+      : rowContent;
   };
 
   if (typeof virtualItemOrPinnedPosition === "string") {

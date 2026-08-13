@@ -9,7 +9,7 @@ import {
   within,
 } from "__support__/ui";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TaskInfo } from "metabase-types/api";
 import {
@@ -20,8 +20,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { JobInfoApp } from "./JobInfoApp";
-
-const RoutedJobInfoApp = withRouteProps(JobInfoApp);
 
 const PATHNAME = Urls.monitorJobs();
 
@@ -49,7 +47,7 @@ const setup = ({
       path={PATHNAME}
       element={
         <MonitorContent>
-          <RoutedJobInfoApp />
+          <JobInfoApp />
         </MonitorContent>
       }
     >
@@ -96,7 +94,7 @@ describe("JobInfoApp", () => {
   });
 
   it("should open the triggers sidebar in the Monitor outlet when a row is clicked", async () => {
-    const { history } = setup({
+    const { router } = setup({
       taskInfo: createMockTaskInfo({
         jobs: [
           createMockJob({
@@ -113,7 +111,7 @@ describe("JobInfoApp", () => {
     const row = await screen.findByTestId("job");
     await userEvent.click(row);
 
-    expect(history?.getCurrentLocation().pathname).toBe(
+    expect(router?.location.pathname).toBe(
       Urls.monitorJobTriggers("a-job-key"),
     );
 
@@ -131,7 +129,7 @@ describe("JobInfoApp", () => {
   });
 
   it("should open the triggers sidebar via keyboard row activation", async () => {
-    const { history } = setup({
+    const { router } = setup({
       taskInfo: createMockTaskInfo({
         jobs: [
           createMockJob({
@@ -147,7 +145,7 @@ describe("JobInfoApp", () => {
     // ArrowDown activates the first row, Enter opens its triggers
     await userEvent.keyboard("{ArrowDown}{Enter}");
 
-    expect(history?.getCurrentLocation().pathname).toBe(
+    expect(router?.location.pathname).toBe(
       Urls.monitorJobTriggers("a-job-key"),
     );
 
@@ -213,7 +211,7 @@ describe("JobInfoApp", () => {
   });
 
   it("should close the triggers sidebar", async () => {
-    const { history } = setup({
+    const { router } = setup({
       taskInfo: createMockTaskInfo({
         jobs: [
           createMockJob({
@@ -230,7 +228,7 @@ describe("JobInfoApp", () => {
       within(sidebar).getByRole("button", { name: "Close" }),
     );
 
-    expect(history?.getCurrentLocation().pathname).toBe(Urls.monitorJobs());
+    expect(router?.location.pathname).toBe(Urls.monitorJobs());
     expect(
       screen.queryByTestId("job-triggers-sidebar"),
     ).not.toBeInTheDocument();

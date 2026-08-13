@@ -1,12 +1,10 @@
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 
 import { NotificationsAdminPage } from "./NotificationsAdminPage";
 
-const RoutedNotificationsAdminPage = withRouteProps(NotificationsAdminPage);
-
 export const getRoutes = () => (
   <>
-    <Route index element={<RoutedNotificationsAdminPage />} />
-    <Route path=":notificationId" element={<RoutedNotificationsAdminPage />} />
+    <Route index element={<NotificationsAdminPage />} />
+    <Route path=":notificationId" element={<NotificationsAdminPage />} />
   </>
 );

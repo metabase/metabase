@@ -19,8 +19,8 @@ export function TabPanel({
   dependentsCount,
   onTabChange,
 }: TabPanelProps) {
-  const handleChange = (value: string | null) => {
-    if (value === "column-mappings" || value === "dependents") {
+  const handleChange = (value: TabType | null) => {
+    if (value) {
       onTabChange(value);
     }
   };

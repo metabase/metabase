@@ -1,38 +1,23 @@
 import {
+  type OnBeforeRequestHandler,
+  type OnBeforeRequestHandlerConfig,
   PLUGIN_API,
-  PLUGIN_EMBEDDING_IFRAME_SDK,
-  PLUGIN_EMBEDDING_SDK,
-} from "metabase/plugins";
+} from "./request-handlers";
 
-import type { RequestMethod } from "./method";
-
-export type OnBeforeRequestHandlerConfig = {
-  method: RequestMethod;
-  url: string;
-  headers?: Record<string, string>;
-  // URL `:tag` params (and querystring leftovers). For the legacy GET/POST
-  // helpers this holds the whole request bag.
-  data: Record<string, unknown>;
-  // The JSON-body bag, kept as a separate channel from `data`. Exposed to
-  // handlers so embed URL `:tag`s — notably the guest-embed `:token` — can be
-  // filled from body fields, and so the refresh handler can swap a stale body
-  // token. `undefined` for GETs, raw (FormData/URLSearchParams) bodies, and the
-  // legacy helpers (which pack everything into `data`).
-  body?: Record<string, unknown>;
-};
-
-export type OnBeforeRequestHandler = (
-  data: OnBeforeRequestHandlerConfig,
-) => Promise<void | Partial<OnBeforeRequestHandlerConfig>>;
+export type {
+  OnBeforeRequestHandler,
+  OnBeforeRequestHandlerConfig,
+} from "./request-handlers";
 
 /**
  * The complete, ordered request-manipulation pipeline.
  *
- * Every handler is a plugin slot — a no-op by default, populated by the owning
- * feature's init flow (SDK auth, guest/public/static embeds, the embed-referrer
- * handlers). Listing them here, rather than letting features push handlers onto
- * a dynamic array, keeps the full set of things that can rewrite an outgoing
- * request — and the order they run in — visible in one place.
+ * Every handler is a named slot on `PLUGIN_API` — a no-op by default,
+ * populated by the owning feature's init flow (SDK auth, guest/public/static
+ * embeds, the embed-referrer handlers). Listing them here, rather than letting
+ * features push handlers onto a dynamic array, keeps the full set of things
+ * that can rewrite an outgoing request — and the order they run in — visible
+ * in one place.
  *
  * Order matters: handlers run in sequence and each one sees the result of the
  * previous one. In particular the embed-preview rewrite must run after the
@@ -44,14 +29,13 @@ function getOnBeforeRequestHandlers(): OnBeforeRequestHandler[] {
     PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader,
     PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders,
     PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader,
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler,
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
-      .getOrRefreshGuestSessionHandler,
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds,
+    PLUGIN_API.onBeforeRequestHandlers.getOrRefreshSessionHandler,
+    PLUGIN_API.onBeforeRequestHandlers.getOrRefreshGuestSessionHandler,
+    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds,
     PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
     PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl,
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.reactSdkEmbedReferrer,
-    PLUGIN_EMBEDDING_IFRAME_SDK.onBeforeRequestHandlers.embedReferrer,
+    PLUGIN_API.onBeforeRequestHandlers.reactSdkEmbedReferrer,
+    PLUGIN_API.onBeforeRequestHandlers.embedReferrer,
   ];
 }
 

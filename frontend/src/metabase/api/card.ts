@@ -99,10 +99,13 @@ export const cardApi = Api.injectEndpoints({
         onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
       }),
       getCardQuery: builder.query<Dataset, CardQueryRequest & RtkCacheKeyed>({
-        query: ({ cardId, ...body }) => ({
+        query: ({ cardId, dashboardId, ...body }) => ({
           method: "POST",
           url: `/api/card/${cardId}/query`,
-          body,
+          body: {
+            ...body,
+            dashboard_id: dashboardId,
+          },
         }),
         providesTags: (_data, _error, { cardId }) =>
           provideCardQueryTags(cardId),
@@ -111,10 +114,13 @@ export const cardApi = Api.injectEndpoints({
         Dataset,
         CardQueryRequest & RtkCacheKeyed
       >({
-        query: ({ cardId, ...body }) => ({
+        query: ({ cardId, dashboardId, ...body }) => ({
           method: "POST",
           url: `/api/card/pivot/${cardId}/query`,
-          body,
+          body: {
+            ...body,
+            dashboard_id: dashboardId,
+          },
         }),
         providesTags: (_data, _error, { cardId }) =>
           provideCardQueryTags(cardId),

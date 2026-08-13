@@ -62,6 +62,4 @@ export * from "./timeline";
 export * from "./transform";
 export * from "./user";
 export * from "./user-key-value";
-export * from "./workspace-instance";
-export * from "./workspace-manager";
 export * from "./util";

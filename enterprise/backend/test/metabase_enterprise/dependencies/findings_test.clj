@@ -357,3 +357,31 @@
               (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                             :analyzed_entity_type :card :analyzed_entity_id cid))
                   "phase 2: re-analysis cleared stale again"))))))))
+
+(deftest ^:sequential analyze-batch-shares-one-metadata-provider-test
+  (testing "Every entity in an analysis batch must share one MetadataProvider per database. Reading an entity attaches
+           a provider to its query, so selecting the batch outside the cache gives each entity a private one. Nothing
+           reads through those providers today -- upsert-analysis! builds its own from the database id and passes it
+           explicitly -- so this is a latent trap rather than a live leak: the moment an entity is analyzed through its
+           own query, a batch of 500 retains 500 providers' worth of fetched metadata. upsert-analysis! already throws
+           when no cache is bound, so the cache is meant to cover this work; only the select sat outside it."
+    (backfill-all-entity-analyses!)
+    (let [providers   (atom [])
+          native-card (fn [sql] {:database (mt/id) :type :native :native {:query sql}})]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (native-card "select id from orders")}
+                       :model/Card {card2-id :id} {:dataset_query (native-card "select id from products")}]
+          (let [wanted #{card1-id card2-id}
+                upsert-analysis! deps.findings/upsert-analysis!]
+            (with-redefs [deps.findings/upsert-analysis!
+                          (fn [instance]
+                            (when (wanted (:id instance))
+                              (swap! providers conj (:lib/metadata (:dataset_query instance))))
+                            (upsert-analysis! instance))]
+              (deps.findings/analyze-batch! :card 500)))
+          (testing "both cards were selected, so the assertion below is meaningful"
+            (is (= 2 (count @providers))))
+          (testing "and they carry the same provider instance"
+            ;; Identity, not equality: providers compare equal when they wrap the same database id, so `=` would be
+            ;; satisfied by two separate caches and would not detect the regression.
+            (is (every? #(identical? (first @providers) %) @providers))))))))

@@ -11,7 +11,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
@@ -22,8 +22,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { TransformsSectionLayout } from "./TransformsSectionLayout";
-
-const RoutedTransformsSectionLayout = withRouteProps(TransformsSectionLayout);
 
 const createTransformSupportedDatabase = (opts?: Partial<Database>) =>
   createMockDatabase({
@@ -95,7 +93,7 @@ const setup = ({
   const path = "/transforms";
 
   renderWithProviders(
-    <Route path={path} element={<RoutedTransformsSectionLayout />}>
+    <Route path={path} element={<TransformsSectionLayout />}>
       <Route index element={<div>List of transforms</div>} />
     </Route>,
     {

@@ -18,15 +18,13 @@ import {
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { createMockLocation } from "metabase/redux/store/mocks";
 import type { Location } from "metabase/router";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { ListTasksResponse } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { TaskListPage } from "./TaskListPage";
-
-const RoutedTaskListPage = withRouteProps(TaskListPage);
 
 interface SetupOpts {
   error?: boolean;
@@ -54,7 +52,7 @@ const setup = ({
   }
 
   return renderWithProviders(
-    <Route path={PATHNAME} element={<RoutedTaskListPage />}>
+    <Route path={PATHNAME} element={<TaskListPage />}>
       <Route path=":taskId" />
     </Route>,
     {
@@ -114,7 +112,7 @@ describe("TaskListPage", () => {
   });
 
   it("should have working pagination controls if there's more than 1 page", async () => {
-    const { history } = setup({
+    const { router } = setup({
       tasksResponse: createMockTasksResponse({
         total: 75,
         limit: 50,
@@ -138,7 +136,7 @@ describe("TaskListPage", () => {
 
     expect(previousPage).toBeDisabled();
     expect(nextPage).toBeEnabled();
-    expect(history?.getCurrentLocation().search).toEqual("");
+    expect(router?.location.search).toEqual("");
 
     await userEvent.click(nextPage);
     await waitFor(() => {
@@ -151,14 +149,9 @@ describe("TaskListPage", () => {
       "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
     ]);
     await waitForLoaderToBeRemoved();
-    expect(history?.getCurrentLocation().search).toEqual("");
-    act(() => {
-      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
-    });
-
     expect(previousPage).toBeEnabled();
     expect(nextPage).toBeDisabled();
-    expect(history?.getCurrentLocation().search).toEqual("?page=1");
+    expect(router?.location.search).toEqual("?page=1");
 
     await userEvent.click(previousPage);
 
@@ -170,14 +163,9 @@ describe("TaskListPage", () => {
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-    expect(history?.getCurrentLocation().search).toEqual("?page=1");
-    act(() => {
-      jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
-    });
-
     expect(previousPage).toBeDisabled();
     expect(nextPage).toBeEnabled();
-    expect(history?.getCurrentLocation().search).toEqual("");
+    expect(router?.location.search).toEqual("");
   });
 
   it("should show the total results count below the table", async () => {
@@ -200,7 +188,7 @@ describe("TaskListPage", () => {
   });
 
   it("should reset pagination on task filter change", async () => {
-    const { history } = setup({
+    const { router } = setup({
       tasksResponse: createMockTasksResponse({
         total: 75,
         limit: 50,
@@ -233,7 +221,7 @@ describe("TaskListPage", () => {
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual("?page=1");
+    expect(router?.location.search).toEqual("?page=1");
 
     await userEvent.click(taskPicker);
     const taskPopover = screen.getByRole("listbox");
@@ -251,11 +239,11 @@ describe("TaskListPage", () => {
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual("?task=task-b");
+    expect(router?.location.search).toEqual("?task=task-b");
   });
 
   it("should reset pagination on task status filter change", async () => {
-    const { history } = setup({
+    const { router } = setup({
       tasksResponse: createMockTasksResponse({
         total: 75,
         limit: 50,
@@ -288,7 +276,7 @@ describe("TaskListPage", () => {
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual("?page=1");
+    expect(router?.location.search).toEqual("?page=1");
 
     await userEvent.click(taskStatusPicker);
     const taskStatusPopover = screen.getByRole("listbox");
@@ -306,11 +294,11 @@ describe("TaskListPage", () => {
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual("?status=success");
+    expect(router?.location.search).toEqual("?status=success");
   });
 
   it("should reset pagination on sorting change", async () => {
-    const { history } = setup({
+    const { router } = setup({
       tasksResponse: createMockTasksResponse({
         data: [createMockTask()],
         total: 75,
@@ -346,7 +334,7 @@ describe("TaskListPage", () => {
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual("?page=1");
+    expect(router?.location.search).toEqual("?page=1");
 
     await userEvent.click(startedAtHeader);
 
@@ -362,11 +350,11 @@ describe("TaskListPage", () => {
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual("?sort_direction=asc");
+    expect(router?.location.search).toEqual("?sort_direction=asc");
   });
 
   it("should allow to filter tasks list", async () => {
-    const { history } = setup();
+    const { router } = setup();
 
     await waitFor(() => {
       expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
@@ -405,11 +393,11 @@ describe("TaskListPage", () => {
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
     ]);
     await waitForLoaderToBeRemoved();
-    expect(history?.getCurrentLocation().search).toEqual("");
+    expect(router?.location.search).toEqual("");
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual("?task=task-b");
+    expect(router?.location.search).toEqual("?task=task-b");
 
     await userEvent.click(taskStatusPicker);
 
@@ -432,13 +420,11 @@ describe("TaskListPage", () => {
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
     ]);
     await waitForLoaderToBeRemoved();
-    expect(history?.getCurrentLocation().search).toEqual("?task=task-b");
+    expect(router?.location.search).toEqual("?task=task-b");
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual(
-      "?status=success&task=task-b",
-    );
+    expect(router?.location.search).toEqual("?status=success&task=task-b");
 
     const clearTaskButton = screen.getAllByLabelText("Clear")[0];
     await userEvent.click(clearTaskButton);
@@ -456,7 +442,7 @@ describe("TaskListPage", () => {
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual("?status=success");
+    expect(router?.location.search).toEqual("?status=success");
     const clearTaskStatusButton = screen.getByLabelText("Clear");
 
     await userEvent.click(clearTaskStatusButton);
@@ -472,15 +458,15 @@ describe("TaskListPage", () => {
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-    expect(history?.getCurrentLocation().search).toEqual("?status=success");
+    expect(router?.location.search).toEqual("?status=success");
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual("");
+    expect(router?.location.search).toEqual("");
   });
 
   it("should allow to sort tasks list", async () => {
-    const { history } = setup({
+    const { router } = setup({
       tasksResponse: createMockTasksResponse({ data: [createMockTask()] }),
     });
 
@@ -497,7 +483,7 @@ describe("TaskListPage", () => {
     expect(
       within(startedAtHeader).getByRole("img", { name: "chevrondown icon" }),
     ).toBeInTheDocument();
-    expect(history?.getCurrentLocation().search).toEqual("");
+    expect(router?.location.search).toEqual("");
 
     await userEvent.click(startedAtHeader);
     await waitFor(() => {
@@ -516,7 +502,7 @@ describe("TaskListPage", () => {
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual("?sort_direction=asc");
+    expect(router?.location.search).toEqual("?sort_direction=asc");
 
     await userEvent.click(
       screen.getByRole("columnheader", { name: /Started at/ }),
@@ -532,7 +518,7 @@ describe("TaskListPage", () => {
     act(() => {
       jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
     });
-    expect(history?.getCurrentLocation().search).toEqual("");
+    expect(router?.location.search).toEqual("");
 
     // every sortable column drives the request and URL state
     const cases: { header: RegExp; column: string }[] = [
@@ -564,14 +550,14 @@ describe("TaskListPage", () => {
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY);
       });
-      expect(history?.getCurrentLocation().search).toEqual(
+      expect(router?.location.search).toEqual(
         `?sort_column=${column}&sort_direction=asc`,
       );
     }
   });
 
   it("should navigate to task details when a row is clicked", async () => {
-    const { history } = setup({
+    const { router } = setup({
       tasksResponse: createMockTasksResponse({
         data: [createMockTask({ id: 123 })],
       }),
@@ -580,9 +566,7 @@ describe("TaskListPage", () => {
     const row = await screen.findByTestId("task");
     await userEvent.click(row);
 
-    expect(history?.getCurrentLocation().pathname).toBe(
-      Urls.monitorTaskDetails(123),
-    );
+    expect(router?.location.pathname).toBe(Urls.monitorTaskDetails(123));
   });
 
   it("accepts task query param", async () => {

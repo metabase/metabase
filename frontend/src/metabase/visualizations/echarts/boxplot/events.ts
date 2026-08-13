@@ -4,7 +4,6 @@ import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
 import {
   INDEX_KEY,
   X_AXIS_DATA_KEY,
@@ -18,6 +17,8 @@ import type {
 } from "metabase/visualizations/types";
 import type { ClickObject, ClickObjectDimension } from "metabase-lib";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+
+import { formatValueForTooltip } from "../tooltip/format";
 
 import type {
   BoxPlotChartModel,

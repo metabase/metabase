@@ -1,5 +1,4 @@
-import type { Location } from "history";
-
+import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import {
   SORT_DIRECTIONS,
@@ -17,37 +16,33 @@ import type {
 export function getParsedParams(
   location: Location,
 ): Urls.TransformGraphRunListParams {
-  const {
-    page,
-    types,
-    statuses,
-    "transform-ids": transformIds,
-    "start-time": startTime,
-    "end-time": endTime,
-    "run-methods": runMethods,
-    "sort-column": sortColumn,
-    "sort-direction": sortDirection,
-  } = location.query;
+  const searchParams = new URLSearchParams(location.search);
 
   return {
-    page: Urls.parseNumberParam(page),
-    types: Urls.parseListParam(types, (v) =>
+    page: Urls.parseNumberParam(searchParams.get("page")),
+    types: Urls.parseListParam(searchParams.getAll("types"), (v) =>
       Urls.parseEnumParam(v, TRANSFORM_GRAPH_RUN_TYPES),
     ),
-    statuses: Urls.parseListParam(statuses, (v) =>
+    statuses: Urls.parseListParam(searchParams.getAll("statuses"), (v) =>
       Urls.parseEnumParam(v, TRANSFORM_RUN_STATUSES),
     ),
-    transformIds: Urls.parseListParam(transformIds, Urls.parseNumberParam),
-    startTime: Urls.parseStringParam(startTime),
-    endTime: Urls.parseStringParam(endTime),
-    runMethods: Urls.parseListParam(runMethods, (v) =>
+    transformIds: Urls.parseListParam(
+      searchParams.getAll("transform-ids"),
+      Urls.parseNumberParam,
+    ),
+    startTime: Urls.parseStringParam(searchParams.get("start-time")),
+    endTime: Urls.parseStringParam(searchParams.get("end-time")),
+    runMethods: Urls.parseListParam(searchParams.getAll("run-methods"), (v) =>
       Urls.parseEnumParam(v, TRANSFORM_RUN_METHODS),
     ),
     sortColumn: Urls.parseEnumParam(
-      sortColumn,
+      searchParams.get("sort-column"),
       TRANSFORM_GRAPH_RUN_SORT_COLUMNS,
     ),
-    sortDirection: Urls.parseEnumParam(sortDirection, SORT_DIRECTIONS),
+    sortDirection: Urls.parseEnumParam(
+      searchParams.get("sort-direction"),
+      SORT_DIRECTIONS,
+    ),
   };
 }
 

@@ -53,6 +53,24 @@ describe("MetabotChatHistory", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should not render chain_of_thought messages (app-only reasoning UI)", () => {
+    setup({
+      ui: <MetabotChatHistory />,
+      metabotInitialState: makeVisibleState([
+        {
+          id: "1",
+          role: "agent",
+          type: "chain_of_thought",
+          steps: [{ kind: "reasoning", text: "Let me think about this" }],
+        },
+      ]),
+    });
+
+    expect(
+      screen.queryByTestId("metabot-chain-of-thought"),
+    ).not.toBeInTheDocument();
+  });
+
   it("should render non-chart messages normally", async () => {
     setup({
       ui: <MetabotChatHistory />,

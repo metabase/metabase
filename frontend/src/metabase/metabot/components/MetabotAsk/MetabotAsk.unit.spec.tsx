@@ -7,7 +7,6 @@ import {
   getMetabotVisible,
 } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
-import { createMockLocation } from "metabase/redux/store/mocks";
 import {
   createMockMetabotConversation,
   createMockUser,
@@ -21,14 +20,6 @@ import {
 } from "../../tests/utils";
 
 import { MetabotAsk } from "./MetabotAsk";
-
-const askPageRouting = {
-  routing: {
-    locationBeforeTransitions: createMockLocation({
-      pathname: "/question/ask",
-    }),
-  },
-};
 
 const greetingTitle =
   /What would you like to know\?|What do you want to explore\?|What are you looking to learn\?/;
@@ -113,7 +104,7 @@ describe("MetabotAsk", () => {
     });
 
     expect(
-      await screen.findByText("To use AI exploration, please", {
+      await screen.findByText("To use AI explorations, please", {
         exact: false,
       }),
     ).toBeInTheDocument();
@@ -167,10 +158,9 @@ describe("MetabotAsk", () => {
   });
 
   it("navigates to the conversation route after the first message", async () => {
-    const { store, history } = setupMetabotAsk({
+    const { store, router } = setupMetabotAsk({
       withRouter: true,
       initialRoute: "/question/ask",
-      storeInitialState: askPageRouting,
     });
     mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
@@ -179,17 +169,14 @@ describe("MetabotAsk", () => {
     await enterChatMessage("Who is your favorite?");
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe(
-        `/metabot/conversation/${askId}`,
-      );
+      expect(router?.location.pathname).toBe(`/metabot/conversation/${askId}`);
     });
   });
 
   it("navigates to the selected conversation from history", async () => {
-    const { history } = setupMetabotAsk({
+    const { router } = setupMetabotAsk({
       withRouter: true,
       initialRoute: "/question/ask",
-      storeInitialState: askPageRouting,
       conversations: [
         createMockMetabotConversation({
           conversation_id: "past-conversation-id",
@@ -204,7 +191,7 @@ describe("MetabotAsk", () => {
     await userEvent.click(await screen.findByText("Earlier question"));
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         "/metabot/conversation/past-conversation-id",
       );
     });

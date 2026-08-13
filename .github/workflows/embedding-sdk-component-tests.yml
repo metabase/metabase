@@ -111,19 +111,6 @@ jobs:
             echo "No ./target/junit directory; nothing to process."
           fi
 
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit
-          output-name: e2e-embedding-sdk-react-${{ matrix.react-version }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.run-tests.outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
-
       - name: Quarantine gate
         if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}
         continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
@@ -292,19 +279,6 @@ jobs:
           else
             echo "No ./target/junit directory; nothing to process."
           fi
-
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit
-          output-name: e2e-embedding-sdk
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-          previous-step-outcome: ${{ steps.run-tests.outcome }}
-          run-trunk: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
 
       - name: Quarantine gate
         if: ${{ !cancelled() && steps.run-tests.outcome == 'failure' }}

@@ -1,7 +1,10 @@
 import _ from "underscore";
 
-import { trackSchemaEvent } from "metabase/analytics";
-import { hashSearchTerm, shouldReportSearchTerm } from "metabase/common/search";
+import {
+  hashSearchTerm,
+  shouldReportSearchTerm,
+  trackSchemaEvent,
+} from "metabase/analytics";
 import { openSaveDialog } from "metabase/utils/dom";
 import {
   toSnowplowContentTypes,

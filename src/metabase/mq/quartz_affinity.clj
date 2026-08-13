@@ -157,8 +157,8 @@
                      (ensure-delegate-loadable! db-type)
                      (catch Throwable t
                        (let [fallback (get base-delegate-class-name db-type default-base-delegate-class-name)]
-                         (log/warn t (str "Could not install Quartz queue-affinity delegate; falling back to "
-                                          fallback " (queue node-affinity disabled)"))
+                         (log/warn (str "Could not install Quartz queue-affinity delegate; falling back to "
+                                        fallback " (queue node-affinity disabled): " (ex-message t)))
                          fallback)))]
     (System/setProperty driver-delegate-property class-name)
     class-name))

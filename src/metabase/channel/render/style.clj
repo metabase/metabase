@@ -200,7 +200,7 @@
                          " "
                          (trs "This is a known issue with certain JVMs. See {0} and for more details."
                               "https://github.com/metabase/metabase/issues/7986"))]
-        (log/error e message)
+        (log/error message (ex-message e))
         (throw (ex-info message {} e))))))
 
 (defonce ^{:doc      "Makes custom fonts available to Java so that CSSBox can render them."

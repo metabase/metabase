@@ -1,56 +1,23 @@
+import { lazyLoaders } from "__support__/lazy-routes";
 import { setupUserKeyValueEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Outlet, Route } from "metabase/router";
+import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { DataStudioIndexRedirect, getDataStudioRoutes } from "./routes";
 
-const DenyingDataStudioGuard = () => (
-  <div data-testid="data-studio-access-denied" />
-);
-const AllowingGuard = () => <Outlet />;
+const Guard = () => null;
+describe("data-studio routes", () => {
+  it("resolves every page", async () => {
+    const loaders = lazyLoaders(getDataStudioRoutes(Guard));
 
-function setup(initialRoute: string) {
-  renderWithProviders(
-    <Route path="/">
-      {getDataStudioRoutes(
-        DenyingDataStudioGuard,
-        AllowingGuard,
-        AllowingGuard,
-      )}
-      <Route
-        path="monitor/dependency-diagnostics"
-        element={<div data-testid="diagnostics-index" />}
-      />
-      <Route
-        path="monitor/dependency-diagnostics/unreferenced"
-        element={<div data-testid="diagnostics-unreferenced" />}
-      />
-    </Route>,
-    { initialRoute, withRouter: true },
-  );
-}
+    // Includes the transform routes, which this tree nests.
+    expect(loaders).toHaveLength(24);
 
-describe("Data Studio routes", () => {
-  it("redirects the legacy Dependency Diagnostics index outside the Data Studio access guard", async () => {
-    setup("/data-studio/dependency-diagnostics");
-
-    expect(await screen.findByTestId("diagnostics-index")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("data-studio-access-denied"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("preserves the child path instead of matching the Data Studio catch-all", async () => {
-    setup("/data-studio/dependency-diagnostics/unreferenced");
-
-    expect(
-      await screen.findByTestId("diagnostics-unreferenced"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("data-studio-access-denied"),
-    ).not.toBeInTheDocument();
+    for (const load of loaders) {
+      expect((await load()).Component).toBeDefined();
+    }
   });
 });
 

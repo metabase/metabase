@@ -133,10 +133,6 @@
       migrate-parameters-list
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
 
-(defmethod serdes/hash-fields :model/Dashboard
-  [_dashboard]
-  [:name (serdes/hydrated-hash :collection) :created_at])
-
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:default :tabs]
@@ -371,7 +367,7 @@
   [:map
    [:id ms/NonBlankString]
    [:name ms/NonBlankString]
-   [:mappings [:maybe [:set ::parameters.schema/parameter-mapping]]]])
+   [:mappings [:maybe [:set ::parameters.schema/parameter-mapping-with-dashcard]]]])
 
 (mu/defn dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   "Return map of Dashboard parameter key -> param with resolved `:mappings` (see the `:resolved-params` hydration

@@ -1,15 +1,25 @@
 import { useState } from "react";
 import type { MouseEvent } from "react";
 import type { CustomVisualizationProps, RowValue } from "@metabase/custom-viz";
+import { formatValue } from "../../../src/index";
 import type { Settings } from "./types";
 
 export const Visualization = (
   props: CustomVisualizationProps<Settings> & { locale: string },
 ) => {
-  const { series, settings, onClick, onHover, locale } = props;
+  const { series, settings, renderingContext, onClick, onHover, locale } =
+    props;
   const { threshold } = settings;
   const { cols, rows } = series[0].data;
   const value = rows[0][0];
+
+  const measuredTextSize = renderingContext.measureText(
+    "Custom viz rendered successfully",
+    { size: 14, weight: 700 },
+  );
+  const measuredWidth = Math.round(measuredTextSize.width);
+  const measuredHeight = Math.round(measuredTextSize.height);
+  const brandColor = renderingContext.getColor("brand");
 
   const [lastClickValue, setLastClickValue] = useState<RowValue | null>(null);
   const [lastHoverValue, setLastHoverValue] = useState<RowValue | null>(null);
@@ -51,7 +61,23 @@ export const Visualization = (
       <h1>Custom viz rendered successfully</h1>
       <div>Threshold: {threshold}</div>
       <div>Value: {value}</div>
+      <div data-testid="demo-viz-formatted-value">
+        Formatted: {formatValue(value, settings.column?.(cols[0]))}
+      </div>
       <div data-testid="demo-viz-locale">Locale: {locale}</div>
+      <div data-testid="demo-viz-measured-width">
+        Measured width: {measuredWidth}
+      </div>
+      <div data-testid="demo-viz-measured-height">
+        Measured height: {measuredHeight}
+      </div>
+      <div data-testid="demo-viz-brand-color">Brand color: {brandColor}</div>
+      <div data-testid="demo-viz-font-family">
+        Font family: {renderingContext.fontFamily}
+      </div>
+      <div data-testid="demo-viz-color-scheme">
+        Color scheme: {renderingContext.colorScheme}
+      </div>
       <button
         type="button"
         data-testid="demo-viz-click-target"

@@ -3,14 +3,11 @@
 
 import { forwardRef } from "react";
 
-import type { RouterLinkProps as LinkProps } from "metabase/router/react-router";
-import { RouterLink as Link } from "metabase/router/router-link";
+import { BaseLink, type BaseLinkProps } from "./BaseLink";
 
 // `ref` prop, we have to manually forward it to the correct prop name to make hover work as expected.
-export const ForwardRefLink = forwardRef(function _ForwardRefLink(
-  props: LinkProps,
-  ref,
-) {
-  // @ts-expect-error - innerRef not in prop types but it is a valid prop. docs can be found here: https://github.com/remix-run/react-router/blob/v3.2.6/docs/API.md#innerref
-  return <Link {...props} innerRef={ref} />;
-});
+export const ForwardRefLink = forwardRef<HTMLAnchorElement, BaseLinkProps>(
+  function _ForwardRefLink(props, ref) {
+    return <BaseLink {...props} innerRef={ref} />;
+  },
+);

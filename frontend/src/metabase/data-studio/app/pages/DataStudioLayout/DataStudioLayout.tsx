@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import {
@@ -13,11 +13,10 @@ import {
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
-  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Outlet } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
+import { Outlet, useLocation } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
 
@@ -34,14 +33,11 @@ export function DataStudioLayout() {
   });
   const isNavbarOpened = _isNavbarOpened !== false;
 
-  const { pathname } = useSelector(getLocation);
+  const { pathname } = useLocation();
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
-  const canManageWorkspaces = useSelector(
-    PLUGIN_WORKSPACES.canManageWorkspaces,
-  );
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -164,15 +160,6 @@ export function DataStudioLayout() {
           isSelected={currentTab === "git-sync"}
           showLabel={isNavbarOpened}
           isGated
-        />
-      )}
-      {canManageWorkspaces && (
-        <AreaTab
-          label={t`Workspaces`}
-          icon="workspace"
-          to={Urls.workspaces()}
-          isSelected={currentTab === "workspaces"}
-          showLabel={isNavbarOpened}
         />
       )}
       {settings.length > 0 && (

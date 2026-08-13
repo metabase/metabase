@@ -26,9 +26,25 @@ With the Modular embedding SDK, you can embed individual Metabase components wit
 
 Jump to a SDK quickstart with a sample React application.
 
+### [Embed a chart](./chart.md)
+
+Embed a single chart, view-only or interactive, with web components or the React SDK.
+
+### [Embed the query builder](./query-builder.md)
+
+Embed Metabase's visual query builder or SQL editor, so people can build and save their own questions.
+
+### [Question component reference](./question-reference.md)
+
+Every `<metabase-question>` attribute, the `StaticQuestion` and `InteractiveQuestion` props, and the components you can use to build your own question layout.
+
 ### [Guest embedding](./guest-embedding.md)
 
 Guest embedding is a secure way to embed charts and dashboards. Guest embeds are view-only; people won't be able to drill-through charts and tables.
+
+### [Custom visualizations in embeds](./custom-visualizations.md)
+
+Allowlist the custom visualizations that your embedded components can load. Available in modular embeds that use SSO, with web components or the React SDK.
 
 ### [Translating embeds](./translations.md)
 

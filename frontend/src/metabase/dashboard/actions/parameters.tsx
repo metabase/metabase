@@ -24,7 +24,6 @@ import { createAction, createThunkAction } from "metabase/redux";
 import { selectTab, setParameterValues } from "metabase/redux/dashboard";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
-import type { LocationDescriptorObject } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
@@ -42,6 +41,7 @@ import type {
   Parameter,
   ParameterId,
   ParameterTarget,
+  ParameterValuesMap,
   TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
@@ -85,6 +85,9 @@ import {
 } from "../utils";
 
 import {
+  REMOVE_PARAMETER,
+  RESET_PARAMETERS,
+  SET_PARAMETER_VALUE,
   type SetDashCardAttributesOpts,
   setDashCardAttributes,
   setDashboardAttributes,
@@ -139,7 +142,10 @@ export function duplicateParameters(
   getState: GetState,
   parameterIds: ParameterId[],
 ) {
-  const parameters = getParameters(getState());
+  // getParameters returns UiParameters, which are not serializable
+  // so the duplicated parameter will throw on save. we need dashboard.parameters instead
+  const dashboard = getDashboard(getState());
+  const parameters = dashboard?.parameters ?? [];
 
   const newParameters = parameterIds.map((parameterId) => {
     const parameter = parameters.find((p) => p.id === parameterId);
@@ -378,7 +384,6 @@ export function removeParameterAndReferences(
   });
 }
 
-export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
   (parameterId: ParameterId) => (dispatch, getState) => {
@@ -821,7 +826,6 @@ export const setParameterFilteringParameters = createThunkAction(
     },
 );
 
-export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId: ParameterId, value: unknown) => (_dispatch, getState) => {
@@ -876,7 +880,6 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
-export const RESET_PARAMETERS = "metabase/dashboard/RESET_PARAMETERS";
 export const resetParameters = createThunkAction(
   RESET_PARAMETERS,
   () => (_dispatch, getState) => {
@@ -1067,7 +1070,7 @@ export const setOrUnsetParameterValues =
   };
 
 export const setParameterValuesFromQueryParams =
-  (queryParams: LocationDescriptorObject["query"] = {}) =>
+  (queryParams: ParameterValuesMap = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
     const parameters = getParameters(getState());
     const parameterValues = getParameterValuesByIdFromQueryParams(
@@ -1138,3 +1141,5 @@ export const closeAutoApplyFiltersToast = createThunkAction(
     }
   },
 );
+
+export { REMOVE_PARAMETER, RESET_PARAMETERS, SET_PARAMETER_VALUE };

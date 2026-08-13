@@ -190,8 +190,8 @@
     (doseq [[card-id new-metadata] updates]
       (t2/update! :model/Card card-id {:result_metadata new-metadata}))))
 
-(derive ::update-card-dependents-metadata :metabase/event)
-(derive :event/card-update ::update-card-dependents-metadata)
+(events/derive! ::update-card-dependents-metadata :metabase/event)
+(events/derive! :event/card-update ::update-card-dependents-metadata)
 
 (methodical/defmethod events/publish-event! ::update-card-dependents-metadata
   [_ {{:keys [id dataset_query]} :object :keys [previous-object]}]

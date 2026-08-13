@@ -18,7 +18,7 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import * as dashboardSelectors from "metabase/dashboard/selectors";
-import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
+import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import {
   createMockDashboardState,
   createMockState,
@@ -856,7 +856,7 @@ describe("DashCard", () => {
 
       jest
         .spyOn(dashboardSelectors, "getDashCardInlineValuePopulatedParameters")
-        .mockReturnValue([parameter]);
+        .mockReturnValue([{ ...parameter, value: null }]);
 
       setup({
         dashboard,
@@ -915,7 +915,7 @@ describe("DashCard", () => {
 
       jest
         .spyOn(dashboardSelectors, "getDashCardInlineValuePopulatedParameters")
-        .mockReturnValue([parameter]);
+        .mockReturnValue([{ ...parameter, value: null }]);
 
       setup({
         dashboard,
