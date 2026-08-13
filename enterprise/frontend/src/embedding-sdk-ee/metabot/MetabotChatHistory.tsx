@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
-import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import type { MetabotChatMessage } from "metabase/metabot/state";
@@ -65,9 +65,10 @@ export function MetabotChatHistory() {
           onInternalLinkClick={setNavigateToPath}
         />
       ) : null}
-      {metabot.isLongConversation && (
-        <MetabotResetLongChatButton
-          onResetConversation={metabot.createNewConversation}
+      {metabot.longChatNotice && (
+        <MetabotLongChatNotice
+          variant={metabot.longChatNotice}
+          onNewChat={metabot.createNewConversation}
         />
       )}
     </Stack>

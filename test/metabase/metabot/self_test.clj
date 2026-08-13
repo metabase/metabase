@@ -915,7 +915,7 @@
                   {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
                   {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
                   {:type :finish}]
-          finish (last (sse-events parts))]
+          finish (last (sse-events {:context-window-tokens 1000000} parts))]
       (is (= {:type "finish"
               :finishReason "stop"
               :messageMetadata {:usage        {:inputTokens 12 :outputTokens 8 :totalTokens 20
@@ -923,7 +923,10 @@
                                 :usageByModel {:claude-sonnet-4-6 {:inputTokens 10 :outputTokens 5 :totalTokens 15
                                                                    :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}
                                                :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5
-                                                                   :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}}}
+                                                                   :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}
+                                :contextWindowTokens 1000000
+                                ;; claude-sonnet's final call alone: (10-5) prompt + (5-1) completion
+                                :contextTokens 9}}
              finish))))
   (testing "finish omits messageMetadata when no usage was observed"
     (is (not (contains? (last (sse-events [{:type :text :id "t" :text "x"}]))
@@ -937,7 +940,7 @@
                            :cacheCreationTokens 300 :cacheReadTokens 1200}}
                   {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
                   {:type :finish}]
-          finish (last (sse-events parts))]
+          finish (last (sse-events {:context-window-tokens 1000000} parts))]
       (is (= {:type "finish"
               :finishReason "stop"
               :messageMetadata
@@ -947,8 +950,19 @@
                :usageByModel {:claude-sonnet-4-6 {:inputTokens 1540 :outputTokens 10 :totalTokens 1550
                                                   :cacheCreationTokens 300 :cacheReadTokens 1200 :cachedInputTokens 1200}
                               :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5
-                                                  :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}}}
+                                                  :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}
+               :contextWindowTokens 1000000
+               :contextTokens 1550}}
              finish)))))
+
+(deftest ^:parallel context-window-tokens-test
+  (are [model window] (= window (self/context-window-tokens model))
+    "anthropic/claude-sonnet-4-6"          1000000 ; adapter table hit
+    "metabase/anthropic/claude-sonnet-4-6" 1000000 ; proxy prefix is stripped
+    "azure/openai/gpt-5.4-mini-prod"       272000  ; longest model-id prefix wins
+    "azure/openai/my-deployment"           128000  ; unmatched deployment -> default
+    "anthropic/some-future-model"          128000  ; unknown model -> default
+    "unknown"                              128000)) ; unknown provider -> default
 
 ;;; ===================== Retry Logic Tests =====================
 

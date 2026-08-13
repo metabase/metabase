@@ -22,6 +22,8 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockSearchResult } from "metabase-types/api/mocks/search";
 
+import { input } from "../../../tests/utils";
+
 import { MetabotChatEditor } from "./MetabotChatEditor";
 
 const defaultProps = {
@@ -78,9 +80,6 @@ const setup = (
   );
 };
 
-const getEditor = () =>
-  // eslint-disable-next-line testing-library/no-node-access
-  document.querySelector('[contenteditable="true"]') as HTMLElement;
 const getPopup = () => screen.findByTestId("mini-picker");
 
 describe("MetabotChatEditor", () => {
@@ -95,7 +94,7 @@ describe("MetabotChatEditor", () => {
     const onChange = jest.fn();
     setup({ onChange });
 
-    await userEvent.type(getEditor(), "Hello world");
+    await userEvent.type(await input(), "Hello world");
 
     expect(onChange).toHaveBeenCalledWith("Hello world");
   });
@@ -104,15 +103,38 @@ describe("MetabotChatEditor", () => {
     const onSubmit = jest.fn();
     setup({ onSubmit });
 
-    await userEvent.type(getEditor(), "Hello world{Enter}");
+    await userEvent.type(await input(), "Hello world{Enter}");
 
     expect(onSubmit).toHaveBeenCalled();
+  });
+
+  it("should prevent editing while disabled and keep the placeholder visible", async () => {
+    const onChange = jest.fn();
+    setup({
+      disabled: true,
+      onChange,
+      placeholder: "Start a new chat to continue",
+    });
+
+    const editor = await input();
+    expect(editor).toHaveAttribute("contenteditable", "false");
+    expect(
+      screen.getByText(
+        (_content, element) =>
+          element?.getAttribute("data-placeholder") ===
+          "Start a new chat to continue",
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.type(editor, "This should not be entered");
+    expect(editor).not.toHaveTextContent("This should not be entered");
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("should support @mentions", async () => {
     setup();
 
-    await userEvent.type(getEditor(), "@");
+    await userEvent.type(await input(), "@");
 
     expect(await getPopup()).toBeInTheDocument();
   });
@@ -120,7 +142,7 @@ describe("MetabotChatEditor", () => {
   it("should show browse all when @ is typed", async () => {
     setup();
 
-    await userEvent.type(getEditor(), "@");
+    await userEvent.type(await input(), "@");
 
     const popup = await getPopup();
     expect(popup).toBeInTheDocument();
@@ -141,7 +163,7 @@ describe("MetabotChatEditor", () => {
       },
     );
 
-    await userEvent.type(getEditor(), "@sample");
+    await userEvent.type(await input(), "@sample");
 
     await waitFor(() => {
       expect(
@@ -172,7 +194,7 @@ describe("MetabotChatEditor", () => {
       },
     );
 
-    await userEvent.type(getEditor(), "@test");
+    await userEvent.type(await input(), "@test");
 
     await waitFor(() =>
       expect(
@@ -207,7 +229,7 @@ describe("MetabotChatEditor", () => {
       },
     );
 
-    await userEvent.type(getEditor(), "@test");
+    await userEvent.type(await input(), "@test");
 
     await waitFor(() => {
       expect(
@@ -229,7 +251,7 @@ describe("MetabotChatEditor", () => {
   it("should handle paste events with metabase protocol links", async () => {
     const onChange = jest.fn();
     setup({ onChange });
-    getEditor().focus();
+    (await input()).focus();
 
     await userEvent.paste("[Test Model](metabase://model/123)");
 
@@ -244,7 +266,7 @@ describe("MetabotChatEditor", () => {
     const onSubmit = jest.fn();
     setup({ value: "", onChange, onSubmit });
 
-    await userEvent.type(getEditor(), "Hello world{Enter}");
+    await userEvent.type(await input(), "Hello world{Enter}");
 
     expect(onSubmit).toHaveBeenCalled();
     expect(onChange).toHaveBeenCalledWith("Hello world");

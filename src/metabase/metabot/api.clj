@@ -213,7 +213,10 @@
             thrown     (volatile! nil)
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/parts->aisdk-sse-xf
-                              (cond-> {:message-id external-id}
+                              (cond-> {:message-id external-id
+                                       :context-window-tokens
+                                       (metabot.self/context-window-tokens
+                                        (metabot.settings/llm-metabot-provider))}
                                 user-external-id (assoc :message-metadata {:userMessageId user-external-id})))
                              (inject-title-events-xf title-job conversation-id))]
         (try

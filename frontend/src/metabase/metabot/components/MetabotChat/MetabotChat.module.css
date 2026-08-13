@@ -27,6 +27,7 @@
 }
 
 .inputContainer {
+  position: relative;
   padding: 0 0.75rem 0 0.3rem;
   display: flex;
   align-items: center;
@@ -39,6 +40,13 @@
   &:focus-within {
     border-color: var(--mb-color-core-brand);
   }
+}
+
+.longChatNotice {
+  border-radius: 0.5rem 0.5rem 0 0;
+  border-bottom: 0;
+  padding-bottom: 0.5rem;
+  margin-bottom: -0.5rem;
 }
 
 .inputContainerLoading {

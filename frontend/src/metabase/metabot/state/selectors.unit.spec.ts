@@ -4,15 +4,25 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 
+import {
+  CONTEXT_WINDOW_FULL_RATIO,
+  CONTEXT_WINDOW_WARNING_RATIO,
+} from "../constants";
+
 import { getMetabotInitialState } from "./reducer-utils";
 
 import {
   type MetabotChatMessage,
+  type MetabotConverstationState,
   getLastAgentMessageExternalId,
+  getMetabotLongChatNotice,
   getUserPromptForMessageId,
 } from "./index";
 
-function setup(messages: MetabotChatMessage[]): State {
+function setup(
+  messages: MetabotChatMessage[],
+  convoState?: Partial<Pick<MetabotConverstationState, "lastTokenUsage">>,
+): State {
   setupEnterprisePlugins();
 
   const state = getMetabotInitialState();
@@ -22,8 +32,13 @@ function setup(messages: MetabotChatMessage[]): State {
     ["conversations", "omnibot", "messages"],
     messages,
   );
+  const withConvoState = Object.entries(convoState ?? {}).reduce(
+    (acc, [key, value]) =>
+      assocIn(acc, ["conversations", "omnibot", key], value),
+    withMessages,
+  );
 
-  return createMockState({ metabot: withMessages });
+  return createMockState({ metabot: withConvoState });
 }
 
 describe("metabot selectors", () => {
@@ -86,6 +101,47 @@ describe("metabot selectors", () => {
         },
       ]);
       expect(getLastAgentMessageExternalId(state, "omnibot")).toBe("ext-2");
+    });
+  });
+
+  describe("getMetabotLongChatNotice", () => {
+    const shortMessage: MetabotChatMessage = {
+      id: "1",
+      role: "user",
+      type: "text",
+      message: "hi",
+    };
+    const CONTEXT_WINDOW = 200000;
+    const usage = (contextTokens: number) => ({
+      lastTokenUsage: { contextTokens, contextWindowTokens: CONTEXT_WINDOW },
+    });
+
+    it("warns when context tokens reach the warning ratio of the window", () => {
+      const state = setup(
+        [shortMessage],
+        usage(CONTEXT_WINDOW * CONTEXT_WINDOW_WARNING_RATIO),
+      );
+      expect(getMetabotLongChatNotice(state, "omnibot")).toBe("warning");
+    });
+
+    it("reports full when context tokens reach the full ratio of the window", () => {
+      const state = setup(
+        [shortMessage],
+        usage(CONTEXT_WINDOW * CONTEXT_WINDOW_FULL_RATIO),
+      );
+      expect(getMetabotLongChatNotice(state, "omnibot")).toBe("full");
+    });
+
+    it("shows nothing below the warning ratio or when no usage has been observed", () => {
+      expect(
+        getMetabotLongChatNotice(
+          setup([shortMessage], usage(10000)),
+          "omnibot",
+        ),
+      ).toBeUndefined();
+      expect(
+        getMetabotLongChatNotice(setup([shortMessage]), "omnibot"),
+      ).toBeUndefined();
     });
   });
 });

@@ -85,6 +85,34 @@
      :credentials credentials
      :ai-proxy?   ai-proxy?}))
 
+(defn- resolve-context-window-fn [provider]
+  ;; a `case` inside of function instead of a map so that with-redefs work well
+  (case provider
+    "anthropic"  claude/context-window-tokens
+    "azure"      azure/context-window-tokens
+    "bedrock"    bedrock/context-window-tokens
+    "mistral"    mistral/context-window-tokens
+    "moonshot"   moonshot/context-window-tokens
+    "openai"     openai/context-window-tokens
+    "openrouter" openrouter/context-window-tokens
+    "zai"        zai/context-window-tokens
+    nil))
+
+(def ^:private default-context-window-tokens
+  "Conservative input context window for models no adapter has an entry for."
+  128000)
+
+(defn context-window-tokens
+  "Best-known input context window (tokens) for a `connection-key/model` string.
+  Unconfigured connections, unknown providers, and unknown models fall back to
+  a conservative default rather than throwing."
+  [model-ref]
+  (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)
+        window-fn            (resolve-context-window-fn type)]
+    (or (when (and window-fn model)
+          (window-fn model))
+        default-context-window-tokens)))
+
 (defn list-models
   "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
   The shape of the credentials map varies by provider: API-key providers take `{:api-key ...}`, while Bedrock takes

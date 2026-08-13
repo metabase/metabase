@@ -36,6 +36,7 @@ export interface MetabotPromptInputProps {
   placeholder?: string;
   autoFocus?: boolean;
   disabled: boolean;
+  readOnly?: boolean;
   onChange: (value: string) => void;
   onSubmit?: () => void;
   onStop: () => void;
@@ -54,6 +55,7 @@ export const MetabotPromptInput = forwardRef<
       placeholder = t`How can I help? Type @ to mention items.`,
       autoFocus,
       disabled,
+      readOnly = false,
       suggestionConfig,
       onChange,
       onSubmit,
@@ -77,7 +79,7 @@ export const MetabotPromptInput = forwardRef<
       Document,
       Paragraph,
       Text,
-      Placeholder.configure({ placeholder }),
+      Placeholder.configure({ placeholder, showOnlyWhenEditable: false }),
       HardBreak,
       SmartLink.configure({
         HTMLAttributes: { class: S.smartLink },
@@ -100,6 +102,7 @@ export const MetabotPromptInput = forwardRef<
         extensions,
         content: parseMetabotMessageToTiptapDoc(value),
         autofocus: autoFocus ? "end" : false,
+        editable: !readOnly,
         injectNonce: getCspNonce(),
         onUpdate: ({ editor }) => {
           const jsonContent = editor.getJSON();
@@ -191,6 +194,7 @@ export const MetabotPromptInput = forwardRef<
         suggestionConfig.onlyDatabaseId,
         suggestionConfig.suggestionModels.join(","),
         placeholder,
+        readOnly,
         siteUrl,
       ],
     );
@@ -229,7 +233,7 @@ export const MetabotPromptInput = forwardRef<
         {...props}
         editor={editor}
         className={cx(S.content, {
-          [S.disabled]: disabled,
+          [S.disabled]: disabled || readOnly,
         })}
       />
     );

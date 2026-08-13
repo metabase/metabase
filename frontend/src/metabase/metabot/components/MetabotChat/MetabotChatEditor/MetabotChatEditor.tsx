@@ -20,12 +20,12 @@ type MetabotChatEditorProps = Pick<
   | "onSubmit"
   | "onStop"
   | "suggestionConfig"
-> & { isResponding?: boolean };
+> & { isResponding?: boolean; disabled?: boolean };
 
 export const MetabotChatEditor = forwardRef<
   MetabotPromptInputRef | null,
   MetabotChatEditorProps
->(({ isResponding = false, ...props }, ref) => {
+>(({ isResponding = false, disabled = false, ...props }, ref) => {
   return (
     <Box className={S.editorContainer}>
       <Box className={S.iconContainer}>
@@ -36,6 +36,7 @@ export const MetabotChatEditor = forwardRef<
           {...props}
           ref={ref}
           disabled={isResponding}
+          readOnly={disabled}
           data-testid="metabot-chat-input"
         />
       </Box>
@@ -43,7 +44,9 @@ export const MetabotChatEditor = forwardRef<
         className={cx(
           S.button,
           isResponding && S.buttonResponding,
-          props.value.length === 0 && !isResponding && S.buttonHidden,
+          (props.value.length === 0 || disabled) &&
+            !isResponding &&
+            S.buttonHidden,
         )}
         onClick={isResponding ? props.onStop : props.onSubmit}
         data-testid={

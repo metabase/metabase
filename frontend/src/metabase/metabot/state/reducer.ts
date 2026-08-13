@@ -17,7 +17,7 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
-import type { MetabotProfileId } from "../constants";
+import { CONTEXT_WINDOW_FULL_RATIO, type MetabotProfileId } from "../constants";
 
 import { sendAgentRequest } from "./actions";
 import {
@@ -525,11 +525,25 @@ export const metabot = createSlice({
             convo.state = { ...action.payload.state };
           }
 
+          const metadata = action.payload?.processedResponse.messageMetadata;
+          if (metadata?.contextTokens && metadata.contextWindowTokens) {
+            convo.lastTokenUsage = {
+              contextTokens: metadata.contextTokens,
+              contextWindowTokens: metadata.contextWindowTokens,
+            };
+          }
+
           const finishReason = action.payload?.processedResponse.finishReason;
           const isResumableFinishReason =
             finishReason && finishReason !== "stop" && finishReason !== "error";
           if (isResumableFinishReason) {
-            appendAgentTurnIncomplete(convo, finishReason);
+            const contextWindowFull =
+              finishReason === "length" &&
+              convo.lastTokenUsage != null &&
+              convo.lastTokenUsage.contextTokens >=
+                convo.lastTokenUsage.contextWindowTokens *
+                  CONTEXT_WINDOW_FULL_RATIO;
+            appendAgentTurnIncomplete(convo, finishReason, contextWindowFull);
           }
 
           convo.activeToolCalls = [];

@@ -9,7 +9,7 @@ import {
   setupGetMetabotConversationEndpointError,
 } from "__support__/server-mocks";
 import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
-import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
+import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
@@ -36,6 +36,7 @@ import {
   enterChatMessage,
   hideMetabot,
   input,
+  inputPlaceholder,
   lastReqBody,
   mockAgentEndpoint,
   newConversationButton,
@@ -300,46 +301,102 @@ describe("metabot > ui", () => {
     expect(secondParagraph).toBeInTheDocument();
   });
 
-  it("should warn the chat is getting long w/ ability to clear it", async () => {
-    const { store } = setup();
-    const longMsg = "x".repeat(LONG_CONVO_MSG_LENGTH_THRESHOLD / 2);
+  const longChatWarningResponse: SSEEvent[] = [
+    { type: "text-start", id: "t1" },
+    { type: "text-delta", id: "t1", delta: "answer" },
+    { type: "text-end", id: "t1" },
+    {
+      type: "finish",
+      finishReason: "stop",
+      messageMetadata: {
+        usage: { inputTokens: 10000, outputTokens: 50, totalTokens: 10050 },
+        contextTokens: 10000,
+        contextWindowTokens: 11000,
+      },
+    },
+  ];
 
-    act(() => {
-      store.dispatch(
-        metabotActions.addUserMessage({
-          id: "1",
-          type: "text",
-          message: longMsg,
-          conversationId: testConversationId("omnibot"),
-        }),
-      );
-    });
-    expect(await screen.findByText(/xxxxxxx/)).toBeInTheDocument();
-    expect(
-      screen.queryByText(/This chat is getting long/),
-    ).not.toBeInTheDocument();
+  it("should warn the chat is getting long w/ ability to start a new chat", async () => {
+    setup();
+    mockAgentEndpoint({ events: longChatWarningResponse });
 
-    act(() => {
-      store.dispatch(
-        metabotActions.addUserMessage({
-          id: "2",
-          type: "text",
-          message: longMsg,
-          conversationId: testConversationId("omnibot"),
-        }),
-      );
-    });
+    await enterChatMessage("hello there");
+    expect(await screen.findByText("answer")).toBeInTheDocument();
     expect(
-      await screen.findByText(/This chat is getting long/),
+      await screen.findByText("Your chat is too long and may stop abruptly"),
     ).toBeInTheDocument();
-    await userEvent.click(await screen.findByTestId("metabot-reset-long-chat"));
+
+    await userEvent.click(
+      await screen.findByTestId("metabot-long-chat-new-chat"),
+    );
 
     await waitFor(() => {
       expect(
-        screen.queryByText(/This chat is getting long/),
+        screen.queryByText(/Your chat is too long/),
       ).not.toBeInTheDocument();
     });
-    expect(screen.queryByText(/xxxxxxx/)).not.toBeInTheDocument();
+    expect(screen.queryByText("answer")).not.toBeInTheDocument();
+  });
+
+  it("should allow dismissing the long chat warning without clearing the chat", async () => {
+    setup();
+    mockAgentEndpoint({ events: longChatWarningResponse });
+
+    await enterChatMessage("hello there");
+    expect(
+      await screen.findByText("Your chat is too long and may stop abruptly"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      await screen.findByTestId("metabot-long-chat-dismiss"),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Your chat is too long/),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("answer")).toBeInTheDocument();
+  });
+
+  it("should disable the input w/ a placeholder and no dismiss option once the context window is full", async () => {
+    setup();
+    mockAgentEndpoint({
+      events: [
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "answer" },
+        { type: "text-end", id: "t1" },
+        {
+          type: "finish",
+          finishReason: "stop",
+          messageMetadata: {
+            usage: {
+              inputTokens: 10900,
+              outputTokens: 50,
+              totalTokens: 10950,
+            },
+            contextTokens: 10950,
+            contextWindowTokens: 11000,
+          },
+        },
+      ],
+    });
+
+    await enterChatMessage("tell me things");
+    expect(
+      await screen.findByText("Your chat is too long"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-long-chat-dismiss"),
+    ).not.toBeInTheDocument();
+
+    const disabledInput = await input();
+    expect(disabledInput).toHaveAttribute("contenteditable", "false");
+    await waitFor(async () => {
+      expect(await inputPlaceholder()).toBe("Start a new chat to continue");
+    });
+    await userEvent.type(disabledInput, "This should not be entered");
+    expect(disabledInput).not.toHaveTextContent("This should not be entered");
   });
 
   it("should be able to set the prompt input's value from anywhere in the app", async () => {
