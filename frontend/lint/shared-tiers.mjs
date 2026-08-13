@@ -120,10 +120,6 @@ const sharedRules = [
   // Transitional clusters: these domain modules still import each other, so both ways are allowed.
   // Delete each entry once the imports are one-directional.
   {
-    from: ["shared/visualizations"],
-    allow: ["shared/static-viz"],
-  },
-  {
     from: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
     allow: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
   },
