@@ -19,8 +19,8 @@ There are three ways you can embed a dashboard:
 
 A view-only (a.k.a. "static") dashboard displays results without letting people explore the data. Nobody can drill through the charts or change the questions behind them. You can, however, add editable filters that people can change to update the results.
 
-- [Web components](#web-component-view-only-dashboard)
-- [React SDK](#react-sdk-view-only-dashboard-example)
+- [Web component](#web-component-view-only-dashboard)
+- [React SDK](#react-sdk-view-only-dashboard)
 
 ### Web component view-only dashboard
 
@@ -37,7 +37,7 @@ Three things need to happen: you publish the dashboard embed in Metabase, you pa
 3. Select **Embed** to open the embedding wizard.
 4. For authentication, choose **Guest**, so your app won't need to log anyone in to your Metabase.
 5. Click the **Publish** button. Publishing only applies to guest embeds. (There's nothing to publish for an SSO embed, because in that case people can explore the data based on their data and collection permissions.)
-6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./dashboard-reference.md#metabase-dashboard-web-component-attributes) for what each one does. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
+6. Under behavior, Metabase gives you several options for customizing how the embed works. See [web component attributes](./dashboard-reference.md#web-component-metabase-dashboard-attributes) for what each one does. If you'd picked SSO in step 4, this is where you'd make the embed view-only by turning off drill-through.
 7. Set each of the dashboard's filters to **Editable** or **Locked**. Filters are **Disabled** by default, which hides them and prevents your server from setting them. See [Configuring parameters](./guest-embedding.md#configuring-parameters).
 8. Customize the [appearance](./appearance.md).
 9. Click the **Get code** button. You'll get both the frontend and backend code based on the selections you made in the wizard.
@@ -46,7 +46,7 @@ Three things need to happen: you publish the dashboard embed in Metabase, you pa
 
 To keep an embed alive after its token expires, configure a token endpoint with [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server).
 
-#### Web components view-only dashboard example
+#### Web component view-only dashboard example
 
 Say you have a sales dashboard with a **Customer** filter, and you want to put it on each customer's account page in your app, showing only that customer's numbers. Here's the frontend code.
 
@@ -84,37 +84,15 @@ Fetch the JWT token from your backend and programmatically pass it to the 'metab
 
 The `theme` key sets the dashboard's appearance. For the full theme object with all the options, check out [Appearance](./appearance.md).
 
-On your app's server, set the value for the locked filter in the token. Whoever's looking at the page can't see or change that value, so an embed on customer 13's account page returns only customer 13's numbers.
+On your app's server, sign a token that sets the **Customer** filter to whoever's account page your app is rendering. Whoever's looking at the page can't see or change that value, so an embed on customer 13's account page returns only customer 13's numbers. For the signing code, see [Lock a filter on a guest embed](#lock-a-filter-on-a-guest-embed).
 
-```js
-// you will need to install via 'npm install jsonwebtoken' or in your package.json
-
-const jwt = require("jsonwebtoken");
-
-// Get your key from your Metabase at
-// /admin/embedding/guest -> Embedding secret key
-const METABASE_SECRET_KEY = "YOUR_SECRET_KEY";
-
-// Here we lock a customer_id parameter to 13
-const payload = {
-  resource: { dashboard: 10 },
-  params: {
-    customer_id: [
-      13, // set this programmatically, based on whose account page your app is rendering
-    ],
-  },
-  exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
-};
-const token = jwt.sign(payload, METABASE_SECRET_KEY);
-```
-
-To get this code from the in-app wizard, set the `customer_id` filter to **Locked** and publish the dashboard. See [Locked parameters](./guest-embedding.md#locked-parameters).
+To get this code from the in-app wizard, set the **Customer** filter to **Locked** and publish the dashboard. See [Locked parameters](./guest-embedding.md#locked-parameters).
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
 
-For the full list of attributes, see [web component attributes](./dashboard-reference.md#metabase-dashboard-web-component-attributes).
+For the full list of attributes, see [web component attributes](./dashboard-reference.md#web-component-metabase-dashboard-attributes).
 
-### React SDK view-only dashboard example
+### React SDK view-only dashboard
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
@@ -134,10 +112,10 @@ An interactive dashboard lets people explore their data: they can drill through 
 
 Interactive dashboards require SSO, which you can set up with either web components or the React SDK.
 
-- [Web components](#web-component-interactive-dashboards)
-- [React SDK](#react-sdk-interactive-dashboards)
+- [Web component](#web-component-interactive-dashboard)
+- [React SDK](#react-sdk-interactive-dashboard)
 
-### Web component interactive dashboards
+### Web component interactive dashboard
 
 Reference an existing dashboard by ID. [Drill-through](../questions/visualizations/drill-through.md) is on by default:
 
@@ -147,7 +125,7 @@ Reference an existing dashboard by ID. [Drill-through](../questions/visualizatio
 
 You can pass a sequential ID like `1`, but prefer an [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding).
 
-To control what people can do with the dashboard, check out [web component attributes](./dashboard-reference.md#metabase-dashboard-web-component-attributes).
+To control what people can do with the dashboard, check out [web component attributes](./dashboard-reference.md#web-component-metabase-dashboard-attributes).
 
 #### Let people follow links to other dashboards and questions
 
@@ -163,7 +141,7 @@ By default, an embedded dashboard is a dead end: clicking a link to another dash
 
 Entity navigation needs `drills` set to `true`. In the SDK, the equivalent prop is `enableEntityNavigation`, which is also off by default. People can still only open content they have [collection permissions](../permissions/collections.md) for.
 
-### React SDK interactive dashboards
+### React SDK interactive dashboard
 
 Use `InteractiveDashboard` when you want people to explore their data.
 
@@ -245,7 +223,43 @@ For the full list of props, see [`CreateDashboardModal` props](./dashboard-refer
 
 Every card on an interactive dashboard gets an overflow menu in its top right corner, with actions like downloading results and editing the question. The `dashboardCardMenu` plugin lets you change what's in that menu, add your own actions, or replace the menu entirely.
 
-For the configuration and examples, see [`dashboardCardMenu` plugin](./dashboard-reference.md#dashboardcardmenu-plugin).
+Pass the plugin through the `plugins` prop, under the `dashboard` key, on any dashboard component. You can also set it globally on `MetabaseProvider`; a component's own `plugins` prop wins over the global one. Here's `dashboardCardMenu` with its default values:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-base-2" %}
+```
+
+For what each key does, see [`dashboardCardMenu` plugin](./dashboard-reference.md#dashboardcardmenu-plugin).
+
+### Turn off the default actions
+
+To remove the download button from the menu, set `withDownloads` to `false`. To remove the edit link, set `withEditLink` to `false`.
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-default-actions" %}
+```
+
+### Add your own actions to the menu
+
+Add custom actions by putting objects in the `customItems` array. Each element can be an object, or a function that receives `{ question }` and returns an item:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-custom-action-type" %}
+```
+
+Here's an example:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-custom-actions" %}
+```
+
+### Replace the menu with your own component
+
+To swap out the whole menu, pass a function that returns a React element. The function receives `{ question }`:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/plugins.tsx" snippet="example-custom-actions-menu" %}
+```
 
 ## Customize what happens when someone clicks on a chart
 
@@ -266,12 +280,19 @@ Say you want to show each customer only their own numbers. How you filter the re
 Embeds with **Guest** authentication can [lock a parameter](./guest-embedding.md#locked-parameters). Your app sets the filter's value in the signed token on your server, so the filter is controlled by your app rather than by whoever's clicking around the page. They can't see the value, and they can't change it.
 
 ```javascript
+// Install with 'npm install jsonwebtoken', or add it to your package.json
+const jwt = require("jsonwebtoken");
+
+// Get your key from your Metabase at
+// /admin/embedding/guest -> Embedding secret key
+const METABASE_SECRET_KEY = "YOUR_SECRET_KEY";
+
 const payload = {
   resource: { dashboard: 10 },
   params: {
     category: ["Gadget"], // Locked. Set by your app, not by whoever's viewing.
   },
-  exp: Math.round(Date.now() / 1000) + 10 * 60,
+  exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
 };
 
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
@@ -294,11 +315,11 @@ For the SDK props (`initialParameters`, `parameters`, and `onParametersChange`),
 
 ### Hide a filter
 
-To hide a filter from the dashboard's UI, use the [`hidden-parameters`](./dashboard-reference.md#metabase-dashboard-web-component-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both require a Pro or Enterprise plan and an SSO embed; `hidden-parameters` isn't supported on guest embeds. To hide a filter on a guest embed, set it to **Locked** or leave it **Disabled** in the dashboard's embed settings.
+To hide a filter from the dashboard's UI, use the [`hidden-parameters`](./dashboard-reference.md#web-component-metabase-dashboard-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both require a Pro or Enterprise plan and an SSO embed; `hidden-parameters` isn't supported on guest embeds. To hide a filter on a guest embed, set it to **Locked** or leave it **Disabled** in the dashboard's embed settings.
 
 ## Let people set up dashboard subscriptions
 
-You can let people set up [dashboard subscriptions](../dashboards/subscriptions.md) with the [`with-subscriptions`](./dashboard-reference.md#metabase-dashboard-web-component-attributes) attribute on the web component:
+You can let people set up [dashboard subscriptions](../dashboards/subscriptions.md) with the [`with-subscriptions`](./dashboard-reference.md#web-component-metabase-dashboard-attributes) attribute on the web component:
 
 ```html
 <metabase-dashboard
@@ -315,13 +336,15 @@ Or by passing `withSubscriptions` to a dashboard component in the SDK:
 </MetabaseProvider>
 ```
 
-Metabase only shows the subscriptions button when all of these are true:
+Metabase hides the subscriptions button unless all of these are true:
 
-- Your Metabase has [email set up](../configuring-metabase/email.md). Slack on its own isn't enough.
 - The embed is an authenticated (SSO) embed. Guest embeds don't get subscriptions.
+- Whoever's viewing has the [Subscriptions and alerts](../permissions/application.md#subscriptions-and-alerts) application permission. Metabase grants that permission to the All Users group by default, so admins have to set it to **No** to take it away.
 - The dashboard has at least one card that isn't a text or heading card.
 
-Whoever's viewing also needs [collection permissions](../permissions/collections.md) for the collection that holds the dashboard, and the [Subscriptions and alerts](../permissions/application.md#subscriptions-and-alerts) application permission to create one. Metabase grants that application permission to the All Users group by default, so admins have to set it to **No** to take it away.
+Non-admins also need your Metabase to have [email](../configuring-metabase/email.md) or [Slack](../configuring-metabase/slack.md) set up---either one will do. Admins see the button whether or not a channel is configured, since admins are the ones who'd set the channel up.
+
+Whoever's viewing also needs [collection permissions](../permissions/collections.md) for the collection that holds the dashboard.
 
 Subscriptions sent from an embedded dashboard exclude links to Metabase items.
 
@@ -353,13 +376,18 @@ You can theme an embedded dashboard and toggle parts of its UI. For the full set
 - **Title**: show or hide the dashboard title with `with-title` (web component) or `withTitle` (SDK).
 - **Card titles**: show or hide the title on each card with `withCardTitle` (SDK only).
 - **Downloads**: show or hide the button that downloads the dashboard as a PDF, plus the download buttons on each card's results, with `with-downloads` / `withDownloads`. Defaults to `true` on OSS/Starter and `false` on Pro/Enterprise. Disabling downloads requires a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
-- **Height**: dashboard components fill the height of their container (`min-height: 100%`). Override that with the `style` or `className` props:
+
+### Set the height of an embedded dashboard
+
+Dashboard components fill the height of their container (`min-height: 100%`). Override that with the `style` or `className` props:
 
 ```tsx
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/custom-height.tsx" snippet="example" %}
 ```
 
-- **Theme**: set a light or dark preset, or (on Pro/Enterprise) customize colors and fonts. The `dashboard` component in the theme has its own overrides:
+### Theme an embedded dashboard
+
+Set a light or dark preset, or (on Pro/Enterprise) customize colors and fonts. The `dashboard` component in the theme has its own overrides:
 
 ```js
 {
@@ -384,6 +412,8 @@ You can theme an embedded dashboard and toggle parts of its UI. For the full set
 ```
 
 Colors set in a card's visualization settings override theme colors.
+
+### Remove the "Powered by Metabase" banner
 
 On the OSS and Starter plans, Metabase adds a "Powered by Metabase" banner to guest embeds. See [Removing the "Powered by Metabase" banner](./guest-embedding.md#removing-the-powered-by-metabase-banner).
 

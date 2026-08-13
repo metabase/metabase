@@ -11,12 +11,12 @@ redirect_from:
 
 There are two ways to embed a collection browser:
 
-- [Web component](#embed-a-collection-browser-with-a-web-component): a browser with breadcrumbs, navigation, and buttons for creating new content, all built for you.
-- [React SDK](#embed-a-collection-browser-with-the-react-sdk): a list of collection items that you wire into your own app.
+- [Web component](#web-component-collection-browser): a browser with breadcrumbs, navigation, and buttons for creating new content, all built for you.
+- [React SDK](#react-sdk-collection-browser): a list of collection items that you wire into your own app.
 
 People need to be signed in to your Metabase to view the collection browser, because the browser shows them what their [collection permissions](../permissions/collections.md) allow and nothing else. That means [SSO](./introduction.md#sso-embeds) only; a collection browser won't work in a [guest embed](./guest-embedding.md).
 
-## Embed a collection browser with a web component
+## Web component collection browser
 
 {% include plans-blockquote.html feature="Browser component" convert_pro_link_to_embedding=true%}
 
@@ -32,9 +32,9 @@ Point `<metabase-browser>` at the collection you want people to start in:
 
 `initial-collection` is the only required attribute. Pass a collection ID, or `"root"` for the top-level **Our analytics** collection.
 
-For the full list of attributes, see [web component attributes](./browser-reference.md#web-components-metabase-browser-attributes).
+For the full list of attributes, see [web component attributes](./browser-reference.md#web-component-metabase-browser-attributes).
 
-## Let people create questions and dashboard
+### Let people save changes
 
 `read-only` controls how much people can do with the content they open, and it defaults to `true`. Leave it alone and people can filter, summarize, and drill through everything they open, but they can't save any of it. Set `read-only="false"` and they can edit and save dashboards and questions.
 
@@ -78,11 +78,11 @@ By default, clicking a link from inside an opened dashboard or question does not
 
 They can still only open content their collection permissions allow.
 
-## Embed a collection browser with the React SDK
+## React SDK collection browser
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
-The SDK's `CollectionBrowser` lists what's in a collection and tells you when someone clicks an item. It has no create buttons and doesn't open anything on its own. You decide what a click does.
+The SDK's `CollectionBrowser` lists what's in a collection and tells you when someone clicks an item. It has no create buttons and doesn't open anything on its own. You decide what a click does. `CollectionBrowser` does render its own breadcrumbs, so people can navigate into subcollections and back out again.
 
 ```typescript
 {% include_file "{{ dirname }}/sdk/snippets/collections/collection-browser.tsx" %}
@@ -91,8 +91,6 @@ The SDK's `CollectionBrowser` lists what's in a collection and tells you when so
 `collectionId` takes a collection ID, or one of `"personal"`, `"tenant"`, or `"root"`. It defaults to `"personal"`, so pass something explicit unless you want people to start in their own personal collection.
 
 For the full list of props, see [`CollectionBrowser` props](./browser-reference.md#react-sdk-collectionbrowser-props).
-
-`CollectionBrowser` renders its own breadcrumbs, so people can navigate into subcollections and back out again.
 
 ### Decide what happens when someone clicks an item
 
@@ -104,9 +102,11 @@ Check `item.model` to find out what was clicked. Two of its values don't match w
 {% include_file "{{ dirname }}/sdk/snippets/collections/collection-browser-click.tsx" %}
 ```
 
-## Collection permissions determine where people can save items
+## Where people save what they create
 
-If you allow people to save items to a collection, people will be able to save their items to their personal collections. If you've also given them permissions to other collections, they'll have the option to save them there as well.
+In the web component browser, saving follows navigation: whatever collection someone is looking at when they save a question is where that question lands. There's no attribute for pinning the save target to a fixed collection---if you need that, embed a [question](./chart.md#let-people-save-their-changes) or the [query builder](./query-builder.md#let-people-save-questions) with `target-collection` instead of a browser.
+
+Whether people can save at all comes down to `read-only`, and what they can save to comes down to [collection permissions](../permissions/collections.md). Everyone can always write to their own personal collection, so that shows up as an option even if you've granted no other [curate access](../permissions/collections.md#curate-access).
 
 ## Further reading
 
