@@ -18,6 +18,16 @@
   [query :- ::qp.schema/any-query]
   (some-> query :info :context name (str/includes? "download")))
 
+(defn- download-perms-level-for-current-user
+  "Like `perms/download-perms-level`, but safe to call with no bound user (e.g. a public/embed download, which
+  has no Metabase session and thus no `api/*current-user-id*`) -- `download-perms-level` requires a real user id
+  and throws on nil (metabase#79779). No bound user means full download permissions, same as public questions
+  are already treated everywhere else in this namespace."
+  [query]
+  (if api/*current-user-id*
+    (perms/download-perms-level query api/*current-user-id*)
+    :one-million-rows))
+
 (defenterprise-schema apply-download-limit :- ::lib.schema/query
   "Pre-processing middleware to apply row limits to MBQL export queries if the user has `ten-thousand-rows` download
   perms. This does not apply to native queries, which are instead limited by the [[limit-download-result-rows]]
@@ -27,7 +37,7 @@
   (cond-> query
     (and (is-download? query)
          (= (:lib/type (lib/query-stage query -1)) :mbql.stage/mbql)
-         (= (perms/download-perms-level query api/*current-user-id*) :ten-thousand-rows))
+         (= (download-perms-level-for-current-user query) :ten-thousand-rows))
     (lib/limit ((fnil min Integer/MAX_VALUE) (lib/current-limit query -1) max-rows-in-limited-downloads))))
 
 (defenterprise-schema limit-download-result-rows :- ::qp.schema/rff
@@ -38,7 +48,7 @@
   [query :- ::lib.schema/query
    rff   :- ::qp.schema/rff]
   (if (and (is-download? query)
-           (= (perms/download-perms-level query api/*current-user-id*) :ten-thousand-rows))
+           (= (download-perms-level-for-current-user query) :ten-thousand-rows))
     (fn limit-download-result-rows* [metadata]
       ((take max-rows-in-limited-downloads) (rff metadata)))
     rff))
@@ -53,10 +63,7 @@
   [qp :- ::qp.schema/qp]
   (mu/fn [query :- ::lib.schema/query
           rff   :- ::qp.schema/rff]
-    (let [download-perms-level (if api/*current-user-id*
-                                 (perms/download-perms-level query api/*current-user-id*)
-                                 ;; If no user is bound, assume full download permissions (e.g. for public questions)
-                                 :one-million-rows)]
+    (let [download-perms-level (download-perms-level-for-current-user query)]
       (when (and (is-download? query)
                  (= download-perms-level :no))
         (throw (ex-info (tru "You do not have permissions to download the results of this query.")
