@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { skipToken, useGetActionQuery, useGetCardQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useNavigate } from "metabase/router";
@@ -10,8 +11,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
-
-import ActionCreator from "../ActionCreator";
 
 interface OwnProps {
   params: {

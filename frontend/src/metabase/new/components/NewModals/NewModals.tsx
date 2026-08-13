@@ -1,6 +1,5 @@
 import { useCallback, useEffect } from "react";
 
-import ActionCreator from "metabase/actions/containers/ActionCreator";
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
 import CreateCollectionModal, {
   type CreateCollectionModalOwnProps,
@@ -16,6 +15,7 @@ import type {
   LegacyStaticEmbeddingModalProps,
   SdkIframeEmbedSetupModalProps,
 } from "metabase/plugins";
+import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { ModalState } from "metabase/redux/store/modal";
