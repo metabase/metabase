@@ -151,7 +151,8 @@
     ;; 63+
     :model/McpFeedback
     ;; 64+
-    ;; Administrator-authored state, not a derived usage-metadata snapshot. Copy it after its Table and User references.
+    ;; Administrator-authored state, not a derived usage-metadata snapshot. Copy it after its Table reference
+    ;; (there's deliberately no FK to User, so the dismissal survives the dismissing admin being deleted).
     :model/UsageMetadataCandidateDismissal]
    (when config/ee-available?
      [:model/MetabotPermissions
