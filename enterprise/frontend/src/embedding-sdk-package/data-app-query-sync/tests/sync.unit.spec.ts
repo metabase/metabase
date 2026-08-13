@@ -31,7 +31,7 @@ describe("query synchronization", () => {
         log: jest.fn(),
       }),
     ).rejects.toThrow(
-      `Metabase returned 404 for POST http://metabase.test/api/apps/${slug}/query-sync: Not found.`,
+      `Metabase returned 404 for POST http://metabase.test/api/apps/${slug}/draft: Not found.`,
     );
   });
 
@@ -45,7 +45,7 @@ describe("query synchronization", () => {
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
-      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+      if (pathname === `/api/apps/${slug}/draft` && method === "POST") {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       if (pathname === `/api/apps/${slug}/query` && method === "POST") {
@@ -78,7 +78,7 @@ describe("query synchronization", () => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
       requests.push({ method, pathname, body: init?.body?.toString() });
-      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+      if (pathname === `/api/apps/${slug}/draft` && method === "POST") {
         return jsonResponse({
           name: slug,
           resource_collection_id: 20,
@@ -103,7 +103,7 @@ describe("query synchronization", () => {
     expect(requests).toEqual([
       {
         method: "POST",
-        pathname: `/api/apps/${slug}/query-sync`,
+        pathname: `/api/apps/${slug}/draft`,
         body: undefined,
       },
       {
@@ -127,7 +127,7 @@ describe("query synchronization", () => {
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
-      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+      if (pathname === `/api/apps/${slug}/draft` && method === "POST") {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       if (pathname === `/api/apps/${slug}/query` && method === "POST") {

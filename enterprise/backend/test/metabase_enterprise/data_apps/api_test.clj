@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -19,7 +21,7 @@
               :bundle       (.getBytes "BUNDLE" "UTF-8")
               :bundle_hash  "abc123"))
 
-(defn- database-view-data-permission [group-id database-id]
+(defn- view-data-permission [group-id database-id]
   (t2/select-one-fn :perm_value :model/DataPermissions
                     :group_id group-id
                     :db_id database-id
@@ -61,7 +63,7 @@
   ;; a thread-local `binding`).
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
         (testing "a non-superuser can view (open) a data app"
           (is (= [{:name "demo" :display_name "Demo"}]
@@ -80,12 +82,16 @@
 (deftest superuser-can-manage-and-view-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
+        (let [app (t2/select-one :model/DataApp :name "demo")]
+          (data-app.resources/ensure-resources! app))
         (testing "a superuser can list, read metadata, and serve the bundle"
           (is (=? [{:name "demo" :display_name "Demo"}]
                   (mt/user-http-request :crowberto :get 200 "apps")))
-          (is (=? {:name "demo"}
+          (is (=? {:name "demo"
+                   :resource_collection_id pos-int?
+                   :permission_group_id pos-int?}
                   (mt/user-http-request :crowberto :get 200 "apps/demo")))
           (is (str/includes?
                (str (mt/user-real-request :crowberto :get 200 "apps/demo/bundle"))
@@ -107,70 +113,99 @@
                                            :limit 5}]}}
                 response))))))
 
+(deftest superuser-can-reconcile-query-database-permissions-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-temp [:model/Database {first-database-id :id}  {}
+                     :model/Database {second-database-id :id} {}]
+        (create-app!)
+        (let [{group-id :permission_group_id}
+              (mt/user-http-request :crowberto :put 200 "apps/demo/query-sync/permissions"
+                                    {:database_ids [first-database-id]})]
+          (is (= :unrestricted (view-data-permission group-id first-database-id)))
+          (is (= :blocked (view-data-permission group-id second-database-id)))
+          (mt/user-http-request :crowberto :put 200 "apps/demo/query-sync/permissions"
+                                {:database_ids [second-database-id]})
+          (is (= :blocked (view-data-permission group-id first-database-id)))
+          (is (= :unrestricted (view-data-permission group-id second-database-id))))))))
+
+(deftest query-database-permission-reconciliation-rolls-back-on-error-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-temp [:model/Database {first-database-id :id}  {}
+                     :model/Database {second-database-id :id} {}]
+        (create-app!)
+        (let [{group-id :permission_group_id}
+              (mt/user-http-request :crowberto :put 200 "apps/demo/query-sync/permissions"
+                                    {:database_ids [first-database-id]})
+              original-set-database-permission! perms/set-database-permission!
+              view-data-calls                  (atom 0)]
+          (with-redefs [perms/set-database-permission!
+                        (fn [& args]
+                          (let [permission-type (nth args (- (count args) 2))]
+                            (when (and (= permission-type :perms/view-data)
+                                       (= 2 (swap! view-data-calls inc)))
+                              (throw (ex-info "permission update failed" {})))
+                            (apply original-set-database-permission! args)))]
+            (mt/user-http-request :crowberto :put 500 "apps/demo/query-sync/permissions"
+                                  {:database_ids [second-database-id]}))
+          (is (= :unrestricted (view-data-permission group-id first-database-id)))
+          (is (= :blocked (view-data-permission group-id second-database-id))))))))
+
+(deftest query-definition-must-use-a-table-source-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (is (= "Data app query definitions must use a table source."
+             (mt/user-http-request :crowberto :post 400 "apps/demo/query"
+                                   {:stages [{:source {:type "card" :id 1}}]}))))))
+
+(deftest query-definition-source-must-be-valid-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp]
+      (create-app!)
+      (is (some? (mt/user-http-request :crowberto :post 400 "apps/demo/query"
+                                       {:stages [{:source {:type 1 :id (mt/id :venues)}}]}))))))
+
 (deftest non-superuser-cannot-resolve-a-query-definition-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]
       (create-app!)
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request
-              :rasta :post 403 "apps/demo/query"
-              {:stages [{:source {:type "table" :id (mt/id :venues)}}]}))))))
+             (mt/user-http-request :rasta :post 403 "apps/demo/query"
+                                   {:stages [{:source {:type "table" :id (mt/id :venues)}}]}))))))
 
-(deftest superuser-can-prepare-an-unpublished-app-for-query-sync-test
+(deftest superuser-can-create-or-reuse-a-data-app-draft-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [first-response  (mt/user-http-request :crowberto :post 200 "apps/draft-app/query-sync")
-            second-response (mt/user-http-request :crowberto :post 200 "apps/draft-app/query-sync")]
+      (let [first-response  (mt/user-http-request :crowberto :post 200 "apps/draft-app/draft")
+            second-response (mt/user-http-request :crowberto :post 200 "apps/draft-app/draft")]
         (is (=? {:name "draft-app"
                  :resource_collection_id pos-int?
                  :permission_group_id pos-int?}
                 first-response))
         (is (= (select-keys first-response [:resource_collection_id :permission_group_id])
                (select-keys second-response [:resource_collection_id :permission_group_id])))
-        (is (=? {:bundle nil :query_sync_draft true}
+        (is (=? {:bundle nil :draft true}
                 (t2/select-one :model/DataApp :name "draft-app")))))))
 
-(deftest non-superuser-cannot-prepare-an-unpublished-app-for-query-sync-test
+(deftest non-superuser-cannot-create-a-data-app-draft-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "apps/draft-app/query-sync")))
+             (mt/user-http-request :rasta :post 403 "apps/draft-app/draft")))
       (is (not (t2/exists? :model/DataApp :name "draft-app"))))))
 
-(deftest superuser-can-reconcile-query-sync-database-permissions-test
-  (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (mt/with-temp [:model/Database {first-database-id :id}  {}
-                     :model/Database {second-database-id :id} {}]
-        (let [{group-id :permission_group_id}
-              (mt/user-http-request :crowberto :post 200 "apps/draft-app/query-sync")]
-          (testing "referenced databases can be viewed and unreferenced databases are blocked"
-            (mt/user-http-request :crowberto :put 200 "apps/draft-app/query-sync/permissions"
-                                  {:database_ids [first-database-id]})
-            (is (= :unrestricted (database-view-data-permission group-id first-database-id)))
-            (is (= :blocked (database-view-data-permission group-id second-database-id))))
-          (testing "later reconciliations replace the authoritative database set"
-            (mt/user-http-request :crowberto :put 200 "apps/draft-app/query-sync/permissions"
-                                  {:database_ids [second-database-id]})
-            (is (= :blocked (database-view-data-permission group-id first-database-id)))
-            (is (= :unrestricted (database-view-data-permission group-id second-database-id))))
-          (testing "an empty query set blocks every database"
-            (mt/user-http-request :crowberto :put 200 "apps/draft-app/query-sync/permissions"
-                                  {:database_ids []})
-            (is (= :blocked (database-view-data-permission group-id first-database-id)))
-            (is (= :blocked (database-view-data-permission group-id second-database-id)))))))))
-
-(deftest non-superuser-cannot-reconcile-query-sync-database-permissions-test
+(deftest data-app-draft-must-have-a-valid-slug-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp]
-      (create-app!)
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 "apps/demo/query-sync/permissions"
-                                   {:database_ids [(mt/id)]}))))))
+      (is (= "Data app draft slugs must use lowercase letters, numbers, and dashes."
+             (mt/user-http-request :crowberto :post 400 "apps/Draft/draft")))
+      (is (not (t2/exists? :model/DataApp :name "Draft"))))))
 
 (deftest list-available-apps-test
   (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (t2/insert! :model/DataApp :name "ready" :display_name "Ready" :bundle_path "data_apps/ready/index.js")
       (t2/insert! :model/DataApp :name "disabled" :display_name "Disabled" :bundle_path "data_apps/disabled/index.js"
                   :enabled false)
@@ -181,7 +216,7 @@
 
 (deftest bundle-includes-allowed-hosts-header-test
   (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (t2/insert! :model/DataApp
                   :name          "demo"
                   :display_name  "Demo"
@@ -201,7 +236,7 @@
 
 (deftest list-includes-allowed-hosts-test
   (mt/with-premium-features #{:data-apps-preview}
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (t2/insert! :model/DataApp
                   :name "withhosts" :display_name "With"
                   :bundle_path "data_apps/withhosts/index.js"
@@ -220,7 +255,7 @@
 ;;; ----------------------------------------------------- Sync -----------------------------------------------------
 
 (deftest import-materializes-apps-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [result (data-app.sync/import-from-snapshot!
                   (snapshot (merge (app-files "sales" {:name "Sales" :path "dist/index.js" :bundle "SALES-BUNDLE"})
                                    (app-files "ops"   {:name "Ops"   :path "dist/app.js"   :bundle "OPS-BUNDLE"}))))]
@@ -235,7 +270,7 @@
         (is (nil? (:sync_error sales)))))))
 
 (deftest import-stores-allowed-hosts-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (testing "allowed_hosts from data_app.yaml are persisted on the row"
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "sales" {:name "Sales" :path "dist/index.js" :bundle "B"
@@ -248,7 +283,7 @@
       (is (= [] (:allowed_hosts (t2/select-one :model/DataApp :name "sales")))))))
 
 (deftest import-prunes-apps-absent-from-snapshot-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (data-app.sync/import-from-snapshot!
      (snapshot (merge (app-files "keep" {:name "Keep" :path "index.js" :bundle "KEEP"})
                       (app-files "gone" {:name "Gone" :path "index.js" :bundle "GONE"}))))
@@ -265,20 +300,26 @@
 (deftest delete-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
-        (testing "a non-superuser cannot remove an app"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :delete 403 "apps/demo")))
-          (is (t2/exists? :model/DataApp :name "demo")))
-        (testing "a superuser removes the app"
-          (is (nil? (mt/user-http-request :crowberto :delete 204 "apps/demo")))
-          (is (not (t2/exists? :model/DataApp :name "demo"))))
-        (testing "removing a non-existent app 404s"
-          (mt/user-http-request :crowberto :delete 404 "apps/missing"))))))
+        (let [{:keys [resource_collection_id permission_group_id]}
+              (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))]
+          (testing "a non-superuser cannot remove an app"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :delete 403 "apps/demo")))
+            (is (t2/exists? :model/DataApp :name "demo")))
+          ; each data app owns a permission group and a collection
+          ; containing saved questions and models
+          (testing "a superuser removes the app and its resources"
+            (is (nil? (mt/user-http-request :crowberto :delete 204 "apps/demo")))
+            (is (not (t2/exists? :model/DataApp :name "demo")))
+            (is (not (t2/exists? :model/Collection :id resource_collection_id)))
+            (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))))
+          (testing "removing a non-existent app 404s"
+            (mt/user-http-request :crowberto :delete 404 "apps/missing")))))))
 
 (deftest import-preserves-enabled-across-syncs-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (data-app.sync/import-from-snapshot!
      (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "V1"})))
     (t2/update! :model/DataApp :name "a" {:enabled false})
@@ -291,7 +332,7 @@
 
 (deftest import-per-app-error-test
   (testing "a missing bundle file fails just that app, not the whole import"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (merge (app-files "good" {:name "Good" :path "index.js" :bundle "GOOD"})
                         ;; "bad" declares a path that doesn't exist
@@ -306,7 +347,7 @@
 
 (deftest import-serves-each-app-from-its-directory-test
   (testing "the directory an app lives in is the slug it's served at — two apps can't collide on one"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (merge (app-files "one" {:name "One" :path "a.js" :bundle "A"})
                         (app-files "two" {:name "Two" :path "b.js" :bundle "B"}))))
@@ -314,7 +355,7 @@
 
 (deftest import-isolates-bad-config-test
   (testing "a malformed data_app.yaml is isolated: sibling apps in the same repo still sync and are not pruned, the bad one is reported"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "existing" {:name "Existing" :path "i.js" :bundle "E"})))
       ;; The repo still holds "existing" and adds "good", alongside a broken "bad".
@@ -330,13 +371,13 @@
 
 (deftest sync-from-snapshot!-never-throws-test
   (testing "a malformed data_app.yaml is isolated into :config-errors; the app just doesn't appear, the sync doesn't throw"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [result (data-app.sync/sync-from-snapshot!
                     (snapshot {"data_apps/x/data_app.yaml" "name: [unterminated"}))]
         (is (seq (:config-errors result)))
         (is (empty? (t2/select-fn-set :name :model/DataApp))))))
   (testing "a clean sync materializes the app with no config errors"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [result (data-app.sync/sync-from-snapshot!
                     (snapshot (app-files "a" {:name "A" :path "index.js" :bundle "A"})))]
         (is (empty? (:config-errors result)))
@@ -347,7 +388,7 @@
 (deftest list-and-bundle-endpoints-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (data-app.sync/import-from-snapshot!
          (snapshot (app-files "demo" {:name "Demo app" :path "dist/index.js" :bundle "DEMOBUNDLE"})))
         (testing "GET / lists the synced apps"
@@ -373,7 +414,7 @@
 (deftest enable-disable-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (data-app.sync/import-from-snapshot!
          (snapshot (app-files "demo" {:name "Demo" :path "index.js" :bundle "BUNDLE"})))
         (testing "PUT /:slug can disable an app"
@@ -416,7 +457,7 @@
   ;; routed as a data app named "sandbox-host" and 404.
   (testing "the route is not shadowed by the /:slug route"
     (mt/with-premium-features #{:data-apps-preview}
-      (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
         (is (= 200 (:status (mt/user-http-request-full-response
                              :crowberto :get 200 "apps/sandbox-host"))))))))

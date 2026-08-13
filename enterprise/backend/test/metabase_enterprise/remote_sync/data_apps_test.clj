@@ -13,7 +13,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each (fn [f] (test-helpers/clean-remote-sync-state f)))
-
 (comment metabase-enterprise.data-apps.models.data-app/keep-me)
 
 (defn- import! [files]
@@ -30,7 +29,7 @@
 
 (deftest import-materializes-data-apps-test
   (testing "a remote-sync import materializes data apps from data_apps/ alongside serdes content"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [files  {"main" {"collections/c/c.yaml"
                             (test-helpers/generate-collection-yaml "data-apps-test-collx" "DA Coll")
                             "data_apps/sales/data_app.yaml"  "name: Sales\npath: ./dist/index.js\n"
@@ -46,7 +45,7 @@
 
 (deftest import-prunes-data-apps-absent-from-repo-test
   (testing "an import whose repo no longer has an app dir prunes that app (the repo is the source of truth)"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (import! {"main" {"data_apps/gone/data_app.yaml" "name: Gone\npath: ./i.js\n"
                         "data_apps/gone/i.js"         "X"
                         "data_apps/kept/data_app.yaml" "name: Kept\npath: ./i.js\n"
@@ -61,7 +60,7 @@
 
 (deftest deletion-only-pull-counts-the-removal-test
   (testing "a pull whose only change is removing an app still reports as a pull — the removal is counted, not a no-op"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       ;; No serdes content, so the outcome's count comes purely from data apps.
       (import! {"main" {"README.md"                    "x"
                         "data_apps/gone/data_app.yaml" "name: Gone\npath: ./i.js\n"

@@ -272,15 +272,15 @@ databaseChangeLog:
   - changeSet:
       id: v64.data-app11
       author: poom
-      comment: Distinguish query-sync drafts from repository-materialized data apps
+      comment: Track data app drafts before repository import
       changes:
         - addColumn:
             tableName: data_app
             columns:
               - column:
-                  name: query_sync_draft
+                  name: draft
                   type: ${boolean.type}
                   defaultValueBoolean: false
-                  remarks: Whether query synchronization provisioned this row before its first repository import
+                  remarks: Whether this row is a data app draft before its first repository import
                   constraints:
                     nullable: false
