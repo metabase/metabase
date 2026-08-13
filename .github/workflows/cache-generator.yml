@@ -107,6 +107,7 @@ jobs:
             ":kondo"                                            # resolve-backport-conflicts.yml (replace-deps)
             ":run:ee"                                           # cross-branch-migration-test
             ":dev:ee:migrate"                                   # cross-branch-migration-test
+            ":whitespace-linter"                                # whitespace linter
           )
           for combo in "${combos[@]}"; do
             echo "::group::clojure -P -A${combo}"
