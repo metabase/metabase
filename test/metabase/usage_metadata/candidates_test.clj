@@ -817,6 +817,63 @@
                (t2/select-fn-set :card_id :model/UsageMetadataCandidateSource
                                  :candidate_id (:id candidate))))))))
 
+(defn- segment-observation
+  [{:keys [card signature views]}]
+  {:candidate-type :segment
+   :source {:id (mt/id :orders)}
+   :signature signature
+   :definition {:table-id (mt/id :orders)}
+   :predicate [:field (mt/id :orders :subtotal) nil]
+   :fields [{:id (mt/id :orders :subtotal)
+             :name "SUBTOTAL"
+             :display-name "Subtotal"}]
+   :atoms [{:signature "subtotal", :display-name "Subtotal", :kind :number}]
+   :composite? false
+   :atom-count 1
+   :suggested-name "Subtotal filter"
+   :suggested-description "Filter Orders by Subtotal"
+   :evidence {:source-items [{:id (:id card)
+                              :name (:name card)
+                              :type :question
+                              :verified? false
+                              :official-collection? false
+                              :popular? true
+                              :view-count views
+                              :stage-numbers [0]
+                              :joined? false}]
+              :distinct-source-count 1
+              :verified-source-count 0
+              :official-source-count 0
+              :popular-source-count 1
+              :total-view-count views}})
+
+(deftest persist-observations-rejects-duplicate-batch-entries-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :running
+                                                       :trigger           :manual
+                                                       :algorithm_version 1
+                                                       :source_config     {}}
+                 :model/Card card {:name "Duplicate source", :type :question}]
+    (let [observation (segment-observation {:card card, :signature "[\"duplicate-segment\"]", :views 10})]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"duplicate observations"
+                            (persist-observations! (:id run) [observation observation]))))))
+
+(deftest persist-observations-rejects-signature-hash-collision-test
+  (mt/with-temp [:model/UsageMetadataCandidateRun run {:status            :running
+                                                       :trigger           :manual
+                                                       :algorithm_version 1
+                                                       :source_config     {}}
+                 :model/Card card {:name "Collision source", :type :question}]
+    (let [collision-hash (apply str (repeat 64 "9"))]
+      (mt/with-dynamic-fn-redefs [candidate-snapshot/sha256 (constantly collision-hash)]
+        (persist-observations! (:id run)
+                               [(segment-observation {:card card, :signature "[\"existing-signature\"]", :views 10})])
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"signature hash collision"
+                              (persist-observations!
+                               (:id run)
+                               [(segment-observation {:card card, :signature "[\"different-signature\"]", :views 10})])))))))
+
 (deftest fixed-candidate-evidence-cutoffs-test
   (let [base {:candidate_type         :segment
               :semantic_details       {:atom-count 1}
