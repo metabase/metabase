@@ -13,10 +13,12 @@ import { getScheduleDefaults } from "metabase/common/components/Schedule/utils";
 import type { NotificationListItem } from "metabase/notifications/types";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { getEmailDomain, isEmail } from "metabase/utils/email";
-import { formatTimeWithUnit } from "metabase/utils/formatting/time";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatFrame } from "metabase/utils/time-dayjs";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/value-formatting";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,

@@ -2,9 +2,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isNative } from "metabase/common/utils/card";
-import { formatPercent } from "metabase/static-viz/lib/numbers";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { formatChangeWithSign } from "metabase/utils/formatting";
+import { formatChangeWithSign, formatPercent } from "metabase/utils/formatting";
 import { getObjectKeys } from "metabase/utils/objects";
 import {
   getDaylightSavingsChangeTolerance,
@@ -15,11 +14,6 @@ import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import {
-  getPercent,
-  getTotalValue,
-} from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
-import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
 import {
   INDEX_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
@@ -82,6 +76,9 @@ import type {
   RowValue,
 } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
+
+import { formatValueForTooltip } from "../../echarts/tooltip/format";
+import { getPercent, getTotalValue } from "../../echarts/tooltip/utils";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
@@ -520,7 +517,9 @@ const getSingleSeriesTooltipModel = (
   );
 
   const seriesToShow = chartModel.seriesModels.filter(
-    (series) => series === hoveredSeries || !isBreakoutSeries(series),
+    (series) =>
+      series === hoveredSeries ||
+      (!isBreakoutSeries(series) && datum[series.dataKey] !== undefined),
   );
   const seriesTooltipRows = seriesToShow.map((series) => {
     const isFocused =

@@ -10,7 +10,6 @@ type CollectionItemsToolbarProps = {
   availableModels: string[];
   selectedFilters: CollectionItemModel[] | null;
   onSearchTextChange: (searchText: string) => void;
-  hasPinnedItems?: boolean;
   isSearching: boolean;
   onSelectedFiltersChange: (filters: CollectionItemModel[] | null) => void;
 };
@@ -20,7 +19,6 @@ export function CollectionItemsToolbar({
   availableModels,
   selectedFilters,
   onSearchTextChange,
-  hasPinnedItems,
   isSearching,
   onSelectedFiltersChange,
 }: CollectionItemsToolbarProps) {
@@ -35,12 +33,7 @@ export function CollectionItemsToolbar({
   const rightSection = isSearching ? <Loader size="xs" /> : clearButton;
 
   return (
-    <Flex
-      mb="md"
-      gap="0.75rem"
-      mt={hasPinnedItems ? "xl" : 0}
-      data-testid="collection-items-toolbar"
-    >
+    <Flex mb="md" gap="0.75rem" data-testid="collection-items-toolbar">
       <TextInput
         flex="1"
         bdrs="md"
