@@ -192,7 +192,9 @@
   []
   (when-let [conns (some-> (setting-value connections-setting) json/decode+kw)]
     (let [written (into {} (mapcat connection-settings) conns)
-          dropped (remove connection-settings conns)]
+          ;; the managed connection is not dropped in any meaningful sense: it holds no credentials, and the
+          ;; model reference naming it survives the rollback, so it is simply re-materialized on upgrade
+          dropped (remove #(or (= managed-type (:type %)) (connection-settings %)) conns)]
       (doseq [[setting-key value] written]
         (write-setting! setting-key value (contains? sensitive-settings setting-key)))
       (when (seq dropped)
