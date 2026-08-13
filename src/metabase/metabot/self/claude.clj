@@ -349,7 +349,7 @@
    "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :max-tokens 128000}
    "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :max-tokens 128000}
    "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :max-tokens  64000}
-   "claude-haiku-4-5"           {:display-name "Claude Haiku 4.5"  :max-tokens  64000}})
+   "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :max-tokens  64000}})
 
 (def ^:private default-max-tokens
   "`max_tokens` for an unresolved model — low enough to be safe on any of them."

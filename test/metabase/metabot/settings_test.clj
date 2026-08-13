@@ -308,7 +308,7 @@
       (with-connections [configured-anthropic
                          (connection "openai" "openai" {:api-key "sk-openai"})]
         (with-selected-model "anthropic/claude-sonnet-4-6"
-          (is (= "anthropic/claude-haiku-4-5" (metabot.settings/llm-mini-model))))
+          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))
         (testing "including a second connection of the same type, which keeps its own key"
           (with-selected-model "openai/gpt-5.4"
             (is (= "openai/gpt-5.4-mini" (metabot.settings/llm-mini-model)))))))))
@@ -332,7 +332,7 @@
         (is (= "anthropic/claude-opus-4-8" (metabot.settings/llm-mini-model))))
       (testing "and clearing it returns to the derived mini model"
         (mt/with-temporary-setting-values [llm-mini-model nil]
-          (is (= "anthropic/claude-haiku-4-5" (metabot.settings/llm-mini-model))))))))
+          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))))))
 
 (deftest explicit-mini-model-reports-only-what-was-set-test
   (testing "the explicit reading is nil while the model is derived, so callers can tell a choice from a fallback"
@@ -340,7 +340,7 @@
       (with-selected-model "anthropic/claude-sonnet-4-6"
         (mt/with-temporary-setting-values [llm-mini-model nil]
           (is (nil? (metabot.settings/explicit-mini-model)))
-          (is (= "anthropic/claude-haiku-4-5" (metabot.settings/llm-mini-model))))
+          (is (= "anthropic/claude-haiku-4-5-20251001" (metabot.settings/llm-mini-model))))
         (mt/with-temporary-setting-values [llm-mini-model "anthropic/claude-opus-4-8"]
           (is (= "anthropic/claude-opus-4-8" (metabot.settings/explicit-mini-model))))))))
 

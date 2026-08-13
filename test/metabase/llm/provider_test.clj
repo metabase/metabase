@@ -470,7 +470,7 @@
   (testing (str "every type's mini model, which short utility calls like conversation titles fall back to. A type "
                 "that grows a mini model, or loses one, has to be spelled out here — a missing `:mini-model` reads "
                 "as nil and quietly sends titles to the full-size model instead.")
-    (is (= {"anthropic"  "claude-haiku-4-5"
+    (is (= {"anthropic"  "claude-haiku-4-5-20251001"
             "openai"     "gpt-5.4-mini"
             "openrouter" "anthropic/claude-haiku-4.5"
             "mistral"    "mistral-medium-3-5"

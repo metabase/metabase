@@ -45,7 +45,7 @@
   [{:type          "anthropic"
     :label         (deferred-tru "Anthropic")
     :default-model "claude-sonnet-4-6"
-    :mini-model    "claude-haiku-4-5"
+    :mini-model    "claude-haiku-4-5-20251001"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
