@@ -8,8 +8,8 @@ import {
 } from "metabase/common/components/Pickers/DataPicker";
 import {
   ActionIcon,
-  Box,
   Button,
+  Ellipsified,
   Group,
   Icon,
   Stack,
@@ -82,25 +82,20 @@ export function TableSelector({
           py="lg"
           variant="subtle"
         >
-          <Stack w="100%" miw={0} gap="xs" align="start" justify="center">
+          <Stack w="100%" miw={0} gap="xs" justify="center">
             {table ? (
               <>
-                <Box
-                  fz="sm"
-                  c="text-secondary"
-                  fw="normal"
-                  className={S.tableSelectorText}
-                >
-                  {table?.db?.name} / {table?.schema}
-                </Box>
-                <Box c="text-primary" className={S.tableSelectorText}>
+                <Ellipsified fz="sm" c="text-secondary" fw="normal" ta="left">
+                  {`${table?.db?.name} / ${table?.schema}`}
+                </Ellipsified>
+                <Ellipsified c="text-primary" ta="left">
                   {table?.display_name}
-                </Box>
+                </Ellipsified>
               </>
             ) : (
-              <Box c="text-primary" className={S.tableSelectorText}>
+              <Ellipsified c="text-primary" ta="left">
                 {t`Select a table…`}
-              </Box>
+              </Ellipsified>
             )}
           </Stack>
         </Button>

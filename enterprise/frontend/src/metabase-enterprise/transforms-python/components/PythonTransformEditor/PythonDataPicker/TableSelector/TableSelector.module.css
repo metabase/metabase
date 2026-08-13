@@ -15,11 +15,3 @@
 .tableSelectorButtonLabel {
   overflow: hidden;
 }
-
-.tableSelectorText {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
-}
