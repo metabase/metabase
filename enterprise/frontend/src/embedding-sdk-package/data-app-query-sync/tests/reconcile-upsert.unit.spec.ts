@@ -2,18 +2,19 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { discoverQueries } from "../discover";
-import { checkQuerySync, syncQueries } from "../sync";
+import { checkResourcesSynced, syncResources } from "../sync";
 
 import {
-  isQuerySyncPermissionsRequest,
+  isResourcePermissionsRequest,
   jsonResponse,
   makeApp,
-  setupQuerySyncTests,
+  seedQueries,
+  setupResourceSyncTests,
   writeQuery,
 } from "./setup";
 
 describe("query reconciliation upserts", () => {
-  setupQuerySyncTests();
+  setupResourceSyncTests();
 
   it("creates source-first state and is unchanged on repeated sync", async () => {
     const appRoot = makeApp();
@@ -52,12 +53,12 @@ describe("query reconciliation upserts", () => {
         });
       }
 
-      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+      if (isResourcePermissionsRequest(pathname, method, slug)) {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
-    await syncQueries({
+    await syncResources({
       appRoot,
       metabaseUrl: "http://metabase.test",
       apiKey: "secret",
@@ -66,8 +67,8 @@ describe("query reconciliation upserts", () => {
     expect(fs.readFileSync(filePath, "utf8")).toContain(
       "savedQuestionSourceId: 30",
     );
-    await checkQuerySync(appRoot);
-    await syncQueries({
+    await checkResourcesSynced(appRoot);
+    await syncResources({
       appRoot,
       metabaseUrl: "http://metabase.test",
       apiKey: "secret",
@@ -82,14 +83,14 @@ describe("query reconciliation upserts", () => {
       requests.filter(
         ({ method, pathname }) =>
           method === "PUT" &&
-          pathname === `/api/apps/${slug}/query-sync/permissions`,
+          pathname === `/api/apps/${slug}/resources/permissions`,
       ),
     ).toHaveLength(2);
     expect(
       requests.some(
         ({ method, pathname }) =>
           method === "PUT" &&
-          pathname !== `/api/apps/${slug}/query-sync/permissions`,
+          pathname !== `/api/apps/${slug}/resources/permissions`,
       ),
     ).toBe(false);
   });
@@ -102,16 +103,13 @@ describe("query reconciliation upserts", () => {
       `export const Orders = defineQuery({ savedQuestionSourceId: 35, source: { type: "table", id: 1 } });`,
     );
     const [query] = await discoverQueries(appRoot);
-    fs.writeFileSync(
-      path.join(appRoot, "queries_metadata.json"),
-      JSON.stringify([
-        {
-          tableId: query.tableId,
-          hash: query.hash,
-          savedQuestionSourceId: 35,
-        },
-      ]),
-    );
+    seedQueries(appRoot, [
+      {
+        tableId: query.tableId,
+        hash: query.hash,
+        savedQuestionSourceId: 35,
+      },
+    ]);
     const queryWithAggregationUuid = (uuid: string) => ({
       database: 1,
       stages: [
@@ -148,13 +146,13 @@ describe("query reconciliation upserts", () => {
       if (pathname === "/api/card/35" && method === "PUT") {
         return jsonResponse({ id: 35 });
       }
-      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+      if (isResourcePermissionsRequest(pathname, method, slug)) {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 
-    await syncQueries({
+    await syncResources({
       appRoot,
       metabaseUrl: "http://metabase.test",
       apiKey: "secret",
@@ -176,16 +174,13 @@ describe("query reconciliation upserts", () => {
       `export const Orders = defineQuery({ savedQuestionSourceId: 60, source: { type: "table", id: 1 } });`,
     );
     const [query] = await discoverQueries(appRoot);
-    fs.writeFileSync(
-      path.join(appRoot, "queries_metadata.json"),
-      JSON.stringify([
-        {
-          tableId: query.tableId,
-          hash: query.hash,
-          savedQuestionSourceId: 60,
-        },
-      ]),
-    );
+    seedQueries(appRoot, [
+      {
+        tableId: query.tableId,
+        hash: query.hash,
+        savedQuestionSourceId: 60,
+      },
+    ]);
     const requests: Array<{ method: string; pathname: string }> = [];
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
       const pathname = new URL(String(input)).pathname;
@@ -213,13 +208,13 @@ describe("query reconciliation upserts", () => {
         return jsonResponse({ id: 60 });
       }
 
-      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+      if (isResourcePermissionsRequest(pathname, method, slug)) {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 
-    await syncQueries({
+    await syncResources({
       appRoot,
       metabaseUrl: "http://metabase.test",
       apiKey: "secret",
@@ -263,13 +258,13 @@ describe("query reconciliation upserts", () => {
         });
       }
 
-      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+      if (isResourcePermissionsRequest(pathname, method, slug)) {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 
-    await syncQueries({
+    await syncResources({
       appRoot,
       metabaseUrl: "http://metabase.test",
       apiKey: "secret",
@@ -278,15 +273,18 @@ describe("query reconciliation upserts", () => {
 
     expect(
       JSON.parse(
-        fs.readFileSync(path.join(appRoot, "queries_metadata.json"), "utf8"),
+        fs.readFileSync(path.join(appRoot, "resources_metadata.json"), "utf8"),
       ),
-    ).toEqual([
-      {
-        tableId: 1,
-        hash: query.hash,
-        savedQuestionSourceId: 70,
-      },
-    ]);
+    ).toEqual({
+      queries: [
+        {
+          tableId: 1,
+          hash: query.hash,
+          savedQuestionSourceId: 70,
+        },
+      ],
+      models: [],
+    });
     expect(log).toHaveBeenCalledTimes(1);
     expect(log).toHaveBeenCalledWith("repaired lockfile: Orders -> card 70");
   });
@@ -299,16 +297,13 @@ describe("query reconciliation upserts", () => {
       `export const RenamedOrders = defineQuery({ savedQuestionSourceId: 80, source: { type: "table", id: 1 } });`,
     );
     const [query] = await discoverQueries(appRoot);
-    fs.writeFileSync(
-      path.join(appRoot, "queries_metadata.json"),
-      JSON.stringify([
-        {
-          tableId: query.tableId,
-          hash: query.hash,
-          savedQuestionSourceId: 80,
-        },
-      ]),
-    );
+    seedQueries(appRoot, [
+      {
+        tableId: query.tableId,
+        hash: query.hash,
+        savedQuestionSourceId: 80,
+      },
+    ]);
     const log = jest.fn();
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
       const pathname = new URL(String(input)).pathname;
@@ -332,13 +327,13 @@ describe("query reconciliation upserts", () => {
         return jsonResponse({ id: 80 });
       }
 
-      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+      if (isResourcePermissionsRequest(pathname, method, slug)) {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 
-    await syncQueries({
+    await syncResources({
       appRoot,
       metabaseUrl: "http://metabase.test",
       apiKey: "secret",

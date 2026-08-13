@@ -6,7 +6,7 @@ import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
 import { breakout, count, filter, sum, useMetabaseQuery } from "..";
-import { defineQuery } from "../../../../data-app";
+import { defineAction, defineQuery } from "../../../../data-app";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
@@ -24,6 +24,17 @@ defineQuery({
   source: TEST_SCHEMA.tables.orders,
   breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
 });
+
+const actionWithInvalidActionSourceId = {
+  copiedActionId: "91",
+  action: TEST_SCHEMA.models.orders.actions.create,
+} as const;
+
+// @ts-expect-error generated action source IDs are numeric
+defineAction(actionWithInvalidActionSourceId);
+
+// @ts-expect-error action definitions must reference a generated action
+defineAction({ action: TEST_SCHEMA.tables.orders });
 
 // --------
 // Compile-time contracts that must **fail** type-checking.

@@ -12,8 +12,8 @@ Keep the semantic layer and presentation layer separate.
 - All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
 - Do not discover data through MCP tools, create Metabase content, create tables, or edit the semantic layer while building the React UI.
 - Import data app query helpers from `@metabase/embedding-sdk-react/data-app`.
-- Never remove, edit, or copy a generated `savedQuestionSourceId`, even if it appears unused. Preserve it during refactors; use `npm run sync-queries` to repair or replace generated IDs.
-- Treat `resource_collection_entity_id` and `permission_group_entity_id` as server-issued manifest identities. Let `npm run sync-queries` add missing values. Preserve existing values unless the user intentionally changes the linked resources. Never invent either ID.
+- Never remove, edit, or copy a generated `savedQuestionSourceId` or `copiedActionId`, even if it appears unused. Preserve it during refactors; use `npm run sync-resources` to repair or replace generated IDs.
+- Treat `resource_collection_entity_id` and `permission_group_entity_id` as server-issued manifest identities. Let `npm run sync-resources` add missing values. Preserve existing values unless the user intentionally changes the linked resources. Never invent either ID.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level table objects.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, bare table IDs, or metric IDs to SDK components, `useMetabaseQuery`, or `useMetabaseQueryObject`. Prefer generated table and metric schema objects; for simple table-source queries, an explicit source reference like `{ type: "table", id: table.id }` is also valid.
 - Build queries with `source: schema.tables.<name>` or `source: schema.questions.<name>`, generated `fields`, generated `segments`, generated `measures`, generated metrics in `aggregations`, generated metric `dimensions`, generated question `columns`, `filter(...)`, `breakout(...)`, `orderBy(...)`, and `aggregations` helpers such as `aggregations.count()` and `aggregations.sum(...)`. Do not use `source: schema.metrics.<name>`; metrics are aggregation expressions, not query sources.
@@ -105,7 +105,7 @@ If schema generation fails while building a selected saved question, model, or m
 
 ## Synchronize every end-to-end prototype query
 
-For end-to-end prototype data apps, treat every Metabase query as permission-bound. Define queries as named exports with `defineQuery(...)` calls in `<app-root>/queries/`. The `queries/` directory must be a direct child of the data-app root, beside `package.json`; never put synchronized definitions under `src/queries/` or another source directory because `sync-queries` does not scan them. Import those definitions into React. Do not pass an inline table-source query directly to `useMetabaseQuery` or `useMetabaseQueryObject`, even for read-only, filter-option, or helper queries.
+For end-to-end prototype data apps, treat every Metabase query as permission-bound. Define queries as named exports with `defineQuery(...)` calls in `<app-root>/queries/`. The `queries/` directory must be a direct child of the data-app root, beside `package.json`; never put synchronized definitions under `src/queries/` or another source directory because `npm run sync-resources` does not scan them. Import those definitions into React. Do not pass an inline table-source query directly to `useMetabaseQuery` or `useMetabaseQueryObject`, even for read-only, filter-option, or helper queries.
 
 ```ts
 import { defineQuery } from "@metabase/embedding-sdk-react/data-app";
@@ -114,28 +114,63 @@ import schema from "../src/metabase.data";
 export const RevenueQuery = defineQuery({ source: schema.tables.orders });
 ```
 
-Ensure `package.json` defines `"sync-queries": "embedding-sdk-react data-apps sync-queries"` and `"build": "npm run sync-queries && vite build"`. After adding, changing, renaming, or removing a query definition, run `npm run build`; it synchronizes before bundling. Use `npm run sync-queries` directly only when generated query state must be inspected before a build. The synchronization command loads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`. It prepares the data app and adds missing server-issued resource entity IDs to `data_app.yaml`. It preserves entity IDs already in the manifest. It then creates or reconciles saved questions, injects `savedQuestionSourceId`, and updates `queries_metadata.json`.
+Ensure `package.json` defines `"sync-resources": "embedding-sdk-react data-apps sync-resources"` and `"build": "npm run sync-resources && vite build"`. After adding, changing, renaming, or removing a query definition, run `npm run build`; it synchronizes before bundling. Use `npm run sync-resources` directly only when generated state must be inspected before a build. The synchronization command loads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`. It prepares the data app and adds missing server-issued resource entity IDs to `data_app.yaml`, preserving any already in the manifest. It then creates or reconciles the saved questions, injects `savedQuestionSourceId`, and updates `resources_metadata.json`.
 
 Before synchronization, verify every named `defineQuery(...)` export is under the root-level `queries/` directory and that none remain under `src/queries/`. Discovery supports `.js`, `.jsx`, `.ts`, `.tsx`, `.cjs`, `.cts`, `.mjs`, and `.mts` files. Treat a successful run that discovers no definitions as a failure when the app contains Metabase queries.
 
-Treat inline `savedQuestionSourceId` values and `queries_metadata.json` as generated synchronization state. Do not delete or manually edit either one. If an inline ID is accidentally missing but the query's table and authored hash still match one unclaimed lockfile entry, `npm run sync-queries` restores it automatically.
+Treat inline `savedQuestionSourceId` values and `resources_metadata.json` as generated synchronization state. Do not delete or manually edit either one. If an inline ID is accidentally missing but the query's table and authored hash still match one unclaimed lockfile entry, `npm run sync-resources` restores it automatically.
 
-Do not test or hand off the app until `npm run build` succeeds. Confirm that `data_app.yaml` contains both resource entity IDs. Confirm that every live definition contains a positive `savedQuestionSourceId` and that `queries_metadata.json` contains its matching entry. Commit all generated changes. The build stops before bundling when synchronization fails.
+Do not test or hand off the app until `npm run build` succeeds. Confirm that `data_app.yaml` contains both resource entity IDs, that every live definition contains a positive `savedQuestionSourceId`, and that `resources_metadata.json` contains its matching entry. Commit all generated changes. The build stops before bundling when synchronization fails.
 
 Keep fixed permission-boundary filters, aggregations, and breakouts inside the `defineQuery` definition. Synchronization materializes that authored table query as a saved question. Don't apply the same clauses again outside it.
 
-For end-to-end prototypes, swap the source manually. After synchronization injects `savedQuestionSourceId`, build a separate card-source query for interactive filters, aggregations, breakouts, ordering, or limits:
+Pass the definition itself to the hooks and let the SDK resolve the source. A production build runs the saved question `savedQuestionSourceId` points at — running that card is what grants an app's viewers permission to run the query at all, through the collection it lives in — while the dev preview keeps the table source, so the app works before its first synchronization:
 
 ```ts
-const { data } = useMetabaseQuery({
-  source: { type: "card", id: RevenueQuery.savedQuestionSourceId },
+const { data } = useMetabaseQuery(RevenueQuery, {
   filters: [filter(RevenueQuery.source.fields.status, "=", selectedStatus)],
 });
 ```
 
-Use the same shape with `useMetabaseQueryObject`. Reuse a generated table field only when the inner saved question returns that field unchanged; card-source clauses resolve columns by result name. For renamed, computed, or aggregated results, use the exact saved-question result column instead of guessing. Don't spread `RevenueQuery` and add dynamic clauses: that keeps its table source and bypasses the saved-question permission boundary. Replace this manual pattern when automatic source swapping is implemented.
+Use the same shape with `useMetabaseQueryObject`. Never hand-build `{ source: { type: "card", id: RevenueQuery.savedQuestionSourceId } }`, and never spread `RevenueQuery` into a new object: both defeat the swap, and the runtime clauses belong in the second argument regardless — see *Static and dynamic query parts* for why they see the static query's result columns rather than its source table.
 
 If synchronization fails, surface the exact error and stop. Fix local shape, serialization, duplicate-ID, or lockfile errors before retrying. A confirmed `404` is recovered automatically; authentication, permission, network, server, collection-ownership, and Card-type failures must not trigger manual Card creation, deletion, ID replacement, or lockfile editing.
+
+## Synchronize every action the app runs
+
+For end-to-end prototype data apps, treat every Metabase action as permission-bound, exactly as queries are. Define actions as named exports with `defineAction(...)` calls in `<app-root>/actions/`. The `actions/` directory must be a direct child of the data-app root, beside `package.json` and `queries/`; never put synchronized definitions under `src/actions/` or another source directory because `npm run sync-resources` does not scan them. Import those definitions into React. Do not pass a raw action ID directly to `useAction`.
+
+```ts
+import { defineAction } from "@metabase/embedding-sdk-react/data-app";
+import schema from "../src/metabase.data";
+
+export const CreateOrder = defineAction({
+  action: schema.models.orders.actions.create,
+});
+```
+
+The same `npm run sync-resources` run reconciles actions: it copies each declared action's model into the data app collection, copies the action onto that copy, injects `copiedActionId`, and updates `resources_metadata.json`. Run it after adding, changing, renaming, or removing an action definition.
+
+Before synchronization, verify that every `*.action.ts` definition is under the root-level `actions/` directory and that none remain under `src/actions/`. Treat a successful run that discovers no definitions as a failure when the app runs Metabase actions.
+
+Treat inline `copiedActionId` values and `resources_metadata.json` as generated synchronization state. Do not delete or manually edit either one. If an inline ID is accidentally missing but the definition still names the same action, `npm run sync-resources` restores it automatically; a duplicated one fails synchronization.
+
+Do not build, test, or hand off the app until synchronization succeeds, every live definition contains a positive `copiedActionId`, and `resources_metadata.json` contains its matching entry. Commit both generated changes. Production builds fail when these files are stale.
+
+One model is copied once no matter how many of its actions the app declares — the first declaration copies it, siblings reuse the copy, dropping one declaration removes only that copied action, and the copy disappears with the last one. Never copy a model into the data app collection by hand.
+
+Pass the definition itself to `useAction` and let the SDK resolve the ID. A production build runs the copy `copiedActionId` points at — running that copy is what grants an app's viewers permission to run the action at all, through the collection its model lives in — while the dev preview runs the authored action, so the app works before its first synchronization:
+
+```ts
+const { execute, isExecuting, error } = useAction<
+  ActionParametersFromDataAppSchema<typeof CreateOrder.action>,
+  ActionKindFromDataAppSchema<typeof CreateOrder.action>
+>(CreateOrder);
+```
+
+Never pass `schema.models.<model>.actions.<action>.id` or `CreateOrder.copiedActionId` yourself: both defeat the swap, and the authored ID also bypasses the permission boundary. Keep deriving the `TParameters` and `TKind` generics from `CreateOrder.action`, which still points at the generated schema entry.
+
+If synchronization fails, surface the exact error and stop. Synchronization copies actions; it never creates them, so an action the app needs must exist in Metabase first and be picked up by a regenerated schema. If it reports that actions are not enabled for the database, stop and tell the user to enable them; do not create Cards or actions by hand to work around it.
 
 ## Standard pattern
 
@@ -206,7 +241,7 @@ Split them this way even when nothing appears to depend on it: the first argumen
 
 The dynamic clauses run as their own stage, so they see the **result columns** of the static query, not its source table. That is why `plan` is a breakout above: a control that filters on a source column only works if that column survives into the result. If it does not, add it as a breakout, or leave the static query unaggregated. Likewise, filter an aggregated static query on `count`/`sum`, not on the fields behind them.
 
-Do not remove or hand-edit `savedQuestionSourceId` if you find it on a query object.
+Do not remove or hand-edit `savedQuestionSourceId` if you find it on a query object, or `copiedActionId` on an action definition. Both are generated synchronization state — see *Synchronize every end-to-end prototype query* and *Synchronize every action the app runs*.
 
 ## Table query recipes
 

@@ -168,6 +168,22 @@
           (is (nil? (:permission_group_id app)))
           (is (str/includes? (:sync_error app) "does not identify an existing resource")))))))
 
+(deftest a-conflicting-group-name-is-never-adopted-test
+  (testing "a same-named group the app does not own is reported, not absorbed"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Data App: sales"}
+                     :model/User             {user-id :id}  {}]
+        (perms/add-user-to-group! user-id group-id)
+        (data-app.sync/import-from-snapshot!
+         (snapshot (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})))
+        (testing "the app records the conflict instead of failing silently"
+          (is (re-find #"is not owned by this data app"
+                       (t2/select-one-fn :sync_error :model/DataApp :name "sales"))))
+        (testing "the pre-existing group keeps its member and gains no app access"
+          (is (nil? (t2/select-one-fn :permission_group_id :model/DataApp :name "sales")))
+          (is (t2/exists? :model/PermissionsGroupMembership
+                          :group_id group-id :user_id user-id)))))))
+
 (deftest changed-count-tracks-content-not-sha-bumps-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [files (app-files! "a" {:name "A" :path "index.js" :bundle "V1"})]

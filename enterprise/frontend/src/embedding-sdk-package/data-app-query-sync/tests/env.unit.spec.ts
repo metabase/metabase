@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { getQuerySyncCredentials } from "../env";
+import { getResourceSyncCredentials } from "../env";
 
-import { makeApp, setupQuerySyncTests } from "./setup";
+import { makeApp, setupResourceSyncTests } from "./setup";
 
-describe("query sync credentials", () => {
-  setupQuerySyncTests();
+describe("resource sync credentials", () => {
+  setupResourceSyncTests();
 
   it("loads credentials from the repository .env.local", () => {
     const repoRoot = makeApp();
@@ -18,7 +18,7 @@ describe("query sync credentials", () => {
     );
     jest.replaceProperty(process, "env", {});
 
-    expect(getQuerySyncCredentials(appRoot)).toEqual({
+    expect(getResourceSyncCredentials(appRoot)).toEqual({
       metabaseUrl: "http://metabase.test",
       apiKey: "file-key",
     });
@@ -35,7 +35,7 @@ describe("query sync credentials", () => {
       DATA_APP_MB_API_KEY: "process-key",
     });
 
-    expect(getQuerySyncCredentials(appRoot)).toEqual({
+    expect(getResourceSyncCredentials(appRoot)).toEqual({
       metabaseUrl: "http://process.test",
       apiKey: "process-key",
     });

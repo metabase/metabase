@@ -1,6 +1,13 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
-import type { DataApp } from "metabase-types/api";
+import type {
+  CardId,
+  Collection,
+  CollectionId,
+  CollectionPermission,
+  CollectionPermissionsGraph,
+  DataApp,
+} from "metabase-types/api";
 
 import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
@@ -122,6 +129,52 @@ export function openDataApp(slug: string) {
 
 export function dataAppIframe(displayName: string) {
   return getIframeBody(`iframe[title="${displayName}"]`);
+}
+
+export function setDataAppCollectionAccess(
+  collectionId: CollectionId,
+  access: CollectionPermission,
+) {
+  return cy
+    .request<CollectionPermissionsGraph>("GET", "/api/collection/graph")
+    .then(({ body: graph }) => {
+      const groups = Object.fromEntries(
+        Object.entries(graph.groups).map(([groupId, collections]) => [
+          groupId,
+          Number(groupId) === USER_GROUPS.ADMIN_GROUP
+            ? collections
+            : { ...collections, [collectionId]: access },
+        ]),
+      );
+
+      cy.request("PUT", "/api/collection/graph", { ...graph, groups });
+    });
+}
+
+/**
+ * Puts a data app's model in a fresh collection at the given access level, so a
+ * spec can reach it as a user who can or cannot read it. Yields the collection.
+ */
+export function moveDataAppModelToCollection({
+  modelId,
+  name,
+  access,
+}: {
+  modelId: CardId;
+  name: string;
+  access: CollectionPermission;
+}) {
+  return cy
+    .request<Collection>("POST", "/api/collection", { name })
+    .then(({ body: collection }) => {
+      cy.request("PUT", `/api/card/${modelId}`, {
+        collection_id: collection.id,
+      });
+
+      setDataAppCollectionAccess(collection.id, access);
+
+      return cy.wrap(collection, { log: false });
+    });
 }
 
 const DATA_APP_DEV_HOST_APP_DIR =

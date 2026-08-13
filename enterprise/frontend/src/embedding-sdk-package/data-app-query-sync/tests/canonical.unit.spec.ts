@@ -4,10 +4,10 @@ import {
   getQueryFingerprint,
 } from "../canonical";
 
-import { setupQuerySyncTests } from "./setup";
+import { setupResourceSyncTests } from "./setup";
 
 describe("query canonicalization", () => {
-  setupQuerySyncTests();
+  setupResourceSyncTests();
 
   it("uses a property-order-independent authored DSL fingerprint", () => {
     const first = getQueryFingerprint({

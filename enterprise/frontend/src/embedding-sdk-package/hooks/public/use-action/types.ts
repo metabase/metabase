@@ -9,11 +9,7 @@
  * schema directly.
  */
 
-import type {
-  RowValue,
-  SchemaColumn,
-  SchemaJavaScriptType,
-} from "../data-schema";
+import type { RowValue, SchemaJavaScriptType } from "../data-schema";
 
 /**
  * Flat public kind union. Maps onto the backend's namespaced
@@ -163,12 +159,16 @@ export type ActionImplicitKind =
 
 /**
  * Shape of a single action parameter as it appears in a generated
- * `metabase.data.ts` schema entry.
+ * `metabase.data.ts` schema entry. These are the keys
+ * `metabase.typed-schemas.schema.model/action-parameter-schema` emits — an
+ * action parameter is not a column, so it carries no `name`.
  *
  * @category useAction
  */
-export type ActionParameterSchema = SchemaColumn & {
+export type ActionParameterSchema = {
   slug: string;
+  displayName?: string;
+  jsType?: SchemaJavaScriptType;
   required?: boolean;
 };
 

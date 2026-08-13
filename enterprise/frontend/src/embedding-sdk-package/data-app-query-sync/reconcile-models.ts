@@ -1,0 +1,420 @@
+import { ACTION_DEFINITIONS, injectGeneratedId } from "./ast/query-source";
+import { getPayloadFingerprint } from "./canonical";
+import { isPositiveInteger } from "./guards";
+import { writeResourceLockfile } from "./lockfile";
+import { definitionLocation, errorMessage } from "./messages";
+import type { MetabaseClient } from "./metabase-client";
+import { orNullOn404 } from "./metabase-client";
+import type {
+  ActionLockEntry,
+  DiscoveredAction,
+  MetabaseAction,
+  MetabaseCard,
+  ModelLockEntry,
+  ResourceLockfile,
+} from "./types";
+
+export interface ReconcileModelsOptions {
+  appRoot: string;
+  collectionId: number;
+  actions: DiscoveredAction[];
+  lockfile: ResourceLockfile;
+  client: MetabaseClient;
+  log: (message: string) => void;
+}
+
+interface ResolvedAction {
+  action: DiscoveredAction;
+  source: MetabaseAction;
+}
+
+interface ModelContext {
+  appRoot: string;
+  collectionId: number;
+  client: MetabaseClient;
+  lockfile: ResourceLockfile;
+  log: (message: string) => void;
+}
+
+function pickDefined(source: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(source).filter(([, value]) => value !== undefined),
+  );
+}
+
+/**
+ * The fields copied from a source model onto its data app copy. Also the
+ * fingerprint input, so drift is measured over exactly what is copied.
+ */
+function modelCopyInput(source: MetabaseCard) {
+  return {
+    name: source.name,
+    datasetQuery: source.dataset_query,
+    display: source.display ?? "table",
+    visualizationSettings: source.visualization_settings ?? {},
+    description: source.description ?? null,
+  };
+}
+
+/**
+ * The fields copied from a source action onto the copied model. Implicit
+ * actions omit `parameters` and `parameter_mappings` because Metabase derives
+ * those from the model's fields on every read.
+ */
+function actionCopyFields(source: MetabaseAction) {
+  const common = {
+    name: source.name,
+    type: source.type,
+    description: source.description,
+    visualization_settings: source.visualization_settings,
+  };
+
+  if (source.type === "implicit") {
+    return pickDefined({ ...common, kind: source.kind });
+  }
+
+  if (source.type === "query") {
+    return pickDefined({
+      ...common,
+      parameters: source.parameters,
+      parameter_mappings: source.parameter_mappings,
+      dataset_query: source.dataset_query,
+      database_id: source.database_id,
+    });
+  }
+  return pickDefined(common);
+}
+
+async function resolveActions(
+  appRoot: string,
+  actions: DiscoveredAction[],
+  client: MetabaseClient,
+): Promise<ResolvedAction[]> {
+  return Promise.all(
+    actions.map(async (action) => {
+      let source: MetabaseAction;
+      try {
+        source = await client.getAction(action.sourceActionId);
+      } catch (error) {
+        throw new Error(
+          `Could not read action ${action.sourceActionId} for ${definitionLocation(appRoot, action)}: ${errorMessage(error)}`,
+        );
+      }
+
+      if (source.archived) {
+        throw new Error(
+          `${definitionLocation(appRoot, action)} references archived action ${action.sourceActionId}.`,
+        );
+      }
+
+      if (!isPositiveInteger(source.model_id)) {
+        throw new Error(
+          `${definitionLocation(appRoot, action)} references action ${action.sourceActionId}, which does not belong to a model.`,
+        );
+      }
+
+      return { action, source };
+    }),
+  );
+}
+
+async function fetchSourceModels(
+  appRoot: string,
+  desired: Map<number, ResolvedAction[]>,
+  client: MetabaseClient,
+): Promise<Map<number, MetabaseCard>> {
+  const models = await Promise.all(
+    [...desired].map(async ([id, actions]) => {
+      const location = definitionLocation(appRoot, actions[0].action);
+
+      let card: MetabaseCard;
+      try {
+        card = await client.getCard(id);
+      } catch (error) {
+        throw new Error(
+          `Could not read model ${id} for ${location}: ${errorMessage(error)}`,
+        );
+      }
+
+      if (card.type !== "model") {
+        throw new Error(
+          `${location} references an action on card ${id}, which is not a model.`,
+        );
+      }
+
+      return [id, card] as const;
+    }),
+  );
+
+  return new Map(models);
+}
+
+/**
+ * Refuses to touch a card the lockfile claims to own but that no longer looks
+ * like a copy this app created.
+ */
+function assertOwnedCopy(card: MetabaseCard, collectionId: number) {
+  if (card.type !== "model") {
+    throw new Error(
+      `Card ${card.id} belongs to a synchronized model but is no longer a model, so it was left untouched. Change it back to a model in data app collection ${collectionId} or delete it manually, then run sync-resources again.`,
+    );
+  }
+
+  if (card.collection_id !== collectionId) {
+    throw new Error(
+      `Card ${card.id} belongs to a synchronized model but is no longer in the data app collection, so it was left untouched. Move card ${card.id} back to data app collection ${collectionId} or delete it manually, then run sync-resources again.`,
+    );
+  }
+}
+
+async function reconcileModelActions(
+  context: ModelContext,
+  entry: ModelLockEntry,
+  desiredActions: ResolvedAction[],
+) {
+  const { appRoot, client, lockfile, log } = context;
+  const desiredIds = new Set(desiredActions.map(({ source }) => source.id));
+
+  for (const { action, source } of desiredActions) {
+    const fields = actionCopyFields(source);
+    const hash = getPayloadFingerprint(fields);
+    let mapping: ActionLockEntry | undefined = entry.actions.find(
+      ({ sourceActionId }) => sourceActionId === source.id,
+    );
+    const copiedAction = mapping
+      ? await orNullOn404(client.getAction(mapping.copiedActionId))
+      : null;
+
+    // A copy that vanished, or that no longer hangs off this model, cannot be
+    // updated in place — drop the mapping and make a fresh copy.
+    if (mapping && copiedAction?.model_id !== entry.copiedModelId) {
+      entry.actions.splice(entry.actions.indexOf(mapping), 1);
+      mapping = undefined;
+    }
+
+    if (!mapping) {
+      const created = await client.createAction({
+        ...fields,
+        model_id: entry.copiedModelId,
+      });
+
+      if (!isPositiveInteger(created.id)) {
+        throw new Error("The Action API did not return a valid action ID.");
+      }
+
+      entry.actions.push({
+        sourceActionId: source.id,
+        copiedActionId: created.id,
+        hash,
+      });
+
+      injectGeneratedId(action, ACTION_DEFINITIONS, created.id);
+      writeResourceLockfile(appRoot, lockfile);
+      log(`copied action: action ${source.id} -> action ${created.id}`);
+
+      continue;
+    }
+
+    if (mapping.hash !== hash) {
+      await client.updateAction(mapping.copiedActionId, fields);
+
+      mapping.hash = hash;
+
+      writeResourceLockfile(appRoot, lockfile);
+      log(`updated action: action ${mapping.copiedActionId}`);
+    }
+
+    if (action.copiedActionId !== mapping.copiedActionId) {
+      injectGeneratedId(action, ACTION_DEFINITIONS, mapping.copiedActionId);
+      log(
+        `restored action ID: ${action.exportName} -> action ${mapping.copiedActionId}`,
+      );
+    }
+  }
+
+  for (const mapping of [...entry.actions]) {
+    if (desiredIds.has(mapping.sourceActionId)) {
+      continue;
+    }
+
+    const copiedAction = await orNullOn404(
+      client.getAction(mapping.copiedActionId),
+    );
+
+    if (copiedAction && copiedAction.model_id !== entry.copiedModelId) {
+      throw new Error(
+        `Action ${mapping.copiedActionId} belongs to a removed declaration but no longer hangs off copied model ${entry.copiedModelId}, so it was left untouched. Move it back or delete it manually, then run sync-resources again.`,
+      );
+    }
+
+    if (copiedAction) {
+      await client.deleteAction(mapping.copiedActionId);
+      log(`deleted action: action ${mapping.copiedActionId}`);
+    }
+
+    entry.actions.splice(entry.actions.indexOf(mapping), 1);
+    writeResourceLockfile(appRoot, lockfile);
+  }
+}
+
+async function reconcileModel(
+  context: ModelContext,
+  sourceModel: MetabaseCard,
+  desiredActions: ResolvedAction[],
+) {
+  const { appRoot, collectionId, client, lockfile, log } = context;
+  const hash = getPayloadFingerprint(modelCopyInput(sourceModel));
+  const index = lockfile.models.findIndex(
+    ({ sourceModelId }) => sourceModelId === sourceModel.id,
+  );
+  const previous = index >= 0 ? lockfile.models[index] : undefined;
+  const copy = previous
+    ? await orNullOn404(client.getCard(previous.copiedModelId))
+    : null;
+
+  if (previous && copy) {
+    assertOwnedCopy(copy, collectionId);
+
+    if (previous.hash !== hash) {
+      await client.updateModel(previous.copiedModelId, {
+        ...modelCopyInput(sourceModel),
+        collectionId,
+      });
+      previous.hash = hash;
+      writeResourceLockfile(appRoot, lockfile);
+      log(`updated model: card ${previous.copiedModelId}`);
+    }
+
+    await reconcileModelActions(context, previous, desiredActions);
+
+    return;
+  }
+
+  // The copy is gone, so its actions cascaded away with it.
+  if (previous) {
+    lockfile.models.splice(index, 1);
+  }
+
+  const created = await client.createModel({
+    ...modelCopyInput(sourceModel),
+    collectionId,
+  });
+
+  if (!isPositiveInteger(created.id)) {
+    throw new Error("The Card API did not return a valid model ID.");
+  }
+
+  const entry: ModelLockEntry = {
+    sourceModelId: sourceModel.id,
+    copiedModelId: created.id,
+    hash,
+    actions: [],
+  };
+
+  lockfile.models.push(entry);
+
+  writeResourceLockfile(appRoot, lockfile);
+  log(
+    previous
+      ? `recreated model: card ${previous.copiedModelId} -> card ${created.id}`
+      : `copied model: model ${sourceModel.id} -> card ${created.id}`,
+  );
+
+  await reconcileModelActions(context, entry, desiredActions);
+}
+
+async function removeUnusedModels(
+  context: ModelContext,
+  previousModels: ModelLockEntry[],
+  desiredModelIds: Set<number>,
+) {
+  const { appRoot, collectionId, client, lockfile, log } = context;
+  for (const entry of previousModels) {
+    if (desiredModelIds.has(entry.sourceModelId)) {
+      continue;
+    }
+
+    const index = lockfile.models.findIndex(
+      ({ sourceModelId }) => sourceModelId === entry.sourceModelId,
+    );
+
+    if (index < 0) {
+      continue;
+    }
+
+    const copy = await orNullOn404(client.getCard(entry.copiedModelId));
+
+    if (copy) {
+      assertOwnedCopy(copy, collectionId);
+      // Deleting the copy cascades to the actions copied onto it.
+      await client.deleteCard(copy.id);
+      log(`deleted model: card ${copy.id}`);
+    }
+
+    lockfile.models.splice(index, 1);
+
+    writeResourceLockfile(appRoot, lockfile);
+  }
+}
+
+/**
+ * Makes the data app collection hold exactly the models its actions belong to,
+ * copying a model when its first action appears and deleting it when its last
+ * action goes away. Returns the databases those models read.
+ */
+export async function reconcileModels({
+  appRoot,
+  collectionId,
+  actions,
+  lockfile,
+  client,
+  log,
+}: ReconcileModelsOptions) {
+  const previousModels = [...lockfile.models];
+  const resolved = await resolveActions(appRoot, actions, client);
+
+  const desired = new Map<number, ResolvedAction[]>();
+
+  for (const entry of resolved) {
+    desired.set(entry.source.model_id, [
+      ...(desired.get(entry.source.model_id) ?? []),
+      entry,
+    ]);
+  }
+
+  const sourceModels = await fetchSourceModels(appRoot, desired, client);
+  const context: ModelContext = {
+    appRoot,
+    collectionId,
+    client,
+    lockfile,
+    log,
+  };
+
+  for (const [sourceModelId, desiredActions] of desired) {
+    const sourceModel = sourceModels.get(sourceModelId);
+    if (sourceModel) {
+      await reconcileModel(context, sourceModel, desiredActions);
+    }
+  }
+
+  await removeUnusedModels(context, previousModels, new Set(desired.keys()));
+
+  const databaseIds = new Set<number>();
+
+  for (const model of sourceModels.values()) {
+    if (isPositiveInteger(model.database_id)) {
+      databaseIds.add(model.database_id);
+    }
+  }
+
+  for (const { source } of resolved) {
+    // A query action carries its own `database_id`, which the backend allows to
+    // differ from its model's; it must be viewable too or execution is blocked.
+    if (isPositiveInteger(source.database_id)) {
+      databaseIds.add(source.database_id);
+    }
+  }
+
+  return [...databaseIds].sort((a, b) => a - b);
+}

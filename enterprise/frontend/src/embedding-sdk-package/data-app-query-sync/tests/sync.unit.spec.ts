@@ -1,18 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { syncQueries } from "../sync";
+import { syncResources } from "../sync";
 
 import {
-  isQuerySyncPermissionsRequest,
+  isResourcePermissionsRequest,
   jsonResponse,
   makeApp,
-  setupQuerySyncTests,
+  setupResourceSyncTests,
   writeQuery,
 } from "./setup";
 
 describe("query synchronization", () => {
-  setupQuerySyncTests();
+  setupResourceSyncTests();
 
   it("identifies the request that failed", async () => {
     const appRoot = makeApp();
@@ -25,7 +25,7 @@ describe("query synchronization", () => {
     );
 
     await expect(
-      syncQueries({
+      syncResources({
         appRoot,
         metabaseUrl: "http://metabase.test",
         apiKey: "secret",
@@ -56,7 +56,7 @@ describe("query synchronization", () => {
     });
 
     await expect(
-      syncQueries({
+      syncResources({
         appRoot,
         metabaseUrl: "http://metabase.test",
         apiKey: "secret",
@@ -86,7 +86,7 @@ describe("query synchronization", () => {
         });
       }
       if (
-        pathname === `/api/apps/${slug}/query-sync/permissions` &&
+        pathname === `/api/apps/${slug}/resources/permissions` &&
         method === "PUT"
       ) {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
@@ -94,7 +94,7 @@ describe("query synchronization", () => {
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 
-    await syncQueries({
+    await syncResources({
       appRoot,
       metabaseUrl: "http://metabase.test",
       apiKey: "secret",
@@ -109,7 +109,7 @@ describe("query synchronization", () => {
       },
       {
         method: "PUT",
-        pathname: `/api/apps/${slug}/query-sync/permissions`,
+        pathname: `/api/apps/${slug}/resources/permissions`,
         body: JSON.stringify({ database_ids: [] }),
       },
     ]);
@@ -150,14 +150,14 @@ describe("query synchronization", () => {
         return jsonResponse({ id: nextCardId++ });
       }
 
-      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+      if (isResourcePermissionsRequest(pathname, method, slug)) {
         permissionBodies.push(JSON.parse(String(init?.body)));
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 
-    await syncQueries({
+    await syncResources({
       appRoot,
       metabaseUrl: "http://metabase.test",
       apiKey: "secret",

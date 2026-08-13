@@ -34,12 +34,12 @@ import {
 } from "@metabase/embedding-sdk-react/data-app";
 
 const { execute, isExecuting, result, error, reset } = useAction<
-  ActionParametersFromDataAppSchema<typeof schema.models.<model>.actions.<action>>,
-  ActionKindFromDataAppSchema<typeof schema.models.<model>.actions.<action>>
->(schema.models.<model>.actions.<action>.id);
+  ActionParametersFromDataAppSchema<typeof MyAction.action>,
+  ActionKindFromDataAppSchema<typeof MyAction.action>
+>(MyAction);
 ```
 
-- **First argument** is the action's numeric **id** — read it off the schema entry as `schema.models.<model>.actions.<action>.id`. The hook also accepts an action's `entity_id` string, but in a Data App you always have the numeric id on hand from the schema, so pass that.
+- **First argument** is the `defineAction(...)` export itself — pass `MyAction`, not `MyAction.copiedActionId`. A production build then runs the synchronized copy, whose model sits in the app's own collection; the dev preview keeps running the authored action, so an app works before it has ever been synchronized. Do **not** pass `schema.models.<model>.actions.<action>.id`: that id belongs to the original model, which the app's users cannot read, so the call fails on permissions in production. Outside a data app the hook also accepts a raw numeric id or an `entity_id` string.
 - **`TParameters` generic** — the type of the parameters object you'll pass to `execute`. In a Data App, derive it from the schema with `ActionParametersFromDataAppSchema<typeof schema.models.<model>.actions.<action>>` imported from `@metabase/embedding-sdk-react/data-app`; the helper expands the schema's `parameters[]` into a keyed object, marks `required: true` entries as required keys, and types each value from its `jsType`. Skip the generic and `execute` accepts any `Record<string, unknown>`.
 - **`TKind` generic** — the action kind literal that drives the discriminated `result` shape. In a Data App, derive it from the same schema entry with `ActionKindFromDataAppSchema<typeof schema.models.<model>.actions.<action>>` imported from `@metabase/embedding-sdk-react/data-app`; the helper maps `implicitKind` (`"row/create"` → `"create"`, `"row/update"` → `"update"`, `"row/delete"` → `"delete"`, any `"bulk/*"` → `"bulk"`) and `type === "query"` → `"sql"`. Skip the generic and `result` defaults to the `AnyActionResult` union — TS-narrowable via `"<key>" in result`, but you lose the per-kind precision.
 - **`execute(parameters)`** — triggers the action. Parameters object is keyed by parameter `slug`; parameters declared `required: true` are required keys, everything else optional. Returns the response body on success AND throws on failure (the error is also written to `error` state for render-time consumers). Resolves to `null` (without making a request) when `actionId` is `null` or the SDK is not yet initialized — guard the call site if those cases are reachable.
@@ -66,14 +66,14 @@ import {
   type ActionParametersFromDataAppSchema,
 } from "@metabase/embedding-sdk-react/data-app";
 
-import schema from "../metabase.data";
+import { CreatePerson } from "../../actions/people.action";
 
 function AddPersonForm({ onCreated }: { onCreated: () => void }) {
   const { useState } = React;
   const { execute, isExecuting, error, reset } = useAction<
-    ActionParametersFromDataAppSchema<typeof schema.models.people.actions.create>,
-    ActionKindFromDataAppSchema<typeof schema.models.people.actions.create>
-  >(schema.models.people.actions.create.id);
+    ActionParametersFromDataAppSchema<typeof CreatePerson.action>,
+    ActionKindFromDataAppSchema<typeof CreatePerson.action>
+  >(CreatePerson);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -201,7 +201,7 @@ No hand-rolled `!name || !email` checks.
 When an action appears to succeed but the screen doesn't update, or a call fails with a 400:
 
 1. Log `result`, `error`, and `isExecuting` after `await execute(...)` to confirm the request actually went through and succeeded.
-2. Confirm `useAction` was called with `schema.models.<model>.actions.<action>.id` (the numeric id) AND the `ActionParametersFromDataAppSchema<typeof …>` generic — without the generic, `execute` won't type-check the parameters object and typos slip through.
+2. Confirm `useAction` was called with the `defineAction(...)` export AND the `ActionParametersFromDataAppSchema<typeof …>` generic — without the generic, `execute` won't type-check the parameters object and typos slip through. A `403` in production usually means a raw schema action id was passed instead of the definition.
 3. Log the object passed to `execute({ ... })`. Every key must match a parameter `slug` from `schema.models.<model>.actions.<action>.parameters`; every value must match its declared `jsType`.
 4. List every data view on the screen that reads from the mutated model. Confirm each one's data hook is mounted ABOVE the action trigger so its refresh callback can be passed down.
 5. Confirm the refresh callback is called AFTER `await execute(...)` AND that the refresh itself is awaited. When multiple refreshes apply, confirm they're awaited together (`Promise.all`).

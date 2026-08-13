@@ -16,7 +16,7 @@ import {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "..";
-import { defineQuery } from "../../../../data-app";
+import { defineAction, defineQuery } from "../../../../data-app";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 type OrdersQuestion = (typeof TEST_SCHEMA)["questions"]["ordersQuestion"];
@@ -29,6 +29,19 @@ const revenueQuery = defineQuery({
 
 const _savedQuestionSourceId: 54 = revenueQuery.savedQuestionSourceId;
 const _queryLimit: 10 = revenueQuery.limit;
+
+const createOrder = defineAction({
+  copiedActionId: 91,
+  action: TEST_SCHEMA.models.orders.actions.create,
+});
+
+const _copiedActionId: 91 = createOrder.copiedActionId;
+const _sourceActionId: 51 = createOrder.action.id;
+
+// A definition is authored without a generated ID; synchronization writes one.
+const _unsyncedAction = defineAction({
+  action: TEST_SCHEMA.models.orders.actions.update,
+});
 
 // --------
 // Compile-time contracts that must pass type-checking.

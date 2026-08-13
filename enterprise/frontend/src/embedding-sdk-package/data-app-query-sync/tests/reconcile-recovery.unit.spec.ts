@@ -2,32 +2,31 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { discoverQueries } from "../discover";
-import { syncQueries } from "../sync";
+import { syncResources } from "../sync";
 
 import {
-  isQuerySyncPermissionsRequest,
+  FAKE_HASH,
+  isResourcePermissionsRequest,
   jsonResponse,
   makeApp,
-  setupQuerySyncTests,
+  seedQueries,
+  setupResourceSyncTests,
   writeQuery,
 } from "./setup";
 
 describe("query reconciliation recovery", () => {
-  setupQuerySyncTests();
+  setupResourceSyncTests();
 
   it("deletes only lockfile-proven questions in the bound collection", async () => {
     const appRoot = makeApp();
     const slug = path.basename(appRoot);
-    fs.writeFileSync(
-      path.join(appRoot, "queries_metadata.json"),
-      JSON.stringify([
-        {
-          tableId: 1,
-          hash: `v1:sha256:${"0".repeat(64)}`,
-          savedQuestionSourceId: 40,
-        },
-      ]),
-    );
+    seedQueries(appRoot, [
+      {
+        tableId: 1,
+        hash: FAKE_HASH,
+        savedQuestionSourceId: 40,
+      },
+    ]);
     const requests: Array<{ method: string; pathname: string }> = [];
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
       const pathname = new URL(String(input)).pathname;
@@ -49,13 +48,13 @@ describe("query reconciliation recovery", () => {
         return jsonResponse(null, 204);
       }
 
-      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+      if (isResourcePermissionsRequest(pathname, method, slug)) {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 
-    await syncQueries({
+    await syncResources({
       appRoot,
       metabaseUrl: "http://metabase.test",
       apiKey: "secret",
@@ -68,9 +67,9 @@ describe("query reconciliation recovery", () => {
     });
     expect(
       JSON.parse(
-        fs.readFileSync(path.join(appRoot, "queries_metadata.json"), "utf8"),
+        fs.readFileSync(path.join(appRoot, "resources_metadata.json"), "utf8"),
       ),
-    ).toEqual([]);
+    ).toEqual({ queries: [], models: [] });
   });
 
   it("recreates a lockfile-proven question only after a confirmed 404", async () => {
@@ -81,16 +80,13 @@ describe("query reconciliation recovery", () => {
       `export const Orders = defineQuery({ savedQuestionSourceId: 50, source: { type: "table", id: 1 } });`,
     );
     const [query] = await discoverQueries(appRoot);
-    fs.writeFileSync(
-      path.join(appRoot, "queries_metadata.json"),
-      JSON.stringify([
-        {
-          tableId: query.tableId,
-          hash: query.hash,
-          savedQuestionSourceId: 50,
-        },
-      ]),
-    );
+    seedQueries(appRoot, [
+      {
+        tableId: query.tableId,
+        hash: query.hash,
+        savedQuestionSourceId: 50,
+      },
+    ]);
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
@@ -107,13 +103,13 @@ describe("query reconciliation recovery", () => {
         return jsonResponse({ id: 51 });
       }
 
-      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+      if (isResourcePermissionsRequest(pathname, method, slug)) {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 
-    await syncQueries({
+    await syncResources({
       appRoot,
       metabaseUrl: "http://metabase.test",
       apiKey: "secret",
@@ -125,15 +121,18 @@ describe("query reconciliation recovery", () => {
     );
     expect(
       JSON.parse(
-        fs.readFileSync(path.join(appRoot, "queries_metadata.json"), "utf8"),
+        fs.readFileSync(path.join(appRoot, "resources_metadata.json"), "utf8"),
       ),
-    ).toEqual([
-      {
-        tableId: 1,
-        hash: query.hash,
-        savedQuestionSourceId: 51,
-      },
-    ]);
+    ).toEqual({
+      queries: [
+        {
+          tableId: 1,
+          hash: query.hash,
+          savedQuestionSourceId: 51,
+        },
+      ],
+      models: [],
+    });
   });
 
   it("restores a missing inline ID from an unambiguous lockfile entry", async () => {
@@ -144,16 +143,13 @@ describe("query reconciliation recovery", () => {
       `export const Orders = defineQuery({ source: { type: "table", id: 1 } });`,
     );
     const [query] = await discoverQueries(appRoot);
-    fs.writeFileSync(
-      path.join(appRoot, "queries_metadata.json"),
-      JSON.stringify([
-        {
-          tableId: query.tableId,
-          hash: query.hash,
-          savedQuestionSourceId: 55,
-        },
-      ]),
-    );
+    seedQueries(appRoot, [
+      {
+        tableId: query.tableId,
+        hash: query.hash,
+        savedQuestionSourceId: 55,
+      },
+    ]);
     const requests: Array<{ method: string; pathname: string }> = [];
     const log = jest.fn();
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
@@ -176,13 +172,13 @@ describe("query reconciliation recovery", () => {
         });
       }
 
-      if (isQuerySyncPermissionsRequest(pathname, method, slug)) {
+      if (isResourcePermissionsRequest(pathname, method, slug)) {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       throw new Error(`Unexpected ${method} ${pathname}`);
     });
 
-    await syncQueries({
+    await syncResources({
       appRoot,
       metabaseUrl: "http://metabase.test",
       apiKey: "secret",
@@ -204,16 +200,13 @@ describe("query reconciliation recovery", () => {
   it("explains how to recover a removed query whose card moved", async () => {
     const appRoot = makeApp();
     const slug = path.basename(appRoot);
-    fs.writeFileSync(
-      path.join(appRoot, "queries_metadata.json"),
-      JSON.stringify([
-        {
-          tableId: 1,
-          hash: `v1:sha256:${"0".repeat(64)}`,
-          savedQuestionSourceId: 90,
-        },
-      ]),
-    );
+    seedQueries(appRoot, [
+      {
+        tableId: 1,
+        hash: FAKE_HASH,
+        savedQuestionSourceId: 90,
+      },
+    ]);
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
@@ -233,14 +226,14 @@ describe("query reconciliation recovery", () => {
     });
 
     await expect(
-      syncQueries({
+      syncResources({
         appRoot,
         metabaseUrl: "http://metabase.test",
         apiKey: "secret",
         log: jest.fn(),
       }),
     ).rejects.toThrow(
-      "Move card 90 back to data app collection 20 or delete it manually, then run sync-queries again.",
+      "Move card 90 back to data app collection 20 or delete it manually, then run sync-resources again.",
     );
   });
 });
