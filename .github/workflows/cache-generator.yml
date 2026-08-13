@@ -110,6 +110,10 @@ jobs:
             echo "::endgroup::"
           done
 
+          echo "::group::./bin/mage"
+          ./bin/mage
+          echo "::endgroup::"
+
       - name: Update M2 cache
         uses: ./.github/actions/update-cache
         with:

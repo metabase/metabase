@@ -52,6 +52,13 @@ import type {
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
+  getDashboard,
+  getDashboardBeforeEditing,
+  getDashboardId,
+  getDashboards,
+  getIsEditing,
+} from "./shell-selectors";
+import {
   canResetFilter,
   findDashCardForInlineParameter,
   getMappedParametersIds,
@@ -74,19 +81,12 @@ function isEditParameterSidebar(
   return sidebar.name === SIDEBAR_NAME.editParameter;
 }
 
-export const getDashboardBeforeEditing = (state: State) =>
-  state.dashboard.editingDashboard;
-
-export const getIsEditing = (state: State) =>
-  Boolean(getDashboardBeforeEditing(state));
-
 export const getClickBehaviorSidebarDashcard = (state: State) => {
   const { sidebar, dashcards } = state.dashboard;
   return isClickBehaviorSidebar(sidebar)
     ? dashcards[sidebar.props?.dashcardId]
     : null;
 };
-export const getDashboards = (state: State) => state.dashboard.dashboards;
 export const getDashcardDataMap = (state: State) =>
   state.dashboard.dashcardData;
 
@@ -158,14 +158,6 @@ export const getIsShowDashboardInfoSidebar = createSelector(
 export const getIsShowDashboardSettingsSidebar = createSelector(
   [getSidebar],
   (sidebar) => sidebar.name === SIDEBAR_NAME.settings,
-);
-
-export const getDashboardId = (state: State) => state.dashboard.dashboardId;
-
-export const getDashboard = createSelector(
-  [getDashboardId, getDashboards],
-  (dashboardId, dashboards) =>
-    dashboardId !== null ? dashboards[dashboardId] : undefined,
 );
 
 export const getDashcards = (state: State) => state.dashboard.dashcards;
@@ -722,3 +714,13 @@ export const getCanResetFilters = createSelector(
   [getFiltersToReset],
   (filtersToReset) => filtersToReset.length > 0,
 );
+
+// Defined in a leaf module so the app shell can read them without pulling this
+// one in. Re-exported so every existing call site is unchanged.
+export {
+  getDashboard,
+  getDashboardBeforeEditing,
+  getDashboardId,
+  getDashboards,
+  getIsEditing,
+};

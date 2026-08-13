@@ -5,7 +5,6 @@ import { Fragment, forwardRef, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
 import { useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import {
@@ -39,6 +38,7 @@ import {
 } from "metabase/ui";
 import type { IconName, MetabotFeedback } from "metabase-types/api";
 
+import { useSubmitMetabotFeedbackMutation } from "../../api";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";

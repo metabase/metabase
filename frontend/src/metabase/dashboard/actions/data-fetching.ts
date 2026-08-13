@@ -9,7 +9,6 @@ import {
   cardApi,
   dashboardApi,
   embedApi,
-  makePivotAwareQueryRunner,
   publicApi,
 } from "metabase/api";
 import { isAbortError } from "metabase/api/client";
@@ -35,6 +34,7 @@ import {
 } from "metabase/dashboard/utils";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
+import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
 import { runAdhocDatasetQuery } from "metabase/querying/run-query";
 import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";

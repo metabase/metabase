@@ -4,11 +4,31 @@ import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
 
-import { AccountApp } from "./app/containers/AccountApp";
-import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
 import { getNotificationRoutes } from "./notifications/routes";
-import UserPasswordApp from "./password/containers/UserPasswordApp";
-import UserProfileApp from "./profile/containers/UserProfileApp";
+
+/**
+ * The account pages, in their own chunk. `IsAuthenticated` stays eager: it has
+ * to decide before there is anything to show.
+ */
+const accountApp = () =>
+  import("./app/containers/AccountApp").then(({ AccountApp }) => ({
+    Component: AccountApp,
+  }));
+
+const userProfileApp = () =>
+  import("./profile/containers/UserProfileApp").then((module) => ({
+    Component: module.default,
+  }));
+
+const userPasswordApp = () =>
+  import("./password/containers/UserPasswordApp").then((module) => ({
+    Component: module.default,
+  }));
+
+const loginHistoryApp = () =>
+  import("./login-history/containers/LoginHistoryApp").then((module) => ({
+    Component: module.default,
+  }));
 
 export const getAccountRoutes = (
   _store: Store<State>,
@@ -16,15 +36,15 @@ export const getAccountRoutes = (
 ) => {
   return (
     <Route path="/account" element={<IsAuthenticated />}>
-      <Route element={<AccountApp />}>
+      <Route lazy={accountApp}>
         <Route index element={redirect("profile")} />
-        <Route path="profile" element={<UserProfileApp />} />
-        <Route path="password" element={<UserPasswordApp />} />
+        <Route path="profile" lazy={userProfileApp} />
+        <Route path="password" lazy={userPasswordApp} />
         <Route
           path="security"
           element={<PLUGIN_MULTI_FACTOR_AUTH.AccountSecurityPanel />}
         />
-        <Route path="login-history" element={<LoginHistoryApp />} />
+        <Route path="login-history" lazy={loginHistoryApp} />
         {getNotificationRoutes()}
       </Route>
     </Route>

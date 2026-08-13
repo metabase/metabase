@@ -1,4 +1,3 @@
-import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
 import type { IconData } from "metabase/common/utils/icon";
@@ -8,6 +7,7 @@ import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
+  WidgetMount,
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
