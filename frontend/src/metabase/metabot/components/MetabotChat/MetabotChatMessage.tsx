@@ -5,7 +5,6 @@ import { Fragment, forwardRef, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useSubmitMetabotFeedbackMutation } from "metabase/api/metabot";
 import { useToast } from "metabase/common/hooks";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import {
@@ -39,6 +38,7 @@ import {
 } from "metabase/ui";
 import type { IconName, MetabotFeedback } from "metabase-types/api";
 
+import { useSubmitMetabotFeedbackMutation } from "../../api";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
@@ -237,6 +237,8 @@ export const AgentMessage = ({
   const canGiveFeedback = canActOnMessage && !!setFeedbackMessage;
   const canFork = canActOnMessage && !isFailedTurn && !!onFork;
   const clipboard = useClipboard({ timeout: 2000 });
+  const copyText = getCopyText();
+  const canCopy = !isInProgress && copyText.length > 0;
 
   return (
     <MessageContainer chatRole={message.role} {...props}>
@@ -295,12 +297,12 @@ export const AgentMessage = ({
         .exhaustive()}
       {!hideActions && (
         <Flex className={Styles.messageActions} align="center">
-          {!isInProgress && (
+          {canCopy && (
             <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy`}>
               <ActionIcon
                 h="sm"
                 data-testid="metabot-chat-message-copy"
-                onClick={() => clipboard.copy(getCopyText())}
+                onClick={() => clipboard.copy(copyText)}
               >
                 <Icon name="copy" size="1rem" />
               </ActionIcon>

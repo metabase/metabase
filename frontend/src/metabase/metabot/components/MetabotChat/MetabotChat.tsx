@@ -4,13 +4,13 @@ import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
 
+import { useGetSuggestedMetabotPromptsQuery } from "../../api";
 import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
 
@@ -56,7 +56,10 @@ export const MetabotChat = ({
 
   const hasMessages = metabot.messages.length > 0;
 
-  const { scrollContainerRef, fillerRef } = useScrollManager(hasMessages);
+  const { scrollContainerRef, fillerRef } = useScrollManager(
+    hasMessages,
+    metabot.conversationId,
+  );
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(
     {
