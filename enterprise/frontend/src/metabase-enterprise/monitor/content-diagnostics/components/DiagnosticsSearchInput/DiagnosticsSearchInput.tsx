@@ -34,9 +34,9 @@ export function DiagnosticsSearchInput({
     <TextInput
       value={searchValue}
       placeholder={t`Search…`}
+      aria-label={t`Search`}
       flex={1}
       leftSection={<FixedSizeIcon name="search" />}
-      data-testid="content-diagnostics-search-input"
       onChange={handleSearchChange}
     />
   );

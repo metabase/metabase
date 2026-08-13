@@ -274,7 +274,7 @@ describe("ImbalancedContentPage", () => {
     });
     await waitForListToLoad();
 
-    const input = screen.getByTestId("content-diagnostics-search-input");
+    const input = screen.getByLabelText("Search");
     await userEvent.type(input, "busy");
 
     await waitFor(() => {
