@@ -409,6 +409,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByTestId("select-frame").click();
       H.popover().findByText("first").click();
 
+      H.selectScheduleTime();
       clickButton("Done");
       // Implicit assertion (word mustn't contain string "null")
       H.sidebar().findByText(/^Emailed monthly on the first (?!null)/);

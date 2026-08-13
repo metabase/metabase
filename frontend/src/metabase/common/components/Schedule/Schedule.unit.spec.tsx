@@ -20,6 +20,13 @@ const getInputValues = () => {
   return values;
 };
 
+const expectAmPmToBe = (label: string) =>
+  expect(
+    within(screen.getByTestId("select-am-pm")).getByRole("radio", {
+      name: label,
+    }),
+  ).toBeChecked();
+
 describe("Schedule", () => {
   it("shows time when schedule is daily", () => {
     setup({ value: scheduleFromCron("0 0 8 * * ? *") });
@@ -464,7 +471,7 @@ describe("Schedule", () => {
         await pickField("frequency", "daily");
 
         expect(screen.getByTestId("select-time")).toHaveValue("");
-        expect(screen.queryByTestId("select-am-pm")).not.toBeInTheDocument();
+        expectAmPmToBe("AM");
         const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
         expect(lastEvent.cronString).toBeNull();
       });
@@ -478,9 +485,27 @@ describe("Schedule", () => {
         await pickField("frequency", "weekly");
 
         expect(screen.getByTestId("select-time")).toHaveValue("");
-        expect(screen.queryByTestId("select-am-pm")).not.toBeInTheDocument();
+        expectAmPmToBe("AM");
         const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
         expect(lastEvent.cronString).toBeNull();
+      });
+
+      it("lets the user pick AM/PM before the time, without picking a time for them", async () => {
+        const { onScheduleChange } = setup({
+          value: { schedule_type: "daily", schedule_hour: null },
+          getDefaults: getDefaultsWithoutHour,
+        });
+
+        await pickField("amPm", "PM");
+
+        expectAmPmToBe("PM");
+        expect(screen.getByTestId("select-time")).toHaveValue("");
+        expect(onScheduleChange).not.toHaveBeenCalled();
+
+        await pickField("time", "8:00");
+
+        const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
+        expect(lastEvent.cronString).toBe("0 0 20 * * ? *");
       });
     });
   });

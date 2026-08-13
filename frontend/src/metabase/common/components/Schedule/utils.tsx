@@ -160,6 +160,13 @@ export const getScheduleDefaults = (
   scheduleType: ScheduleBuilderType,
 ): ScheduleDefaults => getScheduleFieldSpecs(scheduleType).defaults;
 
+export const getScheduleDefaultsWithoutHour = (
+  scheduleType: ScheduleBuilderType,
+): ScheduleDefaults => ({
+  ...getScheduleDefaults(scheduleType),
+  schedule_hour: null,
+});
+
 const getScheduleFieldsInCron = (
   scheduleType: ScheduleBuilderType,
 ): ScheduleField[] => {

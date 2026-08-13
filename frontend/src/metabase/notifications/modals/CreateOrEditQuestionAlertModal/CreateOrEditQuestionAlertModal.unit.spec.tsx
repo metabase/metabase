@@ -157,7 +157,11 @@ describe("CreateOrEditQuestionAlertModal", () => {
     const timeSelector = screen.getByTestId("select-time");
     expect(timeSelector).toHaveValue("");
     expect(timeSelector).toHaveAttribute("placeholder", "HH:MM");
-    expect(screen.queryByTestId("select-am-pm")).not.toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("select-am-pm")).getByRole("radio", {
+        name: "AM",
+      }),
+    ).toBeChecked();
 
     expect(screen.getByRole("button", { name: /done/i })).toBeDisabled();
   });
@@ -307,8 +311,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
-      // Unjustified type cast. FIXME
-      const subscription = JSON.parse(requestBody as string).subscriptions[0];
+      const subscription = JSON.parse(String(requestBody)).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
       expect(subscription.cron_schedule).toBe("0 0 8 * * ? *");
@@ -343,8 +346,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
-      // Unjustified type cast. FIXME
-      const subscription = JSON.parse(requestBody as string).subscriptions[0];
+      const subscription = JSON.parse(String(requestBody)).subscriptions[0];
 
       expect(subscription.cron_schedule).toBe("0 0 * * * ? *");
     });
@@ -389,8 +391,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
-      // Unjustified type cast. FIXME
-      const subscription = JSON.parse(requestBody as string).subscriptions[0];
+      const subscription = JSON.parse(String(requestBody)).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
       expect(subscription.cron_schedule).toBe("0 0/10 8 * * ? *");
@@ -504,8 +505,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
-      // Unjustified type cast. FIXME
-      const subscription = JSON.parse(requestBody as string).subscriptions[0];
+      const subscription = JSON.parse(String(requestBody)).subscriptions[0];
 
       // Verify the cron schedule is for Tuesday at 2pm (day 3)
       expect(subscription.cron_schedule).toBe("0 0 14 ? * 3 *");
@@ -652,8 +652,7 @@ describe("CreateOrEditQuestionAlertModal", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
-      // Unjustified type cast. FIXME
-      expect(JSON.parse(requestBody as string).creator_id).toBe(7);
+      expect(JSON.parse(String(requestBody)).creator_id).toBe(7);
     });
   });
 });

@@ -441,7 +441,7 @@ export const CreateOrEditQuestionAlertModal = ({
         <Button
           variant="outline"
           color="core-brand"
-          disabled={!isValid || isLoading}
+          disabled={!isValid}
           loading={isLoading}
           onClick={onSendNow}
         >

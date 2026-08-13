@@ -3,13 +3,11 @@ import _ from "underscore";
 
 import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
 import type {
-  ScheduleBuilderType,
   ScheduleBuilderValue,
   ScheduleValue,
 } from "metabase/common/components/Schedule/types";
 import { isScheduleCronValue } from "metabase/common/components/Schedule/types";
-import type { ScheduleDefaults } from "metabase/common/components/Schedule/utils";
-import { getScheduleDefaults } from "metabase/common/components/Schedule/utils";
+import { getScheduleDefaultsWithoutHour } from "metabase/common/components/Schedule/utils";
 import type { NotificationListItem } from "metabase/notifications/types";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { getEmailDomain, isEmail } from "metabase/utils/email";
@@ -44,16 +42,9 @@ import type {
 
 import type { NotificationTriggerOption } from "./modals/CreateOrEditQuestionAlertModal/types";
 
-export const getAlertScheduleDefaults = (
-  scheduleType: ScheduleBuilderType,
-): ScheduleDefaults => ({
-  ...getScheduleDefaults(scheduleType),
-  schedule_hour: null,
-});
-
 export const DEFAULT_ALERT_SCHEDULE: ScheduleBuilderValue = {
   schedule_type: "daily",
-  ...getAlertScheduleDefaults("daily"),
+  ...getScheduleDefaultsWithoutHour("daily"),
 };
 
 const getDefaultChannelConfig = ({
@@ -393,11 +384,8 @@ export const formatNotificationCheckSchedule = (
   const options = MetabaseSettings.formattingOptions();
 
   if (isScheduleCronValue(value)) {
-    try {
-      return t`Check ${getScheduleExplanation(cronSchedule)}`;
-    } catch {
-      return null;
-    }
+    const explanation = getScheduleExplanation(cronSchedule);
+    return explanation ? t`Check ${explanation}` : null;
   }
 
   const {

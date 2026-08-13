@@ -6,6 +6,7 @@ import type {
   ScheduleSettings,
 } from "metabase-types/api";
 
+import { AM, PM } from "./constants";
 import { Cron, getScheduleStrings } from "./strings";
 import type {
   CronString,
@@ -15,9 +16,6 @@ import type {
 } from "./types";
 import { isScheduleCronValue } from "./types";
 import { clearUnusedScheduleFields } from "./utils";
-
-const AM = 0;
-const PM = 1;
 
 const everyToCronSyntax = (every: number | string) =>
   `${Cron.EveryPrefix}${every}`;

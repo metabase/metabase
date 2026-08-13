@@ -135,9 +135,11 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
       cy.log("alerts modal is open");
       cy.wait("@listAlerts");
-      modal().findByRole("heading", { name: "New alert" }).should("be.visible");
       selectScheduleTime();
-      modal().button("Done").click();
+      modal().within(() => {
+        cy.findByRole("heading", { name: "New alert" }).should("be.visible");
+        cy.button("Done").click();
+      });
       modal().should("not.exist");
 
       cy.log("alerts list modal");

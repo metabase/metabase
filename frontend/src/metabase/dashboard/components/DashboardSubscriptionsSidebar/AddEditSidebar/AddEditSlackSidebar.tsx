@@ -7,7 +7,10 @@ import type {
   ScheduleChangeProp,
   ScheduleValue,
 } from "metabase/common/components/Schedule/types";
-import { toScheduleSettings } from "metabase/common/components/Schedule/utils";
+import {
+  getScheduleDefaultsWithoutHour,
+  toScheduleSettings,
+} from "metabase/common/components/Schedule/utils";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
@@ -137,6 +140,7 @@ export const AddEditSlackSidebar = ({
           )}
           scheduleOptions={channelSpec.schedules}
           verb={t`Send`}
+          getDefaults={getScheduleDefaultsWithoutHour}
           renderScheduleDescription={renderScheduleDescription}
           onScheduleChange={({ value }) =>
             onChannelScheduleChange(toScheduleSettings(value), {

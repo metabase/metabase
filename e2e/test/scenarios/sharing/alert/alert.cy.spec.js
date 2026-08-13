@@ -189,15 +189,15 @@ describe("scenarios > alert", () => {
         cy.findByLabelText("Move, trash, and more…").click();
         H.popover().findByText("Create an alert").click();
 
+        H.selectScheduleTime();
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
 
           addEmailRecipient(deniedEmail);
 
           cy.findByText(adminAlertError);
+          cy.button("Done").should("be.disabled");
         });
-        H.selectScheduleTime();
-        H.modal().button("Done").should("be.disabled");
       });
 
       it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
@@ -221,13 +221,14 @@ describe("scenarios > alert", () => {
 
         cy.findByLabelText("Move, trash, and more…").click();
         H.popover().findByText("Create an alert").click();
+        H.selectScheduleTime();
         H.modal().within(() => {
           cy.findByText("New alert").should("be.visible");
 
           addEmailRecipient(deniedEmail);
+
+          cy.button("Done").click();
         });
-        H.selectScheduleTime();
-        H.modal().button("Done").click();
         cy.findByTestId("toast-undo").within(() => {
           cy.root().should("have.attr", "color", "feedback-negative");
           cy.root().should("have.text", normalUserAlertError);

@@ -15,10 +15,10 @@ import type {
   ScheduleValueType,
 } from "metabase/common/components/Schedule/types";
 import { isScheduleCronValue } from "metabase/common/components/Schedule/types";
+import { getScheduleDefaultsWithoutHour } from "metabase/common/components/Schedule/utils";
 import {
   DEFAULT_ALERT_SCHEDULE,
   formatNotificationScheduleDescription,
-  getAlertScheduleDefaults,
 } from "metabase/notifications/utils";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -122,7 +122,7 @@ export const NotificationSchedule = ({
           value={value}
           scheduleOptions={scheduleOptions}
           minutesOnHourPicker
-          getDefaults={getAlertScheduleDefaults}
+          getDefaults={getScheduleDefaultsWithoutHour}
           renderScheduleDescription={renderScheduleDescription}
           onScheduleChange={handleScheduleChange}
           aria-label={t`Describe how often the alert notification should be sent`}
