@@ -1,7 +1,6 @@
 import type { FormikHelpers } from "formik";
 import { useCallback, useState } from "react";
 
-import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
 } from "metabase/actions/containers/ActionParametersInputForm";
@@ -9,6 +8,7 @@ import { useActionInitialValues } from "metabase/actions/hooks/use-action-initia
 import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
 import { actionApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch } from "metabase/redux";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";

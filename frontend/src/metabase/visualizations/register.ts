@@ -1,3 +1,4 @@
+import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
 import {
   registerSettingWidgets,
   registerVisualization,
@@ -13,11 +14,14 @@ import { ChartSettingFieldPicker } from "./components/settings/ChartSettingField
 import { ChartSettingFieldsPartition } from "./components/settings/ChartSettingFieldsPartition";
 import { ChartSettingFieldsPicker } from "./components/settings/ChartSettingFieldsPicker";
 import { ChartSettingGoalInput } from "./components/settings/ChartSettingGoalInput";
+import { ChartSettingIconRadio } from "./components/settings/ChartSettingIconRadio";
 import { ChartSettingInput } from "./components/settings/ChartSettingInput";
 import { ChartSettingInputNumeric } from "./components/settings/ChartSettingInputNumeric";
+import ChartSettingLinkUrlInput from "./components/settings/ChartSettingLinkUrlInput";
 import { ChartSettingMaxCategories } from "./components/settings/ChartSettingMaxCategories";
 import { ChartSettingMultiSelect } from "./components/settings/ChartSettingMultiSelect";
 import { chartSettingNestedSettings } from "./components/settings/ChartSettingNestedSettings";
+import { ChartSettingNumberInput } from "./components/settings/ChartSettingNumberInput";
 import { ChartSettingOrderedSimple } from "./components/settings/ChartSettingOrderedSimple";
 import { ChartSettingRadio } from "./components/settings/ChartSettingRadio";
 import { ChartSettingSegmentedControl } from "./components/settings/ChartSettingSegmentedControl";
@@ -26,6 +30,7 @@ import { ChartSettingSelect } from "./components/settings/ChartSettingSelect";
 import { ChartSettingSeriesOrder } from "./components/settings/ChartSettingSeriesOrder";
 import { ChartSettingTableColumns } from "./components/settings/ChartSettingTableColumns";
 import { ChartSettingToggle } from "./components/settings/ChartSettingToggle";
+import { ChartSettingsTableFormatting } from "./components/settings/ChartSettingsTableFormatting";
 import { registerJsxFormatting } from "./lib/register-jsx-formatting";
 import { AreaChart } from "./visualizations/AreaChart";
 import { BarChart } from "./visualizations/BarChart";
@@ -84,7 +89,9 @@ function registerVisualizationSettingWidgets() {
   registerSettingWidgets({
     input: ChartSettingInput,
     number: ChartSettingInputNumeric,
+    numberInput: ChartSettingNumberInput,
     radio: ChartSettingRadio,
+    iconRadio: ChartSettingIconRadio,
     select: ChartSettingSelect,
     toggle: ChartSettingToggle,
     segmentedControl: ChartSettingSegmentedControl,
@@ -93,6 +100,9 @@ function registerVisualizationSettingWidgets() {
     fieldsPartition: ChartSettingFieldsPartition,
     color: ChartSettingColorPicker,
     colors: ChartSettingColorsPicker,
+    colorRangeSelector: ColorRangeSelector,
+    linkUrlInput: ChartSettingLinkUrlInput,
+    tableFormatting: ChartSettingsTableFormatting,
     multiselect: ChartSettingMultiSelect,
     enumToggle: ChartSettingEnumToggle,
     goalInput: ChartSettingGoalInput,

@@ -148,6 +148,8 @@ jobs:
   trigger-milestone-check:
     # Posts a Slack FYI about issues that still need review for this release.
     # Informational only — nothing depends on it, so it never blocks the release.
+    #
+    # NOTE: this workflow only runs in https://github.com/metabase/metabase.
     needs: [check-version, check-commit]
     permissions:
       contents: read
@@ -166,6 +168,8 @@ jobs:
     # Sequenced after trigger-milestone-check so that the check sees the milestone
     # in its open state. milestone-check is informational and must never block, so
     # we run regardless of its outcome; only preflight failures suppress this.
+    #
+    # NOTE: this workflow only runs in https://github.com/metabase/metabase.
     needs: [check-version, check-commit, trigger-milestone-check]
     if: ${{ !cancelled() && needs.check-version.result == 'success' && needs.check-commit.result == 'success' }}
     permissions:

@@ -18,7 +18,7 @@ import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { getSubpathSafeUrl } from "metabase/urls";
 import { measureText } from "metabase/utils/measure-text";
 import { retry } from "metabase/utils/retry";
-import visualizations, { registerVisualization } from "metabase/visualizations";
+import { registerVisualization, visualizations } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,

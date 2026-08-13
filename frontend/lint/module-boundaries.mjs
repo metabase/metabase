@@ -341,9 +341,6 @@ const elements = [
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
-    // NewItemMenu's spec mounts app-tier NewModals to assert menu clicks open modals,
-    // so the test is app-tier too.
-    "frontend/src/metabase/common/components/NewItemMenu/NewItemMenu.unit.spec.tsx",
     // Entry point for the static-viz bundle (server-side chart rendering in
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
