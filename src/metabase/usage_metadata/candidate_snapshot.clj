@@ -39,6 +39,8 @@
 (def ^:private source-card-batch-size 100)
 (def ^:private persistence-write-batch-size 500)
 (def ^:private reconciliation-query-batch-size 200)
+(def ^:private prune-batch-size 200)
+(def ^:private max-prune-batches-per-run 25)
 (def ^:private reconciliation-write-batch-size 1000)
 
 (defn- sha256
@@ -469,16 +471,22 @@
     {:table-count table_count}))
 
 (defn prune-old-candidate-snapshots!
-  "Delete candidate payloads belonging to older runs in bounded batches."
+  "Delete candidate payloads belonging to older runs, in bounded batches.
+
+  Caps total work at `max-prune-batches-per-run` batches so a large backlog (e.g. the first run
+  after enabling the feature, or after an algorithm-version bump) can't extend how long
+  materialize! holds the cluster-wide snapshot-action lock; any remainder is picked up by the
+  next run."
   [current-run-id]
-  (loop []
-    (let [candidate-ids (t2/select-pks-set :model/UsageMetadataCandidate
-                                           {:where   [:not= :run_id current-run-id]
-                                            :order-by [[:id :asc]]
-                                            :limit   200})]
-      (when (seq candidate-ids)
-        (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids])
-        (recur)))))
+  (loop [batches-remaining max-prune-batches-per-run]
+    (when (pos? batches-remaining)
+      (let [candidate-ids (t2/select-pks-set :model/UsageMetadataCandidate
+                                             {:where    [:not= :run_id current-run-id]
+                                              :order-by [[:id :asc]]
+                                              :limit    prune-batch-size})]
+        (when (seq candidate-ids)
+          (t2/delete! :model/UsageMetadataCandidate :id [:in candidate-ids])
+          (recur (dec batches-remaining)))))))
 
 (defn prune-old-snapshots!
   "Retire old candidate payloads and bound retained run diagnostics."
