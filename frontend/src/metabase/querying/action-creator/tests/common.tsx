@@ -21,7 +21,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import ActionCreator from "../ActionCreator";
+import { ActionCreator } from "../ActionCreator";
 
 export const SITE_URL = "http://localhost:3000";
 

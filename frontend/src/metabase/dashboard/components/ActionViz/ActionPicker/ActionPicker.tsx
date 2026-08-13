@@ -2,11 +2,11 @@ import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import ActionCreator from "metabase/actions/containers/ActionCreator";
 import { useListActionsQuery, useSearchQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
+import { ActionCreator } from "metabase/querying/action-creator";
 import {
   ActionIcon,
   Button,
