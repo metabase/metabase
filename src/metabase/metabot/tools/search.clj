@@ -214,8 +214,12 @@
                            (t2/select [:model/Collection :id :name :location :type]
                                       :id [:in ancestor-delta]))
         id->row      (u/index-by :id (concat direct-rows ancestor-rows))
+        ;; A table (and so a measure/segment bound to it) is reachable through *data* permissions,
+        ;; which say nothing about its collection. Everything name-shaped is gated on reading that
+        ;; collection; only the root's `:type` survives below, per the disclosure note there.
+        readable-ids (into #{} (comp (filter mi/can-read?) (map :id)) direct-rows)
         path-of      (fn [coll-id]
-                       (when-let [{:keys [name]} (get id->row coll-id)]
+                       (when-let [{:keys [name]} (and (readable-ids coll-id) (get id->row coll-id))]
                          ;; Only readable ancestors (from :effective_location) contribute names,
                          ;; so we never leak the name of a collection the user can't see.
                          (let [ancestor-names (->> (ancestor-ids (get id->eff-loc coll-id))
@@ -243,6 +247,11 @@
             (let [cid  (result-collection-id r)
                   path (when cid (path-of cid))]
               (cond-> r
+                ;; drop the whole nested map when its collection is unreadable: it carries the name,
+                ;; and `enrich-with-collection-descriptions` may already have added the description
+                (and cid (not (readable-ids cid)) (not (collection-result? r)))
+                (dissoc :collection)
+
                 path (assoc :collection_path path)
                 (and path (collection-result? r)) (assoc :full_path path)
                 ;; Only expose the premium `:library_member` signal when the feature is on,

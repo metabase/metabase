@@ -523,6 +523,35 @@
                   (is (nil? (:collection (by-id final-id)))
                       "an unpublished table carries no collection map"))))))))))
 
+(deftest unreadable-collection-name-not-leaked-test
+  ;; A published table is reachable through *data* permissions, which say nothing about the
+  ;; collection it was published into — unlike a card, whose search hit already implies collection
+  ;; read. So neither the table nor a measure bound to it may surface that collection's name.
+  (testing "a collection the user cannot read contributes no name to a table or measure result"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-additional-premium-features #{:library}
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Collection {secret-id :id} {:name "Pb6SecretLibColl" :type "library-data"}
+                         :model/Database   {db-id :id}     {:name "Pb6DB"}
+                         :model/Table {tbl-id :id} {:name "Pb6PublishedTable" :db_id db-id
+                                                    :is_published true :collection_id secret-id}
+                         :model/Measure {m-id :id} {:name "Pb6Measure" :table_id tbl-id}]
+            (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+            (mt/with-test-user :rasta
+              (let [by-ref (->> (search/search {:query "Pb6" :entity-types ["table" "measure"]})
+                                (map (juxt (juxt :type :id) identity))
+                                (into {}))
+                    tbl    (by-ref ["table" tbl-id])
+                    msr    (by-ref ["measure" m-id])]
+                (is (some? tbl) "the table is still reachable via data perms")
+                (doseq [[label r] [["table" tbl] ["measure" msr]]]
+                  (testing label
+                    (is (nil? (:collection_path r)))
+                    (is (nil? (:collection r)))))
+                (testing "library membership still lands — it discloses the root's type, never a name"
+                  (is (true? (:library_member tbl)))
+                  (is (true? (:library_member msr))))))))))))
+
 (deftest measure-segment-inherit-library-membership-test
   ;; A measure or segment is only surfaced by `retrieve_library_entities` because its binding table
   ;; was published into the Library, so it must carry the same `library_member` the table does.
