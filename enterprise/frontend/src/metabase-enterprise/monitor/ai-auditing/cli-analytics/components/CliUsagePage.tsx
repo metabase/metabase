@@ -3,8 +3,6 @@ import { t } from "ttag";
 import { SimpleGrid, Stack, Title } from "metabase/ui";
 import { buildCallsByDayByStatusQuery } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/query-utils";
 
-import { useCliHasData } from "../hooks/useCliHasData";
-
 import { useCliAnalyticsContext } from "./CliAnalyticsSectionLayout";
 import { CliBreakoutChart } from "./CliBreakoutChart";
 import { CliCallerLivenessTable } from "./CliCallerLivenessTable";
@@ -12,15 +10,7 @@ import { CliCallsTimelineChart } from "./CliCallsTimelineChart";
 
 /** The CLI analytics usage charts, rendered at `/monitor/ai-auditing/cli/usage`. */
 export function CliUsagePage() {
-  const { dataSources, chartFilters } = useCliAnalyticsContext();
-
-  // Only surface the errors section when the current filters actually match failed calls, so a
-  // healthy instance doesn't show a row of empty error charts.
-  const { hasData: hasErrors } = useCliHasData({
-    ...dataSources,
-    ...chartFilters,
-    errorsOnly: true,
-  });
+  const { dataSources, chartFilters, hasErrors } = useCliAnalyticsContext();
 
   return (
     <Stack gap="lg">

@@ -3,23 +3,13 @@ import { t } from "ttag";
 import { SimpleGrid, Stack, Title } from "metabase/ui";
 import { buildCallsByDayByStatusQuery } from "metabase-enterprise/monitor/ai-auditing/mcp-analytics/query-utils";
 
-import { useMcpHasData } from "../hooks/useMcpHasData";
-
 import { useMcpAnalyticsContext } from "./McpAnalyticsSectionLayout";
 import { McpBreakoutChart } from "./McpBreakoutChart";
 import { McpCallsTimelineChart } from "./McpCallsTimelineChart";
 
 /** The MCP analytics usage charts, rendered at `/monitor/ai-auditing/mcp/usage`. */
 export function McpUsagePage() {
-  const { dataSources, chartFilters } = useMcpAnalyticsContext();
-
-  // Only surface the errors section when the current filters actually match failed calls, so a
-  // healthy instance doesn't show a row of empty error charts.
-  const { hasData: hasErrors } = useMcpHasData({
-    ...dataSources,
-    ...chartFilters,
-    errorsOnly: true,
-  });
+  const { dataSources, chartFilters, hasErrors } = useMcpAnalyticsContext();
 
   return (
     <Stack gap="lg">

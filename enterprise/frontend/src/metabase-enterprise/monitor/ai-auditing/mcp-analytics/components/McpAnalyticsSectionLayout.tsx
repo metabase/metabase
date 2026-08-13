@@ -54,6 +54,7 @@ export type McpAnalyticsContextValue = {
   chartFilters: McpChartFilters;
   hasTenants: boolean;
   hasPii: boolean;
+  hasErrors: boolean;
   page: number;
   total: number;
   onPageChange: (page: number, options?: PatchUrlStateOptions) => void;
@@ -123,6 +124,11 @@ export function McpAnalyticsSectionLayout(): ReactNode {
 
   const { isInitialLoading, isRefetching, hasData, count, error } =
     useMcpHasData({ ...dataSources, ...chartFilters });
+  const { hasData: hasErrors } = useMcpHasData({
+    ...dataSources,
+    ...chartFilters,
+    errorsOnly: true,
+  });
   const showEmpty = !isInitialLoading && !isRefetching && !hasData;
 
   const usagePath = Urls.monitorAiAuditingMcpUsage();
@@ -152,6 +158,7 @@ export function McpAnalyticsSectionLayout(): ReactNode {
     chartFilters,
     hasTenants,
     hasPii,
+    hasErrors,
     page,
     total: count,
     onPageChange: (newPage, options) =>

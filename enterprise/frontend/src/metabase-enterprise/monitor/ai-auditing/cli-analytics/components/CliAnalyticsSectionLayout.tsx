@@ -54,6 +54,7 @@ export type CliAnalyticsContextValue = {
   chartFilters: CliChartFilters;
   hasTenants: boolean;
   hasPii: boolean;
+  hasErrors: boolean;
   page: number;
   total: number;
   onPageChange: (page: number, options?: PatchUrlStateOptions) => void;
@@ -121,6 +122,11 @@ export function CliAnalyticsSectionLayout(): ReactNode {
 
   const { isInitialLoading, isRefetching, hasData, count, error } =
     useCliHasData({ ...dataSources, ...chartFilters });
+  const { hasData: hasErrors } = useCliHasData({
+    ...dataSources,
+    ...chartFilters,
+    errorsOnly: true,
+  });
   const showEmpty = !isInitialLoading && !isRefetching && !hasData;
 
   const usagePath = Urls.monitorAiAuditingCliUsage();
@@ -150,6 +156,7 @@ export function CliAnalyticsSectionLayout(): ReactNode {
     chartFilters,
     hasTenants,
     hasPii,
+    hasErrors,
     page,
     total: count,
     onPageChange: (newPage, options) =>
