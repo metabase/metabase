@@ -533,8 +533,8 @@ export function DashCardVisualization({
     dashcardId: dashcard.id,
   });
 
-  // Visualizer cards render remapped columns, so click objects must be mapped
-  // back to the columns of the underlying questions before computing actions.
+  // Visualizer cards render remapped columns,
+  // so click objects must be mapped back to the columns of the underlying questions before computing actions.
   const transformClickObject = useMemo(() => {
     if (!isVisualizerDashboardCard(dashcard) || !rawSeries) {
       return undefined;
