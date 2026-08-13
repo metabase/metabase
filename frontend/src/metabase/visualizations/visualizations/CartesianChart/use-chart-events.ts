@@ -39,6 +39,7 @@ import {
 import type { CardId } from "metabase-types/api";
 
 import { getVisualizerSeriesCardIndex } from "../../lib/series";
+
 import type { CartesianHoveredObject } from "./types";
 import { useBrush } from "./use-brush";
 import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
