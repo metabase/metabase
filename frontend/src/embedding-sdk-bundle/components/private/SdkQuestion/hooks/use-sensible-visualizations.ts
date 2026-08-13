@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { useToast } from "metabase/common/hooks";
+import { logUnavailableCustomVizMessage } from "embedding-sdk-bundle/lib/log-unavailable-custom-viz";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { getSensibleVisualizations } from "metabase/visualizations/lib/sensibility";
 import type { CardDisplayType } from "metabase-types/api";
@@ -9,7 +9,6 @@ import { useSdkQuestionContext } from "../context";
 
 export const useSensibleVisualizations = () => {
   const { queryResults } = useSdkQuestionContext();
-  const [sendToast] = useToast();
   const { plugins: customVizPlugins } = PLUGIN_CUSTOM_VIZ.useCustomVizPlugins();
   const [pluginsLoadedVersion, setPluginsLoadedVersion] = useState(0);
 
@@ -23,7 +22,9 @@ export const useSensibleVisualizations = () => {
     let cancelled = false;
     Promise.all(
       customVizPlugins.map((plugin) =>
-        PLUGIN_CUSTOM_VIZ.loadCustomVizPlugin(plugin, { onMessage: sendToast }),
+        PLUGIN_CUSTOM_VIZ.loadCustomVizPlugin(plugin, {
+          onMessage: logUnavailableCustomVizMessage,
+        }),
       ),
     ).then(() => {
       if (!cancelled) {
@@ -33,7 +34,7 @@ export const useSensibleVisualizations = () => {
     return () => {
       cancelled = true;
     };
-  }, [customVizPlugins, sendToast]);
+  }, [customVizPlugins]);
 
   const result = queryResults?.[0] ?? null;
 

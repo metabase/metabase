@@ -155,6 +155,7 @@ function useCustomVizDevReload(
 
 export type UseAutoLoadCustomVizPluginOptions = {
   sandboxMode?: SandboxMode;
+  onMessage?: (toast: ToastArgs) => void;
 };
 
 /**
@@ -174,6 +175,7 @@ export function useAutoLoadCustomVizPlugin(
   const { sandboxMode = "hosted" } = options;
   const { plugins, disabled } = useCustomVizPlugins();
   const [sendToast] = useToast();
+  const onMessage = options.onMessage ?? sendToast;
   const [loading, setLoadingState] = useState(false);
   const loadingRef = useRef<string | null>(null);
 
@@ -204,7 +206,7 @@ export function useAutoLoadCustomVizPlugin(
       setLoading(true);
       try {
         await loadCustomVizPlugin(pluginToLoad, {
-          onMessage: sendToast,
+          onMessage,
           sandboxMode,
         });
       } finally {
@@ -212,7 +214,7 @@ export function useAutoLoadCustomVizPlugin(
         setLoading(false);
       }
     },
-    [sendToast, sandboxMode, setLoading],
+    [onMessage, sandboxMode, setLoading],
   );
 
   useEffect(() => {
@@ -228,7 +230,7 @@ export function useAutoLoadCustomVizPlugin(
     load(plugin);
   }, [display, plugins, load]);
 
-  useCustomVizDevReload(display, plugins, setLoading, sendToast, sandboxMode);
+  useCustomVizDevReload(display, plugins, setLoading, onMessage, sandboxMode);
 
   // `loading` state drives re-renders when async load completes.
   // Without it, the Map-based check alone wouldn't trigger a re-render.
