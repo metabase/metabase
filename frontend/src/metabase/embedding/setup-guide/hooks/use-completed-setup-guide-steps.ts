@@ -31,7 +31,7 @@ export const useCompletedSetupGuideSteps = (): {
         "embed-production": false,
         "data-permissions-and-enable-tenants": false,
 
-        // hub-only steps
+        // embedding hub-only steps
         "create-custom-theme": false,
         "configure-ai": false,
 

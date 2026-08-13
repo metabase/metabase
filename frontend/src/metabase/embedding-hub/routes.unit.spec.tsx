@@ -77,7 +77,7 @@ describe("embedding hub routes", () => {
     expect(await screen.findByTestId(testId)).toBeInTheDocument();
   });
 
-  it("redirects the hub root to Get started", async () => {
+  it("redirects the embedding hub root to Get started", async () => {
     setup("/embedding");
 
     expect(await screen.findByTestId("get-started-page")).toBeInTheDocument();
