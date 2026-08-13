@@ -1,6 +1,5 @@
 import cx from "classnames";
-import type { ReactElement, ReactNode } from "react";
-import { useMemo } from "react";
+import { type ReactElement, type ReactNode, useMemo } from "react";
 import { c, t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
@@ -12,117 +11,15 @@ import type {
   OnPin,
   OnRestore,
   OnToggleBookmark,
-  OnToggleSelected,
 } from "metabase/common/collections/types";
 import { isItemModel, isItemPinned } from "metabase/common/collections/utils";
-import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Link } from "metabase/common/components/Link";
-import { Swapper } from "metabase/common/components/Swapper";
-import type { IconData } from "metabase/common/utils/icon";
-import CS from "metabase/css/core/index.css";
-import type { IconProps } from "metabase/ui";
-import {
-  ActionIcon,
-  Checkbox,
-  Ellipsified,
-  Icon,
-  Menu,
-  Tooltip,
-} from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
+import { ActionIcon, Flex, Icon, Menu, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors";
 import * as Urls from "metabase/urls";
 import type { CollectionItem, IconName } from "metabase-types/api";
 
-import S from "./EntityItem.module.css";
-import {
-  EntityIconWrapper,
-  EntityItemActions,
-  EntityItemWrapper,
-  EntityMenuContainer,
-} from "./EntityItem.styled";
-
-type EntityIconCheckBoxProps = {
-  variant?: string;
-  icon: IconProps | IconData;
-  pinned?: boolean;
-  selectable?: boolean;
-  selected?: boolean;
-  showCheckbox?: boolean;
-  disabled?: boolean;
-  onToggleSelected?: () => void;
-};
-
-const EntityIconCheckBox = ({
-  variant,
-  icon,
-  pinned,
-  selectable,
-  selected,
-  showCheckbox,
-  disabled,
-  onToggleSelected,
-  ...props
-}: EntityIconCheckBoxProps) => {
-  const iconSize = variant === "small" ? 12 : 16;
-  const handleClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
-    e.preventDefault();
-    onToggleSelected?.();
-    // helps keyboard shortcuts work for collection items
-    e.currentTarget.focus();
-  };
-
-  return (
-    <EntityIconWrapper
-      isPinned={pinned}
-      onClick={selectable ? handleClick : () => {}}
-      disabled={disabled}
-      {...props}
-    >
-      {selectable ? (
-        <Swapper
-          defaultElement={
-            <EntityIcon
-              {...icon}
-              color={icon.color ?? "inherit"}
-              size={iconSize}
-            />
-          }
-          swappedElement={
-            <Checkbox
-              checked={selected}
-              size={iconSize === 12 ? "xs" : "sm"}
-              // Visual-only; clicks are handled by the wrapping button.
-              style={{ pointerEvents: "none" }}
-            />
-          }
-          isSwapped={selected || showCheckbox}
-        />
-      ) : (
-        <EntityIcon {...icon} color={icon.color ?? "inherit"} size={iconSize} />
-      )}
-    </EntityIconWrapper>
-  );
-};
-
-function EntityItemName({
-  name,
-  variant,
-  ...props
-}: {
-  name: string;
-  variant?: string;
-} & React.HTMLAttributes<HTMLHeadingElement>) {
-  return (
-    <h3
-      className={cx(CS.overflowHidden, {
-        [CS.textList]: variant === "list",
-      })}
-      {...props}
-    >
-      <Ellipsified>{name}</Ellipsified>
-    </h3>
-  );
-}
+import S from "./EntityItemMenu.module.css";
 
 type EntityItemMenuAction = {
   title: string;
@@ -152,7 +49,7 @@ function MenuItemTooltip({
   );
 }
 
-function EntityItemMenu({
+export function EntityItemMenu({
   item,
   isBookmarked,
   isSelected,
@@ -287,7 +184,7 @@ function EntityItemMenu({
     return null;
   }
   return (
-    <EntityMenuContainer style={{ textAlign: "center" }}>
+    <Flex align="center" ta="center" c="text-secondary">
       <Menu position="bottom-end">
         <Menu.Target>
           <ActionIcon
@@ -356,82 +253,6 @@ function EntityItemMenu({
           })}
         </Menu.Dropdown>
       </Menu>
-    </EntityMenuContainer>
+    </Flex>
   );
 }
-
-export const EntityItem = ({
-  name,
-  iconName,
-  onPin,
-  onMove,
-  onCopy,
-  onArchive,
-  selected,
-  onToggleSelected,
-  selectable = false,
-  variant,
-  item,
-  buttons,
-  extraInfo,
-  pinned,
-  disabled,
-}: {
-  name: string;
-  iconName: IconName;
-  onPin?: OnPin;
-  onMove?: OnMove;
-  onCopy?: OnCopy;
-  onArchive?: OnArchive;
-  selected?: boolean;
-  onToggleSelected?: OnToggleSelected;
-  selectable?: boolean;
-  variant?: string;
-  item: CollectionItem;
-  buttons?: ReactNode;
-  extraInfo?: ReactNode;
-  pinned?: boolean;
-  disabled?: boolean;
-}) => {
-  const icon = useMemo(() => ({ name: iconName }), [iconName]);
-
-  return (
-    <EntityItemWrapper
-      className={cx(CS.hoverParent, CS.hoverVisibility, {
-        [CS.bgLightHover]: variant === "list",
-      })}
-      variant={variant}
-      disabled={disabled}
-    >
-      <EntityIconCheckBox
-        variant={variant}
-        icon={icon}
-        pinned={pinned}
-        selectable={selectable}
-        selected={selected}
-        disabled={disabled}
-        onToggleSelected={onToggleSelected}
-      />
-
-      <div className={CS.overflowHidden}>
-        <EntityItemName name={name} />
-        <div>{extraInfo && extraInfo}</div>
-      </div>
-
-      <EntityItemActions onClick={(e) => e.preventDefault()}>
-        {buttons}
-        <EntityItemMenu
-          item={item}
-          onPin={onPin}
-          onMove={onMove}
-          onCopy={onCopy}
-          onArchive={onArchive}
-        />
-      </EntityItemActions>
-    </EntityItemWrapper>
-  );
-};
-
-EntityItem.IconCheckBox = EntityIconCheckBox;
-EntityItem.Name = EntityItemName;
-EntityItem.Menu = EntityItemMenu;

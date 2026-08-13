@@ -25,7 +25,6 @@ import {
   isItemPinned,
 } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { EntityItem } from "metabase/common/components/EntityItem";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import {
   canMoveItem,
@@ -40,6 +39,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import S from "./ActionMenu.module.css";
+import { EntityItemMenu } from "./EntityItemMenu";
 
 export interface ActionMenuProps {
   className?: string;
@@ -163,7 +163,7 @@ function ActionMenuInner({
 
   return (
     <>
-      <EntityItem.Menu
+      <EntityItemMenu
         className={`${S.EntityItemMenu} ${className || ""}`}
         item={item}
         isBookmarked={isBookmarked}
