@@ -113,13 +113,13 @@ import schema from "../src/metabase.data";
 export const RevenueQuery = defineQuery({ source: schema.tables.orders });
 ```
 
-Ensure `package.json` defines `"sync-queries": "embedding-sdk-react data-apps sync-queries"`. Run `npm run sync-queries` after adding, changing, renaming, or removing a query definition. The command loads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, creates or reconciles the saved questions, injects `savedQuestionSourceId`, and updates `queries_metadata.json`.
+Ensure `package.json` defines `"sync-queries": "embedding-sdk-react data-apps sync-queries"` and `"build": "npm run sync-queries && vite build"`. After adding, changing, renaming, or removing a query definition, run `npm run build`; it synchronizes before bundling. Use `npm run sync-queries` directly only when generated query state must be inspected before a build. The synchronization command loads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, creates or reconciles the saved questions, injects `savedQuestionSourceId`, and updates `queries_metadata.json`.
 
 Before synchronization, verify every named `defineQuery(...)` export is under the root-level `queries/` directory and that none remain under `src/queries/`. Discovery supports `.js`, `.jsx`, `.ts`, `.tsx`, `.cjs`, `.cts`, `.mjs`, and `.mts` files. Treat a successful run that discovers no definitions as a failure when the app contains Metabase queries.
 
 Treat inline `savedQuestionSourceId` values and `queries_metadata.json` as generated synchronization state. Do not delete or manually edit either one. If an inline ID is accidentally missing but the query's table and authored hash still match one unclaimed lockfile entry, `npm run sync-queries` restores it automatically.
 
-Do not build, test, or hand off the app until synchronization succeeds, every live definition contains a positive `savedQuestionSourceId`, and `queries_metadata.json` contains its matching entry. Commit both generated changes. Production builds fail when these files are stale.
+Do not test or hand off the app until `npm run build` succeeds, every live definition contains a positive `savedQuestionSourceId`, and `queries_metadata.json` contains its matching entry. Commit both generated changes. The build stops before bundling when synchronization fails.
 
 Keep fixed permission-boundary filters, aggregations, and breakouts inside the `defineQuery` definition. Synchronization materializes that authored table query as a saved question. Don't apply the same clauses again outside it.
 
@@ -652,6 +652,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 ## Final Checks
 
 - Run `npm run typecheck`.
+- Run `npm run build`; it synchronizes queries before producing the bundle.
 - Keep TypeScript diagnostics compact in the chat or handoff. Use the full output locally to fix the app, but report grouped root causes and only a few representative diagnostics instead of pasting the entire `tsc` output.
 - Verify every rendered value can be traced to a returned row property, schema field, measure, or deterministic transform.
 - Search touched files for `row[0]`, `row[1]`, `row.orderedAt`, `row.orderDate`, `as unknown as`, `DisplayRow`, `<select`, `margin`, `rate`, `score`, `percent`, `%`, `* 100`, and `.toFixed`; fix positional rows, result-key guesses, entity `<select>` filters, and unsupported business-field interpretations.
