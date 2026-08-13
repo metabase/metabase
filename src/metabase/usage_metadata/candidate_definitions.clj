@@ -75,13 +75,14 @@
 (defn relation-for-measure
   "Classify the structural relationship between a candidate and existing Measure."
   [candidate existing]
-  (cond
-    (= (:signature candidate) (:signature existing)) :exact
-    (= (or (get candidate reconciliation-measure-base)
-           (measure-base (:definition candidate)))
-       (or (get existing reconciliation-measure-base)
-           (measure-base (:definition existing))))   :same-base
-    :else                                             nil))
+  (let [candidate-base (or (get candidate reconciliation-measure-base)
+                           (measure-base (:definition candidate)))
+        existing-base  (or (get existing reconciliation-measure-base)
+                           (measure-base (:definition existing)))]
+    (cond
+      (= (:signature candidate) (:signature existing))       :exact
+      (and candidate-base (= candidate-base existing-base))  :same-base
+      :else                                                   nil)))
 
 (defn existing-signature
   "Build the mining-compatible signature for an existing Library entity."
