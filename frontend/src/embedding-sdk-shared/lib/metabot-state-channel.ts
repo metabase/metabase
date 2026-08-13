@@ -1,9 +1,10 @@
-import type { UseMetabotResult } from "embedding-sdk-bundle/types/metabot";
-
 import { getWindow } from "./get-window";
 
+// The payload is opaque here. The bundle publishes its `UseMetabotResult` and
+// the package reads it back with the same type parameter; both sides compile
+// against the same bundle version (see the collision note below).
 type MetabotStateChannel = {
-  value: UseMetabotResult | null;
+  value: unknown;
   listeners: Set<() => void>;
 };
 
@@ -28,7 +29,7 @@ function getChannel(): MetabotStateChannel {
   return windowObject[METABOT_STATE_KEY];
 }
 
-export function publishMetabotState(value: UseMetabotResult | null): void {
+export function publishMetabotState(value: unknown): void {
   const channel = getChannel();
   channel.value = value;
   channel.listeners.forEach((listener) => listener());
@@ -42,8 +43,10 @@ export function subscribeMetabotState(listener: () => void): () => void {
   };
 }
 
-export function getMetabotStateSnapshot(): UseMetabotResult | null {
-  return getChannel().value;
+export function getMetabotStateSnapshot<TState>(): TState | null {
+  // The channel stores the payload untyped so this module never imports the
+  // bundle's types. The reader picks the type the publisher used.
+  return getChannel().value as TState | null;
 }
 
 export type { MetabotStateChannel };
