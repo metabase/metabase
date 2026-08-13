@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { discoverQueries } from "./discover";
+import { isPositiveInteger } from "./guards";
 import { readQueryLockfile } from "./lockfile";
 import { MetabaseClient } from "./metabase-client";
 import { reconcileQueries } from "./reconcile";
@@ -10,10 +11,6 @@ export interface SyncQueriesOptions {
   metabaseUrl: string;
   apiKey: string;
   log?: (message: string) => void;
-}
-
-function isPositiveInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
 export async function checkQuerySync(appRoot: string) {

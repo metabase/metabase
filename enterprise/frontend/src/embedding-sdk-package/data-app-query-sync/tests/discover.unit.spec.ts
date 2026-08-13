@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { injectSavedQuestionId } from "../ast/query-source";
 import { discoverQueries } from "../discover";
 import { checkQuerySync } from "../sync";
 
@@ -26,7 +27,7 @@ describe("query discovery", () => {
     ]);
   });
 
-  it("discovers direct named definitions and rejects copied IDs", async () => {
+  it("rejects copied saved question IDs", async () => {
     const appRoot = makeApp();
     writeQuery(
       appRoot,
@@ -36,6 +37,21 @@ describe("query discovery", () => {
     await expect(discoverQueries(appRoot)).rejects.toThrow(
       "Saved question 10 is referenced by",
     );
+  });
+
+  it("replaces a quoted saved question ID", async () => {
+    const appRoot = makeApp();
+    const filePath = writeQuery(
+      appRoot,
+      `export const Orders = defineQuery({ "savedQuestionSourceId": 10, source: { type: "table", id: 1 } });`,
+    );
+    const [query] = await discoverQueries(appRoot);
+
+    injectSavedQuestionId(query, 20);
+
+    const contents = fs.readFileSync(filePath, "utf8");
+    expect(contents).toContain("savedQuestionSourceId: 20");
+    expect(contents).not.toContain('savedQuestionSourceId": 10');
   });
 
   it("fails a read-only build check when source and lockfile drift", async () => {

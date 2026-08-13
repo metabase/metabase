@@ -239,9 +239,10 @@ describe("scenarios > data apps > SDK runtime", () => {
             // return the same rows: with no dynamic part, with one, and with one
             // layered on a static query that aggregates.
             ["static", "dynamic", "aggregated"].forEach((testCase) => {
-              cy.findByTestId(`published-source-case-${testCase}`, {
-                timeout: 30000,
-              }).should("have.text", "match");
+              cy.findByTestId(`published-source-case-${testCase}`).should(
+                "have.text",
+                "match",
+              );
             });
 
             // A match on two empty results would be vacuous.

@@ -24,4 +24,13 @@ describe("data app commands", () => {
 
     expect(syncQueriesAction).toHaveBeenCalledWith("data_apps/orders");
   });
+
+  it("runs query synchronization from the current directory by default", async () => {
+    const program = new Command();
+    addDataAppsCommands(program);
+
+    await program.parseAsync(["node", "cli", "data-apps", "sync-queries"]);
+
+    expect(syncQueriesAction).toHaveBeenCalledWith(process.cwd());
+  });
 });

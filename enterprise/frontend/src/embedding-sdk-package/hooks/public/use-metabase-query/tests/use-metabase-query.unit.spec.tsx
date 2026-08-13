@@ -329,7 +329,10 @@ describe("dynamic query clauses", () => {
     // A new object with the same contents — a UI rebuilding it every render.
     rerender({ dynamicQuery: { limit: 10 } });
 
-    await waitFor(() => expect(resolveQuery).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(resolveQuery).toHaveBeenCalledTimes(1);
   });
 
   it("does not refetch when a re-render rebuilds both arguments", async () => {
@@ -358,7 +361,10 @@ describe("dynamic query clauses", () => {
     rerender();
     rerender();
 
-    await waitFor(() => expect(queryDataset).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(queryDataset).toHaveBeenCalledTimes(1);
     expect(resolveQuery).toHaveBeenCalledTimes(1);
   });
 

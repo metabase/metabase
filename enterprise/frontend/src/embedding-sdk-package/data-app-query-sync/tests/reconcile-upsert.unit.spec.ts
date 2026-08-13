@@ -73,7 +73,11 @@ describe("query reconciliation upserts", () => {
       apiKey: "secret",
       log: jest.fn(),
     });
-    expect(requests.filter(({ method }) => method === "POST")).toHaveLength(5);
+    expect(
+      requests.filter(
+        ({ method, pathname }) => method === "POST" && pathname === "/api/card",
+      ),
+    ).toHaveLength(1);
     expect(
       requests.filter(
         ({ method, pathname }) =>

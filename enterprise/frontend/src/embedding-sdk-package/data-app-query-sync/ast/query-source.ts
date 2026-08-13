@@ -46,11 +46,17 @@ export function injectSavedQuestionId(query: DiscoveredQuery, id: number) {
   }
 
   const contents = source.sourceFile.text;
-  const position = source.object.getStart(source.sourceFile) + 1;
-  fs.writeFileSync(
-    query.filePath,
-    `${contents.slice(0, position)}\n  savedQuestionSourceId: ${id},${contents.slice(position)}`,
+  const existing = source.object.properties.find(
+    (property) =>
+      ts.isPropertyAssignment(property) &&
+      (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
+      property.name.text === "savedQuestionSourceId",
   );
+  const replacement = `savedQuestionSourceId: ${id}`;
+  const updated = existing
+    ? `${contents.slice(0, existing.getStart(source.sourceFile))}${replacement}${contents.slice(existing.getEnd())}`
+    : `${contents.slice(0, source.object.getStart(source.sourceFile) + 1)}\n  ${replacement},${contents.slice(source.object.getStart(source.sourceFile) + 1)}`;
+  fs.writeFileSync(query.filePath, updated);
 }
 
 function listQueryFiles(directory: string): string[] {

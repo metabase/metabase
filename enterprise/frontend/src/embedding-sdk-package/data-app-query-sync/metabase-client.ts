@@ -16,13 +16,13 @@ export class MetabaseClient {
   ) {}
 
   private async request<T>(pathname: string, init?: RequestInit): Promise<T> {
-    const requestUrl = new URL(
-      `/api/${pathname.replace(/^\//, "")}`,
-      this.baseUrl,
-    );
+    const baseUrl = new URL(this.baseUrl);
+    baseUrl.pathname = `${baseUrl.pathname.replace(/\/?$/, "/")}api/${pathname.replace(/^\//, "")}`;
+    const requestUrl = baseUrl;
     const method = (init?.method ?? "GET").toUpperCase();
     const response = await fetch(requestUrl, {
       ...init,
+      signal: init?.signal ?? AbortSignal.timeout(60_000),
       headers: {
         "content-type": "application/json",
         "x-api-key": this.apiKey,
