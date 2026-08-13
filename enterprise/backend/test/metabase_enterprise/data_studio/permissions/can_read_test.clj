@@ -27,7 +27,7 @@
               (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                              :model/User {user-id :id} {}
                              :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
-                             :model/Collection {collection-id :id} {}]
+                             :model/Collection {collection-id :id} {:type "library-data"}]
                 ;; Ensure All Users group has no create-queries permission and set view-data
                 ;; (user is automatically in this group)
                 (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data      view-data)

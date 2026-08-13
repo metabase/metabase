@@ -29,5 +29,8 @@
    [:fn
     {:error/message "A segment must have exactly one stage"}
     #(= (-> % :stages count) 1)]
-   [:map
-    [:stages [:sequential [:ref ::stage.segment]]]]])
+   ;; checked with `:fn` rather than a `[:map [:stages ...]]` conjunct: a map conjunct declares only the keys it names,
+   ;; so it would strip every other key of the query before the sibling `::lib.schema/query` saw it
+   [:fn
+    {:error/message "A segment's stages must be segment stages"}
+    #(mr/validate [:sequential [:ref ::stage.segment]] (:stages %))]])

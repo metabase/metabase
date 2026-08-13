@@ -55,7 +55,13 @@
   (if (empty? tables)
     #{}
     (let [input-table-id  (keyword (name input-field) "table_id")
-          output-table-id (keyword (name output-field) "table_id")]
+          output-table-id (keyword (name output-field) "table_id")
+          not-in-tables   (if (map? tables)
+                            [:not [:exists (-> tables
+                                               (assoc :select [1])
+                                               (update :where (fn [where]
+                                                                [:and where [:= :id output-table-id]])))]]
+                            [:not [:in output-table-id tables]])]
       (into #{} (map :table_id)
             (t2/reducible-query {:select [[output-table-id :table_id]]
                                  :from   [[(t2/table-name :model/Dimension) :dim]]
@@ -66,7 +72,7 @@
                                  :where  [:and
                                           [:= :dim.type "external"]
                                           [:in input-table-id tables]
-                                          [:not [:in output-table-id tables]]]})))))
+                                          not-in-tables]})))))
 
 (defn- upstream-table-ids
   "Given a table selector (set of IDs or subquery), find all tables that these tables depend on
@@ -153,13 +159,14 @@
          (let [database (t2/select-one :model/Database db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
-           (if (binding [driver.settings/*allow-testing-h2-connections* true]
+           (if (binding [driver.settings/*allow-testing-h2-connections* true
+                         driver.settings/*allow-testing-sqlite-connections* true]
                  (driver.u/can-connect-with-details? (:engine database) (:details database)))
              (doseq [table tables]
                (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
                (sync/sync-table! table))
-             (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync unhidden tables"
-                                       (:name database))))))))))
+             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
+                                       (:id database))))))))))
 
 (defn- maybe-sync-unhidden-tables!
   [existing-tables {:keys [data_layer] :as body}]
@@ -240,11 +247,12 @@
         db-ids (sort (set (map :db_id tables)))]
     (doseq [database (t2/select :model/Database :id [:in db-ids])]
       (try
-        (binding [driver.settings/*allow-testing-h2-connections* true]
+        (binding [driver.settings/*allow-testing-h2-connections* true
+                  driver.settings/*allow-testing-sqlite-connections* true]
           (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
         nil
         (catch Throwable e
-          (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync tables" (:name database)))
+          (log/warn (u/format-color :red "Cannot connect to database %s in order to sync tables" (:id database)))
           (throw (ex-info (ex-message e) {:status-code 422})))))
     (doseq [table tables]
       (sync-schema-async! table api/*current-user-id*))))

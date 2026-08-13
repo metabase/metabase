@@ -2,14 +2,10 @@
 
 import { t } from "ttag";
 
-import type { IconName } from "metabase/ui";
 import { Button, Flex, Group, Icon, Radio, Stack, Text } from "metabase/ui";
-
-import type { DataSegregationStrategy } from "../../types";
+import type { DataSegregationStrategy, IconName } from "metabase-types/api";
 
 import S from "./DataSegregationStrategyPicker.module.css";
-
-export type { DataSegregationStrategy };
 
 interface DataSegregationStrategyPickerProps {
   value: DataSegregationStrategy | null;
@@ -62,6 +58,7 @@ export const DataSegregationStrategyPicker = ({
     <Stack gap="md">
       <Radio.Group
         value={value}
+        // Unjustified type cast. FIXME
         onChange={(nextValue) => onChange(nextValue as DataSegregationStrategy)}
       >
         <Stack gap="md">

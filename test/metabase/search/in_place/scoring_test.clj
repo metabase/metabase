@@ -1,4 +1,5 @@
 (ns metabase.search.in-place.scoring-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.search.in-place.scoring-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -293,25 +294,21 @@
 
 (deftest score-and-result-test
   (testing "If all scores are 0, does not divide by zero"
-    (with-redefs [scoring/score-result
-                  (fn [_]
-                    [{:weight 100 :score 0 :name "Some score type"}
-                     {:weight 100 :score 0 :name "Some other score type"}])]
+    (mt/with-dynamic-fn-redefs [scoring/score-result
+                                (fn [_]
+                                  [{:weight 100 :score 0 :name "Some score type"}
+                                   {:weight 100 :score 0 :name "Some other score type"}])]
       (is (= 0 (:score (scoring/score-and-result {:name "racing yo" :model "card"}
                                                  {:search-string "" :search-native-query nil})))))))
 
 (deftest ^:parallel force-weight-test
   (is (= [{:weight 10}]
          (scoring/force-weight [{:weight 1}] 10)))
-
   (is (= [{:weight 5} {:weight 5}]
          (scoring/force-weight [{:weight 1} {:weight 1}] 10)))
-
   (is (= [{:weight 0} {:weight 10}]
          (scoring/force-weight [{:weight 0} {:weight 1}] 10)))
-
   (is (= 10 (count (scoring/force-weight (repeat 10 {:weight 1}) 10))))
   (is (= #{[:weight 1]} (into #{} (first (scoring/force-weight (repeat 10 {:weight 1}) 10)))))
-
   (is (= 100 (count (scoring/force-weight (repeat 100 {:weight 10}) 10))))
   (is (= #{{:weight 1/10}} (into #{} (scoring/force-weight (repeat 100 {:weight 10}) 10)))))

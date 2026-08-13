@@ -1,9 +1,13 @@
 (ns metabase.lib.page-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.page :as lib.page]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel current-page-test
   (let [query (lib.tu/venues-query)]
@@ -75,3 +79,13 @@
       ;; 2-arity should set page on the last stage (stage 1), not the first (stage 0)
       (is (nil? (get-in result [:stages 0 :page])))
       (is (= page (get-in result [:stages 1 :page]))))))
+
+(deftest ^:parallel with-page-drops-limit-test
+  (testing "`with-page` should drop `:limit` since the two conflict"
+    (let [mp    meta/metadata-provider
+          query (-> (lib/query mp (meta/table-metadata :venues))
+                    (lib/limit 10)
+                    (lib/with-page {:page 1, :items 15}))]
+      (is (=? {:stages [{:page  {:page 1, :items 15}
+                         :limit (symbol "nil #_\"key is not present.\"")}]}
+              query)))))

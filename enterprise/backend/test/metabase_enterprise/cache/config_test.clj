@@ -72,7 +72,7 @@
         ;; ensure ee path is taken
         (mt/with-premium-features #{:cache-granular-controls}
           (is (= "refreshing" (current-state!)))
-          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
           (testing "Doesn't refresh models that have state='off' or 'deletable' if :cache-granular-controls feature flag is enabled"
             (is (= #{(u/the-id refreshing)} @card-ids)))
           (is (= "persisted" (current-state!))))))))
@@ -89,7 +89,7 @@
                                      (swap! card-ids conj (:id card))
                                      {:state :success})
                                    (unpersist! [_ _database _persisted-info]))]
-              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
               (testing "Doesn't refresh models that have state='off' or 'deletable' if :cache-granular-controls feature flag is enabled"
                 (is (= #{(u/the-id creating)} @card-ids)))
               (is (partial= {:task         "persist-refresh"
@@ -126,7 +126,7 @@
                                      (swap! card-ids conj (:id card))
                                      {:state :success})
                                    (unpersist! [_ _database _persisted-info]))]
-              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
               (is (= #{(u/the-id creating) (u/the-id off)} @card-ids))
               (is (partial= {:task "persist-refresh"
                              :task_details {:success 2 :error 0}}
@@ -151,7 +151,7 @@
             (testing "Query finds deletable, and off persisted infos"
               ;; use superset, because orphaned PersistedInfo records from other tests might also be deletable
               (is (set/superset? queued-for-deletion (set (map u/the-id deletable-persisted-infos)))))
-              ;; we manually pass in the deletable ones to not catch others in a running instance
+            ;; we manually pass in the deletable ones to not catch others in a running instance
             (testing "Both deletables are pruned by prune-deletables!"
               (#'task.persist-refresh/prune-deletables! test-refresher deletable-persisted-infos)
               (is (= (set (map u/the-id deletable-persisted-infos)) @called-on))
@@ -176,7 +176,7 @@
             (testing "Query finds only state='deletable' persisted info, and not state='off'"
               (is (contains? queued-for-deletion (u/the-id pdeletable)))
               (is (not (contains? queued-for-deletion (u/the-id poff)))))
-              ;; we manually pass in the deletable ones to not catch others in a running instance
+            ;; we manually pass in the deletable ones to not catch others in a running instance
             (testing "Only state='deletable' is pruned by prune-deletables!, and not state='off'"
               (#'task.persist-refresh/prune-deletables! test-refresher [pdeletable poff])
               (is (contains? @called-on (u/the-id pdeletable)))

@@ -1,11 +1,8 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
-import {
-  Api,
-  useGetSettingsQuery,
-  useRefreshTokenStatusMutation,
-} from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
+import { Api, useRefreshTokenStatusMutation } from "metabase/api";
+import { useDispatch } from "metabase/redux";
+import { useGetSettingsQuery } from "metabase/settings";
 import type { TokenStatusFeature } from "metabase-types/api";
 
 const REFRESH_INTERVAL = 10 * 1000; // 10 seconds
@@ -45,24 +42,42 @@ export function useTokenRefreshUntil(
   tokenFeature: TokenStatusFeature,
   {
     intervalMs = REFRESH_INTERVAL,
+    onSatisfied,
     skip = false,
-  }: { intervalMs?: number; skip?: boolean },
+  }: {
+    intervalMs?: number;
+    onSatisfied?: () => void | Promise<void>;
+    skip?: boolean;
+  },
 ) {
   /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the pattern in many components */
-  const res = useGetSettingsQuery();
+  const res = useGetSettingsQuery(undefined, { skip });
   const dispatch = useDispatch();
   const [refreshTokenStatus] = useRefreshTokenStatusMutation();
+  const hasCalledOnSatisfied = useRef(false);
+
+  if (skip) {
+    hasCalledOnSatisfied.current = false;
+  }
 
   const refreshToken = useCallback(async () => {
-    // Bust the server-side cache first; the mutation's invalidatesTags will
-    // also invalidate session-properties on success, but we do it in finally
-    // too so the UI updates even if the request fails.
     try {
-      await refreshTokenStatus().unwrap();
-    } finally {
+      const status = await refreshTokenStatus().unwrap();
+
+      if (
+        onSatisfied &&
+        !hasCalledOnSatisfied.current &&
+        status.features?.includes(tokenFeature)
+      ) {
+        hasCalledOnSatisfied.current = true;
+        onSatisfied();
+      }
+    } catch {
+      // The mutation only invalidates session-properties when it succeeds, so
+      // the failure path has to do it here for the UI to move on.
       dispatch(Api.util.invalidateTags(["session-properties"]));
     }
-  }, [dispatch, refreshTokenStatus]);
+  }, [dispatch, onSatisfied, refreshTokenStatus, tokenFeature]);
 
   useEffect(() => {
     if (skip) {

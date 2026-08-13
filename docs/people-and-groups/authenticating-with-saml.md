@@ -140,7 +140,7 @@ Note that your certificate text may include header and footer comments that look
 
 ### Settings for signing SSO requests (optional)
 
-To sign request so that they can't be tampered with, you'll need to provide additional settings.
+To sign requests so that they can't be tampered with, you'll need to provide additional settings.
 
 If your IdP encrypts SAML responses, you'll need to ensure this section is filled out.
 
@@ -198,7 +198,7 @@ Once you've gotten everything set up in your SAML provider, you'll need to confi
 
 A new SSO login will automatically create a new Metabase account.
 
-Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
+Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase, [even if they previously had a password login](./managing.md#signing-in-via-sso-disables-your-password-login).
 
 ## Disabling password logins
 

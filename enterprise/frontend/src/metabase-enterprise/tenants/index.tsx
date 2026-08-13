@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import { IndexRedirect, IndexRoute, Route } from "react-router";
 import { t } from "ttag";
 
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
@@ -11,32 +10,31 @@ import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
-import { useSetting } from "metabase/common/hooks/use-setting";
 import {
   type CollectionTreeItem,
   buildCollectionTree,
   getCollectionIcon,
-} from "metabase/entities/collections";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { getGroupNameLocalized } from "metabase/lib/groups";
-import { useSelector } from "metabase/lib/redux";
+} from "metabase/common/collections/utils";
+import { modalRoute } from "metabase/common/components/ModalRoute";
+import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
+import { Route, redirect } from "metabase/router";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Box, Text } from "metabase/ui";
+import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
 import { CanAccessTenantSpecificRoute } from "./components/CanAccessTenantSpecificRoute";
 import { CreateTenantsOnboardingStep } from "./components/CreateTenantsOnboardingStep";
-import { ExternalGroupDetailApp } from "./components/ExternalGroupDetailApp/ExternalGroupDetailApp";
-import { ExternalGroupsListingApp } from "./components/ExternalGroupsListingApp/ExternalGroupsListingApp";
-import { ExternalPeopleListingApp } from "./components/ExternalPeopleListingApp/ExternalPeopleListingApp";
 import { MainNavSharedCollections } from "./components/MainNavSharedCollections";
 import { ReactivateExternalUserButton } from "./components/ReactivateExternalUserButton";
 import { TenantCollectionItemList } from "./components/TenantCollectionItemList";
@@ -68,9 +66,44 @@ import {
   isTenantGroup,
 } from "./utils/utils";
 
+/**
+ * The tenant people and group pages wrap the admin pages of the same name, so
+ * importing them here would hold those admin pages in the initial bundle. They
+ * get a chunk of their own rather than the `admin` one: naming an `import()`
+ * into a chunk another site already names merges the two module sets, which
+ * copies whatever they shared into every other chunk that needs it.
+ */
+const externalPeopleListing = () =>
+  import(
+    /* webpackChunkName: "tenants" */ "./components/ExternalPeopleListingApp/ExternalPeopleListingApp"
+  ).then(({ ExternalPeopleListingApp }) => ({
+    Component: ExternalPeopleListingApp,
+  }));
+
+const externalGroupsListing = () =>
+  import(
+    /* webpackChunkName: "tenants" */ "./components/ExternalGroupsListingApp/ExternalGroupsListingApp"
+  ).then(({ ExternalGroupsListingApp }) => ({
+    Component: ExternalGroupsListingApp,
+  }));
+
+const externalGroupDetail = () =>
+  import(
+    /* webpackChunkName: "tenants" */ "./components/ExternalGroupDetailApp/ExternalGroupDetailApp"
+  ).then(({ ExternalGroupDetailApp }) => ({
+    Component: ExternalGroupDetailApp,
+  }));
+
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
+
+    PLUGIN_TENANTS.useListActiveTenants = () => {
+      const { data, isLoading, error } = useListTenantsQuery({
+        status: "active",
+      });
+      return { data: data?.data, isLoading, error };
+    };
 
     // Register tenant collection permissions tabs and routes
     PLUGIN_ADMIN_PERMISSIONS_TABS.tabs.push({
@@ -87,13 +120,13 @@ export function initializePlugin() {
       <>
         <Route
           path="tenant-collections"
-          component={TenantCollectionPermissionsPage}
+          element={<TenantCollectionPermissionsPage />}
         >
           <Route path=":collectionId" />
         </Route>
         <Route
           path="tenant-specific-collections"
-          component={TenantSpecificCollectionPermissionsPage}
+          element={<TenantSpecificCollectionPermissionsPage />}
         >
           <Route path=":collectionId" />
         </Route>
@@ -104,66 +137,65 @@ export function initializePlugin() {
     PLUGIN_TENANTS.CreateTenantsOnboardingStep = CreateTenantsOnboardingStep;
     PLUGIN_TENANTS.TenantsSummaryOnboardingStep = TenantsSummaryOnboardingStep;
 
-    PLUGIN_TENANTS.userStrategyRoute = (
-      <ModalRoute path="user-strategy" modal={EditUserStrategyModal} noWrap />
+    PLUGIN_TENANTS.userStrategyRoute = modalRoute(
+      "user-strategy",
+      EditUserStrategyModal,
+      { noWrap: true },
     );
 
     PLUGIN_TENANTS.tenantsRoutes = (
       <>
-        <IndexRoute component={TenantsListingApp} />
-        <Route path="" component={TenantsListingApp}>
-          <ModalRoute path="new" modal={NewTenantModal} noWrap />
-          <ModalRoute
-            path="user-strategy"
-            modal={EditUserStrategyModal}
-            noWrap
-          />
+        <Route index element={<TenantsListingApp />} />
+        <Route path="" element={<TenantsListingApp />}>
+          {modalRoute("new", NewTenantModal, { noWrap: true })}
+          {modalRoute("user-strategy", EditUserStrategyModal, { noWrap: true })}
         </Route>
         <Route path="groups">
-          <IndexRoute component={ExternalGroupsListingApp} />
-          <Route path=":groupId" component={ExternalGroupDetailApp} />
+          <Route index lazy={externalGroupsListing} />
+          <Route path=":groupId" lazy={externalGroupDetail} />
         </Route>
-        <Route path="people" component={ExternalPeopleListingApp}>
-          <ModalRoute
-            path="new"
-            modal={(props) => <NewUserModal {...props} external />}
-            noWrap
-          />
+        <Route path="people" lazy={externalPeopleListing}>
+          {modalRoute(
+            "new",
+            (props) => (
+              <NewUserModal {...props} external />
+            ),
+            {
+              noWrap: true,
+            },
+          )}
           <Route path=":userId">
-            <IndexRedirect to="/admin/people/tenants/people" />
-            <ModalRoute
-              path="edit"
-              modal={(props) => <EditUserModal {...props} external />}
-              noWrap
-            />
-            <ModalRoute path="deactivate" modal={UserActivationModal} noWrap />
-            <ModalRoute path="reactivate" modal={UserActivationModal} noWrap />
-            <ModalRoute path="success" modal={UserSuccessModal} noWrap />
-            <ModalRoute path="reset" modal={UserPasswordResetModal} noWrap />
+            <Route index element={redirect("/admin/people/tenants/people")} />
+            {modalRoute(
+              "edit",
+              (props) => (
+                <EditUserModal {...props} external />
+              ),
+              { noWrap: true },
+            )}
+            {modalRoute("deactivate", UserActivationModal, { noWrap: true })}
+            {modalRoute("reactivate", UserActivationModal, { noWrap: true })}
+            {modalRoute("success", UserSuccessModal, { noWrap: true })}
+            {modalRoute("reset", UserPasswordResetModal, { noWrap: true })}
             {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
               <Fragment key={index}>{getRoutes()}</Fragment>
             ))}
           </Route>
         </Route>
-        <Route path=":tenantId" component={TenantsListingApp}>
-          <ModalRoute
-            path="edit"
+        <Route path=":tenantId" element={<TenantsListingApp />}>
+          {modalRoute("edit", EditTenantModal, { noWrap: true })}
+          {modalRoute(
+            "deactivate",
             // @ts-expect-error - params prop can't be inferred
-            modal={EditTenantModal}
-            noWrap
-          />
-          <ModalRoute
-            path="deactivate"
+            TenantActivationModal,
+            { noWrap: true },
+          )}
+          {modalRoute(
+            "reactivate",
             // @ts-expect-error - params prop can't be inferred
-            modal={TenantActivationModal}
-            noWrap
-          />
-          <ModalRoute
-            path="reactivate"
-            // @ts-expect-error - params prop can't be inferred
-            modal={TenantActivationModal}
-            noWrap
-          />
+            TenantActivationModal,
+            { noWrap: true },
+          )}
         </Route>
       </>
     );

@@ -1,8 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import { DashboardChartSettings } from "metabase/dashboard/components/DashboardChartSettings";
 import { Modal } from "metabase/ui";
-import { DashboardChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type {
   DashboardCard,
   Series,
@@ -37,7 +37,7 @@ export function ChartSettingsButton({
       <Modal
         opened={isOpened}
         onClose={close}
-        size="85%"
+        size="95%"
         padding={0}
         withCloseButton={false}
         styles={{

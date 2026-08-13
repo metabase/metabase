@@ -19,6 +19,7 @@
    :cache-refresh
    :collection
    :map-tiles
+   :metric
    :pulse
    :dashboard-subscription
    :dashboard
@@ -37,7 +38,10 @@
    :embedded-xlsx-download
    :embedded-json-download
    :table-grid
-   :transform-inspector])
+   :table-rows-sample
+   :transform-inspector
+   :slackbot
+   :exploration])
 
 (mr/def ::hash
   #?(:clj bytes?

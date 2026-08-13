@@ -1,5 +1,6 @@
 ---
 title: Setting up data uploads
+description: How admins can enable CSV uploads by connecting a database with write access, selecting an upload schema, and granting people data and collection permissions.
 ---
 
 # Setting up data uploads
@@ -18,6 +19,7 @@ To manage upload settings, admins can hit cmd/ctrl + K and search for "Settings 
 
 - [PostgreSQL](../databases/connections/postgresql.md)
 - [MySQL](../databases/connections/mysql.md)
+- [Snowflake](../databases/connections/snowflake.md)
 - [Redshift](../databases/connections/redshift.md)
 - [ClickHouse](../databases/connections/clickhouse.md) (only supported on ClickHouse Cloud)
 
@@ -33,8 +35,6 @@ There are a few things admins need to do to support CSV uploads:
 ## Connect to a database using a database user account with write access
 
 To upload data to Metabase, an admin will need to connect your Metabase to a database that supports uploads using a database user account that has write access to that database.
-
-You can also upload data to the Sample Database included with Metabase (an H2 database), though we don't recommend using the Sample Database for any data that you want to keep around.
 
 For more, check out:
 
@@ -60,6 +60,8 @@ Admins can optionally specify a string of text to add in front of the table that
 ## Add people to a group with data access to the upload schema
 
 In order to upload CSVs, a person must be in a group with **View data** access of "Can view" and **Create queries** of Query builder access or higher to the schema you've selected to store your uploaded data. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
+
+People also need [Curate access](../permissions/collections.md#curate-access) to any collection they want to upload to. The upload icon only appears in collections where they have Curate access. Everyone has Curate access to their [personal collection](../permissions/collections.md#personal-collections) by default.
 
 ## Note on uploading data to a MySQL database
 

@@ -2,8 +2,10 @@ import type { ColorInstance } from "color";
 import Color from "color";
 import _ from "underscore";
 
+import { ACCENT_COUNT } from "metabase/ui/colors/palette";
+
 export const getChartColorGroups = (): string[][] => {
-  return _.times(8, (i) => [
+  return _.times(ACCENT_COUNT, (i) => [
     `accent${i}`,
     `accent${i}-light`,
     `accent${i}-dark`,

@@ -1,82 +1,127 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 import { noop } from "underscore";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
-import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
-import { DimensionPillBar } from "metabase/metrics-viewer/components/DimensionPillBar";
+import { ErrorMessage } from "metabase/common/components/ErrorMessage";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  DimensionPillBar,
+  type DimensionPillBarItem,
+} from "metabase/metrics-viewer/components/DimensionPillBar";
+import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types/viewer-state";
 import { DISPLAY_TYPE_REGISTRY } from "metabase/metrics-viewer/utils";
 import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import { getGridColumns } from "metabase/metrics-viewer/utils/grid-columns";
-import { Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
+import { Center, Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { DimensionMetadata } from "metabase-lib/metric";
-import type { CardId, SingleSeries } from "metabase-types/api";
+import type { OnBrush } from "metabase/visualizations/types";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+import type { CardId } from "metabase-types/api";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerTabState,
-} from "../../types/viewer-state";
+import { useMetricsViewerContext } from "../../context";
 
 import S from "./MetricsViewerVisualization.module.css";
 
 type MetricsViewerVisualizationProps = {
-  rawSeries: SingleSeries[];
-  dimensionItems: DimensionItem[];
-  onDimensionChange?: (
-    definitionId: MetricSourceId,
-    dimension: DimensionMetadata,
-  ) => void;
-  onDimensionRemove?: (definitionId: MetricSourceId) => void;
-  onBrush?: (range: { start: number; end: number }) => void;
-  className?: string;
-  definitions: MetricsViewerDefinitionEntry[];
-  tab: MetricsViewerTabState;
-  onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  onBrush?: OnBrush;
+  chartColumnLabelsByEntityIndex?: Map<number, DimensionPillBarItem>;
 };
 
 export function MetricsViewerVisualization({
-  rawSeries,
-  dimensionItems,
-  onDimensionChange,
-  onDimensionRemove,
   onBrush,
-  className,
-  definitions,
-  tab,
-  onTabUpdate,
-  cardIdToDimensionId,
+  chartColumnLabelsByEntityIndex,
 }: MetricsViewerVisualizationProps) {
+  const {
+    definitions,
+    formulaEntities,
+    activeDimensionBreakout: dimensionBreakout,
+    queriesAreLoading,
+    queriesError,
+    metricSlots,
+    series: rawSeries,
+    cardIdToEntityIndex,
+    updateActiveDimensionBreakout,
+  } = useMetricsViewerContext();
+
   const { ref, width } = useElementSize();
   const cols = getGridColumns(width, rawSeries.length);
 
   const clickActionsMode = useMemo(
     () =>
-      new MetricsViewerClickActionsMode({
-        definitions,
-        tab,
-        onTabUpdate,
-        cardIdToDimensionId,
-      }),
-    [cardIdToDimensionId, definitions, onTabUpdate, tab],
+      dimensionBreakout
+        ? new MetricsViewerClickActionsMode({
+            definitions,
+            formulaEntities,
+            metricSlots,
+            dimensionBreakout,
+            onDimensionBreakoutUpdate: (
+              partial: Partial<MetricsViewerDimensionBreakoutState>,
+            ) => {
+              updateActiveDimensionBreakout((prev) => ({
+                ...prev,
+                ...partial,
+              }));
+            },
+            cardIdToEntityIndex,
+          })
+        : undefined,
+    [
+      definitions,
+      cardIdToEntityIndex,
+      formulaEntities,
+      metricSlots,
+      updateActiveDimensionBreakout,
+      dimensionBreakout,
+    ],
   );
 
+  if (queriesAreLoading || queriesError) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper
+          loading={queriesAreLoading}
+          error={queriesError}
+        />
+      </Center>
+    );
+  }
+
+  if (rawSeries.length === 0) {
+    return null;
+  }
+
+  const hasNoResults = rawSeries.every((series) =>
+    datasetContainsNoResults(series.data),
+  );
+
+  if (hasNoResults) {
+    return (
+      <Center h="100%">
+        <ErrorMessage
+          type="noRows"
+          title={t`No results`}
+          message={t`This may be the answer you're looking for. If not, try removing or changing your filters to make them less specific.`}
+          action={null}
+        />
+      </Center>
+    );
+  }
+
+  if (!dimensionBreakout) {
+    return null;
+  }
+
   return (
-    <Flex
-      ref={ref}
-      direction="column"
-      flex="1 0 auto"
-      gap="sm"
-      className={className}
-    >
+    <Flex ref={ref} direction="column" flex="1 0 auto" gap="sm">
       {rawSeries.length > 1 &&
-      DISPLAY_TYPE_REGISTRY[tab.display].supportsMultipleSeries === false ? (
+      !DISPLAY_TYPE_REGISTRY[dimensionBreakout.display]
+        .supportsMultipleSeries ? (
         <SimpleGrid cols={cols} flex={1} spacing={0}>
           {rawSeries.map((series, i) => (
             <Stack
               gap="sm"
-              className={className}
+              className={S.gridChart}
               key={`series-${i}`}
               data-in-grid
             >
@@ -90,8 +135,14 @@ export function MetricsViewerVisualization({
                   mode={clickActionsMode}
                   onChangeCardAndRun={noop}
                   autoAdjustSettings
+                  isMetricsViewer
                 />
               </DebouncedFrame>
+              <ChartColumnLabel
+                cardId={series.card.id}
+                cardIdToEntityIndex={cardIdToEntityIndex}
+                chartColumnLabelsByEntityIndex={chartColumnLabelsByEntityIndex}
+              />
             </Stack>
           ))}
         </SimpleGrid>
@@ -108,14 +159,33 @@ export function MetricsViewerVisualization({
           />
         </DebouncedFrame>
       )}
-
-      {dimensionItems.length > 0 && onDimensionChange && (
-        <DimensionPillBar
-          items={dimensionItems}
-          onDimensionChange={onDimensionChange}
-          onDimensionRemove={onDimensionRemove}
-        />
-      )}
     </Flex>
+  );
+}
+
+function ChartColumnLabel({
+  cardId,
+  cardIdToEntityIndex,
+  chartColumnLabelsByEntityIndex,
+}: {
+  cardId: CardId;
+  cardIdToEntityIndex: Record<CardId, number>;
+  chartColumnLabelsByEntityIndex?: Map<number, DimensionPillBarItem>;
+}) {
+  const entityIndex = cardIdToEntityIndex[cardId];
+  if (entityIndex == null) {
+    return null;
+  }
+
+  const item = chartColumnLabelsByEntityIndex?.get(entityIndex);
+
+  if (!item?.label) {
+    return null;
+  }
+
+  return (
+    <div className={S.gridChartLabel}>
+      <DimensionPillBar items={[item]} textSize="xs" />
+    </div>
   );
 }

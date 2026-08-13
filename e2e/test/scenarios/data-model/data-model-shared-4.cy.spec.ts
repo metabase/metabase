@@ -22,7 +22,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
@@ -87,6 +87,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
       cy.log("table section");
 
+      if (area === "data studio") {
+        TableSection.clickDetailsTab();
+      }
       cy.log("name");
       TableSection.getNameInput().type("a").blur();
       verifyAndCloseToast("Failed to update table name");
@@ -95,6 +98,10 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       TableSection.getDescriptionInput().type("a").blur();
       verifyAndCloseToast("Failed to update table description");
 
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+        // cy.pause();
+      }
       cy.log("predefined field order");
       TableSection.getSortButton().click();
       TableSection.getSortOrderInput()
@@ -110,20 +117,43 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       verifyAndCloseToast("Failed to update field order");
       TableSection.get().button("Done").click();
 
+      if (area === "data studio") {
+        TableSection.clickDetailsTab();
+      }
       cy.log("sync");
-      TableSection.getSyncOptionsButton().click();
-      H.modal().button("Sync table schema").click();
+
+      if (area === "data studio") {
+        TableSection.getActionsMenuButton().click();
+        H.popover().findByText("Re-sync schema").click();
+      } else {
+        TableSection.getSyncOptionsButton().click();
+        H.modal().button("Sync table schema").click();
+      }
       verifyAndCloseToast("Failed to start sync");
 
-      cy.log("scan");
-      H.modal().button("Re-scan table").click();
+      if (area === "data studio") {
+        TableSection.getActionsMenuButton().click();
+        H.popover().findByText("Re-scan field values").click();
+      } else {
+        H.modal().button("Re-scan table").click();
+      }
       verifyAndCloseToast("Failed to start scan");
 
-      cy.log("discard field values");
-      H.modal().button("Discard cached field values").click();
-      verifyAndCloseToast("Failed to discard values");
-      cy.realPress("Escape");
+      if (area === "data studio") {
+        TableSection.getActionsMenuButton().click();
+        H.popover().findByText("Discard cached field values").click();
+      } else {
+        H.modal().button("Discard cached field values").click();
+      }
 
+      verifyAndCloseToast("Failed to discard values");
+      if (area === "admin") {
+        cy.realPress("Escape");
+      }
+
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       cy.log("field name");
       TableSection.getFieldNameInput("Quantity").type("a").blur();
       verifyAndCloseToast("Failed to update name of Quantity");
@@ -133,7 +163,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       verifyAndCloseToast("Failed to update description of Quantity");
 
       cy.log("field section");
-
+      TableSection.clickField("Quantity");
       cy.log("name");
       FieldSection.getNameInput().type("a").blur();
       verifyAndCloseToast("Failed to update name of Quantity");
@@ -175,6 +205,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       // components, so new undos will appear - this makes this test flaky, so we navigate with page reload instead
       visit({ databaseId: WRITABLE_DB_ID });
       TablePicker.getTable("Many Data Types").click();
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       TableSection.clickField("Json");
       FieldSection.getUnfoldJsonInput().click();
       H.popover().findByText("No").click();
@@ -183,6 +216,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       cy.log("formatting");
       TablePicker.getDatabase("Sample Database").click();
       TablePicker.getTable("Orders").click();
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       TableSection.clickField("Quantity");
       FieldSection.getPrefixInput().type("5").blur();
       verifyAndCloseToast("Failed to update formatting of Quantity");
@@ -225,6 +261,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
       cy.log("table section");
 
+      if (area === "data studio") {
+        TableSection.clickDetailsTab();
+      }
       cy.log("name");
       TableSection.getNameInput().type("a").blur();
       verifyToastAndUndo("Table name updated");
@@ -238,6 +277,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         "Confirmed Sample Company orders for a product, from a user.",
       );
 
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       cy.log("predefined field order");
       TableSection.getSortButton().click();
       TableSection.getSortOrderInput()
@@ -276,6 +318,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       );
 
       cy.log("field section");
+      TableSection.clickField("Quantity");
 
       cy.log("name");
       FieldSection.getNameInput().type("a").blur();
@@ -361,8 +404,18 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       );
 
       cy.log("JSON unfolding");
-      TablePicker.getDatabase("Writable Postgres12").click();
+      // The in-test DB switch via picker (.getDatabase().click() then
+      // .getTable().click()) races the picker re-render: the table click can
+      // land before the writable DB tables list is interactive, so the click
+      // never propagates to a URL change. The "Error handling" sibling above
+      // hit the same flake and was fixed by using visit({ databaseId:
+      // WRITABLE_DB_ID }) (which waits for picker bootstrap). Same pattern
+      // here.
+      visit({ databaseId: WRITABLE_DB_ID });
       TablePicker.getTable("Many Data Types").click();
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       TableSection.clickField("Json");
       FieldSection.getUnfoldJsonInput().click();
       H.popover().findByText("No").click();
@@ -370,7 +423,12 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       FieldSection.getUnfoldJsonInput().should("have.value", "Yes");
 
       cy.log("formatting");
+      // Same fresh-visit anchor as the Many Data Types switch above.
+      visit({ databaseId: SAMPLE_DB_ID });
       TablePicker.getTable("Orders").click();
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       TableSection.clickField("Quantity");
 
       cy.log("prefix (ChartSettingInput)");
@@ -399,8 +457,19 @@ function verifyAndCloseToast(message: string) {
 }
 
 function verifyToastAndUndo(message: string) {
-  H.undoToast().should("contain.text", message);
-  H.undoToast().button("Undo").click();
-  H.undoToast().should("contain.text", "Change undone");
-  H.undoToast().icon("close").click({ force: true });
+  // Under network throttling, clicking Undo creates a new "Change undone"
+  // toast alongside the original (Mantine notifications stack rather than
+  // mutate in place). The original auto-dismisses, but the dismiss can lag
+  // past Cypress's 4s retry window, so cy.findByTestId("toast-undo")
+  // singular sees two elements and fails with "Found multiple elements".
+  // Assert against the list (waits for the expected toast), then scope the
+  // action to that toast so we never act on the wrong one.
+  const toast = (text: string) =>
+    H.undoToastList().filter(`:contains("${text}")`).first();
+
+  H.undoToastList().should("contain.text", message);
+  toast(message).button("Undo").click();
+
+  H.undoToastList().should("contain.text", "Change undone");
+  toast("Change undone").icon("close").click({ force: true });
 }

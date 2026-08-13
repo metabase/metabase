@@ -4,10 +4,10 @@ import {
   useUpdateDashboardEmbeddingParamsMutation,
   useUpdateDashboardEnableEmbeddingMutation,
 } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { getStaticEmbedSetupPublishHandlers } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
-import type { EmbeddingParameters } from "metabase/public/lib/types";
+import { useSetting } from "metabase/settings";
+import type { EmbeddingParameters } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getResourceTypeFromExperience } from "../utils/get-resource-type-from-experience";
@@ -43,6 +43,7 @@ export const useToggleResourceEmbedding = () => {
     } as const;
 
     await handlersMap[resourceType]?.({
+      // Unjustified type cast. FIXME
       id: resource.id as number,
       enable_embedding: enableEmbedding,
       embedding_type: enableEmbedding ? GUEST_EMBED_EMBEDDING_TYPE : null,
@@ -58,6 +59,7 @@ export const useToggleResourceEmbedding = () => {
     } as const;
 
     await handlersMap[resourceType]?.({
+      // Unjustified type cast. FIXME
       id: resource.id as number,
       embedding_params: embeddingParams,
       embedding_type: GUEST_EMBED_EMBEDDING_TYPE,

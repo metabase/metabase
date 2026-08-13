@@ -5,6 +5,9 @@ export const globalShortcuts = {
     get name() {
       return t`Create a question`;
     },
+    get keywords() {
+      return t`add question`;
+    },
     shortcut: ["c q"],
     shortcutGroup: "global" as const,
   },
@@ -12,12 +15,28 @@ export const globalShortcuts = {
     get name() {
       return t`Create a native query`;
     },
+    get keywords() {
+      return t`add native query, add SQL, create SQL`;
+    },
     shortcut: ["c n"],
+    shortcutGroup: "global" as const,
+  },
+  "create-new-research": {
+    get name() {
+      return t`Create a research`;
+    },
+    get keywords() {
+      return t`add research, add exploration, research mode`;
+    },
+    shortcut: ["c r"],
     shortcutGroup: "global" as const,
   },
   "create-new-dashboard": {
     get name() {
       return t`Create a dashboard`;
+    },
+    get keywords() {
+      return t`add dashboard`;
     },
     shortcut: ["c d"],
     shortcutGroup: "global" as const,
@@ -26,12 +45,18 @@ export const globalShortcuts = {
     get name() {
       return t`Create a document`;
     },
+    get keywords() {
+      return t`add document`;
+    },
     shortcut: ["c t"],
     shortcutGroup: "global" as const,
   },
   "create-new-collection": {
     get name() {
       return t`Create a collection`;
+    },
+    get keywords() {
+      return t`add collection`;
     },
     shortcut: ["c f"],
     shortcutGroup: "global" as const,
@@ -40,12 +65,18 @@ export const globalShortcuts = {
     get name() {
       return t`Create a model`;
     },
+    get keywords() {
+      return t`add model`;
+    },
     shortcut: ["c m"],
     shortcutGroup: "global" as const,
   },
   "create-new-metric": {
     get name() {
       return t`Create a metric`;
+    },
+    get keywords() {
+      return t`add metric`;
     },
     shortcut: ["c k"],
     shortcutGroup: "global" as const,
@@ -54,12 +85,18 @@ export const globalShortcuts = {
     get name() {
       return t`Browse databases`;
     },
+    get keywords() {
+      return t`go to databases, view databases, open databases`;
+    },
     shortcut: ["g d"],
     shortcutGroup: "global" as const,
   },
   "navigate-browse-model": {
     get name() {
       return t`Browse models`;
+    },
+    get keywords() {
+      return t`go to models, view models, open models`;
     },
     shortcut: ["g m"],
     shortcutGroup: "global" as const,
@@ -68,7 +105,20 @@ export const globalShortcuts = {
     get name() {
       return t`Browse metrics`;
     },
+    get keywords() {
+      return t`go to metrics, view metrics, open metrics`;
+    },
     shortcut: ["g k"],
+    shortcutGroup: "global" as const,
+  },
+  "navigate-data-studio": {
+    get name() {
+      return t`Go to Data Studio`;
+    },
+    get keywords() {
+      return t`open data studio, view data studio`;
+    },
+    shortcut: ["g s"],
     shortcutGroup: "global" as const,
   },
 
@@ -107,7 +157,11 @@ export const globalShortcuts = {
     get name() {
       return t`Toggle sidebar`;
     },
+    // `shortcut` is what kbar binds (a single key, to avoid kbar treating a
+    // multi-element array as a key sequence). `$mod+.` is handled separately
+    // (MainNavbar/AreaLayout), so we surface both triggers via `shortcutDisplay`.
     shortcut: ["["],
+    shortcutDisplay: ["[", "$mod+."],
     shortcutGroup: "global" as const,
   },
   "navigate-admin-settings": {
@@ -122,6 +176,9 @@ export const globalShortcuts = {
     get name() {
       return t`Go to user settings`;
     },
+    get keywords() {
+      return t`open user settings, view user settings, account settings`;
+    },
     shortcut: ["g u"],
     shortcutGroup: "global" as const,
   },
@@ -129,6 +186,9 @@ export const globalShortcuts = {
   "navigate-home": {
     get name() {
       return t`Go to home`;
+    },
+    get keywords() {
+      return t`open home, view home`;
     },
     shortcut: ["g h"],
     shortcutGroup: "global" as const,

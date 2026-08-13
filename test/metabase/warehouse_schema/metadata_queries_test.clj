@@ -5,11 +5,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util.match :as lib.util.match]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.metadata-queries :as metadata-queries]))
 
 (defn- sort-by-field-id [clauses]
-  (sort-by #(lib.util.match/match-lite %
+  (sort-by #(match/match-one %
               [:field _opts (id :guard pos-int?)]
               id)
            clauses))

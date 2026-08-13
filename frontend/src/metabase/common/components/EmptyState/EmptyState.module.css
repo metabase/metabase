@@ -1,3 +1,18 @@
-.EmptyStateFooter:not(:empty) {
-  margin-top: 1rem;
+.footer:not(:empty) {
+  margin-top: var(--mantine-spacing-md);
+}
+
+.illustration {
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+/* Defaults to "md" spacing; "sm" stays at 1rem even above the small breakpoint */
+@media (--breakpoint-min-sm) {
+  .illustration {
+    margin-bottom: var(--mantine-spacing-xl);
+  }
+
+  .illustration[data-spacing="sm"] {
+    margin-bottom: var(--mantine-spacing-md);
+  }
 }

@@ -1,0 +1,202 @@
+import { useField } from "formik";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { t } from "ttag";
+import _ from "underscore";
+
+import { skipToken, useGetCollectionQuery } from "metabase/api";
+import {
+  type EntityType,
+  canonicalCollectionId,
+  isTrashedCollection,
+  isValidCollectionId,
+} from "metabase/common/collections/utils";
+import { CollectionName } from "metabase/common/components/CollectionName";
+import {
+  CollectionPickerModal,
+  type EntityPickerModalProps,
+  type EntityPickerOptions,
+  type FilterItemsInPersonalCollection,
+  type OmniPickerItem,
+} from "metabase/common/components/Pickers";
+import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
+import { TransformCollectionName } from "metabase/common/components/TransformCollectionName";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { PLUGIN_TENANTS } from "metabase/plugins";
+import { Button, Icon, Input, type InputWrapperProps } from "metabase/ui";
+import type { CollectionId, CollectionNamespace } from "metabase-types/api";
+
+interface FormCollectionPickerProps extends InputWrapperProps {
+  name: string;
+  title?: string;
+  placeholder?: string;
+  initialOpenCollectionId?: CollectionId;
+  onOpenCollectionChange?: (collectionId: CollectionId) => void;
+  filterPersonalCollections?: FilterItemsInPersonalCollection;
+  entityType?: EntityType;
+  collectionPickerModalProps?: Partial<EntityPickerModalProps>;
+  onCollectionSelect?: (collection: OmniPickerItem) => void;
+}
+
+function ItemName({
+  id,
+  namespace = null,
+}: {
+  id: CollectionId;
+  namespace: CollectionNamespace;
+}) {
+  if (namespace === "snippets") {
+    return <SnippetCollectionName id={id} />;
+  }
+
+  if (namespace === "transforms") {
+    return <TransformCollectionName id={id} />;
+  }
+
+  // Check for tenant namespace display name via plugin
+  if (id === null) {
+    const namespaceDisplayName =
+      PLUGIN_TENANTS.getNamespaceDisplayName(namespace);
+    if (namespaceDisplayName) {
+      return <span>{namespaceDisplayName}</span>;
+    }
+  }
+
+  return <CollectionName id={id} />;
+}
+
+function FormCollectionPicker({
+  className,
+  style,
+  name,
+  title,
+  placeholder = t`Select a collection`,
+  filterPersonalCollections,
+  entityType,
+  collectionPickerModalProps,
+  onCollectionSelect,
+  ...rest
+}: FormCollectionPickerProps) {
+  const id = useUniqueId();
+
+  const [{ value }, { error, touched }, { setValue }] = useField(name);
+
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+
+  const [openCollectionId] = useState<CollectionId>("root");
+
+  const { data: openCollection } = useGetCollectionQuery({
+    id: openCollectionId,
+  });
+
+  const { data: selectedCollection } = useGetCollectionQuery(
+    value != null ? { id: value } : skipToken,
+  );
+
+  const [collectionNamespace, setCollectionNamespace] =
+    useState<CollectionNamespace>(
+      selectedCollection?.namespace ??
+        collectionPickerModalProps?.namespaces?.[0] ??
+        null,
+    );
+
+  useEffect(
+    function preventUsingArchivedCollection() {
+      if (selectedCollection && isTrashedCollection(selectedCollection)) {
+        setValue("root", false);
+      }
+    },
+    [setValue, selectedCollection],
+  );
+
+  const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
+  const showCreateNewCollectionOption =
+    filterPersonalCollections !== "only" ||
+    isOpenCollectionInPersonalCollection;
+
+  const nonDefaultNamespace =
+    collectionPickerModalProps?.namespaces?.[0] ?? null;
+
+  const defaultOptions = useMemo<EntityPickerOptions>( // FIXME, this should throw more type errors 🤔
+    () => ({
+      hasPersonalCollections:
+        !nonDefaultNamespace && filterPersonalCollections !== "exclude",
+      hasRootCollection:
+        !!nonDefaultNamespace || filterPersonalCollections !== "only",
+      hasSearch: !nonDefaultNamespace,
+      hasRecents: !nonDefaultNamespace,
+      hasLibrary: !nonDefaultNamespace,
+      hasConfirmButtons: true,
+      canCreateCollections: showCreateNewCollectionOption,
+    }),
+    [
+      filterPersonalCollections,
+      showCreateNewCollectionOption,
+      nonDefaultNamespace,
+    ],
+  );
+
+  const handleChange = useCallback(
+    (collection: OmniPickerItem) => {
+      onCollectionSelect?.(collection);
+      if ("namespace" in collection) {
+        setCollectionNamespace(collection.namespace ?? null);
+      } else {
+        setCollectionNamespace(null);
+      }
+      setValue(canonicalCollectionId(collection.id));
+      setIsPickerOpen(false);
+    },
+    [onCollectionSelect, setValue],
+  );
+
+  return (
+    <>
+      <Input.Wrapper
+        className={className}
+        style={style}
+        label={title}
+        labelProps={{ htmlFor: id }}
+        error={touched ? error : undefined}
+        {...rest}
+      >
+        <Button
+          data-testid="collection-picker-button"
+          id={id}
+          onClick={() => setIsPickerOpen(true)}
+          fullWidth
+          rightSection={<Icon name="ellipsis" />}
+          styles={{
+            inner: {
+              justifyContent: "space-between",
+            },
+            root: { "&:active": { transform: "none" } },
+          }}
+        >
+          {isValidCollectionId(value) ? (
+            <ItemName id={value} namespace={collectionNamespace} />
+          ) : (
+            placeholder
+          )}
+        </Button>
+      </Input.Wrapper>
+      {isPickerOpen && (
+        <CollectionPickerModal
+          title={t`Select a collection`}
+          value={{
+            id: value,
+            model: "collection",
+            namespace: collectionNamespace,
+          }}
+          onChange={handleChange}
+          onClose={() => setIsPickerOpen(false)}
+          options={collectionPickerModalProps?.options || defaultOptions}
+          entityType={entityType}
+          {..._.omit(collectionPickerModalProps, ["options"])}
+        />
+      )}
+    </>
+  );
+}
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default FormCollectionPicker;

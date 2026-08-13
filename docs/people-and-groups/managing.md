@@ -30,6 +30,8 @@ Click **Create** to activate an account. An account becomes active once you clic
 
 If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet setup email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
 
+Admins can also create an account for someone and point them to a specific dashboard or question. On a dashboard or question, click the **Sharing** icon and select **Invite someone to view this**. Enter the person's email, choose their groups, and click **Send invitation**. Once they sign up, Metabase directs them to that dashboard or question.
+
 To create accounts with SSO, check out [authentication options](./start.md#authentication).
 
 ## Editing an account
@@ -86,7 +88,11 @@ Search for a person and look for an icon beside their name.
 - If they log in using Google credentials, Metabase displays a Google icon.
 - If they log in using an email address and password stored in Metabase, no icon is shown.
 
-Note that the type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of SSO, the latter's icon will _not_ show up next to their name.
+The type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of SSO, the latter's icon will _not_ show up next to their name.
+
+## Signing in via SSO disables your password login
+
+If someone who had originally set up a Metabase account with a username and password first signs in via SSO, Metabase links their account to the SSO provider. The person will no longer be able to sign in with their username and password; they'll only be able to sign in via SSO. If you need to restore password authentication for an account, [contact support](https://www.metabase.com/help-premium).
 
 ## Resetting someone’s password
 

@@ -1,5 +1,5 @@
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import type { Dispatch, GetState } from "metabase-types/store";
+import type { Dispatch, GetState } from "metabase/redux/store";
 
 import { getIsSharing } from "../selectors";
 

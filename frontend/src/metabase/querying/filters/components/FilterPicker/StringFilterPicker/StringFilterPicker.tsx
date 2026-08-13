@@ -2,7 +2,10 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Box, Checkbox, Flex, MultiAutocomplete } from "metabase/ui";
+import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
+import { useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Box, Checkbox, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -32,6 +35,11 @@ export function StringFilterPicker({
     () => Lib.displayInfo(query, stageIndex, column),
     [query, stageIndex, column],
   );
+
+  const metadata = useSelector(getMetadata);
+  const database = metadata.database(Lib.databaseID(query));
+  const supportsCaseSensitivity =
+    database?.hasFeature("case-sensitivity-string-filter-options") ?? true;
 
   const {
     type,
@@ -108,7 +116,7 @@ export function StringFilterPicker({
           withSubmitButton={withSubmitButton}
           onAddButtonClick={handleAddButtonClick}
         >
-          {type === "partial" && (
+          {type === "partial" && supportsCaseSensitivity && (
             <CaseSensitiveOption
               value={options.caseSensitive ?? false}
               onChange={(newValue) => setOptions({ caseSensitive: newValue })}
@@ -159,7 +167,7 @@ function StringValueInput({
   if (type === "partial") {
     return (
       <Box p="md" pb={0} mah="40vh" style={{ overflow: "auto" }}>
-        <MultiAutocomplete
+        <MultiAutocompleteWithTranslation
           value={values}
           placeholder={t`Enter some text`}
           comboboxProps={COMBOBOX_PROPS}

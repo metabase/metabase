@@ -1,0 +1,30 @@
+name: total_tokens
+display_name: Total Tokens
+description: Total tokens consumed for this message (prompt + completion).
+created_at: '2026-04-21T23:16:38.089896Z'
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_metabot_messages
+database_type: int4
+base_type: type/Integer
+effective_type: type/Integer
+semantic_type: type/Quantity
+dimensions: []
+position: 5
+custom_position: 0
+database_position: 5
+has_field_values: auto-list
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_metabot_messages
+  model: Table
+- id: total_tokens
+  model: Field
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

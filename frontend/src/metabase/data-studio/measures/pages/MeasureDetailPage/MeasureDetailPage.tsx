@@ -1,17 +1,16 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
-import { useSelector } from "metabase/lib/redux";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Group } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type { Measure } from "metabase-types/api";
 
@@ -21,7 +20,6 @@ import { useMeasureQuery } from "../../hooks/use-measure-query";
 import type { MeasureTabUrls } from "../../types";
 
 type MeasureDetailPageProps = {
-  route: Route;
   measure: Measure;
   tabUrls: MeasureTabUrls;
   breadcrumbs: ReactNode;
@@ -29,7 +27,6 @@ type MeasureDetailPageProps = {
 };
 
 export function MeasureDetailPage({
-  route,
   measure,
   tabUrls,
   breadcrumbs,
@@ -56,9 +53,7 @@ export function MeasureDetailPage({
   );
 
   const isValid = aggregations.length === 1;
-  const previewUrl = isValid
-    ? getDatasetQueryPreviewUrl(definition)
-    : undefined;
+  const previewUrl = isValid ? Urls.exploreMeasure(measure.id) : undefined;
 
   const setQuery = useCallback((newQuery: Lib.Query) => {
     setDefinition(Lib.toJsQuery(newQuery));
@@ -135,7 +130,6 @@ export function MeasureDetailPage({
       {canWriteMeasures && (
         <LeaveRouteConfirmModal
           key={measure.id}
-          route={route}
           isEnabled={isDirty && !isSaving}
         />
       )}

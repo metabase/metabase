@@ -1,38 +1,75 @@
-import { push } from "react-router-redux";
-import _ from "underscore";
-
-import { Collections } from "metabase/entities/collections";
-import { Timelines } from "metabase/entities/timelines";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import {
+  skipToken,
+  useCreateTimelineEventMutation,
+  useCreateTimelineMutation,
+  useGetCollectionQuery,
+} from "metabase/api";
+import { getDefaultTimeline } from "metabase/common/utils/timelines";
+import { useNavigate } from "metabase/router";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
-import type { Collection, TimelineEvent } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import * as Urls from "metabase/urls";
+import type {
+  Collection,
+  CreateTimelineEventRequest,
+  CreateTimelineRequest,
+  TimelineEvent,
+} from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
 
-interface NewEventWithTimelineModalProps {
+interface NewEventWithTimelineModalContainerProps {
   params: ModalParams;
+  onClose?: () => void;
 }
 
-const collectionProps = {
-  id: (state: State, props: NewEventWithTimelineModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
-  LoadingAndErrorWrapper,
-};
+function NewEventWithTimelineModalContainer(
+  props: NewEventWithTimelineModalContainerProps,
+) {
+  const navigate = useNavigate();
+  const [createTimeline] = useCreateTimelineMutation();
+  const [createTimelineEvent] = useCreateTimelineEventMutation();
+  const collectionId = Urls.extractCollectionId(props.params.slug);
+  const {
+    data: collection,
+    isLoading,
+    error,
+  } = useGetCollectionQuery(
+    collectionId != null ? { id: collectionId } : skipToken,
+  );
 
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (values: Partial<TimelineEvent>, collection: Collection) => {
-    const query = { collectionId: collection.id, include: "events" };
-    await dispatch(Timelines.actions.createWithEvent(values, collection));
-    await dispatch(Timelines.actions.fetchList(query));
-    dispatch(push(Urls.timelinesInCollection(collection)));
-  },
-});
+  const onSubmit = async (
+    values: Partial<TimelineEvent>,
+    collection?: Collection,
+  ) => {
+    if (!collection) {
+      return;
+    }
+    const timeline = await createTimeline(
+      // Unjustified type cast. FIXME
+      getDefaultTimeline(collection) as CreateTimelineRequest,
+    ).unwrap();
+    // Unjustified type cast. FIXME
+    await createTimelineEvent({
+      ...values,
+      timeline_id: timeline.id,
+    } as CreateTimelineEventRequest).unwrap();
+    navigate(Urls.timelinesInCollection(collection));
+  };
+
+  if (isLoading || error || !collection) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <NewEventModal
+      {...props}
+      source="collections"
+      collection={collection}
+      onSubmit={onSubmit}
+    />
+  );
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Collections.load(collectionProps),
-  connect(null, mapDispatchToProps),
-)(NewEventModal);
+export default NewEventWithTimelineModalContainer;

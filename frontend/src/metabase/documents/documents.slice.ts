@@ -7,16 +7,16 @@ import _ from "underscore";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type {
-  Card,
-  CardDisplayType,
-  Document,
-  VisualizationSettings,
-} from "metabase-types/api";
-import type {
   CardEmbedRef,
   DocumentsState,
   MentionCacheItem,
-} from "metabase-types/store/documents";
+} from "metabase/redux/store/documents";
+import type {
+  Card,
+  Document,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { getMentionsCacheKey } from "./utils/mentionsUtils";
 
@@ -43,6 +43,8 @@ export const initialState: DocumentsState = {
   isHistorySidebarOpen: false,
 };
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - possibly infinite type error
 const documentsSlice = createSlice({
   name: "documents",
   initialState,
@@ -70,7 +72,7 @@ const documentsSlice = createSlice({
     },
     updateVisualizationType: (
       state,
-      action: PayloadAction<{ cardId: number; display: CardDisplayType }>,
+      action: PayloadAction<{ cardId: number; display: VisualizationDisplay }>,
     ) => {
       const { cardId, display } = action.payload;
       if (state.draftCards[cardId]) {
@@ -100,6 +102,7 @@ const documentsSlice = createSlice({
       }>,
     ) => {
       const { originalCard, modifiedData, draftId } = action.payload;
+      // Unjustified type cast. FIXME
       state.draftCards[draftId] = {
         ...originalCard,
         ...modifiedData,

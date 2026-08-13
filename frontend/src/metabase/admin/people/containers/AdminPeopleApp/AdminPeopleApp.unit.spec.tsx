@@ -1,14 +1,18 @@
-import { Route } from "react-router";
-
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { UpsellTenants } from "metabase/admin/upsells/UpsellTenants";
+import { createTenantsRouteGuard } from "metabase/admin/utils";
+import {
+  createMockAdminAppState,
+  createMockAdminState,
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import type { EmbeddingHomepageStatus } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { AdminPeopleApp } from "./AdminPeopleApp";
 
@@ -17,6 +21,9 @@ interface SetupOpts {
   ssoEnabled?: boolean;
   isSuperUser?: boolean;
   useTenants?: boolean;
+  setupEmbeddingAutoenabled?: boolean;
+  embeddingHomepage?: "hidden" | "visible" | "dismissed";
+  hasTenantsFeature?: boolean;
 }
 
 const setup = async (inputSetupOpts?: Partial<SetupOpts>) => {
@@ -25,6 +32,9 @@ const setup = async (inputSetupOpts?: Partial<SetupOpts>) => {
     ssoEnabled: false,
     isSuperUser: true,
     useTenants: false,
+    setupEmbeddingAutoenabled: false,
+    embeddingHomepage: "hidden",
+    hasTenantsFeature: false,
   };
   const setupOpts = Object.assign(defaultSetupOpts, inputSetupOpts ?? {});
 
@@ -34,16 +44,60 @@ const setup = async (inputSetupOpts?: Partial<SetupOpts>) => {
     }),
     settings: createMockSettingsState({
       "active-users-count": setupOpts.activeUsersCount,
+      "embedding-homepage":
+        // Unjustified type cast. FIXME
+        setupOpts.embeddingHomepage as EmbeddingHomepageStatus,
+      "setup-embedding-autoenabled": setupOpts.setupEmbeddingAutoenabled,
       "use-tenants": setupOpts.useTenants,
       "token-features": createMockTokenFeatures({
         sso_saml: setupOpts.ssoEnabled,
+        tenants: setupOpts.hasTenantsFeature,
       }),
     }),
   });
 
   renderWithProviders(
-    <Route path="/" component={() => <AdminPeopleApp>empty</AdminPeopleApp>} />,
+    <Route path="/" element={<AdminPeopleApp />}>
+      <Route index element={<>empty</>} />
+    </Route>,
     {
+      storeInitialState: state,
+      withRouter: true,
+    },
+  );
+};
+
+const setupTenantRoute = async (initialRoute: string) => {
+  const state = createMockState({
+    admin: createMockAdminState({
+      app: createMockAdminAppState({
+        paths: [{ key: "people", name: "People", path: "/admin/people" }],
+      }),
+    }),
+    currentUser: createMockUser({
+      is_superuser: true,
+    }),
+    settings: createMockSettingsState({
+      "setup-embedding-autoenabled": true,
+      "use-tenants": false,
+      "token-features": createMockTokenFeatures({
+        tenants: false,
+      }),
+    }),
+  });
+
+  const TenantsRouteGuard = createTenantsRouteGuard();
+
+  renderWithProviders(
+    <Route path="/admin/people" element={<AdminPeopleApp />}>
+      <Route path="tenants" element={<TenantsRouteGuard />}>
+        <Route path="groups" element={<UpsellTenants />} />
+        <Route path="people" element={<UpsellTenants />} />
+        <Route index element={<UpsellTenants />} />
+      </Route>
+    </Route>,
+    {
+      initialRoute,
       storeInitialState: state,
       withRouter: true,
     },
@@ -55,8 +109,8 @@ describe("AdminPeopleApp", () => {
     it("should render only internal people and groups links if tenants is disabled", async () => {
       await setup();
 
-      assertNavLink("People", "/admin/people");
-      assertNavLink("Groups", "/admin/people/groups");
+      await assertNavLink("People", "/admin/people");
+      await assertNavLink("Groups", "/admin/people/groups");
       expect(screen.queryByText("Tenants")).not.toBeInTheDocument();
       expect(screen.queryByText("Tenant users")).not.toBeInTheDocument();
     });
@@ -64,10 +118,42 @@ describe("AdminPeopleApp", () => {
     it("should render both internal and external people links if tenants is enabled", async () => {
       await setup({ useTenants: true });
 
-      assertNavLink("Internal users", "/admin/people");
-      assertNavLink("Internal groups", "/admin/people/groups");
-      assertNavLink("Tenants", "/admin/people/tenants");
-      assertNavLink("Tenant users", "/admin/people/tenants/people");
+      await assertNavLink("Internal users", "/admin/people");
+      await assertNavLink("Internal groups", "/admin/people/groups");
+      await assertNavLink("Tenants", "/admin/people/tenants");
+      await assertNavLink("Tenant users", "/admin/people/tenants/people");
+    });
+
+    it("should render a tenant upsell link for embedding setup instances without tenants", async () => {
+      await setup({ setupEmbeddingAutoenabled: true });
+
+      const tenantsLink = await assertNavLink(
+        "Tenants",
+        "/admin/people/tenants",
+      );
+
+      expect(within(tenantsLink).getByTestId("upsell-gem")).toBeInTheDocument();
+    });
+
+    it("should render tenant upsell links when only the legacy embedding homepage signal is present", async () => {
+      await setup({ embeddingHomepage: "visible" });
+
+      const tenantsLink = await assertNavLink(
+        "Tenants",
+        "/admin/people/tenants",
+      );
+
+      expect(within(tenantsLink).getByTestId("upsell-gem")).toBeInTheDocument();
+    });
+  });
+
+  describe("tenant upsell routes", () => {
+    it("should render the tenant upsell on /admin/people/tenants", async () => {
+      await setupTenantRoute("/admin/people/tenants");
+
+      expect(
+        await screen.findByText("Manage customer-facing analytics at scale"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -103,7 +189,13 @@ describe("AdminPeopleApp", () => {
 });
 
 async function assertNavLink(linkText: string, linkHref: string) {
-  const link = await screen.findByText(linkText);
+  const linkLabel = await screen.findByText(linkText);
+  const link =
+    linkLabel.closest("a") ?? document.querySelector(`a[href="${linkHref}"]`);
+
   expect(link).toBeInTheDocument();
   expect(link).toHaveAttribute("href", linkHref);
+
+  // Unjustified type cast. FIXME
+  return link as HTMLElement;
 }

@@ -3,3 +3,4 @@ docs/configuring-metabase/environment-variables.md
 docs/api/*
 docs/api-documentation.md
 frontend/src/embedding-sdk-shared/.storybook/msw-public/mockServiceWorker.js
+frontend/test/__support__/custom-viz-fixtures/**/*.js

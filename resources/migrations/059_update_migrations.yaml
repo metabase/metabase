@@ -118,6 +118,7 @@ databaseChangeLog:
         - not:
             foreignKeyConstraintExists:
               foreignKeyName: fk_transform_collection_id
+              foreignKeyTableName: transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform
@@ -1226,34 +1227,6 @@ databaseChangeLog:
             constraintName: unique_python_library_entity_id
 
   - changeSet:
-      id: v59.2026-01-27T13:00:00
-      author: wotbrew
-      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            changeSetExecuted:
-              id: v58.2026-01-27T13:00:00
-              author: wotbrew
-              changeLogFile: migrations/058_update_migrations.yaml
-      changes:
-        - sql:
-            sql: >-
-              UPDATE metabase_table
-              SET data_layer = CASE data_layer
-                WHEN 'copper' THEN 'hidden'
-                ELSE 'final'
-              END
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE metabase_table
-              SET data_layer = CASE data_layer
-                WHEN 'hidden' THEN 'copper'
-                ELSE 'bronze'
-              END
-
-  - changeSet:
       id: v59.2026-01-28T10:00:00
       author: metamben
       comment: Add stale column to analysis_finding for asynchronous dependent updates
@@ -1554,6 +1527,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_collection_workspace_id
+                foreignKeyTableName: collection
       changes:
         - addForeignKeyConstraint:
             baseTableName: collection
@@ -1657,6 +1631,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_log_workspace_id
+                foreignKeyTableName: workspace_log
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_log
@@ -1892,6 +1867,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_transform_workspace_id
+                foreignKeyTableName: workspace_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_transform
@@ -1910,6 +1886,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_transform_global_id
+                foreignKeyTableName: workspace_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_transform
@@ -1928,6 +1905,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_transform_collection_id
+                foreignKeyTableName: workspace_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_transform
@@ -1946,6 +1924,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_transform_creator_id
+                foreignKeyTableName: workspace_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_transform
@@ -2147,6 +2126,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_input_workspace_id
+                foreignKeyTableName: workspace_input
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_input
@@ -2165,6 +2145,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_input_table_id
+                foreignKeyTableName: workspace_input
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_input
@@ -2335,6 +2316,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_output_workspace_id
+                foreignKeyTableName: workspace_output
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_output
@@ -2353,6 +2335,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_output_ref_id
+                foreignKeyTableName: workspace_output
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_output
@@ -2443,6 +2426,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_merge_workspace_id
+                foreignKeyTableName: workspace_merge
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_merge
@@ -2461,6 +2445,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_merge_creator_id
+                foreignKeyTableName: workspace_merge
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_merge
@@ -2583,6 +2568,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_merge_transform_workspace_merge_id
+                foreignKeyTableName: workspace_merge_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_merge_transform
@@ -2601,6 +2587,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_merge_transform_workspace_id
+                foreignKeyTableName: workspace_merge_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_merge_transform
@@ -2619,6 +2606,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_merge_transform_transform_id
+                foreignKeyTableName: workspace_merge_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_merge_transform
@@ -2637,6 +2625,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_merge_transform_merging_user_id
+                foreignKeyTableName: workspace_merge_transform
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_merge_transform
@@ -2865,6 +2854,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_output_external_workspace_id
+                foreignKeyTableName: workspace_output_external
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_output_external
@@ -2883,6 +2873,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_output_external_transform_id
+                foreignKeyTableName: workspace_output_external
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_output_external
@@ -3017,6 +3008,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_input_external_workspace_id
+                foreignKeyTableName: workspace_input_external
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_input_external
@@ -3131,6 +3123,7 @@ databaseChangeLog:
         - not:
             - foreignKeyConstraintExists:
                 foreignKeyName: fk_workspace_graph_workspace_id
+                foreignKeyTableName: workspace_graph
       changes:
         - addForeignKeyConstraint:
             baseTableName: workspace_graph
@@ -3383,6 +3376,155 @@ databaseChangeLog:
                 'v58.2026-01-27T13:00:00'
               );
       rollback: # nothing to undo - these rows should not exist in v59
+
+  - changeSet:
+      id: v59.2026-03-12T12:00:00
+      author: wotbrew
+      comment: Add last_checkpoint_value to transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform
+                columnName: last_checkpoint_value
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: last_checkpoint_value
+                  type: ${text.type}
+                  remarks: Serialized checkpoint watermark value for incremental transforms, temporal as ISO8601
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-13T00:00:00
+      author: bronsa
+      comment: Remove legacy incremental transform strategies that use checkpoint-filter instead of checkpoint-filter-field-id
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.RemoveLegacyIncrementalStrategies"
+
+  - changeSet:
+      id: v59.2026-03-13T00:00:01
+      author: bronsa
+      comment: Add checkpoint_filter_field_id column to transform_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: checkpoint_filter_field_id
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: checkpoint_filter_field_id
+                  type: int
+                  remarks: The field ID used for incremental checkpoint filtering
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-13T00:00:02
+      author: bronsa
+      comment: Add checkpoint_lo_value column to transform_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: checkpoint_lo_value
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: checkpoint_lo_value
+                  type: ${text.type}
+                  remarks: The low checkpoint value for this run (exclusive lower bound)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-13T00:00:03
+      author: bronsa
+      comment: Add checkpoint_hi_value column to transform_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: checkpoint_hi_value
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: checkpoint_hi_value
+                  type: ${text.type}
+                  remarks: The high checkpoint value for this run (inclusive upper bound)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-17T10:30:03
+      author: nvoxland
+      comment: When rolling back, make sure any transform permissions that were added are removed. Because 58 doesn't know about them and errors
+      changes:
+        - output:
+            message: Placeholder for managing transform permissions on rollback
+            target: STDOUT
+      rollback: delete from data_permissions where perm_type='perms/transforms';
+
+
+
+  - changeSet:
+      id: v59.2026-03-17T13:00:00
+      author: bronsa
+      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - not:
+                changeSetExecuted:
+                  id: v58.2026-01-27T13:00:00
+                  author: wotbrew
+                  changeLogFile: migrations/058_update_migrations.yaml
+            - not:
+                changeSetExecuted:
+                  id: v59.2026-01-27T13:00:00
+                  author: wotbrew
+                  changeLogFile: migrations/059_update_migrations.yaml
+      runInTransaction: false
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
+
+  - changeSet:
+      id: v59.2026-07-10T22:29:16
+      author: escherize
+      comment: Add confirmed_at to auth_identity so MFA enrollment state is queryable in SQL
+      changes:
+        - addColumn:
+            tableName: auth_identity
+            columns:
+              - column:
+                  name: confirmed_at
+                  type: ${timestamp_type}
+                  remarks: When this identity was confirmed (e.g. MFA enrollment completed). Null = unconfirmed.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-07-10T22:29:17
+      author: escherize
+      comment: Backfill auth_identity.confirmed_at from the (possibly encrypted) credentials JSON
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.BackfillMfaConfirmedAt"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

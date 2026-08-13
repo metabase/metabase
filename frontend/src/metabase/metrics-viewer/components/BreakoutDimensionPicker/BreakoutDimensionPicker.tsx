@@ -5,16 +5,12 @@ import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
-import {
-  type DimensionOption,
-  groupIntoSections,
-} from "metabase/common/components/DimensionPill";
-import { HoverParent } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import type { DimensionOption } from "metabase/common/components/DimensionPill";
+import { HoverParent } from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
+import { getDimensionsByType } from "metabase/metrics-viewer/utils";
 import { Flex, Icon } from "metabase/ui";
 import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-
-import { getDimensionsByType } from "../../utils/tabs";
 
 import S from "./BreakoutDimensionPicker.module.css";
 import { DimensionBinningPicker } from "./DimensionBinningPicker";
@@ -43,10 +39,11 @@ export function BreakoutDimensionPicker({
   const sections: Section<DimensionOption>[] = useMemo(() => {
     const items: DimensionOption[] = [...dimensions.values()].map((dim) => ({
       ...dim,
+      dimension: dim.dimensionMetadata,
       selected: currentBreakoutDimensionName === dim.name,
     }));
 
-    return groupIntoSections(items);
+    return [{ items }];
   }, [dimensions, currentBreakoutDimensionName]);
 
   const handleSelect = useCallback(
@@ -135,6 +132,7 @@ export function BreakoutDimensionPicker({
         renderItemWrapper={renderItemWrapper}
         itemIsSelected={itemIsSelected}
         alwaysExpanded
+        hideSingleSectionTitle
         maxHeight={Infinity}
         width="16rem"
       />

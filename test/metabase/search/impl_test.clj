@@ -36,6 +36,21 @@
       (testing "Subclasses"
         (is (= :search.engine/hybrid (#'search.impl/parse-engine "hybrid"))))))
 
+(deftest vector-search-knobs-absent-test
+  ;; threading and gating of the knobs is covered end-to-end in [[metabase.search.api-test]]; this pins the
+  ;; contract that search-context must never DEFAULT them -- absence is what lets the semantic engine fall
+  ;; back to its setting-backed defaults, and the schema's default-value transformer makes that easy to
+  ;; break by adding an innocent-looking :default
+  (let [ctx (search.impl/search-context {:current-user-id       1
+                                         :current-user-perms    #{"/"}
+                                         :is-superuser?         true
+                                         :is-impersonated-user? false
+                                         :is-sandboxed-user?    false
+                                         :models                nil
+                                         :search-string         "x"})]
+    (is (not-any? ctx [:vector-search-strategy :vector-search-ef-search :vector-search-max-scan-tuples
+                       :vector-search-explain? :vector-search-force-index?]))))
+
 (deftest ^:parallel order-clause-test
   (testing "it includes all columns and normalizes the query"
     (is (= [[:case
@@ -47,9 +62,10 @@
              [:like [:lower :collection_type]   "%foo%"] [:inline 0]
              [:like [:lower :display]           "%foo%"] [:inline 0]
              [:like [:lower :display_type]      "%foo%"] [:inline 0]
-             [:like [:lower :table_schema]      "%foo%"] [:inline 0]
-             [:like [:lower :table_name]        "%foo%"] [:inline 0]
-             [:like [:lower :table_description] "%foo%"] [:inline 0]
+             [:like [:lower :table_schema]        "%foo%"] [:inline 0]
+             [:like [:lower :table_name]          "%foo%"] [:inline 0]
+             [:like [:lower :table_display_name]  "%foo%"] [:inline 0]
+             [:like [:lower :table_description]   "%foo%"] [:inline 0]
              [:like [:lower :database_name]     "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
              [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
@@ -196,7 +212,6 @@
           (test-search "2021-05-05~2023-05-04" new-result)
           (test-search "~2023-05-03" old-result)
           (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
-
           ;; relative times
           (test-search "thisyear" new-result)
           (test-search "past1years-from-12months" old-result)
@@ -277,7 +292,6 @@
           (test-search "2021-05-05~2023-05-04" new-result)
           (test-search "~2023-05-03" old-result)
           (test-search "2021-05-04T09:00:00~2021-05-04T10:00:10" old-result)
-
           ;; relative times
           (test-search "thisyear" new-result)
           (test-search "past1years-from-12months" old-result)

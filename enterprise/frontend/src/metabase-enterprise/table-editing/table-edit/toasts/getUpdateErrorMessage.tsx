@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
-import type { GenericErrorResponse } from "metabase/lib/errors";
+import type { GenericErrorResponse } from "metabase/utils/errors";
 
 export const getUpdateApiErrorMessage = (
   error: GenericErrorResponse | unknown,
 ): string => {
+  // Unjustified type cast. FIXME
   const maybeError = error as GenericErrorResponse;
 
   if (typeof maybeError.data === "string") {

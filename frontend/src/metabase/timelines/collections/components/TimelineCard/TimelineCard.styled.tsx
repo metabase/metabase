@@ -8,7 +8,7 @@ import { Markdown } from "metabase/common/components/Markdown";
 import { Icon } from "metabase/ui";
 
 export const CardIcon = styled(Icon)`
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   width: 1.375rem;
   height: 1.375rem;
 `;
@@ -52,14 +52,14 @@ export const CardMenu = styled.span`
 
 const cardRootHoverStyles = css`
   &:hover {
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
 
     ${CardIcon} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
 
     ${CardTitle} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 `;
@@ -68,7 +68,7 @@ export const CardRoot = styled(Link)`
   display: flex;
   padding: 1.75rem;
   align-items: center;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 6px;
   cursor: ${(props) => (props.to ? "pointer" : "default")};
 

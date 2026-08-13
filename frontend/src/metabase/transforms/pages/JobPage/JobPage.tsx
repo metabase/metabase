@@ -1,20 +1,18 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
   skipToken,
   useGetTransformJobQuery,
-  useListTransformJobTransformsQuery,
   useUpdateTransformJobMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import {
-  canEditTransform,
-  useTransformPermissions,
-} from "metabase/transforms/hooks/use-transform-permissions";
+import { useParams } from "metabase/router";
+import { useJobHeaderState } from "metabase/transforms/hooks/use-job-header-state";
+import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type {
   ScheduleDisplayType,
   TransformJob,
@@ -23,9 +21,9 @@ import type {
 } from "metabase-types/api";
 
 import { JobEditor } from "../../components/JobEditor";
+import { JobMoreMenu } from "../../components/JobMoreMenu";
+import { JobTabs } from "../../components/JobTabs";
 import { POLLING_INTERVAL } from "../../constants";
-
-import { JobMoreMenu } from "./JobMoreMenu";
 
 type JobPageParams = {
   jobId: string;
@@ -35,11 +33,8 @@ type JobPageParsedParams = {
   jobId?: TransformJobId;
 };
 
-type JobPageProps = {
-  params: JobPageParams;
-};
-
-export function JobPage({ params }: JobPageProps) {
+export function JobPage() {
+  const params = useParams<JobPageParams>();
   const { jobId } = getParsedParams(params);
   const [isPolling, setIsPolling] = useState(false);
   const {
@@ -50,27 +45,16 @@ export function JobPage({ params }: JobPageProps) {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
   });
 
-  const { transformsDatabases, isLoadingDatabases, databasesError } =
-    useTransformPermissions();
-  const {
-    data: transforms,
-    isLoading: isLoadingTransforms,
-    error: transformsError,
-  } = useListTransformJobTransformsQuery(jobId || skipToken);
-  const readOnly = useMemo(() => {
-    if (!transformsDatabases || !transforms) {
-      return;
-    }
-    return !transforms.every((t) => canEditTransform(t, transformsDatabases));
-  }, [transforms, transformsDatabases]);
+  const { isLoadingDatabases, databasesError } = useTransformPermissions();
+  const { readOnly, isCheckingPermissions, onNameChange } =
+    useJobHeaderState(jobId);
 
   if (isPolling !== isPollingNeeded(job)) {
     setIsPolling(isPollingNeeded(job));
   }
 
-  const isLoading = isLoadingJob || isLoadingDatabases || isLoadingTransforms;
-  const error = jobError || databasesError || transformsError;
-
+  const isLoading = isLoadingJob || isLoadingDatabases;
+  const error = jobError || databasesError;
   if (isLoading || error != null || job == null) {
     return (
       <Center h="100%">
@@ -79,31 +63,32 @@ export function JobPage({ params }: JobPageProps) {
     );
   }
 
-  return <JobPageBody job={job} readOnly={readOnly} />;
+  return (
+    <JobPageBody
+      job={job}
+      readOnly={readOnly}
+      isCheckingPermissions={isCheckingPermissions}
+      onNameChange={onNameChange}
+    />
+  );
 }
 
 type JobPageBodyProps = {
   job: TransformJob;
   readOnly?: boolean;
+  isCheckingPermissions?: boolean;
+  onNameChange: (name: string) => void;
 };
 
-function JobPageBody({ job, readOnly }: JobPageBodyProps) {
+function JobPageBody({
+  job,
+  readOnly,
+  isCheckingPermissions,
+  onNameChange,
+}: JobPageBodyProps) {
   const [updateJob] = useUpdateTransformJobMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
-
-  const handleNameChange = async (name: string) => {
-    const { error } = await updateJob({
-      id: job.id,
-      name,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update job name`);
-    } else {
-      sendSuccessToast(t`Job name updated`);
-    }
-  };
 
   const handleScheduleChange = async (
     schedule: string,
@@ -151,15 +136,20 @@ function JobPageBody({ job, readOnly }: JobPageBodyProps) {
     <JobEditor
       job={job}
       menu={!readOnly && <JobMoreMenu job={job} />}
+      tabs={<JobTabs jobId={job.id} />}
       readOnly={readOnly}
-      onNameChange={handleNameChange}
+      isCheckingPermissions={isCheckingPermissions}
+      showMetabotButton
+      onNameChange={onNameChange}
       onScheduleChange={handleScheduleChange}
       onTagListChange={handleTagListChange}
     />
   );
 }
 
-function getParsedParams({ jobId }: JobPageParams): JobPageParsedParams {
+function getParsedParams({
+  jobId,
+}: Partial<JobPageParams>): JobPageParsedParams {
   return {
     jobId: Urls.extractEntityId(jobId),
   };

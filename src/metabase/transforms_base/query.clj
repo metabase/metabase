@@ -4,6 +4,7 @@
    This namespace handles MBQL/native query transform execution and returns
    results in memory rather than writing to transform_run rows."
   (:require
+   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
@@ -39,7 +40,10 @@
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table :table-incremental]]
    [:conn-spec :any]
    [:query ::qp.compile/compiled]
-   [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
+   [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]
+   ;; Declared target indexes. `compile-transform` inlines the ones it can into the CTAS (e.g. Redshift SORTKEY,
+   ;; ClickHouse ORDER BY); the rest are created standalone.
+   [:indexes {:optional true} [:sequential :map]]])
 
 (mr/def ::transform-opts
   [:map
@@ -47,11 +51,16 @@
 
 ;;; ------------------------------------------------- Helpers -------------------------------------------------
 
-(defn- transform-opts [{:keys [transform-type]}]
+(defn- transform-opts [transform-type transform]
   (case transform-type
     :table {:overwrite? true}
-    ;; once we have more than just append, dispatch on :target-incremental-strategy
-    :table-incremental {}))
+    :table-incremental
+    (if (transforms-base.u/merge-target? transform)
+      (let [unique-key (transforms-base.u/merge-target-unique-key transform)
+            columns    (transforms-base.u/target-column-names transform)]
+        (transforms-base.u/validate-merge-unique-key! unique-key columns)
+        {:merge {:unique-key unique-key, :columns columns}})
+      {})))
 
 ;;; ------------------------------------------------- Base Execution -------------------------------------------------
 
@@ -79,57 +88,68 @@
     :result <driver result>
     :error <exception if failed>}"
   [{:keys [id source target] :as transform} :- ::transforms-base.schema/transform
-   {:keys [cancelled?] :as _opts} :- [:maybe ::transforms-base.schema/execute-base-options]]
+   {:keys [cancelled? source-range-params] :as _opts} :- [:maybe ::transforms-base.schema/execute-base-options]]
   (try
     ;; Check cancellation before starting
     (when (and cancelled? (cancelled?))
       (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
-
     (let [db (get-in source [:query :database])
-          {driver :engine :as database} (t2/select-one :model/Database db)
+          {driver :engine :as database} (when db (t2/select-one :model/Database db))
+          _ (when-not database
+              (throw (ex-info "Source database for this transform has been deleted."
+                              {:transform-id (:id transform)
+                               :source-database-id db})))
           _ (transforms-base.u/throw-if-db-routing-enabled! transform database)
+          ;; Full incremental runs (no watermark — either the first ever, or one that follows a
+          ;; checkpoint-config reset) drop and recreate the table rather than appending.
+          effective-transform-type (if (transforms-base.u/full-incremental-run? transform)
+                                     :table
+                                     (keyword (:type target)))
+          compiled-query (transforms-base.u/compile-source transform source-range-params)
           transform-details {:db-id db
                              :database database
                              :transform-id   id
-                             :transform-type (keyword (:type target))
+                             :transform-type effective-transform-type
                              :conn-spec (driver/connection-spec driver database)
-                             :query (transforms-base.u/compile-source transform)
+                             :query compiled-query
                              :output-schema (:schema target)
-                             :output-table (transforms-base.u/qualified-table-name driver target)}
-          opts (transform-opts transform-details)
+                             ;; Cross-DB write target qualifier. Populated when the driver's
+                             ;; `qualified-name-components` includes `:db` (MySQL/Snowflake/
+                             ;; SQL Server/BigQuery) AND a cross-DB rewriter put a different
+                             ;; DB into the target's `:db` slot. Compilation prepends this to
+                             ;; the CTAS table name. See
+                             ;; `metabase.driver.sql.query-processor/compile-transform :sql`.
+                             :output-db (:db target)
+                             :output-table (transforms-base.u/qualified-table-name driver target)
+                             :indexes (:indexes target)}
+          opts (transform-opts effective-transform-type transform)
           features (transforms-base.u/required-database-features transform)]
-
       (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
         (throw (ex-info "The database does not support the requested transform target type."
                         {:driver driver, :database database, :features features})))
-
       (log/info "Executing transform" id "with target" (pr-str target))
-
       ;; Create schema if needed
-      (when-not (driver/schema-exists? driver db (:schema target))
+      (when (and (not (str/blank? (:schema target)))
+                 (not (driver/schema-exists? driver db (:schema target))))
         (driver/create-schema-if-needed! driver (:conn-spec transform-details) (:schema target)))
-
       ;; Check cancellation before running query
       (when (and cancelled? (cancelled?))
         (throw (ex-info "Transform cancelled before query execution" {:status :cancelled})))
-
       ;; Run the actual transform
       (let [result (driver/run-transform! driver transform-details opts)]
-
         ;; Check cancellation after query
         (when (and cancelled? (cancelled?))
           (throw (ex-info "Transform cancelled after query execution" {:status :cancelled})))
-
         {:status :succeeded
-         :result result}))
-
+         :result result
+         :source-range-params source-range-params}))
     (catch Exception e
       (let [data (ex-data e)]
         (if (= :cancelled (:status data))
           {:status :cancelled
            :error e}
           (do
-            (log/error e "Error executing transform")
+            (log/errorf "Error executing transform: %s" (ex-message e))
             {:status :failed
              :error e}))))))
 

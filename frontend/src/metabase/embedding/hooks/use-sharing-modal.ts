@@ -6,11 +6,11 @@ import type {
 } from "metabase/embedding/components/SharingMenu/types";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
-import { useDispatch } from "metabase/lib/redux";
 import type {
   EmbedResource,
   EmbedResourceType,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
+import { useDispatch } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
 
 export const useSharingModal = <
@@ -30,8 +30,6 @@ export const useSharingModal = <
     initialState: {
       resourceId: resource.id,
       resourceType,
-      isGuest: true,
-      useExistingUserSession: true,
     },
   });
 

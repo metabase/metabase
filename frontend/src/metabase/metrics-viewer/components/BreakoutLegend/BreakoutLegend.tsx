@@ -1,32 +1,19 @@
 import { useMemo } from "react";
 
+import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import { Box, Flex, Paper, Stack, Text, Title } from "metabase/ui";
-import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  SourceColorMap,
-} from "../../types/viewer-state";
 import { buildLegendGroups } from "../../utils/legend";
 
 import S from "./BreakoutLegend.module.css";
 
-type BreakoutLegendProps = {
-  definitions: MetricsViewerDefinitionEntry[];
-  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
-  sourceColors: SourceColorMap;
-};
+export function BreakoutLegend() {
+  const { formulaEntities, definitions, activeBreakoutColors } =
+    useMetricsViewerContext();
 
-export function BreakoutLegend({
-  definitions,
-  breakoutValuesBySourceId,
-  sourceColors,
-}: BreakoutLegendProps) {
   const groups = useMemo(
-    () =>
-      buildLegendGroups(definitions, breakoutValuesBySourceId, sourceColors),
-    [definitions, breakoutValuesBySourceId, sourceColors],
+    () => buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
+    [formulaEntities, definitions, activeBreakoutColors],
   );
 
   if (groups.length === 0) {
@@ -40,19 +27,19 @@ export function BreakoutLegend({
       pt="md"
       pr="lg"
       pb="md"
-      pl={0}
+      pl="sm"
       data-testid="metrics-viewer-breakout-legend"
     >
       <Paper withBorder radius="md" p="lg">
         <Stack gap="lg">
           {groups.map((group) => (
-            <Stack key={group.header} gap="sm">
+            <Stack key={group.key} gap="sm">
               <div>
                 <Title fw="bold" size="md" lh={1.3}>
                   {group.header}
                 </Title>
                 {group.subtitle && (
-                  <Text size="sm" c="text-tertiary" lh={1.3}>
+                  <Text size="sm" c="text-disabled" lh={1.3}>
                     {group.subtitle}
                   </Text>
                 )}
@@ -61,6 +48,7 @@ export function BreakoutLegend({
                 <Flex key={item.label} align="center" gap="sm">
                   <Box
                     className={S.dot}
+                    data-testid="breakout-legend-dot"
                     w="0.625rem"
                     h="0.625rem"
                     bdrs="50%"

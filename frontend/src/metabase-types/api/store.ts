@@ -35,9 +35,23 @@ type BillingInfoFormatType =
 export type BillingInfoLineItem = BillingInfoFormatType &
   BillingInfoDisplayType;
 
+export type AddOnProductType =
+  | "metabase-ai"
+  | "metabase-ai-tiered"
+  | "metabase-ai-managed"
+  | "python-execution"
+  | "transforms-basic"
+  | "transforms-basic-metered"
+  | "transforms-advanced"
+  | "transforms-advanced-metered"
+  | "dwh-rent"
+  | "etl-connections";
+
 interface IBillingInfoData {
   billing_period_months?: number | null;
-  previous_add_ons?: { product_type: string; self_service: boolean }[] | null;
+  previous_add_ons?:
+    | { product_type: AddOnProductType; self_service: boolean }[]
+    | null;
 }
 
 export type BillingInfo = {
@@ -68,11 +82,12 @@ export interface ICloudAddOnProduct {
   is_metered: boolean | null;
   name: string;
   product_tiers: ICloudAddOnProductTier[];
-  product_type: string;
+  product_type: AddOnProductType;
   self_service: boolean;
   short_name: string;
   token_features: TokenFeature[];
   trial_days: number | null;
+  free_units: number | null;
 }
 
 export type GetCloudAddOnsResponse = ICloudAddOnProduct[];

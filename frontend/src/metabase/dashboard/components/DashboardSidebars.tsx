@@ -1,14 +1,14 @@
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
-import DashboardSubscriptionsSidebar from "metabase/notifications/DashboardSubscriptionsSidebar";
-import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
-import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 
+import { AIDashboardAnalysisSidebar } from "./AIDashboardAnalysisSidebar/AIDashboardAnalysisSidebar";
 import { ActionSidebar } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
+import DashboardSubscriptionsSidebar from "./DashboardSubscriptionsSidebar";
+import { ParameterSidebar } from "./ParameterSidebar";
 
 export function DashboardSidebars() {
   const { isFullscreen, sidebar } = useDashboardContext();
@@ -34,7 +34,7 @@ export function DashboardSidebars() {
     case SIDEBAR_NAME.info:
       return <DashboardInfoSidebar />;
     case SIDEBAR_NAME.analyze:
-      return <PLUGIN_AI_ENTITY_ANALYSIS.AIDashboardAnalysisSidebar />;
+      return <AIDashboardAnalysisSidebar />;
     default:
       return null;
   }

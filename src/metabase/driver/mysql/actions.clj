@@ -118,7 +118,7 @@
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-permission-constraint]
   [_driver error-type _database action-type error-message]
   (or (when-let [[_match _command _table-name]
-                 (re-find #"(INSERT|UPDATE|DELETE) command denied to user .* for table '(.+)'" error-message)]
+                 (re-find #"(INSERT|UPDATE|DELETE) command denied to user .* for table (.+)" error-message)]
         (merge {:type error-type}
                (case action-type
                  (:table.row/create :model.row/create)
@@ -221,7 +221,7 @@
     (sql.qp/format-honeysql driver select-hsql)))
 
 (defmethod sql-jdbc.actions/select-created-row :mysql
-  [driver create-hsql conn {:strs [insert_id] :as results}]
+  [driver create-hsql conn {:strs [insert_id]}]
   (let [jdbc-spec        {:connection conn}
         table-components (-> create-hsql :insert-into :components)
         pks              (primary-keys driver jdbc-spec table-components)
@@ -230,5 +230,5 @@
                                      select-sql-args
                                      {:transaction? false, :keywordize? false})]
     (if (next query-results)
-      (log/warn "cannot identify row inserted by" create-hsql "using results" results)
+      (log/warn "cannot identify row inserted: select by primary key returned multiple rows")
       (first query-results))))

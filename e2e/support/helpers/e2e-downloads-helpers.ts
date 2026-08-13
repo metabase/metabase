@@ -141,7 +141,7 @@ export function downloadAndAssert({
     }
   }
 
-  cy.get("[aria-label='Download results']").click();
+  cy.findByLabelText("Download results").should("be.visible").click();
 
   popover().within(() => {
     cy.findByText(`.${fileType}`).click();

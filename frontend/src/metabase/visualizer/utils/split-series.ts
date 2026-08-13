@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { isCartesianChart } from "metabase/visualizations";
 import type {
   RawSeries,
@@ -51,6 +51,7 @@ export function splitVisualizerSeries(
   const allMetrics = mainCard.visualization_settings["graph.metrics"];
   const allDimensions = mainCard.visualization_settings["graph.dimensions"];
 
+  // Unjustified type cast. FIXME
   return dataSourceIds
     .map((dataSourceId, i) => {
       const columnNames = Object.keys(columnValuesMapping).filter(

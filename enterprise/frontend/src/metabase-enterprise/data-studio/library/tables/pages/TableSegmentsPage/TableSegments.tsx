@@ -1,14 +1,14 @@
 import { t } from "ttag";
 
-import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
+import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
+import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
 import {
   EntityList,
   EntityListItem,
 } from "metabase/data-studio/common/components/EntityList";
-import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useSelector } from "metabase/redux";
 import { Flex } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
 type TableSegmentsProps = {
@@ -27,7 +27,7 @@ export function TableSegments({ table }: TableSegmentsProps) {
         items={segments}
         title={t`Segments`}
         emptyState={{
-          icon: "segment2",
+          icon: "segment",
           title: t`No segments yet`,
           message: t`Create a segment to filter rows in this table.`,
         }}
@@ -39,6 +39,7 @@ export function TableSegments({ table }: TableSegmentsProps) {
                 trackClickEvent: () =>
                   trackSegmentCreateStarted(
                     "data_studio_segments",
+                    // Unjustified type cast. FIXME
                     table.id as ConcreteTableId,
                   ),
               }
@@ -49,7 +50,7 @@ export function TableSegments({ table }: TableSegmentsProps) {
             key={segment.id}
             name={segment.name}
             description={segment.definition_description}
-            icon="segment2"
+            icon="segment"
             href={Urls.dataStudioPublishedTableSegment(table.id, segment.id)}
           />
         )}

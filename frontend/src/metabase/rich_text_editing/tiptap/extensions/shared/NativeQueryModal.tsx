@@ -5,31 +5,23 @@ import { c, t } from "ttag";
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { datasetApi } from "metabase/api/dataset";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
-import {
-  createDraftCard,
-  generateDraftCardId,
-  loadMetadataForDocumentCard,
-} from "metabase/documents/documents.slice";
-import { isMac } from "metabase/lib/browser";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
-import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
-import { createRawSeries } from "metabase/query_builder/utils";
+import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
+import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
+import { useDispatch, useSelector } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
+import { isMac } from "metabase/utils/browser";
 import Visualization from "metabase/visualizations/components/Visualization";
 import NoResultsView from "metabase/visualizations/components/Visualization/NoResultsView/NoResultsView";
+import { createRawSeries } from "metabase/visualizations/lib/series";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { Card, DatabaseId, Dataset, RawSeries } from "metabase-types/api";
 
 import S from "./NativeQueryModal.module.css";
-
-type DataReferenceStackItem = {
-  type: string;
-  item: unknown;
-};
 
 interface NativeQueryModalProps {
   card: Card;
@@ -114,6 +106,7 @@ export const NativeQueryModal = ({
   initialDataset,
 }: NativeQueryModalProps) => {
   const dispatch = useDispatch();
+  const host = useEditorHost();
   const metadata = useSelector(getMetadata);
 
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
@@ -124,7 +117,7 @@ export const NativeQueryModal = ({
     useState(false);
   const [isShowingDataReference, setIsShowingDataReference] = useState(false);
   const [dataReferenceStack, setDataReferenceStack] = useState<
-    DataReferenceStackItem[]
+    DataReferenceItem[]
   >([]);
 
   const [
@@ -148,9 +141,9 @@ export const NativeQueryModal = ({
 
   useEffect(() => {
     if (isOpen && card) {
-      dispatch(loadMetadataForDocumentCard(card));
+      dispatch(host.actions.loadMetadataForDocumentCard(card));
     }
-  }, [isOpen, card, dispatch]);
+  }, [isOpen, card, dispatch, host.actions]);
 
   const question = useMemo(() => {
     if (!card || !metadata || !isOpen) {
@@ -219,7 +212,7 @@ export const NativeQueryModal = ({
       return;
     }
 
-    const newCardId = generateDraftCardId();
+    const newCardId = host.actions.generateDraftCardId();
     if (!isNewQuestion) {
       const modifiedData = {
         dataset_query: modifiedQuestion.datasetQuery(),
@@ -229,7 +222,7 @@ export const NativeQueryModal = ({
       };
 
       dispatch(
-        createDraftCard({
+        host.actions.createDraftCard({
           originalCard: card,
           modifiedData,
           draftId: newCardId,
@@ -252,7 +245,7 @@ export const NativeQueryModal = ({
       };
 
       dispatch(
-        createDraftCard({
+        host.actions.createDraftCard({
           originalCard: undefined,
           modifiedData,
           draftId: newCardId,
@@ -262,7 +255,15 @@ export const NativeQueryModal = ({
 
     onSave({ card_id: newCardId });
     onClose();
-  }, [modifiedQuestion, isNewQuestion, onSave, onClose, dispatch, card]);
+  }, [
+    modifiedQuestion,
+    isNewQuestion,
+    onSave,
+    onClose,
+    dispatch,
+    card,
+    host.actions,
+  ]);
 
   const rawSeries = useMemo<RawSeries | null>(() => {
     if (!modifiedQuestion || !datasetToUse || failedDataset) {
@@ -335,10 +336,6 @@ export const NativeQueryModal = ({
                   query={nativeQuery}
                   isNativeEditorOpen
                   isInitiallyOpen
-                  hasTopBar
-                  hasEditingSidebar
-                  hasParametersList={false}
-                  sidebarFeatures={MODAL_SIDEBAR_FEATURES}
                   availableHeight={totalHeight}
                   isRunnable
                   isRunning={isQueryRunning}
@@ -357,7 +354,7 @@ export const NativeQueryModal = ({
                       const databaseId = modifiedQuestion.databaseId();
                       if (databaseId) {
                         setDataReferenceStack([
-                          { type: "database", item: { id: databaseId } },
+                          { type: "database", id: databaseId },
                         ]);
                       }
                     }
@@ -378,7 +375,14 @@ export const NativeQueryModal = ({
                     setModifiedQuestion(newQuestion);
                   }}
                   resizable
-                />
+                >
+                  <NativeQueryEditor.TopBar>
+                    <NativeQueryEditor.Sidebar
+                      features={MODAL_SIDEBAR_FEATURES}
+                    />
+                  </NativeQueryEditor.TopBar>
+                  <NativeQueryEditor.RunButton />
+                </NativeQueryEditor>
               )}
             </Box>
 
@@ -429,11 +433,12 @@ export const NativeQueryModal = ({
             <Box
               w="350px"
               miw="350px"
-              bg="background-primary"
+              bg="background_page-primary"
               className={S.dataReferenceSidebar}
             >
               <DataReference
                 dataReferenceStack={dataReferenceStack}
+                databaseId={modifiedQuestion.databaseId() ?? undefined}
                 onClose={() => setIsShowingDataReference(false)}
                 popDataReferenceStack={() => {
                   if (dataReferenceStack.length === 1) {
@@ -442,7 +447,7 @@ export const NativeQueryModal = ({
                     setDataReferenceStack(dataReferenceStack.slice(0, -1));
                   }
                 }}
-                pushDataReferenceStack={(item: DataReferenceStackItem) => {
+                pushDataReferenceStack={(item: DataReferenceItem) => {
                   setDataReferenceStack([...dataReferenceStack, item]);
                 }}
               />
@@ -456,7 +461,7 @@ export const NativeQueryModal = ({
           justify="flex-end"
           gap="0.5rem"
           p="1rem"
-          bg="background-primary"
+          bg="background_page-primary"
           className={S.footer}
         >
           <Button variant="subtle" onClick={onClose}>

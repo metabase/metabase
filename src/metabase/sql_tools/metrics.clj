@@ -5,7 +5,8 @@
    sql-tools public API calls with counters and histograms, labeled by parser
    backend and operation name."
   (:require
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -30,9 +31,9 @@
              operation operations]
          {:parser parser :operation operation})))
 
-(defmethod analytics/known-labels :metabase-sql-tools/operations-total [_] operation-labels)
-(defmethod analytics/known-labels :metabase-sql-tools/operations-completed [_] operation-labels)
-(defmethod analytics/known-labels :metabase-sql-tools/operations-failed [_] operation-labels)
+(defmethod analytics.core/known-labels :metabase-sql-tools/operations-total [_] operation-labels)
+(defmethod analytics.core/known-labels :metabase-sql-tools/operations-completed [_] operation-labels)
+(defmethod analytics.core/known-labels :metabase-sql-tools/operations-failed [_] operation-labels)
 
 ;;; -------------------------------------------------- Recording fns --------------------------------------------------
 

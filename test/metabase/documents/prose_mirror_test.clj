@@ -317,3 +317,74 @@
                        (:text %))
           result (prose-mirror/collect-ast doc collector)]
       (is (= ["first" "second" "third"] (vec result))))))
+
+(deftest ^:parallel ast->text-test
+  (testing "joins text from all text nodes across nested blocks, in document order"
+    (let [ast {:type "doc"
+               :content [{:type "heading" :content [{:type "text" :text "Title"}]}
+                         {:type "paragraph" :content [{:type "text" :text "Hello"}
+                                                      {:type "text" :text "world"}]}]}]
+      (is (= "Title Hello world" (prose-mirror/ast->text ast)))))
+  (testing "includes the visible label of reference nodes (smart links, mentions), in document order"
+    (let [ast {:type "doc"
+               :content [{:type "paragraph"
+                          :content [{:type "text" :text "see"}
+                                    {:type prose-mirror/smart-link-type
+                                     :attrs {:model "card" :entityId "abc" :label "Orders Question"}}
+                                    {:type "text" :text "and"}
+                                    {:type "mention" :attrs {:id 7 :label "Jane Doe"}}]}]}]
+      (is (= "see Orders Question and Jane Doe" (prose-mirror/ast->text ast)))))
+  (testing "ignores nodes that render no inline prose (card embeds, label-less references, layout containers)"
+    (let [ast {:type "doc"
+               :content [{:type "paragraph" :content [{:type "text" :text "before"}]}
+                         {:type prose-mirror/card-embed-type :attrs {:id 42}}
+                         {:type prose-mirror/smart-link-type :attrs {:model "card" :entityId "abc"}}
+                         {:type "paragraph" :content [{:type "text" :text "after"}]}]}]
+      (is (= "before after" (prose-mirror/ast->text ast)))))
+  (testing "returns an empty string for an empty document"
+    (is (= "" (prose-mirror/ast->text {:type "doc" :content []})))
+    (is (= "" (prose-mirror/ast->text nil)))))
+
+(deftest ^:parallel insert-card-embed-test
+  (let [doc {:document {:type "doc"
+                        :content [{:type "paragraph" :content [{:type "text" :text "one"}]}
+                                  {:type "paragraph" :content [{:type "text" :text "two"}]}]}
+             :content_type prose-mirror/prose-mirror-content-type}
+        embed {:type "resizeNode"
+               :content [{:type prose-mirror/card-embed-type :attrs {:id 42}}]}]
+    (testing "a nil index appends the embed at the end"
+      (let [result (prose-mirror/insert-card-embed doc 42 nil)]
+        (is (= 3 (count (get-in result [:document :content]))))
+        (is (= embed (get-in result [:document :content 2])))))
+    (testing "an index inserts before the block currently at that index"
+      (let [result (prose-mirror/insert-card-embed doc 42 1)]
+        (is (= embed (get-in result [:document :content 1])))
+        (is (= "two" (get-in result [:document :content 2 :content 0 :text])))))
+    (testing "index 0 inserts at the very top"
+      (is (= embed (-> (prose-mirror/insert-card-embed doc 42 0)
+                       (get-in [:document :content 0])))))
+    (testing "out-of-range indexes are clamped"
+      (is (= embed (-> (prose-mirror/insert-card-embed doc 42 99)
+                       (get-in [:document :content 2]))))
+      (is (= embed (-> (prose-mirror/insert-card-embed doc 42 -5)
+                       (get-in [:document :content 0])))))))
+
+(deftest ^:parallel insert-card-embed-empty-document-test
+  (testing "inserting into an empty or nil ast produces a doc with just the embed"
+    (doseq [document [{:type "doc" :content []} nil]]
+      (let [result (prose-mirror/insert-card-embed
+                    {:document document
+                     :content_type prose-mirror/prose-mirror-content-type}
+                    7 nil)]
+        (is (= {:type "doc"
+                :content [{:type "resizeNode"
+                           :content [{:type prose-mirror/card-embed-type :attrs {:id 7}}]}]}
+               (:document result)))))))
+
+(deftest ^:parallel insert-card-embed-invalid-content-type-test
+  (testing "throws for non-prose-mirror documents"
+    (is (thrown-with-msg?
+         Exception #"Document does not have the prose mirror content-type"
+         (prose-mirror/insert-card-embed {:document {:type "doc" :content []}
+                                          :content_type "text/plain"}
+                                         7 nil)))))

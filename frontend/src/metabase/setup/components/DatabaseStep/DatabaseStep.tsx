@@ -3,17 +3,17 @@ import { c, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import type { InviteInfo } from "metabase/redux/store";
+import { useSetting } from "metabase/settings";
 import {
   getDatabase,
   getDatabaseEngine,
   getInvite,
-  getIsEmailConfigured,
   getUser,
 } from "metabase/setup";
 import { Text } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
-import type { InviteInfo } from "metabase-types/store";
 
 import {
   skipDatabase,
@@ -34,7 +34,7 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const database = useSelector(getDatabase);
   const engine = useSelector(getDatabaseEngine);
   const invite = useSelector(getInvite);
-  const isEmailConfigured = useSelector(getIsEmailConfigured);
+  const isEmailConfigured = useSetting("email-configured?");
 
   const dispatch = useDispatch();
   const [sendToast] = useToast();

@@ -1,4 +1,4 @@
-import { isNumber } from "metabase/lib/types";
+import { isNumber } from "metabase/utils/types";
 import type { NumericScale } from "metabase-types/api";
 
 import type { NumericAxisScaleTransforms } from "./types";

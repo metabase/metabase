@@ -9,6 +9,8 @@ summary: Route queries to different databases based on who's viewing them. Great
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 
+![Database routing diagram](./images/database-routing-diagram.png)
+
 Database routing is useful for:
 
 - Managing modular and full app embedding setups where each customer has their own database with identical schemas.
@@ -30,7 +32,7 @@ Database routing is **not supported** on:
 - Spark SQL
 - Vertica.
 
-Different database have different setups, so _what_ you can route between (database, schema, data catalog, etc.) will differ slightly depending on which data warehouse you're using.
+Different databases have different setups, so _what_ you can route between (database, schema, data catalog, etc.) will differ slightly depending on which data warehouse you're using.
 
 - Athena: Only routing between different connections is supported (e.g., different buckets, roles, or catalogs).
 - BigQuery: Only routing between databases in different projects is supported.
@@ -47,6 +49,8 @@ Database routing **can't be used** on databases with:
 - [Model persistence](../data-modeling/model-persistence.md)
 
 With **guest embedding**, database queries will always be routed to the router database. This is because guest embed users don't have Metabase accounts, so there are no user attributes available to determine which destination database to route to.
+
+**Public links** will not work with database routing.
 
 ## How database routing works
 
@@ -100,7 +104,7 @@ Here's a `curl` command to add a PostgreSQL database as a destination database. 
 curl 'http://localhost:3000/api/ee/database-routing/mirror-database?check_connection_details=true' \
   --request POST \
   --header 'Content-Type: application/json' \
-  --header 'X-Api-Key: mb_CpkoZHvSB5R+P+WsuXWRbdT3WbVphFv/rgMX9UGux/4=' \
+  --header 'X-API-Key: mb_CpkoZHvSB5R+P+WsuXWRbdT3WbVphFv/rgMX9UGux/4=' \
   --data '{
   "router_database_id": 2,
   "mirrors": [
@@ -132,7 +136,7 @@ If you grab the payload from the browser's Network tab, you may see additional, 
 curl 'http://localhost:3000/api/ee/database-routing/mirror-database?check_connection_details=true' \
   --request POST \
   --header 'Content-Type: application/json' \
-  --header 'X-Api-Key: mb_CpkoZHvSB5R+P+WsuXWRbdT3WbVphFv/rgMX9UGux/4=' \
+  --header 'X-API-Key: mb_CpkoZHvSB5R+P+WsuXWRbdT3WbVphFv/rgMX9UGux/4=' \
   --data '{
   "router_database_id": 2,
   "mirrors": [

@@ -388,6 +388,7 @@
                                                                  (authenticate credentials)
                                                                  credentials))}
       :query-string   (build-query-string query-parameters)
+      :remote-addr    "127.0.0.1"
       :request-method method
       :uri            (str *url-prefix* url)}
      request-options

@@ -1,0 +1,463 @@
+## OAuth/OIDC provider server tables for embedded OAuth support
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+
+  # oauth_client table
+  - changeSet:
+      id: v60.2026-03-11T00:00:00
+      author: epaget
+      comment: Create oauth_client table for embedded OAuth provider
+      changes:
+        - createTable:
+            tableName: oauth_client
+            remarks: Stores OAuth2/OIDC client registrations for the embedded provider
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Auto-incrementing primary key
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: client_id
+                  type: varchar(255)
+                  remarks: OAuth client_id (UUID)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: client_secret_hash
+                  type: ${text.type}
+                  remarks: PBKDF2 hash of client secret
+                  constraints:
+                    nullable: true
+              - column:
+                  name: redirect_uris
+                  type: ${text.type}
+                  remarks: JSON array of redirect URIs
+                  constraints:
+                    nullable: false
+              - column:
+                  name: grant_types
+                  type: ${text.type}
+                  remarks: JSON array of grant types
+                  constraints:
+                    nullable: false
+              - column:
+                  name: response_types
+                  type: ${text.type}
+                  remarks: JSON array of response types
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scopes
+                  type: ${text.type}
+                  remarks: JSON array of scopes
+                  constraints:
+                    nullable: false
+              - column:
+                  name: token_endpoint_auth_method
+                  type: varchar(50)
+                  remarks: OAuth token endpoint auth method (e.g. client_secret_basic)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: client_name
+                  type: varchar(255)
+                  remarks: Human-readable client name
+                  constraints:
+                    nullable: true
+              - column:
+                  name: client_uri
+                  type: ${text.type}
+                  remarks: URL of the client home page
+                  constraints:
+                    nullable: true
+              - column:
+                  name: logo_uri
+                  type: ${text.type}
+                  remarks: URL of the client logo image
+                  constraints:
+                    nullable: true
+              - column:
+                  name: contacts
+                  type: ${text.type}
+                  remarks: JSON array of contact strings
+                  constraints:
+                    nullable: true
+              - column:
+                  name: registration_type
+                  type: varchar(50)
+                  remarks: "static or dynamic"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: client_type
+                  type: varchar(50)
+                  remarks: "confidential or public"
+                  defaultValue: "confidential"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: application_type
+                  type: varchar(50)
+                  remarks: OAuth application type (web or native), defaults to web
+                  defaultValue: web
+                  constraints:
+                    nullable: true
+              - column:
+                  name: registration_access_token_hash
+                  type: ${text.type}
+                  remarks: Hashed RFC 7592 registration access token
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of client registration
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of last client update
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-03-11T00:00:01
+      author: epaget
+      comment: Add unique index on oauth_client.client_id
+      changes:
+        - addUniqueConstraint:
+            tableName: oauth_client
+            constraintName: uq_oauth_client_client_id
+            columnNames: client_id
+
+  # oauth_authorization_code table
+  - changeSet:
+      id: v60.2026-03-11T00:00:02
+      author: epaget
+      comment: Create oauth_authorization_code table
+      changes:
+        - createTable:
+            tableName: oauth_authorization_code
+            remarks: Stores authorization codes for the embedded OAuth provider
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Auto-incrementing primary key
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: code
+                  type: varchar(255)
+                  remarks: The authorization code string
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: FK to core_user.id
+                  constraints:
+                    nullable: false
+              - column:
+                  name: client_id
+                  type: varchar(255)
+                  remarks: The OAuth client_id
+                  constraints:
+                    nullable: false
+              - column:
+                  name: redirect_uri
+                  type: ${text.type}
+                  remarks: Redirect URI for this authorization
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scope
+                  type: ${text.type}
+                  remarks: JSON array of scope strings
+                  constraints:
+                    nullable: false
+              - column:
+                  name: nonce
+                  type: varchar(255)
+                  remarks: OIDC nonce value
+                  constraints:
+                    nullable: true
+              - column:
+                  name: expiry
+                  type: bigint
+                  remarks: Milliseconds since epoch
+                  constraints:
+                    nullable: false
+              - column:
+                  name: code_challenge
+                  type: varchar(255)
+                  remarks: PKCE code challenge
+                  constraints:
+                    nullable: true
+              - column:
+                  name: code_challenge_method
+                  type: varchar(10)
+                  remarks: PKCE code challenge method
+                  constraints:
+                    nullable: true
+              - column:
+                  name: resource
+                  type: ${text.type}
+                  remarks: JSON array of resource URIs (RFC 8707)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of code creation
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-03-11T00:00:03
+      author: epaget
+      comment: Add unique index on oauth_authorization_code.code
+      changes:
+        - addUniqueConstraint:
+            tableName: oauth_authorization_code
+            constraintName: uq_oauth_authorization_code_code
+            columnNames: code
+
+  - changeSet:
+      id: v60.2026-03-11T00:00:04
+      author: epaget
+      comment: Add index on oauth_authorization_code.expiry for cleanup
+      changes:
+        - createIndex:
+            tableName: oauth_authorization_code
+            indexName: idx_oauth_authorization_code_expiry
+            columns:
+              - column:
+                  name: expiry
+
+  - changeSet:
+      id: v60.2026-03-11T00:00:05
+      author: epaget
+      comment: Add index on oauth_authorization_code.user_id
+      changes:
+        - createIndex:
+            tableName: oauth_authorization_code
+            indexName: idx_oauth_authorization_code_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v60.2026-03-11T00:00:06
+      author: epaget
+      comment: Add FK on oauth_authorization_code.user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: oauth_authorization_code
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_oauth_authorization_code_user_id
+
+  # oauth_access_token table
+  - changeSet:
+      id: v60.2026-03-11T00:00:07
+      author: epaget
+      comment: Create oauth_access_token table
+      changes:
+        - createTable:
+            tableName: oauth_access_token
+            remarks: Stores access tokens for the embedded OAuth provider
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Auto-incrementing primary key
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: token
+                  type: varchar(255)
+                  remarks: The access token string
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: FK to core_user.id (null for client_credentials)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: client_id
+                  type: varchar(255)
+                  remarks: The OAuth client_id
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scope
+                  type: ${text.type}
+                  remarks: JSON array of scopes
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expiry
+                  type: bigint
+                  remarks: Milliseconds since epoch
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resource
+                  type: ${text.type}
+                  remarks: JSON array of resource URIs
+                  constraints:
+                    nullable: true
+              - column:
+                  name: revoked_at
+                  type: ${timestamp_type}
+                  remarks: Null if active
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of token creation
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-03-11T00:00:08
+      author: epaget
+      comment: Add unique index on oauth_access_token.token
+      changes:
+        - addUniqueConstraint:
+            tableName: oauth_access_token
+            constraintName: uq_oauth_access_token_token
+            columnNames: token
+
+  - changeSet:
+      id: v60.2026-03-11T00:00:09
+      author: epaget
+      comment: Add index on oauth_access_token.expiry
+      changes:
+        - createIndex:
+            tableName: oauth_access_token
+            indexName: idx_oauth_access_token_expiry
+            columns:
+              - column:
+                  name: expiry
+
+  - changeSet:
+      id: v60.2026-03-11T00:00:10
+      author: epaget
+      comment: Add index on oauth_access_token.user_id
+      changes:
+        - createIndex:
+            tableName: oauth_access_token
+            indexName: idx_oauth_access_token_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v60.2026-03-11T00:00:11
+      author: epaget
+      comment: Add FK on oauth_access_token.user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: oauth_access_token
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_oauth_access_token_user_id
+
+  # oauth_refresh_token table
+  - changeSet:
+      id: v60.2026-03-11T00:00:12
+      author: epaget
+      comment: Create oauth_refresh_token table
+      changes:
+        - createTable:
+            tableName: oauth_refresh_token
+            remarks: Stores refresh tokens for the embedded OAuth provider
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Auto-incrementing primary key
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: token
+                  type: varchar(255)
+                  remarks: The refresh token string
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: FK to core_user.id
+                  constraints:
+                    nullable: true
+              - column:
+                  name: client_id
+                  type: varchar(255)
+                  remarks: The OAuth client_id
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scope
+                  type: ${text.type}
+                  remarks: JSON array of scopes
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resource
+                  type: ${text.type}
+                  remarks: JSON array of resource URIs
+                  constraints:
+                    nullable: true
+              - column:
+                  name: expiry
+                  type: bigint
+                  remarks: Milliseconds since epoch (null means no expiry)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: revoked_at
+                  type: ${timestamp_type}
+                  remarks: Null if active
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of token creation
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-03-11T00:00:13
+      author: epaget
+      comment: Add unique index on oauth_refresh_token.token
+      changes:
+        - addUniqueConstraint:
+            tableName: oauth_refresh_token
+            constraintName: uq_oauth_refresh_token_token
+            columnNames: token

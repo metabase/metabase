@@ -6,8 +6,7 @@ import { useEditTablesMutation } from "metabase/api";
 import {
   trackDataStudioBulkAttributeUpdated,
   trackDataStudioBulkSyncSettingsClicked,
-} from "metabase/data-studio/analytics";
-import { useSelector } from "metabase/lib/redux";
+} from "metabase/common/data-studio/analytics";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -16,6 +15,7 @@ import {
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import type {
   TableDataLayer,
@@ -176,7 +176,7 @@ export function TableAttributesEditBulk({
       <Stack gap="md">
         <Group
           align="center"
-          c="text-tertiary"
+          c="text-disabled"
           gap={10}
           flex="1"
           fs="lg"

@@ -68,14 +68,12 @@
         (testing "init send notification triggers are idempotent if the subscription doesn't change"
           (task.notification/init-send-notification-triggers!)
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))
-
         (testing "Re-create triggers if it's not existed"
           (task/delete-trigger! (TriggerKey. (-> notification-triggers first :key)))
           (testing "sanity check that the trigger is deleted"
             (is (empty? (notification.tu/send-notification-triggers subscription-id))))
           (task.notification/init-send-notification-triggers!)
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))
-
         (testing "deletes triggers for subscriptions that no longer exist"
           (let [subscription-id (first (t2/select-pks-vec :model/NotificationSubscription
                                                           :notification_id (:id notification)))]
@@ -99,13 +97,11 @@
             notification-triggers (notification.tu/send-notification-triggers subscription-id)]
         (testing "sanity check that it has triggers to begin with"
           (is (not-empty notification-triggers)))
-
         (testing "skips triggers for inactive notifications"
           ;; Deactivate the notification
           (t2/update! :model/Notification (:id notification) {:active false})
           (task.notification/init-send-notification-triggers!)
           (is (empty? (notification.tu/send-notification-triggers subscription-id))))
-
         (testing "recreates triggers when notification is reactivated"
           ;; Reactivate the notification
           (t2/update! :model/Notification (:id notification) {:active true})
@@ -123,20 +119,16 @@
                                  :cron_schedule "0 0 * 1/1 * ? *"}]
                                [])
               subscription-id (-> notification models.notification/hydrate-notification :subscriptions first :id)]
-
           (testing "sanity check that trigger exists with initial timezone"
             (let [triggers (notification.tu/send-notification-triggers subscription-id)]
               (is (not-empty triggers))
               (is (= "UTC" (:timezone (first triggers))))))
-
           (testing "updates timezone of triggers when report timezone changes"
             (let [new-timezone "America/Los_Angeles"]
               ;; Change the report timezone
               (driver/report-timezone! new-timezone)
-
               ;; Call the function under test
               (task.notification/update-send-notification-triggers-timezone!)
-
               ;; Verify the timezone was updated
               (let [updated-triggers (notification.tu/send-notification-triggers subscription-id)]
                 (is (not-empty updated-triggers))

@@ -1,0 +1,13 @@
+name: event_log
+db_id: Sample Database
+schema: PUBLIC
+active: true
+is_published: false
+created_at: '2026-04-02T00:00:00Z'
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: event_log
+  model: Table

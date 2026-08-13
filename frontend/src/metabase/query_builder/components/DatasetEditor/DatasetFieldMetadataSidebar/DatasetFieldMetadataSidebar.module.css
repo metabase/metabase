@@ -1,7 +1,7 @@
 .Divider {
   height: 1px;
   width: 100%;
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
 }
 
 .MainFormContainer {
@@ -13,7 +13,7 @@
     outline: none;
 
     &:focus {
-      border-color: var(--mb-color-brand);
+      border-color: var(--mb-color-core-brand);
     }
   }
 }

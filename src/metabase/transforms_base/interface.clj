@@ -5,7 +5,9 @@
    (query, python) must implement. The base module uses these for dispatch
    without any database writes for transform_run tracking.
 
-   For scheduled execution with transform_run tracking, see metabase.transforms.interface.")
+   For scheduled execution with transform_run tracking, see metabase.transforms.interface."
+  (:require
+   [metabase.util.log :as log]))
 
 (defn transform->transform-type
   "Extract the transform type from a transform's source."
@@ -74,3 +76,32 @@
   {:added "0.57.0" :arglists '([transform options])}
   (fn [transform _options]
     (transform->transform-type transform)))
+
+;; These defaults handle gracefully the case where transforms exist in the database with a type whose implementation
+;; is not loaded (e.g. :python transforms when running without EE).
+
+(defmethod source-db-id :default
+  [transform]
+  (log/warnf "No source-db-id implementation for transform type %s (id: %s)"
+             (-> transform :source :type) (:id transform))
+  nil)
+
+(defmethod target-db-id :default
+  [transform]
+  (log/warnf "No target-db-id implementation for transform type %s (id: %s)"
+             (-> transform :source :type) (:id transform))
+  nil)
+
+(defmethod table-dependencies :default
+  [transform]
+  (log/warnf "No table-dependencies implementation for transform type %s (id: %s)"
+             (-> transform :source :type) (:id transform))
+  #{})
+
+(defmethod execute-base! :default
+  [transform _options]
+  (let [transform-type (-> transform :source :type)]
+    (throw (ex-info (format "Cannot execute transform %d: no implementation for transform type %s"
+                            (:id transform) transform-type)
+                    {:transform-id   (:id transform)
+                     :transform-type transform-type}))))

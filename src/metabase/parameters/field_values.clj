@@ -101,39 +101,41 @@
 
 (defn- fetch-advanced-field-values
   [field constraints]
-  (if (seq constraints)
-    (do
-      (classloader/require 'metabase.parameters.chain-filter)
-      (let [{:keys [values has_more_values]} ((resolve 'metabase.parameters.chain-filter/unremapped-chain-filter)
-                                              (:id field) constraints {})
-            ;; we have a hard limit for how many values we want to store in FieldValues,
-            ;; let's make sure we respect that limit here.
-            ;; For a more detailed docs on this limit check out [[field-values/distinct-values]]
-            limited-values                   (field-values/take-by-length field-values/*total-max-length* values)]
-        {:values          limited-values
-         :has_more_values (or (> (count values)
-                                 (count limited-values))
-                              has_more_values)}))
-    (field-values/distinct-values field)))
+  (let [{:keys [values has_more_values]}
+        (if (seq constraints)
+          (do
+            (classloader/require 'metabase.parameters.chain-filter)
+            ((resolve 'metabase.parameters.chain-filter/unremapped-chain-filter)
+             (:id field) constraints {}))
+          ;; No constraints: pull the raw distinct values. `distinct-values` row-caps at
+          ;; `*distinct-limit*`; we treat hitting that as `has_more_values`.
+          (let [rows (-> (field-values/distinct-values field) :values)]
+            {:values          rows
+             :has_more_values (= (count rows) field-values/*distinct-limit*)}))
+        ;; Apply the char-length cap and update `has_more_values` if it fires.
+        limited-values (field-values/take-by-length field-values/*total-max-length* values)]
+    {:values          limited-values
+     :has_more_values (or (> (count values) (count limited-values))
+                          has_more_values)}))
 
 (defn prepare-advanced-field-values
   "Fetch and construct the FieldValues for `field` with type `fv-type`. This does not do any insertion.
    The human_readable_values of Advanced FieldValues will be automatically fixed up based on the
    list of values and human_readable_values of the full FieldValues of the same field."
   [field hash-key constraints]
-  (when-let [{wrapped-values :values :keys [has_more_values]}
-             (fetch-advanced-field-values field constraints)]
-    (let [;; each value in `wrapped-values` is a 1-tuple, so unwrap the raw values for storage
-          values                (map first wrapped-values)
-          ;; If the full FieldValues of this field have human-readable-values, ensure that we reuse them
-          full-field-values     (field-values/get-latest-full-field-values (:id field))
-          human-readable-values (field-values/fixup-human-readable-values full-field-values values)]
-      {:field_id              (:id field)
-       :type                  :advanced
-       :hash_key              hash-key
-       :has_more_values       has_more_values
-       :human_readable_values human-readable-values
-       :values                values})))
+  (let [{wrapped-values :values :keys [has_more_values]}
+        (fetch-advanced-field-values field constraints)
+        ;; each value in `wrapped-values` is a 1-tuple, so unwrap the raw values for storage
+        values                (map first wrapped-values)
+        ;; If the full FieldValues of this field have human-readable-values, ensure that we reuse them
+        full-field-values     (field-values/get-latest-full-field-values (:id field))
+        human-readable-values (field-values/fixup-human-readable-values full-field-values values)]
+    {:field_id              (:id field)
+     :type                  :advanced
+     :hash_key              hash-key
+     :has_more_values       has_more_values
+     :human_readable_values human-readable-values
+     :values                values}))
 
 (defn get-or-create-field-values!
   "Gets or creates field values."

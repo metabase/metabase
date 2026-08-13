@@ -60,8 +60,8 @@
 (def ^:private filter-b (comparison-filter :> dim-ref-2 10))
 (def ^:private filter-c (string-filter :contains dim-ref-1 "foo"))
 
-(def ^:private sample-ast
-  {:node/type  :ast/root
+(def ^:private sample-source-query
+  {:node/type  :ast/source-query
    :source     {:node/type   :source/metric
                 :id          1
                 :aggregation {:node/type :aggregation/count}
@@ -74,6 +74,12 @@
    :filter     (and-filter filter-a filter-b)
    :group-by   [dim-ref-1]})
 
+(def ^:private sample-ast
+  {:node/type  :ast/root
+   :expression {:node/type :expression/leaf
+                :uuid      "test-uuid"
+                :ast       sample-source-query}})
+
 ;;; -------------------------------------------------- Predicates --------------------------------------------------
 
 (deftest ^:parallel node?-test
@@ -81,7 +87,6 @@
     (is (ast.walk/node? {:node/type :ast/root}))
     (is (ast.walk/node? {:node/type :filter/comparison :operator := :dimension dim-ref-1 :values [1]}))
     (is (ast.walk/node? {:node/type :ast/column :id 1})))
-
   (testing "returns false for non-nodes"
     (is (not (ast.walk/node? {})))
     (is (not (ast.walk/node? nil)))
@@ -94,7 +99,6 @@
     (is (ast.walk/filter-node? filter-b))
     (is (ast.walk/filter-node? (and-filter filter-a filter-b)))
     (is (ast.walk/filter-node? (not-filter filter-a))))
-
   (testing "returns false for non-filter nodes"
     (is (not (ast.walk/filter-node? {:node/type :ast/root})))
     (is (not (ast.walk/filter-node? {:node/type :ast/column :id 1})))
@@ -104,7 +108,6 @@
   (testing "returns true for source nodes"
     (is (ast.walk/source-node? {:node/type :source/metric :id 1}))
     (is (ast.walk/source-node? {:node/type :source/measure :id 1})))
-
   (testing "returns false for non-source nodes"
     (is (not (ast.walk/source-node? {:node/type :ast/root})))
     (is (not (ast.walk/source-node? filter-a)))))
@@ -113,7 +116,6 @@
   (testing "returns true for dimension ref nodes"
     (is (ast.walk/dimension-ref-node? dim-ref-1))
     (is (ast.walk/dimension-ref-node? (dimension-ref uuid-1 {:temporal-unit :month}))))
-
   (testing "returns false for other nodes"
     (is (not (ast.walk/dimension-ref-node? {:node/type :ast/dimension :id uuid-1})))
     (is (not (ast.walk/dimension-ref-node? filter-a)))))
@@ -179,7 +181,7 @@
                   #(assoc % :transformed true)
                   sample-ast)]
       ;; Original filters in :filter/and children should be transformed
-      (is (every? :transformed (get-in result [:filter :children]))))))
+      (is (every? :transformed (get-in result [:expression :ast :filter :children]))))))
 
 (deftest ^:parallel transform-by-type-test
   (testing "transforms nodes by type"
@@ -198,7 +200,6 @@
                  #(= :filter/comparison (:node/type %))
                  sample-ast)]
       (is (= :filter/comparison (:node/type found)))))
-
   (testing "returns nil when not found"
     (let [found (ast.walk/find-first
                  #(= :nonexistent (:node/type %))
@@ -228,7 +229,7 @@
                        placeholder
                        sample-ast)]
       ;; filter-a had := operator, should be replaced
-      (is (= ["REPLACED"] (get-in result [:filter :children 0 :values]))))))
+      (is (= ["REPLACED"] (get-in result [:expression :ast :filter :children 0 :values]))))))
 
 (deftest ^:parallel remove-filters-test
   (testing "removes matching filters from and"
@@ -237,40 +238,39 @@
                   sample-ast)]
       ;; filter-b had :> operator, should be removed
       ;; Since only one child remains, :filter/and should be unwrapped
-      (is (= :filter/comparison (get-in result [:filter :node/type])))
-      (is (= := (get-in result [:filter :operator])))))
-
+      (is (= :filter/comparison (get-in result [:expression :ast :filter :node/type])))
+      (is (= := (get-in result [:expression :ast :filter :operator])))))
   (testing "removes all filters leaving nil"
     (let [all-comparison (ast.walk/remove-filters
                           #(= :filter/comparison (:node/type %))
                           sample-ast)]
-      (is (nil? (:filter all-comparison)))))
-
+      (is (nil? (get-in all-comparison [:expression :ast :filter])))))
   (testing "handles nested compound filters"
-    (let [nested-ast (assoc sample-ast
-                            :filter (and-filter
-                                     (or-filter filter-a filter-b)
-                                     filter-c))
+    (let [nested-source-query (assoc sample-source-query
+                                     :filter (and-filter
+                                              (or-filter filter-a filter-b)
+                                              filter-c))
+          nested-ast (assoc-in sample-ast [:expression :ast] nested-source-query)
           result     (ast.walk/remove-filters
                       #(= :> (:operator %))
                       nested-ast)]
       ;; filter-b removed from inner :or, leaving just filter-a
       ;; Inner :or should unwrap to just filter-a
-      (is (= :filter/and (get-in result [:filter :node/type])))
-      (is (= 2 (count (get-in result [:filter :children]))))))
-
+      (is (= :filter/and (get-in result [:expression :ast :filter :node/type])))
+      (is (= 2 (count (get-in result [:expression :ast :filter :children]))))))
   (testing "handles nested compound where all inner children are removed"
-    (let [nested-ast (assoc sample-ast
-                            :filter (and-filter
-                                     (or-filter filter-a filter-b)
-                                     filter-c))
+    (let [nested-source-query (assoc sample-source-query
+                                     :filter (and-filter
+                                              (or-filter filter-a filter-b)
+                                              filter-c))
+          nested-ast (assoc-in sample-ast [:expression :ast] nested-source-query)
           ;; Remove all comparison filters — inner :or loses both children → nil
           result     (ast.walk/remove-filters
                       #(= :filter/comparison (:node/type %))
                       nested-ast)]
       ;; Only filter-c (string filter) should remain, :and unwrapped
-      (is (= :filter/string (get-in result [:filter :node/type])))
-      (is (= :contains (get-in result [:filter :operator]))))))
+      (is (= :filter/string (get-in result [:expression :ast :filter :node/type])))
+      (is (= :contains (get-in result [:expression :ast :filter :operator]))))))
 
 ;;; -------------------------------------------------- Complex Transformations --------------------------------------------------
 
@@ -288,21 +288,51 @@
                                       (and-filter existing audit-filter)
                                       audit-filter))))
                         sample-ast)]
-      (is (= audit-filter (get-in result [:source :filters]))))))
+      (is (= audit-filter (get-in result [:expression :ast :source :filters]))))))
+
+(deftest ^:parallel collect-constants-test
+  (testing "collect with :expression/constant pred finds constants"
+    (let [constant-node {:node/type :expression/constant :value 100}
+          arith-ast {:node/type  :ast/root
+                     :expression {:node/type :expression/arithmetic
+                                  :operator  :*
+                                  :children  [{:node/type :expression/leaf
+                                               :uuid      "test-uuid"
+                                               :ast       sample-source-query}
+                                              constant-node]}}
+          constants (ast.walk/collect #(= :expression/constant (:node/type %)) arith-ast)]
+      (is (= 1 (count constants)))
+      (is (= 100 (:value (first constants))))))
+  (testing "collect with :expression/leaf pred excludes constants"
+    (let [constant-node {:node/type :expression/constant :value 100}
+          arith-ast {:node/type  :ast/root
+                     :expression {:node/type :expression/arithmetic
+                                  :operator  :*
+                                  :children  [{:node/type :expression/leaf
+                                               :uuid      "test-uuid"
+                                               :ast       sample-source-query}
+                                              constant-node]}}
+          leaves (ast.walk/collect #(= :expression/leaf (:node/type %)) arith-ast)]
+      (is (= 1 (count leaves)))
+      (is (= "test-uuid" (:uuid (first leaves)))))))
 
 (deftest ^:parallel dimension-ref-collection-from-filters-test
   (testing "can collect dimension refs from filters only"
-    (let [filter-only-ast {:node/type :ast/root
-                           :source    (:source sample-ast)
-                           :dimensions []
-                           :mappings  []
-                           :filter    (and-filter
-                                       (comparison-filter := dim-ref-1 1)
-                                       (comparison-filter := dim-ref-2 2)
-                                       (or-filter
-                                        (comparison-filter := dim-ref-1 3)
-                                        (comparison-filter := dim-ref-2 4)))
-                           :group-by  []}
+    (let [filter-only-source-query {:node/type  :ast/source-query
+                                    :source     (:source sample-source-query)
+                                    :dimensions []
+                                    :mappings   []
+                                    :filter     (and-filter
+                                                 (comparison-filter := dim-ref-1 1)
+                                                 (comparison-filter := dim-ref-2 2)
+                                                 (or-filter
+                                                  (comparison-filter := dim-ref-1 3)
+                                                  (comparison-filter := dim-ref-2 4)))
+                                    :group-by   []}
+          filter-only-ast {:node/type  :ast/root
+                           :expression {:node/type :expression/leaf
+                                        :uuid      "filter-test-uuid"
+                                        :ast       filter-only-source-query}}
           refs            (ast.walk/collect-dimension-refs filter-only-ast)]
       (is (= 4 (count refs)))
       (is (= #{uuid-1 uuid-2} (set (map :dimension-id refs)))))))

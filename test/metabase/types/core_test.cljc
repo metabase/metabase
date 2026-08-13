@@ -14,6 +14,10 @@
     (is (isa? :type/Name :type/Text))
     (is (types/assignable? :type/Name :type/Text))))
 
+(deftest ^:parallel mongo-bindata-fingerprint-unsupported-test
+  (testing "binData holds large binary blobs, which must not be fingerprinted (sampling full values OOMs sync)"
+    (is (isa? :type/MongoBinData :type/fingerprint-unsupported))))
+
 (deftest ^:parallel most-specific-common-ancestor-test
   (are [x y expected] (= expected
                          (types/most-specific-common-ancestor x        y)
@@ -66,7 +70,6 @@
                           :Coercion/UNIXMilliSeconds->DateTime
                           :Coercion/UNIXSeconds->DateTime}}
          (types/coercion-possibilities :type/Decimal)))
-
   (testing "Should work for for subtypes of a the coercion base type(s)"
     (is (= {:type/Text    #{::Coerce-Int-To-Str}
             :type/Instant #{:Coercion/UNIXNanoSeconds->DateTime
@@ -75,7 +78,6 @@
                             :Coercion/UNIXSeconds->DateTime
                             ::Coerce-BigInteger-To-Instant}}
            (types/coercion-possibilities :type/BigInteger))))
-
   (testing "Should *not* work for ancestor types of the coercion base type(s)"
     (is (= nil
            (types/coercion-possibilities :type/Number))))

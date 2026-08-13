@@ -67,12 +67,10 @@
       (with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "KEY"}]
                              :attributes     {"KEY" "VAL"}}
         (is (impersonation.util/impersonated-user?))))
-
     (testing "Returns true if current user is a superuser, even if they are in a group with an impersonation policy in place"
       (with-impersonations-for-user! :crowberto {:impersonations [{:db-id (mt/id) :attribute "KEY"}]
                                                  :attributes     {"KEY" "VAL"}}
         (is (not (impersonation.util/impersonated-user?)))))
-
     (testing "An exception is thrown if no user is bound"
       (binding [api/*current-user-id* nil]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo

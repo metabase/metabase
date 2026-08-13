@@ -1,5 +1,5 @@
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatValue } from "metabase/lib/formatting";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatValue } from "metabase/value-formatting";
 import { computeMaxDecimalsForValues } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
@@ -71,6 +71,7 @@ export function getPieChartFormatters(
     return String(
       formatValue(value, {
         column: metricColSettings.column,
+        // Unjustified type cast. FIXME
         number_separators: metricColSettings.number_separators as string,
         number_style: "percent",
         decimals,

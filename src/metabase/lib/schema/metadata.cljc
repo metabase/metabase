@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.metadata
-  (:refer-clojure :exclude [get-in])
+  (:refer-clojure :exclude [empty? get-in])
   (:require
    #?@(:clj
        ([metabase.util.regex :as u.regex]))
@@ -10,9 +10,10 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [get-in]]))
+   [metabase.util.performance :refer [empty? get-in]]))
 
 ;;; Column vs Field?
 ;;;
@@ -32,7 +33,7 @@
 ;;; to implement column remapping, e.g. the GUI might display values of `categories.name` when it presents filter
 ;;; options for `venues.category_id` -- you can remap a meaningless integer FK column to something more helpful.
 ;;; 'Human readable values' like these can also be entered manually from the GUI, for example for enum columns. How
-;;; will this affect what MLv2 needs to know or does? Not clear at this point, but we'll probably want to abstract
+;;; will this affect what Lib needs to know or does? Not clear at this point, but we'll probably want to abstract
 ;;; away dealing with Dimensions in the future so the FE QB GUI doesn't need to special case them.
 
 (mr/def ::column.source
@@ -69,7 +70,10 @@
    ;; Introduced by `:expressions` IN THE CURRENT STAGE; not necessarily ultimately returned.
    :source/expressions
    ;; Not even introduced, but 'visible' because this column is implicitly joinable.
-   :source/implicitly-joinable])
+   :source/implicitly-joinable
+   ;; The synthetic `pivot-grouping` column emitted by the SQL compiler from `GROUPING(...)` when the query carries a
+   ;; top-level `:pivot` clause. Treated like an aggregation/native column for alias-info purposes.
+   :source/pivot-grouping])
 
 ;;; The way FieldValues/remapping works is hella confusing, because it involves the FieldValues table and Dimension
 ;;; table, and the `has_field_values` column, nobody knows why life is like this TBH. The docstrings
@@ -80,9 +84,9 @@
 (def column-has-field-values-options
   "Possible options for column metadata `:has-field-values`. This is used to determine whether we keep FieldValues for a
   Field (during sync), and which type of widget should be used to pick values of this Field when filtering by it in
-  the Query Builder. Not otherwise used by MLv2 (except for [[metabase.lib.field/field-values-search-info]], which is
+  the Query Builder. Not otherwise used by Lib (except for [[metabase.lib.field/field-values-search-info]], which is
   a frontend convenience) or QP at the time of this writing. For column remapping purposes in the Query Processor and
-  MLv2 we just ignore `has_field_values` and only look for FieldValues/Dimension."
+  Lib we just ignore `has_field_values` and only look for FieldValues/Dimension."
   ;; AUTOMATICALLY-SET VALUES, SET DURING SYNC
   ;;
   ;; `nil` -- means infer which widget to use based on logic in [[metabase.lib.field/infer-has-field-values]]; this
@@ -276,6 +280,7 @@
 (mr/def ::column.validate-for-source-joins               (column-validate-for-source-schema :source/joins))
 (mr/def ::column.validate-for-source-expressions         (column-validate-for-source-schema :source/expressions))
 (mr/def ::column.validate-for-source-implicitly-joinable (column-validate-for-source-schema :source/implicitly-joinable))
+(mr/def ::column.validate-for-source-pivot-grouping      (column-validate-for-source-schema :source/pivot-grouping))
 
 (mr/def ::column.validate-for-source
   "Do additional validation for column metadata based on `:lib/source`."
@@ -289,6 +294,7 @@
    [:source/joins               [:ref ::column.validate-for-source-joins]]
    [:source/expressions         [:ref ::column.validate-for-source-expressions]]
    [:source/implicitly-joinable [:ref ::column.validate-for-source-implicitly-joinable]]
+   [:source/pivot-grouping      [:ref ::column.validate-for-source-pivot-grouping]]
    [nil                         :any]])
 
 (def column-visibility-types
@@ -518,16 +524,21 @@
     ;; settings that use it as a key.
     [:qp/implicit-field? {:optional true} [:maybe :boolean]]
     ;;
-    ;; Whether this is the special `pivot-grouping` column added by the Pivot QP
-    ;; in [[metabase.query-processor.pivot/add-pivot-group-breakout]]. In `OVER` window function `GROUP BY` and `ORDER
-    ;; BY` this should be "optimized out" since some databases like Redshift don't allow constant expressions there.
-    ;; See also [[metabase.driver.sql.query-processor/pivot-query-group-constant-expression?]] (where this is used by
-    ;; the SQL QP) and [[metabase.query-processor.pivot-test/offset-pivot-test]] (a test that will fail if this key is
-    ;; removed)
+    ;; Coercion strategies (eg. UNIX seconds -> :type/DateTime) are configured on :model/Fields in the Admin UI, and
+    ;; reflected on refs to that field on the *first* stage of an MBQL query or a join, where the column first appears
+    ;; in the query. After the column passes through a stage boundary, it's no longer marked with the coercion strategy
+    ;; to avoid double-coercion.
     ;;
-    ;; This should be propagated as-is to subsequent stages and copied into ref option maps, and from ref option maps
-    ;; into calculated metadata.
-    [:qp.pivot/pivot-grouping? {:optional true} [:maybe :boolean]]]
+    ;; *However*, when a table is sandboxed by a native query, and it has fields which need coercion, the SQL subquery
+    ;; does not do the coercion (it's supposed to be a drop-in replacement for the table) but then the MBQL refs to its
+    ;; columns are not in the first stage anymore! So the sandboxing middleware sets this flag to the
+    ;; `:coercion-strategy`, along with `:qp/native-sandbox-column.propagate-coercion? true` (see below). Lib will
+    ;; propagate the coercion strategy through *exactly one* stage boundary, so it can get from the SQL first stage to
+    ;; the earliest MBQL stage, where the coercion will get applied correctly. See QUE2-376 or #69867 for more details.
+    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} :keyword]
+    ;;
+    ;; See above about `:qp/native-sandbox-column.force-coercion-strategy`.
+    [:qp/native-sandbox-column.propagate-coercion? {:optional true} :boolean]]
    ;;
    ;; Additional constraints
    ;;
@@ -612,6 +623,9 @@
    [:legacy
     [:ref :metabase.legacy-mbql.schema/legacy-column-metadata]]])
 
+;;; TODO (Cam 2026-05-26) check whether we can change `::card.query` to point to `:metabase.lib.schema/query` now that
+;;; Cards should always have MBQL 5
+
 (defn- normalize-card-query [query]
   (when query
     (let [query (lib.schema.common/normalize-map query)]
@@ -622,9 +636,22 @@
 
 (mr/def ::card.query
   "Saved query. This is possibly still a legacy query, but should already be normalized.
-  Call [[metabase.lib.convert/->pMBQL]] on it as needed."
-  [:map
-   {:decode/normalize normalize-card-query}])
+  Call [[metabase.lib.convert/->mbql5]] on it as needed."
+  ;; dispatched rather than written as a keyless `[:map {:decode/normalize ...}]`, which declares no keys and so
+  ;; would strip the whole query while decoding
+  [:multi {:dispatch (fn [query]
+                       (cond
+                         (empty? query)              :empty
+                         (:lib/type query)           :mbql5
+                         :else                       :legacy))}
+   ;; Cards may be saved with an empty query -- see `:metabase.queries.schema/query`
+   [:empty  [:= {} {}]]
+   [:mbql5  [:schema
+             {:decode/normalize normalize-card-query}
+             [:ref :metabase.lib.schema/query]]]
+   [:legacy [:schema
+             {:decode/normalize normalize-card-query}
+             [:ref :metabase.legacy-mbql.schema/Query]]]])
 
 (defn- normalize-card [card]
   (when card
@@ -655,7 +682,7 @@
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
   a [[metabase.queries.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily
-  converted to pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably
+  converted to MBQL 5 yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably
   not quite massaged into a sequence of [[::column]] metadata just yet.
 
   See [[metabase.lib.card/card-metadata-columns]] that converts these as needed."
@@ -700,7 +727,7 @@
    [:name       ::lib.schema.common/non-blank-string]
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Segment; this may still be in legacy
-   ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to pMBQL if needed.
+   ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to MBQL 5 if needed.
    [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
@@ -711,8 +738,11 @@
 (mr/def ::measure.definition
   "Measure definition query. This should be an MBQL5 query with a single stage and one aggregation.
    Strict validation via :metabase.lib.schema.measure/definition happens in metabase.measures.models.measure."
-  [:map
-   {:decode/normalize normalize-measure-definition}])
+  ;; wrapped in `[:schema ...]` rather than written as a keyless `[:map {:decode/normalize ...}]`, which declares no
+  ;; keys and so would strip the whole definition while decoding
+  [:schema
+   {:decode/normalize normalize-measure-definition}
+   [:ref :metabase.lib.schema/query]])
 
 (defn- mock-measure [measure]
   (cond-> measure
@@ -746,10 +776,9 @@
 
 (mr/def ::native-query-snippet
   [:map
-   [:lib/type [:= :metadata/native-query-snippet]]
-   [:id       ::lib.schema.id/native-query-snippet]])
-;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
-
+   [:lib/type      [:= :metadata/native-query-snippet]]
+   [:id            ::lib.schema.id/native-query-snippet]
+   [:template-tags {:optional true} [:maybe [:ref ::lib.schema.template-tag/template-tag-map]]]])
 ;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
 
 (mr/def ::table
@@ -761,7 +790,11 @@
    [:id       ::lib.schema.id/table]
    [:name     ::lib.schema.common/non-blank-string]
    [:display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:schema       {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+   [:schema       {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   ;; Optional `:db` AST slot for cross-DB references (BigQuery `project.dataset.table`,
+   ;; SQL Server / Snowflake `db.schema.table`). Sync doesn't populate it on standard
+   ;; reads — only cross-DB rewriters fill it.
+   [:db           {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::database
   "Malli schema for the DatabaseMetadata as returned by `GET /api/database/:id/metadata` -- what should be available to
@@ -790,7 +823,7 @@
   [:ref :metabase.lib.metadata.protocols/metadata-providerable])
 
 (mr/def ::stage
-  "Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native query
+  "Metadata about the columns returned by a particular stage of a MBQL 5 query. For example a single-stage native query
   like
 
     {:database 1

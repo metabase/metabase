@@ -6,7 +6,7 @@ import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 
 /**
  * @inline

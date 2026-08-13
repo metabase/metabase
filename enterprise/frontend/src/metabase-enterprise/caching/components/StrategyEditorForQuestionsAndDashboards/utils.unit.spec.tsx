@@ -1,7 +1,6 @@
-import { strategies } from "metabase/admin/performance/constants/complex";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
-import { getCollectionPathAsString } from "metabase/collections/utils";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { getCollectionPathAsString } from "metabase/common/collections/utils";
+import { PLUGIN_CACHING, strategies } from "metabase/plugins";
 import { enterpriseOnlyCachingStrategies } from "metabase-enterprise/caching/constants";
 import {
   type AdaptiveStrategy,
@@ -150,7 +149,9 @@ describe("StrategyEditorForQuestionsAndDashboards utilities", () => {
 
     it("sorts by policy correctly", () => {
       const sorted = unsortedRows.sort((rowA, rowB) => {
+        // Unjustified type cast. FIXME
         const a = formatValueForSorting(rowA, "policy") as string;
+        // Unjustified type cast. FIXME
         const b = formatValueForSorting(rowB, "policy") as string;
         return a.localeCompare(b);
       });
@@ -169,9 +170,47 @@ describe("StrategyEditorForQuestionsAndDashboards utilities", () => {
       ]);
     });
 
+    it("sorts durations with mixed units by real length", () => {
+      const durationRow = (
+        id: number,
+        duration: number,
+        unit: CacheDurationUnit,
+      ): CacheableItem => ({
+        model: "question",
+        id,
+        strategy: {
+          type: "duration",
+          duration,
+          unit,
+          refresh_automatically: false,
+        },
+      });
+      const rows = [
+        durationRow(0, 1, CacheDurationUnit.Days),
+        durationRow(1, 100, CacheDurationUnit.Minutes),
+        durationRow(2, 90, CacheDurationUnit.Seconds),
+        durationRow(3, 10, CacheDurationUnit.Hours),
+        durationRow(4, 30, CacheDurationUnit.Seconds),
+      ];
+      const sorted = rows.sort((rowA, rowB) => {
+        const a = formatValueForSorting(rowA, "policy");
+        const b = formatValueForSorting(rowB, "policy");
+        return String(a).localeCompare(String(b));
+      });
+      expect(sorted.map((row) => getShortStrategyLabel(row.strategy))).toEqual([
+        "Duration: 30s",
+        "Duration: 90s",
+        "Duration: 100m",
+        "Duration: 10h",
+        "Duration: 1d",
+      ]);
+    });
+
     it("sorts by collection correctly", () => {
       const sorted = unsortedRows.sort((rowA, rowB) => {
+        // Unjustified type cast. FIXME
         const a = formatValueForSorting(rowA, "collection") as string;
+        // Unjustified type cast. FIXME
         const b = formatValueForSorting(rowB, "collection") as string;
         return a.localeCompare(b);
       });

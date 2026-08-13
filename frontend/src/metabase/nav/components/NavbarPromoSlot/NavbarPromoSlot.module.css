@@ -1,0 +1,15 @@
+.PromoSlot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-md)
+    calc(var(--mantine-spacing-md) * 2);
+  background-color: var(--mb-color-background_page-primary);
+  z-index: 1;
+}
+
+.PromoSlot:empty {
+  display: none;
+}

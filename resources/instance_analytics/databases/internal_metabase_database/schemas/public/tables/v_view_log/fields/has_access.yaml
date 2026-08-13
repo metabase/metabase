@@ -1,0 +1,21 @@
+name: has_access
+display_name: Has Access
+created_at: '2026-04-21T08:37:34.889621Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, public, v_view_log]
+database_type: bool
+base_type: type/Boolean
+effective_type: type/Boolean
+dimensions: []
+position: 9
+custom_position: 0
+database_position: 9
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_view_log, model: Table}
+- {id: has_access, model: Field}
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

@@ -2,19 +2,22 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { Button } from "metabase/common/components/Button";
-import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
-import { FormInput } from "metabase/common/components/FormInput";
-import { FormSelect } from "metabase/common/components/FormSelect";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
-import { FormTextArea } from "metabase/common/components/FormTextArea";
-import { Form, FormProvider } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import { getTimelineIcons } from "metabase/lib/timelines";
+import { getTimelineIcons } from "metabase/common/utils/timelines";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
+import { Button } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 import type { TimelineData } from "metabase-types/api";
 
 import FormArchiveButton from "../FormArchiveButton";
 
+import { IconField } from "./IconField";
 import { TimelineFormFooter } from "./TimelineForm.styled";
 
 const TIMELINE_SCHEMA = Yup.object({
@@ -47,16 +50,23 @@ const TimelineForm = ({
     >
       {({ dirty }) => (
         <Form disabled={!dirty}>
-          <FormInput
+          <FormTextInput
             name="name"
-            title={t`Name`}
+            label={t`Name`}
             placeholder={t`Product releases`}
             autoFocus
+            mb="md"
           />
-          <FormTextArea name="description" title={t`Description`} nullable />
-          <FormSelect name="icon" title={t`Default icon`} options={icons} />
+          <FormTextarea
+            name="description"
+            label={t`Description`}
+            minRows={5}
+            mb="md"
+            nullable
+          />
+          <IconField name="icon" title={t`Default icon`} options={icons} />
           <TimelineFormFooter>
-            <FormErrorMessage inline />
+            <FormErrorMessage />
             {!isNew && (
               <FormArchiveButton onClick={onArchive}>
                 {t`Archive timeline and all events`}
@@ -66,9 +76,9 @@ const TimelineForm = ({
               {t`Cancel`}
             </Button>
             <FormSubmitButton
-              title={isNew ? t`Create` : t`Update`}
+              label={isNew ? t`Create` : t`Update`}
               disabled={!dirty}
-              primary
+              variant="filled"
             />
           </TimelineFormFooter>
         </Form>

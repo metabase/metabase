@@ -5,7 +5,6 @@ import type { CardId } from "metabase-types/api";
 
 import { expressionParts } from "./expression";
 import { isSegmentMetadata } from "./metadata";
-import { removeClause } from "./query";
 import type {
   BooleanFilterParts,
   ColumnMetadata,
@@ -49,13 +48,6 @@ export function filter(
 
 export function filters(query: Query, stageIndex: number): FilterClause[] {
   return ML.filters(query, stageIndex);
-}
-
-export function removeFilters(query: Query, stageIndex: number): Query {
-  return filters(query, stageIndex).reduce(
-    (newQuery, filter) => removeClause(newQuery, stageIndex, filter),
-    query,
-  );
 }
 
 export function filterArgsDisplayName(

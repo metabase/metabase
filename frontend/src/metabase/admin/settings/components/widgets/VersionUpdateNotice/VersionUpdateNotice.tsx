@@ -2,13 +2,13 @@ import cx from "classnames";
 import { c, t } from "ttag";
 
 import { getCurrentVersion } from "metabase/admin/app/selectors";
-import { useGetVersionInfoQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
-import { newVersionAvailable, versionIsLatest } from "metabase/lib/utils";
+import { useSelector } from "metabase/redux";
+import { useGetVersionInfoQuery } from "metabase/settings";
 import { Tabs } from "metabase/ui";
+import { newVersionAvailable, versionIsLatest } from "metabase/utils/version";
 
 import S from "./VersionUpdateNotice.module.css";
 

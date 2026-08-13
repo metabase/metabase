@@ -1,3 +1,4 @@
+import { useMergedRef } from "@mantine/hooks";
 import {
   Node,
   findParentNodeClosestToPos,
@@ -10,50 +11,37 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useListCommentsQuery } from "metabase/api";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
-import { navigateToCardFromDocument } from "metabase/documents/actions";
+import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
+import { useDispatch, useSelector } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import {
-  trackDocumentAddSupportingText,
-  trackDocumentReplaceCard,
-} from "metabase/documents/analytics";
-import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
-import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase/documents/components/Editor/constants";
-import { MAX_GROUP_SIZE } from "metabase/documents/constants";
-import {
-  loadMetadataForDocumentCard,
-  openVizSettingsSidebar,
-} from "metabase/documents/documents.slice";
-import { useCardData } from "metabase/documents/hooks/use-card-data";
-import {
-  getChildTargetId,
-  getCurrentDocument,
-  getHasUnsavedChanges,
-  getHoveredChildTargetId,
-} from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
-import { usePublicDocumentCardData } from "metabase/public/hooks/use-public-document-card-data";
-import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
+  EDITOR_STYLE_BOUNDARY_CLASS,
+  MAX_GROUP_SIZE,
+} from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
+import { useNavigate } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
-import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
+import {
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Menu,
+  Text,
+  TextInput,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
+import { getDatasetError } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import { getUrl } from "metabase-lib/v1/urls";
-import type { CardDisplayType, Dataset } from "metabase-types/api";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {
@@ -65,9 +53,12 @@ import CS from "../extensions.module.css";
 import { NativeQueryModal } from "../shared/NativeQueryModal";
 import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
 
+import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
-import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
+import { DocumentMode } from "./DocumentMode";
+import { useExternalCardData } from "./ExternalCardDataContext";
+import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
 import { useUpdateCardOperations } from "./use-update-card-operations";
 import { getEmbedIndex } from "./utils";
@@ -79,15 +70,6 @@ function formatCardEmbed(attrs: CardEmbedAttributes): string {
     return `{% card id=${attrs.id} %}`;
   }
 }
-
-const getDatasetError = (dataset: Dataset) => {
-  if (dataset.error) {
-    return {
-      message: getGenericErrorMessage(),
-      icon: "warning" as const,
-    };
-  }
-};
 
 export interface CardEmbedAttributes {
   id?: number;
@@ -144,7 +126,7 @@ export const CardEmbed: Node<{
         },
         this.options.HTMLAttributes,
       ),
-      formatCardEmbed(node.attrs as CardEmbedAttributes),
+      formatCardEmbed(node.attrs),
     ];
   },
 
@@ -153,7 +135,7 @@ export const CardEmbed: Node<{
   },
 
   renderText({ node }) {
-    return formatCardEmbed(node.attrs as CardEmbedAttributes);
+    return formatCardEmbed(node.attrs);
   },
 
   addNodeView() {
@@ -170,32 +152,31 @@ export const CardEmbedComponent = memo(
     getPos,
     deleteNode,
   }: NodeViewProps) => {
-    const childTargetId = useSelector(getChildTargetId);
-    const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
-    const document = useSelector(getCurrentDocument);
-    const { publicDocumentUuid } = usePublicDocumentContext();
-    const { data: commentsData } = useListCommentsQuery(
-      getListCommentsQuery(document),
+    const { _id, id, name } = node.attrs;
+    const host = useEditorHost();
+    const {
+      ref: viewportRef,
+      isInViewport,
+      shouldLoadData,
+    } = host.useNodeInViewport(_id);
+    const childTargetId = useSelector(host.selectors.getChildTargetId);
+    const hoveredChildTargetId = useSelector(
+      host.selectors.getHoveredChildTargetId,
     );
+    const document = useSelector(host.selectors.getCurrentDocument);
+    const externalCardData = useExternalCardData();
+    const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
+      skip: !isInViewport,
+    });
 
-    const comments = commentsData?.comments;
-    const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
-    const { _id } = node.attrs;
+    const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
-    const threads = useMemo(
-      () => getTargetChildCommentThreads(comments, _id),
-      [comments, _id],
-    );
-    const unresolvedCommentsCount = useMemo(
-      () => getUnresolvedComments(threads).length,
-      [threads],
-    );
-    const commentsPath = document
-      ? `/document/${document.id}/comments/${_id}`
-      : "";
-    const { id, name } = node.attrs;
+    const commentsPath = host.useCommentUrl({
+      childTargetId: _id,
+    });
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const canWrite = editor.options.editable;
 
     const {
@@ -208,17 +189,17 @@ export const CardEmbedComponent = memo(
 
     const embedIndex = getEmbedIndex(editor, getPos);
 
-    // Use public hook when viewing a public document, otherwise use regular hook
-    const isPublicDocument = Boolean(publicDocumentUuid);
-    const regularCardData = useCardData({ id });
-    const publicCardData = usePublicDocumentCardData({
-      cardId: id,
-      documentUuid: publicDocumentUuid || "",
+    const isExternalDocument = externalCardData != null;
+    const regularCardData = host.useCardData({ id, skip: !shouldLoadData });
+    const externalCardDataResult = host.useExternalCardDataLoader(id, {
+      skip: !shouldLoadData,
     });
 
-    const { card, dataset, isLoading, series, error } = isPublicDocument
-      ? publicCardData
+    const { card, dataset, isLoading, series, error } = isExternalDocument
+      ? externalCardDataResult
       : regularCardData;
+
+    host.useReportPrefetchLoading(_id, isLoading);
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
@@ -228,6 +209,8 @@ export const CardEmbedComponent = memo(
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
     const [menuView, setMenuView] = useState<string | null>(null);
+
+    const setRef = useMergedRef<HTMLDivElement>(viewportRef, cardEmbedRef);
 
     const shouldAllowAddingSupportingText = () => {
       const pos = getPos();
@@ -276,7 +259,7 @@ export const CardEmbedComponent = memo(
             tr.insert(match.start, supportingText);
             editor.view.dispatch(tr);
             editor.commands.focus(match.start + 1);
-            trackDocumentAddSupportingText(document);
+            host.analytics.trackAddSupportingText(document);
             return;
           }
           const flexContainer =
@@ -294,7 +277,7 @@ export const CardEmbedComponent = memo(
 
           editor.view.dispatch(tr);
           editor.commands.focus(match.start + 2);
-          trackDocumentAddSupportingText(document);
+          host.analytics.trackAddSupportingText(document);
         };
 
     const displayName = name || card?.name;
@@ -354,13 +337,13 @@ export const CardEmbedComponent = memo(
     // Load metadata for the card
     useEffect(() => {
       if (card) {
-        dispatch(loadMetadataForDocumentCard(card));
+        dispatch(host.actions.loadMetadataForDocumentCard(card));
       }
-    }, [card, dispatch]);
+    }, [card, dispatch, host]);
 
     const handleEditVisualizationSettings = () => {
       if (embedIndex !== -1) {
-        dispatch(openVizSettingsSidebar({ embedIndex }));
+        dispatch(host.actions.openVizSettingsSidebar({ embedIndex }));
       }
     };
 
@@ -372,8 +355,8 @@ export const CardEmbedComponent = memo(
             isDraftCard ? { ...card, id: null } : card,
             metadata,
           );
-          const url = getUrl(question, { includeDisplayIsLocked: true });
-          dispatch(navigateToCardFromDocument(url, document));
+          const url = Urls.question(question);
+          dispatch(host.navigateToCard(url, document));
         } catch (error) {
           console.error("Failed to navigate to question:", error);
         }
@@ -391,12 +374,12 @@ export const CardEmbedComponent = memo(
           name: null,
         });
         if (document) {
-          trackDocumentReplaceCard(document);
+          host.analytics.trackReplaceCard(document);
         }
 
         setIsReplaceModalOpen(false);
       },
-      [updateAttributes, document],
+      [updateAttributes, document, host],
     );
 
     const handleRemoveNode = useCallback(() => {
@@ -437,17 +420,14 @@ export const CardEmbedComponent = memo(
             <Box className={styles.questionHeader}>
               <Flex align="center" justify="space-between" gap="0.5rem">
                 <Box className={styles.titleContainer}>
-                  <Text size="md" color="text-primary" fw={700}>
+                  <Text size="md" c="text-primary" fw={700}>
                     {t`Loading question...`}
                   </Text>
                 </Box>
               </Flex>
             </Box>
-            <Box className={styles.questionResults}>
-              <Box className={styles.loadingContainer}>
-                <Loader />
-              </Box>
-            </Box>
+
+            <CardEmbedLoadingState />
           </Box>
         </NodeViewWrapper>
       );
@@ -513,7 +493,7 @@ export const CardEmbedComponent = memo(
             </>
           )}
           <Box
-            ref={cardEmbedRef}
+            ref={setRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
@@ -541,9 +521,9 @@ export const CardEmbedComponent = memo(
                           lineHeight: 1.55,
                           backgroundColor: "transparent",
                           "&:focus": {
-                            border: "1px solid var(--mb-color-border)",
+                            border: "1px solid var(--mb-color-border-neutral)",
                             backgroundColor:
-                              "var(--mb-color-background-primary)",
+                              "var(--mb-color-background_page-primary)",
                             padding: "0 0.25rem",
                           },
                         },
@@ -560,10 +540,10 @@ export const CardEmbedComponent = memo(
                           fw={700}
                           truncate="end"
                           onClick={
-                            isPublicDocument ? undefined : handleTitleClick
+                            isExternalDocument ? undefined : handleTitleClick
                           }
                           style={{
-                            cursor: isPublicDocument ? undefined : "pointer",
+                            cursor: isExternalDocument ? undefined : "pointer",
                           }}
                         >
                           {displayName}
@@ -594,15 +574,15 @@ export const CardEmbedComponent = memo(
                           variant={isOpen ? "filled" : "default"}
                           unresolvedCommentsCount={unresolvedCommentsCount}
                           onClick={() => {
-                            dispatch(push(commentsPath));
+                            navigate(commentsPath);
                           }}
                         />
                       </Box>
                     )}
                   {!isEditingTitle &&
-                    (isPublicDocument && dataset && !canWrite ? (
-                      <PublicDocumentCardMenu card={card} dataset={dataset} />
-                    ) : !isPublicDocument && (canWrite || dataset) ? (
+                    (isExternalDocument && dataset && !canWrite ? (
+                      <ExternalDocumentCardMenu card={card} dataset={dataset} />
+                    ) : !isExternalDocument && (canWrite || dataset) ? (
                       <Menu
                         withinPortal
                         position="bottom-end"
@@ -647,7 +627,6 @@ export const CardEmbedComponent = memo(
                             handleRemoveNode={handleRemoveNode}
                             commentsPath={commentsPath}
                             hasUnsavedChanges={hasUnsavedChanges}
-                            unresolvedCommentsCount={unresolvedCommentsCount}
                           />
                         </Menu.Dropdown>
                       </Menu>
@@ -655,7 +634,7 @@ export const CardEmbedComponent = memo(
                 </Flex>
               </Box>
             )}
-            {series ? (
+            {series && isInViewport ? (
               <>
                 <Box className={styles.questionResults}>
                   <ExplicitSizeRefreshModeContext.Provider value="layout">
@@ -664,13 +643,13 @@ export const CardEmbedComponent = memo(
                       metadata={metadata}
                       mode={DocumentMode}
                       onChangeCardAndRun={
-                        isPublicDocument ? undefined : handleChangeCardAndRun
+                        isExternalDocument ? undefined : handleChangeCardAndRun
                       }
                       onUpdateQuestion={
-                        isPublicDocument ? undefined : handleUpdateQuestion
+                        isExternalDocument ? undefined : handleUpdateQuestion
                       }
                       onUpdateVisualizationSettings={
-                        isPublicDocument
+                        isExternalDocument
                           ? undefined
                           : handleUpdateVisualizationSettings
                       }
@@ -688,6 +667,7 @@ export const CardEmbedComponent = memo(
             ) : (
               <Box className={styles.questionResults}>
                 <ChartSkeleton
+                  // Unjustified type cast. FIXME
                   display={(card?.display as CardDisplayType) || "table"}
                 />
               </Box>

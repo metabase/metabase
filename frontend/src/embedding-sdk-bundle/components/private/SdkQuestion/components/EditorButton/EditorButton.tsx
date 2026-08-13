@@ -29,17 +29,13 @@ export type EditorButtonProps = {
 
 function shouldShowEditButton({
   question,
-  isActionListVisible,
   isBrandNew = false,
 }: {
   question: Question;
-  isActionListVisible: boolean;
   isBrandNew?: boolean;
 }) {
   const { isEditable } = Lib.queryDisplayInfo(question.query());
-  return (
-    isEditable && isActionListVisible && !question.isArchived() && !isBrandNew
-  );
+  return isEditable && !question.isArchived() && !isBrandNew;
 }
 
 /**
@@ -55,19 +51,18 @@ export const EditorButton = ({
   ...actionIconProps
 }: EditorButtonProps) => {
   const { question } = useSdkQuestionContext();
+
+  if (!question || !shouldShowEditButton({ question })) {
+    return null;
+  }
+
   return (
-    question &&
-    shouldShowEditButton({
-      question,
-      isActionListVisible: true,
-    }) && (
-      <SdkActionIcon
-        tooltip={t`Edit question`}
-        icon="pencil_lines"
-        data-testid="notebook-button"
-        data-active={isOpen}
-        {...actionIconProps}
-      />
-    )
+    <SdkActionIcon
+      tooltip={t`Edit question`}
+      icon="pencil_lines"
+      data-testid="notebook-button"
+      data-active={isOpen}
+      {...actionIconProps}
+    />
   );
 };

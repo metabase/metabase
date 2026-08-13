@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { replace } from "react-router-redux";
 
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useNavigate } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import type { RouteParams } from "../../pages/DataModel/types";
 
@@ -11,7 +10,7 @@ import type { TreePath } from "./types";
 
 type Props = TreePath & {
   params: RouteParams;
-  setOnUpdateCallback: (callback: (() => void) | null) => void;
+  setOnUpdateCallback: (callback: ((path?: TreePath) => void) | null) => void;
 };
 
 export function RouterTablePicker({
@@ -19,7 +18,7 @@ export function RouterTablePicker({
   setOnUpdateCallback,
   ...props
 }: Props) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [value, setValue] = useState(props);
   const {
     databaseId: propDatabaseId,
@@ -30,9 +29,9 @@ export function RouterTablePicker({
   const onChange = useCallback(
     (value: TreePath) => {
       setValue(value);
-      dispatch(replace(Urls.dataStudioData(value)));
+      navigate(Urls.dataStudioData(value), { replace: true });
     },
-    [dispatch],
+    [navigate],
   );
 
   useEffect(() => {
@@ -72,7 +71,7 @@ export function UncontrolledTablePicker({
   initialValue: TreePath;
   onChange?: (path: TreePath) => void;
   params: RouteParams;
-  setOnUpdateCallback: (callback: (() => void) | null) => void;
+  setOnUpdateCallback: (callback: ((path?: TreePath) => void) | null) => void;
 }) {
   const [value, setValue] = useState(initialValue);
   const handleChange = useCallback(

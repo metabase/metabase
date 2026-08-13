@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -10,13 +9,18 @@ import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
-import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
-import { skipToken, useListUserAttributesQuery } from "metabase/api";
+import {
+  skipToken,
+  useListTransformsQuery,
+  useListUserAttributesQuery,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
+import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useSelector } from "metabase/lib/redux";
+import { hasDbRoutingEnabled } from "metabase/common/utils/database";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import {
   Alert,
   Box,
@@ -81,7 +85,15 @@ export const DatabaseRoutingSection = ({
   const userAttributeOptions =
     userAttrsReq.data ?? (userAttribute ? [userAttribute] : []);
 
-  const disabledFeatMsg = getDisabledFeatureMessage(database);
+  const transformsQuery = useListTransformsQuery(
+    shouldHideSection ? skipToken : { "database-id": database.id },
+  );
+  const transforms = transformsQuery.data ?? [];
+  const hasTransforms = transforms.length > 0;
+
+  const disabledFeatMsg = getDisabledFeatureMessage(database, {
+    hasTransforms,
+  });
   const errMsg = getSelectErrorMessage({
     userAttribute,
     disabledFeatureMessage: disabledFeatMsg,
@@ -127,7 +139,7 @@ export const DatabaseRoutingSection = ({
             <Text lh="lg">{t`Enable database routing`}</Text>
           </Label>
           {error ? (
-            <Error role="alert" color="error">
+            <Error role="alert" color="feedback-negative">
               {getErrorMessage(error)}
             </Error>
           ) : null}
@@ -155,8 +167,8 @@ export const DatabaseRoutingSection = ({
         <>
           <DatabaseInfoSectionDivider />
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
             mb="md"
           >
@@ -171,8 +183,8 @@ export const DatabaseRoutingSection = ({
 
           {hasDbRoutingEnabled(database) && (
             <Alert
+              size="compact"
               variant="light"
-              color="info"
               icon={<Icon name="info" />}
               mb="md"
             >
@@ -184,7 +196,7 @@ export const DatabaseRoutingSection = ({
               <Box>
                 <Label htmlFor="db-routing-user-attribute">
                   {t`User attribute to match destination database slug`}{" "}
-                  <Text component="span" c="error">
+                  <Text component="span" c="feedback-negative">
                     *
                   </Text>
                 </Label>

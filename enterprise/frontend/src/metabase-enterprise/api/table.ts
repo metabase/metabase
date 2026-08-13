@@ -1,5 +1,5 @@
 import type {
-  BulkTableSelection,
+  BulkTableRequest,
   PublishTablesResponse,
 } from "metabase-types/api";
 
@@ -8,7 +8,7 @@ import { invalidateTags, tag } from "./tags";
 
 export const tableApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    publishTables: builder.mutation<PublishTablesResponse, BulkTableSelection>({
+    publishTables: builder.mutation<PublishTablesResponse, BulkTableRequest>({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/data-studio/table/publish-tables",
@@ -17,7 +17,7 @@ export const tableApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("table"), tag("card"), tag("collection")]),
     }),
-    unpublishTables: builder.mutation<void, BulkTableSelection>({
+    unpublishTables: builder.mutation<void, BulkTableRequest>({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/data-studio/table/unpublish-tables",

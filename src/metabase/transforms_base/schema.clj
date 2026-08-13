@@ -5,6 +5,8 @@
    The full transforms module (metabase.transforms.schema) extends these with
    additional fields like :id (required for scheduled execution)."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
@@ -27,17 +29,35 @@
    [:type :string]
    [:database {:optional true} :int]
    [:schema {:optional true} [:maybe :string]]
-   [:name :string]])
+   [:name :string]
+   [:indexes {:optional true} [:sequential :map]]])
 
 (mr/def ::transform
   "A transform map as expected by execute-base! implementations."
   [:map
-   ;; The :id is only present for Global transforms, and missing for Workspace transforms.
    [:id {:optional true} pos-int?]
    [:source [:map [:type [:or :string :keyword]]]]
    [:target ::transform-target]
    [:name {:optional true} :string]
    [:description {:optional true} [:maybe :string]]])
+
+;;; ----------------------------------------- Source Range Params -----------------------------------------------
+
+(mr/def ::checkpoint-bound
+  "A bound (lo or hi) for incremental checkpoint filtering."
+  [:map
+   [:value :any]])
+
+(mr/def ::source-range-params
+  "Parameters for incremental range filtering on a source query.
+   Returned by get-source-range-params."
+  [:map
+   [:column ::lib.schema.metadata/column]
+   [:checkpoint-filter-field-id ::lib.schema.id/field]
+   [:lo {:optional true} [:maybe ::checkpoint-bound]]
+   [:hi {:optional true} [:maybe ::checkpoint-bound]]
+   ;; Count of source rows in (lo, hi] from the same scan that derived the watermark; nil if unavailable.
+   [:rows-available {:optional true} [:maybe :int]]])
 
 ;;; ------------------------------------------------- Options -------------------------------------------------
 
@@ -49,7 +69,8 @@
    [:with-stage-timing-fn {:optional true} ifn?]
    [:publish-events? {:optional true} :boolean]
    [:message-log {:optional true} [:maybe ::atom]]
-   [:cancel-chan {:optional true} [:maybe ::chan]]])
+   [:cancel-chan {:optional true} [:maybe ::chan]]
+   [:source-range-params {:optional true} [:maybe ::source-range-params]]])
 
 ;;; ------------------------------------------------- Result -------------------------------------------------
 
@@ -59,4 +80,5 @@
    [:status [:enum :succeeded :failed :cancelled :timeout]]
    [:result {:optional true} :any]
    [:error {:optional true} [:maybe (ms/InstanceOfClass Throwable)]]
-   [:logs {:optional true} [:maybe :string]]])
+   [:logs {:optional true} [:maybe :string]]
+   [:source-range-params {:optional true} [:maybe ::source-range-params]]])

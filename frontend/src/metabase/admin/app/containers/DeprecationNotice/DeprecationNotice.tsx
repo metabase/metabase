@@ -1,36 +1,31 @@
-import _ from "underscore";
-
-import { Databases } from "metabase/entities/databases";
-import { connect } from "metabase/lib/redux";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { State } from "metabase-types/store";
+import { useListDatabasesQuery } from "metabase/api";
+import { useDispatch, useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import { disableNotice } from "../../actions";
 import DeprecationNotice from "../../components/DeprecationNotice";
 import {
   hasDeprecatedDatabase,
-  hasSlackBot,
   isDeprecationNoticeEnabled,
 } from "../../selectors";
 
-interface Props {
-  databases?: Database[];
-}
+const DeprecationNoticeContainer = () => {
+  useListDatabasesQuery();
+  const databases = useSelector((state) => getMetadata(state).databasesList());
+  const hasDeprecated = useSelector((state) =>
+    hasDeprecatedDatabase(state, { databases }),
+  );
+  const isEnabled = useSelector(isDeprecationNoticeEnabled);
+  const dispatch = useDispatch();
 
-const mapStateToProps = (state: State, props: Props) => ({
-  hasSlackBot: hasSlackBot(state),
-  hasDeprecatedDatabase: hasDeprecatedDatabase(state, props),
-  isEnabled: isDeprecationNoticeEnabled(state),
-});
-
-const mapDispatchToProps = {
-  onClose: disableNotice,
+  return (
+    <DeprecationNotice
+      hasDeprecatedDatabase={hasDeprecated}
+      isEnabled={isEnabled}
+      onClose={() => dispatch(disableNotice())}
+    />
+  );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(DeprecationNotice);
+export default DeprecationNoticeContainer;

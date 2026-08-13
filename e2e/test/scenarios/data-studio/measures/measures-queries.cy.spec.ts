@@ -13,7 +13,7 @@ describe("scenarios > data studio > measures > queries", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   describe("measures queries", () => {
@@ -55,7 +55,7 @@ describe("scenarios > data studio > measures > queries", () => {
           breakout("Created At");
         },
       });
-      verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
+      verifyRowValues([["April 2025"], ["May 2025", "52.76"]]);
     });
 
     it("should create a measure with a column from an implicit join", () => {
@@ -86,7 +86,7 @@ describe("scenarios > data studio > measures > queries", () => {
           breakout("Created At");
         },
       });
-      verifyRowValues([["April 2022"], ["May 2022", "49.54"]]);
+      verifyRowValues([["April 2025"], ["May 2025", "49.54"]]);
     });
 
     it("should create a measure with a custom aggregation expression", () => {
@@ -107,7 +107,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should create a measure based on a segment", () => {
       H.createSegment({
         name: "TotalSegment",
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
@@ -129,7 +128,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should create a measure based on another measure with an identity expression", () => {
       H.createMeasure({
         name: "TotalMeasure",
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -151,7 +149,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should create a measure based on another measure", () => {
       H.createMeasure({
         name: "TotalMeasure",
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -173,7 +170,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should create a measure based on another measure with an identity expression", () => {
       H.createMeasure({
         name: "TotalMeasure",
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -254,7 +250,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should be possible to create measures with filters like CountIf based on segments", () => {
       H.createSegment({
         name: "LargeTotal",
-        table_id: ORDERS_ID,
         definition: {
           type: "query",
           database: SAMPLE_DB_ID,
@@ -280,7 +275,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should be possible to create measures with filters like based on segments that are nested", () => {
       H.createSegment({
         name: "LargeTotal",
-        table_id: ORDERS_ID,
         definition: {
           type: "query",
           database: SAMPLE_DB_ID,
@@ -292,7 +286,6 @@ describe("scenarios > data studio > measures > queries", () => {
       }).then(({ body: segment }) => {
         H.createSegment({
           name: "NestedSegment",
-          table_id: ORDERS_ID,
           definition: {
             type: "query",
             database: SAMPLE_DB_ID,
@@ -323,7 +316,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should be possible to offset a measure in a query", () => {
       H.createMeasure({
         name: MEASURE_NAME,
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -342,14 +334,13 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
+      verifyRowValues([["April 2025"], ["May 2025", "52.76"]]);
     });
   });
 
   it("should be possible to order by an aggregation using a measure directly", () => {
     H.createMeasure({
       name: MEASURE_NAME,
-      table_id: ORDERS_ID,
       definition: {
         "source-table": ORDERS_ID,
         aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -367,15 +358,14 @@ describe("scenarios > data studio > measures > queries", () => {
     });
 
     verifyRowValues([
-      ["January 2026", "52,249.59"],
-      ["January 2025", "51,634.16"],
+      ["January 2029", "52,249.59"],
+      ["January 2028", "51,634.16"],
     ]);
   });
 
   it("should be possible to order by an aggregation using a custom expression based on a measure", () => {
     H.createMeasure({
       name: MEASURE_NAME,
-      table_id: ORDERS_ID,
       definition: {
         "source-table": ORDERS_ID,
         aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -399,9 +389,9 @@ describe("scenarios > data studio > measures > queries", () => {
     });
 
     verifyRowValues([
-      ["August 2023", "16"],
-      ["April 2026", "16"],
-      ["May 2022", "17"],
+      ["August 2026", "16"],
+      ["April 2029", "16"],
+      ["May 2025", "17"],
     ]);
   });
 
@@ -409,7 +399,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should be possible to use results of a measure in follow up stages", () => {
       H.createMeasure({
         name: MEASURE_NAME,
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -449,7 +438,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should be possible to join on a measure in a follow up stage", () => {
       H.createMeasure({
         name: MEASURE_NAME,
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -471,14 +459,13 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      verifyRowValues([["April 2022", "52.76", "8685"]]);
+      verifyRowValues([["April 2025", "52.76", "8685"]]);
     });
   });
 
   it("should be possible to join on a measure in a follow up stage with a custom expression", () => {
     H.createMeasure({
       name: MEASURE_NAME,
-      table_id: ORDERS_ID,
       definition: {
         "source-table": ORDERS_ID,
         aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -505,14 +492,13 @@ describe("scenarios > data studio > measures > queries", () => {
       },
     });
 
-    verifyRowValues([["April 2022", "52.76", "5", "1"]]);
+    verifyRowValues([["April 2025", "52.76", "5", "1"]]);
   });
 
   describe("measure refs", () => {
     it("should be possible to rename a measure without breaking queries that reference it", () => {
       H.createMeasure({
         name: MEASURE_NAME,
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -533,7 +519,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should be possible to rename an aggregation expression based on a measure without breaking it", () => {
       H.createMeasure({
         name: MEASURE_NAME,
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -556,7 +541,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("changing the top-level aggregation expression in a measure might break queries that reference it in follow up stages", () => {
       H.createMeasure({
         name: MEASURE_NAME,
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
@@ -613,7 +597,6 @@ describe("scenarios > data studio > measures > queries", () => {
   it("should be possible to use a measure in a pivot table", () => {
     H.createMeasure({
       name: MEASURE_NAME,
-      table_id: ORDERS_ID,
       definition: {
         "source-table": ORDERS_ID,
         aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -660,7 +643,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should be possible to use measure results in a saved question as source for a follow up question", () => {
       H.createMeasure({
         name: MEASURE_NAME,
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -714,7 +696,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should be possible to use measure results in a saved question as source for a follow up model", () => {
       H.createMeasure({
         name: MEASURE_NAME,
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
@@ -769,7 +750,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should be possible x-ray a question containing a measure", () => {
       H.createMeasure({
         name: MEASURE_NAME,
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
@@ -803,7 +783,6 @@ describe("scenarios > data studio > measures > queries", () => {
     it("should be possible x-ray a model containing a measure", () => {
       H.createMeasure({
         name: MEASURE_NAME,
-        table_id: ORDERS_ID,
         definition: {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
@@ -853,6 +832,7 @@ function saveMeasure(): Cypress.Chainable<Measure> {
 
   return cy.wait("@measureCreate").then(({ response }) => {
     H.undoToast().should("contain.text", "Measure created");
+    // Unjustified type cast. FIXME
     return cy.wrap(response?.body as Measure);
   });
 }

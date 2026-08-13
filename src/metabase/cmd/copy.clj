@@ -59,6 +59,7 @@
     :model/Database
     :model/User
     :model/Setting
+    :model/EmbeddingTheme
     :model/Table
     :model/Field
     :model/FieldValues
@@ -124,15 +125,39 @@
     :model/Comment
     :model/CommentReaction
     ;; 59+
-    :model/Measure]
+    :model/Measure
+    ;; 60+
+    :model/OAuthClient
+    :model/OAuthClientEvent
+    :model/OAuthAuthorizationCode
+    :model/OAuthAccessToken
+    :model/OAuthRefreshToken
+    :model/Metabot
+    :model/MetabotConversation
+    :model/MetabotMessage
+    :model/MetabotFeedback
+    :model/MetabotSourceFeedback
+    :model/MetabotUsedTable
+    :model/MetabotPrompt
+    :model/OsiAiContext
+    ;; 62+
+    :model/Exploration
+    :model/ExplorationThread
+    :model/ExplorationBlock
+    :model/ExplorationPage
+    :model/ExplorationThreadTimeline
+    :model/ExplorationQuery
+    :model/ExplorationBookmark
+    ;; 63+
+    :model/McpFeedback]
    (when config/ee-available?
-     [:model/Sandbox
+     [:model/MetabotPermissions
+      :model/MetabotGroupLimit
+      :model/MetabotInstanceLimit
+      :model/Sandbox
       :model/Tenant
       :model/ConnectionImpersonation
-      :model/Metabot
-      :model/MetabotConversation
-      :model/MetabotMessage
-      :model/MetabotPrompt])))
+      :model/CustomVizPlugin])))
 
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -159,7 +184,7 @@
     (let [{:keys [cols vals]} (objects->columns+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn-spec table-name cols vals {:transaction? false}))
     (catch SQLException e
-      (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
+      (log/errorf "Error inserting chunk: %s" (ex-message e))
       (throw e))))
 
 (def ^:dynamic *copy-h2-database-details*
@@ -208,6 +233,10 @@
     :model/Field
     ;; unique_field_helper is a computed/generated column
     (map #(dissoc % :unique_field_helper))
+
+    :model/DataPermissions
+    ;; unique_perms_helper is a computed/generated column
+    (map #(dissoc % :unique_perms_helper))
 
     ;; else
     identity))
@@ -337,7 +366,6 @@
         (let [save-point (.setSavepoint conn)]
           (try
             (letfn [(add-batch! [^String sql]
-                      (log/debug (u/colorize :yellow sql))
                       (.addBatch stmt sql))]
               ;; do these in reverse order so child rows get deleted before parents
               (doseq [table-name (map t2/table-name (reverse entities))]
@@ -365,7 +393,8 @@
     :model/FieldUserSettings
     :model/QueryAction
     :model/MetabotConversation
-    :model/ModelIndexValue})
+    :model/ModelIndexValue
+    :model/OsiAiContext})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}
@@ -390,7 +419,6 @@
 ;; Update the sequence nextvals.
 (defmethod update-sequence-values! :postgres
   [_db-type data-source]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting Postgres sequence ids to proper values...")
       (doseq [model entities
@@ -408,7 +436,6 @@
 
 (defmethod update-sequence-values! :h2
   [_db-type data-source]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting H2 sequence ids to proper values...")
       (doseq [e     entities
@@ -444,7 +471,6 @@
   (step (trs "Clearing default entries created by Liquibase migrations...")
     (clear-existing-rows! target-db-type target-data-source))
   ;; create a transaction and load the data.
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-conn-spec {:datasource target-data-source}]
     ;; transaction should be set as rollback-only until it completes. Only then should we disable rollback-only so the
     ;; transaction will commit (i.e., only commit if the whole thing succeeds)

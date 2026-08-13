@@ -1,34 +1,53 @@
-import { t } from "ttag";
-
-import type { IconName } from "metabase/ui";
+import {
+  type GeoSubtype,
+  getGeoSubtype,
+} from "metabase/common/metrics/utils/dimension-types";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import type {
   DimensionGroup,
   DimensionMetadata,
   MetricDefinition,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
 import type {
+  AvailableDimension,
+  AvailableDimensionsResult,
   MetricSourceId,
-  MetricsViewerTabType,
-} from "../types/viewer-state";
+  MetricsViewerDimensionBreakoutState,
+  MetricsViewerDimensionBreakoutType,
+  SourceColorMap,
+  SourceDisplayInfo,
+} from "../types";
 
-import { getDimensionIcon, getDimensionsByType } from "./tabs";
+export type {
+  AvailableDimension,
+  AvailableDimensionsResult,
+  SourceDisplayInfo,
+} from "../types";
+
+import { getDimensionsByType } from "./dimension-breakouts";
+import type { MetricSlot } from "./metric-slots";
 
 // ── Dimension picker ──
 
-export interface AvailableDimension {
-  dimensionId: string;
-  label: string;
-  icon: IconName;
-  sourceIds: MetricSourceId[];
-  tabType: MetricsViewerTabType;
-  group?: DimensionGroup;
-}
+export function getExistingDimensionBreakoutDimensionIds(
+  dimensionBreakouts: MetricsViewerDimensionBreakoutState[],
 
-export interface AvailableDimensionsResult {
-  shared: AvailableDimension[];
-  bySource: Record<MetricSourceId, AvailableDimension[]>;
+  excludedDimensionBreakoutId?: string | null,
+) {
+  return new Set(
+    dimensionBreakouts
+      .filter(
+        (dimensionBreakout) =>
+          dimensionBreakout.id !== excludedDimensionBreakoutId,
+      )
+      .flatMap((dimensionBreakout) =>
+        Object.values(dimensionBreakout.dimensionMapping),
+      )
+      .filter((id) => id != null),
+  );
 }
 
 interface DimensionEntry {
@@ -36,15 +55,19 @@ interface DimensionEntry {
   id: string;
   label: string;
   icon: IconName;
-  tabType: MetricsViewerTabType;
+  dimensionBreakoutType: MetricsViewerDimensionBreakoutType;
   group?: DimensionGroup;
+  canListValues: boolean;
+  isPreferred?: boolean;
+  isDefault?: boolean;
+  geoSubtype?: GeoSubtype | null;
   sourceId: MetricSourceId;
 }
 
 function collectAllDimensionEntries(
   sourceOrder: MetricSourceId[],
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  existingTabIds: Set<string>,
+  existingDimensionBreakoutDimensionIds: Set<string>,
 ): DimensionEntry[] {
   const entries: DimensionEntry[] = [];
 
@@ -55,17 +78,23 @@ function collectAllDimensionEntries(
     }
 
     for (const [id, info] of getDimensionsByType(def)) {
-      if (existingTabIds.has(id)) {
+      if (existingDimensionBreakoutDimensionIds.has(id)) {
         continue;
       }
 
+      const geoSubtype = getGeoSubtype(info.dimensionMetadata);
+
       entries.push({
-        dimension: info.dimension,
+        dimension: info.dimensionMetadata,
         id,
         label: info.displayName,
-        icon: getDimensionIcon(info.dimension),
-        tabType: info.type,
+        icon: getDimensionIcon(info.dimensionMetadata),
+        dimensionBreakoutType: info.dimensionType,
         group: info.group,
+        canListValues: info.canListValues,
+        isPreferred: info.isPreferred,
+        ...(info.isDefault ? { isDefault: true } : {}),
+        ...(geoSubtype ? { geoSubtype } : {}),
         sourceId,
       });
     }
@@ -96,7 +125,8 @@ function groupBySource(entries: DimensionEntry[]): DimensionEntry[][] {
 export function getAvailableDimensionsForPicker(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   sourceOrder: MetricSourceId[],
-  existingTabIds: Set<string>,
+  metricSlots: MetricSlot[],
+  existingDimensionBreakoutDimensionIds: Set<string>,
 ): AvailableDimensionsResult {
   const result: AvailableDimensionsResult = { shared: [], bySource: {} };
 
@@ -107,12 +137,18 @@ export function getAvailableDimensionsForPicker(
   const entries = collectAllDimensionEntries(
     sourceOrder,
     definitionsBySourceId,
-    existingTabIds,
+    existingDimensionBreakoutDimensionIds,
   );
   const groups = groupBySource(entries);
   const loadedSourceCount = new Set(entries.map((entry) => entry.sourceId))
     .size;
   const hasMultipleSources = loadedSourceCount > 1;
+
+  const sourceIdToSlotIndices: Record<MetricSourceId, number[]> = {};
+  for (const slot of metricSlots) {
+    const slotIndices = (sourceIdToSlotIndices[slot.sourceId] ??= []);
+    slotIndices.push(slot.slotIndex);
+  }
 
   for (const group of groups) {
     const uniqueSources = [...new Set(group.map((entry) => entry.sourceId))];
@@ -120,46 +156,56 @@ export function getAvailableDimensionsForPicker(
 
     if (hasMultipleSources && uniqueSources.length >= 2) {
       result.shared.push({
-        dimensionId: first.id,
-        label: first.label,
         icon: first.icon,
-        tabType: first.tabType,
-        sourceIds: uniqueSources,
         group: first.group,
+        canListValues: first.canListValues,
+        isPreferred: first.isPreferred,
+        ...(first.isDefault ? { isDefault: true } : {}),
+        ...(first.geoSubtype ? { geoSubtype: first.geoSubtype } : {}),
+        dimensionBreakoutInfo: {
+          type: first.dimensionBreakoutType,
+          label: first.label,
+          dimensionMapping: Object.fromEntries(
+            group.flatMap((entry) =>
+              (sourceIdToSlotIndices[entry.sourceId] ?? []).map((slotIndex) => [
+                slotIndex,
+                entry.id,
+              ]),
+            ),
+          ),
+        },
       });
     } else {
       for (const entry of group) {
         const arr = (result.bySource[entry.sourceId] ??= []);
         arr.push({
-          dimensionId: entry.id,
-          label: entry.label,
           icon: entry.icon,
-          tabType: entry.tabType,
-          sourceIds: [entry.sourceId],
           group: entry.group,
+          canListValues: entry.canListValues,
+          isPreferred: entry.isPreferred,
+          ...(entry.isDefault ? { isDefault: true } : {}),
+          ...(entry.geoSubtype ? { geoSubtype: entry.geoSubtype } : {}),
+          dimensionBreakoutInfo: {
+            type: entry.dimensionBreakoutType,
+            label: entry.label,
+            dimensionMapping: Object.fromEntries(
+              (sourceIdToSlotIndices[entry.sourceId] ?? []).map((slotIndex) => [
+                slotIndex,
+                entry.id,
+              ]),
+            ),
+          },
         });
       }
     }
   }
 
-  result.shared.sort((first, second) =>
-    first.label.localeCompare(second.label),
-  );
-  for (const sourceId of sourceOrder) {
-    result.bySource[sourceId]?.sort((first, second) =>
-      first.label.localeCompare(second.label),
-    );
-  }
-
+  // No sorting: entries keep the metric's curated dimension order (shared
+  // entries follow the first source's curation).
   return result;
 }
 
 // ── Display helpers ──
-
-export interface SourceDisplayInfo {
-  type: "metric" | "measure";
-  name: string;
-}
 
 // ── Dimension picker sections ──
 
@@ -167,80 +213,191 @@ export type DimensionPickerItem = AvailableDimension & {
   name: string;
 };
 
+export type DimensionPickerSidebarCategory = DimensionPickerItem & {
+  key: string;
+  targetItems: DimensionPickerItem[];
+};
+
+export type DimensionPickerSidebarCategorySelectOption = {
+  value: string;
+  label: string;
+  icon: IconName;
+};
+
+type RawDimensionPickerSidebarCategorySelectOption =
+  DimensionPickerSidebarCategorySelectOption & {
+    groupName?: string;
+  };
+
+export type DimensionPickerSidebarCategorySelectRow = {
+  slotIndex: number;
+  sourceId: MetricSourceId;
+  metricName: string;
+  colors?: string[];
+  isExpressionToken: boolean;
+  occurrenceCount?: number;
+  value: string | null;
+  options: DimensionPickerSidebarCategorySelectOption[];
+};
+
 export type DimensionPickerSection = {
   name?: string;
   items: DimensionPickerItem[];
+  isShared?: boolean;
+  sourceId?: MetricSourceId;
 };
 
-export function buildDimensionPickerSections({
-  availableDimensions,
-  sourceOrder,
-  sourceDataById,
-  hasMultipleSources,
-}: {
-  availableDimensions: AvailableDimensionsResult;
-  sourceOrder: MetricSourceId[];
-  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
-  hasMultipleSources: boolean;
-}): DimensionPickerSection[] {
-  const sections: DimensionPickerSection[] = [];
+export function getComparableDimensionKey(item: DimensionPickerItem) {
+  const type = item.dimensionBreakoutInfo.type;
 
-  const splitByGroup = (
-    dimensions: AvailableDimension[],
-    sectionName?: string,
-  ) => {
-    const groups = new Map<string | undefined, AvailableDimension[]>();
-    for (const dimension of dimensions) {
-      const groupId = dimension.group?.id;
-      const existing = groups.get(groupId);
-      if (existing) {
-        existing.push(dimension);
-      } else {
-        groups.set(groupId, [dimension]);
-      }
-    }
-
-    if (groups.size <= 1) {
-      sections.push({
-        name: sectionName,
-        items: dimensions.map((dimension) => ({
-          ...dimension,
-          name: dimension.label,
-        })),
-      });
-      return;
-    }
-
-    for (const [, groupDimensions] of groups) {
-      const groupName = groupDimensions[0].group?.displayName;
-      const name = sectionName ? `${sectionName} · ${groupName}` : groupName;
-      sections.push({
-        name,
-        items: groupDimensions.map((dimension) => ({
-          ...dimension,
-          name: dimension.label,
-        })),
-      });
-    }
-  };
-
-  if (hasMultipleSources && availableDimensions.shared.length > 0) {
-    splitByGroup(availableDimensions.shared, t`Shared`);
+  if (type === "time") {
+    return "type:time";
   }
 
-  for (const sourceId of sourceOrder) {
-    const sourceDimensions = availableDimensions.bySource[sourceId];
-    if (!sourceDimensions || sourceDimensions.length === 0) {
+  if (type === "geo" && item.geoSubtype != null) {
+    return `type:geo:${item.geoSubtype}`;
+  }
+
+  const mappingKey = Object.entries(item.dimensionBreakoutInfo.dimensionMapping)
+    .filter(([, dimensionId]) => dimensionId != null)
+    .map(([slotIndex, dimensionId]) => `${slotIndex}=${dimensionId}`)
+    .join("|");
+  return ["item", type, mappingKey].join(":");
+}
+
+export function getComparableDimensionMapping({
+  item,
+  sections,
+  metricSlots,
+  activeDimensionBreakout,
+}: {
+  item: DimensionPickerItem;
+  sections: DimensionPickerSection[];
+  metricSlots: MetricSlot[];
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
+}): Record<number, string | null> {
+  const type = item.dimensionBreakoutInfo.type;
+  const itemMapping = item.dimensionBreakoutInfo.dimensionMapping;
+  const isRefiningActiveType = activeDimensionBreakout.type === type;
+  const sectionItems = sections.flatMap((section) => section.items);
+  const mapping: Record<number, string | null> = {};
+
+  for (const slot of metricSlots) {
+    const slotIndex = slot.slotIndex;
+
+    if (itemMapping[slotIndex] != null) {
+      mapping[slotIndex] = itemMapping[slotIndex];
       continue;
     }
 
-    if (hasMultipleSources) {
-      const sourceName = sourceDataById[sourceId]?.name ?? sourceId;
-      splitByGroup(sourceDimensions, sourceName);
-    } else {
-      splitByGroup(sourceDimensions);
+    const activeDimensionId =
+      activeDimensionBreakout.dimensionMapping[slotIndex];
+    if (isRefiningActiveType && activeDimensionId !== undefined) {
+      mapping[slotIndex] = activeDimensionId;
+      continue;
     }
+
+    mapping[slotIndex] = findSlotDimensionOfType(
+      sectionItems,
+      slotIndex,
+      type,
+      item.name,
+    );
   }
 
-  return sections;
+  return mapping;
+}
+
+function findSlotDimensionOfType(
+  sectionItems: DimensionPickerItem[],
+  slotIndex: number,
+  type: MetricsViewerDimensionBreakoutType,
+  name: string,
+) {
+  const candidates = sectionItems.filter(
+    (candidate) =>
+      candidate.dimensionBreakoutInfo.type === type &&
+      candidate.dimensionBreakoutInfo.dimensionMapping[slotIndex] != null,
+  );
+  const match =
+    candidates.find((candidate) => candidate.name === name) ??
+    candidates.find((candidate) => candidate.isDefault) ??
+    candidates[0];
+
+  return match?.dimensionBreakoutInfo.dimensionMapping[slotIndex] ?? null;
+}
+
+export function buildDimensionPickerSidebarCategorySelectRows({
+  category,
+  activeDimensionBreakout,
+  metricSlots,
+  sourceDataById,
+  sourceColors,
+}: {
+  category: DimensionPickerSidebarCategory;
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState;
+  metricSlots: MetricSlot[];
+  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
+  sourceColors: SourceColorMap;
+}): DimensionPickerSidebarCategorySelectRow[] {
+  return metricSlots.flatMap((slot) => {
+    const optionsByValue = new Map<
+      string,
+      RawDimensionPickerSidebarCategorySelectOption
+    >();
+
+    for (const item of category.targetItems) {
+      const dimensionId =
+        item.dimensionBreakoutInfo.dimensionMapping[slot.slotIndex];
+      if (!dimensionId || optionsByValue.has(dimensionId)) {
+        continue;
+      }
+
+      optionsByValue.set(dimensionId, {
+        value: dimensionId,
+        label: item.name,
+        icon: item.icon,
+        groupName: item.group?.displayName,
+      });
+    }
+
+    const labelCounts = new Map<string, number>();
+    for (const option of optionsByValue.values()) {
+      labelCounts.set(option.label, (labelCounts.get(option.label) ?? 0) + 1);
+    }
+    const fallbackGroupName =
+      sourceDataById[slot.sourceId]?.name ?? slot.sourceId;
+    const options = [...optionsByValue.values()]
+      .map(({ groupName, ...option }) => ({
+        ...option,
+        label:
+          (labelCounts.get(option.label) ?? 0) > 1
+            ? `${groupName ?? fallbackGroupName} → ${option.label}`
+            : option.label,
+      }))
+      .sort((first, second) => first.label.localeCompare(second.label));
+    if (options.length === 0) {
+      return [];
+    }
+
+    const activeDimensionId =
+      activeDimensionBreakout.dimensionMapping[slot.slotIndex] ?? null;
+
+    return [
+      {
+        slotIndex: slot.slotIndex,
+        sourceId: slot.sourceId,
+        metricName: sourceDataById[slot.sourceId]?.name ?? slot.sourceId,
+        colors: sourceColors[slot.entityIndex],
+        isExpressionToken: slot.tokenPosition != null,
+        ...(slot.occurrenceCount != null
+          ? { occurrenceCount: slot.occurrenceCount }
+          : {}),
+        value: options.some((option) => option.value === activeDimensionId)
+          ? activeDimensionId
+          : null,
+        options,
+      },
+    ];
+  });
 }

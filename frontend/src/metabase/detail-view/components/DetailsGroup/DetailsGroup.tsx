@@ -1,19 +1,23 @@
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import {
   getColumnTitle,
   getRowValue,
   renderValue,
 } from "metabase/detail-view/utils";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import type { OptionsType } from "metabase/lib/formatting/types";
 import { Flex, Group, Stack, Text, rem } from "metabase/ui";
-import type { DatasetColumn, RowValues, Table } from "metabase-types/api";
+import type {
+  ColumnSettings,
+  DatasetColumn,
+  RowValues,
+  Table,
+} from "metabase-types/api";
 
 import S from "./DetailsGroup.module.css";
 import { Value } from "./Value";
 
 interface Props {
   columns: DatasetColumn[];
-  columnsSettings?: (OptionsType | undefined)[];
+  columnsSettings?: (ColumnSettings | undefined)[];
   responsive?: boolean;
   row: RowValues;
   table: Table | undefined;

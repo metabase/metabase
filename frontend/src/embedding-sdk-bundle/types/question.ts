@@ -1,15 +1,23 @@
 import type { ReactNode } from "react";
 
-import type { Deferred } from "metabase/lib/promise";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type {
+  MetabaseCard,
+  MetabaseQueryObject,
+} from "metabase/embedding-sdk/types/question";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type InternalQuestion from "metabase-lib/v1/Question";
-import type { Card, ParameterValuesMap } from "metabase-types/api";
+import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";
 
 import type { SdkDashboardId } from "./dashboard";
 import type { SdkEntityId, SdkEntityToken } from "./entity";
 
-export type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
+export type {
+  MetabaseCard,
+  MetabaseQueryObject,
+  MetabaseQuestion,
+} from "metabase/embedding-sdk/types/question";
 
 /**
  * Represents the identifier for a question in the Metabase SDK.
@@ -52,6 +60,8 @@ export type SdkQuestionEntityPublicProps =
        */
       questionId: SdkQuestionId | null;
       token?: never;
+      card?: never;
+      query?: never;
     }
   | {
       questionId?: never;
@@ -59,6 +69,41 @@ export type SdkQuestionEntityPublicProps =
        * A valid JWT token for the guest embed.
        */
       token: SdkEntityToken | null;
+      card?: never;
+      query?: never;
+    }
+  | {
+      questionId?: never;
+      token?: never;
+      /**
+       * An ad-hoc question to render without saving it first. Either a
+       * {@link MetabaseCard} object, or a serialized card string copied from a
+       * question URL hash (`/question#<base64>` or the bare base64).
+       */
+      card: string | MetabaseCard;
+      query?: never;
+    }
+  | {
+      questionId?: never;
+      token?: never;
+      card?: never;
+      /**
+       * A table-backed ad hoc query created with `useMetabaseQueryObject`.
+       */
+      query: MetabaseQueryObject | null;
+    };
+
+/**
+ * Internal type that adds the string `query` prop used by the `useMetabot`
+ * hook. Not re-exported from the public SDK package entry point.
+ */
+export type SdkQuestionEntityInternalProps =
+  | SdkQuestionEntityPublicProps
+  | {
+      questionId?: never;
+      token?: never;
+      card?: never;
+      query: string;
     };
 
 export interface SdkQuestionState {
@@ -83,7 +128,7 @@ export type LoadSdkQuestionParams = {
   /**
    * @internal
    */
-  deserializedCard?: Card;
+  deserializedCard?: UnsavedCard;
 
   /**
    * @internal
@@ -101,8 +146,9 @@ export type LoadSdkQuestionParams = {
 export interface NavigateToNewCardParams {
   nextCard: Card;
   previousCard: Card;
-  objectId: ObjectId;
-  cancelDeferred?: Deferred;
+  objectId?: ObjectId;
+  signal?: AbortSignal;
+  drillName?: string;
 }
 
 export interface QuestionStateParams {
@@ -128,3 +174,27 @@ export type SqlParameterValues = Record<
   | null
   | undefined
 >;
+
+/**
+ * Source of a sql-parameter-change event:
+ * - `initial-state` - first applied state, fired once per question load.
+ * - `manual-change` - user edited parameters in UI.
+ * - `auto-change` - in the case of auto-updates, e.g. to pass normalized values back to parent.
+ *
+ * @category InteractiveQuestion
+ */
+export type SqlParameterChangeSource =
+  | "initial-state"
+  | "manual-change"
+  | "auto-change";
+
+/**
+ * Payload passed to `onSqlParametersChange` callback
+ *
+ * @category InteractiveQuestion
+ */
+export type SqlParameterChangePayload = {
+  source: SqlParameterChangeSource;
+  parameters: ParameterValues;
+  defaultParameters: ParameterValues;
+};

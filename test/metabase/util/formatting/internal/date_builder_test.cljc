@@ -29,7 +29,6 @@
         "9:06:19"             "2022-06-08T09:06:19Z" [:hour-24-d  ":" :minute-dd ":" :second-dd]
         "7:06 PM"             "2022-06-08T19:06:19Z" [:hour-12-d  ":" :minute-dd " " :am-pm]
         "6m19s"               "2022-06-08T19:06:19Z" [:minute-d "m" :second-dd "s"]))
-
     (testing "works for strings in Clojure vectors"
       (are [exp t fmt] (= exp ((builder/->formatter fmt) (u.time/coerce-to-timestamp t)))
         "2022"                "2022-06-08T09:06:19Z" [":year"]
@@ -52,7 +51,6 @@
         "9:06:19"             "2022-06-08T09:06:19Z" [":hour-24-d"  ":" ":minute-dd" ":" ":second-dd"]
         "7:06 PM"             "2022-06-08T19:06:19Z" [":hour-12-d"  ":" ":minute-dd" " " ":am-pm"]
         "6m19s"               "2022-06-08T19:06:19Z" [":minute-d"   "m" ":second-dd" "s"]))
-
     #?(:cljs
        (testing "works for strings in JS arrays"
          (are [exp t fmt] (= exp ((builder/->formatter fmt) (u.time/coerce-to-timestamp t)))

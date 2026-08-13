@@ -45,7 +45,7 @@ You may already have Java installed. To check the version, open a terminal and r
 java -version
 ```
 
-If Java isn't installed, you'll need to install Java before you can run Metabase. We recommend version 21 of JRE from [Eclipse Temurin](https://adoptium.net/) with HotSpot JVM. You can run Metabase wherever Java 21 runs. Earlier Java versions aren't supported. The particular processor architecture shouldn't matter (although we only test Metabase for x86 and ARM).
+If Java isn't installed, you'll need to install Java before you can run Metabase. We recommend version 25 of JRE from [Eclipse Temurin](https://adoptium.net/) with HotSpot JVM. You can run Metabase wherever Java 25 runs. Earlier Java versions aren't supported. The particular processor architecture shouldn't matter (although we only test Metabase for x86 and ARM).
 
 ### 2. Download Metabase
 
@@ -103,7 +103,7 @@ Metabase will start using the default settings. You should see some log entries 
 
 At this point you're ready to go! You can access your new Metabase server on port 3000, most likely at `http://localhost:3000`.
 
-You can use another port than 3000 by setting the `MB_JETTY_PORT` [environment variable](../configuring-metabase/environment-variables.md) before running the jar.
+You can use another port than 3000 by setting the `MB_JETTY_PORT` [environment variable](../configuring-metabase/environment-variables.md#mb_jetty_port) before running the jar.
 
 If you are using a Pro or Enterprise version of Metabase, be sure to [activate your license](../installation-and-operation/activating-the-enterprise-edition.md).
 

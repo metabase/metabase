@@ -65,7 +65,6 @@
             json/decode
             (update "translations" select-keys [""])
             (update-in ["translations" ""] select-keys ["Your database has been added!"])))))
-
   (testing "an invalid override causes a fallback to English"
     (is (= {"headers"      {"language" "yy", "plural-forms" "nplurals=2; plural=(n != 1);"}
             "translations" {"" {"Metabase" {"msgid" "Metabase", "msgstr" ["Metabase"]}}}}

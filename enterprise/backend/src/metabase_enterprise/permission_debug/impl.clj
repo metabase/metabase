@@ -14,12 +14,12 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -124,7 +124,6 @@
                       ;; Only include fields from responses that have the winning decision precedence
                       acc-contributes? (= acc-precedence (decision-precedence winning-decision))
                       response-contributes? (= response-precedence (decision-precedence winning-decision))]
-
                   {:decision    winning-decision
                    :model-type  (:model-type response)
                    :model-id    (:model-id response)
@@ -177,7 +176,7 @@
   [user-id card permissions-blocking permissions-granting]
   (let [query (-> card :dataset_query qp.preprocess/preprocess)
         query-tables (lib/all-source-table-ids query)
-        native? (boolean (lib.util.match/match-lite query {:native (_ :guard identity)} true))]
+        native? (match/match-one query {:native &truthy} true)]
     (->>
      (cond
        native?

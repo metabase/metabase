@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionPermissionsGraphEndpoint,
@@ -9,6 +7,8 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type {
   Collection,
   CollectionPermissionsGraph,
@@ -21,7 +21,6 @@ import {
   createMockGroup,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { CollectionPermissionsPage } from "../CollectionPermissionsPage";
 
@@ -183,11 +182,11 @@ export function setup({
     <>
       <Route
         path="/admin/permissions/collections"
-        component={CollectionPermissionsPage}
+        element={<CollectionPermissionsPage />}
       />
       <Route
         path="/admin/permissions/collections/:collectionId"
-        component={CollectionPermissionsPage}
+        element={<CollectionPermissionsPage />}
       />
     </>,
     {

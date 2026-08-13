@@ -19,6 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -36,13 +37,27 @@
    [:result_metadata {:optional true} [:maybe [:sequential ms/Map]]]
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
 
+(defn- cards-to-create-schema
+  "Request schema for the `cards` map: placeholder id -> new card.
+
+  The strict `[:map-of key-schema CardCreateSchema]` can't be the request schema directly. Request decoding strips
+  `:map-of` entries that don't match their schema, so an unusable card would be quietly dropped and the document
+  saved without it. Decoding therefore sees a permissive `[:map-of :int :any]` — enough to turn the JSON string keys
+  into ints — and the `:fn` re-checks the strict shape afterwards, so a bad card is a 400."
+  [key-schema]
+  (let [strict [:map-of key-schema CardCreateSchema]]
+    [:and
+     [:map-of :int :any]
+     [:fn {:error/message "value must map a card placeholder id to a card"}
+      #(mr/validate strict %)]]))
+
 (def ^:private DocumentCreateOptions
   [:map
    [:name m.document/DocumentName]
    [:document :any]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]])
+   [:cards {:optional true} [:maybe (cards-to-create-schema [:int {:max -1}])]]])
 
 (def ^:private DocumentUpdateOptions
   [:map
@@ -50,13 +65,13 @@
    [:document {:optional true} :any]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
+   [:cards {:optional true} [:maybe (cards-to-create-schema :int)]]
    [:archived {:optional true} [:maybe :boolean]]])
 
 (defn- create-card!
   "Checks that the query is runnable by the current user then saves"
   [{query :dataset_query :as card} creator]
-  (query-perms/check-run-permissions-for-query query)
+  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
 (mu/defn- update-cards-in-ast :- [:map [:document :any]
@@ -131,14 +146,31 @@
             to-clone)))
 
 (defn get-document
-  "Get document by id checking if the current user has permission to access and if the document exists."
-  [id]
+  "Get document by id checking if the current user has permission to access and if the document exists.
+  Pass `:log-view? false` to skip publishing the `:event/document-read` view event."
+  [id & {:keys [log-view?] :or {log-view? true}}]
   (u/prog1 (api/check-404
             (api/read-check
              (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
-    (events/publish-event! :event/document-read
-                           {:object-id id
-                            :user-id api/*current-user-id*})))
+    (when log-view?
+      (events/publish-event! :event/document-read
+                             {:object-id id
+                              :user-id api/*current-user-id*}))))
+
+(defn add-card-to-document!
+  "Insert an embed for the already-created card with `card-id` into the prose-mirror ast of the
+  document with `document-id` and persist it. `position` is a 0-based index among the document's
+  top-level blocks; `nil` appends the embed at the end and out-of-range indexes are clamped.
+
+  The caller is responsible for write-checking the document first. The document is re-read inside
+  the transaction so a concurrent edit cannot be overwritten. Returns the updated document."
+  [document-id card-id position]
+  (t2/with-transaction [_conn]
+    (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
+      (t2/update! :model/Document document-id
+                  (select-keys (prose-mirror/insert-card-embed document card-id position) [:document]))
+      (collections/check-for-remote-sync-update document)))
+  (get-document document-id :log-view? false))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -219,7 +251,6 @@
     (api/write-check existing-document)
     (when (api/column-will-change? :collection_id existing-document body)
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
-
     ;; Handle archiving logic
     (let [document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
       (t2/with-transaction [_conn]
@@ -456,7 +487,7 @@
        [:pivot_results {:default false} ms/BooleanValue]]]
   (validate-card-in-document document-id card-id)
   (qp.card/process-query-for-card
-   card-id export-format
+   (api/check-404 (t2/select-one :model/Card card-id)) export-format
    :parameters  (cond-> parameters
                   (string? parameters) json/decode+kw)
    :constraints nil

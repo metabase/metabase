@@ -10,7 +10,7 @@
    [metabase.xrays.test-util.automagic-dashboards :refer [with-rollback-only-transaction]]
    [toucan2.core :as t2]))
 
-(defn- pmbql-segment-definition
+(defn- mbql5-segment-definition
   "Create an MBQL5 segment definition"
   [table-id field-id value]
   (let [metadata-provider (mt/metadata-provider)
@@ -22,7 +22,7 @@
 (def ^:private segment
   (delay
     {:table_id (mt/id :venues)
-     :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}))
+     :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :price) 10)}))
 
 (defn- test-comparison
   [left right]

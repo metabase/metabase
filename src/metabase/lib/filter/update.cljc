@@ -27,9 +27,9 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.time :as u.time]))
 
 (defn- is-ref-for-column? [expr column]
@@ -37,10 +37,8 @@
        (lib.equality/find-matching-column expr [column])))
 
 (defn- contains-ref-for-column? [expr column]
-  (letfn [(ref-for-column? [expr]
-            (is-ref-for-column? expr column))]
-    (lib.util.match/match-lite expr
-      (x :guard ref-for-column?) true)))
+  (match/match-one expr
+    (x :guard (is-ref-for-column? x column)) true))
 
 (mu/defn- remove-existing-filters-against-column* :- ::lib.schema/query
   [query        :- ::lib.schema/query
@@ -163,7 +161,6 @@
 (mr/def ::temporal-literal
   #?(:clj
      ::lib.schema.literal/temporal
-
      :cljs
      [:or
       ::lib.schema.literal/temporal

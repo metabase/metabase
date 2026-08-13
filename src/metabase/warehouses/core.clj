@@ -13,7 +13,8 @@
  [metabase.warehouses.provider-detection
   detect-provider-from-database]
  [metabase.warehouses.settings
-  cloud-gateway-ips]
+  cloud-gateway-ips
+  disable-auto-sync]
  [metabase.warehouses.util
   get-database
   test-connection-details

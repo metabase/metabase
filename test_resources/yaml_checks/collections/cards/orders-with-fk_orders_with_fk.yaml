@@ -1,0 +1,66 @@
+name: Orders With FK
+description: Query with FK in result_metadata
+entity_id: orders-with-fk
+created_at: '2026-01-01T00:00:00.000000Z'
+creator_id: test@metabase.com
+display: table
+archived: false
+query_type: query
+database_id: SQLite DB
+table_id:
+- SQLite DB
+- null
+- orders
+dataset_query:
+  database: SQLite DB
+  query:
+    source-table:
+    - SQLite DB
+    - null
+    - orders
+  type: query
+result_metadata:
+- base_type: type/Integer
+  display_name: ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - SQLite DB
+    - null
+    - orders
+    - id
+  - null
+  id:
+  - SQLite DB
+  - null
+  - orders
+  - id
+  name: id
+  semantic_type: type/PK
+- base_type: type/Integer
+  display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - SQLite DB
+    - null
+    - orders
+    - user_id
+  - null
+  fk_target_field_id:
+  - SQLite DB
+  - null
+  - users
+  - id
+  id:
+  - SQLite DB
+  - null
+  - orders
+  - user_id
+  name: user_id
+  semantic_type: type/FK
+serdes/meta:
+- id: orders-with-fk
+  label: orders_with_fk
+  model: Card
+type: question

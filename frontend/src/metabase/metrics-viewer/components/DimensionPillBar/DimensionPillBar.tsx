@@ -1,34 +1,63 @@
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
-import { DimensionPill } from "metabase/common/components/DimensionPill";
-import type { IconName } from "metabase/ui";
-import { Flex } from "metabase/ui";
+import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
+import { Flex, Text } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
-import type { MetricSourceId } from "../../types/viewer-state";
+import type { MetricSourceId } from "../../types";
 
-export interface DimensionItem {
-  id: MetricSourceId;
+import S from "./DimensionPillBar.module.css";
+
+// ── Standalone metric pill item ──
+
+export interface MetricDimensionItem {
+  type: "metric";
+  slotIndex: number;
   label?: string;
   icon?: IconName;
   colors?: string[];
   availableOptions: DimensionOption[];
 }
 
+// ── Expression pill item (one pill per expression entity) ──
+
+export interface ExpressionMetricSource {
+  /** Slot index in dimensionMapping — used as the callback key. */
+  slotIndex: number;
+  sourceId: MetricSourceId;
+  metricName: string;
+  metricCount?: number;
+  colors?: string[];
+  currentDimension?: DimensionMetadata;
+  currentDimensionLabel?: string;
+  currentDimensionIcon?: IconName;
+  availableOptions: DimensionOption[];
+}
+
+export interface ExpressionDimensionItem {
+  type: "expression";
+  entityIndex: number;
+  colors?: string[];
+  icon?: IconName;
+  /** Aggregate label derived from selected dimensions. */
+  label?: string;
+  metricSources: ExpressionMetricSource[];
+}
+
+export type DimensionPillBarItem =
+  | MetricDimensionItem
+  | ExpressionDimensionItem;
+
+// ── Component ──
+
 export interface DimensionPillBarProps {
-  items: DimensionItem[];
-  onDimensionChange: (
-    itemId: MetricSourceId,
-    dimension: DimensionMetadata,
-  ) => void;
-  onDimensionRemove?: (itemId: MetricSourceId) => void;
-  disabled?: boolean;
+  items: DimensionPillBarItem[];
+  textSize?: "xs" | "sm";
 }
 
 export function DimensionPillBar({
   items,
-  onDimensionChange,
-  onDimensionRemove,
-  disabled,
+  textSize = "sm",
 }: DimensionPillBarProps) {
   if (items.length === 0) {
     return null;
@@ -36,30 +65,56 @@ export function DimensionPillBar({
 
   return (
     <Flex
-      bg="background-secondary"
-      p="sm"
-      bdrs="xl"
+      className={S.container}
+      bg="background_page-primary"
       w="100%"
       align="center"
       justify="center"
-      gap="sm"
       wrap="wrap"
-      data-testid="metrics-viewer-dimension-pill-container"
+      data-testid="metrics-viewer-dimension-pill-bar"
     >
       {items.map((item) => (
-        <DimensionPill
-          key={item.id}
+        <DimensionLabel
+          key={
+            item.type === "expression"
+              ? `expr-${item.entityIndex}`
+              : item.slotIndex
+          }
           label={item.label}
           icon={item.icon}
           colors={item.colors}
-          options={item.availableOptions}
-          onSelect={(dimension) => onDimensionChange(item.id, dimension)}
-          onRemove={
-            onDimensionRemove ? () => onDimensionRemove(item.id) : undefined
-          }
-          disabled={disabled}
+          textSize={textSize}
         />
       ))}
+    </Flex>
+  );
+}
+
+function DimensionLabel({
+  label,
+  icon,
+  colors,
+  textSize,
+}: {
+  label?: string;
+  icon?: IconName;
+  colors?: string[];
+  textSize: "xs" | "sm";
+}) {
+  if (!label) {
+    return null;
+  }
+
+  return (
+    <Flex align="center" gap="xs" className={S.label}>
+      <SourceColorIndicator
+        colors={colors}
+        fallbackIcon={icon ?? "add"}
+        size={12}
+      />
+      <Text size={textSize} lh="1rem" c="text-primary">
+        {label}
+      </Text>
     </Flex>
   );
 }

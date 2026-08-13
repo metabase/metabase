@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.parameters-test
   "Testings to make sure the parameter substitution middleware works as expected. Even though the below tests are
   SQL-specific, they still confirm that the middleware itself is working correctly."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.parameters-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -198,7 +199,6 @@
 
 (deftest ^:parallel expand-multiple-referenced-cards-in-template-tags
   (testing "multiple sub-queries, referenced in template tags, are correctly substituted"
-
     (is (=? (native-query
              {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params []})
             (substitute-params
@@ -502,3 +502,21 @@
                                   [:expression {} "Quantity_2"]
                                   14]]}]}
             (substitute-params query)))))
+
+(deftest ^:parallel temporal-expression-parameter-test
+  (testing "a temporal (date) param mapped to an [:expression] custom column compiles to a temporal filter (#17775, #34955)"
+    (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                  (lib/expression q "CC Date" (meta/field-metadata :orders :created-at))
+                  (assoc q :parameters
+                         [{:id     "c77842b9"
+                           :target [:dimension
+                                    (lib/->legacy-MBQL (lib/expression-ref q "CC Date"))
+                                    {:stage-number 0}]
+                           :type   :date/range
+                           :value  "2026-01-01~2026-03-31"}]))]
+      (is (=? {:stages [{:filters [[:between
+                                    {}
+                                    [:expression {} "CC Date"]
+                                    "2026-01-01"
+                                    "2026-03-31"]]}]}
+              (substitute-params query))))))

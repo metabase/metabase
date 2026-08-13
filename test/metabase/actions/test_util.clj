@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.actions.test-util
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.test-util]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.actions.test-util]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -8,6 +10,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
@@ -89,14 +92,16 @@
   (let [db                 (atom nil)
         dataset-definition (tx/map->DatabaseDefinition (into {} (tx/get-dataset-definition dataset-definition)))
         dataset-definition (update dataset-definition :database-name #(str % "-" (u.random/random-name)))]
-    (try
-      (data/dataset dataset-definition
-        (reset! db (data/db))
-        (thunk))
-      (finally
-        (when-let [{driver :engine, db-id :id} @db]
-          (tx/destroy-db! driver dataset-definition)
-          (t2/delete! :model/Database :id db-id))))))
+    (when (or (nil? driver/*driver*)
+              (driver.u/supports? driver/*driver* :test/dynamic-dataset-loading nil))
+      (try
+        (data/dataset dataset-definition
+          (reset! db (data/db))
+          (thunk))
+        (finally
+          (when-let [{driver :engine, db-id :id} @db]
+            (tx/destroy-db! driver dataset-definition)
+            (t2/delete! :model/Database :id db-id)))))))
 
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table
@@ -123,7 +128,9 @@
       ...)"
   {:style/indent :defn}
   [table-definitions & body]
-  `(do-with-dataset-definition (tx/dataset-definition "temp-test-data" ~table-definitions) (fn [] ~@body)))
+  `(do-with-dataset-definition (tx/dataset-definition (str "temp-test-data" (u.random/random-name))
+                                                      ~table-definitions)
+                               (fn [] ~@body)))
 
 (defmacro with-empty-db
   "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
@@ -257,8 +264,7 @@
     (tu/with-model-cleanup [:model/Action]
       (f model))))
 
-;;; TODO FIXME -- rename this to [[with-actions!]] and then remove the Kondo ignore comment below
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+;;; TODO FIXME -- rename this to [[with-actions!]]
 (defmacro with-actions
   "Execute `body` with newly created Actions.
   `binding-forms-and-options-maps` is a vector of even number of elements, binding and options-map,
@@ -319,24 +325,21 @@
   (tu/with-temp-vals-in-db :model/Database db-id {:settings {:database-enable-actions enable?}}
     (thunk)))
 
-;;; TODO -- FIXME, rename this to `with-actions-enabled!` and remove the `:clj-kondo/ignore`
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+;;; TODO -- FIXME, rename this to `with-actions-enabled!`
 (defmacro with-actions-enabled
   "Execute `body` with Actions enabled for the current test Database."
   {:style/indent 0}
   [& body]
   `(do-with-actions-set! (data/id) true (fn [] ~@body)))
 
-;;; TODO -- FIXME, rename this to `with-actions-disabled!` and remove the `:clj-kondo/ignore`
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+;;; TODO -- FIXME, rename this to `with-actions-disabled!`
 (defmacro with-actions-disabled
   "Execute `body` with Actions disabled for the current test Database."
   {:style/indent 0}
   [& body]
   `(do-with-actions-set! (data/id) false (fn [] ~@body)))
 
-;;; TODO FIXME -- rename this to [[with-actions!]] and then remove the Kondo ignore comment below
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+;;; TODO FIXME -- rename this to [[with-actions-test-data-and-actions-enabled!]]
 (defmacro with-actions-test-data-and-actions-enabled
   "Combines [[with-actions-test-data]] and [[with-actions-enabled]]."
   {:style/indent 0}

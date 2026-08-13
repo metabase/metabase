@@ -1,0 +1,3 @@
+name: Broken Bundle
+# Points at a file that isn't in the repo — a valid config, an un-loadable app.
+path: ./missing.js

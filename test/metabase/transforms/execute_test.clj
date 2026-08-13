@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.transforms.execute-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
@@ -7,7 +8,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -142,12 +143,13 @@
       (mt/as-admin
         (testing "create-table-from-schema! should create the table successfully"
           (transforms-base.u/create-table-from-schema! driver db-id table-schema)
-          (let [table-exists? (driver/table-exists? driver db-id {:schema schema-name :name table-name})]
-            (is (some? table-exists?) "Table should exist in the database schema")
+          (let [table-exists? (driver/table-exists? driver (mt/db) {:schema schema-name :name table-name})]
+            (is (true? table-exists?) "Table should exist in the database schema")
             (driver/drop-table! driver db-id (:name table-schema))))))))
 
 (deftest transform-schema-created-if-needed-test
-  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas]})
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas
+                                                         :test/dynamic-dataset-loading]})
     (mt/dataset transforms-dataset/transforms-test
       (let [schema (str "transform_schema_" (mt/random-name))]
         (try
@@ -237,7 +239,6 @@
                                                                :source {:type  :query
                                                                         :query query}
                                                                :target target-table}]
-
                       (is (thrown-with-msg?
                            clojure.lang.ExceptionInfo
                            #"ERROR: permission denied for database transforms-test"
@@ -368,7 +369,9 @@
     (let [calls (atom [])
           record-call! (fn [call-name] (swap! calls conj call-name))
           mock-query "CREATE TABLE test_schema.test_table AS (SELECT 1 AS x);"
-          mock-rows [[1]]
+          ;; `execute-raw-queries!` yields one `{:rows-affected N}` map per statement; `run-transform!`
+          ;; returns `(last …)`, which must satisfy `::driver/run-transform-result`.
+          mock-rows [{:rows-affected 1}]
           transform-details {:output-table :test_schema/test_table
                              :database {:id 1}
                              :transform-type :table}]
@@ -506,21 +509,21 @@
                                               [(format "DROP OWNED BY %s;" readonly-user)]
                                               [(format "DROP ROLE IF EXISTS %s;" readonly-user)]])))))))))
 
-(deftest transform-creates-write-pool-test
+(deftest transform-creates-transform-pool-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:transforms/table]})
     (when config/ee-available?
       (mt/with-premium-features #{:writable-connection}
         (mt/dataset transforms-dataset/transforms-test
-          (let [db-id             (mt/id)
-                write-cache-key   [db-id :write-data]
-                schema            (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
-                old-write-details (:write_data_details (mt/db))]
+          (let [db-id               (mt/id)
+                transform-cache-key [db-id :transform]
+                schema              (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+                old-write-details   (:write_data_details (mt/db))]
             (when-not old-write-details
               (t2/update! :model/Database db-id {:write_data_details (:details (mt/db))}))
             (try
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
-              (testing "write pool does not exist before transform execution"
-                (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+              (testing "transform pool does not exist before transform execution"
+                (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool transform-cache-key))))
               (with-transform-cleanup! [target-table {:type   "table"
                                                       :schema schema
                                                       :name   "pool_test"}]
@@ -535,8 +538,46 @@
                                                              :target target-table}]
                     (transforms.execute/execute! transform {:run-method :manual})
                     (transforms.tu/wait-for-table (:name target-table) 10000)
-                    (testing "write pool is created during transform execution"
-                      (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))))
+                    (testing "transform pool is created during transform execution"
+                      (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool transform-cache-key))))))
               (finally
                 (t2/update! :model/Database db-id {:write_data_details old-write-details})
                 (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))))
+
+(deftest transform-run-refreshes-target-stats-test
+  (testing "completing a transform run leaves its target table analyzed, so a dependent transform plans
+            against real stats instead of the empty estimate a freshly CTAS'd table starts with"
+    ;; The ANALYZE effect is observable on Postgres (Redshift inherits the same impl); assert it here.
+    (mt/test-driver :postgres
+      (mt/dataset transforms-dataset/transforms-test
+        (let [schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+              source-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
+              admin-spec  (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              ;; A table has one pg_statistic row per analyzed column; a never-analyzed CTAS table has none.
+              analyzed-column-count
+              (fn [table-name]
+                (-> (jdbc/query admin-spec
+                                ["SELECT count(*) AS n FROM pg_stats WHERE schemaname = ? AND tablename = ?"
+                                 schema table-name])
+                    first :n))
+              run-and-wait! (fn [transform]
+                              (transforms.execute/execute! transform {:run-method :manual})
+                              (transforms.tu/wait-for-table (-> transform :target :name) 10000))]
+          (testing "real lifecycle: the target ends up with planner stats"
+            (with-transform-cleanup! [target {:type "table" :schema schema :name "products_analyzed"}]
+              (mt/with-temp [:model/Transform t {:name   "analyzed"
+                                                 :source {:type :query :query (make-query source-name)}
+                                                 :target target}]
+                (run-and-wait! t)
+                (is (pos? (analyzed-column-count (:name target)))
+                    "complete-execution! should have run ANALYZE, populating pg_statistic for the target"))))
+          (testing "control: with the refresh hook stubbed out, the same run leaves no stats — so the rows
+                    above come from our refresh, not from Postgres analyzing on its own"
+            (with-transform-cleanup! [target {:type "table" :schema schema :name "products_unanalyzed"}]
+              (mt/with-temp [:model/Transform t {:name   "unanalyzed"
+                                                 :source {:type :query :query (make-query source-name)}
+                                                 :target target}]
+                (with-redefs [driver/refresh-table-stats! (fn [& _] nil)]
+                  (run-and-wait! t))
+                (is (zero? (analyzed-column-count (:name target)))
+                    "a freshly materialized table has no planner stats until something analyzes it")))))))))

@@ -29,7 +29,7 @@ To create a number chart, you need a query that returns a single record with at 
 
    ![Number type](../images/number-type.png)
 
-4. If your query returns multiple values, you might need to manually select which value to display as the big number. Open visualization setting by clicking on the **gear** button in the bottom left, and select the **Field to show** in the **Formatting** settings.
+4. If your query returns multiple values, you might need to manually select which value to display as the big number. Open visualization settings by clicking on the **gear** button in the bottom left, and select the **Field to show** in the **Formatting** settings.
 
 ## Number chart settings
 

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import { useSearchQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUserId } from "metabase/selectors/user";
 import type { SearchResult } from "metabase-types/api";
 
@@ -20,6 +20,7 @@ export const useRecentlyCreatedDashboards = () => {
       models: ["dashboard"],
       created_by: currentUserId ? [currentUserId] : undefined,
       limit: 5,
+      context: "embedding-setup",
 
       // If the dashboard is created more than 1 hour ago,
       // it is likely stale and latest activity should take priority.

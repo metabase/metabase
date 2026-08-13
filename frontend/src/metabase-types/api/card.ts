@@ -1,10 +1,4 @@
-import type { CurrencyStyle } from "metabase/lib/formatting";
-import type {
-  EmbeddingParameters,
-  EmbeddingType,
-} from "metabase/public/lib/types";
-import type { IconName } from "metabase/ui";
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type { ClickBehavior } from "./click-behavior";
@@ -12,14 +6,17 @@ import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
   DashCardId,
   Dashboard,
+  DashboardCardSize,
   DashboardId,
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
+import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
+import type { CurrencyStyle, TimeOnlyOptions } from "./formatting";
 import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type {
@@ -33,16 +30,26 @@ import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
-import type { SmartScalarComparison } from "./visualization-settings";
+import type {
+  PieRow,
+  SmartScalarComparison,
+  TreemapRow,
+} from "./visualization-settings";
 
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
 
+export type CardCreationType =
+  | "simple_question"
+  | "custom_question"
+  | "native_question";
+
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
-export interface Card<Q extends DatasetQuery = DatasetQuery>
-  extends UnsavedCard<Q> {
+export interface Card<
+  Q extends DatasetQuery = DatasetQuery,
+> extends UnsavedCard<Q> {
   id: CardId;
   entity_id: BaseEntityId;
   created_at: string;
@@ -70,10 +77,13 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   dashboard_id: DashboardId | null;
   document_id?: DocumentId | null;
   document?: CardDocumentInfo | null;
+  metabot_conversation_id?: string | null;
+  metabot_chart_id?: string | null;
   dashboard_count: number | null;
   parameter_usage_count?: number | null;
 
   result_metadata: Field[] | null;
+  param_fields?: Record<ParameterId, Field[]>;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
 
@@ -118,6 +128,9 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
   // Not part of the card API contract, a field used by query builder for showing lineage
   original_card_id?: number;
   displayIsLocked?: boolean;
+
+  // Not part of the card API contract, a transient marker for how the card was created
+  creationType?: CardCreationType;
 }
 
 export type LineSize = "S" | "M" | "L";
@@ -240,23 +253,74 @@ export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
 export type YAxisScale = NumericScale;
 
-export interface ColumnSettings {
+export type MapType = "region" | "pin" | "heat" | "grid";
+export type PinMapStyle = "tiles" | "markers" | "grid" | "heat";
+
+export type ColumnSettings = TimeOnlyOptions & {
+  _column_title_full?: string;
+  "pivot_table.column_show_totals"?: boolean;
+  text_align?: "left" | "middle" | "right";
+  click_behavior?: ClickBehavior;
+  clicked?: any;
+  collapseNewlines?: boolean;
+  column?: any;
   column_title?: string;
-  number_separators?: string;
+  compact?: boolean;
   currency?: string;
   currency_style?: CurrencyStyle;
-  click_behavior?: ClickBehavior;
-
-  // some options are untyped
+  date_abbreviate?: boolean;
+  date_format?: string;
+  date_separator?: string;
+  date_style?: string | null;
+  decimals?: number;
+  isExclude?: boolean;
+  jsx?: boolean;
+  link_text?: string;
+  link_url?: string;
+  majorWidth?: number;
+  markdown_template?: any;
+  maximumFractionDigits?: number;
+  negativeInParentheses?: boolean;
+  noRange?: boolean;
+  number_separators?: string;
+  number_style?: string;
+  prefix?: string;
+  remap?: any;
+  removeDay?: boolean;
+  removeYear?: boolean;
+  rich?: boolean;
+  scale?: number;
+  show_mini_bar?: boolean;
+  stringifyNull?: boolean;
+  suffix?: string;
+  type?: string;
+  view_as?: string | null;
+  weekday_enabled?: boolean;
   [key: string]: any;
-}
+};
 
+/**
+ * Visualization-specific display options. Prefer Metabase defaults unless the
+ * user asks for an explicit presentation change; many settings depend on exact
+ * result column names.
+ */
 export type VisualizationSettings = {
+  /** Show value labels directly on supported chart marks. */
   "graph.show_values"?: boolean;
+
+  /** Stack compatible series as `stacked` or `normalized`; `null` disables stacking. */
   "stackable.stack_type"?: StackType;
+
+  /** Show aggregate labels for stacked chart segments. */
   "graph.show_stack_values"?: StackValuesDisplay;
+
+  /** Limit the number of categories before grouping the rest into an "Other" bucket. */
   "graph.max_categories_enabled"?: boolean;
+
+  /** Maximum number of categories to show before using the "Other" bucket. */
   "graph.max_categories"?: number;
+
+  /** Aggregation used for values that are grouped into the "Other" bucket. */
   "graph.other_category_aggregation_fn"?:
     | "sum"
     | "avg"
@@ -265,15 +329,22 @@ export type VisualizationSettings = {
     | "stddev"
     | "median";
 
-  // Table
+  /** Visible table columns and order, as `{ name, enabled }` entries. */
   "table.columns"?: TableColumnOrderSetting[];
-  // Keys here can be modern (returned by `getColumnKey`) or legacy (`getLegacyColumnKey`).
-  // Use `getColumnSettings` which checks for both keys.
+
+  /**
+   * Per-column titles, number or currency formatting, and click behavior.
+   * Keys can be modern (`getColumnKey`) or legacy (`getLegacyColumnKey`).
+   */
   column_settings?: Record<string, ColumnSettings>;
 
-  // X-axis
+  /** Override the x-axis label. */
   "graph.x_axis.title_text"?: string;
+
+  /** X-axis scale, such as ordinal, timeseries, histogram, linear, pow, or log. */
   "graph.x_axis.scale"?: XAxisScale;
+
+  /** Hide, compact, or rotate x-axis labels where the visualization supports it. */
   "graph.x_axis.axis_enabled"?:
     | true
     | false
@@ -281,89 +352,201 @@ export type VisualizationSettings = {
     | "rotate-45"
     | "rotate-90";
 
-  // Y-axis
+  /** Let Metabase choose the y-axis bounds automatically. */
   "graph.y_axis.auto_range"?: boolean;
+
+  /** Override the y-axis label. */
   "graph.y_axis.title_text"?: string;
+
+  /** Y-axis numeric scale, such as linear, pow, or log. */
   "graph.y_axis.scale"?: YAxisScale;
+
+  /** Show or hide the y-axis where the visualization supports it. */
   "graph.y_axis.axis_enabled"?: boolean;
 
+  /** Fixed y-axis minimum when auto range is disabled. */
   "graph.y_axis.min"?: number;
+
+  /** Fixed y-axis maximum when auto range is disabled. */
   "graph.y_axis.max"?: number;
 
-  // Goal
+  /** Numeric value for the goal line. */
   "graph.goal_value"?: number;
+
+  /** Draw a goal line on supported cartesian charts. */
   "graph.show_goal"?: boolean;
+
+  /** Label for the goal line. */
   "graph.goal_label"?: string;
 
-  // Trend
+  /** Add a trend line, best for time-based trends without extra groupings. */
   "graph.show_trendline"?: boolean;
 
-  // Series
+  /** Render compatible series in separate panels instead of one chart. */
+  "graph.split_panels"?: boolean;
+
+  /**
+   * Result column names used for the x-axis, category, or grouping dimension.
+   * Prefer Metabase defaults unless the query needs a specific split.
+   */
   "graph.dimensions"?: string[];
+
+  /**
+   * Result metric column names to plot. Useful when the query returns multiple
+   * numeric columns and Metabase should not infer the metrics.
+   */
   "graph.metrics"?: string[];
 
-  // Series settings
+  /** Per-series labels, colors, and display tweaks. Keys are data-dependent. */
   series_settings?: Record<string, SeriesSettings | undefined>;
 
+  /** Explicit order, labels, colors, and enabled state for breakout series. */
   "graph.series_order"?: SeriesOrderSetting[];
 
-  // Scatter plot settings
-  "scatter.bubble"?: string; // col name
+  /** Result numeric column name used to size scatter plot bubbles. */
+  "scatter.bubble"?: string;
 
-  // Waterfall settings
+  /** Color used for increasing waterfall bars. */
   "waterfall.increase_color"?: string;
+
+  /** Color used for decreasing waterfall bars. */
   "waterfall.decrease_color"?: string;
+
+  /** Color used for the total waterfall bar. */
   "waterfall.total_color"?: string;
+
+  /** Add a final total bar to a waterfall chart. */
   "waterfall.show_total"?: boolean;
 
-  // Funnel settings
+  /** Explicit order, labels, colors, and enabled state for funnel steps. */
   "funnel.rows"?: SeriesOrderSetting[];
 
+  /** Conditional formatting rules for table cells. */
   "table.column_formatting"?: ColumnFormattingSetting[];
+
+  /** Pivot column selection. */
   "pivot_table.column_split"?: PivotTableColumnSplitSetting;
+
+  /** Initially collapsed pivot rows. */
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
-  // Scalar Settings
+  /** Smart-scalar comparison configuration. */
   "scalar.comparisons"?: SmartScalarComparison[];
+
+  /** Result column name to display as the main scalar value. */
   "scalar.field"?: string;
+
+  /** Reverse good/bad direction for scalar comparisons. */
   "scalar.switch_positive_negative"?: boolean;
+
+  /** Use compact formatting for the primary scalar number. */
   "scalar.compact_primary_number"?: boolean;
+
+  /** Segment configuration for scalar visualizations. */
   "scalar.segments"?: ScalarSegment[];
 
-  // Pie Settings
+  /** Result column name, or names, used as pie slice dimensions. */
   "pie.dimension"?: string | string[];
+
+  /** Result column name used as the middle ring dimension. */
   "pie.middle_dimension"?: string;
+
+  /** Result column name used as the outer ring dimension. */
   "pie.outer_dimension"?: string;
+
+  /** Explicit pie slice order, labels, colors, and enabled state. */
   "pie.rows"?: PieRow[];
+
+  /** Result numeric column name used as the pie slice value. */
   "pie.metric"?: string;
+
+  /** Sort pie slices by metric value. */
   "pie.sort_rows"?: boolean;
+
+  /** Show the pie legend. */
   "pie.show_legend"?: boolean;
+
+  /** Show the total value in the center of the pie. */
   "pie.show_total"?: boolean;
+
+  /** Show labels on pie slices. */
   "pie.show_labels"?: boolean;
+
+  /** Place percentages in the legend, inside slices, both, or neither. */
   "pie.percent_visibility"?: "off" | "legend" | "inside" | "both";
+
+  /** Percentage decimal precision for pie labels. */
   "pie.decimal_places"?: number;
+
+  /** Group small slices below this threshold into "Other". */
   "pie.slice_threshold"?: number;
+
+  /** Legacy slice color map. Prefer defaults unless exact colors matter. */
   "pie.colors"?: Record<string, string>;
 
-  // Sankey settings
+  /** Result column name for the source node. */
   "sankey.source"?: string;
+
+  /** Result column name for the target node. */
   "sankey.target"?: string;
+
+  /** Result numeric column name for the flow value. */
   "sankey.value"?: string;
+
+  /** Sankey node alignment. */
   "sankey.node_align"?: "left" | "right" | "justify";
+
+  /** Show labels on Sankey flow edges. */
   "sankey.show_edge_labels"?: boolean;
+
+  /** Formatting for Sankey edge labels. */
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
 
-  // BoxPlot settings
+  /** Treemap settings */
+  "treemap.grouping"?: string;
+  "treemap.sub_grouping"?: string | null;
+  "treemap.value"?: string;
+  "treemap.rows"?: TreemapRow[];
+  "treemap.show_parent_labels"?: boolean;
+  "treemap.show_parent_values"?: boolean;
+  "treemap.show_leaf_labels"?: boolean;
+  "treemap.show_leaf_values"?: boolean;
+
+  /** Box plot whisker calculation, such as Tukey or min/max. */
   "boxplot.whisker_type"?: BoxPlotWhiskerType;
+
+  /** Show no points, outliers only, or all points. */
   "boxplot.points_mode"?: BoxPlotPointsMode;
+
+  /** Show the mean marker. */
   "boxplot.show_mean"?: boolean;
+
+  /** Show median values, all values, or no value labels. */
   "boxplot.show_values_mode"?: BoxPlotShowValuesMode;
 
-  // List view settings
-  "list.columns"?: ListViewColumns; // set of columns selected for custom list view
-  "list.entity_icon_enabled"?: boolean; // display/hide first list item column rendering image/icon
-  "list.use_image_column"?: boolean; // render image from image/avatar url column instead of icon
+  /** Map settings */
+  "map.type"?: MapType;
+  "map.pin_type"?: PinMapStyle;
+  "map.latitude_column"?: string;
+  "map.longitude_column"?: string;
+  "map.metric_column"?: string;
+  "map.center_latitude"?: number;
+  "map.center_longitude"?: number;
+  "map.zoom"?: number;
+
+  /** Columns selected for custom list view. */
+  "list.columns"?: ListViewColumns;
+
+  /** Show or hide the first list item column that renders an image or icon. */
+  "list.entity_icon_enabled"?: boolean;
+
+  /** Render an image from an image/avatar URL column instead of the default icon. */
+  "list.use_image_column"?: boolean;
+
+  /** Icon used for list entities when an image column is not used. */
   "list.entity_icon"?: IconName | null;
+
+  /** Color used for the list entity icon. */
   "list.entity_icon_color"?: string;
 
   [key: string]: any;
@@ -397,13 +580,13 @@ export type CardQueryMetadata = {
   fields: Field[];
 };
 
-export interface ListCardsRequest {
+export type ListCardsRequest = {
   f?: CardFilterOption;
   model_id?: CardId;
-}
+};
 
 export interface GetCardRequest {
-  id: CardId;
+  id: CardId | EntityToken;
   context?: "collection";
   ignore_view?: boolean;
   ignore_error?: boolean;
@@ -425,6 +608,7 @@ export interface CreateCardRequest {
   collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number | null;
+  size?: DashboardCardSize;
 }
 
 export interface CreateCardFromCsvRequest {
@@ -448,7 +632,7 @@ export interface UpdateCardRequest {
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
-  collection_position?: number;
+  collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number;
   collection_preview?: boolean;
@@ -506,9 +690,9 @@ export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
 export type GetEmbeddableCard = Pick<Card, "id" | "name">;
 
 export type GetRemappedCardParameterValueRequest = {
-  card_id?: CardId | EntityToken;
-  entityIdentifier?: EntityUuid | EntityToken;
-  parameter_id: ParameterId;
+  cardId?: CardId | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
   value: ParameterValueOrArray;
 };
 

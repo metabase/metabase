@@ -25,7 +25,10 @@
    [metabase.util.performance :refer [some mapv empty? get-in]]
    [taoensso.nippy :as nippy])
   (:import
+   (com.mongodb ConnectionString MongoCommandException MongoSecurityException)
    (com.mongodb.client MongoClient MongoDatabase)
+   (com.mongodb.spi.dns DnsClient)
+   (javax.naming.directory Attribute Attributes InitialDirContext)
    (org.bson.types Binary ObjectId)))
 
 (set! *warn-on-reflection* true)
@@ -47,20 +50,84 @@
 
 (driver/register! :mongo)
 
+(def ^DnsClient ^:private no-op-dns-client
+  ;; `ConnectionString` resolves TXT records while parsing an SRV URI. Host extraction must be deterministic and
+  ;; side-effect free. The actual client performs TXT/SRV discovery later, and every discovered server address
+  ;; ultimately goes through the guarded transport resolver.
+  (reify DnsClient
+    (getResourceRecordData [_ _ _] [])))
+
+(defn- srv-target-hosts
+  "Resolve the `_mongodb._tcp.<host>` SRV record that a `mongodb+srv://` connection string expands to, returning the
+  target hostnames. `mongodb+srv` puts a layer of caller-controlled DNS indirection in front of the real servers, so
+  checking only the SRV name itself would leave the hosts actually connected to unchecked.
+
+  Returns nil when this preflight lookup fails, unlike the parsing in [[driver/connection-hosts]], which fails closed.
+  The two differ because this is a live DNS query: it can fail for reasons that have nothing to do with the details
+  being validated, and failing closed would make a flaky resolver refuse every `mongodb+srv://` database. Nothing is
+  lost by being lenient here -- [[metabase.driver.mongo.connection]] installs an `InetAddressResolver` that checks
+  every SRV target against the same policy as the client connects."
+  [host]
+  (try
+    (let [^InitialDirContext context (InitialDirContext.)]
+      (try
+        (let [^Attributes attrs (.getAttributes context
+                                                ^String (str "dns:/_mongodb._tcp." host)
+                                                ^"[Ljava.lang.String;" (into-array String ["SRV"]))]
+          (when-let [^Attribute attr (.get attrs "SRV")]
+            (into []
+                  ;; each record reads "<priority> <weight> <port> <target>."
+                  (keep #(last (str/split (str (.get attr (int %))) #"\s+")))
+                  (range (.size attr)))))
+        (finally
+          (.close context))))
+    (catch Throwable _ nil)))
+
+(defmethod driver/routes-connection-through-ssh-tunnel? :mongo [_driver] true)
+
+(defmethod driver/connection-hosts :mongo
+  [_driver {:keys [use-conn-uri host] :as details}]
+  ;; Mongo takes its hosts from `:host` *or*, when `use-conn-uri` is set, from anywhere inside `:conn-uri` -- and
+  ;; either may name several hosts (a replica set). Parsing the connection string the driver itself will use is the
+  ;; only way to be sure we see the same hosts it will connect to.
+  (if (and (not use-conn-uri) (str/blank? host))
+    ;; nothing to parse and nothing to connect to. `:write_data_details` and `:admin_details` are overlays merged on
+    ;; top of `:details`, so they arrive here as partial maps; one that carries no host of its own names no hosts,
+    ;; which is what the default implementation reports for the same input.
+    []
+    ;; Parsing failures are left to propagate. It is tempting to fall back to the `:host` field, since a connection
+    ;; string this cannot parse is one `db-details->mongo-client-settings` cannot parse either, so it connects
+    ;; nowhere -- but that reasoning holds only as long as both keep building the same `ConnectionString`, and the
+    ;; fallback would have us validate a host the driver may never use. Better to report that we cannot say what the
+    ;; hosts are, which [[metabase.driver.util/validate-connection-hosts!]] turns into a refusal.
+    (let [conn-string (mongo.connection/db-details->connection-string details)
+          hosts       (vec (.getHosts (ConnectionString. conn-string no-op-dns-client)))
+          hosts       (cond-> hosts
+                        (str/starts-with? conn-string "mongodb+srv://")
+                        (into (mapcat srv-target-hosts hosts)))]
+      (driver/hosts-from-details {:host (str/join "," hosts)} [:host]))))
+
 (defmethod driver/can-connect? :mongo
   [_ db-details]
-  (mongo.connection/with-mongo-client [^MongoClient c db-details]
-    (let [db-names (mongo.util/list-database-names c)
-          db-name (mongo.db/db-name db-details)
-          db (mongo.util/database c db-name)
-          db-stats (mongo.util/run-command db {:dbStats 1} :keywordize true)]
-      (and
-       ;; 1. check db.dbStats command completes successfully
-       (= (float (:ok db-stats))
-          1.0)
-       ;; 2. check the database is actually on the server
-       ;; (this is required because (1) is true even if the database doesn't exist)
-       (boolean (some #(= % db-name) db-names))))))
+  (try
+    (mongo.connection/with-mongo-client [^MongoClient c db-details]
+      (let [db-names (mongo.util/list-database-names c)
+            db-name (mongo.db/db-name db-details)
+            db (mongo.util/database c db-name)
+            db-stats (mongo.util/run-command db {:dbStats 1} :keywordize true)]
+        (and
+         ;; 1. check db.dbStats command completes successfully
+         (= (float (:ok db-stats))
+            1.0)
+         ;; 2. check the database is actually on the server
+         ;; (this is required because (1) is true even if the database doesn't exist)
+         (boolean (some #(= % db-name) db-names)))))
+    (catch MongoSecurityException e
+      (let [cause (.getCause e)]
+        ;; the outer wrapper exception has a useless "Exception authenticating" message
+        (if (instance? MongoCommandException cause)
+          (throw cause)
+          (throw e))))))
 
 (defmethod driver/humanize-connection-error-message
   :mongo
@@ -264,11 +331,15 @@
 
 (defn- dbfields->ftree*
   "Construct _raw_ ftree from `dbfields`. Intended result is described in the [[dbfields->ftree]] docstring.
-  _Raw_ means that nodes have only #{:database-type :visibility-type :index} keys."
-  [dbfields]
+  _Raw_ means that nodes have only #{:database-type :visibility-type :index} keys.
+
+  Stops once the tree holds `limit` nodes (leaf + intermediate object fields), so collections with huge or deeply
+  nested schemas can't build an unbounded tree in memory (which has OOM'd sync). Nodes are counted by ftree path."
+  [dbfields limit]
   (loop [[{raw-path :path leaf-type :type :as dbfield} & dbfields*] dbfields
-         ftree {:children {}}]
-    (if (nil? dbfield)
+         ftree {:children {}}
+         seen  #{}]
+    (if (or (nil? dbfield) (>= (count seen) limit))
       ftree
       (let [ftree-paths (raw-path->ftree-paths raw-path)
             parents-paths (butlast ftree-paths)
@@ -281,7 +352,7 @@
             ftree* (reduce #(assoc-in %1 (conj (vec (first %2)) :index) (second %2))
                            ftree*
                            (map vector ftree-paths (:indices dbfield)))]
-        (recur dbfields* ftree*)))))
+        (recur dbfields* ftree* (into seen ftree-paths))))))
 
 (defn- ftree-prewalk
   "Walk the `ftree` and apply (f ftree path) to each node prior descending to its children. Nodes are walked according
@@ -292,7 +363,6 @@
             (->> (get-in ftree* (conj path :children))
                  keys (sort-by (juxt #(get-in ftree* (conj path :children % :index)) identity))
                  (map (partial conj path :children))))
-
           (ftree-prewalk*
             [ftree* path]
             (reduce ftree-prewalk*
@@ -365,22 +435,32 @@
 
   The resulting structure will hold at most [[driver.settings/sync-leaf-fields-limit]] leaf fields. That translates
   to at most [[driver.settings/sync-leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the
-  time of writing hence safe to reside in memory for further operation."
-  [dbfields]
-  (-> dbfields dbfields->ftree* ftree-reconcile-nodes))
+  time of writing hence safe to reside in memory for further operation. With `limit` it additionally caps the total
+  number of nodes (leaf + intermediate) -- a hard ceiling regardless of the leaf-field setting."
+  ([dbfields] (dbfields->ftree dbfields Long/MAX_VALUE))
+  ([dbfields limit]
+   (-> dbfields (dbfields->ftree* limit) ftree-reconcile-nodes)))
 
 (defn- ftree->nested-fields
   "Create nested-fields structure suitable for :fields key of structure return by [[driver/describe-table]]. `ftree`
-  is a tree that represents sampled mongo documents. See the [[dbfields->ftree]] for details."
+  is a tree that represents sampled mongo documents. See the [[dbfields->ftree]] for details.
+
+  Each nested field is annotated with `:nfc-path` — the chain of names from the root document down to and
+  including the field's own name (matching the convention used by the sql-jdbc nested json paths)."
   [ftree]
-  (letfn [(ftree->nested-fields*
-            [ftree*]
-            (-> ftree*
-                (cond-> (contains? ftree* :children)
-                  (-> (update :children #(set (map ftree->nested-fields* (vals %))))
-                      (set/rename-keys {:children :nested-fields})))
-                (dissoc :index)))]
-    (:nested-fields (ftree->nested-fields* ftree))))
+  (letfn [(walk
+            [field ancestor-path]
+            (let [self-path (conj ancestor-path (:name field))]
+              (cond-> field
+                (seq ancestor-path)
+                (assoc :nfc-path self-path)
+                (contains? field :children)
+                (-> (update :children
+                            (fn [children]
+                              (set (map #(walk % self-path) (vals children)))))
+                    (set/rename-keys {:children :nested-fields}))
+                true (dissoc :index))))]
+    (set (map #(walk % []) (vals (:children ftree))))))
 
 (defn- fetch-dbfields-rff
   [_metadata]
@@ -413,7 +493,9 @@
   [_driver database table]
   {:schema nil
    :name (:name table)
-   :fields (-> (fetch-dbfields database table) dbfields->ftree ftree->nested-fields)})
+   :fields (-> (fetch-dbfields database table)
+               (dbfields->ftree (driver.settings/sync-max-fields-per-table))
+               ftree->nested-fields)})
 
 ;; describe-table impl end
 
@@ -441,40 +523,47 @@
                               :index-info                      false
                               :python-transforms               true
                               :transforms/python               true
-                              :database-routing                true
-                              :workspace                       false}]
+                              :database-routing                true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
 
+(defn- dbms-version [database]
+  ;; avoid trying `:dbms_version` if `:dbms-version` is present but `nil`; this will cause snake-hating-map warnings
+  (when-let [k (some #(when (contains? database %)
+                        %)
+                     [:dbms-version
+                      :dbms_version])]
+    (get database k)))
+
 (defmethod driver/database-supports? [:mongo :window-functions/cumulative]
   [_driver _feat db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :expressions]
   [_driver _feature db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
 (defmethod driver/database-supports? [:mongo :date-arithmetics]
   [_driver _feature db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :datetime-diff]
   [_driver _feature db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [5])))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
   [_driver _feature db]
-  (-> ((some-fn :dbms-version :dbms_version) db)
+  (-> (dbms-version db)
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
 
@@ -482,13 +571,9 @@
   [_driver _feature _db]
   true)
 
-;; We say Mongo supports foreign keys so that the front end can use implicit
-;; joins. In reality, Mongo doesn't support foreign keys.
-;; Only define an implementation for `:foreign-keys` if none exists already.
-;; In test extensions we define an alternate implementation, and we don't want
-;; to stomp over that if it was loaded already.
-(when-not (get (methods driver/database-supports?) [:mongo :foreign-keys])
-  (defmethod driver/database-supports? [:mongo :foreign-keys] [_driver _feature _db] true))
+(defmethod driver/database-supports? [:mongo :metadata/key-constraints]
+  [_driver _feature _db]
+  false)
 
 (defmethod driver/mbql->native :mongo
   [_ query]
@@ -500,9 +585,9 @@
   (mongo.connection/with-mongo-client [_ (driver-api/database (driver-api/metadata-provider))]
     (mongo.execute/execute-reducible-query query respond)))
 
-(defmethod driver/substitute-native-parameters :mongo
-  [driver inner-query]
-  (mongo.params/substitute-native-parameters driver inner-query))
+(defmethod driver/substitute-native-parameters-in-stage-method :mongo
+  [driver metadata-providerable stage]
+  (mongo.params/substitute-native-parameters driver metadata-providerable stage))
 
 (defmethod driver/db-start-of-week :mongo
   [_]
@@ -563,7 +648,6 @@
       (encode-mongo parsed))
     (catch Throwable e
       (log/errorf "Unexpected error while prettifying Mongo BSON query: %s" (ex-message e))
-      (log/debugf e "Query:\n%s" native-form)
       native-form)))
 
 (defmethod driver/create-table! :mongo
@@ -713,13 +797,13 @@
              '[monger.credentials :as mcred])
     (import javax.net.ssl.SSLSocketFactory)
 
-  ;; The following forms help experimenting with the behaviour of Mongo
-  ;; servers with different configurations. They can be used to check if
-  ;; the environment has been set up correctly (or at least according to
-  ;; the expectations), as well as the exceptions thrown in various
-  ;; constellations.
+    ;; The following forms help experimenting with the behaviour of Mongo
+    ;; servers with different configurations. They can be used to check if
+    ;; the environment has been set up correctly (or at least according to
+    ;; the expectations), as well as the exceptions thrown in various
+    ;; constellations.
 
-  ;; Test connection to Mongo with client and server SSL authentication.
+    ;; Test connection to Mongo with client and server SSL authentication.
     (let [ssl-socket-factory
           (driver.u/ssl-socket-factory
            :private-key (-> "ssl/mongo/metabase.key" io/resource slurp)
@@ -737,7 +821,7 @@
                                          credentials)]
         (mg/get-db-names connection)))
 
-  ;; Test what happens if the client only support server authentication.
+    ;; Test what happens if the client only support server authentication.
     (let [server-auth-ssl-socket-factory
           (driver.u/ssl-socket-factory
            :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
@@ -754,8 +838,8 @@
                               credentials)]
         (mg/get-db-names server-auth-connection)))
 
-  ;; Test what happens if the client support only server authentication
-  ;; with well known (default) CAs.
+    ;; Test what happens if the client support only server authentication
+    ;; with well known (default) CAs.
     (let [unauthenticated-connection-options
           (mg/mongo-options {:ssl-enabled true
                              :ssl-invalid-host-name-allowed false

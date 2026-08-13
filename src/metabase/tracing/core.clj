@@ -11,13 +11,14 @@
      (tracing/with-span :my-feature \"my-op\" {} (do-stuff))
 
    ## Built-in Groups
-     :qp, :sync, :tasks, :search, :api, :db-user, :db-app, :events, :quartz
+     :qp, :sync, :tasks, :search, :api, :db-user, :db-app, :events, :quartz, :transforms
 
    ## Configuration
      MB_TRACING_ENABLED=true   MB_TRACING_ENDPOINT=host:4317
      MB_TRACING_GROUPS=qp,api  MB_TRACING_SERVICE_NAME=metabase-prod-1"
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.tracing.attributes :as trace-attrs]
    [metabase.tracing.settings :as tracing.settings]
    [metabase.util.log :as log]
@@ -59,6 +60,7 @@
 (register-group! :db-app  "Application/system database operations: sessions, settings, QE writes")
 (register-group! :events  "Event system: view logging, audit, notifications")
 (register-group! :quartz  "Quartz scheduler internals: trigger acquisition, locks, heartbeats, JDBC")
+(register-group! :transforms "Transform pipeline: jobs, stages, inspector")
 
 (defn registered-groups
   "Return a map of all registered trace groups."
@@ -175,7 +177,7 @@
       (catch ClassNotFoundException _
         nil)
       (catch Exception e
-        (log/debug e "Could not resolve PyroscopeAsyncProfiler")
+        (log/debugf "Could not resolve PyroscopeAsyncProfiler: %s" (ex-message e))
         nil))))
 
 ;; AsyncProfiler.setTracingContext(long spanId, long spanNameId)
@@ -229,7 +231,7 @@
                                      (Long/valueOf span-name-id)]))
         (.setAttribute span "pyroscope.profile.id" span-id-hex))
       (catch Exception e
-        (log/debug e "Error setting Pyroscope profiling context")))))
+        (log/debugf "Error setting Pyroscope profiling context: %s" (ex-message e))))))
 
 (defn clear-pyroscope-context!
   "Clear profiling context for current thread. No-op if Pyroscope is not available."
@@ -241,6 +243,37 @@
       (catch Exception _))))
 
 ;;; ------------------------------------------------ Primary Macro -------------------------------------------------
+
+(def ^:private ^:dynamic *span-attrs*
+  "Atom of attrs already written to the active `with-span`. Used by [[add-span-attrs!]] to detect duplicate writes; nil outside a `with-span`."
+  nil)
+
+(defn- merge-attrs-and-detect-duplicates!
+  "Merge `attrs` into `*span-attrs*` and return the subset that should be written to the active span. Any key already in the atom is a duplicate: throws in dev/test, drops with a `log/warn` in prod. Returns `attrs` unchanged when `*span-attrs*` is unbound (outside `with-span`)."
+  [attrs]
+  (if-let [span-attrs *span-attrs*]
+    (let [snapshot   @span-attrs
+          duplicates (filterv #(contains? snapshot %) (keys attrs))
+          new-attrs  (apply dissoc attrs duplicates)]
+      (when (seq duplicates)
+        (if (or config/is-dev? config/is-test?)
+          (throw (ex-info (format "Span attribute already set: %s" (pr-str duplicates))
+                          {:duplicates duplicates
+                           :existing   (select-keys snapshot duplicates)
+                           :new        (select-keys attrs duplicates)}))
+          (log/warnf "Span attribute already set, dropping duplicate writes: %s"
+                     (pr-str duplicates))))
+      (swap! span-attrs merge new-attrs)
+      new-attrs)
+    attrs))
+
+(defn add-span-attrs!
+  "Enrich the active OTel span with `attrs` mid-execution. No-op if `group` is disabled or `attrs` is empty. Re-writing a key already on the span is a duplicate: throws in dev/test, dropped (with `log/warn`) in prod."
+  [group attrs]
+  (when (and (group-enabled? group) (seq attrs))
+    (let [new-attrs (merge-attrs-and-detect-duplicates! attrs)]
+      (when (seq new-attrs)
+        (span/add-span-data! {:attributes new-attrs})))))
 
 (defmacro with-span
   "Create an OTel span if tracing is enabled for `group`.
@@ -262,27 +295,29 @@
        (process-query query))"
   [group span-name attrs & body]
   `(if (group-enabled? ~group)
-     (let [prev-trace-id# (ThreadContext/get "trace_id")
+     (let [attrs#         ~attrs
+           prev-trace-id# (ThreadContext/get "trace_id")
            prev-span-id#  (ThreadContext/get "span_id")
            root-span?#    (nil? prev-span-id#)]
-       (span/with-span! {:name ~span-name :attributes ~attrs}
-         (inject-trace-id-into-mdc!)
-         ;; For root spans (no parent in MDC), set Pyroscope profiling context.
-         ;; Nested child spans skip this — the root's context covers all samples.
-         (when root-span?#
-           (let [^Span span#                   (Span/current)
-                 ^SpanContext ctx#              (.getSpanContext span#)
-                 span-id#                       (.getSpanId ctx#)]
-             (set-pyroscope-context! span# span-id# ~span-name)))
-         (try
-           ~@body
-           (finally
-             (when root-span?#
-               (clear-pyroscope-context!))
-             (if prev-trace-id#
-               (do (ThreadContext/put "trace_id" prev-trace-id#)
-                   (ThreadContext/put "span_id" prev-span-id#))
-               (clear-trace-id-from-mdc!))))))
+       (binding [*span-attrs* (atom attrs#)]
+         (span/with-span! {:name ~span-name :attributes attrs#}
+           (inject-trace-id-into-mdc!)
+           ;; For root spans (no parent in MDC), set Pyroscope profiling context.
+           ;; Nested child spans skip this — the root's context covers all samples.
+           (when root-span?#
+             (let [^Span span#                   (Span/current)
+                   ^SpanContext ctx#              (.getSpanContext span#)
+                   span-id#                       (.getSpanId ctx#)]
+               (set-pyroscope-context! span# span-id# ~span-name)))
+           (try
+             ~@body
+             (finally
+               (when root-span?#
+                 (clear-pyroscope-context!))
+               (if prev-trace-id#
+                 (do (ThreadContext/put "trace_id" prev-trace-id#)
+                     (ThreadContext/put "span_id" prev-span-id#))
+                 (clear-trace-id-from-mdc!)))))))
      (do ~@body)))
 
 ;;; -------------------------------------------- SDK Lifecycle -------------------------------------------------
@@ -340,7 +375,7 @@
           (init-enabled-groups! groups-str log-level-str)
           (log/info "OpenTelemetry tracing initialized successfully")))
       (catch Exception e
-        (log/error e "Failed to initialize OpenTelemetry tracing — tracing will be disabled")))))
+        (log/errorf "Failed to initialize OpenTelemetry tracing — tracing will be disabled: %s" (ex-message e))))))
 
 (defn shutdown!
   "Shutdown the OTel SDK, flushing any pending spans. Called during application shutdown."
@@ -350,7 +385,7 @@
     (try
       (otel-sdk/close-otel-sdk! otel)
       (catch Exception e
-        (log/warn e "Error shutting down OpenTelemetry SDK")))
+        (log/warnf "Error shutting down OpenTelemetry SDK: %s" (ex-message e))))
     (reset! otel-sdk-instance nil)
     (shutdown-groups!)
     (log/info "OpenTelemetry tracing shut down")))

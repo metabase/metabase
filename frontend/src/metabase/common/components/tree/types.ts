@@ -1,11 +1,12 @@
-import type { IconName, IconProps } from "metabase/ui";
-
+import type { IconProps } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 export interface ITreeNodeItem<TData = unknown> {
   id: string | number;
   name: string;
   icon: IconName | IconProps;
   children?: ITreeNodeItem<TData>[];
   data?: TData;
+  nonNavigable?: boolean;
 }
 
 export interface TreeNodeProps<TData = unknown> {

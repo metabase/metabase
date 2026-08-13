@@ -1,9 +1,11 @@
 (ns ^:mb/driver-tests metabase.query-processor.uuid-test
   "Tests for queries involving uuids."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.uuid-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.uuid-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 ;; Athena supports uuids in queries, but not in create table

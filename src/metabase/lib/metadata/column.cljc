@@ -33,6 +33,6 @@
     unique-key   :- ::lib.schema/column-unique-key]
    (let [[version column-key] (unpack-unique-key unique-key)]
      (m/find-first
-      (case version
+      (case (long version)
         1 #(= (:lib/desired-column-alias %) column-key))
       (lib.metadata.calculation/returned-columns query stage-number)))))

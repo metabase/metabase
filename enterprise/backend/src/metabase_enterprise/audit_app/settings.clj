@@ -25,3 +25,24 @@
   :audit      :never
   :doc        (str "Setting this environment variable to false can also come in handy when migrating environments, as"
                    " it can simplify the migration process."))
+
+(defsetting last-analytics-views-checksum
+  "Checksum of the instance_analytics_views SQL files. When this changes, the audit DB schema
+  is re-synced to pick up new or modified views from migrations."
+  :type       :integer
+  :visibility :internal
+  :audit      :never
+  :doc        false
+  :export?    false)
+
+(defsetting audit-db-dialect-sync-pending
+  "Whether the audit DB still owes a schema sync for the host dialect. Set (durably) before an
+  engine-changed sync is attempted and cleared only when one succeeds, so a sync that fails or is
+  interrupted after the analytics content checksum has already advanced is retried on the next boot
+  instead of waiting for the next release to change the checksum."
+  :type       :boolean
+  :default    false
+  :visibility :internal
+  :audit      :never
+  :doc        false
+  :export?    false)

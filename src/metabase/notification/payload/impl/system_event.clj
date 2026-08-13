@@ -4,6 +4,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.email.messages :as messages]
+   [metabase.channel.urls :as urls]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
@@ -21,7 +22,8 @@
                                        (not (session/enable-password-login)))
         email (t2/select-one-fn :email [:model/User :email] user-id)]
     (if should-link-to-login-page
-      (str (system/site-url) "/auth/login")
+      (cond-> (str (system/site-url) "/auth/login")
+        redirect (str "?redirect=" redirect))
       ;; NOTE: the new user join url is a password reset route with an indicator that this is a first time user.
       (str (user/form-password-reset-url reset-token)
            "?"
@@ -35,11 +37,42 @@
   Currently we need it to support usecases that our template engines doesn't support such as i18n,
   but ideally this should be part of the template."
   [topic event-info]
-  (let [{user-id :id from-setup :is_from_setup} (:object event-info)]
+  (let [{user-id :id from-setup :is_from_setup invite-target :invite_target} (:object event-info)]
     (case topic
       :event/user-invited
-      {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (appearance/site-name) (messages/app-name-trs))
-       :user_invited_join_url      (join-url user-id (when from-setup "/admin/databases/create"))}
+      (let [dashboard? (= (:type invite-target) "dashboard")
+            redirect   (or (when invite-target
+                             (if dashboard?
+                               (urls/dashboard-path (:id invite-target))
+                               (urls/card-path (:id invite-target))))
+                           (when from-setup "/admin/databases/create"))
+            subject    (cond
+                         (and invite-target dashboard?)
+                         (trs "You''re invited to view the dashboard {0}" (:name invite-target))
+                         invite-target
+                         (trs "You''re invited to view the question {0}" (:name invite-target))
+                         :else
+                         (trs "You''re invited to join {0}''s {1}" (appearance/site-name) (messages/app-name-trs)))]
+        (cond-> {:user_invited_email_subject subject
+                 :user_invited_join_url      (join-url user-id redirect)}
+          invite-target (assoc :invite_target_name         (:name invite-target)
+                               :invite_target_is_dashboard dashboard?)))
+      :event/security-advisory-match
+      (let [{:keys [severity match_status]} (:object event-info)]
+        {:severity_label     (case severity
+                               :critical (trs "Critical")
+                               :high     (trs "High")
+                               :medium   (trs "Medium")
+                               :low      (trs "Low"))
+         :severity_color     (case severity
+                               :critical "#E65050"
+                               :high     "#F0830E"
+                               :medium   "#F0C431"
+                               :low      "#509EE3")
+         :status_label       (case match_status
+                               :active (trs "Active")
+                               :error  (trs "Error"))
+         :security_center_url (urls/security-center-url)})
       {})))
 
 (mu/defmethod notification.payload/payload :notification/system-event

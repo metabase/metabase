@@ -26,7 +26,6 @@
          (u/add-period "   "))))
 
 (deftest ^:parallel url?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected] (= expected
                        (u/url? s))
     "http://google.com"                                                                      true
@@ -72,7 +71,6 @@
        "email@metabase.com"   false)))
 
 (deftest ^:parallel state?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [x expected] (= expected
                        (u/state? x))
     "louisiana"            true
@@ -173,7 +171,6 @@
     {}                                         [:c]              {}))
 
 (deftest ^:parallel base64-string?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected]    (= expected
                           (u/base64-string? s))
     "ABc="         true
@@ -270,7 +267,6 @@
            (u/kebab->snake-keys {:user-id 1
                                  :profile-id "abc"
                                  :nested {:still-kebab-case true}})))
-
     (testing "preserves camelCase keys"
       (is (= {:userId 1
               :profileId "abc"
@@ -287,7 +283,6 @@
            (u/deep-kebab->snake-keys {:user-id 1
                                       :profile-id "abc"
                                       :nested {:inner-key {:deeply-nested true}}}))))
-
   (testing "preserves camelCase throughout the structure"
     (is (= {:userId 1
             :nested {:innerKey {:deeplyNested true
@@ -295,7 +290,6 @@
            (u/deep-kebab->snake-keys {:userId 1
                                       :nested {:innerKey {:deeplyNested true
                                                           :kebab-converted "yes"}}}))))
-
   (testing "works with vectors and other collections"
     (is (= [{:user_id 1} {:user_id 2}]
            (u/deep-kebab->snake-keys [{:user-id 1} {:user-id 2}])))
@@ -360,6 +354,17 @@
     "string" 3  "str"
     "string" 0  ""))
 
+(deftest ^:parallel strip-bom-test
+  (are [s expected] (= expected
+                       (u/strip-bom s))
+    nil                          nil
+    ""                           ""
+    "ID,Name"                    "ID,Name"
+    (str u/utf8-bom "ID,Name")   "ID,Name"
+    (str u/utf8-bom)             ""
+    ;; only a *leading* BOM is stripped
+    (str "ID" u/utf8-bom "Name") (str "ID" u/utf8-bom "Name")))
+
 #?(:clj
    (deftest capitalize-en-turkish-test
      (mt/with-locale! "tr"
@@ -377,7 +382,6 @@
     "metabase.com"   "cam.saul+1@metabase.com"))
 
 (deftest ^:parallel email-in-domain-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [in-domain? email domain] (= in-domain?
                                     (u/email-in-domain? email domain))
     true  "cam@metabase.com"          "metabase.com"
@@ -402,14 +406,12 @@
   (testing "nil and empty maps return empty maps"
     (is (= {} (u/normalize-map nil)))
     (is (= {} (u/normalize-map {}))))
-
   (let [exp {:kebab-key 1
              :snake-key 2
              :camel-key 3}]
     (testing "Clojure maps have their keys normalized"
       (is (= exp (u/normalize-map {:kebab-key  1 :snake_key  2 :camelKey  3})))
       (is (= exp (u/normalize-map {"kebab-key" 1 "snake_key" 2 "camelKey" 3}))))
-
     #?(:cljs
        (testing "JS objects get turned into Clojure maps"
          (is (= exp (u/normalize-map #js {"kebab-key" 1 "snake_key" 2 "camelKey" 3})))))))
@@ -522,7 +524,6 @@
                         :to-compare #(dissoc % :id :god_id)})))))
 
 (deftest ^:parallel empty-or-distinct?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [xs expected] (= expected
                         (u/empty-or-distinct? xs))
     nil     true
@@ -543,13 +544,15 @@
                  :b [:c :d]
                  :c nil
                  :d [:e]
-                 :e nil}]
+                 :e nil}
+          neighbors-fn #(zipmap (get graph %) (repeat #{%}))]
       (is (= {:a nil
               :b #{:a}
               :c #{:b}
               :d #{:a :b}
               :e #{:d}}
-             (u/traverse [:a] #(zipmap (get graph %) (repeat #{%}))))))))
+             (u/traverse [:a] neighbors-fn)))
+      (is (= {} (u/traverse [] neighbors-fn))))))
 
 (deftest ^:parallel round-to-decimals-test
   (are [decimal-place expected] (= expected

@@ -13,6 +13,7 @@
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -428,7 +429,7 @@
      :inherited-temporal-unit
      :lib/original-binning
      :lib/original-effective-type
-     :qp.pivot/pivot-grouping?])
+     :qp/native-sandbox-column.force-coercion-strategy])
    {:lib/binning          :binning
     :lib/temporal-unit    :temporal-unit
     :lib/ref-name         :name
@@ -492,8 +493,36 @@
             :include-expressions?         true
             :include-implicitly-joinable? false})))
 
+(defn- newly-stranded-downstream-refs
+  "Field refs in stages after `stage-number` that resolve against `before` but not against `after`. Non-empty means
+  narrowing a stage's `:fields` from `before` to `after` left a later stage referencing a column that stage no longer
+  returns."
+  [before after stage-number]
+  (let [stage-number (lib.util/canonical-stage-index before stage-number)
+        bad-refs     (fn [query]
+                       (let [bad (volatile! #{})]
+                         (lib.walk/walk-clauses
+                          query
+                          (fn [query path-type path clause]
+                            (when (and (= path-type :lib.walk/stage)
+                                       (> (second path) stage-number)
+                                       (vector? clause)
+                                       (= (first clause) :field))
+                              (let [col (lib.walk/apply-f-for-stage-at-path
+                                         lib.field.resolution/resolve-field-ref query path clause)]
+                                (when (or (not col)
+                                          (::lib.field.resolution/fallback-metadata? col)
+                                          (not (:active col true)))
+                                  (vswap! bad conj clause))))
+                            nil))
+                         @bad))]
+    (set/difference (bad-refs after) (bad-refs before))))
+
 (mu/defn with-fields :- ::lib.schema/query
-  "Specify the `:fields` for a query. Pass `nil` or an empty sequence to remove `:fields`."
+  "Specify the `:fields` for a query. Pass `nil` or an empty sequence to remove `:fields`.
+
+  Throws if narrowing the projection would strand a reference in a later stage (a column that stage no longer
+  returns)."
   ([xs]
    (fn [query stage-number]
      (with-fields query stage-number xs)))
@@ -513,8 +542,13 @@
                          (or xs []))
          ;; Those expr-refs which must still be included.
          to-add    (remove included expr-cols)
-         xs        (when xs (into xs (map lib.ref/ref) to-add))]
-     (lib.util/update-query-stage query stage-number u/assoc-dissoc :fields xs))))
+         xs        (when xs (into xs (map lib.ref/ref) to-add))
+         result    (lib.util/update-query-stage query stage-number u/assoc-dissoc :fields xs)]
+     (when (and xs (lib.util/next-stage-number query stage-number))
+       (when-let [stranded (not-empty (newly-stranded-downstream-refs query result stage-number))]
+         (throw (ex-info "with-fields would strand downstream references to dropped columns"
+                         {:stage-number stage-number, :stranded stranded}))))
+     result)))
 
 (mu/defn fields :- [:maybe [:ref ::lib.schema/fields]]
   "Fetches the `:fields` for a query. Returns `nil` if there are no `:fields`. `:fields` should never be empty; this is
@@ -571,23 +605,27 @@
         matching-ref (lib.equality/find-matching-ref column field-refs)]
     (if matching-ref
       (do
-        (log/debugf "Column %s already included by ref %s, doing nothing and returning the original query"
-                    (pr-str (select-keys column [:id :lib/join-alias :lib/source-column-alias]))
-                    (pr-str matching-ref))
+        (log/debugf "Column %s already included by an existing ref, doing nothing and returning the original query"
+                    (:id column))
         query)
       (let [column-ref (lib.ref/ref column)]
         (lib.util/update-query-stage populated stage-number update :fields conj column-ref)))))
 
 (defn- add-field-to-join [query stage-number column]
-  (let [column-ref   (lib.ref/ref column)
-        [join field] (first (for [join  (lib.join/joins query stage-number)
+  (let [column-ref (lib.ref/ref column)
+        join-alias (lib.join.util/current-join-alias column)
+        joins (lib.join/joins query stage-number)
+        joins (if-let [join-with-alias (and join-alias
+                                            (m/find-first #(= (:alias %) join-alias) joins))]
+                [join-with-alias]
+                joins)
+        [join field] (first (for [join  joins
                                   :let [joinables (lib.join/joinable-columns query stage-number join)
                                         field     (lib.equality/find-matching-column
                                                    query stage-number column-ref joinables)]
                                   :when field]
                               [join field]))
         join-fields  (lib.join/join-fields join)]
-
     ;; Nothing to do if it's already selected, or if this join already has :fields :all.
     ;; Otherwise, append it to the list of fields.
     (if (or (= join-fields :all)
@@ -625,7 +663,7 @@
     (when (and (empty? (:fields stage))
                (not (#{:source/implicitly-joinable :source/joins} source)))
       (log/warnf "[add-field] stage :fields is empty, which means everything will already be included; attempt to add %s will no-op"
-                 (pr-str ((some-fn :display-name :name) column))))
+                 (:id column)))
     (-> (case source
           (:source/table-defaults
            :source/card
@@ -646,9 +684,9 @@
 
 (defn- remove-matching-ref [column refs]
   (let [match (or (lib.equality/find-matching-ref column refs)
-                  (log/warnf "[remove-matching-ref] Failed to find match for column\n%s\nin refs:\n%s"
-                             (u/pprint-to-str column)
-                             (u/pprint-to-str refs)))]
+                  (log/warnf "[remove-matching-ref] Failed to find match for column %s in %d refs"
+                             (:id column)
+                             (count refs)))]
     (remove #(= % match) refs)))
 
 (defn- exclude-field
@@ -664,7 +702,7 @@
                ;; If we couldn't find the field, return the original query unchanged.
                (< (count new-fields) (count old-fields)) (lib.util/update-query-stage stage-number assoc :fields new-fields))
       (when (= <> query)
-        (log/errorf "[exclude-field] Failed to remove field %s, query is unchanged." (pr-str ((some-fn :display-name :name) column)))))))
+        (log/errorf "[exclude-field] Failed to remove field %s, query is unchanged." (:id column))))))
 
 (defn- remove-field-from-join [query stage-number column]
   (let [join        (lib.join/resolve-join query stage-number (:lib/join-alias column))
@@ -758,7 +796,7 @@
 
 (mu/defn infer-has-field-values :- ::field-values-search-info.has-field-values
   "Determine the value of `:has-field-values` we should return for column metadata for frontend consumption to power
-  filter search widgets, either when returned by the the REST API or in MLv2 with [[field-values-search-info]].
+  filter search widgets, either when returned by the the REST API or in Lib with [[field-values-search-info]].
 
   Note that this value is not necessarily the same as the value of `has_field_values` in the application database.
   `has_field_values` may be unset, in which case we will try to infer it. `:auto-list` is not currently understood by

@@ -41,68 +41,74 @@
 
 (mu/defn projectable-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
   "Get dimensions that can be used for projections.
-   Returns dimensions with :projection-positions indicating which are already used."
+   Returns dimensions with :projection-positions indicating which are already used.
+   For single-source definitions; uses the expression leaf's :lib/uuid to scope projections."
   [definition :- ::lib-metric.schema/metric-definition]
   (let [{:keys [expression projections metadata-provider]} definition
-        leaf-type (lib-metric.definition/expression-leaf-type expression)
-        leaf-id   (lib-metric.definition/expression-leaf-id expression)
+        leaf-type  (lib-metric.definition/expression-leaf-type expression)
+        leaf-id    (lib-metric.definition/expression-leaf-id expression)
+        leaf-uuid  (lib-metric.definition/expression-leaf-uuid expression)
         dimensions (case leaf-type
                      :metric  (lib-metric.dimension/dimensions-for-metric metadata-provider leaf-id)
                      :measure (lib-metric.dimension/dimensions-for-measure metadata-provider leaf-id))
-        flat-projs (lib-metric.definition/flat-projections (or projections []))]
+        typed-proj (perf/some #(when (= leaf-uuid (:lib/uuid %)) %)
+                              (or projections []))
+        flat-projs (if typed-proj (:projection typed-proj) [])]
     (add-projection-positions dimensions flat-projs)))
 
 (defn projectable-dimensions-for-source
-  "Get projectable dimensions for a specific source (MetricMetadata or MeasureMetadata).
+  "Get projectable dimensions for a specific source instance.
+   source-instance is an expression leaf vector [:metric {:lib/uuid \"...\"} id]
+   or [:measure {:lib/uuid \"...\"} id].
    Returns dimensions with :projection-positions scoped to that source's typed-projection."
-  [definition source-metadata]
+  [definition source-instance]
   (let [{:keys [projections metadata-provider]} definition
-        leaf-type   (case (:lib/type source-metadata)
-                      :metadata/metric  :metric
-                      :metadata/measure :measure)
-        source-id   (:id source-metadata)
-        dimensions  (case leaf-type
-                      :metric  (lib-metric.dimension/dimensions-for-metric metadata-provider source-id)
-                      :measure (lib-metric.dimension/dimensions-for-measure metadata-provider source-id))
-        typed-proj  (perf/some #(when (and (= (:type %) leaf-type) (= (:id %) source-id)) %)
-                               (or projections []))
-        flat-projs  (if typed-proj (:projection typed-proj) [])]
+        leaf-type    (lib-metric.definition/expression-leaf-type source-instance)
+        source-id    (lib-metric.definition/expression-leaf-id source-instance)
+        source-uuid  (lib-metric.definition/expression-leaf-uuid source-instance)
+        dimensions   (case leaf-type
+                       :metric  (lib-metric.dimension/dimensions-for-metric metadata-provider source-id)
+                       :measure (lib-metric.dimension/dimensions-for-measure metadata-provider source-id))
+        typed-proj   (perf/some #(when (= source-uuid (:lib/uuid %)) %)
+                                (or projections []))
+        flat-projs   (if typed-proj (:projection typed-proj) [])]
     (add-projection-positions dimensions flat-projs)))
 
 (defn project-for-source
-  "Add a projection for a dimension to a specific source.
-   source-metadata is MetricMetadata or MeasureMetadata."
-  [definition dimension source-metadata]
-  (let [leaf-type      (case (:lib/type source-metadata)
-                         :metadata/metric  :metric
-                         :metadata/measure :measure)
-        source-id      (:id source-metadata)
-        dimension-ref  (lib/ensure-uuid [:dimension {} (:id dimension)])
+  "Add a projection for a dimension-ref to a specific source instance.
+   source-instance is an expression leaf vector [:metric {:lib/uuid \"...\"} id]
+   or [:measure {:lib/uuid \"...\"} id]."
+  [definition dimension-ref source-instance]
+  (let [leaf-type      (lib-metric.definition/expression-leaf-type source-instance)
+        source-id      (lib-metric.definition/expression-leaf-id source-instance)
+        source-uuid    (lib-metric.definition/expression-leaf-uuid source-instance)
+        dimension-ref  (lib/ensure-uuid dimension-ref)
         projections    (or (:projections definition) [])
         existing-idx   (perf/some (fn [[idx tp]]
-                                    (when (and (= (:type tp) leaf-type) (= (:id tp) source-id))
+                                    (when (= source-uuid (:lib/uuid tp))
                                       idx))
                                   (map-indexed vector projections))]
     (if existing-idx
       (update-in definition [:projections existing-idx :projection] conj dimension-ref)
       (update definition :projections (fnil conj [])
-              {:type leaf-type :id source-id :projection [dimension-ref]}))))
+              {:type leaf-type :id source-id :lib/uuid source-uuid :projection [dimension-ref]}))))
 
 (mu/defn project :- ::lib-metric.schema/metric-definition
   "Add a projection for a dimension reference to a metric definition.
    The dimension-ref must be a dimension reference vector [:dimension opts uuid],
    e.g. from `dimensionReference`, `withTemporalBucket`, or `withBinning`.
-   Creates/reuses the typed-projection entry for the current source."
+   Creates/reuses the typed-projection entry keyed by the expression leaf's :lib/uuid."
   [definition    :- ::lib-metric.schema/metric-definition
    dimension-ref :- ::lib-metric.schema/dimension-reference]
   (let [expression    (:expression definition)
         leaf-type     (lib-metric.definition/expression-leaf-type expression)
         leaf-id       (lib-metric.definition/expression-leaf-id expression)
+        leaf-uuid     (lib-metric.definition/expression-leaf-uuid expression)
         dimension-ref (lib/ensure-uuid dimension-ref)
         projections   (or (:projections definition) [])
-        ;; Find existing typed-projection entry for this source
+        ;; Find existing typed-projection entry by :lib/uuid
         existing-idx  (perf/some (fn [[idx tp]]
-                                   (when (and (= leaf-type (:type tp)) (= leaf-id (:id tp)))
+                                   (when (= leaf-uuid (:lib/uuid tp))
                                      idx))
                                  (map-indexed vector projections))]
     (if existing-idx
@@ -110,7 +116,26 @@
       (update-in definition [:projections existing-idx :projection] conj dimension-ref)
       ;; Create new typed-projection entry
       (update definition :projections (fnil conj [])
-              {:type leaf-type :id leaf-id :projection [dimension-ref]}))))
+              {:type leaf-type :id leaf-id :lib/uuid leaf-uuid :projection [dimension-ref]}))))
+
+(defn- all-projectable-dimensions
+  "Get all projectable dimensions, handling both single-source and multi-source definitions."
+  [definition]
+  (let [expression (:expression definition)]
+    (if (lib-metric.definition/expression-leaf? expression)
+      (projectable-dimensions definition)
+      ;; Multi-source: collect dimensions from each leaf source
+      (let [leaves (lib-metric.definition/expression-leaves expression)]
+        (into []
+              (mapcat (fn [leaf]
+                        (let [leaf-type (lib-metric.definition/expression-leaf-type leaf)
+                              leaf-id   (lib-metric.definition/expression-leaf-id leaf)
+                              source-metadata {:lib/type (case leaf-type
+                                                           :metric  :metadata/metric
+                                                           :measure :metadata/measure)
+                                               :id       leaf-id}]
+                          (projectable-dimensions-for-source definition source-metadata))))
+              leaves)))))
 
 (mu/defn projection-dimension :- [:maybe ::lib-metric.schema/metadata-dimension]
   "Get the dimension metadata for a projection clause.
@@ -118,7 +143,7 @@
    Returns the dimension metadata or nil if not found."
   [definition :- ::lib-metric.schema/metric-definition
    projection-or-reference :- ::lib-metric.schema/dimension-or-reference]
-  (let [dimensions (projectable-dimensions definition)
+  (let [dimensions (all-projectable-dimensions definition)
         dimension-id (if (map? projection-or-reference)
                        (:id projection-or-reference)
                        (projection-dimension-id projection-or-reference))]
@@ -139,11 +164,13 @@
         lib.schema.temporal-bucketing/ordered-time-bucketing-units))
 
 (def ^:private date-bucket-options
-  (perf/mapv (fn [unit]
-               (cond-> {:lib/type :option/temporal-bucketing
-                        :unit unit}
-                 (= unit :day) (assoc :default true)))
-             lib.schema.temporal-bucketing/ordered-date-bucketing-units))
+  (into []
+        (comp (remove hidden-bucketing-options)
+              (map (fn [unit]
+                     (cond-> {:lib/type :option/temporal-bucketing
+                              :unit unit}
+                       (= unit :day) (assoc :default true)))))
+        lib.schema.temporal-bucketing/ordered-date-bucketing-units))
 
 (def ^:private datetime-bucket-options
   (let [units (into [] (remove hidden-bucketing-options)
@@ -155,11 +182,12 @@
                units)))
 
 (defn- mark-unit [options option-key unit]
-  (perf/mapv (fn [option]
-               (cond-> option
-                 (:default option)          (dissoc :default)
-                 (= (:unit option) unit)    (assoc option-key true)))
-             options))
+  (cond->> options
+    (perf/some #(= (:unit %) unit) options)
+    (perf/mapv (fn [option]
+                 (cond-> option
+                   (contains? option option-key) (dissoc option-key)
+                   (= (:unit option) unit)       (assoc option-key true))))))
 
 (defn- available-temporal-buckets-for-type
   "Given a column type and nillable default-unit and selected-unit, return the appropriate bucket options."
@@ -176,6 +204,12 @@
       default-unit  (mark-unit :default  default-unit)
       selected-unit (mark-unit :selected selected-unit))))
 
+(defn valid-temporal-unit-for-type?
+  "Whether `unit` is a bucket a user may pick for a column of `column-type`."
+  [column-type unit]
+  (boolean (perf/some #(= unit (:unit %))
+                      (available-temporal-buckets-for-type column-type nil nil))))
+
 (mu/defn available-temporal-buckets :- [:sequential [:ref ::lib.schema.temporal-bucketing/option]]
   "Get available temporal buckets for a dimension based on its effective-type."
   [definition :- ::lib-metric.schema/metric-definition
@@ -187,7 +221,7 @@
                                      (:temporal-unit (second proj))))
                                  flat-projs)]
     (if (isa? effective-type :type/Temporal)
-      (available-temporal-buckets-for-type effective-type :month selected-unit)
+      (available-temporal-buckets-for-type effective-type (:default-temporal-unit dimension) selected-unit)
       [])))
 
 (mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]
@@ -305,20 +339,51 @@
                             (assoc opts :binning binning-val)
                             (dissoc opts :binning))))))
 
+(defn- dimension-reference-with-default-options
+  [definition dimension]
+  (let [dimension-ref (lib-metric.dimension/reference dimension)]
+    (if-let [bucket (perf/some #(when (:default %) %)
+                               (available-temporal-buckets definition dimension))]
+      (with-temporal-bucket dimension-ref bucket)
+      (if-let [binning-option (perf/some #(when (:default %) %)
+                                         (available-binning-strategies definition dimension))]
+        (with-binning dimension-ref binning-option)
+        dimension-ref))))
+
+(mu/defn project-dimension :- ::lib-metric.schema/metric-definition
+  "Project a dimension using its default temporal bucket or binning strategy."
+  [definition :- ::lib-metric.schema/metric-definition
+   dimension  :- ::lib-metric.schema/metadata-dimension]
+  (project definition (dimension-reference-with-default-options definition dimension)))
+
+(defn dimension-breakout
+  "Return the dimension's mapped field reference with its default projection options, or nil when it has no mapping."
+  [definition dimension]
+  (when-let [target (perf/get-in dimension [:dimension-mapping :target])]
+    (let [dimension-ref (dimension-reference-with-default-options definition dimension)
+          options       (perf/select-keys (second dimension-ref) [:temporal-unit :binning])]
+      (lib/update-options (lib/ensure-uuid target) #(merge % options)))))
+
 ;;; -------------------------------------------------- Default Breakout Dimensions --------------------------------------------------
 
-(defn- dimension-has-field-id?
-  "Check if a dimension has a source matching any of the given field IDs."
-  [field-ids dimension]
-  (perf/some (fn [source]
-               (when-let [fid (:field-id source)]
-                 (field-ids fid)))
-             (:sources dimension)))
+(defn- column-key
+  "Collision-safe key for the underlying column of a field ref, ignoring any bucketing. Unlike a bare
+   field id, this keeps the `:source-field`/`:join-alias` so columns reached via different FKs to the
+   same table don't collide. See [[lib-metric.dimension/field-ref->key]]."
+  [field-ref]
+  (-> field-ref
+      (update 1 dissoc :temporal-unit :binning)
+      lib-metric.dimension/field-ref->key))
 
-(mu/defn default-breakout-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
-  "Get dimensions corresponding to the source metric's default breakout columns.
-   Returns DimensionMetadata objects matching the breakout field-ids in the dataset_query."
-  [definition :- ::lib-metric.schema/metric-definition]
+(defn- dimension-column-key
+  "Column key for a metadata dimension, derived from its mapping target (which carries the
+   `:source-field`). Returns nil when the dimension has no mapping."
+  [dimension]
+  (some-> dimension :dimension-mapping :target column-key))
+
+(defn- source-query-breakout-dimensions
+  "Dimensions matching the breakout columns of the source metric's own dataset_query."
+  [definition]
   (let [{:keys [expression metadata-provider]} definition
         leaf-type (lib-metric.definition/expression-leaf-type expression)
         leaf-id   (lib-metric.definition/expression-leaf-id expression)]
@@ -331,12 +396,23 @@
             raw-query     (lib-metric.dimension/dimensionable-query metadata)]
         (if-not raw-query
           []
-          (let [pmbql-query        (lib/query metadata-provider raw-query)
-                breakout-clauses   (lib/breakouts pmbql-query)
-                breakout-field-ids (into #{}
-                                         (keep lib-metric.dimension/dimension-target->field-id)
-                                         breakout-clauses)]
-            (if (perf/empty? breakout-field-ids)
+          (let [mbql5-query      (lib/query metadata-provider raw-query)
+                breakout-clauses (lib/breakouts mbql5-query)
+                ;; Key by the full column ref (incl. :source-field), not the bare field id, since a
+                ;; field id can be reached via multiple FKs to the same foreign table.
+                breakout-keys    (into #{} (keep column-key) breakout-clauses)]
+            (if (perf/empty? breakout-keys)
               []
-              (filterv #(dimension-has-field-id? breakout-field-ids %)
+              (filterv #(when-let [k (dimension-column-key %)]
+                          (contains? breakout-keys k))
                        (projectable-dimensions definition)))))))))
+
+(mu/defn default-breakout-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
+  "Get the dimensions to treat as the entity's defaults for breakouts: the curated default
+   dimension when one is set, otherwise dimensions matching the breakout columns in the source
+   metric's own dataset_query."
+  [definition :- ::lib-metric.schema/metric-definition]
+  (let [curated-defaults (filterv :default (projectable-dimensions definition))]
+    (if (seq curated-defaults)
+      curated-defaults
+      (source-query-breakout-dimensions definition))))

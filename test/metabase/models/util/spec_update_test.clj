@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.util.spec-update :as spec-update]
+   [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (defn do-track-operations!
@@ -12,10 +13,10 @@
         track!     (fn [op args]
                      (swap! operations conj (cons op args))
                      1)]
-    (with-redefs [t2/insert!              (fn [& args] (track! :insert! args))
-                  t2/insert-returning-pk! (fn [& args] (track! :insert-returning-pk! args) (swap! id-counter inc) @id-counter)
-                  t2/update!              (fn [& args] (track! :update! args))
-                  t2/delete!              (fn [& args] (track! :delete! args))]
+    (mt/with-dynamic-fn-redefs [t2/insert!              (fn [& args] (track! :insert! args))
+                                t2/insert-returning-pk! (fn [& args] (track! :insert-returning-pk! args) (swap! id-counter inc) @id-counter)
+                                t2/update!              (fn [& args] (track! :update! args))
+                                t2/delete!              (fn [& args] (track! :delete! args))]
       (f)
       @operations)))
 
@@ -124,7 +125,6 @@
       (is (= [[:delete! :foo 2]]
              (with-tracked-operations!
                (spec-update/do-update! existing-data new-data basic-spec))))))
-
   (testing "Deleting root record deletes nested model"
     (let [existing-data {:id   1
                          :name "Test"
@@ -371,7 +371,6 @@
                                            {:name "qux2"}]}
                                   {:name "Bar 2"}]))
                 nested-multi-row-spec))))))
-
   (testing "adding entity of the 2nd nested layer"
     (let [existing-data {:id   1
                          :name "foo"
@@ -386,7 +385,6 @@
                 existing-data
                 (update-in existing-data [:bars 0 :quxes] conj {:name "qux1"})
                 nested-multi-row-spec))))))
-
   (testing "updating then adding entity of the 2nd nested layer"
     (let [existing-data {:id   1
                          :name "foo"

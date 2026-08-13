@@ -33,7 +33,7 @@
                      (upload-test/update-csv-with-defaults! verb :user-id (mt/user->id :rasta))))))))))))
 
 (deftest based-on-upload-for-sandboxed-user-test
-    ;; FIXME: Redshift is flaking on `mt/dataset` and I don't know why, so I'm excluding it temporarily
+  ;; FIXME: Redshift is flaking on `mt/dataset` and I don't know why, so I'm excluding it temporarily
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift)
     (upload-test/with-uploads-enabled!
       (mt/dataset (mt/dataset-definition

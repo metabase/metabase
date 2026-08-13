@@ -42,6 +42,26 @@
   [query]
   query)
 
+(defenterprise currently-impersonated?
+  "True when a connection-impersonation role is bound for the current query. Read from the enterprise
+  impersonation dynamic var. OSS: always false."
+  metabase-enterprise.impersonation.middleware
+  []
+  false)
+
+(defenterprise currently-db-routed?
+  "True when DB routing has swapped in a destination DB for the current query. Read from the enterprise
+  database-routing dynamic var. OSS: always false."
+  metabase-enterprise.database-routing.middleware
+  []
+  false)
+
+(defenterprise currently-destination-database-id
+  "Destination DB id when DB routing has swapped one in for the current query, else nil. OSS: always nil."
+  metabase-enterprise.database-routing.middleware
+  []
+  nil)
+
 (defn apply-impersonation-postprocessing-middleware
   "Helper middleware wrapper for [[apply-impersonation-postprocessing]] to make sure we do [[defenterprise]] dispatch
   correctly on each QP run rather than just once when we combine all of the QP middleware"
@@ -54,12 +74,6 @@
   does not apply to native queries, which are instead limited by the [[limit-download-result-rows]] post-processing
   middleware."
   metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
-  [query]
-  query)
-
-(defenterprise apply-workspace-remapping
-  "Pre-processing middleware to rewrite 'global' table references with 'isolated' tables in the workspace schema."
-  metabase-enterprise.workspaces.query-processor.middleware
   [query]
   query)
 

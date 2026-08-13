@@ -1,31 +1,26 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import type { State } from "metabase/redux/store";
+
 import type { GroupTableAccessPolicyParams, SandboxesState } from "./types";
 import { getPolicyKeyFromParams } from "./utils";
 
-export const getPolicyRequestState = (
-  state: SandboxesState,
-  { params }: { params: GroupTableAccessPolicyParams },
-) => {
-  const { groupId, tableId } = params;
-  const key = getPolicyKeyFromParams({ groupId, tableId });
-  return state.requests?.plugins?.sandboxesPlugin?.policies?.[key];
-};
+const getPluginState = (state: State) =>
+  // the plugin slice is registered by initializePlugin, so it is present
+  // whenever these selectors run
+  (state as SandboxesState).plugins.sandboxingPlugin;
 
 export const getGroupTableAccessPolicy = (
-  state: SandboxesState,
+  state: State,
   { params }: { params: GroupTableAccessPolicyParams },
 ) => {
   const key = getPolicyKeyFromParams(params);
 
-  return (
-    state.plugins.sandboxingPlugin.groupTableAccessPolicies[key] ??
-    state.plugins.sandboxingPlugin.originalGroupTableAccessPolicies[key]
-  );
+  return getPluginState(state).groupTableAccessPolicies[key];
 };
 
-export const getDraftPolicies = (state: SandboxesState) => {
-  return Object.values(state.plugins.sandboxingPlugin.groupTableAccessPolicies);
+export const getDraftPolicies = (state: State) => {
+  return Object.values(getPluginState(state).groupTableAccessPolicies);
 };
 
 export const hasPolicyChanges = createSelector(

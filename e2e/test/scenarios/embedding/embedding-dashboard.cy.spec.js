@@ -80,28 +80,20 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       cy.get("@allParameters").within(() => {
         // verify that all the parameters on the dashboard are defaulted to disabled
-        cy.findAllByText("Disabled").should(
+        cy.findAllByDisplayValue("Disabled").should(
           "have.length",
           dashboardDetails.parameters.length,
         );
 
-        // select the dropdown next to the Name parameter so that we can set it to editable
-        cy.findByText("Name")
-          .parent()
-          .within(() => {
-            cy.findByText("Disabled").click();
-          });
+        // open the dropdown next to the Name parameter so that we can set it to editable
+        cy.findByLabelText("Name").click();
       });
 
-      H.popover().findByText("Editable").click();
+      H.selectDropdown().findByText("Editable").click();
 
-      cy.get("@allParameters")
-        .findByText("Id")
-        .parent()
-        .findByText("Disabled")
-        .click();
+      cy.get("@allParameters").findByLabelText("Id").click();
 
-      H.popover().findByText("Locked").click();
+      H.selectDropdown().findByText("Locked").click();
 
       H.modal().within(() => {
         // set the locked parameter's value
@@ -167,11 +159,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
           unpublishBeforeOpen: false,
         });
       });
-      cy.get("@allParameters").findByText("Locked").click();
-      H.popover().contains("Disabled").click();
+      cy.get("@allParameters").findByDisplayValue("Locked").click();
+      H.selectDropdown().findByText("Disabled").click();
 
-      cy.get("@allParameters").findByText("Editable").click();
-      H.popover().contains("Disabled").click();
+      cy.get("@allParameters").findByDisplayValue("Editable").click();
+      H.selectDropdown().findByText("Disabled").click();
 
       H.publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
@@ -641,7 +633,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       cy.wait("@getEmbeddedDashboard").then(({ request }) => {
         expect(request?.headers?.["x-metabase-client"]).to.equal(
-          "embedding-iframe",
+          "embedding-iframe-static",
         );
       });
     });
@@ -897,14 +889,22 @@ describe("scenarios > embedding > dashboard appearance", () => {
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert font");
-      H.getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
+      H.getIframeBody().should(
+        "have.css",
+        "font-family",
+        "Lato, Arial, sans-serif",
+      );
       cy.findByLabelText("Font").click();
     });
 
     // Since the select dropdown is rendered outside of the modal, we need to exit the modal context first.
     H.selectDropdown().findByText("Oswald").click();
     H.modal().within(() => {
-      H.getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
+      H.getIframeBody().should(
+        "have.css",
+        "font-family",
+        'Oswald, "Roboto Condensed", sans-serif',
+      );
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
     });
   });
@@ -1023,14 +1023,22 @@ describe("scenarios > embedding > dashboard appearance", () => {
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert font");
-      H.getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
+      H.getIframeBody().should(
+        "have.css",
+        "font-family",
+        "Lato, Arial, sans-serif",
+      );
       cy.findByLabelText("Font").click();
     });
 
     // Since the select dropdown is rendered outside of the modal, we need to exit the modal context first.
     H.selectDropdown().findByText("Oswald").click();
     H.modal().within(() => {
-      H.getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
+      H.getIframeBody().should(
+        "have.css",
+        "font-family",
+        'Oswald, "Roboto Condensed", sans-serif',
+      );
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
     });
   });
@@ -1089,14 +1097,14 @@ describe("scenarios > embedding > dashboard appearance", () => {
 
     H.getIframeBody().within(() => {
       cy.findByText(questionDetails.name).should("exist");
-      cy.findByText("April 2022").should("exist");
+      cy.findByText("May 2025").should("exist");
 
       // TODO: Enable this once we fix the flakiness https://app.trunk.io/metabase/flaky-tests/test/facb35f0-6d76-5e7d-b21c-40401bbc3ff6?repo=metabase%2Fmetabase
       // (metabase#49537)
       // chartPathWithFillColor("#509EE3").last().realHover();
       // echartsTooltip().should("be.visible");
       // assertEChartsTooltip({
-      //   header: "August 2022",
+      //   header: "August 2025",
       //   rows: [
       //     {
       //       name: "Count",
@@ -1136,7 +1144,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
 
     cy.wait("@deLocale");
 
-    H.main().findByText("Februar 11, 2025, 9:40 PM");
+    H.main().findByText("Februar 11, 2028, 9:40 PM");
 
     cy.findByRole("button", {
       name: "Automatische Aktualisierung",
@@ -1163,7 +1171,11 @@ describe("scenarios > embedding > dashboard appearance", () => {
       },
     );
 
-    H.main().should("have.css", "font-family", "Roboto, sans-serif");
+    H.main().should(
+      "have.css",
+      "font-family",
+      'Roboto, "Noto Sans", sans-serif',
+    );
   });
 
   it("should disable background via `#background=false` hash parameter when rendered inside an iframe (metabase#62391)", () => {
@@ -1365,7 +1377,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
           cy.findByTestId("dashcard").should(
             "have.css",
             "background-color",
-            "rgb(7, 23, 34)",
+            "rgb(12, 28, 39)",
           );
 
           cy.log("pivot table cell background should be transparent");
@@ -1373,7 +1385,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
             .first()
             .findAllByTestId("pivot-table-cell")
             .first()
-            .should("have.css", "background-color", "rgba(48, 61, 70, 0.1)");
+            .should("have.css", "background-color", "rgba(12, 28, 39, 0.1)");
 
           cy.log("pivot table cell color should be white");
           cy.findByText("Row totals")

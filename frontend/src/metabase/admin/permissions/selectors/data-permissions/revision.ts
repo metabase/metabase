@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 
 import { getIsDirty } from "./diff";
 

@@ -7,11 +7,11 @@ on:
 
 jobs:
   optimize-images:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     if: ${{ contains(github.event.pull_request.labels.*.name,'Type:Documentation') }}
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ github.head_ref }}
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -23,7 +23,7 @@ jobs:
 
     - name: Get changed PNG files
       id: changed-files
-      uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46
+      uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
       with:
         files: |
           docs/**/*.png
@@ -63,10 +63,12 @@ jobs:
         total_saved=$((total_before - total_after))
 
         # Output results for use in commit message
-        echo "files_optimized=${total_files}" >> "$GITHUB_OUTPUT"
-        echo "bytes_saved=${total_saved}" >> "$GITHUB_OUTPUT"
-        echo "total_before=${total_before}" >> "$GITHUB_OUTPUT"
-        echo "total_after=${total_after}" >> "$GITHUB_OUTPUT"
+        {
+          echo "files_optimized=${total_files}"
+          echo "bytes_saved=${total_saved}"
+          echo "total_before=${total_before}"
+          echo "total_after=${total_after}"
+        } >> "$GITHUB_OUTPUT"
 
         echo "Optimization complete"
         echo "Files processed: ${total_files}"

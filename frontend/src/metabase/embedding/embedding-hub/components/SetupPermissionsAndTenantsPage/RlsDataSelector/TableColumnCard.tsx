@@ -106,10 +106,20 @@ export const TableColumnCard = ({
     ? { model: "table" as const, id: selection.tableId }
     : undefined;
 
-  // Hide tables that are already selected in other cards
   const shouldHidePickerItem = useCallback(
-    (pickerItem: MiniPickerItem | OmniPickerItem) =>
-      pickerItem.model === "table" && selectedTableIds.includes(pickerItem.id),
+    (pickerItem: MiniPickerItem | OmniPickerItem) => {
+      const isAlreadySelected =
+        pickerItem.model === "table" &&
+        selectedTableIds.includes(pickerItem.id);
+      const isOurAnalytics =
+        pickerItem.model === "collection" && pickerItem.id === "root";
+      const isSampleDatabase =
+        pickerItem.model === "database" &&
+        "is_sample" in pickerItem &&
+        pickerItem.is_sample === true;
+
+      return isAlreadySelected || isOurAnalytics || isSampleDatabase;
+    },
     [selectedTableIds],
   );
 
@@ -144,11 +154,11 @@ export const TableColumnCard = ({
             w="100%"
             px="0.75rem"
             py="sm"
-            bg="background-primary"
+            bg="background_page-primary"
             bdrs="xs"
           >
             <Text
-              c={selectedTableName ? "text-primary" : "text-tertiary"}
+              c={selectedTableName ? "text-primary" : "text-disabled"}
               size="md"
             >
               {selectedTableName ?? t`Pick a table`}
@@ -165,6 +175,7 @@ export const TableColumnCard = ({
             onBrowseAll={handleBrowseAll}
             onChange={handleTableSelect}
             shouldShowLibrary={false}
+            // Unjustified type cast. FIXME
             shouldHide={(item) => shouldHidePickerItem(item as MiniPickerItem)}
           />
 

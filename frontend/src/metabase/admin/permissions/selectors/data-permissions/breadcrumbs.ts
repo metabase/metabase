@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { isNotFalsy } from "metabase/lib/types";
+import { isNotFalsy } from "metabase/utils/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -57,6 +57,7 @@ export const getDatabasesEditorBreadcrumbs = (
     return [groupItem, databaseItem];
   }
 
+  // Unjustified type cast. FIXME
   const schema = database.schema(schemaName) as Schema;
   const schemaItem = {
     id: schema.name,
@@ -93,6 +94,7 @@ export const getGroupsDataEditorBreadcrumbs = (
     return [databaseItem];
   }
 
+  // Unjustified type cast. FIXME
   const schema = database.schema(schemaName) as Schema;
   const schemaItem = {
     id: schema.id,
@@ -106,6 +108,7 @@ export const getGroupsDataEditorBreadcrumbs = (
     return [databaseItem, hasMultipleSchemas && schemaItem].filter(isNotFalsy);
   }
 
+  // Unjustified type cast. FIXME
   const table = metadata.table(tableId) as Table;
 
   const tableItem = {

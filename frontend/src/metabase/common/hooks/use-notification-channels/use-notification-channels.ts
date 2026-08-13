@@ -8,8 +8,10 @@ export const useHasAnyNotificationChannel = (): boolean => {
   );
 };
 
-export const useHasEmailSetup = (): boolean => {
-  const { data: channelInfo } = useGetChannelInfoQuery();
+export const useHasEmailSetup = ({
+  skip,
+}: { skip?: boolean } = {}): boolean => {
+  const { data: channelInfo } = useGetChannelInfoQuery(undefined, { skip });
 
   return !!channelInfo?.channels?.email?.configured;
 };

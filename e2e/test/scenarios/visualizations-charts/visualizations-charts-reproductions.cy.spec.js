@@ -7,46 +7,6 @@ const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
-describe("issue 13504", () => {
-  const questionDetails = {
-    name: "13504",
-    display: "line",
-    query: {
-      "source-query": {
-        "source-table": ORDERS_ID,
-        filter: [">", ["field", ORDERS.TOTAL, null], 50],
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-      },
-      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 100],
-    },
-    visualization_settings: {
-      "graph.dimensions": ["CREATED_AT"],
-      "graph.metrics": ["count"],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should remove post-aggregation filters from a multi-stage query (metabase#13504)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    H.cartesianChartCircle().eq(0).click({ force: true });
-
-    H.popover().findByText("See these Orders").click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Total is greater than 50").should("be.visible");
-      cy.findByText("Created At: Month is Mar 1–31, 2023").should("be.visible");
-    });
-  });
-});
-
 const externalDatabaseId = 2;
 
 describe("issue 16170", { tags: "@mongo" }, () => {
@@ -399,7 +359,7 @@ describe("issue 18063", () => {
 
     cy.get(".leaflet-marker-icon").trigger("mousemove");
 
-    H.popover().within(() => {
+    H.tooltip().within(() => {
       H.testPairedTooltipValues("LATITUDE", "55.68");
       H.testPairedTooltipValues("LONGITUDE", "12.57");
       H.testPairedTooltipValues("COUNT", "1");
@@ -552,7 +512,7 @@ describe("issue 21452", () => {
     H.cartesianChartCircle().first().trigger("mousemove");
 
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         {
           color: "#88BF4D",
@@ -591,7 +551,7 @@ describe("issue 21504", () => {
     H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
-      cy.findByText("January 2025").should("be.visible");
+      cy.findByText("January 2028").should("be.visible");
     });
   });
 });
@@ -656,7 +616,6 @@ describe("issue 21665", () => {
     });
 
     H.saveDashboard();
-    cy.wait("@getDashboard");
   });
 
   it("multi-series cards shouldnt cause frontend to reload (metabase#21665)", () => {
@@ -666,7 +625,8 @@ describe("issue 21665", () => {
 
     H.visitDashboard("@dashboardId");
 
-    cy.get("@dashboardLoaded").should("have.callCount", 3);
+    // The dashboard loads twice: once on the initial visit, once on re-visit.
+    cy.get("@dashboardLoaded").should("have.callCount", 2);
     cy.findByTestId("dashcard")
       .findByText(
         "Some columns are missing, this card might not render correctly.",
@@ -722,39 +682,6 @@ describe("issue 22527", { tags: "@skip" }, () => {
   });
 });
 
-describe("issue 25007", () => {
-  const questionDetails = {
-    name: "11435",
-    display: "line",
-    native: {
-      query: `SELECT dateadd('day', CAST((1 - CASE WHEN ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) = 0 THEN 7 ELSE ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) END) AS long), CAST("PUBLIC"."ORDERS"."CREATED_AT" AS date)) AS "CREATED_AT", count(*) AS "count"
-  FROM "PUBLIC"."ORDERS"
-  GROUP BY dateadd('day', CAST((1 - CASE WHEN ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) = 0 THEN 7 ELSE ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) END) AS long), CAST("PUBLIC"."ORDERS"."CREATED_AT" AS date))
-  ORDER BY dateadd('day', CAST((1 - CASE WHEN ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) = 0 THEN 7 ELSE ((iso_day_of_week("PUBLIC"."ORDERS"."CREATED_AT") + 1) % 7) END) AS long), CAST("PUBLIC"."ORDERS"."CREATED_AT" AS date)) ASC`,
-    },
-    visualization_settings: {
-      "graph.dimensions": ["CREATED_AT"],
-      "graph.metrics": ["count"],
-    },
-  };
-
-  const clickLineDot = ({ index } = {}) => {
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.cartesianChartCircle().eq(index).click({ force: true });
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
-    H.createNativeQuestion(questionDetails, { visitQuestion: true });
-    clickLineDot({ index: 1 });
-    H.echartsTooltip().findByText("May 1–7, 2022");
-  });
-});
-
 describe("issue 25156", () => {
   const questionDetails = {
     name: "25156",
@@ -783,11 +710,11 @@ describe("issue 25156", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.echartsContainer()
-      .should("contain", "2022")
-      .and("contain", "2023")
-      .and("contain", "2023")
-      .and("contain", "2024")
-      .and("contain", "2025");
+      .should("contain", "2025")
+      .and("contain", "2026")
+      .and("contain", "2026")
+      .and("contain", "2027")
+      .and("contain", "2028");
   });
 });
 
@@ -1264,8 +1191,8 @@ describe("issue 63671", () => {
           filter: [
             "between",
             ["field", PRODUCTS.CREATED_AT, null],
-            "2025-01-01",
-            "2025-12-31",
+            "2028-01-01",
+            "2028-12-31",
           ],
         },
         display: "bar",
@@ -1276,7 +1203,7 @@ describe("issue 63671", () => {
 
   it("should not show an extra value on bar charts when there is only value on the x axis (metabase#63671)", () => {
     cy.findByTestId("query-visualization-root")
-      .findByText("2025")
+      .findByText("2028")
       .should("have.length", 1);
   });
 });

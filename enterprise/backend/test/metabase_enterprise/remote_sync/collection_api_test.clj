@@ -1,4 +1,5 @@
-(ns metabase-enterprise.remote-sync.collection-api-test
+(ns ^:synchronous metabase-enterprise.remote-sync.collection-api-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.collection-api-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

@@ -38,7 +38,7 @@ These policies determine how long cached results will remain valid.
 
 {% include plans-blockquote.html feature="Duration caching policy" %}
 
-Invalidate and clear the cache after a certain number of hours. When someone runs a query, Metabase will first check whether it has cached the results, and whether those results are still valid. If not, Metabase runs the query against the database and caches the results. These cached results will remain valid for the duration you've set.
+Invalidate and clear the cache after a certain amount of time (seconds, minutes, hours, or days). When someone runs a query, Metabase will first check whether it has cached the results, and whether those results are still valid. If not, Metabase runs the query against the database and caches the results. These cached results will remain valid for the duration you've set.
 
 ### Schedule caching policy
 
@@ -97,7 +97,7 @@ For example, let's say you have a dashboard with a category filter (default valu
 
 ### Automatic caching logs
 
-To view the queries Metabase ran to automatically refresh the cache, check out the [query log](../usage-and-performance-tools/usage-analytics.md#query-log-model) and filter the `Query source` by `cache-refresh`.
+To view the queries Metabase ran to automatically refresh the cache, check out the [query log](../usage-and-performance-tools/usage-analytics-reference.md#query-log) and filter the `Query source` by `cache-refresh`.
 
 ## Set caching policies for dashboards, questions, and databases
 

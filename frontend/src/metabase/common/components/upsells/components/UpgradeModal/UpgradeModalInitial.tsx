@@ -67,7 +67,7 @@ export function UpgradeModalInitial({
       </Flex>
 
       <Box
-        bg="background-secondary"
+        bg="background_page-secondary"
         p="lg"
         style={{ borderRadius: "var(--mantine-radius-md)" }}
       >
@@ -132,7 +132,7 @@ export function UpgradeModalInitial({
         <Button variant="subtle" onClick={onCancel}>
           {t`Cancel`}
         </Button>
-        <Button variant="filled" color="brand" onClick={onConfirm}>
+        <Button variant="filled" color="core-brand" onClick={onConfirm}>
           {buttonText}
         </Button>
       </Flex>

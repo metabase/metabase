@@ -15,7 +15,7 @@
 .error {
   line-height: 1.4;
   margin-top: 0;
-  color: var(--mb-color-error);
-  border-left: 3px solid var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
+  border-left: 3px solid var(--mb-color-feedback-negative);
   padding-left: 12px;
 }

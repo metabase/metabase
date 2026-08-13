@@ -1,8 +1,5 @@
 import { useCallback, useEffect } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 import {
@@ -12,26 +9,17 @@ import {
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
 import { PermissionsSidebar } from "metabase/admin/permissions/components/PermissionsSidebar";
 import {
-  type UpdateTenantCollectionPermissionParams,
   initializeTenantCollectionPermissions,
   loadTenantCollectionPermissions,
   saveTenantCollectionPermissions,
   updateTenantCollectionPermission,
 } from "metabase/admin/permissions/permissions";
-import type {
-  CollectionIdProps,
-  CollectionSidebarType,
-} from "metabase/admin/permissions/selectors/collection-permissions";
-import type {
-  PermissionEditorEntity,
-  PermissionEditorType,
-} from "metabase/admin/permissions/types";
+import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
-import { Collections } from "metabase/entities/collections";
-import { Groups } from "metabase/entities/groups";
-import { connect } from "metabase/lib/redux";
-import type { Collection, CollectionId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import { useListCollectionsTreeQuery } from "metabase/api";
+import { useDispatch, useSelector } from "metabase/redux";
+import { useNavigate, useParams } from "metabase/router";
+import type { CollectionId } from "metabase-types/api";
 
 import {
   getIsTenantDirty,
@@ -41,58 +29,32 @@ import {
   tenantCollectionsQuery,
 } from "./selectors";
 
-const mapDispatchToProps = {
-  initialize: initializeTenantCollectionPermissions,
-  loadPermissions: loadTenantCollectionPermissions,
-  navigateToItem: ({ id }: { id: CollectionId }) =>
-    push(`/admin/permissions/tenant-collections/${id}`),
-  updateCollectionPermission: updateTenantCollectionPermission,
-  savePermissions: saveTenantCollectionPermissions,
-};
+export function TenantCollectionPermissionsPage() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  useListCollectionsTreeQuery(tenantCollectionsQuery);
 
-const mapStateToProps = (state: State, props: CollectionIdProps) => {
-  return {
-    sidebar: getTenantCollectionsSidebar(state, props),
-    permissionEditor: getTenantCollectionsPermissionEditor(state, props),
-    isDirty: getIsTenantDirty(state),
-    collection: getTenantCollectionEntity(state, props),
-  };
-};
+  // These selectors resolve the selected collection from the route, so they
+  // take the route params rather than reading them from the store.
+  const params = useParams<{ collectionId: string }>();
+  const selectorProps = { params };
+  const sidebar = useSelector((state) =>
+    getTenantCollectionsSidebar(state, selectorProps),
+  );
+  const permissionEditor = useSelector((state) =>
+    getTenantCollectionsPermissionEditor(state, selectorProps),
+  );
+  const collection = useSelector((state) =>
+    getTenantCollectionEntity(state, selectorProps),
+  );
+  const isDirty = useSelector(getIsTenantDirty);
 
-type TenantCollectionPermissionsPageProps = {
-  params: CollectionIdProps["params"];
-  sidebar: CollectionSidebarType;
-  permissionEditor: PermissionEditorType | null;
-  collection: Collection;
-  navigateToItem: (item: { id: CollectionId }) => void;
-  updateCollectionPermission: ({
-    groupId,
-    collection,
-    value,
-    shouldPropagateToChildren,
-  }: UpdateTenantCollectionPermissionParams) => void;
-  isDirty: boolean;
-  savePermissions: () => void;
-  loadPermissions: () => void;
-  initialize: () => void;
-  route: Route;
-};
-
-function TenantCollectionPermissionsPageView({
-  sidebar,
-  permissionEditor,
-  collection,
-  isDirty,
-  savePermissions,
-  loadPermissions,
-  updateCollectionPermission,
-  navigateToItem,
-  initialize,
-  route,
-}: TenantCollectionPermissionsPageProps) {
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    dispatch(initializeTenantCollectionPermissions());
+  }, [dispatch]);
+
+  const navigateToItem = ({ id }: { id: CollectionId }) =>
+    navigate(`/admin/permissions/tenant-collections/${id}`);
 
   const handlePermissionChange = useCallback(
     (
@@ -101,23 +63,27 @@ function TenantCollectionPermissionsPageView({
       value: unknown,
       toggleState: boolean | null,
     ) => {
-      updateCollectionPermission({
-        groupId: assertNumericId(item.id),
-        collection,
-        value,
-        shouldPropagateToChildren: toggleState ?? false,
-      });
+      if (!collection) {
+        return;
+      }
+      dispatch(
+        updateTenantCollectionPermission({
+          groupId: assertNumericId(item.id),
+          collection,
+          value,
+          shouldPropagateToChildren: toggleState ?? false,
+        }),
+      );
     },
-    [collection, updateCollectionPermission],
+    [collection, dispatch],
   );
 
   return (
     <PermissionsPageLayout
       tab="tenant-collections"
       isDirty={isDirty}
-      route={route}
-      onSave={savePermissions}
-      onLoad={() => loadPermissions()}
+      onSave={() => dispatch(saveTenantCollectionPermissions())}
+      onLoad={() => dispatch(loadTenantCollectionPermissions())}
       helpContent={<CollectionPermissionsHelp />}
     >
       <PermissionsSidebar {...sidebar} onSelect={navigateToItem} />
@@ -140,11 +106,3 @@ function TenantCollectionPermissionsPageView({
     </PermissionsPageLayout>
   );
 }
-
-export const TenantCollectionPermissionsPage = _.compose(
-  Collections.loadList({
-    entityQuery: tenantCollectionsQuery,
-  }),
-  Groups.loadList(),
-  connect(mapStateToProps, mapDispatchToProps),
-)(TenantCollectionPermissionsPageView);

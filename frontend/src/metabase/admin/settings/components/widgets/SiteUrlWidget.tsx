@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { InputWithSelectPrefix } from "metabase/common/components/InputWithSelectPrefix";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import type { GenericErrorResponse } from "metabase/lib/errors";
+import { useAdminSetting } from "metabase/settings";
 import { Box, Text } from "metabase/ui";
+import type { GenericErrorResponse } from "metabase/utils/errors";
 
 import { SettingHeader } from "../SettingHeader";
 
@@ -25,6 +25,7 @@ export function SiteUrlWidget() {
       setErrorMessage("");
       if (response?.error) {
         const message =
+          // Unjustified type cast. FIXME
           (response.error as { data: GenericErrorResponse })?.data?.message ||
           t`Error saving Site URL`;
         setErrorMessage(message);
@@ -57,7 +58,7 @@ export function SiteUrlWidget() {
           placeholder={"http://example.com"}
         />
         {errorMessage && (
-          <Text size="sm" color="danger" mt="sm">
+          <Text size="sm" color="feedback-negative" mt="sm">
             {errorMessage}
           </Text>
         )}

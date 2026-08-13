@@ -8,8 +8,10 @@ import { TabContext } from "../Tab";
 
 import { TabListContent, TabListRoot } from "./TabList.styled";
 
-export interface TabListProps<T>
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface TabListProps<T> extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "onChange"
+> {
   value?: T;
   onChange?: (value: T) => void;
   onScroll?: UIEventHandler<HTMLDivElement>;
@@ -32,6 +34,7 @@ const TabListInner = forwardRef(function TabGroup<T>(
   return (
     <TabListRoot {...props} role="tablist">
       <TabListContent ref={ref} onScroll={onScroll}>
+        {/* Unjustified type cast. FIXME */}
         <TabContext.Provider value={activeContext as TabContextType}>
           {children}
         </TabContext.Provider>

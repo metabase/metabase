@@ -44,7 +44,6 @@
       (System/clearProperty "org.quartz.jobStore.acquireTriggersWithinLock")
       (when (qs/started? scheduler)
         (throw (ex-info "Scheduler is already started, cannot start temporary one" {})))
-
       (qs/start scheduler)
       (f scheduler)
       (qs/shutdown scheduler))))

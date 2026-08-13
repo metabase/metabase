@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import { DATE_PICKER_TRUNCATION_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerTruncationUnit,
@@ -133,6 +135,19 @@ export function formatDateRange({
     offsetUnit,
     includeCurrent: options?.includeCurrent,
   });
+}
+
+export function isOutOfBounds(
+  { value, unit, offsetValue, offsetUnit }: RelativeDatePickerValue,
+  minDate?: Date,
+  maxDate?: Date,
+): boolean {
+  const base = dayjs().add(offsetValue ?? 0, offsetUnit ?? "day");
+  const start = base.add(Math.min(value, 0), unit).startOf(unit).toDate();
+  const end = base.add(Math.max(value, 0), unit).endOf(unit).toDate();
+  return (
+    (minDate != null && start < minDate) || (maxDate != null && end > maxDate)
+  );
 }
 
 export function getDefaultValue(

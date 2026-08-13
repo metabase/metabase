@@ -15,11 +15,14 @@ import type {
   FieldVisibilityType,
 } from "./field";
 import type { Insight } from "./insight";
-import type { ParameterOptions } from "./parameters";
+import type { NormalizedQueryParameter, ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
+/**
+ * @inline
+ */
 export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
 
@@ -85,6 +88,7 @@ export interface DatasetColumn {
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+  should_index?: boolean;
 
   remapping?: Map<RowValue, string | number>;
 }
@@ -99,6 +103,7 @@ export interface DatasetData {
   insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
+  pivot_rows_truncated?: number;
   requested_timezone?: string;
   results_timezone?: string;
   download_perms?: DownloadPermission;
@@ -116,7 +121,7 @@ export interface DatasetData {
 }
 
 export type JsonQuery = DatasetQuery & {
-  parameters?: Parameter[];
+  parameters?: NormalizedQueryParameter[];
   "cache-strategy"?: CacheStrategy & {
     /** An ISO 8601 date */
     "invalidated-at"?: string;
@@ -129,6 +134,7 @@ export interface Dataset {
   data: DatasetData;
   database_id: DatabaseId;
   row_count: number;
+  total_count?: number;
   running_time: number;
   json_query?: JsonQuery;
   error?: DatasetError;
@@ -207,8 +213,13 @@ export type SingleSeriesWithTranslation = SingleSeries & {
   };
 };
 
+export type TransformedCard = Card & {
+  _seriesKey: string;
+  _transformed: true;
+};
+
 export type RawSeries = SingleSeries[];
-export type TransformedSeries = RawSeries & { _raw: Series };
+export type TransformedSeries = RawSeries & { _raw?: Series };
 export type MaybeTranslatedSeries = SingleSeriesWithTranslation[];
 export type Series = RawSeries | TransformedSeries;
 
@@ -250,6 +261,7 @@ export interface TemplateTag {
 
   // Table specific
   "table-id"?: TableId;
+  "emit-alias"?: boolean;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;

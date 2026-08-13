@@ -13,7 +13,9 @@
 (mr/def ::strategy
   [:enum
    {:decode/normalize lib.schema.common/normalize-keyword}
-   :bin-width :default :num-bins])
+   :bin-width
+   :default ; called 'auto' in the GUI
+   :num-bins])
 
 (mr/def ::num-bins
   "Number of bins to use."
@@ -27,9 +29,10 @@
 (mr/def ::binning
   "Schema for `:binning` options passed to a `:field` clause."
   [:and
-   [:map
-    {:decode/normalize lib.schema.common/normalize-map}
-    [:strategy [:ref ::strategy]]]
+   {:decode/normalize (fn [binning]
+                        (when-some [binning (lib.schema.common/normalize-map binning)]
+                          (cond-> binning
+                            (:strategy binning) (update :strategy lib.schema.common/normalize-keyword))))}
    [:multi {:dispatch (fn [x]
                         (keyword (some #(get x %) [:strategy "strategy"])))
             :error/fn (fn [{:keys [value]} _]

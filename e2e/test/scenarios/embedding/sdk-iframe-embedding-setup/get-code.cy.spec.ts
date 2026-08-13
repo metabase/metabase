@@ -17,7 +17,7 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
 
@@ -230,10 +230,17 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
   });
 
   it("should not include entity-types when model count is 1", () => {
-    cy.intercept("GET", "/api/search?limit=0&models=dataset", {
-      data: [],
-      total: 1,
-    }).as("searchModels");
+    cy.intercept(
+      {
+        method: "GET",
+        pathname: "/api/search",
+        query: { limit: "0", models: "dataset" },
+      },
+      {
+        data: [],
+        total: 1,
+      },
+    ).as("searchModels");
 
     navigateToGetCodeStep({ experience: "exploration" });
 
@@ -252,10 +259,17 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
   });
 
   it("should include entity-types when model count is 3", () => {
-    cy.intercept("GET", "/api/search?limit=0&models=dataset", {
-      data: [],
-      total: 3,
-    }).as("searchModels");
+    cy.intercept(
+      {
+        method: "GET",
+        pathname: "/api/search",
+        query: { limit: "0", models: "dataset" },
+      },
+      {
+        data: [],
+        total: 3,
+      },
+    ).as("searchModels");
 
     navigateToGetCodeStep({ experience: "exploration" });
 

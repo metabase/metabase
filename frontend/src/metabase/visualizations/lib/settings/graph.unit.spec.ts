@@ -1,4 +1,4 @@
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { VisualizationDisplay } from "metabase-types/api";
 import {
   createMockCard,

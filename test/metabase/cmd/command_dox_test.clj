@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.cmd.command-dox :as sut]))
+   [metabase.cmd.command-dox :as sut]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel format-arglist-test
   (testing "format-arglist handles various arglist patterns"
@@ -153,8 +154,8 @@
 
 (deftest generate-documentation-test
   (testing "generate-documentation produces complete markdown document"
-    (let [doc (with-redefs [sut/header-section (constantly "# Test Header")
-                            sut/footer-section (constantly "# Test Footer")]
+    (let [doc (mt/with-dynamic-fn-redefs [sut/header-section (constantly "# Test Header")
+                                          sut/footer-section (constantly "# Test Footer")]
                 (#'sut/generate-documentation))]
       (testing "includes header"
         (is (str/starts-with? doc "# Test Header")))

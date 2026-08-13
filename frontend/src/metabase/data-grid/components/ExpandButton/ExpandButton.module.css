@@ -7,10 +7,10 @@
 }
 
 .button {
-  border: 1px solid color-mix(in srgb, var(--mb-color-brand) 30%, white);
+  border: 1px solid color-mix(in srgb, var(--mb-color-core-brand) 30%, white);
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   background-color: transparent;
   cursor: pointer;
   transition: all 0.2s;
@@ -22,5 +22,5 @@
 
 .button:hover {
   color: var(--mb-color-text-primary-inverse);
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
 }

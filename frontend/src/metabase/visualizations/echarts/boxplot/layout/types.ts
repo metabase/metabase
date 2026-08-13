@@ -1,4 +1,4 @@
-import type { ChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements/types";
+import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type { DataKey } from "metabase/visualizations/echarts/cartesian/model/types";
 
 import type { LabelLayoutMode } from "../utils";
@@ -22,7 +22,7 @@ export type BoxPlotPadding = {
   left: number;
 };
 
-export type BoxPlotLayoutModel = {
+export type BoxPlotLayoutModel = ChartLayout & {
   // Number of unique x-axis values
   xValuesCount: number;
 
@@ -59,7 +59,4 @@ export type BoxPlotLayoutModel = {
 
   // Vertical offset for x-axis to accommodate bottom labels
   xAxisOffset: number;
-
-  // Original chart measurements from cartesian chart system
-  chartMeasurements: ChartMeasurements;
 };

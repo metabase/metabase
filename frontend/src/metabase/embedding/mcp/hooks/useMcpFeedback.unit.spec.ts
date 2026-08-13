@@ -1,0 +1,62 @@
+import { act } from "@testing-library/react";
+import fetchMock from "fetch-mock";
+
+import { renderHookWithProviders, waitFor } from "__support__/ui";
+
+import { useMcpFeedback } from "./useMcpFeedback";
+
+describe("useMcpFeedback", () => {
+  beforeEach(() => {
+    fetchMock.post("path:/api/embed-mcp/feedback", 200);
+  });
+
+  it("submits the MCP feedback payload", async () => {
+    const { result } = renderHookWithProviders(
+      () =>
+        useMcpFeedback({
+          instanceUrl: "https://metabase.example",
+          mcpSessionId: "mcp-session-id",
+          prompt: "visualize customers",
+          query: "encoded-query",
+          uiCredential: "ui-credential",
+        }),
+      {},
+    );
+
+    act(() => {
+      result.current.setSelectedFeedback("negative");
+    });
+
+    await act(async () => {
+      await result.current.handleFeedbackSubmit({
+        issue_type: "wrong-visualization",
+        freeform_feedback: "Needs a different chart",
+      });
+    });
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/embed-mcp/feedback")).toBe(
+        true,
+      );
+    });
+
+    const lastCall = fetchMock.callHistory.lastCall(
+      "path:/api/embed-mcp/feedback",
+      { method: "POST" },
+    );
+
+    // Unjustified type cast. FIXME
+    expect(JSON.parse(lastCall?.options?.body as string)).toEqual({
+      feedback: {
+        positive: false,
+        issue_type: "wrong-visualization",
+        freeform_feedback: "Needs a different chart",
+      },
+      conversation_data: {
+        source: "mcp",
+        prompt: "visualize customers",
+        query: "encoded-query",
+      },
+    });
+  });
+});

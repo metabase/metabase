@@ -2,6 +2,7 @@ import _userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { waitForFloatingPosition } from "__support__/utils";
 import { DATE_PICKER_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerUnit,
@@ -32,12 +33,16 @@ const userEvent = _userEvent.setup({
 interface SetupOpts {
   value: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
+  minDate?: Date;
+  maxDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
 }
 
-function setup({
+async function setup({
   value,
   availableUnits = DATE_PICKER_UNITS,
+  minDate,
+  maxDate,
   renderSubmitButton,
 }: SetupOpts) {
   const onChange = jest.fn();
@@ -47,11 +52,15 @@ function setup({
     <DateOffsetIntervalPicker
       value={value}
       availableUnits={availableUnits}
+      minDate={minDate}
+      maxDate={maxDate}
       renderSubmitButton={renderSubmitButton}
       onChange={onChange}
       onSubmit={onSubmit}
     />,
   );
+
+  await waitForFloatingPosition();
 
   return { onChange, onSubmit };
 }
@@ -68,7 +77,7 @@ describe("DateOffsetIntervalPicker", () => {
       const defaultValue = getDefaultValue(direction);
 
       it("should change the interval", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -87,7 +96,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should change the interval with a negative value", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -103,7 +112,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should coerce zero", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -120,7 +129,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should ignore empty values", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -134,7 +143,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should ignore invalid values", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -149,7 +158,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should allow to change the unit", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -165,7 +174,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should allow to set only available units", async () => {
-        setup({
+        await setup({
           value: defaultValue,
           availableUnits: ["day", "year"],
         });
@@ -185,7 +194,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should change the offset interval", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -201,7 +210,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should change the offset interval with a negative value", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -217,7 +226,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should accept zero offset interval", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -234,7 +243,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should ignore an empty offset interval", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -248,7 +257,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should ignore invalid offset values", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -263,7 +272,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should allow to change the offset unit", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -282,7 +291,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should only show offset units larger or equal to the current one", async () => {
-        setup({
+        await setup({
           value: {
             ...defaultValue,
             unit: "month",
@@ -304,8 +313,8 @@ describe("DateOffsetIntervalPicker", () => {
         ).not.toBeInTheDocument();
       });
 
-      it("should display the actual date range", () => {
-        setup({
+      it("should display the actual date range", async () => {
+        await setup({
           value: defaultValue,
         });
         const rangeText =
@@ -316,7 +325,7 @@ describe("DateOffsetIntervalPicker", () => {
       });
 
       it("should be able to remove the offset", async () => {
-        const { onChange, onSubmit } = setup({
+        const { onChange, onSubmit } = await setup({
           value: defaultValue,
         });
 
@@ -332,10 +341,35 @@ describe("DateOffsetIntervalPicker", () => {
 
       it("should pass the value to the submit button callback", async () => {
         const renderSubmitButton = jest.fn().mockReturnValue(null);
-        setup({ value: defaultValue, renderSubmitButton });
+        await setup({ value: defaultValue, renderSubmitButton });
         expect(renderSubmitButton).toHaveBeenCalledWith({
           value: defaultValue,
+          isDisabled: false,
         });
+      });
+
+      it("should disable submit when the range falls outside the bounds", async () => {
+        const renderSubmitButton = jest.fn().mockReturnValue(null);
+        await setup({
+          value: defaultValue,
+          minDate: direction === "past" ? new Date(2020, 0, 1) : undefined,
+          maxDate: direction === "future" ? new Date(2020, 0, 2) : undefined,
+          renderSubmitButton,
+        });
+        expect(renderSubmitButton).toHaveBeenLastCalledWith({
+          value: defaultValue,
+          isDisabled: true,
+        });
+      });
+
+      it("should not submit when the range falls outside the bounds", async () => {
+        const { onSubmit } = await setup({
+          value: defaultValue,
+          minDate: direction === "past" ? new Date(2020, 0, 1) : undefined,
+          maxDate: direction === "future" ? new Date(2020, 0, 2) : undefined,
+        });
+        await userEvent.type(screen.getByLabelText("Interval"), "{enter}");
+        expect(onSubmit).not.toHaveBeenCalled();
       });
     },
   );

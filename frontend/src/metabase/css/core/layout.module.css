@@ -42,10 +42,6 @@
   width: 100%;
 }
 
-.half {
-  width: 50%;
-}
-
 /* position utilities */
 .fixed {
   position: fixed;

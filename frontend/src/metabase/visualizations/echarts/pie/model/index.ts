@@ -1,8 +1,8 @@
 import { pie } from "d3";
 import _ from "underscore";
 
-import { findWithIndex } from "metabase/lib/arrays";
-import { checkNotNull } from "metabase/lib/types";
+import { findWithIndex } from "metabase/utils/arrays";
+import { checkNotNull } from "metabase/utils/types";
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import {
@@ -196,7 +196,7 @@ function aggregateChildrenSlices(
       value: otherTotal,
       rawValue: otherTotal,
       normalizedPercentage: Math.abs(otherTotal / node.value),
-      color: renderingContext.getColor("text-tertiary"),
+      color: renderingContext.getColor("text-disabled"),
       children: otherSliceChildren,
       visible: true,
       isOther: true,
@@ -516,7 +516,7 @@ export function getPieChartModel(
       value: Math.abs(otherTotal),
       rawValue: otherTotal,
       normalizedPercentage: visible ? Math.abs(otherTotal / total) : 0,
-      color: renderingContext.getColor("text-tertiary"),
+      color: renderingContext.getColor("text-disabled"),
       column: colDescs.dimensionDesc.column,
       visible,
       children,
@@ -554,7 +554,7 @@ export function getPieChartModel(
       value: 1,
       rawValue: 0,
       normalizedPercentage: 0,
-      color: renderingContext.getColor("text-tertiary"),
+      color: renderingContext.getColor("text-disabled"),
       visible: true,
       column: colDescs.dimensionDesc.column,
       children: new Map(),

@@ -152,10 +152,15 @@
 ;;; consistently fails for me when using [[metabase.test.http-client/authenticate]] instead of the code below. See #48489 for
 ;;; more info
 (mu/defn ^:private authenticate! :- ms/UUIDString
-  "Create a new `:model/Session` for one of the test users."
+  "Create a new `:model/Session` for one of the test users, linked to their password `:model/AuthIdentity`."
   [username :- TestUserName]
-  (let [session-key (session/generate-session-key)]
-    (t2/insert! :model/Session {:id (session/generate-session-id) :key_hashed (session/hash-session-key session-key), :user_id (user->id username)})
+  (let [session-key  (session/generate-session-key)
+        user-id      (user->id username)
+        auth-id      (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "password")]
+    (t2/insert! :model/Session (cond-> {:id (session/generate-session-id)
+                                        :key_hashed (session/hash-session-key session-key)
+                                        :user_id user-id}
+                                 auth-id (assoc :auth_identity_id auth-id)))
     session-key))
 
 (mu/defn username->token :- ms/UUIDString
@@ -212,7 +217,6 @@
           session-key (session/generate-session-key)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
-      #_{:clj-kondo/ignore [:discouraged-var]}
       (t2.with-temp/with-temp [:model/Session _ {:id (session/generate-session-id)
                                                  :key_hashed (session/hash-session-key session-key)
                                                  :user_id user-id}]
@@ -237,6 +241,13 @@
   "Like [[user-http-request]] but instead of calling the app handler, this makes an actual http request."
   (partial user-request client/real-client))
 
+(def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                    request-options? http-body-map? & {:as query-params}])} user-real-request-full-response
+  "Like [[user-real-request]] but returns the full HTTP response map instead of just the body. Useful for
+  tests that need the underlying `:http-client` (e.g. to forcibly close the connection and simulate a client
+  disconnect on a streaming response)."
+  (partial user-request client/client-real-response))
+
 (defn do-with-test-user [user-kwd thunk]
   (t/testing (format "\nwith test user %s\n" user-kwd)
     (request/with-current-user (some-> user-kwd user->id)
@@ -260,7 +271,6 @@
     (u/the-id test-user-name-or-user-id)))
 
 (defn do-with-group-for-user [group test-user-name-or-user-id f]
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (t2.with-temp/with-temp [:model/PermissionsGroup           group group
                            :model/PermissionsGroupMembership _     {:group_id (u/the-id group)
                                                                     :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]

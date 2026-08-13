@@ -22,6 +22,31 @@ Assuming your site is localhost serving on port 3000:
 5. In the event of a successful sign-in, your authentication app should issue a GET request to your Metabase endpoint with the token and the "return to" URI: `http://localhost:3000/auth/sso?jwt=TOKEN_GOES_HERE&return_to=/question/1-superb-question`.
 6. Metabase verifies the JSON Web Token, logs the person in, then redirects the person to their original destination, `/question/1-superb-question`.
 
+- For full app embeds, use a `GET` request.
+- For modular embeds use a `POST` request with a JSON body (to avoid putting the JWT in the URL). You'll also want to use `POST` requests in contexts that log or cache URLs, such as server-side integrations or testing.
+
+In both cases the login behavior is the same, and you can pass `return_to` as a query parameter in both `GET` and `POST` requests.
+
+An example `POST` request with curl:
+
+```bash
+curl -X POST "http://localhost:3000/auth/sso?return_to=/question/1-superb-question" \
+  -H "Content-Type: application/json" \
+  -d '{"jwt": "TOKEN_GOES_HERE"}'
+```
+
+Or with JavaScript:
+
+```js
+await fetch(`${METABASE_URL}/auth/sso?return_to=/question/1-superb-question`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ jwt: token }),
+  credentials: "include",
+});
+```
+
+
 ## Set up JWT authentication
 
 Navigate to the **Admin**>**Settings** section of the Admin area, then click on the **Authentication > JWT** tab.
@@ -65,7 +90,7 @@ You can configure JWT group assignments through Metabase's Admin interface, or b
 
 ### Configure group mapping through environment variables
 
-You can use the following environment variables to configure JTW group mappings instead of configuring them in Metabase's Admin settings:
+You can use the following environment variables to configure JWT group mappings instead of configuring them in Metabase's Admin settings:
 
 - [`MB_JWT_ATTRIBUTE_GROUPS`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_groups) to specify the key to retrieve the JWT user's groups;
 
@@ -99,7 +124,7 @@ User provisioning is enabled by default. Metabase will create accounts for peopl
 
 If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in via JWT SSO.
 
-Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
+Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase, [even if their account previously had a password login](./managing.md#signing-in-via-sso-disables-your-password-login).
 
 ## Disabling password logins
 

@@ -1,8 +1,9 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { useLoadTableWithMetadata } from "metabase/data-studio/common/hooks/use-load-table-with-metadata";
-import * as Urls from "metabase/lib/urls";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
+import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import { TableHeader } from "../../components/TableHeader";
 
@@ -12,11 +13,8 @@ type TableMeasuresPageParams = {
   tableId: string;
 };
 
-type TableMeasuresPageProps = {
-  params: TableMeasuresPageParams;
-};
-
-export function TableMeasuresPage({ params }: TableMeasuresPageProps) {
+export function TableMeasuresPage() {
+  const params = useParams<TableMeasuresPageParams>();
   const tableId = Urls.extractEntityId(params.tableId);
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId);
 

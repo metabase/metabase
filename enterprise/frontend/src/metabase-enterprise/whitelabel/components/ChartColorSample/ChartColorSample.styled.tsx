@@ -21,11 +21,11 @@ export const ChartGrid = styled(ChartLayer)`
 `;
 
 export const ChartTick = styled.div`
-  border-top: 1px dashed var(--mb-color-border);
+  border-top: 1px dashed var(--mb-color-border-neutral);
 `;
 
 export const ChartAxis = styled.div`
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const ChartPlot = styled(ChartLayer)`

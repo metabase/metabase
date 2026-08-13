@@ -1,0 +1,22 @@
+name: embedding_path
+display_name: Embedding Path
+description: Path portion of the embed referrer URL captured at conversation creation. PII; only recorded when analytics-pii-retention-enabled is on.
+created_at: '2026-05-04T00:00:00Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, public, v_metabot_conversations]
+database_type: varchar
+base_type: type/Text
+effective_type: type/Text
+dimensions: []
+position: 22
+custom_position: 0
+database_position: 22
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_metabot_conversations, model: Table}
+- {id: embedding_path, model: Field}
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

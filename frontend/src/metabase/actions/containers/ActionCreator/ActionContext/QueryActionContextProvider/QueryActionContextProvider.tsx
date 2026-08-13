@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
-import type { CreateQueryActionParams } from "metabase/entities/actions";
+import type { CreateQueryActionParams } from "metabase/actions/types";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -27,8 +27,7 @@ import {
   setTemplateTagTypesFromFieldSettings,
 } from "./utils";
 
-export interface QueryActionContextProviderProps
-  extends ActionContextProviderProps<WritebackQueryAction> {
+export interface QueryActionContextProviderProps extends ActionContextProviderProps<WritebackQueryAction> {
   metadata: Metadata;
   databaseId?: DatabaseId;
 }
@@ -64,6 +63,7 @@ function convertActionToQuestionCard(
     dataset_query: action.dataset_query,
     display: "action",
     visualization_settings:
+      // Unjustified type cast. FIXME
       action.visualization_settings as VisualizationSettings,
     type: "question",
     can_write: true,
@@ -110,10 +110,14 @@ function convertQuestionToAction(
 
   return {
     id: question.id(),
+    // Unjustified type cast. FIXME
     name: question.displayName() as string,
     description: question.description(),
+    // Unjustified type cast. FIXME
     dataset_query: cleanQuestion.datasetQuery() as NativeDatasetQuery,
+    // Unjustified type cast. FIXME
     database_id: question.databaseId() as DatabaseId,
+    // Unjustified type cast. FIXME
     parameters: parameters as WritebackParameter[],
     visualization_settings: formSettings,
   };
@@ -145,6 +149,7 @@ function QueryActionContextProvider({
   const [question, setQuestion] = useState(initialQuestion);
 
   const query = useMemo(
+    // Unjustified type cast. FIXME
     () => question.legacyNativeQuery() as NativeQuery,
     [question],
   );

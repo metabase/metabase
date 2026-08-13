@@ -7,9 +7,9 @@ export const StepRoot = styled.section`
   position: relative;
   padding: 2rem;
   margin-bottom: 1.75rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 
   ${breakpointMinSmall} {
     padding: 4rem;
@@ -17,7 +17,7 @@ export const StepRoot = styled.section`
 `;
 
 export const StepTitle = styled.div`
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-size: 1.3125rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
@@ -33,13 +33,13 @@ export const StepLabel = styled.div`
   align-items: center;
   width: 2.625rem;
   height: 2.625rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 50%;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 `;
 
 export const StepLabelText = styled.span`
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-weight: 700;
   line-height: 1;
 `;

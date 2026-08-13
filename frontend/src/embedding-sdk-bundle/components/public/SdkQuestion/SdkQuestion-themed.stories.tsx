@@ -13,6 +13,7 @@ import { ComponentProvider } from "../ComponentProvider";
 
 import { SdkQuestion } from "./SdkQuestion";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
 export default {
@@ -33,7 +34,7 @@ const Wrapper = ({
   theme: MetabaseTheme;
 }) => (
   <ComponentProvider theme={theme} authConfig={storybookSdkAuthDefaultConfig}>
-    <Box p="xl" bg="background-primary">
+    <Box p="xl" bg="background_page-primary">
       {children}
     </Box>
   </ComponentProvider>

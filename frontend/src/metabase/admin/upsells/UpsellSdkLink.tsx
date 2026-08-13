@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import linkStyles from "metabase/css/core/link.module.css";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { UnstyledButton } from "metabase/ui";
 
@@ -27,7 +27,7 @@ export function UpsellSdkLink() {
     return (
       <UnstyledButton
         onClick={triggerUpsellFlow}
-        c="brand"
+        c="core-brand"
         className={linkStyles.link}
         key="upgrade-button"
         fw="bold"

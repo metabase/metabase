@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.api.download-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.download-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]
@@ -15,12 +16,10 @@
                           :attributes {"state" "CA"}})
         (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query people)}]
           (data-perms/set-table-permission! &group (mt/id :people) :perms/download-results :one-million-rows)
-
           ;; Sanity check: admin can download full table
           (let [res (-> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv" (u/the-id card)))
                         csv/read-csv)]
             (is (= 2501 (count res))))
-
           ;; Sandboxed user only downloads a subset (users in CA)
           (let [res (-> (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card)))
                         csv/read-csv)]

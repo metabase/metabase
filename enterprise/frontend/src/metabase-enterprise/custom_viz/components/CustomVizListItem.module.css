@@ -1,0 +1,11 @@
+.customVizListItem:hover {
+  background-color: var(--mb-color-background_surface-hover);
+}
+
+.menuContainer {
+  visibility: hidden;
+}
+
+.customVizListItem:hover .menuContainer {
+  visibility: visible;
+}

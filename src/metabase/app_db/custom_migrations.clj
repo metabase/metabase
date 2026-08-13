@@ -12,7 +12,6 @@
   If you need to use code from elsewhere, consider copying it into this namespace to minimize risk of the code
   changing behaviour."
   (:require
-   [clojure.core.match :refer [match]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
@@ -35,6 +34,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
@@ -125,7 +125,7 @@
     (try
       (json/decode s keywordize-keys?)
       (catch Throwable e
-        (log/error e "Error parsing JSON")
+        (log/errorf "Error parsing JSON: %s" (ex-message e))
         s))
     s))
 
@@ -142,8 +142,8 @@
       (catch Throwable e
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
-          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
-          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+          (log/errorf "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?: %s" (ex-message e))
+          (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
         v))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -161,7 +161,6 @@
     ;; For (almost) all v1 data paths, we simply extract the base path (e.g. "/db/1/schema/PUBLIC/table/1/")
     ;; and construct new v2 paths by adding prefixes to the base path.
     [(str "/data" base-path) (str "/query" base-path)]
-
     ;; For the specific v1 path that grants full data access but no native query access, we add a
     ;; /schema/ suffix to the corresponding v2 query permission path.
     (when-let [db-id (second (re-find #"^/db/(\d+)/schema/$" v1-path))]
@@ -223,19 +222,19 @@
 
 (defn- update-legacy-field-refs-in-viz-settings [viz-settings]
   (let [old-to-new (fn [old]
-                     (match old
-                       ["ref" ref] ["ref" (match ref
+                     (match/match-one old
+                       ["ref" ref] ["ref" (match/match-one ref
                                             ["field-id" x] ["field" x nil]
                                             ["field-literal" x y] ["field" x {"base-type" y}]
-                                            ["fk->" x y] (let [x (match x
+                                            ["fk->" x y] (let [x (match/match-one x
                                                                    [_x0 x1] x1
-                                                                   x x)
-                                                               y (match y
+                                                                   _ x)
+                                                               y (match/match-one y
                                                                    [_y0 y1] y1
-                                                                   y y)]
+                                                                   _ y)]
                                                            ["field" y {:source-field x}])
-                                            ref ref)]
-                       k k))]
+                                            _ ref)]
+                       _ old))]
     (m/update-existing viz-settings "column_settings" update-keys
                        (fn [k]
                          (-> k
@@ -269,15 +268,15 @@
 
 (defn- update-legacy-field-refs-in-result-metadata [result-metadata]
   (let [old-to-new (fn [ref]
-                     (match ref
+                     (match/match-one ref
                        ["field-id" x] ["field" x nil]
                        ["field-literal" x y] ["field" x {"base-type" y}]
-                       ["fk->" x y] (let [x (match x
+                       ["fk->" x y] (let [x (match/match-one x
                                               [_x0 x1] x1
-                                              x x)
-                                          y (match y
+                                              _ x)
+                                          y (match/match-one y
                                               [_y0 y1] y1
-                                              y y)]
+                                              _ y)]
                                       ["field" y {:source-field x}])
                        _ ref))]
     (->> result-metadata
@@ -305,7 +304,7 @@
 (defn- remove-opts
   "Removes options from the `field_ref` options map. If the resulting map is empty, it's replaced it with nil."
   [field_ref & opts-to-remove]
-  (match field_ref
+  (match/match-one field_ref
     ["field" id opts] ["field" id (not-empty (apply dissoc opts opts-to-remove))]
     _ field_ref))
 
@@ -314,7 +313,7 @@
           (fn [column_settings]
             (into {}
                   (map (fn [[k v]]
-                         (match (vec (json/decode k))
+                         (match/match-one (vec (json/decode k))
                            ["ref" ["field" id opts]]
                            [(json/encode ["ref" (remove-opts ["field" id opts] "join-alias")]) v]
                            _ [k v]))
@@ -333,7 +332,7 @@
              (fn [column_settings]
                (into {}
                      (mapcat (fn [[k v]]
-                               (match (vec (json/decode k))
+                               (match/match-one (vec (json/decode k))
                                  ["ref" ["field" id opts]]
                                  (for [column-metadata (column-key->metadata ["field" id opts])
                                        ;; remove "temporal-unit" and "binning" options from the matching field refs,
@@ -389,7 +388,7 @@
                                   :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
                                   :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
                        (group-by :tab_position)
-                               ;; sort by tab position
+                       ;; sort by tab position
                        (sort-by first))
         cards->max-height (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
     (loop [position+cards tab+cards
@@ -520,7 +519,7 @@
                       (fn [column_settings]
                         (let [copies-with-join-alias (into {}
                                                            (mapcat (fn [[k v]]
-                                                                     (match (vec (json/decode k))
+                                                                     (match/match-one (vec (json/decode k))
                                                                        ["ref" ["field" id opts]]
                                                                        (for [alias join-aliases]
                                                                          [(json/encode ["ref" ["field" id (assoc opts "join-alias" alias)]]) v])
@@ -541,11 +540,11 @@
     (run! update-one! (t2/reducible-query {:select [:*]
                                            :from   [:revision]
                                            :where  [:and
-                                                 ;; only include cards with field refs in column_settings
+                                                    ;; only include cards with field refs in column_settings
                                                     [:or
                                                      [:like :object "%ref\\\\\",[\\\\\"field%"]
                                                      [:like :object "%ref\\\\\\\",[\\\\\\\"field%"]]
-                                                 ;; only include cards with joins
+                                                    ;; only include cards with joins
                                                     [:like :object "%joins%"]
                                                     [:= :model "Card"]]})))
   ;; Reverse migration
@@ -674,7 +673,7 @@
                                     (fn [column_settings]
                                       (let [copies-with-join-alias (into {}
                                                                          (mapcat (fn [[k v]]
-                                                                                   (match (vec (json/decode k))
+                                                                                   (match/match-one (vec (json/decode k))
                                                                                      ["ref" ["field" id opts]]
                                                                                      (for [alias join-aliases]
                                                                                        [(json/encode ["ref" ["field" id (assoc opts "join-alias" alias)]]) v])
@@ -778,13 +777,13 @@
                                                    (m/map-vals
                                                     #(select-keys % ["click_behavior"])
                                                     column_settings)))
-                             ;; select click behavior top level and in column settings
+                              ;; select click behavior top level and in column settings
                               (select-keys ["column_settings" "click_behavior"])
                               (remove-nil-keys)))
         fix-top-level   (fn [toplevel]
                           (if (= (get toplevel "click") "link")
                             (assoc toplevel
-                                  ;; add new shape top level
+                                   ;; add new shape top level
                                    "click_behavior"
                                    {"type"         (get toplevel "click")
                                     "linkType"     "url"
@@ -794,11 +793,11 @@
                           (reduce-kv
                            (fn [m col field-settings]
                              (assoc m col
-                                   ;; add the click stuff under the new click_behavior entry or keep the
-                                   ;; field settings as is
+                                    ;; add the click stuff under the new click_behavior entry or keep the
+                                    ;; field settings as is
                                     (if (and (= (get field-settings "view_as") "link")
                                              (contains? field-settings "link_template"))
-                                     ;; remove old shape and add new shape under click_behavior
+                                      ;; remove old shape and add new shape under click_behavior
                                       (assoc field-settings
                                              "click_behavior"
                                              {"type"             (get field-settings "view_as")
@@ -810,23 +809,23 @@
                            column-settings))
         fixed-card      (-> (if (contains? dashcard "click")
                               (dissoc card "click_behavior") ;; throw away click behavior if dashcard has click
-                             ;; behavior added
+                              ;; behavior added
                               (fix-top-level card))
                             (update "column_settings" fix-cols) ;; fix columns and then select only the new shape from
-                           ;; the settings tree
+                            ;; the settings tree
                             existing-fixed)
         fixed-dashcard  (update (fix-top-level dashcard) "column_settings" fix-cols)
         final-settings  (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
-                            ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
-                            ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
-                            ;; doesn't have link text
+                             ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
+                             ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
+                             ;; doesn't have link text
                              (walk/postwalk (fn [form]
                                               (if (map? form)
                                                 (into {} (for [[k v] form
                                                                :when (if (seqable? v)
-                                                                      ;; remove keys with empty maps. must be postwalk
+                                                                       ;; remove keys with empty maps. must be postwalk
                                                                        (seq v)
-                                                                      ;; remove nils
+                                                                       ;; remove nils
                                                                        (some? v))]
                                                            [k v]))
                                                 form))))]
@@ -996,7 +995,7 @@
             :let [is-pg-specical-case? (= [db-type table column]
                                           [:postgres :core_user :updated_at])]]
       (when is-pg-specical-case?
-        (t2/query [(format "DROP VIEW IF EXISTS v_users;")]))
+        (t2/query ["DROP VIEW IF EXISTS v_users;"]))
       (t2/query [(alter-table-column-type-sql db-type (name table) (name column) target-type nullable?)])
       (when is-pg-specical-case?
         (t2/query [(slurp (io/resource "migrations/instance_analytics_views/users/v1/postgres-users.sql"))])))))
@@ -1059,7 +1058,6 @@
       (run! migrate! (t2/reducible-query {:select [:*]
                                           :from   [:revision]
                                           :where  [:= :model "Card"]}))))
-
   (case (db-type*)
     :postgres
     (t2/query ["UPDATE revision
@@ -1183,7 +1181,7 @@
   true)
 
 (define-migration CreateSampleContent)
-  ;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
+;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
 
 (defn- replace-temporals [v]
   (if (isa? (type v) java.time.temporal.Temporal)
@@ -1331,6 +1329,10 @@
   (log/info "No forward migration for DeleteInitSendPulseTriggersOnDowngrade")
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))))
+
+;; No-op. The SQLite <-> H2 sample database engine swap is handled in place at startup
+;; (metabase.sample-data.impl). Kept because a shipped v63 build ran a delete-based rollback here.
+(define-reversible-migration MigrateAwayFromSqliteSampleDatabaseOnDowngrade nil nil)
 
 ;; when card display is area or bar,
 ;; 1. set the display key to :stackable.stack_display value OR leave it the same
@@ -1486,7 +1488,7 @@
 (defn- json-column-key-like-clause
   [key column]
   [:or [:like column (str "%\\\\\"" key "\\\\\"%")]
-       ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+   ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
    [:like column (str "%\\\\\\\"" key "\\\\\\\"%")]])
 
 (defn- update-legacy-column-keys-in-card-viz-settings
@@ -1993,3 +1995,245 @@
                                                                  :schema uploads_schema_name}
                                                            :where [:= :id id]}))]
           (run! retire-and-revive-upload-table! inactive-upload-tables))))))
+
+(defn- legacy-checkpoint-column-name
+  "Extract the column name from a legacy column-unique-key string.
+   Uses the same format as [[metabase.lib.metadata.column/unpack-unique-key]]:
+   `column-unique-key-v<version>$<column-key>`."
+  [unique-key]
+  (when-let [[_match _version column-key] (re-find #"^column-unique-key-v(\d+)\$(.+$)" unique-key)]
+    column-key))
+
+(defn- legacy-checkpoint-source-table-id
+  "Extract the source table ID from a parsed transform source for checkpoint migration.
+   Returns nil for native transforms (which can't be migrated)."
+  [parsed]
+  (case (keyword (:type parsed))
+    :query  (get-in parsed [:query :stages 0 :source-table])
+    :python (let [source-tables (:source-tables parsed)]
+              (cond
+                ;; vec format: [{:alias "t" :table_id 42}]
+                (sequential? source-tables)
+                (when (= 1 (count source-tables))
+                  (:table_id (first source-tables)))
+                ;; map format: {"t" 42} or {"t" {:table_id 42}}
+                (map? source-tables)
+                (when (= 1 (count source-tables))
+                  (let [v (first (vals source-tables))]
+                    (if (map? v) (:table_id v) v)))))
+    nil))
+
+(defn- resolve-checkpoint-field-id
+  "Try to resolve a legacy checkpoint-filter-unique-key to a field ID."
+  [parsed]
+  (when-let [unique-key (get-in parsed [:source-incremental-strategy :checkpoint-filter-unique-key])]
+    (when-let [column-name (legacy-checkpoint-column-name unique-key)]
+      (when-let [table-id (legacy-checkpoint-source-table-id parsed)]
+        (when (int? table-id)
+          (t2/select-one-pk :model/Field
+                            :table_id table-id
+                            :name column-name
+                            :active true))))))
+
+(define-migration RemoveLegacyIncrementalStrategies
+  (doseq [{:keys [id source]} (t2/select [:transform :id :source])]
+    (let [parsed (json-out source true)]
+      (when (:source-incremental-strategy parsed)
+        (if-let [field-id (resolve-checkpoint-field-id parsed)]
+          ;; Migrate: replace legacy keys with checkpoint-filter-field-id
+          (let [migrated (update parsed :source-incremental-strategy
+                                 (fn [s]
+                                   (-> s
+                                       (dissoc :checkpoint-filter-unique-key :checkpoint-filter)
+                                       (assoc :checkpoint-filter-field-id field-id))))]
+            (t2/query {:update :transform
+                       :set    {:source (json-in migrated)}
+                       :where  [:= :id id]}))
+          ;; Can't migrate: strip incremental strategy
+          (t2/query {:update :transform
+                     :set    {:source (json-in (dissoc parsed :source-incremental-strategy))}
+                     :where  [:= :id id]}))))))
+
+(defn- batched-data-layer-update!
+  "Update `metabase_table.data_layer` in 500K ID-range chunks to avoid timeout on large instances.
+   Computes min/max ID once and strides through the range. A final unbounded UPDATE catches any
+   rows inserted during the migration."
+  [from-values case-expr]
+  (let [batch-size 500000
+        {:keys [min-id max-id]} (t2/query-one
+                                 {:select [[[:min :id] :min-id]
+                                           [[:max :id] :max-id]]
+                                  :from   [:metabase_table]})]
+    (when (and min-id max-id)
+      (loop [start (long min-id)]
+        (when (<= start (long max-id))
+          (t2.execute/query-one
+           {:update :metabase_table
+            :set    {:data_layer case-expr}
+            :where  [:and
+                     [:>= :id start]
+                     [:< :id (+ start batch-size)]
+                     [:not-in :data_layer from-values]]})
+          (recur (+ start batch-size))))
+      ;; catch any rows inserted above the original max-id during the migration
+      (t2.execute/query-one
+       {:update :metabase_table
+        :set    {:data_layer case-expr}
+        :where  [:and
+                 [:> :id max-id]
+                 [:not-in :data_layer from-values]]}))))
+
+;; Intentionally not using define-reversible-migration here to avoid wrapping in a transaction.
+;; A single long transaction on millions of rows can hit connection/transaction timeouts.
+;; Each batch runs as its own implicit transaction instead.
+;; Partial completion is safe: :model/Table's transform-data-layer handles on-read conversion
+;; of any unconverted rows in both directions (58<->59).
+(defrecord DropMedallionNamesForDataLayer []
+  CustomTaskChange
+  (execute [_ _database]
+    (batched-data-layer-update!
+     ["hidden" "internal" "final"]
+     [:case [:= :data_layer "copper"] "hidden" :else "final"]))
+  (getConfirmationMessage [_]
+    "Custom migration: DropMedallionNamesForDataLayer")
+  (setUp [_])
+  (validate [_ _database]
+    (ValidationErrors.))
+  (setFileOpener [_ _resourceAccessor])
+
+  CustomTaskRollback
+  (rollback [_ _database]
+    (when (should-execute-change?)
+      (batched-data-layer-update!
+       ["copper" "bronze" "silver" "gold"]
+       [:case [:= :data_layer "hidden"] "copper" :else "bronze"]))))
+
+(defn- find-table-id
+  "Find a metabase_table by db-id, schema, and name using case-insensitive matching,
+   preferring an exact case match when one exists."
+  [db-id schema table-name]
+  (:id (first (t2/query {:select   [:id]
+                         :from     [:metabase_table]
+                         :where    [:and
+                                    [:= :db_id db-id]
+                                    (if (some? schema)
+                                      [:= [:lower :schema] [:lower schema]]
+                                      [:is :schema nil])
+                                    [:= [:lower :name] [:lower table-name]]]
+                         :order-by [[[:case
+                                      [:and
+                                       [:= :name table-name]
+                                       (if (some? schema)
+                                         [:= :schema schema]
+                                         [:is :schema nil])]
+                                      0
+                                      :else 1]
+                                     :asc]]
+                         :limit    1}))))
+
+(define-migration BackfillTransformTargetTables
+  ;; For each transform that has a target (database, schema, name), ensure a metabase_table row exists.
+  ;; If the table already exists (active or inactive), do nothing. Otherwise, insert a transform target row.
+  (let [;; Reproduces humanization/name->human-readable-name :simple (can't call library code in migrations)
+        acronyms  #{"id" "url" "ip" "uid" "uuid" "guid"}
+        cap-word  (fn [word]
+                    (let [lower (lower-case-en word)]
+                      (if (contains? acronyms lower)
+                        (upper-case-en word)
+                        (if (= word (upper-case-en word))
+                          (str/capitalize word)
+                          (str (str/capitalize (subs word 0 1)) (subs word 1))))))
+        humanize  (fn [s]
+                    (when (seq s)
+                      (let [result (str/join " " (for [part  (str/split s #"[-_\s]+")
+                                                       :when (not (str/blank? part))]
+                                                   (cap-word part)))]
+                        (if (str/blank? result) s result))))
+        upsert-table! (fn [db-id schema table-name]
+                        (or (find-table-id db-id schema table-name)
+                            (try
+                              (t2/query {:insert-into :metabase_table
+                                         :values      [{:db_id               db-id
+                                                        :schema              schema
+                                                        :name                table-name
+                                                        :display_name        (humanize table-name)
+                                                        :active              false
+                                                        :transform_target    true
+                                                        :data_source         "metabase-transform"
+                                                        :data_authority      "computed"
+                                                        :initial_sync_status "complete"
+                                                        :created_at          :%now
+                                                        :updated_at          :%now}]})
+                              (find-table-id db-id schema table-name)
+                              (catch Exception _
+                                (find-table-id db-id schema table-name)))))]
+    ;; Create provisional tables for transform targets that don't exist yet
+    (run! (fn [{:keys [target target_db_id]}]
+            (let [target-map (json-out target false)]
+              (when-let [table-name (get target-map "name")]
+                (let [schema (get target-map "schema")
+                      db-id  target_db_id]
+                  (upsert-table! db-id schema table-name)))))
+          (t2/reducible-query {:select [:target :target_db_id]
+                               :from   [:transform]
+                               :where  [:not= :target_db_id nil]}))))
+
+(define-migration BackfillTransformTargetTableId
+  ;; For each transform with a non-null target_db_id, extract the table_id from the target JSON column.
+  ;; If table_id is present in the JSON, use it directly.
+  ;; If table_id is missing but name is present, look up the table by (db_id, schema, name).
+  (run! (fn [{:keys [id target target_db_id]}]
+          (let [target-map (json-out target false)
+                table-id   (or (get target-map "table_id")
+                               (when-let [table-name (get target-map "name")]
+                                 (find-table-id target_db_id (get target-map "schema") table-name)))]
+            (when table-id
+              (t2/query {:update :transform
+                         :set    {:target_table_id table-id}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :target :target_db_id]
+                             :from   [:transform]
+                             :where  [:and
+                                      [:not= :target_db_id nil]
+                                      [:= :target_table_id nil]]})))
+
+(define-migration BackfillMetabotConversationEmbeddingHostname
+  ;; Carry over the hostname portion of metabot_conversation.embed_url into the
+  ;; new embedding_hostname column. Only the hostname is migrated — the path
+  ;; portion of pre-flag embed_url values has no consent basis under
+  ;; analytics-pii-retention-enabled and is intentionally discarded.
+  (run! (fn [{:keys [id embed_url]}]
+          (let [^java.net.URI parsed (try (java.net.URI. ^String embed_url) (catch Exception _ nil))
+                host                 (some-> parsed .getHost not-empty)
+                host*                (when host (subs host 0 (min (count host) 512)))]
+            (when host*
+              (t2/query {:update :metabot_conversation
+                         :set    {:embedding_hostname host*}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :embed_url]
+                             :from   [:metabot_conversation]
+                             :where  [:and
+                                      [:not= :embed_url nil]
+                                      [:= :embedding_hostname nil]]})))
+
+(define-migration BackfillMfaConfirmedAt
+  ;; MFA enrollment confirmation used to live only inside the credentials JSON — encrypted at
+  ;; rest when MB_ENCRYPTION_SECRET_KEY is set, and therefore invisible to SQL. Lift it into the
+  ;; new auth_identity.confirmed_at column so enrollment state is queryable (admin visibility of
+  ;; users without 2FA; Phase 2 mfa-required). The JSON keeps working as the source for rows
+  ;; written by older code; new code writes only the column.
+  (run! (fn [{:keys [id credentials]}]
+          (let [creds        (encrypted-json-out credentials)
+                confirmed-at (when (map? creds)
+                               (try
+                                 (some-> ^String (:confirmed_at creds) java.time.OffsetDateTime/parse)
+                                 (catch Exception _ nil)))]
+            (when confirmed-at
+              (t2/query {:update :auth_identity
+                         :set    {:confirmed_at confirmed-at}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :credentials]
+                             :from   [:auth_identity]
+                             :where  [:and
+                                      [:= :provider "totp"]
+                                      [:= :confirmed_at nil]]})))

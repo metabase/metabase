@@ -8,6 +8,7 @@
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.field.search-values-query :as search-values-query]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -66,7 +67,7 @@
            limit        (or maybe-limit default-max-field-search-limit)]
        (search-values-query/search-values-query field search-field value limit))
      (catch Throwable e
-       (log/error e "Error searching field values")
+       (log/errorf "Error searching field values: %s" (ex-message e))
        []))))
 
 (mu/defn field->values :- ms/FieldValuesResult
@@ -86,7 +87,11 @@
   "Search for values of a field given by `field-id` that contain `query`."
   [field-id     :- ::lib.schema.id/field
    query-string :- [:maybe :string]]
-  (let [field        (api/read-check (t2/select-one :model/Field :id field-id))
+  (let [field        (if qp.perms/*param-values-query*
+                       ;; When fetching param values for a card/dashboard the user can read, skip the Field
+                       ;; read-check which requires create-queries permission on the table.
+                       (api/check-404 (t2/select-one :model/Field :id field-id))
+                       (api/read-check (t2/select-one :model/Field :id field-id)))
         search-field (or (some->> (chain-filter/remapped-field-id field-id)
                                   (t2/select-one :model/Field :id))
                          field)]
@@ -128,5 +133,5 @@
                      [:data :rows])))
     ;; as with fn above this error can usually be safely ignored which is why log level is log/debug
     (catch Throwable e
-      (log/debug e "Error searching for remapping")
+      (log/debugf "Error searching for remapping: %s" (ex-message e))
       nil)))

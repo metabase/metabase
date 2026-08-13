@@ -102,18 +102,22 @@ export const cypressWaitAll = function (commands) {
  * Visit a question and wait for its query to load.
  *
  * @param {number|string} questionIdOrAlias
+ * @param {object} [options]
+ * @param {(window: Cypress.AUTWindow) => void} [options.onBeforeLoad]
  */
-export function visitQuestion(questionIdOrAlias) {
+export function visitQuestion(questionIdOrAlias, { onBeforeLoad } = {}) {
   if (typeof questionIdOrAlias === "number") {
-    return visitQuestionById(questionIdOrAlias);
+    return visitQuestionById(questionIdOrAlias, { onBeforeLoad });
   }
 
   if (typeof questionIdOrAlias === "string") {
-    return cy.get(questionIdOrAlias).then((id) => visitQuestionById(id));
+    return cy
+      .get(questionIdOrAlias)
+      .then((id) => visitQuestionById(id, { onBeforeLoad }));
   }
 }
 
-function visitQuestionById(id) {
+function visitQuestionById(id, { onBeforeLoad } = {}) {
   // In case we use this function multiple times in a test, make sure aliases are unique for each question
   const alias = "cardQuery" + id;
   const metadataAlias = `${alias}-queryMetadata`;
@@ -122,7 +126,10 @@ function visitQuestionById(id) {
   cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
   cy.intercept("GET", `/api/card/**/${id}/query_metadata`).as(metadataAlias);
 
-  cy.visit(`/question/${id}`);
+  cy.visit({
+    url: `/question/${id}`,
+    onBeforeLoad,
+  });
 
   cy.wait("@" + metadataAlias);
   cy.wait("@" + alias);
@@ -154,14 +161,10 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
  *
  * @param {number} id
  */
-export function visitMetric(id, { hasDataAccess = true } = {}) {
+export function visitMetric(id) {
   const alias = "metricQuery" + id;
 
-  if (hasDataAccess) {
-    cy.intercept("POST", "/api/dataset").as(alias);
-  } else {
-    cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
-  }
+  cy.intercept("POST", `/api/card/${id}/query`).as(alias);
 
   cy.visit(`/metric/${id}`);
 
@@ -174,13 +177,18 @@ export function visitMetric(id, { hasDataAccess = true } = {}) {
  * @param {number|string} dashboardIdOrAlias
  * @param {Object} config
  */
-export function visitDashboard(dashboardIdOrAlias, { params = {} } = {}) {
+export function visitDashboard(
+  dashboardIdOrAlias,
+  { params = {}, dashcardTimeout } = {},
+) {
   if (typeof dashboardIdOrAlias === "number") {
-    visitDashboardById(dashboardIdOrAlias, { params });
+    visitDashboardById(dashboardIdOrAlias, { params, dashcardTimeout });
   }
 
   if (typeof dashboardIdOrAlias === "string") {
-    cy.get(dashboardIdOrAlias).then((id) => visitDashboardById(id, { params }));
+    cy.get(dashboardIdOrAlias).then((id) =>
+      visitDashboardById(id, { params, dashcardTimeout }),
+    );
   }
 }
 
@@ -233,7 +241,12 @@ function visitDashboardById(dashboard_id, config) {
         qs: config.params,
       });
 
-      cy.wait(aliases);
+      // dashcardTimeout lets callers widen the per-query wait window for dashboards with
+      // many cards, whose tail queries stagger past cy.wait's 5s default under CPU load
+      cy.wait(
+        aliases,
+        config.dashcardTimeout ? { timeout: config.dashcardTimeout } : {},
+      );
     } else {
       // For a dashboard:
       //  - without questions (can be empty or markdown only) or
@@ -308,6 +321,7 @@ export function saveQuestion(
       cy.findByLabelText(/Replace original question/i).should("be.checked");
       cy.button("Save").click();
     });
+    return;
   }
   if (shouldSaveAsNewQuestion) {
     modal().within(() => {
@@ -434,7 +448,7 @@ export const goToAuthOverviewPage = () => {
 
 /**
  * This function exists to work around custom dynamic anchor creation.
- * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dom.js#L301-L312
+ * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/utils/dom.js#L301-L312
  *
  * WARNING: For the assertions to work, ensure that a click event occurs on an anchor element afterwards.
  */

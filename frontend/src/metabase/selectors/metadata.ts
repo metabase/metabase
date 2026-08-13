@@ -1,16 +1,15 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
-import { FieldSchema } from "metabase/schema";
+import type { State } from "metabase/redux/store";
+import { type FieldEntity, FieldSchema } from "metabase/schema";
+import { getSettings } from "metabase/settings";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
 import Field from "metabase-lib/v1/metadata/Field";
 import ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import Measure from "metabase-lib/v1/metadata/Measure";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
-import Metric from "metabase-lib/v1/metadata/Metric";
-import Schema from "metabase-lib/v1/metadata/Schema";
-import Segment from "metabase-lib/v1/metadata/Segment";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 import Table from "metabase-lib/v1/metadata/Table";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
@@ -18,7 +17,10 @@ import {
   getRemappings,
 } from "metabase-lib/v1/queries/utils/field";
 import type {
+  Table as ApiTable,
   Card,
+  Measure,
+  Metric,
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
@@ -27,10 +29,8 @@ import type {
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
+  Segment,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-
-import { getSettings } from "./settings";
 
 type TableSelectorOpts = {
   includeHiddenTables?: boolean;
@@ -99,8 +99,6 @@ export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
-export const getShallowMeasures = getNormalizedMeasures;
-export const getShallowMetrics = getNormalizedMetrics;
 
 export const getMetadata: (
   state: State,
@@ -147,13 +145,13 @@ export const getMetadata: (
         .map((f) => [f.uniqueId, createField(f, metadata)]),
     );
     metadata.segments = Object.fromEntries(
-      Object.values(segments).map((s) => [s.id, createSegment(s, metadata)]),
+      Object.values(segments).map((s) => [s.id, createSegment(s)]),
     );
     metadata.measures = Object.fromEntries(
-      Object.values(measures).map((m) => [m.id, createMeasure(m, metadata)]),
+      Object.values(measures).map((m) => [m.id, createMeasure(m)]),
     );
     metadata.metrics = Object.fromEntries(
-      Object.values(metrics).map((m) => [m.id, createMetric(m, metadata)]),
+      Object.values(metrics).map((m) => [m.id, createMetric(m)]),
     );
     metadata.questions = Object.fromEntries(
       Object.values(questions).map((c) => [c.id, createQuestion(c, metadata)]),
@@ -166,7 +164,7 @@ export const getMetadata: (
       database.tables = hydrateDatabaseTables(database, metadata);
     });
     Object.values(metadata.schemas).forEach((schema) => {
-      schema.database = hydrateSchemaDatabase(schema, metadata);
+      schema.database = hydrateSchemaDatabase(schemas[schema.id], metadata);
     });
     Object.values(metadata.tables).forEach((table) => {
       table.db = hydrateTableDatabase(table, metadata);
@@ -181,13 +179,10 @@ export const getMetadata: (
       database.schemas = hydrateDatabaseSchemas(database, metadata);
     });
     Object.values(metadata.schemas).forEach((schema) => {
-      schema.tables = hydrateSchemaTables(schema, metadata);
-    });
-    Object.values(metadata.segments).forEach((segment) => {
-      segment.table = hydrateSegmentTable(segment, metadata);
+      schema.tables = hydrateSchemaTables(schema, schemas[schema.id], metadata);
     });
     Object.values(metadata.measures).forEach((measure) => {
-      measure.table = hydrateMeasureTable(measure, metadata);
+      measure.table = hydrateMeasureTable(measure, tables);
     });
     Object.values(metadata.fields).forEach((field) => {
       hydrateField(field, metadata);
@@ -230,9 +225,8 @@ function createDatabase(
 }
 
 function createSchema(schema: NormalizedSchema, metadata: Metadata): Schema {
-  const instance = new Schema(schema);
-  instance.metadata = metadata;
-  return instance;
+  const { database: _database, tables: _tables, ...rest } = schema;
+  return { ...rest, metadata };
 }
 
 function createTable(table: NormalizedTable, metadata: Metadata): Table {
@@ -242,12 +236,7 @@ function createTable(table: NormalizedTable, metadata: Metadata): Table {
 }
 
 function createField(field: NormalizedField, metadata: Metadata): Field {
-  // We need a way to distinguish field objects that come from the server
-  // vs. those that are created client-side to handle lossy transformations between
-  // Field instances and FieldDimension instances.
-  // There are scenarios where we are failing to convert FieldDimensions back into Fields,
-  // and as a safeguard we instantiate a new Field that is missing most of its properties.
-  const instance = new Field({ ...field, _comesFromEndpoint: true });
+  const instance = new Field(field);
   instance.metadata = metadata;
   return instance;
 }
@@ -261,28 +250,19 @@ function createForeignKey(
   return instance;
 }
 
-function createSegment(
-  segment: NormalizedSegment,
-  metadata: Metadata,
-): Segment {
-  const instance = new Segment(segment);
-  instance.metadata = metadata;
-  return instance;
+function createSegment(segment: NormalizedSegment): Segment {
+  const { table: _normalizedTableId, ...rest } = segment;
+  return rest;
 }
 
-function createMeasure(
-  measure: NormalizedMeasure,
-  metadata: Metadata,
-): Measure {
-  const instance = new Measure(measure);
-  instance.metadata = metadata;
-  return instance;
+function createMeasure(measure: NormalizedMeasure): Measure {
+  const { table: _normalizedTableId, ...rest } = measure;
+  return rest;
 }
 
-function createMetric(metric: NormalizedMetric, metadata: Metadata): Metric {
-  const instance = new Metric(metric);
-  instance.metadata = metadata;
-  return instance;
+function createMetric(metric: NormalizedMetric): Metric {
+  const { collection: _normalizedCollectionId, ...rest } = metric;
+  return { ...rest, collection: null };
 }
 
 function createQuestion(card: Card, metadata: Metadata): Question {
@@ -319,15 +299,18 @@ function hydrateDatabaseSchemas(
 }
 
 function hydrateSchemaDatabase(
-  schema: Schema,
+  normalized: NormalizedSchema,
   metadata: Metadata,
 ): Database | undefined {
-  const databaseId = schema.getPlainObject().database;
-  return metadata.database(databaseId) ?? undefined;
+  return metadata.database(normalized.database) ?? undefined;
 }
 
-function hydrateSchemaTables(schema: Schema, metadata: Metadata): Table[] {
-  const tableIds = schema.getPlainObject().tables;
+function hydrateSchemaTables(
+  schema: Schema,
+  normalized: NormalizedSchema,
+  metadata: Metadata,
+): Table[] {
+  const tableIds = normalized.tables;
   if (tableIds) {
     return tableIds.map((table) => metadata.table(table)).filter(isNotNull);
   } else if (schema.database && schema.database.getTables().length > 0) {
@@ -366,7 +349,11 @@ function hydrateTableFields(entityTable: Table, metadata: Metadata): Field[] {
   }
 
   return apiTable.original_fields.map((apiField) => {
-    const { entities, result } = normalize(apiField, FieldSchema);
+    // normalizing a single field always stores it under `result`
+    const { entities, result } = normalize<
+      FieldEntity,
+      Pick<State["entities"], "fields">
+    >(apiField, FieldSchema);
     const normalizedField = entities.fields?.[result];
     return createField(normalizedField, metadata);
   });
@@ -394,7 +381,9 @@ function hydrateTableForeignKeys(
 
 function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
   const segmentIds = table.getPlainObject().segments ?? [];
-  return segmentIds.map((id) => metadata.segment(id)).filter(isNotNull);
+  return segmentIds
+    .map((id) => metadata.segments[id] ?? null)
+    .filter(isNotNull);
 }
 
 function hydrateTableMeasures(table: Table, metadata: Metadata): Measure[] {
@@ -428,16 +417,25 @@ function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
   }
 }
 
-function hydrateSegmentTable(
-  segment: Segment,
-  metadata: Metadata,
-): Table | undefined {
-  return metadata.table(segment.table_id) ?? undefined;
-}
-
 function hydrateMeasureTable(
   measure: Measure,
-  metadata: Metadata,
-): Table | undefined {
-  return metadata.table(measure.table_id) ?? undefined;
+  tables: Record<string, NormalizedTable>,
+): ApiTable | undefined {
+  const normalized = tables[measure.table_id];
+  if (!normalized) {
+    return undefined;
+  }
+  const {
+    db: _db,
+    fields: _fields,
+    fks: _fks,
+    segments: _segments,
+    measures: _measures,
+    metrics: _metrics,
+    schema: _schema,
+    schema_name,
+    original_fields: _original_fields,
+    ...rest
+  } = normalized;
+  return { ...rest, schema: schema_name ?? "" };
 }

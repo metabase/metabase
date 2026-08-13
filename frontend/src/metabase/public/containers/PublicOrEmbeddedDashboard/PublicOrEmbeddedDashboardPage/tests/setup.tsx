@@ -1,5 +1,4 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 import _ from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -7,6 +6,8 @@ import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { setupEmbedDashboardEndpoints } from "__support__/server-mocks/embed";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import type {
   DashboardCard,
@@ -21,7 +22,6 @@ import {
   createMockDatabase,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { PublicOrEmbeddedDashboardPage } from "../PublicOrEmbeddedDashboardPage";
 
@@ -113,7 +113,7 @@ export async function setup(
   const view = renderWithProviders(
     <Route
       path="embed/dashboard/:token"
-      component={PublicOrEmbeddedDashboardPage}
+      element={<PublicOrEmbeddedDashboardPage />}
     />,
     {
       storeInitialState: createMockState(),

@@ -59,23 +59,6 @@ describe("issue 12439", () => {
     H.sidebar().contains("Y-axis");
   });
 });
-
-describe("issue 15029", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should allow dots in the variable reference (metabase#15029)", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type(
-      "select * from products where RATING = {{number.of.stars}}",
-    );
-
-    cy.findAllByText("Variable name").parent().findByText("number.of.stars");
-  });
-});
-
 describe("issue 16886", () => {
   const ORIGINAL_QUERY = "select 1 from orders";
   const SELECTED_TEXT = "select 1";
@@ -762,7 +745,7 @@ describe("issue 35785", () => {
           name: "from",
           "display-name": "From",
           type: "date",
-          default: "2022-10-02",
+          default: "2025-10-02",
           required: true,
         },
       },

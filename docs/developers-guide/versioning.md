@@ -47,7 +47,7 @@ You'll see releases ending as `.x` in [releases on GitHub](https://github.com/me
 
 ### The beta release
 
-The beta release is the beta release of a new major version of Metabase. So for Metabase version 57, the gold releases would be:
+The beta release is the beta release of a new major version of Metabase. So for Metabase version 57, the beta releases would be:
 
 - `v0.57.0` (the OSS version)
 - `v1.57.0` (the EE version)

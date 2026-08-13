@@ -40,7 +40,7 @@
 (t2/define-after-select :model/DashboardCard
   [dashcard]
   (if (contains? dashcard :visualization_settings)
-    (update dashcard :visualization_settings serdes/import-visualizer-settings)
+    (update dashcard :visualization_settings serdes/import-visualizer-settings-lenient)
     dashcard))
 
 (declare series)
@@ -77,15 +77,19 @@
                    (m/update-existing :parameter_mappings parameters/normalize-parameter-mappings)
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
-(defmethod serdes/hash-fields :model/DashboardCard
-  [_dashboard-card]
-  [(serdes/hydrated-hash :card) ; :card is optional, eg. text cards
-   (comp serdes/identity-hash
-         #(t2/select-one 'Dashboard :id %)
-         :dashboard_id)
-   :visualization_settings
-   :row :col
-   :created_at])
+(defn virtual-card-settings
+  "`visualization_settings` for a virtual dashcard — a dashcard with no backing card, such as a text
+  card or heading. `display` is the virtual display type as a string (\"text\", \"heading\", ...).
+  Mirrors the shape the frontend saves; see `createVirtualCard` in
+  frontend/src/metabase/common/utils/dashboard.ts."
+  [display text]
+  (cond-> {:virtual_card {:name                   nil
+                          :display                display
+                          :visualization_settings {}
+                          :archived               false}
+           :text         text}
+    ;; headings render without a card background, matching the frontend default
+    (= display "heading") (assoc :dashcard.background false)))
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
 
@@ -215,7 +219,6 @@
               (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
                               {:status-code 400
                                :in-report-card-ids (map :id in-report-cards)}))))))
-
       (let [dashboard-card-ids (t2/insert-returning-pks!
                                 :model/DashboardCard
                                 (for [dashcard dashboard-cards]
@@ -239,14 +242,12 @@
           orphaned-param-ids (set (mapcat :inline_parameters cards-being-deleted))
           ;; Get dashboard IDs (should all be the same, but let's be safe)
           dashboard-ids (set (map :dashboard_id cards-being-deleted))]
-
       (when (and (seq orphaned-param-ids) (= 1 (count dashboard-ids)))
         (let [dashboard-id (first dashboard-ids)
               dashboard (t2/select-one :model/Dashboard :id dashboard-id)
               current-params (:parameters dashboard)
               cleaned-params (filterv #(not (contains? orphaned-param-ids (:id %)))
                                       current-params)]
-
           (when (not= (count current-params) (count cleaned-params))
             (t2/update! :model/Dashboard dashboard-id {:parameters cleaned-params})
             (count orphaned-param-ids)))))))
@@ -258,7 +259,6 @@
   (t2/with-transaction [_conn]
     ;; Clean up inline parameters before deletion (since we need to read the cards first)
     (cleanup-orphaned-inline-parameters! dashboard-card-ids)
-
     ;; Delete the cards
     (t2/delete! :model/PulseCard :dashboard_card_id [:in dashboard-card-ids])
     (t2/delete! :model/DashboardCard :id [:in dashboard-card-ids])))

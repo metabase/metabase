@@ -170,7 +170,7 @@
       :custom-row     {"count"      100
                        "QUANTITY"   10
                        "CREATED_AT" "2024-09-08T22:03:20.239+03:00"}
-        ;; TODO: Clicking on breakout columns in table views doesn't work properly.
+      ;; TODO: Clicking on breakout columns in table views doesn't work properly.
       :column-name    "count"
       :drill-type     :drill-thru/zoom-in.binning
       :expected       {:type        :drill-thru/zoom-in.binning
@@ -216,7 +216,6 @@
         drilled (lib/drill-thru query -1 nil zoom-in)]
     (testing "zoom-in.binning is available"
       (is (some? zoom-in)))
-
     (testing "drilled query"
       (testing "still has both breakouts"
         (is (= 2 (count (lib/breakouts drilled)))))
@@ -246,7 +245,6 @@
         drilled  (lib/drill-thru query -1 nil zoom-in)]
     (testing "zoom-in.binning is available"
       (is (some? zoom-in)))
-
     (testing "drilled query"
       (testing "still has both breakouts"
         (is (= 2 (count (lib/breakouts drilled)))))
@@ -401,11 +399,9 @@
     ;; the column (as printed out in console.log) was from legacy metadata, and had `:source-alias`, renamed to
     ;; `:lib/original-join-alias`; but should be missing `:lib/join-alias`
     (assert (:lib/original-join-alias people-orders-clicked-column))
-
     (assert (nil? (get-in orders-people-ref [1 :join-alias])))
     (assert (nil? (:lib/join-alias orders-people-clicked-column)))
     (assert (nil? (:source-alias orders-people-clicked-column)))
-
     (testing "zoom-in binning should not depend on join order"
       (is (= (assoc-in orders-people-zoom [:column :lib/original-join-alias] "Orders")
              people-orders-zoom)))))

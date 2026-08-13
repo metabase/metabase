@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk.query-processor-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.bigquery-cloud-sdk.query-processor-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.bigquery-cloud-sdk.query-processor-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -14,10 +16,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -157,7 +159,6 @@
                 :params     nil
                 :table-name "venues"
                 :mbql?      true})
-
              (-> (mt/mbql-query venues
                    {:aggregation [[:avg $category_id]]
                     :breakout    [$price]
@@ -190,7 +191,7 @@
                        "  `categories__via__category_id__name`"
                        "ORDER BY"
                        "  `categories__via__category_id__name` ASC"]
-                        ;; reformat the SQL because the formatting may have changed once we change the test DB name.
+                      ;; reformat the SQL because the formatting may have changed once we change the test DB name.
                       (str/join " ")
                       (driver/prettify-native-form :bigquery-cloud-sdk)
                       str/split-lines))
@@ -212,7 +213,6 @@
     (is (= "2018-08-31T00:00:00Z"
            (native-timestamp-query (mt/id) "2018-08-31 00:00:00" "UTC"))
         "A UTC date is returned, we should read/return it as UTC")
-
     (test.tz/with-system-timezone-id! "America/Chicago"
       (mt/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
                                          :details (assoc (:details (mt/db))
@@ -222,7 +222,6 @@
             (str "This test includes a `use-jvm-timezone` flag of true that will assume that the date coming from BigQuery "
                  "is already in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that "
                  "the correct date is compared"))))
-
     (test.tz/with-system-timezone-id! "Asia/Jakarta"
       (mt/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
                                          :details (assoc (:details (mt/db))
@@ -248,8 +247,7 @@
 (deftest ^:parallel remark-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= (with-test-db-name
-             (str "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
-                  "SELECT"
+             (str "SELECT"
                   " `v4_test_data.venues`.`id` AS `id`,"
                   " `v4_test_data.venues`.`name` AS `name`,"
                   " `v4_test_data.venues`.`category_id` AS `category_id`,"
@@ -257,7 +255,8 @@
                   " `v4_test_data.venues`.`longitude` AS `longitude`,"
                   " `v4_test_data.venues`.`price` AS `price` "
                   "FROM `v4_test_data.venues` "
-                  "LIMIT 1"))
+                  "LIMIT 1"
+                  "\n\n-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304"))
            (query->native
             {:database (mt/id)
              :type     :query
@@ -320,8 +319,8 @@
   (testing "Make sure we can detect temporal types correctly"
     (are [expr expected-type] (= expected-type
                                  (#'bigquery.qp/temporal-type expr))
-      [:field "x" {:base-type :type/DateTime}]                              :datetime
-      [:field "x" {:base-type :type/DateTime, :temporal-unit :day-of-week}] nil
+      [:field {:base-type :type/DateTime} "x"]                              :datetime
+      [:field {:base-type :type/DateTime, :temporal-unit :day-of-week} "x"] nil
       (meta/field-metadata :checkins :date)                                 :date)))
 
 (deftest ^:parallel reconcile-temporal-types-test
@@ -345,33 +344,36 @@
               (is (= [:=
                       [::bigquery.qp/extract :dayofweek expected-identifier nil]
                       [:inline 1]]
-                     (sql.qp/->honeysql :bigquery-cloud-sdk [:= [:field (:id field) {:temporal-unit     :day-of-week
-                                                                                     ::add/source-table "ABC"}] 1]))))))))))
+                     (sql.qp/->honeysql :bigquery-cloud-sdk [:= {} [:field {:temporal-unit     :day-of-week
+                                                                            ::add/source-table "ABC"} (:id field)] 1]))))))))))
 
 (deftest reconcile-unix-timestamps-test
   (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"
     (mt/test-driver :bigquery-cloud-sdk
       (mt/with-report-timezone-id! nil
         (mt/dataset test-data
-          (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                            (mt/metadata-provider)
-                                            {:fields [{:id                (mt/id :reviews :rating)
-                                                       :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
-                                                       :effective-type    :type/Instant}]})
-            (let [query         (mt/mbql-query reviews
-                                  {:filter   [:=
-                                              [:field %rating {::add/source-table $$reviews}]
-                                              [:relative-datetime -30 :day]]
-                                   :order-by [[:asc
-                                               [:field %id {:add/source-table $$reviews}]]]
-                                   :limit    1})
-                  filter-clause (get-in query [:query :filter])]
-              (is (= [(str (format "TIMESTAMP_MILLIS(%s.reviews.rating)" (get-test-data-name))
-                           " = "
-                           "TIMESTAMP_TRUNC(TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -30 day), day)")]
-                     (sql/format-expr (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause))))
-              (is (= :completed
-                     (:status (qp/process-query query)))))))))))
+          (let [mp (lib.tu/merged-mock-metadata-provider
+                    (mt/metadata-provider)
+                    {:fields [{:id                (mt/id :reviews :rating)
+                               :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
+                               :effective-type    :type/Instant}]})]
+            (qp.store/with-metadata-provider mp
+              (let [rating-ref    (-> (lib/ref (lib.metadata/field mp (mt/id :reviews :rating)))
+                                      ;; compiling the filter clause directly below bypasses `add-alias-info`, and
+                                      ;; the UNIX-timestamp coercion cast is only applied to fields whose options
+                                      ;; carry the source table it would normally add
+                                      (lib/update-options assoc ::add/source-table (mt/id :reviews)))
+                    query         (-> (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
+                                      (lib/filter (lib/= rating-ref (lib/relative-datetime -30 :day)))
+                                      (lib/order-by (lib.metadata/field mp (mt/id :reviews :id)) :asc)
+                                      (lib/limit 1))
+                    filter-clause (first (lib/filters query))]
+                (is (= [(str (format "TIMESTAMP_MILLIS(%s.reviews.rating)" (get-test-data-name))
+                             " = "
+                             "TIMESTAMP_TRUNC(TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -30 day), day)")]
+                       (sql/format-expr (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause))))
+                (is (= :completed
+                       (:status (qp/process-query query))))))))))))
 
 (deftest temporal-type-conversion-test
   (mt/with-driver :bigquery-cloud-sdk
@@ -419,7 +421,7 @@
                    ;; TIMESTAMP_ADD doesn't support `year` so this should cast a datetime instead
                    [:timestamp :year "TIMESTAMP_TRUNC(TIMESTAMP(DATETIME_ADD(CURRENT_DATETIME(), INTERVAL -1 year)), year)"]]]
             (testing t
-              (let [hsql (->> (sql.qp/->honeysql :bigquery-cloud-sdk [:relative-datetime -1 unit])
+              (let [hsql (->> (sql.qp/->honeysql :bigquery-cloud-sdk [:relative-datetime {} -1 unit])
                               (#'bigquery.qp/->temporal-type t))]
                 (testing "Should have correct type metadata after reconciliation"
                   (is (= t
@@ -460,7 +462,7 @@
                     :let [expected-sql (for [line expected-sql]
                                          (str/replace line #"\Q{{timezone}}\E" timezone))]]
               (testing t
-                (let [hsql (->> (sql.qp/->honeysql :bigquery-cloud-sdk [:relative-datetime -1 unit])
+                (let [hsql (->> (sql.qp/->honeysql :bigquery-cloud-sdk [:relative-datetime {} -1 unit])
                                 (#'bigquery.qp/->temporal-type t))]
                   (testing "Should have correct type metadata after reconciliation"
                     (is (= t
@@ -482,8 +484,9 @@
           (testing expected-type
             (let [[_ _ relative-datetime :as clause] (sql.qp/->honeysql :bigquery-cloud-sdk
                                                                         [:=
+                                                                         {}
                                                                          t
-                                                                         [:relative-datetime -1 :year]])]
+                                                                         [:relative-datetime {} -1 :year]])]
               (testing (format "\nclause = %s" (pr-str clause))
                 (is (= expected-type
                        (#'bigquery.qp/temporal-type relative-datetime)))))))))))
@@ -493,16 +496,16 @@
     (mt/with-driver :bigquery-cloud-sdk
       (qp.store/with-metadata-provider (mt/id)
         (mt/with-temporary-setting-values [start-of-week :sunday]
-          (is (= ["DATE_TRUNC(`source`.`date`, week(sunday))"]
+          (is (= ["DATE_TRUNC(`__mb_source`.`date`, week(sunday))"]
                  (sql.qp/format-honeysql
                   :bigquery-cloud-sdk
                   (sql.qp/->honeysql
                    :bigquery-cloud-sdk
-                   [:field "date" {:temporal-unit      :week
-                                   :base-type          :type/Date
-                                   ::add/source-table  ::add/source
-                                   ::add/source-alias  "date"
-                                   ::add/desired-alias "date"}])))))))))
+                   [:field {:temporal-unit      :week
+                            :base-type          :type/Date
+                            ::add/source-table  ::add/source
+                            ::add/source-alias  "date"
+                            ::add/desired-alias "date"} "date"])))))))))
 
 (deftest ^:parallel between-test
   (testing "Make sure :between clauses reconcile the temporal types of their args"
@@ -514,6 +517,7 @@
                 (t/local-date-time "2019-11-11T00:00")
                 (t/local-date-time "2019-11-12T00:00")]
                (between->sql [:between
+                              {}
                               (with-meta (sql.qp/compiled [:raw "field"]) {:bigquery-cloud-sdk/temporal-type :datetime})
                               (t/local-date "2019-11-11")
                               (t/local-date "2019-11-12")]))))
@@ -522,6 +526,7 @@
                 (t/local-date "2019-11-11")
                 (t/local-date "2019-11-12")]
                (between->sql [:between
+                              {}
                               (sql.qp/compiled [:raw "field"])
                               (t/local-date "2019-11-11")
                               (t/local-date "2019-11-12")]))))
@@ -530,6 +535,7 @@
                 (t/local-date "2019-11-11")
                 (t/local-date "2019-11-12")]
                (between->sql [:between
+                              {}
                               (with-meta (sql.qp/compiled [:raw "field"]) {:bigquery-cloud-sdk/temporal-type :date})
                               (t/local-date "2019-11-11")
                               (t/local-date "2019-11-12")]))))
@@ -541,21 +547,24 @@
             (testing "Should be able to get temporal type from a `:field` with integer ID"
               (is (= expected
                      (between->sql [:between
-                                    [:field (mt/id :checkins :date) {::add/source-table (mt/id :checkins)}]
+                                    {}
+                                    [:field {::add/source-table (mt/id :checkins)} (mt/id :checkins :date)]
                                     (t/local-date "2019-11-11")
                                     (t/local-date "2019-11-12")]))))
             (testing "Should be able to get temporal type from a `:field` with `:temporal-unit`"
               (is (= (cons (with-test-db-name "WHERE DATE_TRUNC(`v4_test_data.checkins`.`date`, day) BETWEEN ? AND ?")
                            (rest expected))
                      (between->sql [:between
-                                    [:field (mt/id :checkins :date) {::add/source-table (mt/id :checkins)
-                                                                     :temporal-unit     :day}]
+                                    {}
+                                    [:field {::add/source-table (mt/id :checkins)
+                                             :temporal-unit     :day} (mt/id :checkins :date)]
                                     (t/local-date "2019-11-11")
                                     (t/local-date "2019-11-12")]))))
             (testing "Should work with a field literal"
               (is (= ["WHERE `date` BETWEEN ? AND ?" (t/local-date "2019-11-11") (t/local-date "2019-11-12")]
                      (between->sql [:between
-                                    [:field "date" {:base-type :type/Date}]
+                                    {}
+                                    [:field {:base-type :type/Date} "date"]
                                     (t/local-date-time "2019-11-11T12:00:00")
                                     (t/local-date-time "2019-11-12T12:00:00")]))))))))))
 
@@ -816,9 +825,10 @@
                      (sql/format {:where (sql.qp/->honeysql
                                           :bigquery-cloud-sdk
                                           [:=
-                                           [:field 1 {:temporal-unit     unit
-                                                      ::add/source-table "ABC"}]
-                                           [:relative-datetime -1 unit]])}
+                                           {}
+                                           [:field {:temporal-unit     unit
+                                                    ::add/source-table "ABC"} 1]
+                                           [:relative-datetime {} -1 unit]])}
                                  {:dialect ::h2x/unquoted-dialect}))))))))))
 
 (deftest filter-by-relative-date-ranges-test-2
@@ -840,9 +850,10 @@
                       (let [[sql] (sql/format {:where (sql.qp/->honeysql
                                                        :bigquery-cloud-sdk
                                                        [:=
-                                                        [:field 1 {:temporal-unit     unit
-                                                                   ::add/source-table "ABC"}]
-                                                        [:relative-datetime -1 unit]])}
+                                                        {}
+                                                        [:field {:temporal-unit     unit
+                                                                 ::add/source-table "ABC"} 1]
+                                                        [:relative-datetime {} -1 unit]])}
                                               {:dialect ::h2x/unquoted-dialect})]
                         (str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk sql)))))]
             (are [field-type unit expected-sql] (= (for [line expected-sql]
@@ -1034,9 +1045,31 @@
     (testing "replace non-letter characters with underscores"
       (is (= "_"
              (driver/escape-alias :bigquery-cloud-sdk "😍"))))
+    (testing "preserve Unicode letters"
+      (is (= "通過後内定承諾応募数"
+             (driver/escape-alias :bigquery-cloud-sdk "通過後内定承諾応募数"))))
     (testing "trim long strings"
       (is (= "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_89971909"
              (driver/escape-alias :bigquery-cloud-sdk (str/join (repeat 300 "a"))))))))
+
+(deftest ^:parallel japanese-aggregation-aliases-test
+  (driver/with-driver :bigquery-cloud-sdk
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          price (lib.metadata/field mp (mt/id :products :price))
+          rating (lib.metadata/field mp (mt/id :products :rating))
+          category (lib.metadata/field mp (mt/id :products :category))
+          query (as-> (lib/query mp products) q
+                  (lib/aggregate q (lib/with-expression-name (lib/sum price) "通過後内定承諾応募数"))
+                  (lib/aggregate q (lib/with-expression-name (lib/sum rating) "通過後入社決定応募数"))
+                  (lib/breakout q category)
+                  (lib/order-by q (lib/aggregation-ref q 0))
+                  (lib/order-by q (lib/aggregation-ref q 1)))]
+      (is (= [["Doohickey" 2185 156]
+              ["Gizmo" 2834 185]
+              ["Gadget" 3019 181]
+              ["Widget" 3109 170]]
+             (mt/formatted-rows [str int int] (qp/process-query query)))))))
 
 (deftest ^:parallel remove-diacriticals-from-field-aliases-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1113,14 +1146,13 @@
         (mt/with-native-query-testing-context query
           (is (= (with-test-db-name
                    {:query      ["SELECT"
-                                 "  `source`.`count` AS `count`,"
+                                 "  `__mb_source`.`count` AS `count`,"
                                  "  COUNT(*) AS `count_2`"
                                  "FROM"
                                  "  ("
                                  "    SELECT"
                                  "      DATE_TRUNC("
                                  "        `v4_test_data.checkins`.`date`,"
-
                                  "        month"
                                  "      ) AS `date`,"
                                  "      COUNT(*) AS `count`"
@@ -1130,7 +1162,7 @@
                                  "      `date`"
                                  "    ORDER BY"
                                  "      `date` ASC"
-                                 "  ) AS `source`"
+                                 "  ) AS `__mb_source`"
                                  "GROUP BY"
                                  "  `count`"
                                  "ORDER BY"
@@ -1138,7 +1170,7 @@
                                  "LIMIT"
                                  "  2"]
                     :params     nil
-                    :table-name "source"
+                    :table-name "__mb_source"
                     :mbql?      true})
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
@@ -1179,20 +1211,20 @@
                      :breakout     [[:field "source" {:base-type :type/Text}]]
                      :source-query {:native "select 1 as `val`, '2' as `source`"}})]
         (is (= {:query      ["SELECT"
-                             "  `source`.`source` AS `source`,"
+                             "  `__mb_source`.`source` AS `source`,"
                              "  COUNT(*) AS `count`"
                              "FROM"
                              "  ("
                              "    select"
                              "      1 as `val`,"
                              "      '2' as `source`"
-                             "  ) AS `source`"
+                             "  ) AS `__mb_source`"
                              "GROUP BY"
                              "  `source`"
                              "ORDER BY"
                              "  `source` ASC"]
                 :params     nil
-                :table-name "source"
+                :table-name "__mb_source"
                 :mbql?      true}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
@@ -1244,7 +1276,7 @@
 (deftest ^:parallel test-bigquery-log
   (testing "correct format of log10 for BigQuery"
     (is (= ["LOG(150, 10)"]
-           (sql/format-expr (sql.qp/->honeysql :bigquery-cloud-sdk [:log 150]))))))
+           (sql/format-expr (sql.qp/->honeysql :bigquery-cloud-sdk [:log {} 150]))))))
 
 (deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1263,16 +1295,16 @@
                                 (lib/aggregate (lib/sum orders-total))
                                 (lib/limit 3))]
       (is (= ["SELECT"
-              "  `source`.`created_at` AS `created_at`,"
+              "  `__mb_source`.`created_at` AS `created_at`,"
               "  SUM(COUNT(*)) OVER ("
               "    ORDER BY"
-              "      `source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
+              "      `__mb_source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
               "  ) AS `count`,"
-              "  SUM(SUM(`source`.`total`)) OVER ("
+              "  SUM(SUM(`__mb_source`.`total`)) OVER ("
               "    ORDER BY"
-              "      `source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
+              "      `__mb_source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
               "  ) AS `sum`,"
-              "  SUM(`source`.`total`) AS `sum_2`"
+              "  SUM(`__mb_source`.`total`) AS `sum_2`"
               "FROM"
               "  ("
               "    SELECT"
@@ -1283,7 +1315,7 @@
               "      `test_data.orders`.`total` AS `total`"
               "    FROM"
               "      `test_data.orders`"
-              "  ) AS `source`"
+              "  ) AS `__mb_source`"
               "GROUP BY"
               "  `created_at`"
               "ORDER BY"
@@ -1293,7 +1325,7 @@
              (-> (qp.compile/compile query)
                  :query
                  (->> (driver/prettify-native-form :bigquery-cloud-sdk))
-                 (str/replace #"sha_[a-z0-9]+_test_data" "test_data")
+                 (str/replace #"sha_[a-z0-9_]+_test_data" "test_data")
                  str/split-lines))))))
 
 (deftest ^:parallel case-expression-with-default-Date-case-DateTime-test

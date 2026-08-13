@@ -9,8 +9,7 @@ import {
   SelectButtonRoot,
 } from "./SelectButton.styled";
 
-export interface SelectButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   left?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;

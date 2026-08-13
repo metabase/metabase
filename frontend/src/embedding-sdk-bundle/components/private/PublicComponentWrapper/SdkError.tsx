@@ -1,16 +1,23 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type CSSProperties, type PropsWithChildren, useMemo } from "react";
+import { type PropsWithChildren, useMemo } from "react";
 import { jt, t } from "ttag";
 
-import { ERROR_DOC_LINKS } from "embedding-sdk-bundle/errors";
-import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getErrorComponent } from "embedding-sdk-bundle/store/selectors";
 import type { SdkErrorComponentProps } from "embedding-sdk-bundle/types";
-import { Alert } from "metabase/common/components/Alert";
+import { ERROR_DOC_LINKS } from "embedding-sdk-shared/errors";
+import type { MetabaseErrorCode } from "embedding-sdk-shared/errors/error-code";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
-import { color } from "metabase/lib/colors";
-import { Anchor, Box, Center, Code, Flex, Portal } from "metabase/ui";
+import {
+  Alert,
+  Anchor,
+  Box,
+  Center,
+  Code,
+  Flex,
+  Icon,
+  Portal,
+} from "metabase/ui";
 
 export const SdkError = ({
   message,
@@ -24,6 +31,7 @@ export const SdkError = ({
 
   const errorMessage = useMemo(() => {
     if (error && "code" in error && typeof error.code === "string") {
+      // Unjustified type cast. FIXME
       const docsLink = ERROR_DOC_LINKS[error.code as MetabaseErrorCode];
 
       if (docsLink) {
@@ -93,18 +101,38 @@ export function SdkPortalErrorWrapper({ children }: PropsWithChildren) {
   );
 }
 
-const FORCE_DARK_TEXT_COLOR = {
-  // The Alert component has a light background, we need to force a dark text
-  // color. The sdk aliases text-primary to the primary color, which in dark themes
-  // is a light color, making the text un-readable
-  "--mb-color-text-primary": color("text-primary"),
-  "--mb-color-text-secondary": color("text-secondary"),
-} as CSSProperties;
-
 const DefaultErrorMessage = ({ message, onClose }: SdkErrorComponentProps) => (
-  <Box p="sm" style={FORCE_DARK_TEXT_COLOR}>
-    <Alert variant="error" icon="warning" onClose={onClose}>
-      {message}
+  <Box p="sm" maw={600}>
+    <Alert
+      color="error"
+      icon={<Icon name="warning" />}
+      withCloseButton={Boolean(onClose)}
+      onClose={onClose}
+      styles={{
+        root: { background: "var(--alert-bg)" },
+        closeButton: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+          border: 0,
+          background: "transparent",
+          appearance: "none",
+          cursor: "pointer",
+        },
+      }}
+    >
+      <Box
+        style={{
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          display: "-webkit-box",
+          overflow: "hidden",
+          wordBreak: "break-all",
+        }}
+      >
+        {message}
+      </Box>
     </Alert>
   </Box>
 );
@@ -120,7 +148,7 @@ const ResourceNotFoundError = ({
   <SdkError
     message={jt`${resource} ${(
       <Code
-        bg="background-error-secondary"
+        bg="background_surface-error-subtle"
         c="text-secondary"
         key="question-id"
       >

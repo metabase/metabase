@@ -14,5 +14,8 @@ export const textareaOverrides: MantineThemeOverride["components"] = {
     classNames: {
       error: TextInputStyles.error,
     },
+    styles: {
+      input: { lineHeight: "normal" },
+    },
   }),
 };

@@ -36,7 +36,6 @@
         goal-val             (ui-logic/find-goal-value card_part)
         comparison-col-rowfn (ui-logic/make-goal-comparison-rowfn (:card card_part)
                                                                   (get-in card_part [:result :data]))]
-
     (when-not (and goal-val comparison-col-rowfn)
       (throw (ex-info "Unable to compare results to goal for notificationt_card"
                       {:notification_card  notification_card
@@ -78,7 +77,7 @@
     (when-let [rows (-> notification-payload :payload :card_part :result :data :rows)]
       (notification.payload/cleanup! rows))
     (catch Exception e
-      (log/warn e "Error cleaning up temp files for notification" id)))
+      (log/warn "Error cleaning up temp files for notification" id ":" (ex-message e))))
   (when-not skipped?
     (events/publish-event! :event/alert-send
                            {:id      id

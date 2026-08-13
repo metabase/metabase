@@ -1,7 +1,7 @@
-import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { useMemo } from "react";
 
 import { Sortable, SortableList } from "metabase/common/components/Sortable";
+import { useDndSensors } from "metabase/common/hooks";
 import type {
   ColumnFormattingSetting,
   DatasetColumn,
@@ -34,9 +34,7 @@ export const SortableRuleList = ({
 
   const getId = (rule: RuleWithId) => rule.id.toString();
 
-  const pointerSensor = useSensor(PointerSensor, {
-    activationConstraint: { distance: 15 },
-  });
+  const sensors = useDndSensors({ distance: 15 });
 
   const handleSortEnd = ({
     id,
@@ -74,7 +72,7 @@ export const SortableRuleList = ({
         items={rulesWithIDs}
         getId={getId}
         renderItem={renderItem}
-        sensors={[pointerSensor]}
+        sensors={sensors}
         onSortEnd={handleSortEnd}
       />
     </div>

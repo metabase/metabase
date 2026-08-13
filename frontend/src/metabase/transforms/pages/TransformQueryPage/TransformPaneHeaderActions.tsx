@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
-import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { getValidationResult } from "metabase/transforms/utils";
@@ -32,9 +32,6 @@ export const TransformPaneHeaderActions = (props: Props) => {
     readOnly,
   } = props;
   const metadata = useSelector(getMetadata);
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
 
   const { validationResult, isNative } = useMemo(() => {
     if (source.type === "query") {
@@ -54,13 +51,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
   }, [source, metadata]);
   const isPythonTransform = source.type === "python";
 
-  if (
-    !readOnly &&
-    !isPythonTransform &&
-    !isNative &&
-    !isEditMode &&
-    !isRemoteSyncReadOnly
-  ) {
+  if (!readOnly && !isPythonTransform && !isNative && !isEditMode) {
     return <EditDefinitionButton transformId={transform.id} />;
   }
 

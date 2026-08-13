@@ -1,38 +1,127 @@
-import fetchMock, { type UserRouteConfig } from "fetch-mock";
+import fetchMock, {
+  type RouteResponse,
+  type UserRouteConfig,
+} from "fetch-mock";
 
+import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
+  MetabotConversation,
+  MetabotConversationTitleResponse,
+  MetabotGroupLimit,
+  MetabotGroupPermission,
   MetabotId,
   MetabotInfo,
+  MetabotInstanceLimit,
+  MetabotSettingsResponse,
+  MetabotTenantLimit,
+  PurchaseCloudAddOnRequest,
+  RegenerateSuggestedMetabotPromptsResponse,
   SuggestedMetabotPrompt,
   SuggestedMetabotPromptsResponse,
+  UpdateMetabotSettingsRequest,
+  UserMetabotPermissionsResponse,
 } from "metabase-types/api";
+import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metabot";
+
+const METABASE_MANAGED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
+  "metabase-ai-managed";
+const METABASE_TIERED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
+  "metabase-ai-tiered";
+const METABASE_MANAGED_AI_UNIT_MULTIPLIER = 1_000_000;
 
 export function setupMetabotsEndpoints(
   metabots: MetabotInfo[],
   statusCode?: number,
 ) {
   fetchMock.get(
-    "path:/api/ee/metabot-v3/metabot",
+    "path:/api/metabot/metabot",
     statusCode ? { status: statusCode } : { items: metabots },
   );
   metabots.forEach((metabot) => {
-    fetchMock.put(`path:/api/ee/metabot-v3/metabot/${metabot.id}`, (call) => {
+    fetchMock.put(`path:/api/metabot/metabot/${metabot.id}`, (call) => {
+      // Unjustified type cast. FIXME
       return { ...metabot, ...JSON.parse(call.options?.body as string) };
     });
   });
 }
 
-export function setupMetabotPromptSuggestionsEndpointError(
-  metabotId: MetabotId,
+export function setupListMetabotConversationsEndpoint(
+  conversations: MetabotConversation[] = [],
 ) {
+  fetchMock.removeRoute("metabot-conversations-list");
   fetchMock.get(
-    `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,
-    { status: 500 },
+    "path:/api/metabot/conversations",
+    {
+      data: conversations,
+      total: conversations.length,
+      limit: conversations.length,
+      offset: 0,
+    },
+    { name: "metabot-conversations-list" },
   );
 }
 
+export function setupGetMetabotConversationTitleEndpoint(
+  response: MetabotConversationTitleResponse,
+) {
+  fetchMock.removeRoute("metabot-conversation-title");
+  fetchMock.get(
+    "express:/api/metabot/conversations/:conversationId/title",
+    response,
+    { name: "metabot-conversation-title" },
+  );
+}
+
+export function createMockMetabotConversationDetail(
+  opts?: Partial<MetabotConversationDetail>,
+): MetabotConversationDetail {
+  return {
+    conversation_id: "00000000-0000-0000-0000-000000000000",
+    created_at: new Date().toISOString(),
+    title: null,
+    user_id: 1,
+    forked_from_conversation_id: null,
+    state: {},
+    messages: [],
+    ...opts,
+  };
+}
+
+export function setupGetMetabotConversationEndpoint(
+  detail: MetabotConversationDetail,
+) {
+  const routeName = `metabot-conversation-detail-${detail.conversation_id}`;
+  fetchMock.removeRoute(routeName);
+  fetchMock.get(
+    `path:/api/metabot/conversations/${detail.conversation_id}`,
+    detail,
+    { name: routeName },
+  );
+}
+
+export function setupGetMetabotConversationEndpointError(
+  conversationId: string,
+  status = 500,
+) {
+  const routeName = `metabot-conversation-detail-${conversationId}`;
+  fetchMock.removeRoute(routeName);
+  fetchMock.get(
+    `path:/api/metabot/conversations/${conversationId}`,
+    { status },
+    { name: routeName },
+  );
+}
+
+export function setupMetabotPromptSuggestionsEndpointError(
+  metabotId: MetabotId,
+) {
+  fetchMock.get(`path:/api/metabot/metabot/${metabotId}/prompt-suggestions`, {
+    status: 500,
+  });
+}
+
 export function setupMetabotAddEntitiesEndpoint(metabotId: MetabotId) {
-  fetchMock.put(`path:/api/ee/metabot-v3/metabot/${metabotId}/entities`, {
+  fetchMock.put(`path:/api/metabot/metabot/${metabotId}/entities`, {
     status: 204,
   });
 }
@@ -60,7 +149,7 @@ export function setupMetabotPromptSuggestionsEndpoint({
   const body = { prompts: page, limit, offset, total };
   fetchMock.removeRoute(`metabot-${metabotId}-prompt-suggestions-get`);
   fetchMock.get({
-    url: `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,
+    url: `path:/api/metabot/metabot/${metabotId}/prompt-suggestions`,
     query: { limit, offset },
     response: {
       status: 200,
@@ -81,7 +170,7 @@ export function setupRemoveMetabotPromptSuggestionEndpoint(
   promptId: SuggestedMetabotPrompt["id"],
 ) {
   fetchMock.delete(
-    `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions/${promptId}`,
+    `path:/api/metabot/metabot/${metabotId}/prompt-suggestions/${promptId}`,
     { status: 202 },
   );
 }
@@ -89,10 +178,216 @@ export function setupRemoveMetabotPromptSuggestionEndpoint(
 export function setupRegenerateMetabotPromptSuggestionsEndpoint(
   metabotId: MetabotId,
   options?: UserRouteConfig,
+  body: RegenerateSuggestedMetabotPromptsResponse = {
+    status: "generated",
+    prompt_count: 1,
+  },
 ) {
   fetchMock.post(
-    `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions/regenerate`,
-    { status: 204 },
+    `path:/api/metabot/metabot/${metabotId}/prompt-suggestions/regenerate`,
+    { status: 200, body },
     options,
+  );
+}
+
+const SLACK_SETTINGS_ROUTE_NAME = "metabot-slack-settings";
+
+export function setupMetabotSlackSettingsEndpoint() {
+  fetchMock.removeRoute(SLACK_SETTINGS_ROUTE_NAME);
+  fetchMock.put(
+    "path:/api/metabot/slack/settings",
+    { ok: true },
+    {
+      name: SLACK_SETTINGS_ROUTE_NAME,
+    },
+  );
+}
+
+export function setupMetabotSlackSettingsEndpointWithError(
+  status: number,
+  body: string,
+) {
+  fetchMock.removeRoute(SLACK_SETTINGS_ROUTE_NAME);
+  fetchMock.put(
+    "path:/api/metabot/slack/settings",
+    { status, body },
+    {
+      name: SLACK_SETTINGS_ROUTE_NAME,
+    },
+  );
+}
+
+export function setupMetabotSettingsEndpoint({
+  provider,
+  response,
+}: {
+  provider: UpdateMetabotSettingsRequest["provider"];
+  response: MetabotSettingsResponse;
+}) {
+  fetchMock.get(`path:/api/metabot/settings?provider=${provider}`, response);
+}
+
+export function setupUpdateMetabotSettingsEndpoint(
+  response: MetabotSettingsResponse,
+) {
+  fetchMock.put("path:/api/metabot/settings", response);
+}
+
+export function setupUpdateMetabotSettingsEndpointWithError(
+  status: number,
+  body: string,
+) {
+  fetchMock.put("path:/api/metabot/settings", { status, body });
+}
+
+type SetupMetabaseManagedAiEndpointsOptions = {
+  billingPeriodMonths?: number;
+  metabasePricePerUnit?: number;
+  metabotUsageQuota?: {
+    is_locked?: boolean;
+    tokens: number | null;
+    free_tokens?: number | null;
+    updated_at: string | null;
+  } | null;
+  purchaseCloudAddOnResponse?: RouteResponse;
+  removeCloudAddOnResponse?: number | { status: number; body: unknown };
+};
+
+export function setupMetabaseManagedAiEndpoints({
+  billingPeriodMonths = 1,
+  metabasePricePerUnit = 3.75,
+  metabotUsageQuota = null,
+  purchaseCloudAddOnResponse = 200,
+  removeCloudAddOnResponse = 200,
+}: SetupMetabaseManagedAiEndpointsOptions = {}) {
+  fetchMock.get("path:/api/ee/metabot/usage", {
+    is_locked: metabotUsageQuota?.is_locked ?? false,
+    tokens: metabotUsageQuota?.tokens ?? null,
+    free_tokens: metabotUsageQuota?.free_tokens ?? null,
+    updated_at: metabotUsageQuota?.updated_at ?? null,
+  });
+
+  fetchMock.get("path:/api/ee/cloud-add-ons/addons", [
+    {
+      id: 1,
+      active: true,
+      self_service: true,
+      deployment: "cloud",
+      billing_period_months: billingPeriodMonths,
+      default_base_fee: 0,
+      default_included_units: 0,
+      default_prepaid_units: 1,
+      // The API returns a per-token price; tests pass a per-1M-tokens price.
+      default_price_per_unit:
+        metabasePricePerUnit / METABASE_MANAGED_AI_UNIT_MULTIPLIER,
+      default_total_units: 1,
+      description: null,
+      is_metered: true,
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used for fetch mock only
+      name: "Metabase AI",
+      product_tiers: [],
+      product_type: METABASE_MANAGED_AI_PRODUCT_TYPE,
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used for fetch mock only
+      short_name: "Metabase AI",
+      token_features: [],
+      trial_days: null,
+    },
+  ]);
+
+  fetchMock.post(
+    `path:/api/ee/cloud-add-ons/${METABASE_MANAGED_AI_PRODUCT_TYPE}`,
+    purchaseCloudAddOnResponse,
+  );
+
+  fetchMock.delete(
+    `path:/api/ee/cloud-add-ons/${METABASE_MANAGED_AI_PRODUCT_TYPE}`,
+    removeCloudAddOnResponse,
+  );
+
+  fetchMock.delete(
+    `path:/api/ee/cloud-add-ons/${METABASE_TIERED_AI_PRODUCT_TYPE}`,
+    removeCloudAddOnResponse,
+  );
+}
+
+const METABOT_GROUP_PERMISSIONS_ROUTE_NAME = "metabot-group-permissions";
+
+export function setupMetabotGroupPermissionsEndpoint(
+  permissions: MetabotGroupPermission[] = [],
+  advanced = false,
+) {
+  fetchMock.removeRoute(METABOT_GROUP_PERMISSIONS_ROUTE_NAME);
+  fetchMock.get(
+    "path:/api/ee/ai-controls/permissions",
+    { permissions, advanced },
+    { name: METABOT_GROUP_PERMISSIONS_ROUTE_NAME },
+  );
+}
+
+const UPDATE_METABOT_GROUP_PERMISSIONS_ROUTE_NAME =
+  "update-metabot-group-permissions";
+
+export function setupUpdateMetabotGroupPermissionsEndpoint() {
+  fetchMock.removeRoute(UPDATE_METABOT_GROUP_PERMISSIONS_ROUTE_NAME);
+  fetchMock.put("path:/api/ee/ai-controls/permissions", 200, {
+    name: UPDATE_METABOT_GROUP_PERMISSIONS_ROUTE_NAME,
+  });
+}
+
+const AI_CONTROLS_INSTANCE_LIMIT_ROUTE_NAME = "ai-controls-instance-limit";
+
+export function setupAIControlsInstanceLimitEndpoint(
+  response: MetabotInstanceLimit = { max_usage: null },
+) {
+  fetchMock.removeRoute(AI_CONTROLS_INSTANCE_LIMIT_ROUTE_NAME);
+  fetchMock.get("path:/api/ee/ai-controls/usage/instance", response, {
+    name: AI_CONTROLS_INSTANCE_LIMIT_ROUTE_NAME,
+  });
+}
+
+export function setupUpdateAIControlsInstanceLimitEndpoint() {
+  fetchMock.put("path:/api/ee/ai-controls/usage/instance", 200);
+}
+
+const AI_CONTROLS_GROUP_LIMITS_ROUTE_NAME = "ai-controls-group-limits";
+
+export function setupAIControlsGroupLimitsEndpoint(
+  response: MetabotGroupLimit[] = [],
+) {
+  fetchMock.removeRoute(AI_CONTROLS_GROUP_LIMITS_ROUTE_NAME);
+  fetchMock.get("path:/api/ee/ai-controls/usage/group", response, {
+    name: AI_CONTROLS_GROUP_LIMITS_ROUTE_NAME,
+  });
+}
+
+export function setupUpdateAIControlsGroupLimitEndpoint() {
+  fetchMock.put("express:/api/ee/ai-controls/usage/group/:id", 200);
+}
+
+const AI_CONTROLS_TENANT_LIMITS_ROUTE_NAME = "ai-controls-tenant-limits";
+
+export function setupAIControlsTenantLimitsEndpoint(
+  response: MetabotTenantLimit[] = [],
+) {
+  fetchMock.removeRoute(AI_CONTROLS_TENANT_LIMITS_ROUTE_NAME);
+  fetchMock.get("path:/api/ee/ai-controls/usage/tenant", response, {
+    name: AI_CONTROLS_TENANT_LIMITS_ROUTE_NAME,
+  });
+}
+
+export function setupUpdateAIControlsTenantLimitEndpoint() {
+  fetchMock.put("express:/api/ee/ai-controls/usage/tenant/:id", 200);
+}
+
+const USER_METABOT_PERMISSIONS_ROUTE_NAME = "metabot-user-permissions";
+
+export function setupUserMetabotPermissionsEndpoint(
+  response?: UserMetabotPermissionsResponse,
+) {
+  fetchMock.removeRoute(USER_METABOT_PERMISSIONS_ROUTE_NAME);
+  fetchMock.get(
+    "path:/api/metabot/permissions/user-permissions",
+    response ?? createMockUserMetabotPermissions(),
+    { name: USER_METABOT_PERMISSIONS_ROUTE_NAME },
   );
 }

@@ -1,25 +1,23 @@
 import { useCallback } from "react";
 
-import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
-import type { OnToggleSelectedWithItem } from "metabase/collections/types";
-import { isRootTrashCollection } from "metabase/collections/utils";
+import type { ActionMenuProps } from "metabase/common/collections/components/ActionMenu";
+import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
-import { getIcon } from "metabase/lib/icon";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
+import { useGetIcon } from "metabase/hooks/use-icon";
+import type { CollectionItem } from "metabase-types/api";
 
 export type ItemRendererProps = {
   item: CollectionItem;
   isSelected?: boolean;
   isPinned?: boolean;
   onToggleSelected?: OnToggleSelectedWithItem;
-  collection?: Collection;
-  draggable?: boolean;
   testIdPrefix?: string;
-  databases?: Database[];
-  bookmarks?: Bookmark[];
-} & ActionMenuProps &
+} & Omit<
+  ActionMenuProps,
+  "className" | "item" | "isSelected" | "onToggleSelected"
+> &
   Pick<BaseItemsTableProps, "onClick" | "visibleColumnsMap">;
 
 export const DefaultItemRenderer = ({
@@ -38,13 +36,12 @@ export const DefaultItemRenderer = ({
   onClick,
   visibleColumnsMap,
 }: ItemRendererProps) => {
-  const canSelect =
-    (collection?.can_write || isRootTrashCollection(collection)) &&
-    typeof onToggleSelected === "function";
+  const getIcon = useGetIcon();
+  const canSelect = canSelectItems(collection, onToggleSelected);
 
   const icon = getIcon(item);
   if (item.model === "card" || item.archived) {
-    icon.color = "text-tertiary";
+    icon.color = "text-disabled";
   }
 
   const handleSelectionToggled = useCallback(() => {
@@ -96,6 +93,8 @@ export const DefaultItemRenderer = ({
           onMove={onMove}
           createBookmark={createBookmark}
           deleteBookmark={deleteBookmark}
+          isSelected={isSelected}
+          onToggleSelected={canSelect ? handleSelectionToggled : undefined}
         />
       )}
       {visibleColumnsMap["archive"] && <Columns.Archive.Cell item={item} />}

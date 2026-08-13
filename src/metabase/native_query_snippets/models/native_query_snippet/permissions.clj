@@ -16,7 +16,6 @@
   metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
   ([_]
    (has-any-native-permissions?))
-
   ([_ _]
    (has-any-native-permissions?)))
 
@@ -25,7 +24,6 @@
   metabase-enterprise.snippet-collections.models.native-query-snippet.permissions
   ([_]
    (has-any-native-permissions?))
-
   ([_ _]
    (has-any-native-permissions?)))
 

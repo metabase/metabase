@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
-import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
-import { Tooltip } from "metabase/ui";
+import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
+import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
 export const DataReferenceInline = ({
   onClose,
@@ -12,10 +12,10 @@ export const DataReferenceInline = ({
   onClose?: () => void;
   onBack?: () => void;
 }) => {
-  const [dataRefStack, setDataRefStack] = useState<any[]>([]);
+  const [dataRefStack, setDataRefStack] = useState<DataReferenceItem[]>([]);
 
-  const pushRefStack = (ref: any) => {
-    setDataRefStack([...dataRefStack, ref]);
+  const pushRefStack = (item: DataReferenceItem) => {
+    setDataRefStack([...dataRefStack, item]);
   };
 
   const popRefStack = () => {
@@ -39,6 +39,12 @@ export const DataReferenceTriggerButton = ({
   onClick: () => void;
 }) => (
   <Tooltip label={t`Data Reference`}>
-    <Button onlyIcon onClick={onClick} icon="reference" iconSize={16} />
+    <ActionIcon
+      variant="viewHeader"
+      onClick={onClick}
+      aria-label={t`Data Reference`}
+    >
+      <Icon name="reference" />
+    </ActionIcon>
   </Tooltip>
 );

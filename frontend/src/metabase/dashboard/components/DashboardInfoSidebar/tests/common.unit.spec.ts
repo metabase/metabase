@@ -9,8 +9,8 @@ import {
 
 import { setup } from "./setup";
 
-jest.mock("metabase/dashboard/constants", () => ({
-  ...jest.requireActual("metabase/dashboard/constants"),
+jest.mock("metabase/common/utils/dashboard", () => ({
+  ...jest.requireActual("metabase/common/utils/dashboard"),
   DASHBOARD_DESCRIPTION_MAX_LENGTH: 20,
 }));
 
@@ -195,6 +195,7 @@ describe("DashboardInfoSidebar", () => {
     describe("entity id display", () => {
       it("should not show entity ids without serialization feature", async () => {
         const dashboard = createMockDashboard({
+          // Unjustified type cast. FIXME
           entity_id: "jenny8675309" as Dashboard["entity_id"],
         });
         await setup({ dashboard });

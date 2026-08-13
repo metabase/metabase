@@ -1,10 +1,10 @@
-import { type FocusEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { isEmail } from "metabase/lib/email";
+import { Ellipsified } from "metabase/ui";
 import { Avatar, Flex, Icon, Select, type SelectProps } from "metabase/ui";
+import { isEmail } from "metabase/utils/email";
 import type { User, UserId } from "metabase-types/api";
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   email: string | null;
@@ -19,7 +19,6 @@ export const UserInput = ({
   email,
   userId,
   onEmailChange,
-  onFocus,
   onUserIdChange,
   unknownUserLabel = t`Unspecified`,
   ...props
@@ -39,11 +38,6 @@ export const UserInput = ({
 
     return users.find((user) => user.id === userId)?.common_name;
   }, [users, userId]);
-
-  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
-    event.target.select();
-    onFocus?.(event);
-  };
 
   const handleChange = (value: string | null) => {
     if (value == null) {
@@ -81,7 +75,7 @@ export const UserInput = ({
             <Icon name="mail" />
           </Avatar>
         ) : userId === "unknown" ? (
-          <Avatar color="background-secondary" name="unknown">
+          <Avatar color="background_page-secondary" name="unknown">
             <Icon name="person" c="text-secondary" />
           </Avatar>
         ) : null
@@ -91,12 +85,13 @@ export const UserInput = ({
       searchable
       searchValue={search}
       renderOption={(item) => {
+        // Unjustified type cast. FIXME
         const option = item.option as Option;
         return (
           <Flex align="center" gap="sm" p="sm" w="100%">
             {option.type === "user" && <Avatar name={item.option.label} />}
             {option.type === "unknown" && (
-              <Avatar color="background-secondary">
+              <Avatar color="background_page-secondary">
                 <Icon name="person" c="text-secondary" />
               </Avatar>
             )}
@@ -111,7 +106,6 @@ export const UserInput = ({
       }}
       value={email ? email : userId ? String(userId) : null}
       onChange={handleChange}
-      onFocus={handleFocus}
       onSearchChange={setSearch}
       {...props}
     />
@@ -138,6 +132,7 @@ function getData(
     },
     ...users.map((user) => ({
       label: user.common_name,
+      // Unjustified type cast. FIXME
       value: stringifyValue(user.id) as string,
       type: "user" as const,
     })),

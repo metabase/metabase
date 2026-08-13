@@ -2,13 +2,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { LogoIcon } from "metabase/common/components/LogoIcon";
-import { useSetting } from "metabase/common/hooks";
-import { capitalize } from "metabase/lib/formatting";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import {
   getApplicationName,
   getIsWhiteLabeling,
 } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Divider,
@@ -19,12 +18,14 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { capitalize } from "metabase/utils/formatting";
 import type { MetabaseInfo } from "metabase-types/api";
 
 export const AboutModal = ({
   onClose,
   opened,
 }: Pick<ModalProps, "onClose" | "opened">) => {
+  // Unjustified type cast. FIXME
   const version = useSetting("version") as MetabaseInfo["version"];
   const applicationName = useSelector(getApplicationName);
   const { tag, date, ...versionExtra } = version;
@@ -35,7 +36,7 @@ export const AboutModal = ({
   return (
     <Modal opened={opened} onClose={onClose} withCloseButton={false} size={475}>
       <Flex direction="column" align="center" pb="lg">
-        <Box c="brand" pb="md">
+        <Box c="core-brand" pb="md">
           <LogoIcon height={48} />
         </Box>
         <Stack gap={14} align="center">

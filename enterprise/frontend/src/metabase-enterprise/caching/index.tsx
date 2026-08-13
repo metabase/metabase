@@ -4,6 +4,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { DashboardAndQuestionCachingTab } from "./components/DashboardAndQuestionCachingTab";
 import { GranularControlsExplanation } from "./components/GranularControlsExplanation";
 import { InvalidateNowButton } from "./components/InvalidateNowButton";
+import { MetricCachingModal } from "./components/MetricCachingModal";
 import { PreemptiveCachingSwitch } from "./components/PreemptiveCachingSwitch";
 import { SidebarCacheForm } from "./components/SidebarCacheForm";
 import { SidebarCacheSection } from "./components/SidebarCacheSection";
@@ -13,7 +14,6 @@ import {
   enterpriseOnlyCachingStrategies,
   getEnterprisePerformanceTabMetadata,
 } from "./constants";
-import { MetricCachingPage } from "./pages/MetricCachingPage";
 import { hasQuestionCacheSection } from "./utils";
 
 /**
@@ -41,7 +41,7 @@ export function initializePlugin() {
     PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards =
       StrategyEditorForQuestionsAndDashboards;
     PLUGIN_CACHING.getTabMetadata = getEnterprisePerformanceTabMetadata;
-    PLUGIN_CACHING.MetricCachingPage = MetricCachingPage;
+    PLUGIN_CACHING.MetricCachingModal = MetricCachingModal;
   }
 
   if (hasPremiumFeature("cache_preemptive")) {

@@ -2,13 +2,13 @@ import { type Row, type Table, flexRender } from "@tanstack/react-table";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Root } from "react-dom/client";
 
+import { SortableHeaderPill } from "metabase/ui";
+import { MeasurementProviders } from "metabase/ui/components/theme/MeasurementProviders";
 import {
-  MeasurementProviders,
   createMeasurementContainer,
   removeMeasurementContainer,
-} from "metabase/data-grid/utils/measure-utils";
-import { renderRoot } from "metabase/lib/react-compat";
-import { SortableHeaderPill } from "metabase/ui";
+} from "metabase/utils/measure-container";
+import { renderRoot } from "metabase/utils/react-compat";
 
 import {
   CELL_HORIZONTAL_PADDING,
@@ -109,6 +109,9 @@ function getContentWidth<TData extends TreeNodeData>(
   const baseWidth = contentWidths[column.id] ?? MIN_COLUMN_WIDTH;
   const padding = column.widthPadding ?? 0;
   let width = baseWidth + padding;
+  if (typeof column.minWidth === "number") {
+    width = Math.max(width, column.minWidth);
+  }
   if (column.maxAutoWidth != null) {
     width = Math.min(width, column.maxAutoWidth);
   }
@@ -324,7 +327,14 @@ function MeasureContent<TData extends TreeNodeData>({
           >
             {typeof column.header === "string" && (
               <div data-measure-header style={{ whiteSpace: "nowrap" }}>
-                <SortableHeaderPill name={column.header} />
+                <SortableHeaderPill
+                  name={column.header}
+                  sort={
+                    table.getColumn(column.id)?.getCanSort()
+                      ? "desc"
+                      : undefined
+                  }
+                />
               </div>
             )}
             {rowsToMeasure.map((row) => {

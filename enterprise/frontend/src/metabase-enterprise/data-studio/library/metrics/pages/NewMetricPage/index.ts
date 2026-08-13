@@ -1,1 +1,1 @@
-export * from "./NewMetricPage";
+export { DataStudioNewMetricPage } from "./NewMetricPage";

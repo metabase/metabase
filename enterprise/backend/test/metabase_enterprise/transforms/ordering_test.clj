@@ -4,6 +4,7 @@
    [metabase.test :as mt]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as ordering]
+   [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
 
 (defn- make-python-transform
@@ -25,7 +26,7 @@
   (testing "Python transform with name-based source table ref resolves to producing transform"
     (mt/with-temp [;; Transform A produces table "intermediate_output"
                    :model/Transform {t-a :id} (make-python-transform
-                                               [{:alias "input" :table_id (mt/id :orders)}]
+                                               [(transforms.tu/source-table-entry "input" (mt/id :orders))]
                                                "intermediate_output")
                    ;; Transform B references intermediate_output by name (table doesn't exist yet)
                    :model/Transform {t-b :id} (make-python-transform
@@ -39,19 +40,18 @@
           (is (contains? deps {:table-ref {:database_id (mt/id)
                                            :schema "public"
                                            :table "intermediate_output"}}))))
-
       (testing "transform-ordering correctly resolves the dependency"
         (is (= {t-a #{}
                 t-b #{t-a}}
-               (ordering/transform-ordering (t2/select :model/Transform :id [:in [t-a t-b]]))))))))
+               (:dependencies (ordering/transform-ordering #{t-a t-b} (t2/select :model/Transform :id [:in [t-a t-b]])))))))))
 
 (deftest python-transform-mixed-source-tables-test
   (testing "Python transform with mixed int and name-based refs"
     (mt/with-temp [:model/Transform {t-a :id} (make-python-transform
-                                               [{:alias "input" :table_id (mt/id :orders)}]
+                                               [(transforms.tu/source-table-entry "input" (mt/id :orders))]
                                                "output_a")
                    :model/Transform {t-b :id} (make-python-transform
-                                               [{:alias "existing" :table_id (mt/id :products)}
+                                               [(transforms.tu/source-table-entry "existing" (mt/id :products))
                                                 {:alias "from_transform"
                                                  :database_id (mt/id)
                                                  :schema "public"
@@ -63,8 +63,7 @@
           (is (contains? deps {:table-ref {:database_id (mt/id)
                                            :schema "public"
                                            :table "output_a"}}))))
-
       (testing "transform-ordering resolves both dependencies"
         (is (= {t-a #{}
                 t-b #{t-a}}
-               (ordering/transform-ordering (t2/select :model/Transform :id [:in [t-a t-b]]))))))))
+               (:dependencies (ordering/transform-ordering #{t-a t-b} (t2/select :model/Transform :id [:in [t-a t-b]])))))))))

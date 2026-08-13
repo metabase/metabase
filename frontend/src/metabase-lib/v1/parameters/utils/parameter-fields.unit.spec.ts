@@ -14,6 +14,7 @@ describe("parameters/utils/parameter-fields", () => {
         }),
       ],
     });
+    // Unjustified type cast. FIXME
     const field = metadata.field(1) as Field;
     const parameterWithFields = createMockUiParameter({
       fields: [field],

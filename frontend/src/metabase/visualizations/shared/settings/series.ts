@@ -1,6 +1,6 @@
 import { getIn } from "icepick";
 
-import { getColorsForValues } from "metabase/lib/colors/charts";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { VisualizationSettings } from "metabase-types/api";
 
@@ -14,6 +14,7 @@ export const getSeriesColors = (
 ) => {
   const assignments: Record<string, string> = {};
 
+  // Unjustified type cast. FIXME
   const seriesSettings = getIn(settings, [SERIES_SETTING_KEY]) as
     | Record<string, { color?: string; title?: string }>
     | undefined;

@@ -281,9 +281,11 @@ app.get("/sso/metabase", async (req, res) => {
 });
 ```
 
+For modular embedding, Metabase exchanges the JWT via `POST /auth/sso` with a JSON body (not a `GET` redirect). Full app embedding typically uses the `GET` redirect shown above. See [JWT-based authentication](../people-and-groups/authenticating-with-jwt.md).
+
 ## Embedding Metabase in a different domain
 
-{% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embbedding=true is_plural=true %}
+{% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embedding=true is_plural=true %}
 
 This section applies only to **authenticated embeds**. Guest embeds work cross-domain without additional configuration.
 

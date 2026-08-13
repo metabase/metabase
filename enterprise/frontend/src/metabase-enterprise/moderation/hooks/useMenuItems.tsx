@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useEditItemVerificationMutation } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import type { Card, Dashboard, ModerationReview } from "metabase-types/api";
@@ -38,6 +38,7 @@ export const useDashboardMenuItems = (
 
   return useMenuItems({
     reload,
+    // Unjustified type cast. FIXME
     moderated_item_id: dashboard.id as number,
     moderated_item_type: "dashboard",
     latestModerationReview,

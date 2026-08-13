@@ -174,7 +174,6 @@
                   :hm/response {:status 400
                                 :body   {:error-detail "Error detail"
                                          :status-reason "Status Reason"}}}
-
                  result)))
           (let [saved (gsheets)]
             (is (= {} saved))))))))
@@ -207,11 +206,11 @@
             (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
               (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
                 (is (= {:status "not-connected"} response))))))
-        (testing "when state==initializing, status==syncing"
+        (testing "when state==initializing, status==initializing"
           (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-initializing-link)]
             (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
               (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
-                (is (partial= {:status "syncing", :url "test-url" :created_by_id 2}
+                (is (partial= {:status "initializing", :url "test-url" :created_by_id 2}
                               response))
                 (is (pos-int? (:sync_started_at response)))
                 (is (pos-int? (:db_id response)))
@@ -219,7 +218,7 @@
                 (is (nil? (:next_sync_at response)))
                 (testing "current state info doesn't get persisted"
                   (is (nil? (:sync_started_at (gsheets)))))))))
-        (testing "when state==syncing, status==syncing"
+        (testing "when state==active with last-sync-started-at after last-sync-at, status==syncing"
           (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-syncing-link)]
             (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
               (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
@@ -305,7 +304,6 @@
                                :hm/response {:status 400
                                              :body {:error-detail "Error Detail"
                                                     :type "gdrive"}}}
-
                               response))
                 (is (pos-int? (:db_id response)))))))
         (testing "when 200 error response"

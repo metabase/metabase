@@ -15,15 +15,16 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import type {
+  Group,
+  GroupsPermissions,
+  SpecialGroupType,
+  TableEntityId,
+} from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
-import type {
-  PermissionSectionConfig,
-  SpecialGroupType,
-  TableEntityId,
-} from "../../types";
+import type { PermissionSectionConfig } from "../../types";
 import {
   DataPermission,
   DataPermissionType,

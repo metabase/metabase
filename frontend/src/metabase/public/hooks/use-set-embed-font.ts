@@ -1,15 +1,16 @@
-import type { Location } from "history";
 import { useEffect } from "react";
 
-import { parseHashOptions } from "metabase/lib/browser";
-import { useDispatch } from "metabase/lib/redux";
-import type { EmbeddingHashOptions } from "metabase/public/lib/types";
+import type { EmbeddingHashOptions } from "metabase/embedding/types";
+import { useDispatch } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
+import type { Location } from "metabase/router";
+import { parseHashOptions } from "metabase/utils/browser";
 
 export const useSetEmbedFont = ({ location }: { location: Location }) => {
   const dispatch = useDispatch();
 
   useEffect(() => {
+    // Unjustified type cast. FIXME
     const { font } = parseHashOptions(location.hash) as EmbeddingHashOptions;
 
     dispatch(

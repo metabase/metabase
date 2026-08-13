@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { NumberValue } from "metabase/lib/number";
+import type { NumberValue } from "metabase/utils/number";
 
 import { BigIntNumberInput } from "./BigIntNumberInput";
 

@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardEndpoints,
@@ -10,8 +8,10 @@ import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
@@ -22,7 +22,6 @@ import {
   getMockModelCacheInfo,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { QuestionSettingsSidebar } from "../QuestionSettingsSidebar";
 
@@ -46,7 +45,7 @@ export const setup = async ({
   setupPerformanceEndpoints([]);
   setupModelPersistenceEndpoints([
     getMockModelCacheInfo({
-      card_id: card.id as number,
+      card_id: card.id,
       state: "persisted",
     }),
   ]);
@@ -87,7 +86,7 @@ export const setup = async ({
   );
 
   renderWithProviders(
-    <Route path="*" component={TestQuestionSettingsSidebar} />,
+    <Route path="*" element={<TestQuestionSettingsSidebar />} />,
     {
       withRouter: true,
       storeInitialState: state,

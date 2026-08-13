@@ -36,7 +36,6 @@
         (doseq [[filename contents] file-contents]
           (spit filename contents))
         (dump-to-h2/dump-to-h2! tmp-h2-db)
-
         (doseq [filename (keys file-contents)]
           (testing (str filename " was deleted")
             (is (false? (.exists (io/file filename))))))))))
@@ -65,7 +64,7 @@
                           h2-file-enc         (format "out-%s.db" (mt/random-name))
                           h2-file-default-enc (format "out-%s.db" (mt/random-name))]
         (mt/test-drivers #{:h2 :postgres :mysql}
-          (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
+          (mt/with-dynamic-fn-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
             (binding [config/*disable-setting-cache*  true
                       mdb.connection/*application-db* (mdb.connection/application-db
                                                        driver/*driver*
@@ -80,7 +79,6 @@
                   (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
                   (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})
                   (dump-to-h2/dump-to-h2! h2-file-default-enc)))
-
               (testing "decodes settings and dashboard.details"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-plaintext))]
                   (is (= "baz" (:value (first (jdbc/query {:connection target-conn}
@@ -88,7 +86,6 @@
                   (is (= "{\"db\":\"/tmp/test.db\"}"
                          (:details (first (jdbc/query {:connection target-conn}
                                                       "select details from metabase_database where id=1;")))))))
-
               (testing "when flag is set to false, encrypted settings and dashboard.details are still encrypted"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-enc))]
                   (is (not (= "baz"
@@ -97,7 +94,6 @@
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
                                                            "select details from metabase_database where id=1;"))))))))
-
               (testing "defaults to not decrypting"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-default-enc))]
                   (is (not (= "baz"
@@ -113,7 +109,7 @@
           db-name            (str "test_" (mt/random-name))]
       (mt/with-temp-file [h2-file (format "out-%s.db" (mt/random-name))]
         (mt/test-drivers #{:h2 :postgres :mysql}
-          (with-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
+          (mt/with-dynamic-fn-redefs [i18n.impl/site-locale-from-setting (constantly nil)]
             (binding [config/*disable-setting-cache*  true
                       mdb.connection/*application-db* (mdb.connection/application-db
                                                        driver/*driver*

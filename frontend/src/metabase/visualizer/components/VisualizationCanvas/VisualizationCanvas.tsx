@@ -3,8 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import metabot from "assets/img/metabot-96x96.svg";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
   Box,
@@ -29,6 +28,7 @@ import type { RawSeries } from "metabase-types/api";
 
 import { TabularPreviewModal } from "../TabularPreviewModal";
 import { useVisualizerUi } from "../VisualizerUiContext";
+import { trackVisualizerViewAsTableClicked } from "../analytics";
 
 import S from "./VisualizationCanvas.module.css";
 import { HorizontalWell } from "./wells/HorizontalWell";
@@ -76,7 +76,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           >{t`Start by selecting a dataset`}</Title>
           <Title
             size="h5"
-            c="text-tertiary"
+            c="text-disabled"
           >{t`Find something to visualize in the column on the left.`}</Title>
         </Flex>
       </Center>
@@ -124,10 +124,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
             <ActionIcon
               data-testid="visualizer-view-as-table-button"
               onClick={() => {
-                trackSimpleEvent({
-                  event: "visualizer_view_as_table_clicked",
-                  triggered_from: "visualizer-modal",
-                });
+                trackVisualizerViewAsTableClicked();
 
                 setTabularPreviewOpen(true);
               }}
@@ -151,7 +148,7 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
           <Center className={S.SwapAffordanceIcon}>
             <Stack align="center" gap="xs" p="xs">
               <Icon name="sync" />
-              <Text c="white" size="sm">
+              <Text c="core-white" size="sm">
                 {t`Replace`}
               </Text>
             </Stack>

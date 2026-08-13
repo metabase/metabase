@@ -9,8 +9,16 @@ import undoable, { combineFilters, includeAction } from "redux-undo";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
-import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
-import { copy } from "metabase/lib/utils";
+import type { Dispatch, GetState } from "metabase/redux/store";
+import type {
+  DraggedColumn,
+  DraggedItem,
+  VisualizerState,
+  VisualizerVizDefinitionWithColumns,
+  VisualizerVizDefinitionWithColumnsAndPreloadedDatasets,
+} from "metabase/redux/store/visualizer";
+import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
+import { clone } from "metabase/utils/clone";
 import { isCartesianChart } from "metabase/visualizations";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
@@ -23,14 +31,6 @@ import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
-import type {
-  DraggedColumn,
-  DraggedItem,
-  VisualizerState,
-  VisualizerVizDefinitionWithColumns,
-  VisualizerVizDefinitionWithColumnsAndFallbacks,
-} from "metabase-types/store/visualizer";
 
 import {
   getCurrentVisualizerState,
@@ -50,6 +50,7 @@ import {
 import { getUpdatedSettingsForDisplay } from "./utils/get-updated-settings-for-display";
 import {
   addColumnToCartesianChart,
+  attachRemappedDisplayColumn,
   cartesianDropHandler,
   combineWithCartesianChart,
   maybeImportDimensionsFromOtherDataSources,
@@ -96,7 +97,7 @@ function getInitialState(): VisualizerState {
 
 type InitVisualizerPayload =
   | {
-      state?: Partial<VisualizerVizDefinitionWithColumns>;
+      state?: Partial<VisualizerVizDefinitionWithColumnsAndPreloadedDatasets>;
     }
   | { cardId: CardId };
 
@@ -120,7 +121,7 @@ const initializeFromState = async (
   {
     state: initialState = {},
   }: {
-    state?: Partial<VisualizerVizDefinitionWithColumnsAndFallbacks>;
+    state?: Partial<VisualizerVizDefinitionWithColumnsAndPreloadedDatasets>;
   },
   dispatch: Dispatch,
 ) => {
@@ -139,14 +140,14 @@ const initializeFromState = async (
           dispatch(
             fetchCardQuery({
               cardId: Number(cardId),
-              fallbacks: initialState.datasetFallbacks,
+              preloadedDatasets: initialState.preloadedDatasets,
             }),
           ),
         ];
       })
       .flat(),
   );
-  return copy(initialState);
+  return clone(initialState);
 };
 
 export const initializeFromCard = async (
@@ -185,7 +186,9 @@ export const addDataSource = createAsyncThunk(
         fetchCardQuery({ cardId: sourceId }),
       );
 
+      // Unjustified type cast. FIXME
       const card = cardAction.payload as Card;
+      // Unjustified type cast. FIXME
       dataset = cardQueryAction.payload as Dataset;
       vizSettings = card.visualization_settings || null;
 
@@ -222,7 +225,7 @@ export const addDataSource = createAsyncThunk(
 
     return maybeCombineDataset(
       {
-        ...copy(state),
+        ...clone(state),
         settings,
       },
       settings,
@@ -278,26 +281,26 @@ const fetchCard = createAsyncThunk<Card, CardId>(
 
 const fetchCardQuery = createAsyncThunk<
   Dataset,
-  { cardId: CardId; fallbacks?: Record<CardId, Dataset | null | undefined> }
->("visualizer/fetchCardQuery", async ({ cardId, fallbacks }, { dispatch }) => {
-  const result = await dispatch(
-    cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
-  );
-  if (result.data != null) {
-    const shouldAttemptFallback =
-      result.data.error_type &&
-      !result.data.data?.rows?.length &&
-      !result.data.data?.cols?.length;
-    if (shouldAttemptFallback) {
-      const fallback = fallbacks?.[cardId];
-      if (fallback) {
-        return fallback;
-      }
-    }
-    return result.data;
+  {
+    cardId: CardId;
+    preloadedDatasets?: Record<CardId, Dataset | null | undefined>;
   }
-  throw new Error("Failed to fetch card query");
-});
+>(
+  "visualizer/fetchCardQuery",
+  async ({ cardId, preloadedDatasets }, { dispatch }) => {
+    const dataset = preloadedDatasets?.[cardId];
+    if (dataset) {
+      return dataset;
+    }
+    const result = await dispatch(
+      cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
+    );
+    if (result.data != null) {
+      return result.data;
+    }
+    throw new Error("Failed to fetch card query");
+  },
+);
 
 export const undo = createAction("visualizer/undo");
 export const redo = createAction("visualizer/redo");
@@ -388,7 +391,6 @@ const visualizerSlice = createSlice({
         addColumnToFunnel(
           state,
           settings,
-          state.datasets as Record<string, Dataset>,
           column,
           columnRef,
           // Prevents "Type instantiation is excessively deep" error
@@ -402,8 +404,6 @@ const visualizerSlice = createSlice({
         addColumnToCartesianChart(
           state,
           settings,
-          state.datasets as Record<string, Dataset>,
-          dataset.data.cols,
           column,
           columnRef,
           dataSource,
@@ -412,7 +412,20 @@ const visualizerSlice = createSlice({
         const dimension = state.settings["graph.dimensions"] ?? [];
         const isDimension = dimension.includes(column.name);
 
+        if (isDimension) {
+          // Re-attach display column so remapping survives remove + re-add.
+          attachRemappedDisplayColumn(
+            state,
+            columnRef,
+            originalColumn,
+            // Unjustified type cast. FIXME
+            dataset as Dataset,
+            dataSource,
+          );
+        }
+
         if (isDimension && column.id) {
+          // Unjustified type cast. FIXME
           const datasetMap = _.omit(state.datasets, dataSource.id) as Record<
             string,
             Dataset
@@ -581,9 +594,9 @@ const visualizerSlice = createSlice({
         const nextState = action.payload;
         if (nextState) {
           state.display = nextState.display;
-          state.columns = copy(nextState.columns);
-          state.columnValuesMapping = copy(nextState.columnValuesMapping);
-          state.settings = copy(nextState.settings);
+          state.columns = clone(nextState.columns);
+          state.columnValuesMapping = clone(nextState.columnValuesMapping);
+          state.settings = clone(nextState.settings);
         }
       })
       .addCase(fetchCard.pending, (state, action) => {
@@ -597,8 +610,10 @@ const visualizerSlice = createSlice({
 
         // `any` prevents the "Type instantiation is excessively deep" error
         if (index !== -1) {
+          // Unjustified type cast. FIXME
           state.cards[index] = card as any;
         } else {
+          // Unjustified type cast. FIXME
           state.cards.push(card as any);
         }
 
@@ -699,7 +714,13 @@ export const reducer = undoable(visualizerSlice.reducer, {
       addDataSource.fulfilled.type,
     ]),
     (action, nextState, { present }) => {
-      if (action.payload.forget === true) {
+      const payload = action.payload;
+      if (
+        payload != null &&
+        typeof payload === "object" &&
+        "forget" in payload &&
+        payload.forget === true
+      ) {
         return false;
       }
       if (action.type !== _handleDrop.type) {

@@ -6,9 +6,9 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
-import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useSetting } from "metabase/settings";
 import { Stack } from "metabase/ui";
 
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
@@ -25,6 +25,7 @@ export function LocalizationSettingsPage() {
         <AdminSettingInput
           name="site-locale"
           title={t`Instance language`}
+          searchable
           options={_.sortBy(availableLocales || [], ([, label]) => label).map(
             ([code, label]) => ({ label, value: code }),
           )}

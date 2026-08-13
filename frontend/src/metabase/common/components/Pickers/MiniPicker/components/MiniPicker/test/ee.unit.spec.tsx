@@ -23,6 +23,7 @@ const LIBRARY_DATA_COLLECTION = createMockCollectionItem({
   model: "collection",
   id: 1338,
   here: ["dataset"],
+  is_library_root: true,
 });
 
 const LIBRARY_METRICS_COLLECTION = createMockCollectionItem({
@@ -31,6 +32,7 @@ const LIBRARY_METRICS_COLLECTION = createMockCollectionItem({
   model: "collection",
   id: 1339,
   here: ["metric"],
+  is_library_root: true,
 });
 
 describe("library", () => {

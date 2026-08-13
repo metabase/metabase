@@ -1,24 +1,15 @@
-import { useCallback } from "react";
-
-import { useListCollectionsTreeQuery } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
-  useBookmarkListQuery,
-  useCollectionQuery,
-  useDatabaseListQuery,
-} from "metabase/common/hooks";
-import { Bookmarks } from "metabase/entities/bookmarks";
-import { Databases } from "metabase/entities/databases";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import type { UploadFileProps } from "metabase/redux/uploads";
-import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
-import { getSetting } from "metabase/selectors/settings";
+  useGetCollectionQuery,
+  useListBookmarksQuery,
+  useListCollectionsTreeQuery,
+} from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useDatabaseListQuery } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import type {
-  BookmarkId,
-  BookmarkType,
-  CollectionId,
-} from "metabase-types/api";
+import { getSetting } from "metabase/settings";
+import type { CollectionId } from "metabase-types/api";
 
 import { CollectionContentView } from "./CollectionContentView";
 
@@ -27,7 +18,7 @@ export function CollectionContent({
 }: {
   collectionId: CollectionId;
 }) {
-  const { data: bookmarks, error: bookmarksError } = useBookmarkListQuery();
+  const { data: bookmarks, error: bookmarksError } = useListBookmarksQuery();
   const { data: databases, error: databasesError } = useDatabaseListQuery();
 
   const { data: collections, error: collectionsError } =
@@ -36,7 +27,7 @@ export function CollectionContent({
       "exclude-archived": true,
     });
 
-  const { data: collection, error: collectionError } = useCollectionQuery({
+  const { data: collection, error: collectionError } = useGetCollectionQuery({
     id: collectionId,
   });
 
@@ -47,30 +38,11 @@ export function CollectionContent({
 
   const canCreateUploadInDb = useSelector(
     (state) =>
-      uploadDbId &&
-      Databases.selectors
-        .getObject(state, {
-          entityId: uploadDbId,
-        })
-        ?.canUpload(),
+      uploadDbId != null &&
+      !!getMetadata(state).database(uploadDbId)?.canUpload(),
   );
 
   const isAdmin = useSelector(getUserIsAdmin);
-
-  const dispatch = useDispatch();
-
-  const createBookmark = (id: BookmarkId, type: BookmarkType) =>
-    dispatch(Bookmarks.actions.create({ id, type }));
-  const deleteBookmark = (id: BookmarkId, type: BookmarkType) =>
-    dispatch(Bookmarks.actions.delete({ id, type }));
-
-  const uploadFile = useCallback(
-    ({ file, modelId, collectionId, tableId, uploadMode }: UploadFileProps) =>
-      dispatch(
-        uploadFileAction({ file, modelId, collectionId, tableId, uploadMode }),
-      ),
-    [dispatch],
-  );
 
   const error =
     bookmarksError || databasesError || collectionsError || collectionError;
@@ -88,12 +60,8 @@ export function CollectionContent({
       databases={databases}
       bookmarks={bookmarks}
       collection={collection}
-      collections={collections}
       collectionId={collectionId}
-      createBookmark={createBookmark}
-      deleteBookmark={deleteBookmark}
       isAdmin={isAdmin}
-      uploadFile={uploadFile}
       uploadsEnabled={uploadsEnabled}
       canCreateUploadInDb={canCreateUploadInDb}
     />

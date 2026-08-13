@@ -3,7 +3,10 @@ import { match } from "ts-pattern";
 import { openSharingMenu } from "e2e/support/helpers/e2e-sharing-helpers";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
-import type { CreateApiKeyResponse } from "metabase-types/api";
+import type {
+  CreateApiKeyResponse,
+  CustomVizDisplayType,
+} from "metabase-types/api";
 
 import { createApiKey, updateSetting } from "./api";
 import { getIframeBody } from "./e2e-embedding-helpers";
@@ -26,6 +29,7 @@ export interface BaseEmbedTestPageOptions {
   // Passed to defineMetabaseConfig
   metabaseConfig?: {
     isGuest?: boolean;
+    guestEmbedProviderUri?: string;
     instanceUrl?: string;
     apiKey?: string;
     useExistingUserSession?: boolean;
@@ -33,6 +37,7 @@ export interface BaseEmbedTestPageOptions {
     theme?: MetabaseTheme;
     preferredAuthMethod?: "jwt" | "saml";
     locale?: string;
+    allowedCustomVisualizations?: CustomVizDisplayType[];
   };
 
   elements: MetabaseElement[];
@@ -318,20 +323,24 @@ export const getNewEmbedScriptTag = ({
 export const getNewEmbedConfigurationScript = ({
   instanceUrl = "http://localhost:4000",
   isGuest,
+  guestEmbedProviderUri,
   theme,
   apiKey,
   useExistingUserSession,
   preferredAuthMethod,
   locale,
+  allowedCustomVisualizations,
 }: BaseEmbedTestPageOptions["metabaseConfig"] = {}) => {
   const config = {
     instanceUrl,
     isGuest,
+    guestEmbedProviderUri,
     apiKey,
     useExistingUserSession,
     theme,
     preferredAuthMethod,
     locale,
+    allowedCustomVisualizations,
   };
 
   return `

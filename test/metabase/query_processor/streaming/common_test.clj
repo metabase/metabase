@@ -47,7 +47,6 @@
                          {::mb.viz/column-title "test 7"}}}
           format-rows? true
           titles (streaming.common/column-titles ordered-cols viz-settings format-rows?)]
-
       (testing "both settings (title and time) should be applied to the same column"
         (is (= ["test 7"] titles))))))
 
@@ -55,7 +54,6 @@
   (testing "column-title setting precedence when the same column has multiple settings"
     (let [ordered-cols [{:name "AMOUNT" :id 42 :display_name "Amount"}]
           format-rows? true]
-
       (testing "column-name settings override field-id settings"
         (let [viz-settings {::mb.viz/column-settings
                             {;; Field ID column setting

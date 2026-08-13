@@ -2,7 +2,7 @@ import * as d3 from "d3";
 import L from "leaflet";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import type { ClickObject, HoveredObject } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -76,8 +76,8 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
 
       const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
 
-      const successColor = d3.rgb(color("success"));
-      const errorColor = d3.rgb(color("error"));
+      const successColor = d3.rgb(color("feedback-positive"));
+      const errorColor = d3.rgb(color("feedback-negative"));
 
       const colorScale =
         min == null || max == null

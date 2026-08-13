@@ -98,7 +98,7 @@ This is a good option if you're connecting to a local database for development o
 
 Both [actions](../actions/introduction.md) and the [editable table data](../data-modeling/editable-tables.md) let Metabase write back to specific tables in your database.
 
-if you're using actions or editable tables, then in addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables you want to be able to write to.
+If you're using actions or editable tables, then in addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables you want to be able to write to.
 
 - Create a new role called `metabase_writer`.
 - Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the relevant tables.

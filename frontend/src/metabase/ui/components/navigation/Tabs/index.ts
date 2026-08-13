@@ -1,6 +1,6 @@
-export { Tabs } from "@mantine/core";
+export { Tabs } from "./Tabs";
+export type { TabsProps } from "./Tabs";
 export type {
-  TabsProps,
   TabsTabProps,
   TabsListProps,
   TabsPanelProps,

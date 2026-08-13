@@ -2,14 +2,12 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { LogoIcon } from "metabase/common/components/LogoIcon";
-import { useSetting } from "metabase/common/hooks";
 import { MAX_INITIAL_ENGINES_SHOWN } from "metabase/databases/constants";
-import { getEngines } from "metabase/databases/selectors";
 import {
   getEngineLogo,
   getEngineOptions,
 } from "metabase/databases/utils/engine";
-import { useSelector } from "metabase/lib/redux";
+import { useSetting } from "metabase/settings";
 import {
   Button,
   Center,
@@ -49,7 +47,7 @@ export const DatabaseEngineList = ({
   const [search, setSearch] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const engines = useSelector(getEngines);
+  const engines = useSetting("engines");
   const options = getEngineOptions(engines);
 
   const elevatedEngines = options.slice(0, MAX_INITIAL_ENGINES_SHOWN);
@@ -155,7 +153,7 @@ const DatabaseLogo = ({ db }: { db: string }) => {
       {logo ? (
         <img src={logo} width="100%" />
       ) : (
-        <Icon name="database" c="brand" />
+        <Icon name="database" c="core-brand" />
       )}
     </Center>
   );
@@ -229,10 +227,10 @@ const SampleDatabaseIndicator = () => {
           {t`Sample Database for testing`}
         </Text>
         {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- only shown to admins during setup */}
-        <Text inline c="text-tertiary">{t`(by Metabase)`}</Text>
+        <Text inline c="text-disabled">{t`(by Metabase)`}</Text>
       </Flex>
       <Group gap="xs">
-        <Icon name="check_filled" c="success" />
+        <Icon name="check_filled" c="feedback-positive" />
         {t`Included`}
       </Group>
     </Flex>

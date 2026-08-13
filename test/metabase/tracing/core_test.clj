@@ -1,7 +1,9 @@
 (ns metabase.tracing.core-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.tracing.core :as tracing])
+   [metabase.config.core :as config]
+   [metabase.tracing.core :as tracing]
+   [metabase.tracing.test-util :as tracing.tu])
   (:import
    (org.apache.logging.log4j ThreadContext)))
 
@@ -88,6 +90,98 @@
       (tracing/with-span :qp "test-span" {}
         (reset! side-effect true))
       (is @side-effect))))
+
+(deftest add-span-attrs!-disabled-is-noop-test
+  (testing "add-span-attrs! returns nil when the trace group is disabled"
+    ;; Tracing not initialized, so group-enabled? returns false
+    (tracing/shutdown-groups!)
+    (is (nil? (tracing/add-span-attrs! :tasks {:transform/incremental true})))))
+
+(deftest add-span-attrs!-detects-duplicate-keys-test
+  (testing "duplicate against with-span attrs throws (same value)"
+    (tracing.tu/with-span-exporter [_exporter]
+      (try
+        (tracing/init-enabled-groups! "tasks" "INFO")
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Span attribute already set"
+                              (tracing/with-span :tasks "test.span" {:foo/k 1}
+                                (tracing/add-span-attrs! :tasks {:foo/k 1}))))
+        (finally
+          (tracing/shutdown-groups!)))))
+  (testing "duplicate against with-span attrs throws (different value)"
+    (tracing.tu/with-span-exporter [_exporter]
+      (try
+        (tracing/init-enabled-groups! "tasks" "INFO")
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Span attribute already set"
+                              (tracing/with-span :tasks "test.span" {:foo/k 1}
+                                (tracing/add-span-attrs! :tasks {:foo/k 2}))))
+        (finally
+          (tracing/shutdown-groups!)))))
+  (testing "duplicate across two add-span-attrs! calls throws"
+    (tracing.tu/with-span-exporter [_exporter]
+      (try
+        (tracing/init-enabled-groups! "tasks" "INFO")
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Span attribute already set"
+                              (tracing/with-span :tasks "test.span" {}
+                                (tracing/add-span-attrs! :tasks {:foo/k "first"})
+                                (tracing/add-span-attrs! :tasks {:foo/k "second"}))))
+        (finally
+          (tracing/shutdown-groups!)))))
+  (testing "distinct keys across with-span and add-span-attrs! are allowed"
+    (tracing.tu/with-span-exporter [exporter]
+      (try
+        (tracing/init-enabled-groups! "tasks" "INFO")
+        (tracing/with-span :tasks "test.span" {:foo/a 1}
+          (tracing/add-span-attrs! :tasks {:foo/b 2}))
+        (let [attrs (-> exporter tracing.tu/finished-spans first :attrs)]
+          (is (= 1 (get attrs "foo.a")))
+          (is (= 2 (get attrs "foo.b"))))
+        (finally
+          (tracing/shutdown-groups!))))))
+
+(deftest add-span-attrs!-prod-mode-drops-duplicates-test
+  (testing "in non-dev/test mode, duplicate keys are dropped (with warn log) and the rest is written"
+    (tracing.tu/with-span-exporter [exporter]
+      (try
+        (tracing/init-enabled-groups! "tasks" "INFO")
+        (with-redefs [config/is-dev?  false
+                      config/is-test? false]
+          (tracing/with-span :tasks "test.span" {:foo/seed 1}
+            (tracing/add-span-attrs! :tasks {:foo/seed 999 :foo/added 2})))
+        (let [attrs (-> exporter tracing.tu/finished-spans first :attrs)]
+          (is (= 1 (get attrs "foo.seed"))  "duplicate seed kept its original value (the second write was dropped)")
+          (is (= 2 (get attrs "foo.added")) "non-duplicate added was written"))
+        (finally
+          (tracing/shutdown-groups!))))))
+
+(deftest add-span-attrs!-merges-onto-finished-span-test
+  (testing "attrs from with-span and add-span-attrs! both land on the same finished span; empty/nil attrs do not contribute"
+    (tracing.tu/with-span-exporter [exporter]
+      (try
+        (tracing/init-enabled-groups! "tasks" "INFO")
+        (tracing/with-span :tasks "test.span" {:foo/id 42 :foo/seed "yes"}
+          (tracing/add-span-attrs! :tasks {:foo/incremental true})
+          (tracing/add-span-attrs! :tasks {:foo/full-incremental-run false})
+          (tracing/add-span-attrs! :tasks {})
+          (tracing/add-span-attrs! :tasks nil))
+        ;; clj-otel encodes namespaced keywords with `.` separator and `-` as `_`,
+        ;; e.g. :foo/full-incremental-run -> "foo.full_incremental_run".
+        ;; It also auto-adds default attrs (thread.*, code.*) on every span, so we filter to our prefix
+        ;; before counting to detect any spurious contributions.
+        (let [finished  (tracing.tu/finished-spans exporter)
+              span      (first finished)
+              our-attrs (into {} (filter (fn [[^String k _]] (.startsWith k "foo."))) (:attrs span))]
+          (is (= 1 (count finished)))
+          (is (= "test.span" (:name span)))
+          (is (= 4 (count our-attrs)) "exactly the four contributed attrs, nothing extra under our prefix")
+          (is (= 42 (get our-attrs "foo.id")))
+          (is (= "yes" (get our-attrs "foo.seed")))
+          (is (true? (get our-attrs "foo.incremental")))
+          (is (false? (get our-attrs "foo.full_incremental_run"))))
+        (finally
+          (tracing/shutdown-groups!))))))
 
 (deftest inject-trace-level-into-mdc-test
   (testing "inject-trace-id-into-mdc! sets trace_level in MDC from cached setting"
@@ -205,7 +299,6 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!))))
-
   (testing "outermost with-span still clears MDC when no parent values exist"
     (try
       (tracing/init-enabled-groups! "all" "INFO")
@@ -232,7 +325,6 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!))))
-
   (testing "with-span skips pyroscope for nested spans (parent MDC already set)"
     (try
       (tracing/init-enabled-groups! "all" "INFO")
@@ -245,7 +337,6 @@
       (finally
         (tracing/clear-trace-id-from-mdc!)
         (tracing/shutdown-groups!))))
-
   (testing "rapid root span cycles don't throw or leak pyroscope state"
     (try
       (tracing/init-enabled-groups! "all" "INFO")

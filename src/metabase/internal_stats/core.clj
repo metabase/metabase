@@ -1,10 +1,16 @@
 (ns metabase.internal-stats.core
   (:require
+   [metabase.internal-stats.data-apps :as data-app-stats]
    [metabase.internal-stats.embedding :as embedding-stats]
+   [metabase.internal-stats.metabot :as metabot-stats]
    [metabase.internal-stats.query-executions :as query-execution-stats]
    [metabase.internal-stats.questions :as question-stats]
    [metabase.internal-stats.users :as user-stats]
    [potemkin :as p]))
+
+(p/import-vars
+ [data-app-stats
+  data-app-stats])
 
 (p/import-vars
  [embedding-stats
@@ -26,3 +32,7 @@
 (p/import-vars
  [question-stats
   question-statistics-all-time])
+
+(p/import-vars
+ [metabot-stats
+  metabot-stats])

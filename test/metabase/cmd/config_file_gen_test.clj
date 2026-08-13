@@ -1,7 +1,7 @@
 (ns metabase.cmd.config-file-gen-test
   (:require
    [clojure.test :refer :all]
-   [metabase.cmd.config-file-gen :refer [create-settings-map]]))
+   [metabase.cmd.config-file-gen :refer [config-file-settings create-settings-map]]))
 
 (def example-settings '({:database-local :never,
                          :cache? true,
@@ -85,6 +85,33 @@
                          :munged-name "deprecated-setting",
                          :visibility :public}))
 
+(def ^:private read-only-setting
+  "A read-only (`:setter :none`) setting that also carries a `:doc` string, like
+  `ai-usage-max-retention-days`. It can be read from an environment variable, so it belongs in the
+  env var docs, but a config file can never set it."
+  {:database-local :never,
+   :cache? true,
+   :user-local :never,
+   :init nil,
+   :default nil,
+   :name :ai-usage-max-retention-days,
+   :export? true,
+   :type :integer,
+   :enabled? nil,
+   :encryption :no,
+   :deprecated nil,
+   :audit :never,
+   :sensitive? false,
+   :tag java.lang.Long,
+   :on-change nil,
+   :setter :none,
+   :doc
+   "Sets the maximum number of days Metabase preserves rows for the following application database tables:\n\n- `ai_usage_log`",
+   :feature nil,
+   :namespace 'metabase.metabot.settings,
+   :munged-name "ai-usage-max-retention-days",
+   :visibility :admin})
+
 (def settings-map
   {:admin-email nil
    :aggregated-query-row-limit nil
@@ -95,3 +122,15 @@
     (let [settings (create-settings-map example-settings)]
       (is (= settings-map
              settings)))))
+
+(deftest config-file-settings-excludes-read-only-settings-test
+  (testing "Read-only settings are excluded from the config file template, even when they have a `:doc`"
+    (let [names (->> (conj (vec example-settings) read-only-setting)
+                     config-file-settings
+                     (map :munged-name)
+                     set)]
+      (is (not (contains? names "ai-usage-max-retention-days"))
+          "a `:setter :none` setting must never be offered as a config file setting")
+      (testing "and settable settings are still included"
+        (is (contains? names "admin-email"))
+        (is (contains? names "aggregated-query-row-limit"))))))

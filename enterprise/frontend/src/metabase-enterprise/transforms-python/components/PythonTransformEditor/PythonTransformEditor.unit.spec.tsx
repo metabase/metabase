@@ -1,12 +1,14 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTablesEndpoints,
-  setupWorkspaceCheckoutEndpoint,
-  setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { PythonTransformEditorUiOptions } from "metabase/plugins/oss/transforms";
+import { createMockState } from "metabase/redux/store/mocks";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
 import {
@@ -14,7 +16,6 @@ import {
   createMockTable,
   createMockTransform,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { PythonTransformEditor } from "./PythonTransformEditor";
 
@@ -22,6 +23,7 @@ jest.mock("metabase-enterprise/settings", () => ({
   hasPremiumFeature: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
   typeof hasPremiumFeature
 >;
@@ -41,7 +43,14 @@ const mockPythonSource: PythonTransformSourceDraft = {
   type: "python",
   body: "# Python script\nprint('Hello, world!')",
   "source-database": DATABASE_ID,
-  "source-tables": {},
+  "source-tables": [],
+};
+
+const mockPythonSourceWithTable: PythonTransformSourceDraft = {
+  ...mockPythonSource,
+  "source-tables": [
+    { alias: "test_table", table_id: 1, database_id: DATABASE_ID },
+  ],
 };
 
 const mockPythonTransform = createMockTransform({
@@ -52,7 +61,7 @@ const mockPythonTransform = createMockTransform({
     type: "python",
     body: "def transform(): pass",
     "source-database": DATABASE_ID,
-    "source-tables": {},
+    "source-tables": [],
   },
 });
 
@@ -72,8 +81,6 @@ function setup({
   setupDatabasesEndpoints([mockDatabase]);
   setupTablesEndpoints([mockTable]);
   setupSearchEndpoints([]);
-  setupWorkspacesEndpoint([]);
-  setupWorkspaceCheckoutEndpoint({});
 
   renderWithProviders(
     <PythonTransformEditor
@@ -162,6 +169,41 @@ describe("PythonTransformEditor", () => {
     it("should not render run button when hideRunButton is true", () => {
       setup({ isEditMode: true, uiOptions: { hideRunButton: true } });
       expect(screen.queryByTestId("run-button")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("running the script", () => {
+    beforeEach(() => {
+      fetchMock.post("path:/api/ee/transforms-python/test-run", {
+        logs: "",
+        output: { cols: [{ name: "foo" }], rows: [[1]] },
+      });
+    });
+
+    it("should disable the run button when no source tables are selected", async () => {
+      setup({ isEditMode: true });
+      const runButton = screen.getByTestId("run-button");
+      expect(runButton).toBeDisabled();
+
+      await userEvent.click(runButton);
+      expect(
+        fetchMock.callHistory.calls("path:/api/ee/transforms-python/test-run"),
+      ).toHaveLength(0);
+    });
+
+    it("should run the script when a source table is selected", async () => {
+      setup({ isEditMode: true, source: mockPythonSourceWithTable });
+      const runButton = screen.getByTestId("run-button");
+      expect(runButton).toBeEnabled();
+
+      await userEvent.click(runButton);
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(
+            "path:/api/ee/transforms-python/test-run",
+          ),
+        ).toHaveLength(1);
+      });
     });
   });
 });

@@ -5,16 +5,14 @@ import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import {
-  setNotebookNativePreviewSidebarWidth,
-  setUIControls,
-} from "metabase/query_builder/actions";
+import { setNotebookNativePreviewSidebarWidth } from "metabase/query_builder/actions";
 import { getUiControls } from "metabase/query_builder/selectors";
 import {
   Notebook,
   type NotebookProps,
 } from "metabase/querying/notebook/components/Notebook";
+import { useDispatch, useSelector } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Box, Flex, rem } from "metabase/ui";
 
 import { canShowNativePreview } from "../../ViewHeader/utils";
@@ -121,7 +119,7 @@ export const NotebookContainer = ({
     <Flex
       pos="absolute"
       inset={0}
-      bg="background-primary"
+      bg="background_page-primary"
       opacity={isOpen ? 1 : 0}
       style={{
         transform: transformStyle,
@@ -167,7 +165,7 @@ export const NotebookContainer = ({
               handle={<Handle />}
               onResizeStop={handleResizeStop}
               style={{
-                borderLeft: "1px solid var(--mb-color-border)",
+                borderLeft: "1px solid var(--mb-color-border-neutral)",
                 marginInlineStart: "0.25rem",
               }}
             >

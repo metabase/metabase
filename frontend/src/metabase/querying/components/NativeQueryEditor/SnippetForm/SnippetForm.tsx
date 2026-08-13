@@ -1,0 +1,168 @@
+import { useMemo } from "react";
+import { t } from "ttag";
+import * as Yup from "yup";
+
+import { useListCollectionsQuery } from "metabase/api";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
+import { Button, Flex, Icon, Stack } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
+import type { Collection, NativeQuerySnippet } from "metabase-types/api";
+
+import S from "./SnippetForm.module.css";
+
+const SNIPPET_SCHEMA = Yup.object({
+  name: Yup.string()
+    .required(Errors.required)
+    .max(100, Errors.maxLength)
+    .default(""),
+  description: Yup.string().nullable().max(500, Errors.maxLength).default(null),
+  content: Yup.string()
+    .required(Errors.required)
+    .max(10000, Errors.maxLength)
+    .default(""),
+  collection_id: Yup.number().nullable().default(null),
+});
+
+export type SnippetFormValues = Pick<
+  NativeQuerySnippet,
+  "name" | "description" | "content" | "collection_id"
+>;
+
+export interface SnippetFormOwnProps {
+  snippet?: Partial<SnippetFormValues>;
+  isEditing: boolean;
+  isDirty?: boolean;
+  onSubmit: (snippet: SnippetFormValues) => void | Promise<void>;
+  onArchive?: () => void | Promise<void>;
+  onCancel?: () => void;
+}
+
+interface SnippetLoaderProps {
+  snippetCollections: Collection[];
+}
+type SnippetFormProps = SnippetFormOwnProps & SnippetLoaderProps;
+
+function SnippetFormInner({
+  snippet,
+  snippetCollections,
+  isEditing,
+  isDirty: isInitiallyDirty = false,
+  onSubmit,
+  onArchive,
+  onCancel,
+}: SnippetFormProps) {
+  const hasManyCollections = snippetCollections.length > 1;
+
+  const initialValues = useMemo(
+    () =>
+      SNIPPET_SCHEMA.cast(
+        {
+          ...snippet,
+          content: snippet?.content || "",
+        },
+        { stripUnknown: true },
+      ),
+    [snippet],
+  );
+
+  return (
+    <FormProvider
+      initialValues={initialValues}
+      validationSchema={SNIPPET_SCHEMA}
+      onSubmit={onSubmit}
+    >
+      {({ dirty }) => (
+        <Form
+          as={Stack}
+          gap="md"
+          disabled={!dirty && !isInitiallyDirty}
+          className={S.SnippetForm}
+        >
+          <FormTextarea
+            classNames={{ input: S.FormSnippetTextArea }}
+            name="content"
+            label={t`Enter some SQL here so you can reuse it later`}
+            placeholder="AND canceled_at IS null\nAND account_type = 'PAID'"
+            autosize={false}
+            resize="vertical"
+            rows={5}
+          />
+          <FormTextInput
+            name="name"
+            label={t`Give your snippet a name`}
+            placeholder={t`Current Customers`}
+          />
+          <FormTextInput
+            name="description"
+            label={t`Add a description`}
+            placeholder={t`It's optional but oh, so helpful`}
+            nullable
+          />
+          {hasManyCollections && (
+            <FormCollectionPicker
+              name="collection_id"
+              title={t`Folder this should be in`}
+              collectionPickerModalProps={{ namespaces: ["snippets"] }}
+            />
+          )}
+          <Flex align="center" justify="space-between">
+            <Flex align="center" justify="center" gap="sm">
+              {isEditing && (
+                <Button
+                  type="button"
+                  className={S.ArchiveButton}
+                  leftSection={<Icon name="archive" />}
+                  variant="subtle"
+                  color="text-secondary"
+                  size="sm"
+                  onClick={onArchive}
+                >
+                  {t`Archive`}
+                </Button>
+              )}
+              <FormErrorMessage />
+            </Flex>
+            <Flex align="center" justify="center" gap="sm">
+              {!!onCancel && (
+                <Button type="button" size="sm" onClick={onCancel}>
+                  {t`Cancel`}
+                </Button>
+              )}
+              <FormSubmitButton
+                label={t`Save`}
+                disabled={!dirty && !isInitiallyDirty}
+                variant="filled"
+                size="sm"
+              />
+            </Flex>
+          </Flex>
+        </Form>
+      )}
+    </FormProvider>
+  );
+}
+
+export function SnippetForm(props: SnippetFormOwnProps) {
+  const {
+    data: snippetCollections,
+    isLoading,
+    error,
+  } = useListCollectionsQuery({ namespace: "snippets" });
+  return (
+    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+      <SnippetFormInner
+        {...props}
+        snippetCollections={snippetCollections ?? []}
+      />
+    </LoadingAndErrorWrapper>
+  );
+}

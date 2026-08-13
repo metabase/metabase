@@ -5,8 +5,10 @@ import { forwardRef, useCallback } from "react";
 import type { TextareaProps } from "metabase/ui";
 import { Textarea } from "metabase/ui";
 
-export interface FormTextareaProps
-  extends Omit<TextareaProps, "value" | "error"> {
+export interface FormTextareaProps extends Omit<
+  TextareaProps,
+  "value" | "error"
+> {
   name: string;
   nullable?: boolean;
 }

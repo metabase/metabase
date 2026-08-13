@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useMemo } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 import {
@@ -18,12 +15,11 @@ import {
   saveTenantSpecificCollectionPermissions,
   updateTenantSpecificCollectionPermission,
 } from "metabase/admin/permissions/permissions";
-import type { CollectionIdProps } from "metabase/admin/permissions/selectors/collection-permissions";
 import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
-import { Collections } from "metabase/entities/collections";
-import { Groups } from "metabase/entities/groups";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useListCollectionsTreeQuery } from "metabase/api";
+import { useDispatch, useSelector } from "metabase/redux";
+import { useNavigate, useParams } from "metabase/router";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import {
@@ -34,18 +30,14 @@ import {
   tenantSpecificCollectionsQuery,
 } from "./selectors";
 
-type TenantSpecificCollectionPermissionsPageProps = {
-  params: CollectionIdProps["params"];
-  route: Route;
-};
+function TenantSpecificCollectionPermissionsPageView() {
+  const { collectionId } = useParams();
+  useListCollectionsTreeQuery(tenantSpecificCollectionsQuery);
 
-function TenantSpecificCollectionPermissionsPageView({
-  params,
-  route,
-}: TenantSpecificCollectionPermissionsPageProps) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  const props = useMemo(() => ({ params }), [params]);
+  const props = useMemo(() => ({ params: { collectionId } }), [collectionId]);
   const sidebar = useSelector((state) =>
     getTenantSpecificCollectionsSidebar(state, props),
   );
@@ -71,9 +63,9 @@ function TenantSpecificCollectionPermissionsPageView({
 
   const navigateToItem = useCallback(
     ({ id }: { id: CollectionId }) => {
-      dispatch(push(`/admin/permissions/tenant-specific-collections/${id}`));
+      navigate(`/admin/permissions/tenant-specific-collections/${id}`);
     },
-    [dispatch],
+    [navigate],
   );
 
   const updateCollectionPermission = useCallback(
@@ -112,6 +104,7 @@ function TenantSpecificCollectionPermissionsPageView({
       // Always propagate to sub-collections for tenant-specific collections
       updateCollectionPermission({
         groupId: assertNumericId(item.id),
+        // Unjustified type cast. FIXME
         collection: collection as Collection,
         value,
         shouldPropagateToChildren: true,
@@ -124,7 +117,6 @@ function TenantSpecificCollectionPermissionsPageView({
     <PermissionsPageLayout
       tab="tenant-specific-collections"
       isDirty={isDirty}
-      route={route}
       onSave={savePermissions}
       onLoad={() => loadPermissions()}
       helpContent={<CollectionPermissionsHelp />}
@@ -150,9 +142,5 @@ function TenantSpecificCollectionPermissionsPageView({
   );
 }
 
-export const TenantSpecificCollectionPermissionsPage = _.compose(
-  Collections.loadList({
-    entityQuery: tenantSpecificCollectionsQuery,
-  }),
-  Groups.loadList(),
-)(TenantSpecificCollectionPermissionsPageView);
+export const TenantSpecificCollectionPermissionsPage =
+  TenantSpecificCollectionPermissionsPageView;

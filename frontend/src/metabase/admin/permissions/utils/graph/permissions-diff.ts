@@ -1,7 +1,7 @@
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   ConcreteTableId,
-  Group,
+  GroupInfo,
   GroupsPermissions,
 } from "metabase-types/api";
 
@@ -62,6 +62,7 @@ function diffDatabasePermissions(
       {
         databaseId: database.id,
         schemaName: table.schema_name || "",
+        // Unjustified type cast. FIXME
         tableId: table.id as ConcreteTableId,
       },
       DataPermission.VIEW_DATA,
@@ -72,6 +73,7 @@ function diffDatabasePermissions(
       {
         databaseId: database.id,
         schemaName: table.schema_name || "",
+        // Unjustified type cast. FIXME
         tableId: table.id as ConcreteTableId,
       },
       DataPermission.VIEW_DATA,
@@ -113,13 +115,14 @@ function diffGroupPermissions(
     }
   }
   deleteIfEmpty(groupDiff, "databases");
+  // Unjustified type cast. FIXME
   return groupDiff as Partial<GroupPermissionsDiff>;
 }
 
 export function diffDataPermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
-  groups: Group[],
+  groups: GroupInfo[],
   databases: Database[],
 ): PermissionsGraphDiff {
   const permissionsDiff: {
@@ -139,5 +142,6 @@ export function diffDataPermissions(
       }
     }
   }
+  // Unjustified type cast. FIXME
   return permissionsDiff as PermissionsGraphDiff;
 }

@@ -8,6 +8,7 @@ export interface AvatarProps {
   height?: string[];
   width?: string[];
   bg?: string;
+  className?: string;
 }
 
 export const Avatar = styled.div<AvatarProps>`
@@ -20,6 +21,6 @@ export const Avatar = styled.div<AvatarProps>`
   border-radius: 999px;
   font-weight: 900;
   line-height: 1;
-  background-color: ${({ bg = color("brand") }) => bg};
+  background-color: ${({ bg = color("core-brand") }) => bg};
   flex-shrink: 0;
 `;

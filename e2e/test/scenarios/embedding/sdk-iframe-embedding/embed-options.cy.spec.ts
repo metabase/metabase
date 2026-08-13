@@ -114,10 +114,10 @@ describe("EE", () => {
 
             cy.log("set up the second subscription");
             cy.button("Set up a new schedule").click();
-            cy.findByDisplayValue("Hourly").click();
+            cy.findByTestId("select-frequency").click();
           });
 
-          H.popover().findByRole("option", { name: "Daily" }).click();
+          H.popover().findByRole("option", { name: "daily" }).click();
           cy.findByRole("button", { name: "Done" }).click();
 
           dashboardSidebar().within(() => {
@@ -263,7 +263,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.findByText(/Filter by this value/).should("be.visible");
 
       cy.log("4. clicking on the filter should drill down");
-      cy.get('[type="filter"] button').first().click();
+      cy.findByTestId("click-actions-filter-section")
+        .find("button")
+        .first()
+        .click();
       cy.findAllByText("29.8").first().should("be.visible");
 
       cy.log("5. should not show a save button");
@@ -303,7 +306,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.findByText(/Filter by this value/).should("be.visible");
 
       cy.log("5. clicking on the filter should drill down");
-      cy.get('[type="filter"] button').first().click();
+      cy.findByTestId("click-actions-filter-section")
+        .find("button")
+        .first()
+        .click();
       cy.findAllByText("29.8").first().should("be.visible");
 
       cy.log("6. saving should be disabled in drill-throughs");
@@ -338,7 +344,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.log("1. clicking on the filter should drill down");
       cy.findAllByText("37.65").first().should("be.visible").click();
       cy.findByText(/Filter by this value/).should("be.visible");
-      cy.get('[type="filter"] button').first().click();
+      cy.findByTestId("click-actions-filter-section")
+        .find("button")
+        .first()
+        .click();
       cy.findAllByText("29.8").first().should("be.visible");
       cy.findByTestId("interactive-question-result-toolbar").should(
         "be.visible",

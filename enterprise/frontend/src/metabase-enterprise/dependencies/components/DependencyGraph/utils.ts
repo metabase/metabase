@@ -5,9 +5,6 @@ import type {
   DependencyEntry,
   DependencyGraph,
   DependencyNode,
-  WorkspaceDependencyGraph,
-  WorkspaceGraphDependencyEdge,
-  WorkspaceGraphDependencyNode,
 } from "metabase-types/api";
 
 import type { NodeId } from "../../types";
@@ -19,17 +16,14 @@ export function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
   return `${sourceId}-${targetId}`;
 }
 
-type AnyDependencyNode = DependencyNode | WorkspaceGraphDependencyNode;
-type AnyDependencyEdge = DependencyEdge | WorkspaceGraphDependencyEdge;
-
-function getNodes(nodes: AnyDependencyNode[]): NodeType[] {
+function getNodes(nodes: DependencyNode[]): NodeType[] {
   return nodes.map((node) => {
     const nodeId = getNodeId(node.id, node.type);
 
     return {
       id: nodeId,
       type: "node",
-      data: node as DependencyNode, // Cast for NodeType compatibility
+      data: node,
       position: { x: 0, y: 0 },
       draggable: false,
       deletable: false,
@@ -37,7 +31,7 @@ function getNodes(nodes: AnyDependencyNode[]): NodeType[] {
   });
 }
 
-function getEdges(edges: AnyDependencyEdge[]): Edge[] {
+function getEdges(edges: DependencyEdge[]): Edge[] {
   return edges.map((edge) => {
     const sourceId = getNodeId(edge.from_entity_id, edge.from_entity_type);
     const targetId = getNodeId(edge.to_entity_id, edge.to_entity_type);
@@ -54,10 +48,7 @@ function getEdges(edges: AnyDependencyEdge[]): Edge[] {
   });
 }
 
-export function getInitialGraph({
-  nodes,
-  edges,
-}: DependencyGraph | WorkspaceDependencyGraph): GraphData {
+export function getInitialGraph({ nodes, edges }: DependencyGraph): GraphData {
   return {
     nodes: getNodes(nodes),
     edges: getEdges(edges),

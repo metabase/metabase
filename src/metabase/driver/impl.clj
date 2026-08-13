@@ -76,7 +76,7 @@
     (try
       (apply classloader/require expected-ns require-options)
       (catch Throwable e
-        (log/error e "Error loading driver namespace")
+        (log/errorf "Error loading driver namespace: %s" (ex-message e))
         (throw (Exception. (tru "Could not load {0} driver." driver) e))))))
 
 (mu/defn load-driver-namespace-if-needed!
@@ -109,7 +109,7 @@
   "Check to make sure we're not trying to change the abstractness of an already registered driver"
   [driver new-abstract?]
   (when (registered? driver)
-    (let [old-abstract? (boolean (abstract? driver))
+    (let [old-abstract? (abstract? driver)
           new-abstract? (boolean new-abstract?)]
       (when (not= old-abstract? new-abstract?)
         (throw (Exception. (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
@@ -207,7 +207,6 @@
           (doseq [parent (parents hierarchy driver)]
             (initialize-if-needed! parent init-fn))
           (log/info (u/format-color :yellow "Initializing driver %s..." driver))
-          (log/debug "Reason:" (u/pprint-to-str :blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
           (init-fn driver)
           (swap! initialized-drivers conj driver))))))
 

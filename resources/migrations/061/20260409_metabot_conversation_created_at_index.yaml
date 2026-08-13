@@ -1,0 +1,18 @@
+## Index on metabot_conversation.created_at to support the metabot-analytics
+## list endpoint, which paginates newest-first and would otherwise full-scan
+## and sort on every request.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-09T12:00:00
+      author: noahmoss
+      comment: Index on metabot_conversation.created_at for paginated list endpoint
+      changes:
+        - createIndex:
+            indexName: idx_metabot_conversation_created_at
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: created_at

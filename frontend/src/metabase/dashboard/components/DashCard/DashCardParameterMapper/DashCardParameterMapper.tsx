@@ -2,9 +2,9 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { isQuestionDashCard } from "metabase/dashboard/utils";
 import { Flex } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
 import type { DashboardCard } from "metabase-types/api";
 
 import { DashCardCardParameterMapperConnected } from "./DashCardCardParameterMapper";
@@ -38,7 +38,7 @@ export const DashCardParameterMapper = ({
         <div
           className={cx(CS.mx4, CS.my1, CS.p1, CS.rounded, CS.textMedium)}
           style={{
-            backgroundColor: color("background-secondary"),
+            backgroundColor: color("background_page-secondary"),
             marginTop: -10,
           }}
         >

@@ -1,8 +1,6 @@
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { ConcreteTableId } from "metabase-types/api";
-
-import type { TableEntityId } from "../types";
+import type { ConcreteTableId, TableEntityId } from "metabase-types/api";
 
 export const getDatabase = (metadata: Metadata, databaseId: number) => {
   const database = metadata.database(databaseId);
@@ -17,6 +15,7 @@ export const getDatabase = (metadata: Metadata, databaseId: number) => {
 export const metadataTableToTableEntityId = (table: Table) => ({
   databaseId: table.db_id,
   schemaName: table.schema_name || "",
+  // Unjustified type cast. FIXME
   tableId: table.id as ConcreteTableId,
 });
 

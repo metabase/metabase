@@ -1,5 +1,4 @@
 import { memo, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
@@ -7,7 +6,7 @@ import {
   useUpdateTableMutation,
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import * as Urls from "metabase/lib/urls";
+import { Link } from "metabase/common/components/Link";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import {
@@ -20,6 +19,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
 
 import { FieldOrderPicker } from "../FieldOrderPicker";
@@ -158,7 +158,7 @@ const TableSectionBase = ({
         pos="sticky"
         pt="lg"
         top={0}
-        bg="background-secondary"
+        bg="background_page-secondary"
       >
         {withName && (
           <NameDescriptionInput
@@ -174,7 +174,7 @@ const TableSectionBase = ({
                   component={Link}
                   to={Urls.queryBuilderTable(table.id, table.db_id)}
                   variant="subtle"
-                  color="text-tertiary"
+                  color="text-disabled"
                   size="sm"
                   mr="sm"
                   aria-label={t`Go to this table`}
@@ -207,9 +207,7 @@ const TableSectionBase = ({
           >
             {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
 
-            {isUpdatingSorting && (
-              <Loader data-testid="loading-indicator" size="xs" />
-            )}
+            {isUpdatingSorting && <Loader size="xs" />}
 
             {!isSorting && hasFields && (
               <ResponsiveButton
@@ -220,7 +218,7 @@ const TableSectionBase = ({
               >{t`Sorting`}</ResponsiveButton>
             )}
 
-            {!isSorting && (
+            {!isSorting && !table.db?.is_attached_dwh && (
               <ResponsiveButton
                 icon="gear_settings_filled"
                 showLabel={showButtonLabel}

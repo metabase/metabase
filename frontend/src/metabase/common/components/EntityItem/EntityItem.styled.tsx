@@ -2,20 +2,19 @@
 import styled from "@emotion/styled";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
-import { darken } from "metabase/lib/colors";
+import { darken } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
 function getPinnedForeground(disabled: boolean) {
-  return disabled ? darken("border", 0.38) : color("accent4");
+  return disabled ? darken("border-neutral", 0.38) : color("accent4");
 }
 
 function getForeground(model: string, disabled: boolean) {
   return disabled
-    ? darken("border", 0.38)
+    ? darken("border-neutral", 0.38)
     : model === "dataset"
       ? color("accent2")
-      : color("brand");
+      : color("core-brand");
 }
 
 const getItemPadding = (variant?: string) => {
@@ -56,15 +55,8 @@ export const EntityItemWrapper = styled.div<{
 
   &:hover {
     color: ${(props) =>
-      props.disabled ? color("text-secondary") : color("brand")};
+      props.disabled ? color("text-secondary") : color("core-brand")};
   }
-`;
-
-export const EntityItemSpinner = styled(LoadingSpinner)`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  color: var(--mb-color-brand);
 `;
 
 export const EntityMenuContainer = styled.div`

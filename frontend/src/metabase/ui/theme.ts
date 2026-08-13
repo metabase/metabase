@@ -1,10 +1,10 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 
-import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 import type { ColorSettings } from "metabase-types/api";
 
 import Styles from "./Theme.module.css";
+import { DEFAULT_METABASE_COMPONENT_THEME } from "./component-theme";
 import {
   accordionOverrides,
   actionIconOverrides,
@@ -78,7 +78,7 @@ export const getThemeOverrides = (
   focusClassName: Styles.focus,
   breakpoints,
   colors: getMantineThemeColors(colorScheme, whitelabelColors),
-  primaryColor: "brand",
+  primaryColor: "core-brand",
   primaryShade: 0,
   // Store colorScheme in other property for access later
   other: {
@@ -86,7 +86,8 @@ export const getThemeOverrides = (
     colorScheme,
   },
   shadows: {
-    xs: "0 0 0 0.5px var(--mb-color-border), 0 1px 2px 0 var(--mb-color-shadow)",
+    // eslint-disable-next-line metabase/no-color-literals
+    xs: "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 3px 0 rgba(0, 0, 0, 0.07)",
     // eslint-disable-next-line metabase/no-color-literals
     sm: "0px 1px 4px 2px rgba(0, 0, 0, 0.08)",
     // eslint-disable-next-line metabase/no-color-literals
@@ -147,7 +148,7 @@ export const getThemeOverrides = (
       },
     },
   },
-  fontFamily: "var(--mb-default-font-family), sans-serif",
+  fontFamily: "var(--mb-default-font-family)",
   fontFamilyMonospace: "Monaco, monospace",
   components: {
     ...accordionOverrides,

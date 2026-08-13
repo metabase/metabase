@@ -3,13 +3,15 @@ import type { FocusEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
 
-import { useGroupListQuery } from "metabase/common/hooks";
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import type { SelectProps } from "metabase/ui";
 import { Loader, Select } from "metabase/ui";
 import type { GroupId } from "metabase-types/api";
 
-interface FormGroupWidgetProps
-  extends Omit<SelectProps, "value" | "error" | "data"> {
+interface FormGroupWidgetProps extends Omit<
+  SelectProps,
+  "value" | "error" | "data"
+> {
   name: string;
   nullable?: boolean;
 }
@@ -39,7 +41,7 @@ export const FormGroupWidget = forwardRef(function FormGroupWidget(
     [setTouched, onBlur],
   );
 
-  const { data: groups, isLoading } = useGroupListQuery();
+  const { data: groups, isLoading } = useListPermissionsGroupsQuery({});
   if (isLoading || !groups) {
     return <Loader size={16} />;
   }

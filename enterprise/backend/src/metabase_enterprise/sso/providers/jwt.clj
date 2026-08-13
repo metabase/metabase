@@ -80,7 +80,7 @@
 (methodical/defmethod auth-identity/authenticate :provider/jwt
   [_provider {:keys [token] :as _request}]
   (cond
-    (not (sso-settings/jwt-enabled))
+    (not (sso-settings/jwt-enabled-and-configured))
     {:success? false
      :error :jwt-not-enabled
      :message (str (tru "JWT authentication is not enabled"))}
@@ -108,7 +108,7 @@
           (throw (ex-info (tru "JWT token missing email claim")
                           {:status-code 400
                            :error :missing-email})))
-        (log/infof "Successfully authenticated JWT token for: %s %s" first-name last-name)
+        (log/debug "Successfully authenticated JWT token")
         {:success? true
          :tenant-slug (some-> tenant-slug str)
          :tenant-attributes tenant-attributes
@@ -122,12 +122,12 @@
          :jwt-data jwt-data
          :provider-id email})
       (catch clojure.lang.ExceptionInfo e
-        (log/errorf e "JWT authentication failed: %s" (.getMessage e))
+        (log/errorf "JWT authentication failed: %s" (.getMessage e))
         {:success? false
          :error (or (:error (ex-data e)) :authentication-failed)
          :message (.getMessage e)})
       (catch Exception e
-        (log/errorf e "Unexpected error during JWT authentication: %s" (.getMessage e))
+        (log/errorf "Unexpected error during JWT authentication: %s" (.getMessage e))
         {:success? false
          :error :server-error
          :message "An unexpected error occurred during authentication"}))))

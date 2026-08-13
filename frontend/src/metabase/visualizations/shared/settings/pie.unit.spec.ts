@@ -1,6 +1,5 @@
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
-import type { RawSeries } from "metabase-types/api";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import type { PieRow, RawSeries } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -96,6 +95,7 @@ describe("getColors", () => {
       createMockColumn({ name: "Category" }),
       createMockColumn({ name: "Count" }),
     ];
+    // Unjustified type cast. FIXME
     const rawSeries = [
       {
         data: createMockDatasetData({
@@ -117,6 +117,7 @@ describe("getColors", () => {
         Gadget: "#00FF00",
         Gizmo: "#FFFFFF",
       },
+      // Unjustified type cast. FIXME
       "pie.rows": [
         {
           key: "Gadget",
@@ -151,6 +152,7 @@ describe("getColors", () => {
       createMockColumn({ name: "Category" }),
       createMockColumn({ name: "Count" }),
     ];
+    // Unjustified type cast. FIXME
     const rawSeries = [
       {
         data: createMockDatasetData({

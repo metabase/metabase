@@ -1,7 +1,8 @@
 (ns ^{:added "0.51.0"} metabase.channel.models.channel
   (:require
    [malli.core :as mc]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.models.interface :as mi]
@@ -41,7 +42,8 @@
   [:map
    [:name                         string?]
    [:type                         :keyword]
-   [:details                      :map]
+   ;; per-channel-type connection config (a Slack token, an HTTP url and auth, ...) -- free-form like database details
+   [:details                      ms/Map]
    [:active      {:optional true} :boolean]
    [:description {:optional true} [:maybe string?]]])
 
@@ -69,12 +71,21 @@
 
 (defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
 
-(defmethod serdes/hash-fields :model/Channel [_instance] [:name :type])
+(defmethod serdes/load-find-local "Channel"
+  [path]
+  (t2/select-one :model/Channel :name (:id (last path))))
+
+(defmethod serdes/generate-path "Channel" [_ channel]
+  [(serdes/infer-self-path "Channel" channel)])
+
+(defmethod serdes/storage-path "Channel" [channel _ctx]
+  [{:label "channels"} {:label (:name channel) :key (serdes/entity-id "Channel" channel)}])
 
 (defmethod serdes/make-spec "Channel"
   [_model-name _opts]
-  {:copy      [:name :description :type :details :active]
-   :transform {:created_at (serdes/date)}})
+  {:copy           [:name :description :type :details :active]
+   :transform      {:created_at (serdes/date)}
+   :defaults {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/ChannelTemplate                                    ;;
@@ -100,21 +111,25 @@
       [:path [:and
               string?
               [:fn {:error/message "invalid template path"}
-               handlebars/valid-template-path?]]]]]
+               handlebars/valid-template-name?]]]]]
     [:email/handlebars-text
      [:map
       [:body string?]]]]])
 
+(def ^:private channel-template-entries
+  "Entries every channel template has, whatever its `:channel_type`."
+  [[:id           {:optional true} ms/PositiveInt]
+   [:name         {:optional true} ms/NonBlankString]
+   [:channel_type                  [:fn #(= "channel" (-> % keyword namespace))]]])
+
 (mr/def ::ChannelTemplate
   "Channel Template schema."
-  [:merge
-   [:map
-    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
-   [:multi {:dispatch :channel_type}
-    [:channel/email
-     [:map
-      [:details ::ChannelTemplateEmailDetails]]]
-    [::mc/default :any]]])
+  (mu/dispatched-map
+   ;; keywordize: the raw JSON body has `:channel_type` as a string, which would match no branch
+   (comp keyword :channel_type)
+   channel-template-entries
+   [[:channel/email [[:details ::ChannelTemplateEmailDetails]]]
+    [::mc/default   []]]))
 
 (mr/def ::ChannelTemplateEmailDetailsUserProvided
   "Email template details schema for API-provided templates. Only handlebars-text is allowed;
@@ -127,38 +142,27 @@
 
 (mr/def ::ChannelTemplateUserProvided
   "Channel Template schema for API-provided templates. Does not allow handlebars-resource."
-  [:merge
-   [:map
-    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
-   [:multi {:dispatch :channel_type}
-    [:channel/email
-     [:map
-      [:details ::ChannelTemplateEmailDetailsUserProvided]]]
-    [::mc/default :any]]])
+  (mu/dispatched-map
+   ;; keywordize: the raw JSON body has `:channel_type` as a string, which would match no branch
+   (comp keyword :channel_type)
+   channel-template-entries
+   [[:channel/email [[:details ::ChannelTemplateEmailDetailsUserProvided]]]
+    [::mc/default   []]]))
 
 (defn- check-valid-channel-template
   [channel-template]
   (mu/validate-throw ::ChannelTemplate channel-template))
 
-(defn- user-provided-template?
-  "Returns true if the template details represent a user-provided inline template (handlebars-text)
-  as opposed to a built-in resource template."
-  [details]
-  (= :email/handlebars-text (keyword (:type details))))
-
 (defn- log-template-change!
   "Log template creation or update with relevant details for observability."
   [action {:keys [channel_type details] :as _instance}]
   (let [template-type (keyword (:type details))]
-    (if (user-provided-template? details)
-      (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s body=%s"
-                 (name action) channel_type template-type api/*current-user-id* (pr-str (:body details)))
-      (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s"
-                 (name action) channel_type template-type api/*current-user-id*))
-    (prometheus/inc! (case action
-                       :create :metabase-notification/template-create
-                       :update :metabase-notification/template-update)
-                     {:channel-type channel_type})))
+    (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s user_id=%s"
+               (name action) channel_type template-type api/*current-user-id*)
+    (analytics/inc! (case action
+                      :create :metabase-notification/template-create
+                      :update :metabase-notification/template-update)
+                    {:channel-type channel_type})))
 
 (t2/define-before-insert :model/ChannelTemplate
   [instance]
@@ -183,8 +187,8 @@
 ;; Currently only email channel has templates, but this is extensible
 (def ^:private template-channel-labels [{:channel-type :channel/email}])
 
-(defmethod prometheus/known-labels :metabase-notification/template-create [_] template-channel-labels)
-(defmethod prometheus/known-labels :metabase-notification/template-update [_] template-channel-labels)
+(defmethod analytics.core/known-labels :metabase-notification/template-create [_] template-channel-labels)
+(defmethod analytics.core/known-labels :metabase-notification/template-update [_] template-channel-labels)
 
 (defmethod mi/can-write? :model/ChannelTemplate
   [& _]

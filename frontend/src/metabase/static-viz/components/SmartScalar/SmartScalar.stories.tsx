@@ -1,9 +1,9 @@
-import { colors } from "metabase/lib/colors";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
+import { colors } from "metabase/ui/colors";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 import {
@@ -18,16 +18,19 @@ const COLS = [
     name: "Date",
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
+    source: "breakout",
   }),
   createMockColumn({
     name: "Count",
     base_type: "type/Integer",
     effective_type: "type/Integer",
+    source: "aggregation",
   }),
   createMockColumn({
     name: "Average",
     base_type: "type/Integer",
     effective_type: "type/Integer",
+    source: "aggregation",
   }),
 ];
 

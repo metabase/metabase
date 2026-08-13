@@ -5,6 +5,7 @@
   The various QP Store functions & macros in this namespace are primarily meant to help write QP Middleware tests, so
   you can test a given piece of middleware without having to worry about putting things in the QP Store
   yourself (since this is usually done by other middleware in the first place)."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.test-util]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -19,8 +20,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -292,7 +293,6 @@
    (when (= (:status response) :failed)
      (log/warnf "Error running query: %s" (u/pprint-to-str 'red response))
      (throw (ex-info (:error response) response)))
-
    (let [format-fns (map format-rows-fn (format-rows-fns format-fns))]
      (-> response
          ((fn format-rows [rows]
@@ -498,7 +498,7 @@
                                     (mapv #(metadata-fn % card) metadata)))))
 
 (mu/defn metadata-provider-with-cards-for-queries :- ::lib.schema.metadata/metadata-provider
-  "Create an MLv2 metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
+  "Create an Lib metadata provider (by default, based on the app DB metadata provider) that adds a Card for each query
   in `queries`. Cards do not include result metadata. Cards have IDs starting at `1` and increasing sequentially."
   ([queries]
    (metadata-provider-with-cards-for-queries

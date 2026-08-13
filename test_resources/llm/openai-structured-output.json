@@ -1,0 +1,579 @@
+[ {
+  "type" : "response.created",
+  "sequence_number" : 0,
+  "response" : {
+    "previous_response_id" : null,
+    "tool_choice" : "auto",
+    "top_logprobs" : 0,
+    "store" : false,
+    "top_p" : 1.0,
+    "service_tier" : "auto",
+    "tools" : [ ],
+    "instructions" : null,
+    "background" : false,
+    "reasoning" : {
+      "effort" : null,
+      "summary" : null
+    },
+    "output" : [ ],
+    "usage" : null,
+    "safety_identifier" : null,
+    "prompt_cache_key" : null,
+    "incomplete_details" : null,
+    "status" : "in_progress",
+    "id" : "resp_0ca34af04d29538e0168fb881f3a2881a09bcbafa7555d1d3c",
+    "max_output_tokens" : null,
+    "max_tool_calls" : null,
+    "truncation" : "disabled",
+    "error" : null,
+    "user" : null,
+    "metadata" : { },
+    "object" : "response",
+    "temperature" : 1.0,
+    "created_at" : 1761314847,
+    "parallel_tool_calls" : true,
+    "text" : {
+      "format" : {
+        "type" : "json_schema",
+        "description" : null,
+        "name" : "schema",
+        "schema" : {
+          "type" : "object",
+          "properties" : {
+            "currencies" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "country" : {
+                    "description" : "Three-letter code",
+                    "type" : "string"
+                  },
+                  "currency" : {
+                    "description" : "Three-letter code",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "country", "currency" ],
+                "additionalProperties" : false
+              }
+            }
+          },
+          "required" : [ "currencies" ],
+          "additionalProperties" : false
+        },
+        "strict" : true
+      },
+      "verbosity" : "medium"
+    },
+    "model" : "gpt-4.1-mini-2025-04-14"
+  }
+}, {
+  "type" : "response.in_progress",
+  "sequence_number" : 1,
+  "response" : {
+    "previous_response_id" : null,
+    "tool_choice" : "auto",
+    "top_logprobs" : 0,
+    "store" : false,
+    "top_p" : 1.0,
+    "service_tier" : "auto",
+    "tools" : [ ],
+    "instructions" : null,
+    "background" : false,
+    "reasoning" : {
+      "effort" : null,
+      "summary" : null
+    },
+    "output" : [ ],
+    "usage" : null,
+    "safety_identifier" : null,
+    "prompt_cache_key" : null,
+    "incomplete_details" : null,
+    "status" : "in_progress",
+    "id" : "resp_0ca34af04d29538e0168fb881f3a2881a09bcbafa7555d1d3c",
+    "max_output_tokens" : null,
+    "max_tool_calls" : null,
+    "truncation" : "disabled",
+    "error" : null,
+    "user" : null,
+    "metadata" : { },
+    "object" : "response",
+    "temperature" : 1.0,
+    "created_at" : 1761314847,
+    "parallel_tool_calls" : true,
+    "text" : {
+      "format" : {
+        "type" : "json_schema",
+        "description" : null,
+        "name" : "schema",
+        "schema" : {
+          "type" : "object",
+          "properties" : {
+            "currencies" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "country" : {
+                    "description" : "Three-letter code",
+                    "type" : "string"
+                  },
+                  "currency" : {
+                    "description" : "Three-letter code",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "country", "currency" ],
+                "additionalProperties" : false
+              }
+            }
+          },
+          "required" : [ "currencies" ],
+          "additionalProperties" : false
+        },
+        "strict" : true
+      },
+      "verbosity" : "medium"
+    },
+    "model" : "gpt-4.1-mini-2025-04-14"
+  }
+}, {
+  "type" : "response.output_item.added",
+  "sequence_number" : 2,
+  "output_index" : 0,
+  "item" : {
+    "id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+    "type" : "message",
+    "status" : "in_progress",
+    "content" : [ ],
+    "role" : "assistant"
+  }
+}, {
+  "type" : "response.content_part.added",
+  "sequence_number" : 3,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "part" : {
+    "type" : "output_text",
+    "annotations" : [ ],
+    "logprobs" : [ ],
+    "text" : ""
+  }
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 4,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "{\"",
+  "logprobs" : [ ],
+  "obfuscation" : "Ul3wymizN27SES"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 5,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "curr",
+  "logprobs" : [ ],
+  "obfuscation" : "Q6rHkmKGWCPS"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 6,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "encies",
+  "logprobs" : [ ],
+  "obfuscation" : "D0iDA126nN"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 7,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\":[",
+  "logprobs" : [ ],
+  "obfuscation" : "aGjRa82Tg8MTM"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 8,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "{\"",
+  "logprobs" : [ ],
+  "obfuscation" : "mfsWjRGPWxhpk3"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 9,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "country",
+  "logprobs" : [ ],
+  "obfuscation" : "NxYi9q5cE"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 10,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\":\"",
+  "logprobs" : [ ],
+  "obfuscation" : "q2K5KIYOEb5ce"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 11,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "USA",
+  "logprobs" : [ ],
+  "obfuscation" : "MnmCqcS11BaIo"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 12,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\",\"",
+  "logprobs" : [ ],
+  "obfuscation" : "HmTcwAx03927C"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 13,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "currency",
+  "logprobs" : [ ],
+  "obfuscation" : "TIgq0xXu"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 14,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\":\"",
+  "logprobs" : [ ],
+  "obfuscation" : "aoHmfLEtAafDV"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 15,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "USD",
+  "logprobs" : [ ],
+  "obfuscation" : "gaNsBVlT07Nwi"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 16,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\"},{\"",
+  "logprobs" : [ ],
+  "obfuscation" : "THpEpCEhXhV"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 17,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "country",
+  "logprobs" : [ ],
+  "obfuscation" : "ATA5uOovr"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 18,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\":\"",
+  "logprobs" : [ ],
+  "obfuscation" : "0pAAmxK3eZ4ow"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 19,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "CAN",
+  "logprobs" : [ ],
+  "obfuscation" : "I88ezjGjyZQDr"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 20,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\",\"",
+  "logprobs" : [ ],
+  "obfuscation" : "xSxLuYIaUNlPu"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 21,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "currency",
+  "logprobs" : [ ],
+  "obfuscation" : "MurBe8Ck"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 22,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\":\"",
+  "logprobs" : [ ],
+  "obfuscation" : "CM2RiZkK3bXo3"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 23,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "CAD",
+  "logprobs" : [ ],
+  "obfuscation" : "oIjELbQAJSyD4"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 24,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\"},{\"",
+  "logprobs" : [ ],
+  "obfuscation" : "q3PC1t5fNOq"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 25,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "country",
+  "logprobs" : [ ],
+  "obfuscation" : "cucS4dtLC"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 26,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\":\"",
+  "logprobs" : [ ],
+  "obfuscation" : "T6oan7ahr1c46"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 27,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "M",
+  "logprobs" : [ ],
+  "obfuscation" : "YiZ6s9ypSEltXFR"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 28,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "EX",
+  "logprobs" : [ ],
+  "obfuscation" : "0B7uMO2Em77Sgn"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 29,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\",\"",
+  "logprobs" : [ ],
+  "obfuscation" : "W7zyWPzWxcbwa"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 30,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "currency",
+  "logprobs" : [ ],
+  "obfuscation" : "64jnAhOj"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 31,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\":\"",
+  "logprobs" : [ ],
+  "obfuscation" : "YYZy7RJ0lkG9z"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 32,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "MX",
+  "logprobs" : [ ],
+  "obfuscation" : "zdj5CpYRcRK9kP"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 33,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "N",
+  "logprobs" : [ ],
+  "obfuscation" : "X7gGiXXowmCDOo0"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 34,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "\"}",
+  "logprobs" : [ ],
+  "obfuscation" : "6uGb0m2YCH0QGQ"
+}, {
+  "type" : "response.output_text.delta",
+  "sequence_number" : 35,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "delta" : "]}",
+  "logprobs" : [ ],
+  "obfuscation" : "Aeoh74yeT3aEGi"
+}, {
+  "type" : "response.output_text.done",
+  "sequence_number" : 36,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "text" : "{\"currencies\":[{\"country\":\"USA\",\"currency\":\"USD\"},{\"country\":\"CAN\",\"currency\":\"CAD\"},{\"country\":\"MEX\",\"currency\":\"MXN\"}]}",
+  "logprobs" : [ ]
+}, {
+  "type" : "response.content_part.done",
+  "sequence_number" : 37,
+  "item_id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+  "output_index" : 0,
+  "content_index" : 0,
+  "part" : {
+    "type" : "output_text",
+    "annotations" : [ ],
+    "logprobs" : [ ],
+    "text" : "{\"currencies\":[{\"country\":\"USA\",\"currency\":\"USD\"},{\"country\":\"CAN\",\"currency\":\"CAD\"},{\"country\":\"MEX\",\"currency\":\"MXN\"}]}"
+  }
+}, {
+  "type" : "response.output_item.done",
+  "sequence_number" : 38,
+  "output_index" : 0,
+  "item" : {
+    "id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+    "type" : "message",
+    "status" : "completed",
+    "content" : [ {
+      "type" : "output_text",
+      "annotations" : [ ],
+      "logprobs" : [ ],
+      "text" : "{\"currencies\":[{\"country\":\"USA\",\"currency\":\"USD\"},{\"country\":\"CAN\",\"currency\":\"CAD\"},{\"country\":\"MEX\",\"currency\":\"MXN\"}]}"
+    } ],
+    "role" : "assistant"
+  }
+}, {
+  "type" : "response.completed",
+  "sequence_number" : 39,
+  "response" : {
+    "previous_response_id" : null,
+    "tool_choice" : "auto",
+    "top_logprobs" : 0,
+    "store" : false,
+    "top_p" : 1.0,
+    "service_tier" : "default",
+    "tools" : [ ],
+    "instructions" : null,
+    "background" : false,
+    "reasoning" : {
+      "effort" : null,
+      "summary" : null
+    },
+    "output" : [ {
+      "id" : "msg_0ca34af04d29538e0168fb88203d6481a09f06bfa2b66cc16a",
+      "type" : "message",
+      "status" : "completed",
+      "content" : [ {
+        "type" : "output_text",
+        "annotations" : [ ],
+        "logprobs" : [ ],
+        "text" : "{\"currencies\":[{\"country\":\"USA\",\"currency\":\"USD\"},{\"country\":\"CAN\",\"currency\":\"CAD\"},{\"country\":\"MEX\",\"currency\":\"MXN\"}]}"
+      } ],
+      "role" : "assistant"
+    } ],
+    "usage" : {
+      "input_tokens" : 76,
+      "input_tokens_details" : {
+        "cached_tokens" : 0
+      },
+      "output_tokens" : 33,
+      "output_tokens_details" : {
+        "reasoning_tokens" : 0
+      },
+      "total_tokens" : 109
+    },
+    "safety_identifier" : null,
+    "prompt_cache_key" : null,
+    "incomplete_details" : null,
+    "status" : "completed",
+    "id" : "resp_0ca34af04d29538e0168fb881f3a2881a09bcbafa7555d1d3c",
+    "max_output_tokens" : null,
+    "max_tool_calls" : null,
+    "truncation" : "disabled",
+    "error" : null,
+    "user" : null,
+    "metadata" : { },
+    "object" : "response",
+    "temperature" : 1.0,
+    "created_at" : 1761314847,
+    "parallel_tool_calls" : true,
+    "text" : {
+      "format" : {
+        "type" : "json_schema",
+        "description" : null,
+        "name" : "schema",
+        "schema" : {
+          "type" : "object",
+          "properties" : {
+            "currencies" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "country" : {
+                    "description" : "Three-letter code",
+                    "type" : "string"
+                  },
+                  "currency" : {
+                    "description" : "Three-letter code",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "country", "currency" ],
+                "additionalProperties" : false
+              }
+            }
+          },
+          "required" : [ "currencies" ],
+          "additionalProperties" : false
+        },
+        "strict" : true
+      },
+      "verbosity" : "medium"
+    },
+    "model" : "gpt-4.1-mini-2025-04-14"
+  }
+} ]

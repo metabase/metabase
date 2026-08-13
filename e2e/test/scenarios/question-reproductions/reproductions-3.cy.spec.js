@@ -5,60 +5,6 @@ import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
-
-describe("issue 32625, issue 31635", () => {
-  const CC_NAME = "Is Promotion";
-
-  const QUESTION = {
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [
-          "distinct",
-          ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
-        ],
-        breakout: ["expression", CC_NAME],
-        expressions: {
-          [CC_NAME]: [
-            "case",
-            [[[">", ["field", ORDERS.DISCOUNT, null], 0], 1]],
-            { default: 0 },
-          ],
-        },
-      },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should remove dependent clauses when a clause is removed (metabase#32625, metabase#31635)", () => {
-    H.visitQuestionAdhoc(QUESTION, { mode: "notebook" });
-
-    H.getNotebookStep("expression")
-      .findAllByTestId("notebook-cell-item")
-      .first()
-      .icon("close")
-      .click();
-
-    H.getNotebookStep("expression").should("not.exist");
-    H.getNotebookStep("summarize").findByText(CC_NAME).should("not.exist");
-
-    H.visualize();
-
-    cy.findByTestId("query-builder-main").within(() => {
-      cy.findByTestId("scalar-value").should("have.text", "200");
-      cy.findByText("There was a problem with your question").should(
-        "not.exist",
-      );
-    });
-  });
-});
-
 describe("issue 32964", () => {
   const LONG_NAME = "A very long column name that will cause text overflow";
 
@@ -563,6 +509,7 @@ describe(
 
     it("should be possible to filter by Mongo _id column (metabase#40770, metabase#42010)", () => {
       H.tableInteractiveBody()
+        .findByTestId("center-center-quadrant")
         .findAllByRole("gridcell")
         .first()
         .then(($cell) => {
@@ -785,93 +732,6 @@ describe("issue 10493", { tags: "@skip" }, () => {
     });
   });
 });
-
-describe("issue 32020", () => {
-  const question1Details = {
-    name: "Q1",
-    query: {
-      "source-table": ORDERS_ID,
-      aggregation: [
-        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
-      ],
-      breakout: [
-        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-        [
-          "field",
-          ORDERS.CREATED_AT,
-          { "base-type": "type/DateTime", "temporal-unit": "month" },
-        ],
-      ],
-    },
-  };
-
-  const question2Details = {
-    name: "Q2",
-    query: {
-      "source-table": PEOPLE_ID,
-      aggregation: [
-        ["max", ["field", PEOPLE.LONGITUDE, { "base-type": "type/Float" }]],
-      ],
-      breakout: [
-        ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
-        [
-          "field",
-          PEOPLE.CREATED_AT,
-          { "base-type": "type/DateTime", "temporal-unit": "month" },
-        ],
-      ],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    H.createQuestion(question1Details);
-    H.createQuestion(question2Details);
-  });
-
-  it("should be possible to use aggregation columns from source and joined questions in aggregation (metabase#32020)", () => {
-    H.startNewQuestion();
-
-    cy.log("create joined question manually");
-    H.miniPicker().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findByText(question1Details.name).click();
-    });
-    H.join();
-    H.miniPicker().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findByText(question2Details.name).click();
-    });
-    H.popover().findByText("ID").click();
-    H.popover().findByText("ID").click();
-
-    cy.log("aggregation column from the source question");
-    H.getNotebookStep("summarize")
-      .findByText("Pick a function or metric")
-      .click();
-    H.popover().within(() => {
-      cy.findByText("Sum of ...").click();
-      cy.findByText("Sum of Total").click();
-    });
-
-    cy.log("aggregation column from the joined question");
-    H.getNotebookStep("summarize").icon("add").click();
-    H.popover().within(() => {
-      cy.findByText("Sum of ...").click();
-      cy.findByText(question2Details.name).click();
-      cy.findByText("Q2 → Max of Longitude").click();
-    });
-
-    cy.log("visualize and check results");
-    H.visualize();
-    H.tableInteractive().within(() => {
-      cy.findByText("Sum of Sum of Total").should("be.visible");
-      cy.findByText("Sum of Q2 → Max of Longitude").should("be.visible");
-    });
-  });
-});
-
 describe("issue 44071", () => {
   const questionDetails = {
     name: "Test",
@@ -1045,9 +905,9 @@ describe("issue 44532", () => {
       cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
-      cy.findByText("January 2023").should("exist");
-      cy.findByText("January 2024").should("exist");
-      cy.findByText("January 2025").should("exist");
+      cy.findByText("January 2026").should("exist");
+      cy.findByText("January 2027").should("exist");
+      cy.findByText("January 2028").should("exist");
 
       // previous x-axis values
       cy.findByText("Doohickey").should("not.exist");
@@ -1071,9 +931,9 @@ describe("issue 44532", () => {
       cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
-      cy.findByText("January 2023").should("exist");
-      cy.findByText("January 2024").should("exist");
-      cy.findByText("January 2025").should("exist");
+      cy.findByText("January 2026").should("exist");
+      cy.findByText("January 2027").should("exist");
+      cy.findByText("January 2028").should("exist");
 
       // previous x-axis values
       cy.findByText("Doohickey").should("not.exist");
@@ -1118,7 +978,7 @@ describe("issue 31960", () => {
     },
   };
 
-  // the dot that corresponds to July 10–16, 2022
+  // the dot that corresponds to July 10–16, 2025
   const dotIndex = 10;
   const rowCount = 11;
 
@@ -1139,10 +999,8 @@ describe("issue 31960", () => {
       H.cartesianChartCircle().eq(dotIndex).realHover();
     });
     H.assertEChartsTooltip({
-      header: "July 10–16, 2022",
-      rows: [
-        { name: "Count", value: String(rowCount), secondaryValue: "+10%" },
-      ],
+      header: "July 13–19, 2025", // expect this to break when we shift years in the Sample Database
+      rows: [{ name: "Count", value: String(rowCount), secondaryValue: "0%" }],
     });
     H.getDashboardCard().within(() => {
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -1151,7 +1009,7 @@ describe("issue 31960", () => {
 
     H.popover().findByText("See these Orders").click();
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At: Week is Jul 10–16, 2022")
+      .findByText("Created At: Week is Jul 13–19, 2025")
       .should("be.visible");
     H.assertQueryBuilderRowCount(rowCount);
   });
@@ -1287,18 +1145,18 @@ describe("issue 43057", () => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Fixed date range…").click();
       cy.findByText("On").click();
-      cy.findByLabelText("Date").clear().type("November 18, 2024");
+      cy.findByLabelText("Date").clear().type("November 18, 2027");
       cy.button("Add filter").click();
     });
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(16);
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is on Nov 18, 2024")
+      .findByText("Created At is on Nov 18, 2027")
       .should("be.visible");
 
     cy.log("set time to 00:00 and verify the filter and results");
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is on Nov 18, 2024")
+      .findByText("Created At is on Nov 18, 2027")
       .click();
     H.popover().within(() => {
       cy.button("Add time").click();
@@ -1308,12 +1166,12 @@ describe("issue 43057", () => {
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(1);
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Nov 18, 2024, 12:00 AM")
+      .findByText("Created At is Nov 18, 2027, 12:00 AM")
       .should("be.visible");
 
     cy.log("remove time and verify the filter and results");
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Nov 18, 2024, 12:00 AM")
+      .findByText("Created At is Nov 18, 2027, 12:00 AM")
       .click();
     H.popover().within(() => {
       cy.findByLabelText("Time").should("have.value", "00:00");
@@ -1323,7 +1181,7 @@ describe("issue 43057", () => {
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(16);
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is on Nov 18, 2024")
+      .findByText("Created At is on Nov 18, 2027")
       .should("be.visible");
   });
 });
@@ -1419,14 +1277,14 @@ describe("issue 44637", () => {
     );
 
     H.assertQueryBuilderRowCount(0);
-    H.queryBuilderMain().findByText("No results!").should("exist");
+    H.queryBuilderMain().findByText("No results").should("exist");
     H.queryBuilderFooter().button("Visualization").click();
     H.leftSidebar().within(() => {
       cy.findByTestId("more-charts-toggle").click();
       cy.icon("bar").click();
     });
     H.queryBuilderMain().within(() => {
-      cy.findByText("No results!").should("exist");
+      cy.findByText("No results").should("exist");
       cy.findByText("Something's gone wrong").should("not.exist");
     });
 

@@ -14,15 +14,8 @@ import {
   jwtDefaultRefreshTokenFunction,
   validateSession,
 } from "embedding/auth-common";
-import * as MetabaseError from "embedding-sdk-bundle/errors";
-
-type SdkAuthState = {
-  status: "idle" | "in-progress" | "completed" | "error" | "skipped";
-  session?: any;
-  user?: any;
-  siteSettings?: Record<string, any>;
-  error?: Error;
-};
+import * as MetabaseError from "embedding-sdk-shared/errors";
+import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 
 const SDK_AUTH_STATE_KEY = "METABASE_EMBEDDING_SDK_AUTH_STATE";
 
@@ -153,7 +146,7 @@ async function performFullAuthFlow(config: {
 }): Promise<{
   session: any;
   user: any;
-  siteSettings: Record<string, any>;
+  siteSettings: SdkAuthState["siteSettings"];
 } | null> {
   const headers = getSdkRequestHeaders();
 
@@ -162,6 +155,7 @@ async function performFullAuthFlow(config: {
     ? { method: "jwt" as const, url: config.jwtProviderUri }
     : await connectToInstanceAuthSso(config.metabaseInstanceUrl, {
         headers,
+        // Unjustified type cast. FIXME
         preferredAuthMethod: config.preferredAuthMethod as
           | "jwt"
           | "saml"

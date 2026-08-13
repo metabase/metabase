@@ -1,0 +1,40 @@
+## Persist computed Data Complexity Score snapshots for the overview UI.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-23T10:00:00
+      author: undrfined
+      comment: Create data_complexity_score table
+      changes:
+        - createTable:
+            tableName: data_complexity_score
+            remarks: Append-only snapshots of the computed Data Complexity Score shown in the Metabot overview UI
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: fingerprint
+                  type: varchar(512)
+                  constraints:
+                    nullable: false
+                  remarks: Fingerprint of the scoring inputs (formula version, synonym threshold, embedding model)
+              - column:
+                  name: score_data
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+                  remarks: JSON-serialized complexity score response returned by the data-complexity-score endpoint
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: When this score snapshot was computed and stored

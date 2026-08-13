@@ -6,7 +6,6 @@ import {
   FIRST_COLLECTION_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { IconName } from "metabase/ui";
 import type {
   CardId,
   CardType,
@@ -14,6 +13,7 @@ import type {
   DashboardId,
   DependencyId,
   DependencyType,
+  IconName,
   MeasureId,
   NativeQuerySnippetId,
   SegmentId,
@@ -67,7 +67,8 @@ describe("scenarios > dependencies > dependency graph", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: TABLE_NAME });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
     H.getTableId({ name: TABLE_NAME }).as(TABLE_ID_ALIAS);
     H.resetSnowplow();
@@ -134,6 +135,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
+        // Unjustified type cast. FIXME
         cy.findByPlaceholderText(/Search/).type(itemName as string);
         cy.findByText(/results for/).should("be.visible");
         cy.findByTestId("search-scope-selector")
@@ -690,6 +692,8 @@ function visitGraph() {
 }
 
 function visitGraphForEntity(id: DependencyId, type: DependencyType) {
+  // Wait for async dependency computation to complete before navigating
+  H.waitForBackfillComplete();
   return cy.visit(BASE_URL, { qs: { id, type } });
 }
 
@@ -1096,7 +1100,6 @@ function createTableBasedSegment({ tableId }: { tableId: TableId }) {
   return H.createSegment({
     name: TABLE_BASED_SEGMENT_NAME,
     description: "Segment description",
-    table_id: tableId,
     definition: {
       "source-table": tableId,
       filter: ["=", 1, 1],
@@ -1114,7 +1117,6 @@ function createSegmentBasedSegment({
   return H.createSegment({
     name: SEGMENT_BASED_SEGMENT_NAME,
     description: "Segment description",
-    table_id: tableId,
     definition: {
       "source-table": tableId,
       filter: ["segment", segmentId],
@@ -1224,7 +1226,6 @@ function createDocumentWithTableBasedQuestion({
 function createTableBasedMeasure({ tableId }: { tableId: TableId }) {
   return H.createMeasure({
     name: TABLE_BASED_MEASURE_NAME,
-    table_id: tableId,
     definition: {
       "source-table": tableId,
       aggregation: [["count"]],
@@ -1241,7 +1242,6 @@ function createSegmentBaseMeasure({
 }) {
   return H.createMeasure({
     name: SEGMENT_BASED_MEASURE_NAME,
-    table_id: tableId,
     definition: {
       "source-table": tableId,
       aggregation: [["count-where", ["segment", segmentId]]],
@@ -1337,7 +1337,6 @@ function createMeasureBasedMeasure({
 }) {
   return H.createMeasure({
     name: MEASURE_BASED_MEASURE_NAME,
-    table_id: tableId,
     definition: {
       "source-table": tableId,
       aggregation: ["+", 1, ["measure", measureId]],

@@ -12,7 +12,7 @@ While tables are useful for looking up information or finding specific numbers, 
 
 ## Visualize query results
 
-The query builder will automatically select an appropriate chart to visual your results. With native queries, however, you'll need to manually select a chart type.
+The query builder will automatically select an appropriate chart to visualize your results. With native queries, however, you'll need to manually select a chart type.
 
 ### Visualizing questions in the query builder
 
@@ -120,6 +120,12 @@ A [sunburst chart](./pie-or-donut-chart.md) is a pie chart with more than one ri
 
 ![Pivot table options](../images/pivot-table-options.png)
 
+## Treemaps
+
+[Treemaps](./treemap.md) display hierarchical data as nested rectangles, sized by a metric. Use them to break a total down across one or two nested categorical dimensions.
+
+![Treemap](../images/treemap.png)
+
 ## Progress bars
 
 [Progress bars](./progress-bar.md) are for comparing a single number to a goal value that you set.
@@ -168,6 +174,10 @@ If you have a bar chart like Count of Users by Age, where the x-axis is a number
 
 ![Scatter](../images/scatter.png)
 
+## Custom visualizations
+
+On [Pro and Enterprise plans](https://www.metabase.com/pricing/), admins can add [custom visualizations](./custom.md): chart types you build with the Custom Visualizations SDK and upload to Metabase. Once a custom visualization is installed, it shows up in the visualization picker alongside the built-in charts.
+
 ## Styling and formatting data in charts
 
 ![Chart formatting options](../images/chart-formatting-options.png)
@@ -181,5 +191,6 @@ See also [Formatting defaults](../../data-modeling/formatting.md).
 ## Further reading
 
 - [Charts with multiple series](../../dashboards/multiple-series.md)
+- [Custom visualizations](./custom.md)
 - [Appearance](../../configuring-metabase/appearance.md)
 - [BI dashboard best practices](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/bi-dashboard-best-practices.html)

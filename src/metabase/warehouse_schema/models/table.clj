@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -126,7 +127,10 @@
                      (partial mi/assert-optional-enum data-layers)
                      (some-fn legacy-data-layer->current identity))
    :field_order     mi/transform-keyword
-   :data_source     (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-sources))
+   :data_source     (mi/transform-validator-with-fixes
+                     mi/transform-keyword
+                     (partial mi/assert-optional-enum data-sources)
+                     (some-fn keyword identity))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
    :data_authority  transform-data-authority})
 
@@ -168,9 +172,14 @@
 
 (t2/define-before-insert :model/Table
   [table]
-  (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
-                  :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
-                  :data_layer   :internal}]
+  ;; Default both curation columns here so model inserts are consistent across app DBs; a migration
+  ;; reasserts matching DB-level defaults for non-model insert paths.
+  (let [defaults {:display_name   (humanization/name->human-readable-name (:name table))
+                  :field_order    (or (:field_order table)
+                                      (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table))))
+                  :data_layer     :internal
+                  :data_authority :unconfigured}]
+    (collection/check-allowed-content :table (:collection_id table))
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table
@@ -185,26 +194,30 @@
         original-table (t2/original table)
         current-active (:active original-table)
         new-active     (:active changes)]
-
+    ;; Don't allow tables to be moved into collections which are not part of the Library's "Data" collection.
+    ;; Tables can be moved out of any collection, however.
+    (when (:collection_id changes)
+      (collection/check-allowed-content :table (:collection_id changes)))
     ;; Prevent setting data_authority back to unconfigured once configured
     (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
                (= (keyword (:data_authority changes)) :unconfigured))
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
-
-    ;; Prevent changing data_source to/from metabase-transform
+    ;; Prevent changing data_source to/from metabase-transform.
+    ;; The "to metabase-transform" direction is allowed during deserialization so an existing synced table
+    ;; can be migrated to a transform-managed table via serdes.
     (when (contains? changes :data_source)
-      (let [original-data-source (:data_source original-table)
-            new-data-source      (:data_source changes)]
+      (let [original-data-source (some-> (:data_source original-table) keyword)
+            new-data-source      (some-> (:data_source changes) keyword)]
         (when (and (= original-data-source :metabase-transform)
                    (not= new-data-source :metabase-transform))
           (throw (ex-info "Cannot change data_source from metabase-transform"
                           {:status-code 400})))
-        (when (and (not= original-data-source :metabase-transform)
+        (when (and (not mi/*deserializing?*)
+                   (not= original-data-source :metabase-transform)
                    (= new-data-source :metabase-transform))
           (throw (ex-info "Cannot set data_source to metabase-transform"
                           {:status-code 400})))))
-
     ;; Sync visibility_type and data_layer fields
     (let [changes (sync-visibility-fields changes original-table)]
       (cond
@@ -220,28 +233,54 @@
 
         :else (merge table changes)))))
 
+(defn- group-perm-defaults
+  "Build the list of {:group-id G :perm-type PT :default-value V} triples for a new table."
+  [table all-users-group non-magic-groups non-admin-groups]
+  (let [au-id    (u/the-id all-users-group)
+        is-audit (= (:db_id table) audit/audit-db-id)
+        defaults (fn [groups perm-type value]
+                   (mapv (fn [g] {:group-id (u/the-id g) :perm-type perm-type :default-value value}) groups))]
+    (concat
+     ;; view-data: all non-admin → :unrestricted
+     (defaults non-admin-groups :perms/view-data :unrestricted)
+     ;; create-queries
+     (if is-audit
+       (defaults non-admin-groups :perms/create-queries :no)
+       (concat [{:group-id au-id :perm-type :perms/create-queries :default-value :query-builder}]
+               (defaults non-magic-groups :perms/create-queries :no)))
+     ;; download-results
+     [{:group-id au-id :perm-type :perms/download-results :default-value :one-million-rows}]
+     (defaults non-magic-groups :perms/download-results :no)
+     ;; manage-table-metadata
+     (defaults non-admin-groups :perms/manage-table-metadata :no))))
+
 (defn- set-new-table-permissions!
   [table]
-  (t2/with-transaction [_conn]
+  (perms/with-db-scoped-permissions-lock (:db_id table)
     (let [all-users-group  (perms/all-users-group)
           non-magic-groups (perms/non-magic-groups)
           non-admin-groups (conj non-magic-groups all-users-group)]
-      ;; Data access permissions
-      (if (= (:db_id table) audit/audit-db-id)
-        (do
-         ;; Tables in audit DB should start out with no query access in all groups
-          (perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-          (perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
-        (do
-          ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
-          (perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-          (perms/set-new-table-permissions! [all-users-group] table :perms/create-queries :query-builder)
-          (perms/set-new-table-permissions! non-magic-groups table :perms/create-queries :no)))
-      ;; Download permissions
-      (perms/set-new-table-permissions! [all-users-group] table :perms/download-results :one-million-rows)
-      (perms/set-new-table-permissions! non-magic-groups table :perms/download-results :no)
-      ;; Table metadata management
-      (perms/set-new-table-permissions! non-admin-groups table :perms/manage-table-metadata :no))))
+      (perms/set-default-table-permissions!
+       table
+       (group-perm-defaults table all-users-group non-magic-groups non-admin-groups)))))
+
+(defn set-new-tables-permissions!
+  "Batch variant of [[set-new-table-permissions!]] for many newly-inserted
+  tables on the same database. Acquires the cluster lock once and delegates
+  to [[perms/set-default-table-permissions-bulk!]]. All `tables` must share
+  `db-id`."
+  [db-id tables]
+  (when (seq tables)
+    (perms/with-db-scoped-permissions-lock db-id
+      (let [all-users-group  (perms/all-users-group)
+            non-magic-groups (perms/non-magic-groups)
+            non-admin-groups (conj non-magic-groups all-users-group)
+            tables+defaults  (mapv (fn [t]
+                                     [t (group-perm-defaults t all-users-group
+                                                             non-magic-groups
+                                                             non-admin-groups)])
+                                   tables)]
+        (perms/set-default-table-permissions-bulk! db-id tables+defaults)))))
 
 (t2/define-after-insert :model/Table
   [table]
@@ -375,26 +414,14 @@
    column-or-exp      :- :any
    user-info          :- perms/UserInfo
    permission-mapping :- perms/PermissionMapping
-   & [{:keys [include-published-via-collection?]}]]
-  (let [{:keys [clause with]} (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping)]
-    (if-let [published-clause (and include-published-via-collection?
-                                   (perms/published-table-visible-clause column-or-exp user-info))]
-      {:clause [:or clause
-                [:and
-                 [:in column-or-exp (perms/visible-table-filter-select
-                                     :id
-                                     user-info
-                                     {:perms/view-data :unrestricted})]
-                 published-clause]]
-       :with with}
-      {:clause clause
-       :with with})))
+   & [{:keys [include-published-via-collection? active-only?]}]]
+  (perms/visible-table-filter-with-cte
+   column-or-exp user-info permission-mapping
+   (cond-> {}
+     (some? active-only?) (assoc :active-only? active-only?)
+     include-published-via-collection? (assoc :include-published-via-collection? true))))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
-
-(defmethod serdes/hash-fields :model/Table
-  [_table]
-  [:schema :name (serdes/hydrated-hash :db :db_id)])
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
@@ -552,23 +579,32 @@
   (t2/select-one :model/Database :id (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/dependencies "Table" [{:keys [db_id collection_id]}]
+(defmethod serdes/deserialization-dependencies "Table" [{:keys [db_id collection_id transform_id]}]
   (cond-> [[{:model "Database" :id db_id}]]
-    collection_id (conj [{:model "Collection" :id collection_id}])))
+    collection_id (conj [{:model "Collection" :id collection_id}])
+    transform_id  (conj [{:model "Transform" :id transform_id}])))
 
-(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
-  (let [fields   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
-                            {["Field" field-id] {"Table" id}}))
+(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived user-edits-only]}]
+  (let [;; When user-edits-only, emit only fields that have user-authored metadata (FieldUserSettings rows).
+        ;; On import the parent Field row is synthesized if missing, so FieldUserSettings is self-sufficient.
+        ;; Otherwise emit all Field ids for a full serdes backup/restore.
+        fields   (if user-edits-only
+                   (into {} (for [fus-field-id (t2/select-fn-set :field_id :model/FieldUserSettings
+                                                                 {:join  [[:metabase_field :f] [:= :f.id :field_id]]
+                                                                  :where [:= :f.table_id id]})]
+                              [["FieldUserSettings" fus-field-id] {"Table" id}]))
+                   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
+                              [["Field" field-id] {"Table" id}])))
         segments (into {} (for [segment-id (t2/select-pks-set :model/Segment
                                                               {:where [:and
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
-                            {["Segment" segment-id] {"Table" id}}))
+                            [["Segment" segment-id] {"Table" id}]))
         measures (into {} (for [measure-id (t2/select-pks-set :model/Measure
                                                               {:where [:and
                                                                        [:= :table_id id]
                                                                        (when skip-archived [:not :archived])]})]
-                            {["Measure" measure-id] {"Table" id}}))]
+                            [["Measure" measure-id] {"Table" id}]))]
     (merge fields segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
@@ -595,18 +631,22 @@
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
                :data_source :owner_email :owner_user_id :is_published]
-   :skip      [:estimated_row_count :view_count]
+   :skip      [:estimated_row_count :view_count :transform_target]
    :transform {:created_at     (serdes/date)
                :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
-               :db_id          (serdes/fk :model/Database :name)
+               :db_id          (serdes/fk :model/Database)
                :collection_id  (serdes/fk :model/Collection)
-               :transform_id   (serdes/fk :model/Transform)}})
+               :transform_id   (serdes/fk :model/Transform)}
+   :defaults {:is_defective_duplicate  false
+              :is_published            false
+              :is_upload               false
+              :show_in_getting_started false}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
-  (concat (serdes/storage-path-prefixes (serdes/path table))
-          [(:name table)]))
+  (conj (serdes/storage-path-prefixes (serdes/path table))
+        {:label (:name table) :key (:name table)}))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
@@ -614,15 +654,20 @@
   {:model        :model/Table
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
-                  :archived      false
+                  :archived        false
                   ;; For published tables with no collection, we want to show "root" as the collection id
-                  :collection-id true
-                  :creator-id    false
-                  :database-id   :db_id
-                  :view-count    true
-                  :created-at    true
-                  :updated-at    true
-                  :is-published  :is_published}
+                  :collection-id   true
+                  :creator-id      false
+                  :database-id     :db_id
+                  :view-count      true
+                  :created-at      true
+                  :updated-at      true
+                  :is-published        :is_published
+                  :collection-type     :collection.type
+                  :collection-location :collection.location
+                  :root-collection-type {:fn collection/root-collection-type}
+                  :data-layer          :data_layer
+                  :data-authority      :data_authority}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}
@@ -633,14 +678,12 @@
                   :table-schema               :schema
                   :database-name              :db.name
                   :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
                   ;; For published tables with no collection, show "Our analytics" as the collection name
                   :collection-name            [:coalesce :collection.name
                                                [:case
                                                 [:and :this.is_published
                                                  [:= :this.collection_id nil]] [:inline "Our analytics"]
-                                                :else nil]]
-                  :collection-type            :collection.type}
+                                                :else nil]]}
    :where        [:and
                   :active
                   [:= :visibility_type nil]

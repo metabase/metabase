@@ -10,7 +10,7 @@ export default {
       control: {
         type: "select",
       },
-      options: ["brand"],
+      options: ["core-brand"],
     },
     disabled: {
       control: {
@@ -47,7 +47,7 @@ export const Default = {
     </ActionIcon>
   ),
   args: {
-    color: "brand",
+    color: "core-brand",
     size: "md",
     variant: "filled",
     disabled: false,

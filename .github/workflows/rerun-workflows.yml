@@ -4,31 +4,41 @@ on:
   workflow_run:
     workflows: [Run tests]
     types: [completed]
-    branches: [master, 'release-x.**', 'backport-**']
+    branches: [master, "release-x.**", "backport-**"]
 
 jobs:
   rerun-on-failure:
-    name: 'Re-run ''${{ github.event.workflow_run.name }}'' workflow'
-    runs-on: ubuntu-22.04
+    name: "Re-run '${{ github.event.workflow_run.name }}' workflow"
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     # Do not re-run scheduled workflow runs
     if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'schedule'
     env:
       BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
       AUTHOR_NAME: ${{ github.event.workflow_run.head_commit.author.name }}
+      AUTHOR_LOGIN: ${{ github.event.workflow_run.head_commit.author.username }}
     steps:
       - name: Generate job summary
         run: |
-          echo "# ${{ github.event.workflow_run.name }} workflow failed! :x:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "View the failed run attempt (#${{ github.event.workflow_run.run_attempt }}) using the following link:" >> $GITHUB_STEP_SUMMARY
-          echo "${{ github.event.workflow_run.html_url }}" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "# ${{ github.event.workflow_run.name }} workflow failed! :x:"
+            echo ""
+            echo "View the failed run attempt (#${{ github.event.workflow_run.run_attempt }}) using the following link:"
+            echo "${{ github.event.workflow_run.html_url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
         with:
-          node-version: lts/Jod # 22.x.x
-      - run: npm install @slack/web-api
+          sparse-checkout: |
+            .github
+            release
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
       - name: Trigger a re-run
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
             const MAX_ATTEMPTS = 1;
@@ -36,19 +46,27 @@ jobs:
             const FAILED_RUN_URL = "${{ github.event.workflow_run.html_url }}";
             const FAILED_RUN_NAME = "${{ github.event.workflow_run.name }}";
             const BREAKING_COMMIT = "${{ github.event.workflow_run.head_sha }}";
-            const AUTHOR = process.env.AUTHOR_NAME;
+            let AUTHOR = process.env.AUTHOR_NAME;
+            let AUTHOR_LOGIN = process.env.AUTHOR_LOGIN;
             const BRANCH = process.env.BRANCH_NAME;
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
-              github.rest.actions.reRunWorkflowFailedJobs({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: ${{ github.event.workflow_run.id }},
-              });
+              try {
+                await github.rest.actions.reRunWorkflowFailedJobs({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: ${{ github.event.workflow_run.id }},
+                });
+              } catch (error) {
+                if (error.status === 403) {
+                  console.log(`Skipping re-run: ${error.message}`);
+                } else {
+                  throw error;
+                }
+              }
             } else if (!BRANCH.includes('backport-')) {
               // notify slack of repeated failure
-              const { WebClient } = require('@slack/web-api');
-              const slack = new WebClient('${{ secrets.SLACK_BOT_TOKEN }}');
+              const { mentionUserByGithubLogin, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
 
               // find out which jobs failed
               const { owner, repo } = context.repo;
@@ -68,6 +86,24 @@ jobs:
                 return;
               }
 
+              // the workflow_run payload omits the github login when the commit
+              // author isn't matched to a github account, so look it up from
+              // the commit itself
+              if (!AUTHOR_LOGIN) {
+                try {
+                  const { data: commit } = await github.rest.repos.getCommit({
+                    owner,
+                    repo,
+                    ref: BREAKING_COMMIT,
+                  });
+
+                  AUTHOR_LOGIN = commit.author?.login ?? '';
+                  AUTHOR = AUTHOR || commit.commit?.author?.name || '';
+                } catch (error) {
+                  console.log(`Could not look up the author of ${BREAKING_COMMIT}: ${error.message}`);
+                }
+              }
+
               const failedJobsList = failedJobs.map(job => ({
                 "type": "rich_text_section",
                 "elements": [
@@ -79,15 +115,15 @@ jobs:
                 ]
               }));
 
-              await slack.chat.postMessage({
-                channel: 'engineering-ci',
-                text: 'Failing tests',
+              await sendSlackMessage({
+                channelName: 'engineering-ci',
+                message: 'Failing tests',
                 blocks: [
                   {
                     "type": "header",
                     "text": {
                       "type": "plain_text",
-                      "text": `:warning: CI is failing on ${BRANCH}`,
+                      "text": `:warning: CI is failing on ${repo}@${BRANCH}`,
                       "emoji": true,
                     }
                   },
@@ -99,7 +135,7 @@ jobs:
                       "type": "section",
                       "text": {
                         "type": "mrkdwn",
-                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on <https://github.com/${owner}/${repo}/commits/${BRANCH}|\`${BRANCH}\`>`
+                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} (${mentionUserByGithubLogin(AUTHOR_LOGIN)}) has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on <https://github.com/${owner}/${repo}/commits/${BRANCH}|\`${BRANCH}\`>`
                       },
                     },
                     {

@@ -1,5 +1,5 @@
-import { DEFAULT_CARD_SIZE, GRID_WIDTH } from "metabase/lib/dashboard_grid";
-import { measureText } from "metabase/lib/measure-text";
+import { DEFAULT_CARD_SIZE, GRID_WIDTH } from "metabase/utils/dashboard_grid";
+import { measureText } from "metabase/utils/measure-text";
 
 interface FindSizeInput {
   text: string;

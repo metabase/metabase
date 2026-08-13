@@ -1,0 +1,11 @@
+name: Audit Metric
+entity_id: AuDiTmEtRiCcArD00001
+type: metric
+archived: false
+collection_id: OuTsIdEcOlL000000001
+database_id: Audit Database
+created_at: '2026-04-02T00:00:00Z'
+serdes/meta:
+- id: AuDiTmEtRiCcArD00001
+  label: audit_metric
+  model: Card

@@ -29,6 +29,9 @@
     (throw (ex-info (tru "Invalid query execution context: {0}" (pr-str error))
                     {:error error}))))
 
+;; Captures SDK info from dynamic vars. For the normal async QP path, SDK info is already in the map
+;; (captured on-thread in `process-userland-query/save-execution-metadata!` before async handoff).
+;; This hook serves as a safety net for any direct sync inserts.
 (t2/define-before-insert :model/QueryExecution
   [{context :context, :as query-execution}]
   (u/prog1 (analytics/include-sdk-info query-execution)

@@ -1,27 +1,20 @@
 (ns mage.fix-unused-requires
   "Fix unused requires reported by clj-kondo by removing them from source files."
   (:require
-   [babashka.process :as p]
-   [clojure.edn :as edn]
+   [babashka.pods :as pods]
    [clojure.string :as str]
    [mage.color :as c]
-   [mage.util :as u]
    [rewrite-clj.zip :as z]))
 
 (set! *warn-on-reflection* true)
 
+(pods/load-pod 'clj-kondo/clj-kondo "2026.04.15" {})
+(require '[pod.borkdude.clj-kondo :as clj-kondo])
+
 (defn- run-kondo
   "Run clj-kondo on the given files and return the EDN output."
   [files]
-  (let [{:keys [out exit]}
-        (p/sh {:out :string
-               :err :inherit
-               :dir u/project-root-directory}
-              "clojure" "-M:kondo"
-              "--config" "{:output {:format :edn}}"
-              "--lint" (str/join ":" files))]
-    (when (and (not= exit 0) (seq out))
-      (edn/read-string out))))
+  (clj-kondo/run! {:lint files}))
 
 (defn- unused-namespace-findings
   "Filter findings to only unused-namespace warnings."

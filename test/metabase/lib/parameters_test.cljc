@@ -33,12 +33,12 @@
       (is (= [:dimension other-ref]
              (lib/update-parameter-target-field-ref
               [:dimension field-ref]
-              (fn [_pmbql-ref] (lib.ref/ref other-col))))))
+              (fn [_mbql5-ref] (lib.ref/ref other-col))))))
     (testing "dimension target with options: preserves options"
       (is (= [:dimension other-ref {:stage-number 0}]
              (lib/update-parameter-target-field-ref
               [:dimension field-ref {:stage-number 0}]
-              (fn [_pmbql-ref] (lib.ref/ref other-col))))))
+              (fn [_mbql5-ref] (lib.ref/ref other-col))))))
     (testing "no field ref: returns target unchanged"
       (doseq [target [[:variable [:template-tag "foo"]]
                       [:dimension [:template-tag "tag"]]]]
@@ -50,5 +50,5 @@
       (is (= [:dimension other-ref]
              (lib/update-parameter-target-field-ref
               [:dimension field-ref]
-              (fn [_pmbql-ref extra-col] (lib.ref/ref extra-col))
+              (fn [_mbql5-ref extra-col] (lib.ref/ref extra-col))
               other-col))))))

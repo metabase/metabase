@@ -9,7 +9,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks";
 import {
@@ -47,6 +47,7 @@ async function setup({
   const modelCacheInfo = getMockModelCacheInfo({
     ...cacheInfo,
     card_id: model.id(),
+    // Unjustified type cast. FIXME
     card_name: model.displayName() as string,
   });
 

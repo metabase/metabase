@@ -1,7 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
-import { push } from "react-router-redux";
 
-import { getLocation } from "metabase/selectors/routing";
+import type { Dispatch } from "metabase/redux/store";
+import { type Location, navigate } from "metabase/router";
 import type {
   DashCardId,
   DashCardVisualizationSettings,
@@ -9,23 +9,23 @@ import type {
   DashboardCard,
   DashboardId,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
-
-export const INITIALIZE = "metabase/dashboard/INITIALIZE";
-export const initialize = createAction<{ clearCache?: boolean } | undefined>(
-  INITIALIZE,
-);
-
-export const RESET = "metabase/dashboard/RESET";
-export const reset = createAction(RESET);
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
-export const setEditingDashboard = (dashboard: Dashboard | null) => {
-  return (dispatch: Dispatch, getState: GetState) => {
-    if (dashboard === null) {
-      const location = getLocation(getState());
-      const locationWithoutEditHash = { ...location, hash: "" };
-      dispatch(push(locationWithoutEditHash));
+export const setEditingDashboard = (
+  dashboard: Dashboard | null,
+  location?: Omit<Location, "query" | "action">,
+) => {
+  return (dispatch: Dispatch) => {
+    // Leaving edit mode drops any hash params from the URL. The caller passes the
+    // current location, since this no longer reads the retired routing slice.
+    //
+    // Only navigate when there is actually a hash to strip. The location is
+    // captured when the caller rendered, so navigating unconditionally would
+    // clobber query params written since then (e.g. the tab the dashboard URL
+    // sync just selected, which it will not re-add because it dedupes on the
+    // previous params).
+    if (dashboard === null && location?.hash) {
+      navigate(`${location.pathname}${location.search}`);
     }
 
     dispatch({
@@ -37,10 +37,11 @@ export const setEditingDashboard = (dashboard: Dashboard | null) => {
 
 export const CANCEL_EDITING_DASHBOARD =
   "metabase/dashboard/CANCEL_EDITING_DASHBOARD";
-export const cancelEditingDashboard = () => (dispatch: Dispatch) => {
-  dispatch(setEditingDashboard(null));
-  dispatch({ type: CANCEL_EDITING_DASHBOARD });
-};
+export const cancelEditingDashboard =
+  (location?: Omit<Location, "query" | "action">) => (dispatch: Dispatch) => {
+    dispatch(setEditingDashboard(null, location));
+    dispatch({ type: CANCEL_EDITING_DASHBOARD });
+  };
 
 export type SetDashboardAttributesOpts = {
   id: DashboardId;

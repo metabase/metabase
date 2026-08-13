@@ -4,29 +4,21 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.driver :as driver]
-   [metabase.events.core :as events]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
-   [metabase.server.core :as server]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms-inspector.core :as inspector]
-   [metabase.transforms-inspector.schema :as inspector.schema]
+   [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
+   [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.jvm :as u.jvm]
+   [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [ring.util.response :as response]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time OffsetDateTime)))
 
 (comment metabase.transforms-rest.api.transform-job/keep-me
          metabase.transforms-rest.api.transform-tag/keep-me)
@@ -74,7 +66,13 @@
    [:message [:maybe :string]]
    [:user_id [:maybe pos-int?]]
    [:transform_name {:optional true} [:maybe :string]]
-   [:transform_entity_id {:optional true} [:maybe :string]]])
+   [:transform_entity_id {:optional true} [:maybe :string]]
+   [:job_run_id {:optional true} [:maybe pos-int?]]
+   [:dag_run_id {:optional true} [:maybe pos-int?]]
+   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
+   [:checkpoint_lo_value {:optional true} [:maybe :string]]
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:metered_as {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
   [:map {:closed true}
@@ -83,6 +81,7 @@
    [:description [:maybe :string]]
    [:source :any]
    [:target :any]
+   [:table_dependencies {:optional true} [:maybe [:sequential :map]]]
    [:source_type :keyword]
    [:source_database_id {:optional true} [:maybe pos-int?]]
    [:source_readable {:optional true} [:maybe :boolean]]
@@ -93,14 +92,22 @@
    [:collection_id [:maybe pos-int?]]
    [:target_db_id {:optional true} [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
-   [:dependency_analysis_version :int]
    [:creator CreatorResponse]
    [:last_run {:optional true} [:maybe TransformLastRunResponse]]
    [:tag_ids {:optional true} [:sequential pos-int?]]
    [:table {:optional true} [:maybe :map]]
+   [:target_table_id {:optional true} [:maybe pos-int?]]
    [:owner_user_id {:optional true} [:maybe pos-int?]]
    [:owner_email {:optional true} [:maybe :string]]
-   [:owner {:optional true} [:maybe OwnerResponse]]])
+   [:owner {:optional true} [:maybe OwnerResponse]]
+   [:last_checkpoint_value {:optional true} [:maybe :string]]
+   [:can_read {:optional true} :boolean]
+   [:can_write {:optional true} :boolean]
+   [:can_execute {:optional true} :boolean]
+   ;; Index methods requestable on the target table (driver capability); nil when unsupported. Set only by GET /:id.
+   ;; Referenced by registry keyword (not a require) to avoid a transforms-rest -> driver module dependency; the schema
+   ;; is registered by `metabase.driver`, which is loaded well before any response is coerced.
+   [:requestable_indexes {:optional true} [:maybe :metabase.driver/supported-index-methods]]])
 
 (def ^:private TransformRunResponse
   [:map {:closed true}
@@ -115,6 +122,12 @@
    [:user_id [:maybe pos-int?]]
    [:transform_name {:optional true} [:maybe :string]]
    [:transform_entity_id {:optional true} [:maybe :string]]
+   [:job_run_id {:optional true} [:maybe pos-int?]]
+   [:dag_run_id {:optional true} [:maybe pos-int?]]
+   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
+   [:checkpoint_lo_value {:optional true} [:maybe :string]]
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:metered_as {:optional true} [:maybe :string]]
    ;; Transform can have id/name when exists, or be nil when deleted
    [:transform {:optional true} [:maybe [:map {:closed true}
                                          [:id {:optional true} pos-int?]
@@ -165,17 +178,15 @@
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
+  (transforms.core/check-feature-enabled! body)
   (api/create-check :model/Transform body)
   (transforms.core/check-database-feature body)
-  (transforms.core/check-feature-enabled! body)
   (transforms.core/validate-incremental-column-type! body)
-
   (api/check (not (transforms-base.u/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
   (-> (transforms.core/create-transform! body)
-      transforms.u/add-source-readable
-      transforms.core/source-tables-vec->map-for-fe)) ;; TODO(FE-source-tables): remove
+      transforms.u/add-source-readable))
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
@@ -189,40 +200,11 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
-        global-ordering (transforms.core/transform-ordering (vals id->transform))
-        dep-ids         (get global-ordering id)
+        {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
+        dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]
-    (->> (t2/hydrate dependencies :creator :owner)
-         transforms.u/add-source-readable
-         (mapv transforms.core/source-tables-vec->map-for-fe)))) ;; TODO(FE-source-tables): remove
-
-(def ^:private MergeHistoryEntry
-  [:map
-   [:id ms/PositiveInt]
-   [:workspace_merge_id ms/PositiveInt]
-   [:commit_message :string]
-   [:workspace_id [:maybe ms/PositiveInt]]
-   [:workspace_name :string]
-   [:merging_user_id ms/PositiveInt]
-   [:created_at :any]])
-
-(api.macros/defendpoint :get "/:id/merge-history"
-  :- [:sequential MergeHistoryEntry]
-  "Get merge history for a transform. Returns all merge events that affected this transform,
-   ordered by created_at descending (newest first)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (t2/select-one :model/Transform id))
-  (t2/select [:model/WorkspaceMergeTransform
-              :id
-              :workspace_merge_id
-              :commit_message
-              :workspace_id
-              :workspace_name
-              :merging_user_id
-              :created_at]
-             {:where    [:= :transform_id id]
-              :order-by [[:created_at :desc]]}))
+    (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_execute)
+         transforms.u/add-source-readable)))
 
 (api.macros/defendpoint :get "/run" :- [:map {:closed true}
                                         [:data [:sequential TransformRunResponse]]
@@ -233,19 +215,70 @@
   [_route-params
    query-params :-
    [:map
-    [:sort-column    {:optional true} [:enum "transform-name" "start-time" "end-time" "status" "run-method" "transform-tags"]]
+    [:sort-column    {:optional true} [:enum "transform-name" "start-time" "end-time" "status" "run-method" "transform-tags" "duration"]]
     [:sort-direction {:optional true} [:enum "asc" "desc"]]
-    [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:transform-tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:start-time {:optional true} [:maybe ms/NonBlankString]]
     [:end-time {:optional true} [:maybe ms/NonBlankString]]
-    [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
+    [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]
+    [:user-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-analyst)
   (-> (transforms.core/paged-runs (assoc query-params
                                          :offset (request/offset)
                                          :limit  (request/limit)))
-      (update :data #(map transforms-base.u/localize-run-timestamps %))))
+      (update :data #(map transforms-base.u/present-run %))))
+
+(def ^:private RunSummaryResponse
+  "One row of the unified runs listing: a job run, a manual DAG-reprocess run, or a standalone
+  transform run (one not belonging to a job/DAG run). Identified by `(run_type, id)`; `entity_id`
+  is the id of the associated job/transform (nil if it was deleted) and `name` its name — live if
+  it still exists, otherwise the name snapshotted at run start. `direction` and `transform_count`
+  (the number of transforms the run's plan selected to run) are set only for DAG runs."
+  [:map {:closed true}
+   [:run_type [:enum :job :dag :transform]]
+   [:id pos-int?]
+   [:entity_id [:maybe pos-int?]]
+   [:name [:maybe [:or :string LocalizedString]]]
+   [:direction [:maybe [:enum :upstream :downstream]]]
+   [:transform_count [:maybe pos-int?]]
+   [:run_method [:maybe :keyword]]
+   [:status [:enum :started :succeeded :failed :timeout :canceled :canceling]]
+   [:is_active [:maybe :boolean]]
+   [:start_time :any]
+   [:end_time {:optional true} [:maybe :any]]
+   [:message [:maybe :string]]
+   [:user_id [:maybe pos-int?]]])
+
+(api.macros/defendpoint :get "/runs" :- [:map {:closed true}
+                                         [:data [:sequential RunSummaryResponse]]
+                                         [:limit pos-int?]
+                                         [:offset :int]
+                                         [:total :int]]
+  "Paginated unified run history: every row is a root run — a job run, a manual DAG-reprocess run,
+  or a standalone transform run — never a member run of a job/DAG (those are listed by `GET /run`
+  and the per-run `transform-runs` endpoints).
+
+  `types` selects which kinds to include (all by default); `transform-ids` narrows to runs that ran
+  any of the given transforms. The remaining filters work as in `GET /run`."
+  [_route-params
+   query-params :-
+   [:map
+    [:types {:optional true} [:maybe (ms/QueryVectorOf [:enum "job" "dag" "transform"])]]
+    [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout" "canceled" "canceling"])]]
+    [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]
+    [:start-time {:optional true} [:maybe ms/NonBlankString]]
+    [:end-time {:optional true} [:maybe ms/NonBlankString]]
+    [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+    [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
+    [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
+  (api/check-data-analyst)
+  (-> (transforms.core/paged-run-summaries (assoc query-params
+                                                  :types  (map keyword (:types query-params))
+                                                  :offset (request/offset)
+                                                  :limit  (request/limit)))
+      (update :data transforms.core/present-run-summaries)))
 
 (api.macros/defendpoint :get "/run/:run-id" :- TransformRunResponse
   "Get a transform run by ID."
@@ -254,7 +287,7 @@
   (api/check-data-analyst)
   (let [run (api/check-404 (t2/select-one :model/TransformRun :id run-id))]
     (-> (t2/hydrate run [:transform :collection :transform_tag_ids])
-        transforms-base.u/localize-run-timestamps)))
+        transforms-base.u/present-run)))
 
 (api.macros/defendpoint :put "/:id" :- TransformResponse
   "Update a transform."
@@ -296,27 +329,40 @@
         run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
     (transforms.core/mark-cancel-started-run! (:id run))
     (when (transforms-base.u/python-transform? transform)
-      (transforms.core/cancel-run! (:id run))))
+      ;; The cancelation row was just inserted with DB `current_timestamp`; `now` is within a
+      ;; few ms of that and fine for the latency histogram, and avoids the perf/complexity cost of
+      ;; getting the exact timestamp back out of the DB.
+      (transforms.core/cancel-run! run (OffsetDateTime/now))))
   nil)
+
+(api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
+  "Reset the stored checkpoint for an incremental transform."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/write-check :model/Transform id)
+  (t2/update! :model/Transform id {:last_checkpoint_value nil})
+  nil)
+
+(defn- check-feature-and-lock!
+  "Check that the transform's premium features are enabled and that transforms are not locked by the
+  trial quota."
+  [transform]
+  (transforms.core/check-feature-enabled! transform)
+  (api/check (not (transforms.core/transform-locked? transform))
+             [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
+                   :error-code "metabase_transforms_locked"}]))
 
 (defn run-transform!
   "Run a transform. Returns a 202 response with run_id.
    The transform must already be fetched and validated."
   [transform]
-  (transforms.core/check-feature-enabled! transform)
-  (let [start-promise (promise)]
-    (u.jvm/in-virtual-thread*
+  (check-feature-and-lock! transform)
+  (transforms-rest.api.u/async-run-response
+   (deferred-tru "Transform run started")
+   :run_id
+   (fn [start-promise]
      (transforms.core/execute! transform {:start-promise start-promise
-                                          :run-method :manual
-                                          :user-id api/*current-user-id*}))
-    (when (instance? Throwable @start-promise)
-      (throw @start-promise))
-    (let [result @start-promise
-          run-id (when (and (vector? result) (= (first result) :started))
-                   (second result))]
-      (-> (response/response {:message (deferred-tru "Transform run started")
-                              :run_id run-id})
-          (assoc :status 202)))))
+                                          :run-method    :manual
+                                          :user-id       api/*current-user-id*}))))
 
 (api.macros/defendpoint :post "/:id/run" :- [:map
                                              [:status [:= 202]]
@@ -326,118 +372,54 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (run-transform! (api/write-check :model/Transform id)))
+  (run-transform! (api/read-check :model/Transform id)))
 
-(defn- simple-native-query?
-  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion.
-  Delegates to sql-tools which dispatches to the configured parser backend (macaw or sqlglot)."
-  [sql-string]
-  (sql-tools/simple-query? sql-string))
+(api.macros/defendpoint :post "/:id/run-dag" :- [:map
+                                                 [:status [:= 202]]
+                                                 [:body [:map {:closed true}
+                                                         [:message :any]
+                                                         [:dag_run_id [:maybe pos-int?]]]]]
+  "Trigger a DAG-reprocess run starting from a single transform: runs the transform and every
+  transform in its transitive dependency closure. Returns a 202 with the created `dag_run_id`, or a
+  nil `dag_run_id` when nothing was run (a DAG run for this transform is already in progress, or the
+  closure is empty).
 
-(api.macros/defendpoint :post "/is-simple-query" :- [:map
-                                                     [:is_simple :boolean]
-                                                     [:reason {:optional true} :string]]
-  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion"
-  [_route-params
+  `direction` selects which transforms are included:
+  - `upstream`   — the seed transform plus all transforms it depends on
+  - `downstream` — the seed transform plus all transforms that depend on it"
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   {:keys [query]} :- [:map [:query string?]]]
-  (api/check-superuser)
-  (simple-native-query? query))
+   {:keys [direction]} :- [:map
+                           [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
+  (check-feature-and-lock! (api/write-check :model/Transform id))
+  (transforms-rest.api.u/async-run-response
+   (deferred-tru "DAG run started")
+   :dag_run_id
+   (fn [start-promise]
+     (transforms.core/run-dag! id {:direction     direction
+                                   :user-id       api/*current-user-id*
+                                   :start-promise start-promise}))))
 
-(api.macros/defendpoint :post "/extract-columns"
-  :- [:map [:columns [:maybe [:sequential :string]]]]
-  "Extract column names suitable for incremental transform checkpoint filtering.
-
-  This endpoint is specifically for populating the checkpoint column dropdown in
-  incremental transforms. It only returns columns with types supported for checkpoint
-  filtering: temporal (timestamp/tz) and numeric (int/float) types.
-
-  Text, boolean, and other unsupported column types are filtered out.
-
-  The query is compiled to native SQL using [[qp.compile/compile-with-inline-parameters]],
-  which handles parameterized queries with template tags. Then extracts column names
-  and types using PreparedStatement metadata.
-
-  Returns a map with a :columns key containing a vector of column names (strings).
-  If extraction fails, returns nil for :columns."
-  [_route-params
-   _query-params
-   {:keys [query]} :- [:map
-                       [:query ::qp.schema/any-query]]]
-  (api/check-superuser)
-  (let [database-id (:database query)
-        database    (api/check-404 (t2/select-one :model/Database :id database-id))
-        driver-name (driver/the-initialized-driver (:engine database))
-        columns     (transforms.core/extract-incremental-filter-columns-from-query driver-name database-id query)]
-    {:columns columns}))
-
-;;; -------------------------------------------------- Inspector API --------------------------------------------------
-
-(api.macros/defendpoint :get "/:id/inspect"
-  :- ::inspector.schema/discovery-response
-  "Phase 1: Discover available lenses for a transform.
-   Returns structural metadata and available lens types."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [transform (api/read-check :model/Transform id)
-        result    (do (transforms.core/check-feature-enabled! transform)
-                      (inspector/discover-lenses transform))]
-    (events/publish-event! :event/transform-inspect-discover
-                           {:object  transform
-                            :user-id api/*current-user-id*})
-    result))
-
-(api.macros/defendpoint :get "/:id/inspect/:lens-id"
-  :- ::inspector.schema/lens
-  "Phase 2: Get full lens contents for a transform.
-   Returns sections, cards with dataset_query, and trigger definitions.
-   Accepts optional params for drill lenses as query params."
-  [{:keys [id lens-id]} :- [:map
-                            [:id ms/PositiveInt]
-                            [:lens-id ms/NonBlankString]]
-   params :- [:map-of :keyword :any]]
-  (let [transform (api/read-check :model/Transform id)
-        result    (do (transforms.core/check-feature-enabled! transform)
-                      (inspector/get-lens transform lens-id params))]
-    (events/publish-event! :event/transform-inspect-lens
-                           {:object  transform
-                            :user-id api/*current-user-id*
-                            :details {:lens-id            lens-id
-                                      :num-cards          (count (:cards result))
-                                      :num-drill-lenses   (count (:drill_lenses result))
-                                      :num-alert-triggers (count (:alert_triggers result))}})
-    result))
-
-(api.macros/defendpoint :post "/:id/inspect/:lens-id/query"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
-  "Execute a query in the context of a transform inspector lens."
-  [{:keys [id lens-id]} :- [:map
-                            [:id ms/PositiveInt]
-                            [:lens-id ms/NonBlankString]]
-   _query-params
-   {query :query, lens-params :lens_params}
-   :- [:map
-       [:query [:map [:database {:optional true} [:maybe :int]]]]
-       [:lens_params {:optional true} [:maybe [:map-of :keyword :any]]]]]
-  (let [transform (api/read-check :model/Transform id)]
-    (transforms.core/check-feature-enabled! transform)
-    (let [info {:executed-by  api/*current-user-id*
-                :context      :transform-inspector
-                :transform-id id
-                :lens-id      lens-id
-                :lens-params  lens-params}]
-      (qp.streaming/streaming-response [rff :api]
-        (qp/process-query
-         (-> query
-             (update-in [:middleware :js-int-to-string?] (fnil identity true))
-             (assoc :constraints (qp.constraints/default-query-constraints))
-             (update :info merge info)
-             qp/userland-query)
-         rff)))))
+(api.macros/defendpoint :get "/:id/dag-transforms" :- [:sequential [:map {:closed true}
+                                                                    [:id pos-int?]
+                                                                    [:name :string]]]
+  "Preview the transforms a DAG reprocess from this transform would run (see `POST /:id/run-dag`),
+  in execution order."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [direction]} :- [:map [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
+  (api/read-check :model/Transform id)
+  (mapv (fn [{xform-id :id, xform-name :name}]
+          {:id xform-id, :name xform-name})
+        (transforms.core/dag-run-transforms id direction)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."
   (handlers/routes
    (api.macros/ns-handler *ns* +auth)))
+
+(def ^{:arglists '([request respond raise])} transform-dag-run-routes
+  "`/api/transform-dag-run` routes."
+  (api.macros/ns-handler 'metabase.transforms-rest.api.transform-dag-run +auth))
 
 (def ^{:arglists '([request respond raise])} transform-tag-routes
   "`/api/transform-tag` routes."

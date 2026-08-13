@@ -53,9 +53,9 @@
                              :total_embedded]
                             [(u/count-case (and-not-nil :public_uuid))
                              :total_public]]
-                                ;; json_exists/contains which we use to query json encoded data stored in text
-                                ;; columns is not supported on h2 databases, so we exclude these stats when
-                                ;; the app db is h2.
+                     ;; json_exists/contains which we use to query json encoded data stored in text
+                     ;; columns is not supported on h2 databases, so we exclude these stats when
+                     ;; the app db is h2.
                      json-supported? (conj
                                       [(u/count-case (card-has-params))
                                        :with_params]

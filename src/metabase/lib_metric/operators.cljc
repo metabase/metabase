@@ -1,8 +1,8 @@
 (ns metabase.lib-metric.operators
-  "Unified operator definitions for lib-metric filters.
+  "Unified operator definitions for lib-metric filters and arithmetic.
    Uses lib-metric.hierarchy for category dispatch.
 
-   Operator categories:
+   Filter categories:
    - ::nullary    - no value argument (:is-null, :not-null, :is-empty, :not-empty)
    - ::comparison - single or variadic values (:=, :!=, :<, :<=, :>, :>=)
    - ::string-op  - string-specific operators (:contains, :does-not-contain, :starts-with, :ends-with)
@@ -11,7 +11,10 @@
    - ::compound   - logical operators (:and, :or, :not)
    - ::multi-value - multi-value operators (:in, :not-in)
 
-   All categories derive from ::filter-operator for display-info compatibility."
+   Arithmetic category:
+   - ::arithmetic - numeric operations (:+, :-, :*, :/)
+
+   All filter categories derive from ::filter-operator for display-info compatibility."
   (:require
    [metabase.lib-metric.hierarchy :as hierarchy]
    [metabase.util.performance :as perf]))
@@ -50,15 +53,25 @@
 (doseq [op [:get-day-of-week :get-month :get-hour :get-quarter]]
   (hierarchy/derive op ::temporal-extraction))
 
-;; All operator categories are filter operators (for display-info compatibility)
+;; Arithmetic operators
+(doseq [op [:+ :- :* :/]]
+  (hierarchy/derive op ::arithmetic))
+
+;; All filter categories are filter operators (for display-info compatibility)
 (doseq [cat [::nullary ::comparison ::string-op ::range ::temporal ::compound ::multi-value]]
   (hierarchy/derive cat ::filter-operator))
 
 ;;; -------------------------------------------------- Operator Metadata --------------------------------------------------
 
 (def ^:private operator-metadata
-  "Metadata for each filter operator."
-  {:is-null          {:display-name "is empty"           :arity 0         :ast-node-type :filter/null}
+  "Metadata for all operators (filter and arithmetic)."
+  {;; --- Arithmetic operators ---
+   :+                {:display-name "plus"               :arity :variadic :eval-fn +}
+   :-                {:display-name "minus"              :arity :variadic :eval-fn -}
+   :*                {:display-name "times"              :arity :variadic :eval-fn *}
+   :/                {:display-name "divided by"         :arity :variadic :eval-fn (fn [a b] (/ (double a) (double b)))  :zero-guard? true}
+   ;; --- Filter operators ---
+   :is-null          {:display-name "is empty"           :arity 0         :ast-node-type :filter/null}
    :not-null         {:display-name "is not empty"       :arity 0         :ast-node-type :filter/null}
    :is-empty         {:display-name "is empty"           :arity 0         :ast-node-type :filter/null}
    :not-empty        {:display-name "is not empty"       :arity 0         :ast-node-type :filter/null}
@@ -129,6 +142,11 @@
   [op]
   (hierarchy/isa? op ::filter-operator))
 
+(defn arithmetic?
+  "Returns true if `op` is an arithmetic operator."
+  [op]
+  (hierarchy/isa? op ::arithmetic))
+
 ;;; -------------------------------------------------- Query Functions --------------------------------------------------
 
 (defn display-name
@@ -145,6 +163,21 @@
   "Get the AST node type for an operator."
   [op]
   (perf/get-in operator-metadata [op :ast-node-type]))
+
+(defn eval-fn
+  "Get the evaluation function for an arithmetic operator."
+  [op]
+  (perf/get-in operator-metadata [op :eval-fn]))
+
+(defn zero-guard?
+  "Returns true if the arithmetic operator needs division-by-zero protection."
+  [op]
+  (perf/get-in operator-metadata [op :zero-guard?]))
+
+(defn arithmetic-operator-keywords
+  "Returns the set of registered arithmetic operator keywords."
+  []
+  (hierarchy/descendants ::arithmetic))
 
 ;;; -------------------------------------------------- Operators by Dimension Type --------------------------------------------------
 

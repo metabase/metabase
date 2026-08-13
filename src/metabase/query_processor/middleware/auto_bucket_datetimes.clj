@@ -10,11 +10,11 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [select-keys every? some not-empty get-in]]))
 
 (mr/def ::column-type-info
@@ -54,7 +54,7 @@
                                                                                field-ids)
                                           ;; don't fail if some of the Fields are invalid.
                                           (catch Throwable e
-                                            (log/errorf e "Error fetching Fields: %s" (ex-message e))
+                                            (log/errorf "Error fetching Fields: %s" (ex-message e))
                                             nil))]
                 [id (select-keys field [:base-type :effective-type :semantic-type])])))))
 
@@ -74,7 +74,7 @@
        (when-let [expr-type (try
                               (lib.walk/apply-f-for-stage-at-path lib/type-of query stage-path x)
                               (catch Throwable e
-                                (log/errorf e "Error calculating expression type: %s" (ex-message e))
+                                (log/errorf "Error calculating expression type: %s" (ex-message e))
                                 nil))]
          (isa? expr-type :type/Boolean))))
 
@@ -115,11 +115,11 @@
       :do-not-bucket-reason/not-all-values-are-auto-bucketable)
 
     ;; *  do not autobucket clauses that are updating the time interval
-    (lib.util.match/match-lite x
-      [(_tag :guard #{:+ :-})
+    (match/match-one x
+      [#{:+ :-}
        _
        [#{:expression :field} _ _]
-       [:interval _ _n (unit :guard #{:minute :hour :second})]]
+       [:interval _ _n #{:minute :hour :second}]]
       true)
     :do-not-bucket-reason/bucket-between-relative-starting-from
 
@@ -164,7 +164,7 @@
             {:base-type base-type
              :effective-type (or effective-type base-type)})
           (wrap-clauses [x]
-            (lib.util.match/replace-lite x
+            (match/replace x
               ;; don't replace anything that's already bucketed or otherwise is not subject to autobucketing
               (x :guard (should-not-be-autobucketed? query stage-path x))
               &match
@@ -188,7 +188,7 @@
    {breakouts :breakout, :keys [filters], :as stage} :- ::lib.schema/stage]
   ;; find any breakouts or filters in the query that are just plain `[:field-id ...]` clauses (unwrapped by any other
   ;; clause)
-  (if-let [unbucketed-clauses (lib.util.match/match-many (cons filters breakouts)
+  (if-let [unbucketed-clauses (match/match-many (cons filters breakouts)
                                 (clause :guard (should-not-be-autobucketed? query stage-path clause)) nil
                                 [:expression & _]                                                     &match
                                 [:field & _]                                                          &match)]

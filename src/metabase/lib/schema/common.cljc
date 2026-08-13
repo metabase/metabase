@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.common
-  (:refer-clojure :exclude [update-keys every? #?@(:clj [some])])
+  (:refer-clojure :exclude [update-keys #?@(:clj [some])])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -8,7 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :refer [update-keys every? #?@(:clj [some])]]))
+   [metabase.util.performance :refer [update-keys every-key? #?@(:clj [some])]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -63,7 +63,7 @@
     (update-keys m memoized-kebab-key)))
 
 (defn normalize-map
-  "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`; convert map to
+  "Base normalization behavior for a MBQL 5 map: keywordize keys and keywordize `:lib/type`; convert map to
   kebab-case (excluding the so-called [[HORRIBLE-keys]]."
   [m]
   (-> m normalize-map-no-kebab-case map->kebab-case))
@@ -93,16 +93,12 @@
   [:and
    {:error/message "non-blank string"
     :json-schema   {:type "string" :minLength 1}}
-   [:string {:min 1}]
+   [:string {:min 1, :decode/normalize (fn [x]
+                                         (cond-> x
+                                           (keyword? x) u/qualified-name))}]
    [:fn
     {:error/message "non-blank string"}
     (complement str/blank?)]])
-
-(mr/def ::int-greater-than-or-equal-to-zero
-  "Schema representing an integer than must also be greater than or equal to zero."
-  [:int
-   {:error/message "integer greater than or equal to zero"
-    :min           0}])
 
 (mr/def ::positive-number
   [:fn
@@ -165,7 +161,10 @@
   [x]
   (normalize-keyword x))
 
-(defn- normalize-base-type [x]
+(defn normalize-base-type
+  "Normalize `x` to a base type keyword, repairing the lower-cased type names some prod fingerprints were stored
+  under (#63397). Returns `nil` if it isn't keyword-able."
+  [x]
   (when-let [k (normalize-base-type* x)]
     (or (cond
           (isa? k :type/*)
@@ -283,7 +282,19 @@
     [:semantic-type  {:optional true} [:maybe ::semantic-or-relation-type]]
     [:database-type  {:optional true} [:maybe ::non-blank-string]]
     [:name           {:optional true} [:maybe ::non-blank-string]]
-    [:display-name   {:optional true} [:maybe ::non-blank-string]]]
+    [:display-name   {:optional true} [:maybe ::non-blank-string]]
+    ;; the keys clauses add to a plain options map. Clause-specific option schemas (`::lib.schema.ref/field.options`
+    ;; and friends) declare the rest; they all have to be named here because a map schema strips whatever it doesn't
+    ;; declare.
+    ;;
+    ;; the name an expression is defined under, on the expression's own clause
+    [:lib/expression-name {:optional true} ::non-blank-string]
+    ;; `:contains`/`:starts-with`/`:ends-with` and the other string filters
+    [:case-sensitive      {:optional true} :boolean]
+    ;; `:time-interval`
+    [:include-current     {:optional true} :boolean]
+    ;; the name an aggregation is referenced by
+    [:lib/source-name     {:optional true} ::non-blank-string]]
    (disallowed-keys
     {:ident ":ident is deprecated and should not be included in options maps"})])
 
@@ -317,7 +328,7 @@
 
 (defn- kebab-cased-map? [m]
   (and (map? m)
-       (every? kebab-cased-key? (keys m))))
+       (every-key? kebab-cased-key? m)))
 
 (mr/def ::kebab-cased-map
   [:fn

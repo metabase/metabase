@@ -12,7 +12,7 @@
 
 (def fmt #?(:clj format :cljs gstring/format))
 
-(t/deftest parse-column-ref-strings-test
+(t/deftest ^:parallel parse-column-ref-strings-test
   (t/testing "Column ref strings are parsed correctly"
     (let [f-qual-nm "/databases/MY_DB/tables/MY_TBL/fields/COL1"
           f-id      42
@@ -27,7 +27,7 @@
                                      {::mb.viz/column-name expn-nm}]]]
         (t/is (= expected (mb.viz/parse-db-column-ref input-str)))))))
 
-(t/deftest form-conversion-test
+(t/deftest ^:parallel form-conversion-test
   (t/testing ":visualization_settings are correctly converted from DB to qualified form and back"
     (let [f-id                42
           target-id           19
@@ -72,21 +72,22 @@
       ;; for a non-table card, the :click_behavior map is directly underneath :visualization_settings
       (t/is (= norm-click-bhvr-map (mb.viz/db->norm db-click-bhv-map))))))
 
-(t/deftest form-transformation-test
+(t/deftest ^:parallel form-transformation-test
   (t/testing "The deprecated k:mm :time_style is converted to HH:mm when normalized, and kept in the new style when converted back to the DB form"
     (let [db-col-settings-old {:column_settings {"[\"name\",\"Column Name\"]" {:time_style "k:mm"}}}
           db-col-settings-new {:column_settings {"[\"name\",\"Column Name\"]" {:time_style "HH:mm"}}}
           norm-col-settings   {::mb.viz/column-settings {{::mb.viz/column-name "Column Name"} {::mb.viz/time-style "HH:mm"}}}]
       (t/is (= norm-col-settings (mb.viz/db->norm db-col-settings-old)))
-      (t/is (= db-col-settings-new (mb.viz/norm->db norm-col-settings)))))
+      (t/is (= db-col-settings-new (mb.viz/norm->db norm-col-settings))))))
 
+(t/deftest ^:parallel form-transformation-test-2
   (t/testing "Invalid column refs are dropped when viz settings are normalized (#18972)"
     (t/is (= {::mb.viz/column-settings {}}
              (mb.viz/db->norm {:column_settings {"[\"ref\",null]" {:column_title "invalid"}}})))
     (t/is (= {::mb.viz/column-settings {}}
              (mb.viz/db->norm {:column_settings {"bad-column-ref" {:column_title "invalid"}}})))))
 
-(t/deftest virtual-card-test
+(t/deftest ^:parallel virtual-card-test
   (t/testing "Virtual card in visualization settings is preserved through normalization roundtrip"
     ;; virtual cards have the form of a regular card, mostly
     (let [db-form {:virtual_card {:archived false
@@ -105,7 +106,7 @@
                            mb.viz/db->norm
                            mb.viz/norm->db))))))
 
-(t/deftest parameter-mapping-test
+(t/deftest ^:parallel parameter-mapping-test
   (t/testing "parameterMappings are handled correctly"
     (let [from-id    101
           to-id      294
@@ -149,7 +150,7 @@
     (walk/postwalk (fn [v] (when (keyword? v) (swap! all-kws #(conj % v)))) m)
     @all-kws))
 
-(t/deftest comprehensive-click-actions-test
+(t/deftest ^:parallel comprehensive-click-actions-test
   (t/testing "Visualization settings for card in 'EE14566 - Click Behavior visualization_settings' should be handled"
     (let [db-form   {:column_settings
                      {"[\"name\",\"Year\"]"

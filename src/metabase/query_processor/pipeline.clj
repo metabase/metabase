@@ -1,7 +1,7 @@
 (ns metabase.query-processor.pipeline
   (:require
    [clojure.core.async :as a]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.driver :as driver]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :as i18n]
@@ -122,7 +122,7 @@
           (when-not (interrupted-exception? e)
             (throw e))
           ;; ok, at this point we know it's an InterruptedException.
-          (log/trace e "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
+          (log/trace "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
           ;; just to be extra safe and sure that the canceled chan has gotten a message. It's a promise channel so
           ;; duplicate messages don't matter
           (some-> *canceled-chan* (a/>!! ::cancel))

@@ -1,4 +1,5 @@
 (ns metabase.lib-be.hash-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.lib-be.hash-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
@@ -241,7 +242,7 @@
       (lib/aggregate (lib/count))
       (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
       (as-> $q
-          ;; Add an aggregation expression that references the first two aggregations
+            ;; Add an aggregation expression that references the first two aggregations
             (lib/aggregate $q (lib/+ (lib/aggregation-ref $q 0)
                                      (lib/aggregation-ref $q 1))))))
 

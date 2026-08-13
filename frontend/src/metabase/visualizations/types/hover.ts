@@ -1,5 +1,5 @@
 import type { ClickObjectDataRow } from "metabase-lib";
-import type { RowValue, TimelineEvent } from "metabase-types/api";
+import type { CardId, RowValue } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { ComputedVisualizationSettings } from "./visualization";
@@ -11,11 +11,6 @@ export interface DataPoint extends ClickObjectDataRow {
 export interface HoveredDimension {
   value: RowValue;
   column: RemappingHydratedDatasetColumn;
-}
-
-export interface HoveredTimelineEvent {
-  timelineEvents: TimelineEvent[];
-  element: Element;
 }
 
 export interface TooltipRowModel {
@@ -42,7 +37,6 @@ export interface HoveredObject {
   datumIndex?: number;
   value?: unknown;
   column?: RemappingHydratedDatasetColumn;
-  timelineEvents?: TimelineEvent[];
   data?: DataPoint[];
   footerData?: DataPoint[];
   dimensions?: HoveredDimension[];
@@ -53,4 +47,16 @@ export interface HoveredObject {
   isAlreadyScaled?: boolean;
   pieSliceKeyPath?: string[];
   pieLegendHoverIndex?: number;
+}
+
+export interface HighlightedDimension {
+  value: RowValue;
+  columnName: string;
+}
+
+export interface HighlightedObject {
+  cardId?: CardId;
+  dimensions?: HighlightedDimension[];
+  columnName?: string;
+  shouldShowTooltip?: boolean;
 }

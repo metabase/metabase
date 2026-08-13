@@ -10,14 +10,15 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(derive :metabase/event ::notification)
+(events/derive! :metabase/event ::notification)
 
 (def ^:private supported-topics #{:event/user-invited
                                   :event/notification-create
                                   :event/slack-token-invalid
                                   :event/comment-created
                                   :event/support-access-grant-created
-                                  :event/transform-failed})
+                                  :event/transform-failed
+                                  :event/transform-failure-digest})
 
 (def ^:private hydrate-transformer
   (mtx/transformer

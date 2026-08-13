@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { virtualCardDisplayTypes } from "metabase-types/api";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { EmptyVizState, type EmptyVizStateProps } from "./EmptyVizState";
 import { type ExcludedEmptyVizDisplayTypes, getEmptyVizConfig } from "./utils";
@@ -55,8 +55,8 @@ describe("EmptyVizState", () => {
   it.each(docsCTAChartTypes)(
     "should render the documentation CTA for %s visualization",
     (chartType) => {
-      const onEditSummary = jest.fn();
-      setup({ chartType, onEditSummary });
+      const editSummary = jest.fn();
+      setup({ chartType, editSummary });
 
       const { primaryText, secondaryText, docsLink } =
         getEmptyVizConfig(chartType);
@@ -79,8 +79,8 @@ describe("EmptyVizState", () => {
     it.each(CTAChartTypes)(
       "should prompt to open the summarize sidebar for %s visualization",
       (chartType) => {
-        const onEditSummary = jest.fn();
-        setup({ chartType, onEditSummary });
+        const editSummary = jest.fn();
+        setup({ chartType, editSummary });
 
         const { secondaryText } = getEmptyVizConfig(chartType);
 
@@ -99,32 +99,32 @@ describe("EmptyVizState", () => {
       },
     );
 
-    it("should call `onEditSummary` when clicking the Summarize button", async () => {
-      const onEditSummary = jest.fn();
+    it("should call `editSummary` when clicking the Summarize button", async () => {
+      const editSummary = jest.fn();
       setup({
         chartType: "line",
-        onEditSummary,
+        editSummary,
         isSummarizeSidebarOpen: false,
       });
 
       await userEvent.click(screen.getByLabelText("Open summarize sidebar"));
-      expect(onEditSummary).toHaveBeenCalledTimes(1);
+      expect(editSummary).toHaveBeenCalledTimes(1);
     });
 
     it("should not render the summarize CTA button if the sidebar is already open", async () => {
-      const onEditSummary = jest.fn();
-      setup({ chartType: "line", onEditSummary, isSummarizeSidebarOpen: true });
+      const editSummary = jest.fn();
+      setup({ chartType: "line", editSummary, isSummarizeSidebarOpen: true });
 
       expect(
         screen.queryByLabelText("Open summarize sidebar"),
       ).not.toBeInTheDocument();
 
       await userEvent.click(screen.getByText("Summarize"));
-      expect(onEditSummary).not.toHaveBeenCalled();
+      expect(editSummary).not.toHaveBeenCalled();
     });
 
-    it("should not render the summarize CTA button if onEditSummary is undefined", async () => {
-      setup({ chartType: "line", onEditSummary: undefined });
+    it("should not render the summarize CTA button if editSummary is undefined", async () => {
+      setup({ chartType: "line", editSummary: undefined });
 
       expect(
         screen.queryByLabelText("Open summarize sidebar"),

@@ -3,10 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { useListDatabasesQuery } from "metabase/api";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import {
   DestinationDatabasesList,
@@ -37,6 +37,7 @@ function setup({
     .map((_, i) => createMockDatabase({ id: i + 2 }));
   mockDbs.forEach((db) => setupDatabaseEndpoints(db));
 
+  // Unjustified type cast. FIXME
   (useListDatabasesQuery as jest.Mock).mockReturnValue(
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useListDatabasesQueryMockValue?.(mockDbs) ?? {

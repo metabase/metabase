@@ -317,6 +317,7 @@ function findFields<const T extends { [key: string]: unknown }>(
 ): {
   [K in keyof T]: Lib.ColumnMetadata;
 } {
+  // Unjustified type cast. FIXME
   const res = {} as unknown as {
     [K in keyof T]: Lib.ColumnMetadata;
   };
@@ -419,7 +420,6 @@ export function findDimensions(query: Lib.Query) {
 export const { fields, expressions, segments, metrics, measures } =
   findDimensions(query);
 
-export const sharedMetadata = metadata;
 export const sharedProvider = createMetadataProvider({
   databaseId: database.id,
   metadata,

@@ -1,10 +1,11 @@
+import { Box } from "metabase/ui";
 import type {
   DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { ObjectDetailBodyWrapper } from "./ObjectDetailBody.styled";
+import S from "./ObjectDetailBody.module.css";
 import { DetailsTable } from "./ObjectDetailsTable";
 import type { OnVisualizationClickType } from "./types";
 
@@ -14,6 +15,7 @@ export interface ObjectDetailBodyProps {
   settings: VisualizationSettings;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
+  isDashboard: boolean;
 }
 
 export function ObjectDetailBody({
@@ -22,16 +24,18 @@ export function ObjectDetailBody({
   settings,
   onVisualizationClick,
   visualizationIsClickable,
+  isDashboard,
 }: ObjectDetailBodyProps): JSX.Element {
   return (
-    <ObjectDetailBodyWrapper>
+    <Box flex={1} className={S.body}>
       <DetailsTable
         columns={columns}
         zoomedRow={zoomedRow}
         settings={settings}
         onVisualizationClick={onVisualizationClick}
         visualizationIsClickable={visualizationIsClickable}
+        isDashboard={isDashboard}
       />
-    </ObjectDetailBodyWrapper>
+    </Box>
   );
 }

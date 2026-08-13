@@ -252,26 +252,45 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- copy-table-fields! [old-table-id new-table-id]
-  (t2/insert! :model/Field
-              (for [field (t2/select :model/Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
-                (-> field
-                    (dissoc :id :fk_target_field_id)
-                    (assoc :table_id new-table-id))))
-  ;; now copy the FieldValues as well.
-  (let [old-field-id->name (t2/select-pk->fn :name :model/Field :table_id old-table-id :active true)
-        new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id :active true)
-        old-field-values (when-let [field-ids (seq (keys old-field-id->name))]
-                           (t2/select :model/FieldValues :field_id [:in (set field-ids)]))]
-    (t2/insert! :model/FieldValues
-                (for [{old-field-id :field_id, :as field-values} old-field-values
-                      :let                                       [field-name (get old-field-id->name old-field-id)]]
-                  (-> field-values
-                      (dissoc :id)
-                      (assoc :field_id (get new-field-name->id field-name))
-            ;; Toucan after-select for FieldValues returns NULL human_readable_values as [] for FE-friendliness..
-            ;; preserve NULL in the app DB copy so we don't end up changing things that rely on checking whether its
-            ;; NULL like [[metabase.parameters.chain-filter/search-cached-field-values?]]
-                      (update :human_readable_values not-empty))))))
+  (let [old-fields (t2/select :model/Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
+    (t2/insert! :model/Field
+                (for [field old-fields]
+                  (-> field
+                      (dissoc :id :fk_target_field_id)
+                      (assoc :table_id new-table-id))))
+    ;; Remap `:parent_id` on copied nested fields. The insert above leaves them pointing to the *old* parent
+    ;; field ids; nested fields would otherwise reference fields in the original DB, which breaks anything that
+    ;; walks the parent chain (e.g. resolve-fields → bulk-metadata-or-throw).
+    ;; (name, nfc_path) uniquely identifies a field within a table, so we match across the old/new copies on that.
+    (let [field-key      (juxt :name :nfc_path)
+          new-fields     (t2/select :model/Field :table_id new-table-id, :active true)
+          new-key->id    (into {} (map (juxt field-key :id)) new-fields)
+          old-id->new-id (into {}
+                               (keep (fn [{old-id :id, :as old-field}]
+                                       (when-let [new-id (get new-key->id (field-key old-field))]
+                                         [old-id new-id])))
+                               old-fields)]
+      (doseq [{new-id :id, old-parent-id :parent_id} new-fields
+              :when                                  (some? old-parent-id)
+              :let                                   [new-parent-id (get old-id->new-id old-parent-id)]
+              :when                                  (and new-parent-id
+                                                          (not= new-parent-id old-parent-id))]
+        (t2/update! :model/Field new-id {:parent_id new-parent-id})))
+    ;; now copy the FieldValues as well.
+    (let [old-field-id->name (t2/select-pk->fn :name :model/Field :table_id old-table-id :active true)
+          new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id :active true)
+          old-field-values   (when-let [field-ids (seq (keys old-field-id->name))]
+                               (t2/select :model/FieldValues :field_id [:in (set field-ids)]))]
+      (t2/insert! :model/FieldValues
+                  (for [{old-field-id :field_id, :as field-values} old-field-values
+                        :let                                       [field-name (get old-field-id->name old-field-id)]]
+                    (-> field-values
+                        (dissoc :id)
+                        (assoc :field_id (get new-field-name->id field-name))
+                        ;; Toucan after-select for FieldValues returns NULL human_readable_values as [] for FE-friendliness..
+                        ;; preserve NULL in the app DB copy so we don't end up changing things that rely on checking whether its
+                        ;; NULL like [[metabase.parameters.chain-filter/search-cached-field-values?]]
+                        (update :human_readable_values not-empty)))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
   (let [old-tables    (t2/select :model/Table :db_id old-db-id, :active true, {:order-by [[:id :asc]]})

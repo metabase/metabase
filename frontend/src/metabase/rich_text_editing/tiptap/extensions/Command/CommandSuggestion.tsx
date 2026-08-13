@@ -11,18 +11,17 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import {
   CreateNewQuestionFooter,
   MenuItemComponent,
   SearchResultsFooter,
-} from "metabase/documents/components/Editor/shared/MenuComponents";
+} from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import {
   LoadingSuggestionPaper,
   SuggestionPaper,
-} from "metabase/documents/components/Editor/shared/SuggestionPaper";
-import { getCurrentDocument } from "metabase/documents/selectors";
-import { useSelector } from "metabase/lib/redux";
-import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+} from "metabase/rich_text_editing/tiptap/extensions/shared/SuggestionPaper";
 import { getBrowseAllItemIndex } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import type { SuggestionPickerViewMode } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
@@ -45,7 +44,7 @@ import CommandS from "./CommandSuggestion.module.css";
 import { NewQuestionTypeMenuView } from "./NewQuestionTypeMenuView";
 import type { CommandOption, CommandSection } from "./types";
 import { useCreateQuestionsMenuItems } from "./use-create-questions-menu-items";
-import { getAllCommandSections } from "./utils";
+import { type MetabotCommandConfig, getAllCommandSections } from "./utils";
 
 export interface CommandSuggestionProps {
   items: SearchResult[];
@@ -53,9 +52,10 @@ export interface CommandSuggestionProps {
   editor: Editor;
   range: Range;
   query: string;
+  metabotCommand?: MetabotCommandConfig | null;
 }
 
-interface SuggestionRef {
+export interface CommandSuggestionRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
 
@@ -98,11 +98,14 @@ const CommandMenuItem = forwardRef<
 });
 
 export const CommandSuggestion = forwardRef<
-  SuggestionRef,
+  CommandSuggestionRef,
   CommandSuggestionProps
->(function CommandSuggestionComponent({ command, editor, query }, ref) {
-  const document = useSelector(getCurrentDocument);
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+>(function CommandSuggestionComponent(
+  { command, editor, query, metabotCommand },
+  ref,
+) {
+  const host = useEditorHost();
+  const document = useSelector(host.selectors.getCurrentDocument);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const [viewMode, setViewMode] = useState<SuggestionPickerViewMode>(null);
@@ -113,8 +116,8 @@ export const CommandSuggestion = forwardRef<
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const allCommandSections: CommandSection[] = useMemo(
-    () => getAllCommandSections(isMetabotEnabled),
-    [isMetabotEnabled],
+    () => getAllCommandSections(metabotCommand),
+    [metabotCommand],
   );
 
   const allCommandOptions = useMemo(
@@ -162,18 +165,22 @@ export const CommandSuggestion = forwardRef<
           selectItem: true,
           entityId: item.id,
           model: item.model,
-          document,
         });
+        if (document) {
+          host.analytics.trackAddSmartLink(document);
+        }
       } else {
         command({
           embedItem: true,
           entityId: item.id,
           model: item.model,
-          document,
         });
+        if (document) {
+          host.analytics.trackAddCard(document);
+        }
       }
     },
-    [viewMode, command, document],
+    [viewMode, command, document, host],
   );
 
   const onTriggerCreateNewQuestion = useCallback(() => {
@@ -226,8 +233,10 @@ export const CommandSuggestion = forwardRef<
     if (commandName === "metabot") {
       command({
         command: "metabot",
-        document,
       });
+      if (document) {
+        host.analytics.trackAskMetabot(document);
+      }
       return;
     }
 

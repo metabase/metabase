@@ -32,7 +32,7 @@
   "Like [[test-drivers]], but for a single driver."
   {:style/indent :defn}
   [driver & body]
-  `(-test-driver ~driver (^:once fn* [] ~@body)))
+  `(-test-driver ~driver (fn [] ~@body)))
 
 (defmacro test-drivers
   "Execute body (presumably containing tests) against the drivers in `drivers` that  we're currently testing against

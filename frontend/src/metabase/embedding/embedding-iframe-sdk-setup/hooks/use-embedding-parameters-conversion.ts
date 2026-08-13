@@ -1,8 +1,7 @@
 import { useCallback } from "react";
 
 import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import type { EmbeddingParameters } from "metabase/public/lib/types";
-import type { Parameter } from "metabase-types/api";
+import type { EmbeddingParameters, Parameter } from "metabase-types/api";
 
 export const useEmbeddingParametersConversion = () => {
   const convertToEmbedSettings = useCallback(
@@ -24,7 +23,9 @@ export const useEmbeddingParametersConversion = () => {
           return acc;
         },
         {
+          // Unjustified type cast. FIXME
           hiddenParameters: [] as string[],
+          // Unjustified type cast. FIXME
           lockedParameters: [] as string[],
         },
       );

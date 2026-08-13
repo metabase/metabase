@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
-import { getHasDatabaseWithJsonEngine } from "metabase/selectors/data";
+import { getHasDatabaseWithJsonEngine } from "metabase/databases/utils/predicates";
+import { useSelector } from "metabase/redux";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,

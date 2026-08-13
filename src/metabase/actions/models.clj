@@ -417,16 +417,13 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Action [_action]
-  [:name (serdes/hydrated-hash :model) :created_at])
-
 (defmethod serdes/generate-path "QueryAction" [_ _] nil)
 (defmethod serdes/make-spec "QueryAction" [_model-name _opts]
   {:copy      []
    :skip      [;; this is a temporary column to power v57 => v56 rollbacks, and we can remove it in v58.
                :legacy_query]
    :transform {:action_id     (serdes/parent-ref)
-               :database_id   (serdes/fk :model/Database :name)
+               :database_id   (serdes/fk :model/Database)
                :dataset_query {:export serdes/export-mbql :import serdes/import-mbql}}})
 
 (defmethod serdes/generate-path "HTTPAction" [_ _] nil)
@@ -447,16 +444,17 @@
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :model_id               (serdes/fk :model/Card)
-               :query                  (serdes/nested :model/QueryAction :action_id opts)
-               :http                   (serdes/nested :model/HTTPAction :action_id opts)
-               :implicit               (serdes/nested :model/ImplicitAction :action_id opts)
+               :query                  (serdes/nested :model/QueryAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
+               :http                   (serdes/nested :model/HTTPAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
+               :implicit               (serdes/nested :model/ImplicitAction :action_id (merge {:sort-by (juxt :name :created_at)} opts))
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :parameter_mappings     {:export serdes/export-parameter-mappings
                                         :import serdes/import-parameter-mappings}
                :visualization_settings {:export serdes/export-visualization-settings
-                                        :import serdes/import-visualization-settings}}})
+                                        :import serdes/import-visualization-settings}}
+   :defaults  {:archived false}})
 
-(defmethod serdes/dependencies "Action" [action]
+(defmethod serdes/deserialization-dependencies "Action" [action]
   (set
    (concat
     ;; other stuff is implicitly referenced through a Card
@@ -466,11 +464,22 @@
       (let [{:keys [database_id dataset_query]} (first (:query action))]
         (concat
          [[{:model "Database" :id database_id}]]
-         (serdes/mbql-deps dataset_query)))))))
+         (serdes/mbql-deps false dataset_query)))))))
+
+(defmethod serdes/serialization-dependencies "Action" [_model-name {:keys [id model_id type]}]
+  ;; Serialization runs on the raw entity, whose query lives in the `query_action` child table (`:type` is a keyword
+  ;; here, not a string), so the query is fetched rather than read from a nested `:query` key.
+  (set
+   (concat
+    (when model_id [[{:model "Card" :id model_id}]])
+    (when (= type :query)
+      (when-let [{:keys [database_id dataset_query]} (t2/select-one :model/QueryAction :action_id id)]
+        (concat
+         (when database_id [[{:model "Database" :id database_id}]])
+         (serdes/mbql-deps true dataset_query)))))))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
-  (let [{:keys [id label]} (-> action serdes/path last)]
-    ["actions" (serdes/storage-leaf-file-name id label)]))
+  [{:label "actions"} {:label (:name action) :key (:entity_id action)}])
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

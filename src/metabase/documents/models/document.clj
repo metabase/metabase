@@ -8,13 +8,16 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.instance :as t2.instance]))
 
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
 
@@ -98,7 +101,17 @@
   (sync-document-cards-collection! id collection_id
                                    :archived archived
                                    :archived-directly archived_directly)
-  (events/publish-event! :event/document-update {:object instance})
+  (when-not mi/*deserializing?*
+    ;; Toucan2 hands `define-after-update` a `TransientRow` for each updated row,
+    ;; which is *not* a `mi/instance-of? :model/Document`. The revisions handler
+    ;; rejects non-instances with "object must be a model instance" — caught and
+    ;; logged at `revisions/events.clj:30`, but as a result no revision row is
+    ;; recorded for content updates. Promote it to a real instance here so the
+    ;; revisions push can complete cleanly.
+    (events/publish-event! :event/document-update
+                           {:object (if (t2/instance-of? :model/Document instance)
+                                      instance
+                                      (t2.instance/instance :model/Document instance))}))
   instance)
 
 (t2/define-after-select :model/Document
@@ -107,11 +120,28 @@
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Document
-  [_table]
-  [:name (serdes/hydrated-hash :collection) :created-at])
-
 ;;; ----------------------------------------------- Search ----------------------------------------------------------
+
+(defn- document->search-text
+  "Extract the plain searchable text from a document's prose-mirror body for the search index.
+
+  Receives the raw `:document` value as it comes off the ingestion query (a JSON string).
+  Returns nil if it can't be parsed, so a malformed/oversized body never blocks the rest of the
+  document (e.g. its name) from being indexed."
+  [document]
+  (when document
+    (try
+      (-> (cond-> document (string? document) json/decode+kw)
+          prose-mirror/ast->text
+          not-empty)
+      (catch Throwable _ nil))))
+
+;; The legacy (in-place) search engine LIKE-matches the raw `:document` JSON in SQL, but scores results
+;; against this cleaned-up text. Extracting prose here means a query that only hits JSON structure
+;; (e.g. "paragraph") matches no real content and is correctly dropped as a non-match.
+(defmethod search.config/column->string [:document :document]
+  [value _model _column]
+  (or (document->search-text value) ""))
 
 (search.spec/define-spec "document"
   {:model :model/Document
@@ -123,7 +153,11 @@
            :updated-at :updated_at
            :last-viewed-at :last_viewed_at
            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
-   :search-terms [:name]
+   :search-terms {:name true
+                  :document document->search-text}
+   ;; Document bodies are full-text searchable (via `document->search-text` above) but are
+   ;; deliberately excluded from semantic-search embeddings.
+   :embedding-exclude #{:document}
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:document-name :name
                   :document-id :id
@@ -192,13 +226,15 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id :dependency_analysis_version]
+   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
                           :import-with-context import-document-content}
                :collection_id (serdes/fk :model/Collection)
-               :creator_id (serdes/fk :model/User)}})
+               :creator_id (serdes/fk :model/User)}
+   :defaults {:archived          false
+              :archived_directly false}})
 
 (defn- document-deps
   [{:keys [content_type] :as document}]
@@ -215,11 +251,29 @@
                                                 :else
                                                 nil))))))
 
-(defmethod serdes/dependencies "Document"
+(defmethod serdes/deserialization-dependencies "Document"
   [{:keys [collection_id] :as document}]
   (set (concat
         (document-deps document)
         (when collection_id #{[{:model "Collection" :id collection_id}]}))))
+
+(defmethod serdes/serialization-dependencies "Document"
+  ;; Embedded cards and smart-links become content references (each must be part of the export); the containing
+  ;; Collection is included too, though a selective export may legitimately omit it.
+  [_model-name {:keys [collection_id content_type] :as document}]
+  (set
+   (concat
+    (when collection_id [[{:model "Collection" :id collection_id}]])
+    (when (= content_type prose-mirror/prose-mirror-content-type)
+      (concat
+       (for [embedded-card-id (prose-mirror/card-ids document)]
+         [{:model "Card" :id embedded-card-id}])
+       (for [{model :model link-id :entityId}
+             (prose-mirror/collect-ast document
+                                       #(when (= prose-mirror/smart-link-type (:type %))
+                                          (:attrs %)))
+             :when (contains? model->serdes-model model)]
+         [{:model (model->serdes-model model) :id link-id}]))))))
 
 (defmethod serdes/descendants "Document"
   [_model-name id _opts]

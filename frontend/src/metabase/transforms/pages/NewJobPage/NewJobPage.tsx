@@ -1,6 +1,4 @@
 import { useMemo, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,19 +7,16 @@ import {
   useLazyGetTransformJobQuery,
 } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useNavigate } from "metabase/router";
+import * as Urls from "metabase/urls";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
+import { trackTransformJobCreated } from "../../analytics";
 import { JobEditor, type TransformJobInfo } from "../../components/JobEditor";
 
-type NewJobPageProps = {
-  route: Route;
-};
-
-export function NewJobPage({ route }: NewJobPageProps) {
+export function NewJobPage() {
   const initialJob = useMemo(() => getNewJobInfo(), []);
   const [job, setJob] = useState(initialJob);
   const isDirty = useMemo(() => !_.isEqual(job, initialJob), [job, initialJob]);
@@ -29,7 +24,7 @@ export function NewJobPage({ route }: NewJobPageProps) {
     useCreateTransformJobMutation();
   const [fetchJob, { isFetching }] = useLazyGetTransformJobQuery();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const isSaving = isCreating || isFetching;
 
   const handleNameChange = (name: string) => {
@@ -51,17 +46,19 @@ export function NewJobPage({ route }: NewJobPageProps) {
     const { data: newJob, error } = await createJob(job);
 
     if (error) {
+      trackTransformJobCreated({ result: "failure" });
       sendErrorToast(t`Failed to create a job`);
     } else if (newJob != null) {
+      trackTransformJobCreated({ result: "success", jobId: newJob.id });
       // prefetch the job to avoid the loader on the job details page
       await fetchJob(newJob.id);
       sendSuccessToast(t`New job created`);
-      dispatch(push(Urls.transformJob(newJob.id)));
+      navigate(Urls.transformJob(newJob.id));
     }
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.transformJobList()));
+    navigate(Urls.transformJobList());
   };
 
   return (
@@ -80,7 +77,7 @@ export function NewJobPage({ route }: NewJobPageProps) {
         onScheduleChange={handleScheduleChange}
         onTagListChange={handleTagListChange}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </>
   );
 }

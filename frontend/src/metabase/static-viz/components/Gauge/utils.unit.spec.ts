@@ -208,17 +208,17 @@ describe("Static gauge utils", () => {
     });
 
     it("handles CSS variable color for error", () => {
-      const arcDatum = createPieArcDatum("var(--mb-color-error)");
+      const arcDatum = createPieArcDatum("var(--mb-color-feedback-negative)");
       expect(colorGetter(arcDatum, getColor)).toMatch(/^#[0-9A-F]{6}$/i);
     });
 
     it("handles CSS variable color for warning", () => {
-      const arcDatum = createPieArcDatum("var(--mb-color-warning)");
+      const arcDatum = createPieArcDatum("var(--mb-color-feedback-warning)");
       expect(colorGetter(arcDatum, getColor)).toMatch(/^#[0-9A-F]{6}$/i);
     });
 
     it("handles CSS variable color for success", () => {
-      const arcDatum = createPieArcDatum("var(--mb-color-success)");
+      const arcDatum = createPieArcDatum("var(--mb-color-feedback-positive)");
       expect(colorGetter(arcDatum, getColor)).toMatch(/^#[0-9A-F]{6}$/i);
     });
   });

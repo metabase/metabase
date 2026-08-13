@@ -2,13 +2,13 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Tenant } from "metabase-types/api";
 import {
   createMockTenant,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { TenantsListingApp } from "./TenantsListingApp";
 
@@ -28,7 +28,7 @@ const setup = ({
 
   const currentUser = createMockUser({ is_superuser: isAdmin });
 
-  renderWithProviders(<TenantsListingApp>{null}</TenantsListingApp>, {
+  renderWithProviders(<TenantsListingApp />, {
     storeInitialState: createMockState({
       settings,
       currentUser,

@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   renderWithProviders,
@@ -8,6 +7,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import type {
   ParametersForActionExecution,
   PublicWritebackAction,
@@ -75,14 +75,9 @@ async function setup({
   });
 
   renderWithProviders(
-    <Route
-      path="/public/action/:uuid"
-      component={(props) => (
-        <PublicApp {...props}>
-          <PublicAction {...props} />
-        </PublicApp>
-      )}
-    />,
+    <Route path="/public/action/:uuid" element={<PublicApp />}>
+      <Route index element={<PublicAction />} />
+    </Route>,
     {
       mode: "public",
       initialRoute: `/public/action/${TEST_PUBLIC_ID}`,

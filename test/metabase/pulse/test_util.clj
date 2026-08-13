@@ -1,4 +1,5 @@
 (ns metabase.pulse.test-util
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.test-util]}}}}}}
   (:require
    [medley.core :as m]
    [metabase.channel.core :as channel]
@@ -40,7 +41,7 @@
 (defmacro slack-test-setup!
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
-  `(with-redefs [channel/send!       (constantly :noop)]
+  `(with-redefs [channel/send! (constantly :noop)]
      (do-with-site-url! (fn [] ~@body))))
 
 (defmacro with-captured-channel-send-messages!

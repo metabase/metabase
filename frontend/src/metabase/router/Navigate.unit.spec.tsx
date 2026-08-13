@@ -1,0 +1,96 @@
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Navigate, Route } from "metabase/router";
+
+// Stable references: `<Navigate>` keeps `state` raw in its effect deps, so a
+// fresh object literal each render would re-navigate and loop.
+const HOME_STATE = { from: "home" };
+const RICH_STATE = { when: new Date(0), n: NaN };
+
+describe("router/Navigate", () => {
+  it("pushes to the destination on mount, and stays put when the location moves back", async () => {
+    const Host = () => <Navigate to="/dest" />;
+    const { router } = renderWithProviders(
+      <Route path="*" element={<Host />} />,
+      {
+        withRouter: true,
+        initialRoute: "/home",
+      },
+    );
+
+    await waitFor(() => expect(router?.location.pathname).toBe("/dest"));
+
+    // The catch-all route keeps this <Navigate> mounted across the navigation,
+    // and its target has not changed, so going back does not re-assert it. Every
+    // call site redirects with `replace`, which leaves nothing to go back to.
+    act(() => router?.back());
+    await waitFor(() => expect(router?.location.pathname).toBe("/home"));
+  });
+
+  it("replaces the current entry and carries state when asked", async () => {
+    const Host = () => <Navigate to="/dest" replace state={HOME_STATE} />;
+    const { router } = renderWithProviders(
+      <Route path="*" element={<Host />} />,
+      {
+        withRouter: true,
+        initialRoute: "/home",
+      },
+    );
+
+    await waitFor(() => {
+      const location = router?.location;
+      expect(location?.pathname).toBe("/dest");
+      expect(location?.state).toEqual({ from: "home" });
+    });
+
+    // The replace dropped /home, so there is nothing earlier to go back to.
+    act(() => router?.back());
+    expect(router?.location.pathname).toBe("/dest");
+  });
+
+  it("re-navigates when the target prop changes", async () => {
+    const Host = () => {
+      const [to, setTo] = useState("/first");
+      return (
+        <>
+          <Navigate to={to} />
+          <button onClick={() => setTo("/second")}>change</button>
+        </>
+      );
+    };
+    const { router } = renderWithProviders(
+      <Route path="*" element={<Host />} />,
+      {
+        withRouter: true,
+        initialRoute: "/home",
+      },
+    );
+
+    await waitFor(() => expect(router?.location.pathname).toBe("/first"));
+
+    await userEvent.click(screen.getByRole("button", { name: "change" }));
+
+    await waitFor(() => expect(router?.location.pathname).toBe("/second"));
+  });
+
+  it("passes state through by reference without serializing it", async () => {
+    const Host = () => <Navigate to="/dest" state={RICH_STATE} />;
+    const { router } = renderWithProviders(
+      <Route path="*" element={<Host />} />,
+      {
+        withRouter: true,
+        initialRoute: "/home",
+      },
+    );
+
+    await waitFor(() => expect(router?.location.pathname).toBe("/dest"));
+
+    // Unjustified type cast. FIXME
+    const state = router?.location.state as typeof RICH_STATE;
+    // Serializing would turn the Date into a string and NaN into null.
+    expect(state.when).toBe(RICH_STATE.when);
+    expect(Number.isNaN(state.n)).toBe(true);
+  });
+});

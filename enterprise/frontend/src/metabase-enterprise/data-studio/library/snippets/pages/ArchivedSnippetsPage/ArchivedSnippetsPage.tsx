@@ -1,15 +1,14 @@
 import { useCallback, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Card,
@@ -21,6 +20,7 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { CollectionItem } from "metabase-types/api";
 
 import { useColumnDef } from "./hooks/useColumnDef";
@@ -36,7 +36,7 @@ export function ArchivedSnippetsPage() {
   const [updateSnippet] = useUpdateSnippetMutation();
 
   const handleUnarchiveClick = useCallback(
-    async (item: CollectionItem) => {
+    async (item: Pick<CollectionItem, "id" | "name">) => {
       try {
         await updateSnippet({
           id: item.id,
@@ -83,7 +83,7 @@ export function ArchivedSnippetsPage() {
         py={0}
       />
       <Stack
-        bg="background-secondary"
+        bg="background_page-secondary"
         data-testid="archived-snippets-page"
         pb="2rem"
         px="3.5rem"
@@ -116,15 +116,17 @@ export function ArchivedSnippetsPage() {
                   return;
                 }
               }}
-              getRowHref={(row) => {
+              renderRowLink={(row, props) => {
                 const { data } = row.original;
 
                 if (data.model === "snippet") {
                   const snippetId = Number(data.id);
-                  return Urls.dataStudioSnippet(snippetId);
+                  return (
+                    <Link to={Urls.dataStudioSnippet(snippetId)} {...props} />
+                  );
                 }
 
-                return null;
+                return props.children;
               }}
             />
           )}

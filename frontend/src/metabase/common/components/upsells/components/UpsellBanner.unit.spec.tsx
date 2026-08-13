@@ -1,11 +1,12 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   findRequests,
+  setupNullGetUserKeyValueEndpoints,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route } from "metabase/router";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { UpsellBanner, type UpsellBannerProps } from "./UpsellBanner";
@@ -29,15 +30,10 @@ function setup(
 
   return renderWithProviders(
     <>
-      <Route
-        path="/internal-link"
-        component={() => <div>Internal link content</div>}
-      />
+      <Route path="/internal-link" element={<div>Internal link content</div>} />
       <Route
         path="/"
-        component={() => (
-          <UpsellBanner {...props}>{props.children}</UpsellBanner>
-        )}
+        element={<UpsellBanner {...props}>{props.children}</UpsellBanner>}
       />
     </>,
     {
@@ -134,6 +130,44 @@ describe("UpsellsBanner > Upsell Wrapper Dismissible", () => {
     expect(puts[0].url).toBe(
       `http://localhost/api/user-key-value/namespace/user_acknowledgement/key/upsell-${campaignName}`,
     );
+  });
+
+  it("should show a dismissible banner when the acknowledgement key does not exist yet", async () => {
+    // A brand-new user has no acknowledgement stored, so the API responds with
+    // an empty body that resolves to `null`. The banner must still show.
+    setupNullGetUserKeyValueEndpoints();
+
+    renderWithProviders(
+      <Route
+        path="/"
+        element={
+          <UpsellBanner
+            dismissible
+            campaign="fresh-campaign"
+            location="test-location"
+            title="Fresh title"
+            buttonText="Test button text"
+            buttonLink="https://test-store.metabase.com"
+          >
+            Banner content
+          </UpsellBanner>
+        }
+      />,
+      {
+        storeInitialState: {
+          currentUser: createMockUser({ is_superuser: true }),
+        },
+        withRouter: true,
+        initialRoute: "/",
+      },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Fresh title")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("button", { name: "Dismiss banner" }),
+    ).toBeInTheDocument();
   });
 
   it("should hide component when it has been dismissed", async () => {

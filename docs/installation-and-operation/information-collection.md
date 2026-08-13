@@ -29,6 +29,25 @@ This anonymous data helps us figure out things like:
 - Where people get stuck
 - How performance for key workflows (like querying or loading) changes over time
 
+## Embedding telemetry
+
+When anonymous tracking is enabled, Metabase collects usage data from embedded iframes and components. This usage data is anonymous, and just concerns embedding feature usage. It doesn't collect query content, result data, or user identifiers.
+
+### Data collected by modular embeds
+
+[Modular embedding components](../embedding/modular-embedding.md) collect usage events when the components are rendered in your app. Each event includes:
+
+- Which components were used (for example, a dashboard or question)
+- The component's configuration options (for example, whether downloads or drill-through are enabled)
+- The authentication method (like SSO or guest)
+- Whether a custom locale is configured
+
+Within a session, an in-memory identifier groups related events, but this identifier is regenerated on every page load and is never written to cookies or localStorage, so there's no persistent cross-session identifier.  
+
+### Data collected by iframe embeds
+
+For iframe embeds, like public links, or when embedding the full Metabase app, Metabase records query execution counts grouped by embedding type.
+
 ## Opting out of anonymous usage data collection for self-hosted Metabases
 
 If you're self-hosting Metabase, you can opt out of providing us with your anonymous usage data:
@@ -57,7 +76,7 @@ The token validation request includes:
 - Types of embedding (modular, guest, SDK, full app)
 - Site UUID (just an identifier for your Metabase)
 - Metabase version
-- Query execution timestamp (last UTC day)
+- Query execution counts for the previous UTC day, broken down by embedding type (SDK, interactive, static, public link, simple, and internal)
 - Metabot usage statistics: count of tokens, queries, users, and date (just counts and the date).
 
 ## Further reading

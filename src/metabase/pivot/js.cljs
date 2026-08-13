@@ -2,6 +2,7 @@
   "Javascript-facing interface for pivot table postprocessing. Wraps functions in metabase.pivot.core."
   (:require
    [metabase.pivot.core :as pivot]
+   [metabase.util :as u]
    [metabase.util.performance :as perf]))
 
 (defn ^:export columns-without-pivot-group
@@ -9,7 +10,8 @@
   [cols]
   (let [cols (js->clj cols :keywordize-keys true)]
     (clj->js
-     (pivot/columns-without-pivot-group cols))))
+     (pivot/columns-without-pivot-group cols)
+     :keyword-fn u/qualified-name)))
 
 (defn ^:export split-pivot-data
   "Pulls apart different aggregations that were packed into one result set returned from the QP.

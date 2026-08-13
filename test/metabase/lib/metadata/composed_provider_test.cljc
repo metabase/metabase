@@ -54,4 +54,4 @@
                 (lib.metadata/field mp (meta/id :orders :tax)))))
       (testing "Fetching by Name"
         (is (=? [{:active false}]
-                (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column, :table-id (meta/id :orders), :name #{"TAX"}})))))))
+                (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column, :table-ids #{(meta/id :orders)}, :name #{"TAX"}})))))))

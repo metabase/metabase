@@ -3,9 +3,8 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { useCreateCollectionMutation } from "metabase/api";
-import { canPlaceEntityInCollection } from "metabase/collections/utils";
+import { canPlaceEntityInCollection } from "metabase/common/collections/utils";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import {
   Form,
   FormErrorMessage,
@@ -13,9 +12,9 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Button, Flex, Modal } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerCollectionItem } from "../../types";
@@ -54,8 +53,6 @@ export const NewCollectionDialog = () => {
           : undefined,
     };
   }, [path]);
-
-  useEscapeToCloseModal(close, { capture: true });
 
   if (!options.canCreateCollections) {
     return null;
@@ -121,7 +118,6 @@ export const NewCollectionDialog = () => {
         data-testid="create-collection-on-the-go"
         trapFocus={true}
         withCloseButton={false}
-        closeOnEscape={false}
       >
         <FormProvider
           initialValues={{ name: "" }}

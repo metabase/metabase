@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import type { VisualizerState } from "metabase/redux/store/visualizer";
 import {
   extractRemappings,
   getVisualization,
@@ -9,13 +10,7 @@ import {
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type {
-  Card,
-  DatasetData,
-  RawSeries,
-  SingleSeries,
-} from "metabase-types/api";
-import type { VisualizerState } from "metabase-types/store/visualizer";
+import type { Card, DatasetData, RawSeries } from "metabase-types/api";
 
 import {
   createDataSource,
@@ -132,6 +127,7 @@ const getVisualizerDatasetData = createSelector(
     getVisualizerColumnValuesMapping,
   ],
   (dataSources, datasets, columns, columnValuesMapping): DatasetData =>
+    // Unjustified type cast. FIXME
     mergeVisualizerData({
       columns,
       columnValuesMapping,
@@ -160,6 +156,7 @@ const getVisualizerFlatRawSeries = createSelector(
 
     const series: RawSeries = [
       {
+        // Unjustified type cast. FIXME
         card: {
           display,
           dataset_query: {},
@@ -175,7 +172,7 @@ const getVisualizerFlatRawSeries = createSelector(
         // Certain visualizations memoize settings computation based on series keys
         // This guarantees a visualization always rerenders on changes
         started_at: new Date().toISOString(),
-      } as SingleSeries,
+      },
     ];
 
     return series;
@@ -239,28 +236,6 @@ export const getVisualizerComputedSettingsForFlatSeries = createSelector(
     series.length > 0 ? getComputedSettingsForSeries(series) : {},
 );
 
-export const getVisualizerPrimaryColumn = createSelector(
-  [
-    getVisualizationType,
-    getVisualizerComputedSettings,
-    getVisualizerDatasetColumns,
-  ],
-  (display, settings, columns) => {
-    if (!display) {
-      return undefined;
-    }
-
-    if (isCartesianChart(display)) {
-      const dimensionName = settings["graph.dimensions"]?.[0];
-      if (dimensionName) {
-        return columns.find((column) => column.name === dimensionName);
-      }
-    }
-
-    return undefined;
-  },
-);
-
 export const getTabularPreviewSeries = createSelector(
   [getVisualizerFlatRawSeries],
   (rawSeries) => {
@@ -274,6 +249,7 @@ export const getTabularPreviewSeries = createSelector(
     return [
       {
         ...rest,
+        // Unjustified type cast. FIXME
         card: {
           display: "table",
           dataset_query: {},

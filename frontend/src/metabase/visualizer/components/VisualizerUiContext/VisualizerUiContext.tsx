@@ -11,7 +11,7 @@ import {
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getDatasets } from "metabase/visualizer/selectors";
 
 type VisualizerUiState = {

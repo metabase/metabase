@@ -1,6 +1,5 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
@@ -85,16 +84,13 @@ function isSupportedTemplateTagForModel(tag: TemplateTag) {
   return ["card", "snippet"].includes(tag.type);
 }
 
-export function checkDatabaseCanPersistDatasets(database?: Database | null) {
-  return database && database.supportsPersistence() && database.isPersisted();
-}
-
 export function checkCanBeModel(question: Question) {
   const { isNative } = Lib.queryDisplayInfo(question.query());
   if (!isNative) {
     return true;
   }
 
+  // Unjustified type cast. FIXME
   return (question.legacyNativeQuery() as NativeQuery)
     .templateTags()
     .every(isSupportedTemplateTagForModel);

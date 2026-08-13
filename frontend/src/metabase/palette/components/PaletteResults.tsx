@@ -1,13 +1,13 @@
-import type { Query } from "history";
 import { VisualState, useKBar, useMatches } from "kbar";
 import { useEffect, useMemo } from "react";
-import { Link } from "react-router";
 import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import { Link } from "metabase/common/components/Link";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
-import { trackSearchClick } from "metabase/search/analytics";
+import { trackSearchClick } from "metabase/common/search/analytics";
+import { queryToSearch } from "metabase/router";
 import {
   Flex,
   Group,
@@ -19,6 +19,7 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import type { SearchQuery } from "metabase/utils/browser";
 import type { SearchResponse } from "metabase-types/api";
 
 import type { PaletteActionImpl } from "../types";
@@ -33,12 +34,12 @@ const PAGE_SIZE = 4;
 const FullSearchCTA = ({
   locationQuery,
   searchResults,
-  searchTerm,
+  debouncedSearchTerm,
   onClick,
 }: {
-  locationQuery: Query;
+  locationQuery: SearchQuery;
   searchResults: SearchResponse;
-  searchTerm: string;
+  debouncedSearchTerm: string;
   onClick: () => void;
 }) => {
   const showOtherUsersCollections = useShowOtherUsersCollections();
@@ -51,16 +52,16 @@ const FullSearchCTA = ({
 
   return (
     <Text
-      c="brand"
+      c="core-brand"
       component={Link}
       fw={700}
       id="search-results-metadata"
       to={{
         pathname: "search",
-        query: {
+        search: queryToSearch({
           ...locationQuery,
-          q: searchTerm,
-        },
+          q: debouncedSearchTerm,
+        }),
       }}
       className={S.viewAndFilterResults}
       onClick={onClick}
@@ -78,17 +79,19 @@ const FullSearchCTA = ({
 };
 
 type Props = Omit<StackProps, "children"> & {
-  locationQuery: Query;
+  locationQuery: SearchQuery;
   searchRequestId?: string;
   searchResults?: SearchResponse;
-  searchTerm: string;
+  liveSearchTerm: string;
+  debouncedSearchTerm: string;
 };
 
 export const PaletteResults = ({
   locationQuery,
   searchRequestId,
   searchResults,
-  searchTerm,
+  liveSearchTerm,
+  debouncedSearchTerm,
   ...props
 }: Props) => {
   // Used for finding actions within the list
@@ -97,8 +100,13 @@ export const PaletteResults = ({
   const { results } = useMatches();
 
   const processedResults = useMemo(
-    () => processResults(results as (PaletteActionImpl | string)[], searchTerm),
-    [results, searchTerm],
+    () =>
+      processResults(
+        // Unjustified type cast. FIXME
+        results as (PaletteActionImpl | string)[],
+        liveSearchTerm.length !== 0,
+      ),
+    [results, liveSearchTerm],
   );
 
   useEffect(() => {
@@ -129,11 +137,11 @@ export const PaletteResults = ({
     );
   });
 
-  if (processedResults.length === 0 && searchTerm.length === 0) {
+  if (processedResults.length === 0 && liveSearchTerm.length === 0) {
     return <PaletteEmptyState />;
   }
 
-  if (processedResults.length === 0 && searchTerm.length > 0) {
+  if (processedResults.length === 0 && liveSearchTerm.length > 0) {
     return <PaletteResultsSkeleton />;
   }
 
@@ -142,7 +150,8 @@ export const PaletteResults = ({
       <PaletteResultList
         items={processedResults} // items needs to be a stable reference, otherwise the activeIndex will constantly be hijacked
         maxHeight={530}
-        minHeight={searchTerm.length === 0 ? 280 : 0}
+        minHeight={liveSearchTerm.length === 0 ? 280 : 0}
+        liveSearchTerm={liveSearchTerm}
         renderItem={({ item, active }) => {
           const isFirst = processedResults[0] === item;
 
@@ -164,7 +173,7 @@ export const PaletteResults = ({
                     <FullSearchCTA
                       locationQuery={locationQuery}
                       searchResults={searchResults}
-                      searchTerm={searchTerm}
+                      debouncedSearchTerm={debouncedSearchTerm}
                       onClick={() => {
                         query.setVisualState(VisualState.hidden);
 
@@ -176,7 +185,7 @@ export const PaletteResults = ({
                           requestId: searchRequestId,
                           entityModel: null,
                           entityId: null,
-                          searchTerm,
+                          searchTerm: debouncedSearchTerm,
                         });
                       }}
                     />
@@ -200,7 +209,7 @@ function PaletteEmptyState() {
       <Text c="text-secondary" fw={700} mt="xl">
         {t`No recent items`}
       </Text>
-      <Text c="text-tertiary" size="sm" mt="xs" ta="center">
+      <Text c="text-disabled" size="sm" mt="xs" ta="center">
         {t`Items you've recently viewed will appear here.`}
       </Text>
     </Stack>

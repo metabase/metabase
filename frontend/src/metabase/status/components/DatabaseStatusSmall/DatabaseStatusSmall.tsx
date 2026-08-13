@@ -1,21 +1,20 @@
 import { t } from "ttag";
 
-import { isSyncAborted, isSyncInProgress } from "metabase/lib/syncing";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { InitialSyncStatus } from "metabase-types/api";
+import { isSyncAborted, isSyncInProgress } from "metabase/utils/syncing";
+import type { Database, InitialSyncStatus } from "metabase-types/api";
 
 import StatusSmall from "../StatusSmall";
 import { getIconName, isSpinnerVisible } from "../utils/status";
 
-export interface DatabaseStatusSmallProps {
+export type DatabaseStatusSmallProps = {
   databases: Database[];
   onExpand?: () => void;
-}
+};
 
-const DatabaseStatusSmall = ({
+export const DatabaseStatusSmall = ({
   databases,
   onExpand,
-}: DatabaseStatusSmallProps): JSX.Element => {
+}: DatabaseStatusSmallProps) => {
   const status = getStatus(databases);
   const statusLabel = getStatusLabel(status);
   const hasSpinner = isSpinnerVisible(status);
@@ -52,6 +51,3 @@ const getStatusLabel = (status: InitialSyncStatus): string => {
       return t`Error syncing`;
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseStatusSmall;

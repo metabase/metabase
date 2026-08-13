@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { CARD_SIZE_DEFAULTS_JSON } from "cljs/metabase.dashboards.constants";
-import { DEFAULT_CARD_SIZE } from "metabase/lib/dashboard_grid";
+import { DEFAULT_CARD_SIZE } from "metabase/utils/dashboard_grid";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 type VisualizationSize = { width: number; height: number };
@@ -17,6 +17,7 @@ const getSize = (
   visualizationType: VisualizationDisplay,
   sizeKey: "min" | "default",
 ): VisualizationSize =>
+  // Unjustified type cast. FIXME
   _.get(
     VISUALIZATION_SIZES,
     [visualizationType, sizeKey],

@@ -157,12 +157,10 @@
         :metabase.lib.field/original-effective-type        :type/Text
         :metabase.lib.field/simple-display-name            "Category: Name"
         :metabase.lib.query/transformation-added-base-type true)
-
       (testing "new key already present takes precedence"
         (is (= (assoc base :lib/temporal-unit :year)
                (lib/normalize ::lib.schema.metadata/column
                               {:name "X", :metabase.lib.field/temporal-unit :month, :lib/temporal-unit :year}))))
-
       (testing "old keys are disallowed by the schema"
         (are [old-key value] (not (mr/validate ::lib.schema.metadata/column
                                                (assoc base old-key value)))

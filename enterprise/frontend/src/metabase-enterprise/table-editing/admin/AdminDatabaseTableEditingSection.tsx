@@ -7,12 +7,10 @@ import {
   Label,
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
-import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
-import { Toggle } from "metabase/common/components/Toggle";
+import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-import { Alert, Box, Flex, Icon } from "metabase/ui";
+import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import type {
   Database,
   DatabaseData,
@@ -24,6 +22,8 @@ import {
   DATABASE_TABLE_EDITING_SETTING,
   isDatabaseTableEditingEnabled,
 } from "../settings";
+
+import { trackTableEditingSettingsToggled } from "./analytics";
 
 enum DisabledReasonKey {
   MissingDriverFeature = "driver-feature-missing",
@@ -55,12 +55,7 @@ export function AdminDatabaseTableEditingSection({
     try {
       setError(null);
 
-      trackSimpleEvent({
-        event: "edit_data_settings_toggled",
-        event_detail: enabled ? "on" : "off",
-        target_id: database.id,
-        triggered_from: "admin-settings-databases",
-      });
+      trackTableEditingSettingsToggled(enabled, database.id);
 
       await updateDatabase({
         id: database.id,
@@ -109,10 +104,10 @@ export function AdminDatabaseTableEditingSection({
     >
       <Flex align="center" justify="space-between" mb="xs">
         <Label htmlFor="table-editing-toggle">{t`Editable tables`}</Label>
-        <Toggle
+        <Switch
           id="table-editing-toggle"
-          value={isEnabled}
-          onChange={handleToggle}
+          checked={isEnabled}
+          onChange={(e) => handleToggle(e.currentTarget.checked)}
           disabled={isSettingDisabled || (!isEnabled && databaseHasRouting)}
         />
       </Flex>
@@ -125,7 +120,12 @@ export function AdminDatabaseTableEditingSection({
       </Box>
 
       {databaseHasRouting && (
-        <Alert variant="light" color="info" icon={<Icon name="info" />} mb="md">
+        <Alert
+          size="compact"
+          variant="light"
+          icon={<Icon name="info" />}
+          mb="md"
+        >
           {t`Table editing can't be enabled when database routing is enabled.`}
         </Alert>
       )}

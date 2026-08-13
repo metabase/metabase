@@ -3,6 +3,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import type {
   DatePickerOperator,
   DatePickerUnit,
+  SpecificDatePickerOperator,
   SpecificDatePickerValue,
 } from "metabase/querying/common/types";
 import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
@@ -32,6 +33,8 @@ interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
+  minDate?: Date;
+  maxDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
@@ -42,6 +45,8 @@ export function SpecificDatePicker({
   value: initialValue,
   availableOperators,
   availableUnits,
+  minDate,
+  maxDate,
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onBack,
@@ -52,10 +57,9 @@ export function SpecificDatePicker({
   const hasTimeToggle = canSetTime(value, availableUnits);
   const coercedValue = coerceValue(value);
 
-  const handleTabChange = (tabValue: string | null) => {
-    const tab = tabs.find((tab) => tab.operator === tabValue);
-    if (tab) {
-      setValue(setOperator(value, tab.operator));
+  const handleTabChange = (operator: SpecificDatePickerOperator | null) => {
+    if (operator) {
+      setValue(setOperator(value, operator));
     }
   };
 
@@ -98,6 +102,8 @@ export function SpecificDatePicker({
             <DateRangePicker
               value={{ dateRange: value.values, hasTime: value.hasTime }}
               hasTimeToggle={hasTimeToggle}
+              minDate={minDate}
+              maxDate={maxDate}
               renderSubmitButton={() =>
                 renderSubmitButton({ value: coercedValue })
               }
@@ -108,6 +114,8 @@ export function SpecificDatePicker({
             <SingleDatePicker
               value={{ date: getDate(value), hasTime: value.hasTime }}
               hasTimeToggle={hasTimeToggle}
+              minDate={minDate}
+              maxDate={maxDate}
               renderSubmitButton={() =>
                 renderSubmitButton({ value: coercedValue })
               }

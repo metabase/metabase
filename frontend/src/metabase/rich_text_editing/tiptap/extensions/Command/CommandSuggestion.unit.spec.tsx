@@ -11,25 +11,24 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { Input } from "metabase/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockSearchResult,
-  createMockTokenFeatures,
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
-import type { SettingsState } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import {
   CommandSuggestion,
   type CommandSuggestionProps,
 } from "./CommandSuggestion";
+import type { MetabotCommandConfig } from "./utils";
 
 registerVisualizations();
 
@@ -109,13 +108,10 @@ const TestWrapper = (props: CommandSuggestionProps) => {
 
 type SetupProps = {
   query?: string;
-  settings?: SettingsState;
+  metabotCommand?: MetabotCommandConfig | null;
 };
 
-const setup = ({
-  query = "",
-  settings = mockSettings({}),
-}: SetupProps = {}) => {
+const setup = ({ query = "", metabotCommand = null }: SetupProps = {}) => {
   const command = jest.fn();
 
   const editor = {
@@ -133,12 +129,14 @@ const setup = ({
   renderWithProviders(
     <TestWrapper
       command={command}
+      // Unjustified type cast. FIXME
       editor={editor as unknown as Editor}
       query={query}
       items={[]}
       range={{ from: 0, to: 0 }}
+      metabotCommand={metabotCommand}
     />,
-    { storeInitialState: createMockState({ settings }) },
+    { storeInitialState: createMockState({ settings: mockSettings({}) }) },
   );
 
   return {
@@ -183,7 +181,6 @@ describe("CommandSuggestion", () => {
       embedItem: true,
       entityId: 2,
       model: "card",
-      document: null,
     });
   });
 
@@ -215,7 +212,6 @@ describe("CommandSuggestion", () => {
       selectItem: true,
       entityId: 4,
       model: "document",
-      document: null,
     });
   });
 
@@ -255,7 +251,6 @@ describe("CommandSuggestion", () => {
       embedItem: true,
       entityId: 5,
       model: "card",
-      document: null,
     });
   });
 
@@ -290,7 +285,6 @@ describe("CommandSuggestion", () => {
       embedItem: true,
       entityId: 6,
       model: "card",
-      document: null,
     });
   });
 
@@ -325,7 +319,6 @@ describe("CommandSuggestion", () => {
       selectItem: true,
       entityId: 8,
       model: "table",
-      document: null,
     });
   });
 
@@ -362,6 +355,7 @@ describe("CommandSuggestion", () => {
     renderWithProviders(
       <TestWrapper
         command={command}
+        // Unjustified type cast. FIXME
         editor={editor as unknown as Editor}
         query=""
         items={[]}
@@ -403,6 +397,7 @@ describe("CommandSuggestion", () => {
     renderWithProviders(
       <TestWrapper
         command={command}
+        // Unjustified type cast. FIXME
         editor={editor as unknown as Editor}
         query=""
         items={[]}
@@ -437,34 +432,27 @@ describe("CommandSuggestion", () => {
       jest.clearAllMocks();
     });
 
-    describe("when metabot is disabled", () => {
+    describe("when no metabot command is provided", () => {
       it("should show all available commands except Metabot", async () => {
-        const settings = mockSettings({
-          "metabot-enabled?": false,
-          "token-features": createMockTokenFeatures({
-            metabot_v3: false,
-          }),
-        });
-
-        setup({ settings });
+        setup({ metabotCommand: null });
 
         expect(screen.queryByText("Ask Metabot")).not.toBeInTheDocument();
         await expectStandardCommandsToBePresent();
       });
     });
 
-    describe("when metabot is enabled", () => {
+    describe("when a metabot command is provided", () => {
       it("should show all available commands including Metabot", async () => {
-        const settings = mockSettings({
-          "metabot-enabled?": true,
-          "token-features": createMockTokenFeatures({
-            metabot_v3: true,
-          }),
-        });
+        setup({ metabotCommand: { name: "Metabot" } });
 
-        setup({ settings });
+        expect(await screen.findByText("Ask Metabot")).toBeInTheDocument();
+        await expectStandardCommandsToBePresent();
+      });
 
-        expect(screen.getByText("Ask Metabot")).toBeInTheDocument();
+      it("should use the provided metabot name", async () => {
+        setup({ metabotCommand: { name: "Ada" } });
+
+        expect(await screen.findByText("Ask Ada")).toBeInTheDocument();
         await expectStandardCommandsToBePresent();
       });
     });

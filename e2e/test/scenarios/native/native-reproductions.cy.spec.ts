@@ -2,12 +2,12 @@ const { H } = cy;
 
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { NativeQuestionDetails } from "e2e/support/helpers";
 import type {
-  NativeQuestionDetails,
-  StructuredQuestionDetails,
-} from "e2e/support/helpers";
-import type { IconName } from "metabase/ui";
-import type { Database, ListDatabasesResponse } from "metabase-types/api";
+  Database,
+  IconName,
+  ListDatabasesResponse,
+} from "metabase-types/api";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
 
@@ -335,13 +335,23 @@ describe("issue 54124", () => {
   it("should be possible to close the data reference sidebar (metabase#54124)", () => {
     H.startNewNativeQuestion();
 
-    cy.get("@questionId").then((questionId) => {
-      H.NativeEditor.type(
-        `{{#${questionId}-reference-question }}{leftarrow}{leftarrow}{leftarrow}`,
-      );
-    });
+    cy.findByTestId("sidebar-content")
+      .should("be.visible")
+      .icon("close")
+      .click();
 
-    cy.findByTestId("sidebar-content").icon("close").click();
+    cy.get("@questionId").then((questionId) => {
+      H.NativeEditor.type(`{{#${questionId}-reference-question }}`, {
+        allowFastSet: true,
+      });
+    });
+    H.NativeEditor.type("{leftarrow}{leftarrow}{leftarrow}");
+
+    cy.findByTestId("sidebar-content")
+      .should("be.visible")
+      .icon("close")
+      .click();
+
     cy.findByTestId("sidebar-content").should("not.exist");
 
     cy.log("moving cursor should open the reference sidebar again");
@@ -708,50 +718,6 @@ describe("issue 59110", () => {
     });
   });
 });
-
-describe("issue 60719", () => {
-  const question1Details: NativeQuestionDetails = {
-    name: "Q1",
-    native: {
-      query: "select 1 as num",
-      "template-tags": {},
-    },
-  };
-
-  function getQuestion2Details(card1Id: number): StructuredQuestionDetails {
-    return {
-      name: "Q2",
-      query: {
-        "source-table": `card__${card1Id}`,
-      },
-    };
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-  });
-
-  it("should prevent saving a native query with a circular reference (metabase#60719)", () => {
-    H.createNativeQuestion(question1Details).then(({ body: card1 }) => {
-      H.createQuestion(getQuestion2Details(card1.id)).then(
-        ({ body: card2 }) => {
-          H.visitQuestion(card1.id);
-          cy.findByTestId("visibility-toggler").click();
-          H.NativeEditor.clear().type(`select * from {{#${card2.id}-q2}}`);
-        },
-      );
-    });
-    H.queryBuilderHeader().button("Save").click();
-    H.modal().within(() => {
-      cy.button("Save").click();
-      cy.wait("@updateCard");
-      cy.findByText("Cannot save card with cycles.").should("be.visible");
-    });
-  });
-});
-
 describe("issue 59356", () => {
   function typeRunShortcut() {
     cy.realPress([H.metaKey, "Enter"]);
@@ -1004,5 +970,45 @@ describe("issue 59075", () => {
       const { bottom } = editor.get()[0].getBoundingClientRect();
       cy.wrap(bottom).should("be.lessThan", WINDOW_HEIGHT - 50);
     });
+  });
+});
+
+describe("issue 69160", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createSnippet({
+      name: "A and B",
+      content: "{{ a }} and {{ b }}",
+    });
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("{{ snippet: A and B }}", {
+      allowFastSet: true,
+    }).blur();
+  });
+
+  const options = {
+    force: true,
+    isPrimary: true,
+    button: 0,
+  };
+
+  it("should be possible to reorder parameters when there are snippets in the query (metabase#69160)", () => {
+    cy.log("reorder parameters");
+    cy.findByTestId("native-query-top-bar")
+      .findAllByRole("listitem")
+      .first()
+      .as("param");
+
+    cy.get("@param").trigger("mousedown", 5, 5, options).wait(200);
+    cy.get("@param").trigger("mousemove", 20, 20, options).wait(200);
+    cy.get("@param").trigger("mousemove", 200, 0, options).wait(200);
+    cy.get("@param").trigger("mouseup", options).wait(200);
+
+    cy.findByTestId("native-query-top-bar")
+      .findAllByRole("textbox")
+      .first()
+      .should("have.attr", "placeholder", "B");
   });
 });

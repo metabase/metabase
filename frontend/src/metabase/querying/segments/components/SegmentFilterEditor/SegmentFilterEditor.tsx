@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useLocale } from "metabase/common/hooks";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
 import { ClauseStep } from "metabase/querying/notebook/components/ClauseStep";
@@ -72,7 +72,7 @@ export function SegmentFilterEditor({
         items={filters}
         initialAddText={t`Add filters to narrow your answer`}
         readOnly={readOnly}
-        color="filter"
+        color="core-filter"
         isLastOpened={false}
         renderName={renderFilterName}
         renderPopover={({ item: filter, index, onClose }) =>

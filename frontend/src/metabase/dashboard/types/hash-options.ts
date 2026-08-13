@@ -1,7 +1,7 @@
 import type {
   EmbeddingAdditionalHashOptions,
   EmbeddingDisplayOptions,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 
 /**
  * This is a type that controls some dashboard states.

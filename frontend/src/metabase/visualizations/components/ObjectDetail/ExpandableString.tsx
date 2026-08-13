@@ -1,5 +1,4 @@
 import cx from "classnames";
-import Humanize from "humanize-plus";
 import { type MouseEvent, useState } from "react";
 import { t } from "ttag";
 
@@ -17,7 +16,7 @@ export function ExpandableString({ str, length = 140 }: ExpandableStringProps) {
     return null;
   }
 
-  const truncated = Humanize.truncate(str, length);
+  const truncated = truncate(str, length);
 
   const toggleExpansion = (event: MouseEvent) => {
     event.stopPropagation();
@@ -47,4 +46,12 @@ export function ExpandableString({ str, length = 140 }: ExpandableStringProps) {
   } else {
     return <span>{str}</span>;
   }
+}
+
+// inlined from humanize-plus
+function truncate(str: string, length = 100, ending = "...") {
+  if (str.length > length) {
+    return str.substring(0, length - ending.length) + ending;
+  }
+  return str;
 }

@@ -1,12 +1,15 @@
+/* eslint-disable metabase/no-unjustified-type-casts */
 import dayjs, { type Dayjs } from "dayjs";
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Metadata } from "metabase-lib";
 import type {
   ConcreteTableId,
   JsMetricDefinition,
   MeasureId,
+  MetricDimension,
   MetricId,
+  SegmentId,
 } from "metabase-types/api";
 
 import type {
@@ -35,6 +38,8 @@ import type {
   NumberFilterParts,
   ProjectionClause,
   RelativeDateFilterParts,
+  SegmentDisplayInfo,
+  SegmentMetadata,
   SourceInstance,
   SpecificDateFilterParts,
   StringFilterParts,
@@ -204,6 +209,37 @@ export function filter(
   return LibMetric.filter(definition, filterClause) as MetricDefinition;
 }
 
+export function availableSegments(
+  definition: MetricDefinition,
+): SegmentMetadata[] {
+  return LibMetric.availableSegments(definition) as SegmentMetadata[];
+}
+
+export function addSegmentFilter(
+  definition: MetricDefinition,
+  segment: SegmentMetadata,
+): MetricDefinition {
+  return LibMetric.addSegmentFilter(definition, segment) as MetricDefinition;
+}
+
+export function isSegmentFilter(filterClause: FilterClause): boolean {
+  return Boolean(LibMetric.isSegmentFilter(filterClause));
+}
+
+export function segmentMetadataForFilter(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): SegmentMetadata | null {
+  return LibMetric.segmentMetadataForFilter(
+    definition,
+    filterClause,
+  ) as SegmentMetadata | null;
+}
+
+export function segmentMetadataId(segment: SegmentMetadata): SegmentId {
+  return LibMetric.segmentMetadataId(segment) as SegmentId;
+}
+
 export function stringFilterClause(parts: StringFilterParts): FilterClause {
   return LibMetric.stringFilterClause(parts) as FilterClause;
 }
@@ -365,14 +401,17 @@ export function filterParts(
 export function projections(definition: MetricDefinition): ProjectionClause[];
 export function projections(
   definition: MetricDefinition,
-  sourceMeta: MetricMetadata | MeasureMetadata,
+  sourceInstance: SourceInstance,
 ): ProjectionClause[];
 export function projections(
   definition: MetricDefinition,
-  sourceMeta?: MetricMetadata | MeasureMetadata,
+  sourceInstance?: SourceInstance,
 ): ProjectionClause[] {
-  if (sourceMeta !== undefined) {
-    return LibMetric.projections(definition, sourceMeta) as ProjectionClause[];
+  if (sourceInstance !== undefined) {
+    return LibMetric.projections(
+      definition,
+      sourceInstance,
+    ) as ProjectionClause[];
   }
   return LibMetric.projections(definition) as ProjectionClause[];
 }
@@ -388,16 +427,16 @@ export function projectionableDimensions(
 ): DimensionMetadata[];
 export function projectionableDimensions(
   definition: MetricDefinition,
-  sourceMeta: MetricMetadata | MeasureMetadata,
+  sourceInstance: SourceInstance,
 ): DimensionMetadata[];
 export function projectionableDimensions(
   definition: MetricDefinition,
-  sourceMeta?: MetricMetadata | MeasureMetadata,
+  sourceInstance?: SourceInstance,
 ): DimensionMetadata[] {
-  if (sourceMeta !== undefined) {
+  if (sourceInstance !== undefined) {
     return LibMetric.projectionableDimensions(
       definition,
-      sourceMeta,
+      sourceInstance,
     ) as DimensionMetadata[];
   }
   return LibMetric.projectionableDimensions(definition) as DimensionMetadata[];
@@ -416,21 +455,29 @@ export function project(
 export function project(
   definition: MetricDefinition,
   dimensionRef: ProjectionClause,
-  sourceMeta: MetricMetadata | MeasureMetadata,
+  sourceInstance: SourceInstance,
 ): MetricDefinition;
 export function project(
   definition: MetricDefinition,
   dimensionRef: ProjectionClause,
-  sourceMeta?: MetricMetadata | MeasureMetadata,
+  sourceInstance?: SourceInstance,
 ): MetricDefinition {
-  if (sourceMeta !== undefined) {
+  if (sourceInstance !== undefined) {
     return LibMetric.project(
       definition,
       dimensionRef,
-      sourceMeta,
+      sourceInstance,
     ) as MetricDefinition;
   }
   return LibMetric.project(definition, dimensionRef) as MetricDefinition;
+}
+
+/** Projects a dimension using its default temporal bucket or binning strategy. */
+export function projectDimension(
+  definition: MetricDefinition,
+  dimension: DimensionMetadata,
+): MetricDefinition {
+  return LibMetric.projectDimension(definition, dimension) as MetricDefinition;
 }
 
 export function projectionDimension(
@@ -685,6 +732,10 @@ export function displayInfo(
 ): BinningStrategyDisplayInfo;
 export function displayInfo(
   definition: MetricDefinition,
+  segment: SegmentMetadata,
+): SegmentDisplayInfo;
+export function displayInfo(
+  definition: MetricDefinition,
   filterParts: Displayable,
 ): DisplayInfo;
 export function displayInfo(
@@ -709,4 +760,29 @@ export function isSameSource(
   dimension2: DimensionMetadata,
 ): boolean {
   return LibMetric.isSameSource(dimension1, dimension2) as boolean;
+}
+
+export function fromMetricDimension(
+  dimension: MetricDimension,
+): DimensionMetadata {
+  return LibMetric.fromMetricDimension(dimension) as DimensionMetadata;
+}
+
+export function toMetricDimension(
+  dimension: DimensionMetadata,
+): MetricDimension {
+  return LibMetric.toMetricDimension(dimension) as MetricDimension;
+}
+
+export function groupDimensionsBySource(
+  dimensions: DimensionMetadata[],
+): DimensionMetadata[][] {
+  return LibMetric.groupDimensionsBySource(dimensions) as DimensionMetadata[][];
+}
+
+export function isCompatibleType(
+  dimension1: DimensionMetadata,
+  dimension2: DimensionMetadata,
+): boolean {
+  return LibMetric.isCompatibleType(dimension1, dimension2) as boolean;
 }

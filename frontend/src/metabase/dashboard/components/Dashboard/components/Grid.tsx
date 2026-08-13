@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useDashboardContext } from "metabase/dashboard/context";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,

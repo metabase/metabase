@@ -1,0 +1,91 @@
+.container {
+  border-left: 1px solid var(--mb-color-border);
+}
+
+.blocksContainer {
+  overflow-y: auto;
+
+  /* show scrollbar a bit to the side, so it doesn't overlap with block borders */
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.block {
+  background: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+}
+
+.blockHeader {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.blockBody {
+  padding: 0.25rem 1rem 0.75rem;
+}
+
+.block:not([data-expanded]) .blockBody {
+  cursor: pointer;
+}
+
+.blockActions {
+  opacity: 0;
+  transition: opacity 0.1s ease-in-out;
+}
+
+.block:hover .blockActions,
+.block:focus-within .blockActions {
+  opacity: 1;
+}
+
+.pill {
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.75rem;
+}
+
+.pill .pillLabel {
+  line-height: 1rem;
+}
+
+.pill .pillRemove {
+  opacity: 0;
+}
+
+.pill:hover .pillRemove {
+  opacity: 1;
+}
+
+.togglePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--border-radius-xl);
+  background: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-primary);
+  font-weight: 600;
+  line-height: 1rem;
+
+  &:hover {
+    border-color: var(--mb-color-brand);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.75;
+  }
+}
+
+.togglePillSelected {
+  background: var(--mb-color-background-brand);
+  color: var(--mb-color-brand);
+}
+
+.timelineTogglePill {
+  padding: 0.625rem 0.75rem;
+  font-weight: 500;
+}

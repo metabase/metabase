@@ -1,20 +1,18 @@
 import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
-import { cardApi } from "metabase/api";
-import { Collections } from "metabase/entities/collections";
-import { entityCompatibleQuery } from "metabase/lib/entities";
+import { Api, cardApi, tableApi } from "metabase/api";
+import { listTag } from "metabase/api/tags";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import type { Dispatch, State } from "metabase/redux/store";
+import type { FileUploadState } from "metabase/redux/store/upload";
+import { UploadMode } from "metabase/redux/store/upload";
 import {
   createAction,
   createThunkAction,
   handleActions,
-} from "metabase/lib/redux";
-import { runQuestionQuery } from "metabase/query_builder/actions";
-import { MetabaseApi } from "metabase/services";
+} from "metabase/redux/utils";
 import type { CardId, CollectionId, TableId } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
-import type { FileUploadState } from "metabase-types/store/upload";
-import { UploadMode } from "metabase-types/store/upload";
 
 export const UPLOAD_DATA_FILE_TYPES = [".csv", ".tsv"];
 
@@ -50,7 +48,7 @@ export interface UploadFileProps {
   tableId?: TableId;
   modelId?: CardId;
   uploadMode: UploadMode;
-  reloadQuestionData?: boolean;
+  onUploadComplete?: () => void;
 }
 
 export const uploadFile = createThunkAction(
@@ -61,7 +59,7 @@ export const uploadFile = createThunkAction(
     tableId,
     modelId,
     uploadMode,
-    reloadQuestionData,
+    onUploadComplete,
   }: UploadFileProps) =>
     async (dispatch: Dispatch) => {
       const id = Date.now();
@@ -99,12 +97,20 @@ export const uploadFile = createThunkAction(
         const response = await (() => {
           switch (uploadMode) {
             case UploadMode.append:
-              return MetabaseApi.tableAppendCSV({ tableId, formData });
+              return runRtkEndpoint(
+                { tableId, formData },
+                dispatch,
+                tableApi.endpoints.appendTableCsv,
+              );
             case UploadMode.replace:
-              return MetabaseApi.tableReplaceCSV({ tableId, formData });
+              return runRtkEndpoint(
+                { tableId, formData },
+                dispatch,
+                tableApi.endpoints.replaceTableCsv,
+              );
             case UploadMode.create:
             default:
-              return entityCompatibleQuery(
+              return runRtkEndpoint(
                 { file, collection_id: collectionId },
                 dispatch,
                 cardApi.endpoints.createCardFromCsv,
@@ -120,10 +126,15 @@ export const uploadFile = createThunkAction(
           }),
         );
 
-        if (tableId && reloadQuestionData) {
-          dispatch(runQuestionQuery());
+        if (tableId && onUploadComplete) {
+          onUploadComplete();
         } else if (collectionId) {
-          dispatch(Collections.actions.invalidateLists());
+          dispatch(
+            Api.util.invalidateTags([
+              listTag("collection"),
+              listTag("collection-tree"),
+            ]),
+          );
         }
 
         clear();

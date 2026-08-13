@@ -3,15 +3,24 @@
   `:destination-database/id`, on the query if a destination database should be used. The second middleware runs around query
   execution, and should be THE LAST middleware before we hit the database and query execution actually occurs."
   (:require
-   [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
+   [metabase-enterprise.database-routing.common :as common :refer [router-db-or-id->destination-db-id]]
    [metabase.database-routing.core :refer [with-database-routing-on]]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.query-processor.interface :as qp.i]
    ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
+
+(def ^:dynamic *destination-database-id*
+  "Bound to the destination database id during query execution when DB routing has swapped in a destination DB.
+  Mirrors the shape of [[metabase-enterprise.impersonation.driver/*impersonation-role*]]: analytics code reads it
+  from inside the postprocessing rff to record `is_db_routed` and the routed `database_id` on the
+  `query_execution` row."
+  nil)
 
 (defenterprise swap-destination-db
   "Must be the last middleware before we actually hit the database. If a Router Database is specified, swaps out the
@@ -25,11 +34,24 @@
                    (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
                      (qp.store/with-metadata-provider (u/id current-database)
                        (rff metadata))))]
-        (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
+        (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true
+                  *destination-database-id* destination-db-id]
           (qp.store/with-metadata-provider destination-db-id
             (with-database-routing-on
               (qp query rff*)))))
       (qp query rff))))
+
+(defenterprise currently-db-routed?
+  "True when DB routing has swapped in a destination DB for the current query."
+  :feature :none
+  []
+  (some? *destination-database-id*))
+
+(defenterprise currently-destination-database-id
+  "Destination DB id when DB routing has swapped one in for the current query, else nil."
+  :feature :none
+  []
+  *destination-database-id*)
 
 (defenterprise attach-destination-db-middleware
   "Pre-processing middleware. Calculates the destination database that should be used for this query, e.g. for caching
@@ -39,12 +61,19 @@
   :feature :none
   [query]
   (let [database (lib.metadata/database (qp.store/metadata-provider))
-        destination-db-id (router-db-or-id->destination-db-id database)]
+        ;; both the assert and the routing computation hit the app-db, which skip-middleware contexts
+        ;; (e.g. the offline semantic checker) must not do; they never execute queries, so there is
+        ;; nothing for the assert to protect there.
+        destination-db-id (when-not qp.i/*skip-middleware-because-app-db-access*
+                            (common/assert-not-direct-destination-access! database)
+                            (router-db-or-id->destination-db-id database))]
     (when destination-db-id
       (premium-features/assert-has-feature :database-routing (tru "Database Routing"))
       (when-not (driver.u/supports? (:engine (lib.metadata/database (qp.store/metadata-provider)))
                                     :database-routing
                                     database)
         (throw (ex-info "Unsupported database for database routing" {}))))
-    (cond-> query
+    ;; dissoc first: a client-supplied :destination-database/id must never survive preprocessing,
+    ;; since swap-destination-db trusts this key at execution time.
+    (cond-> (dissoc query :destination-database/id)
       destination-db-id (assoc :destination-database/id destination-db-id))))

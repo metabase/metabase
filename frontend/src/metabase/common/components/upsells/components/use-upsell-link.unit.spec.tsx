@@ -1,10 +1,10 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import type { TokenFeatures } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import type { TokenFeatures } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { useUpsellLink } from "./use-upsell-link";
 
@@ -25,6 +25,7 @@ const TestComponent = ({ url, campaign, location }: TestComponentProps) => {
 };
 
 const OSSFeatures = createMockTokenFeatures();
+// Unjustified type cast. FIXME
 const EEFeatures = Object.fromEntries(
   Object.entries(createMockTokenFeatures()).map(([key, value]) => [
     key,

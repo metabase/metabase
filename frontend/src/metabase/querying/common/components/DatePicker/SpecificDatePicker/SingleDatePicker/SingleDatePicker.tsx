@@ -12,6 +12,8 @@ import type { SingleDatePickerValue } from "./types";
 interface SingleDatePickerProps {
   value: SingleDatePickerValue;
   hasTimeToggle: boolean;
+  minDate?: Date;
+  maxDate?: Date;
   renderSubmitButton?: () => ReactNode;
   onChange: (value: SingleDatePickerValue) => void;
   onSubmit: () => void;
@@ -20,6 +22,8 @@ interface SingleDatePickerProps {
 export function SingleDatePicker({
   value,
   hasTimeToggle,
+  minDate,
+  maxDate,
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
@@ -45,6 +49,8 @@ export function SingleDatePicker({
         <SingleDatePickerBody
           value={date}
           hasTime={hasTime}
+          minDate={minDate}
+          maxDate={maxDate}
           onChange={handleDateChange}
         />
       </Box>

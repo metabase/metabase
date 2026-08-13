@@ -1,12 +1,14 @@
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isStorybookActive } from "metabase/env";
-import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 
+import { runWithinExportGrant } from "./chart-export-iframe-grant";
 import {
   createBrandingElement,
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
+import { resolveSvgVarPaint, restoreNestedSvgOverflow } from "./image-exports";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
@@ -39,43 +41,59 @@ export const saveChartImage = async ({
   // Appending any element to the node does not automatically increase the canvas height.
   const canvasHeight = contentHeight + verticalOffset;
 
+  // Ensure fonts are fully loaded before capturing, otherwise
+  // html2canvas may render text with fallback fonts.
+  await document.fonts.ready;
+
   const { default: html2canvas } = await import("html2canvas-pro");
-  const canvas = await html2canvas(node, {
-    scale: 2,
-    useCORS: true,
-    height: canvasHeight,
-    onclone: (_doc: Document, node: HTMLElement) => {
-      node.classList.add(SAVING_DOM_IMAGE_CLASS);
-      node.classList.add(EmbedFrameS.WithThemeBackground);
+  const canvas = await runWithinExportGrant(() =>
+    html2canvas(node, {
+      scale: 2,
+      useCORS: true,
+      cspNonce: window.MetabaseNonce,
+      height: canvasHeight,
+      onclone: (_doc: Document, node: HTMLElement) => {
+        node.classList.add(SAVING_DOM_IMAGE_CLASS);
+        node.classList.add(EmbedFrameS.WithThemeBackground);
 
-      node.style.borderRadius = "0px";
-      node.style.border = "none";
+        node.style.borderRadius = "0px";
+        node.style.border = "none";
 
-      if (includeBranding) {
-        const branding = createBrandingElement(size);
-        /**
-         * The DOM node that encapsulates the dashboard card is absolutely positioned.
-         * That node is the container for the chart, and for the branding element.
-         * Unless we sanitize the container, we have to position the branding content
-         * appropriately, or it will not be visible.
-         */
-        branding.style.position = "absolute";
-        branding.style.left = "0";
-        branding.style.bottom = `-${brandingHeight}px`;
-        branding.style.zIndex = "1000";
+        if (includeBranding) {
+          const branding = createBrandingElement(size);
+          /**
+           * The DOM node that encapsulates the dashboard card is absolutely positioned.
+           * That node is the container for the chart, and for the branding element.
+           * Unless we sanitize the container, we have to position the branding content
+           * appropriately, or it will not be visible.
+           */
+          branding.style.position = "absolute";
+          branding.style.left = "0";
+          branding.style.bottom = `-${brandingHeight}px`;
+          branding.style.zIndex = "1000";
 
-        node.appendChild(branding);
-      }
-    },
-  });
+          node.appendChild(branding);
+        }
 
-  canvas.toBlob((blob) => {
+        resolveSvgVarPaint(node);
+        restoreNestedSvgOverflow(node);
+      },
+    }),
+  );
+
+  if (isStorybookActive) {
+    // In storybook/loki we must wait for the blob and image to be ready
+    // before the play function returns, otherwise the async callback may
+    // be garbage-collected ("Promise was collected").
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve),
+    );
     if (blob) {
-      if (isStorybookActive) {
-        // if we're running storybook we open the image in place
-        // so we can test the export result with loki
-        openImageBlobOnStorybook({ canvas, blob });
-      } else {
+      openImageBlobOnStorybook({ canvas, blob });
+    }
+  } else {
+    canvas.toBlob((blob) => {
+      if (blob) {
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.rel = "noopener";
@@ -85,6 +103,6 @@ export const saveChartImage = async ({
         link.remove();
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
       }
-    }
-  });
+    });
+  }
 };

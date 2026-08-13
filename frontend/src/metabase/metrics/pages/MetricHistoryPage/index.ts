@@ -1,0 +1,1 @@
+export { MetricHistoryPage } from "./MetricHistoryPage";

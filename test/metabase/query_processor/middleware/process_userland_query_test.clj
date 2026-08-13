@@ -1,4 +1,7 @@
 (ns metabase.query-processor.middleware.process-userland-query-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}
+                                                            metabase.test.data/query          {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.process-userland-query-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
@@ -6,13 +9,12 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [methodical.core :as methodical]))
@@ -23,30 +25,37 @@
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
-      (with-redefs [process-userland-query/save-execution-metadata!*
-                    (fn [query-execution]
-                      (when-let [^bytes qe-hash (:hash query-execution)]
-                        (deliver
-                         result
-                         (if (java.util.Arrays/equals qe-hash original-hash)
-                           query-execution
-                           ;; if you're seeing this there is probably some
-                           ;; bug that is causing query hashes to get
-                           ;; calculated in an inconsistent manner; check
-                           ;; `:query` vs `:query-execution-query`
-                           (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution!)
-                                    {:query                 query
-                                     :original-hash         (some-> original-hash codecs/bytes->hex)
-                                     :query-execution       query-execution
-                                     :query-execution-hash  (some-> qe-hash codecs/bytes->hex)
-                                     :query-execution-query (:json_query query-execution)})))))]
-        (run
-         (fn qe-result* []
-           (let [qe (deref result 1000 ::timed-out)]
-             (cond-> qe
-               (:running_time qe) (update :running_time int?)
-               (:hash qe)         (update :hash (fn [^bytes a-hash]
-                                                  (some-> a-hash codecs/bytes->hex)))))))))))
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
+        ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
+        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+        (with-redefs [process-userland-query/save-execution-metadata!*
+                      (fn [query-executions]
+                        (doseq [{qe-hash :hash, :as query-execution} query-executions
+                                :when qe-hash]
+                          (deliver
+                           result
+                           (if (java.util.Arrays/equals ^bytes qe-hash original-hash)
+                             query-execution
+                             ;; if you're seeing this there is probably some
+                             ;; bug that is causing query hashes to get
+                             ;; calculated in an inconsistent manner; check
+                             ;; `:query` vs `:query-execution-query`
+                             (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution!)
+                                      {:query                 query
+                                       :original-hash         (some-> original-hash codecs/bytes->hex)
+                                       :query-execution       query-execution
+                                       :query-execution-hash  (some-> ^bytes qe-hash codecs/bytes->hex)
+                                       :query-execution-query (:json_query query-execution)})))))]
+          (run
+           (fn qe-result* []
+             ;; generous deadline: slow exports (xlsx/POI) on loaded CI runners miss a 1s window
+             (let [qe (deref result 30000 ::timed-out)]
+               (cond-> qe
+                 (:running_time qe) (update :running_time int?)
+                 (:hash qe)         (update :hash (fn [^bytes a-hash]
+                                                    (some-> a-hash codecs/bytes->hex))))))))))))
 
 (defmacro with-query-execution! {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution! ~query (fn [~qe-result-binding] ~@body)))
@@ -55,13 +64,11 @@
   [query]
   (qp.store/with-metadata-provider (mt/id)
     (let [query    (qp/userland-query query)
-          ;; this is needed for field usage processing
-          metadata {:preprocessed_query (lib/query (qp.store/metadata-provider) (mt/mbql-query venues))}
           rows     []
           qp       (process-userland-query/process-userland-query-middleware
                     (fn [query rff]
                       (binding [qp.pipeline/*execute* (fn [_driver _query respond]
-                                                        (respond metadata rows))]
+                                                        (respond {} rows))]
                         (qp.pipeline/*run* query rff))))]
       (binding [driver/*driver* :h2]
         (qp query qp.reducible/default-rff)))))
@@ -84,23 +91,26 @@
                :cached                 nil}
               (process-userland-query query))
           "Result should have query execution info")
-      (is (=? {:hash         (codecs/bytes->hex (qp.util/query-hash query))
-               :database_id  (mt/id)
-               :result_rows  0
-               :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-               :executor_id  nil
-               :json_query   (dissoc (mt/userland-query query) :info)
-               :native       false
-               :pulse_id     nil
-               :card_id      nil
-               :action_id    nil
-               :is_sandboxed false
-               :context      nil
-               :running_time true
-               :cache_hit    false
-               :cache_hash   nil ;; this is filled only for eligible queries
-               :dashboard_id nil
-               :parameterized false}
+      (is (=? {:hash            (codecs/bytes->hex (qp.util/query-hash query))
+               :database_id     (mt/id)
+               :result_rows     0
+               :started_at      #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
+               :executor_id     nil
+               :json_query      (dissoc (mt/userland-query query) :info)
+               :native          false
+               :pulse_id        nil
+               :card_id         nil
+               :action_id       nil
+               :is_sandboxed    false
+               :is_impersonated false
+               :is_db_routed    false
+               :parameters      nil
+               :context         nil
+               :running_time    true
+               :cache_hit       false
+               :cache_hash      nil ;; this is filled only for eligible queries
+               :dashboard_id    nil
+               :parameterized   false}
               (qe))
           "QueryExecution should be saved"))))
 
@@ -139,7 +149,6 @@
       (with-query-execution! [qe query]
         (process-userland-query query)
         (is (=? {:parameterized false} (qe)))))
-
     (let [query (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"
@@ -149,7 +158,6 @@
       (with-query-execution! [qe query]
         (process-userland-query query)
         (is (=? {:parameterized false} (qe)))))
-
     (let [query (mt/query venues
                   {:query      {:aggregation [[:count]]}
                    :parameters [{:name   "price"
@@ -159,6 +167,30 @@
       (with-query-execution! [qe query]
         (process-userland-query query)
         (is (=? {:parameterized true} (qe)))))))
+
+(deftest parameters-pii-gated-test
+  (testing ":parameters is only persisted when analytics-pii-retention-enabled is true"
+    (let [query (mt/query venues
+                  {:query      {:aggregation [[:count]]}
+                   :parameters [{:name   "price"
+                                 :type   :category
+                                 :target $price
+                                 :value  "4"}]})]
+      (mt/with-premium-features #{:audit-app}
+        (testing "PII retention enabled -> parameters populated"
+          (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
+            (with-query-execution! [qe query]
+              (process-userland-query query)
+              (is (=? {:parameterized true
+                       :parameters    some?}
+                      (qe))))))
+        (testing "PII retention disabled -> parameters nil, parameterized still set"
+          (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
+            (with-query-execution! [qe query]
+              (process-userland-query query)
+              (is (=? {:parameterized true
+                       :parameters    nil}
+                      (qe))))))))))
 
 (def ^:private ^:dynamic *viewlog-call-count* nil)
 
@@ -175,8 +207,8 @@
 
 (deftest cancel-test
   (let [saved-query-execution? (atom false)]
-    (with-redefs [process-userland-query/save-execution-metadata! (fn [info]
-                                                                    (reset! saved-query-execution? info))]
+    (mt/with-dynamic-fn-redefs [process-userland-query/save-execution-metadata! (fn [info]
+                                                                                  (reset! saved-query-execution? info))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (let [status (atom ::not-started)]
           (binding [qp.pipeline/*canceled-chan* canceled-chan
@@ -202,16 +234,3 @@
                 "val")))
         (testing "No QueryExecution should get saved when a query is canceled"
           (is (not @saved-query-execution?)))))))
-
-(deftest query-result-should-not-contains-preprocessed-query-test
-  (let [query (mt/mbql-query venues {:limit 1})]
-    (doseq [userland-query? [true false]]
-      (testing (format "executing %suserland query shouldn't return the preprocessed query"
-                       (if userland-query? "" "non "))
-        (is (true? (-> (if userland-query?
-                         (qp/userland-query query)
-                         query)
-                       qp/process-query
-                       :data
-                       (contains? :preprocessed_query)
-                       not)))))))

@@ -5,6 +5,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.fonts :as u.fonts]
    [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -54,7 +55,7 @@
                 (try
                   (some-> (setting/get-value-of-type :string :site-url) normalize-site-url)
                   (catch clojure.lang.ExceptionInfo e
-                    (log/error e "site-url is invalid; returning nil for now. Will be reset on next request."))))
+                    (log/errorf "site-url is invalid; returning nil for now. Will be reset on next request: %s" (ex-message e)))))
   :setter     (fn [new-value]
                 (let [new-value (some-> new-value normalize-site-url)
                       https?    (some-> new-value (str/starts-with?  "https:"))]
@@ -124,4 +125,13 @@
   :export?    true
   :setter     :none
   :getter     (comp str t/zone-id)
+  :doc        false)
+
+(defsetting encryption-enabled
+  "Whether encryption is enabled for this Metabase instance via MB_ENCRYPTION_SECRET_KEY."
+  :visibility :admin
+  :type       :boolean
+  :export?    false
+  :setter     :none
+  :getter     encryption/default-encryption-enabled?
   :doc        false)

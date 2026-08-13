@@ -14,10 +14,12 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.test.sync :refer [sync-survives-crash?!]]
+   [metabase.test.sync :refer [sync-survives-crash?! cache-normal-sync-steps-fixture]]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
+
+(use-fixtures :once #'cache-normal-sync-steps-fixture)
 
 (deftest skip-analysis-of-fields-with-current-fingerprint-version-test
   (testing "Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current"
@@ -225,14 +227,14 @@
                    :model/Field _     (fake-field table)]
       (let [results (analyze-table! table)]
         (testing "has the steps performed"
-          (is (= ["fingerprint-fields" "classify-fields" "classify-tables"]
+          (is (= ["fingerprint-fields" "classify-fields" "classify-tables" "score-interestingness"]
                  (->> results :steps (map first)))))
         (testing "has start and finish times"
           (is (seq (select-keys results [:start-time :end-time]))))))))
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
-    (with-redefs [quick-task/submit-task! (fn [task] (task))]
+    (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
       (mt/with-temp [:model/Table table (fake-table)
                      :model/Field field (fake-field table)]
         (set-table-visibility-type-via-api! table "hidden")
@@ -261,7 +263,6 @@
     (let [field (mi/instance :model/Field {:base_type :type/Integer :name "foo_type"})
           fingerprint (fn [c] {:global {:distinct-count c :nil% 0}})
           threshold classifiers.category/category-cardinality-threshold]
-
       (are [card]
 
            (->
@@ -272,7 +273,6 @@
         (dec threshold)
         threshold
         (inc threshold))
-
       (is (not-category (classifiers.name/infer-and-assoc-semantic-type-by-name field {}))))))
 
 (deftest classify-bool-values-test

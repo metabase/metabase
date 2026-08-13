@@ -1,0 +1,111 @@
+import { useMemo, useState } from "react";
+import { t } from "ttag";
+
+import { UNBINNED } from "metabase/metrics-viewer/constants";
+import { Box, Button, DefaultSelectItem, Popover } from "metabase/ui";
+import type {
+  DimensionMetadata,
+  MetricDefinition,
+  ProjectionClause,
+} from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
+
+import S from "../../../CenterControls.module.css";
+
+const MIN_WIDTH = "11.25rem";
+
+type BinningButtonProps = {
+  definition: MetricDefinition;
+  dimension: DimensionMetadata;
+  projection: ProjectionClause;
+  onBinningChange: (binningStrategy: string | undefined) => void;
+};
+
+export function BinningButton({
+  definition,
+  dimension,
+  projection,
+  onBinningChange,
+}: BinningButtonProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const { hasBinning, availableStrategies, displayLabel } = useMemo(() => {
+    const binningVal = LibMetric.binning(projection);
+    const strategies = LibMetric.availableBinningStrategies(
+      definition,
+      dimension,
+    );
+
+    const items = strategies.map((strategy) => {
+      const info = LibMetric.displayInfo(definition, strategy);
+      return {
+        bucket: strategy,
+        displayName: info.displayName,
+        isSelected: info.selected ?? false,
+        isDefault: info.default ?? false,
+      };
+    });
+
+    const selectedItem = items.find((item) => item.isSelected);
+    const defaultItem = items.find((item) => item.isDefault);
+
+    let label: string;
+    if (binningVal) {
+      label =
+        selectedItem?.displayName ?? defaultItem?.displayName ?? t`Binned`;
+    } else {
+      label = t`Unbinned`;
+    }
+
+    return {
+      hasBinning: !!binningVal,
+      availableStrategies: items,
+      displayLabel: label,
+    };
+  }, [definition, dimension, projection]);
+
+  const handleSelect = (binningName: string) => {
+    onBinningChange(binningName);
+    setIsOpen(false);
+  };
+
+  return (
+    <Popover opened={isOpen} onChange={setIsOpen}>
+      <Popover.Target>
+        <Button
+          className={S.controlButton}
+          h="2rem"
+          fw={400}
+          py={0}
+          px="md"
+          bdrs="md"
+          variant="subtle"
+          color="text-primary"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          {displayLabel}
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Box p="sm" miw={MIN_WIDTH}>
+          {availableStrategies.map((item) => (
+            <DefaultSelectItem
+              key={item.displayName}
+              value={item.displayName}
+              label={item.displayName}
+              selected={item.isSelected}
+              onClick={() => handleSelect(item.displayName)}
+              role="option"
+            />
+          ))}
+          <DefaultSelectItem
+            value={t`Don't bin`}
+            selected={!hasBinning}
+            onClick={() => handleSelect(UNBINNED)}
+            role="option"
+          />
+        </Box>
+      </Popover.Dropdown>
+    </Popover>
+  );
+}

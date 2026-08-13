@@ -111,9 +111,10 @@ export const getExtraAttributes = (
 
   // for newly created tenant users, we want to pre-populate their inherited attributes
   return {
+    // the slug is system defined and frozen, matching what the backend returns for existing users
     [TENANT_SLUG_ATTRIBUTE]: {
       value: tenant.slug,
-      source: "tenant",
+      source: "system",
       frozen: true,
     },
     ...Object.fromEntries(

@@ -5,8 +5,10 @@ import { forwardRef, useCallback } from "react";
 import type { CheckboxProps } from "metabase/ui";
 import { Checkbox } from "metabase/ui";
 
-export interface FormCheckboxProps
-  extends Omit<CheckboxProps, "value" | "error"> {
+export interface FormCheckboxProps extends Omit<
+  CheckboxProps,
+  "value" | "error"
+> {
   name: string;
 }
 

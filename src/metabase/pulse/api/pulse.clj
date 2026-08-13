@@ -17,6 +17,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -130,6 +131,36 @@
                                                                 :full :full))) cards))))
      (t2/hydrate pulses :can_write))))
 
+(defn create-pulse-with-perm-checks!
+  "Create a new Pulse with permissions checks."
+  [cards channels pulse-data]
+  (perms/check-has-application-permission :subscription false)
+  (api/create-check :model/Pulse (assoc pulse-data :cards cards))
+  (t2/with-transaction [_conn]
+    ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
+    ;; check that and fix it if needed
+    (api/maybe-reconcile-collection-position! pulse-data)
+    ;; ok, now create the Pulse
+    (let [pulse (api/check-500
+                 (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
+      (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
+      pulse)))
+
+(def ^:private PulseChannel
+  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
+  [:map
+   [:id             {:optional true}   :any]
+   [:channel_type                      :any]
+   [:enabled        {:optional true}   :any]
+   [:pulse_id       {:optional true}   :any]
+   [:channel_id     {:optional true}   :any]
+   [:details        {:optional true}   ms/Map]
+   [:recipients     {:optional true}   [:sequential ms/Map]]
+   [:schedule_type  {:optional true}   :any]
+   [:schedule_day   {:optional true}   :any]
+   [:schedule_hour  {:optional true}   :any]
+   [:schedule_frame {:optional true}   :any]])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -146,32 +177,24 @@
    :- [:map
        [:name                ms/NonBlankString]
        [:cards               [:+ models.pulse/CoercibleToCardRef]]
-       [:channels            [:+ :map]]
+       [:channels            [:+ PulseChannel]]
        [:skip_if_empty       {:default false} [:maybe :boolean]]
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-       [:parameters          {:optional true} [:maybe [:sequential :map]]]]
+       [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]
    request]
-  (perms/check-has-application-permission :subscription false)
-  (let [pulse-data {:name                name
-                    :creator_id          api/*current-user-id*
-                    :skip_if_empty       skip-if-empty
-                    :collection_id       collection-id
-                    :collection_position collection-position
-                    :dashboard_id        dashboard-id
-                    :parameters          parameters
-                    :disable_links       (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)}]
-    (api/create-check :model/Pulse (assoc pulse-data :cards cards))
-    (t2/with-transaction [_conn]
-      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
-      ;; check that and fix it if needed
-      (api/maybe-reconcile-collection-position! pulse-data)
-      ;; ok, now create the Pulse
-      (let [pulse (api/check-500
-                   (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
-        (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
-        pulse))))
+  (create-pulse-with-perm-checks!
+   cards
+   channels
+   {:name                name
+    :creator_id          api/*current-user-id*
+    :skip_if_empty       skip-if-empty
+    :collection_id       collection-id
+    :collection_position collection-position
+    :dashboard_id        dashboard-id
+    :parameters          parameters
+    :disable_links       (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -226,21 +249,20 @@
    {:keys [cards], :as pulse-updates} :- [:map
                                           [:name          {:optional true} [:maybe ms/NonBlankString]]
                                           [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
-                                          [:channels      {:optional true} [:maybe [:+ :map]]]
+                                          [:channels      {:optional true} [:maybe [:+ PulseChannel]]]
                                           [:skip_if_empty {:default false} [:maybe :boolean]]
                                           [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                           [:archived      {:default false} [:maybe :boolean]]
-                                          [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]
+                                          [:parameters    {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]]
   ;; do various perms checks
   (try
     (perms/check-has-application-permission :monitoring)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-has-application-permission :subscription false)))
-
   (let [pulse-before-update (api/write-check (models.pulse/retrieve-pulse id))]
     (check-card-read-permissions cards)
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
-
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
     ;; update pulse's recipients
     (when (premium-features/enable-advanced-permissions?)
@@ -256,7 +278,6 @@
                        has-subscription-perms?
                        (empty? to-add-recipients))
                    [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
-
     (let [pulse-updates (maybe-add-recipients pulse-updates pulse-before-update)]
       (t2/with-transaction [_conn]
         ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
@@ -301,7 +322,10 @@
                              [:slack :fields 0 :options]
                              (->> (channel.settings/slack-cached-channels-and-usernames)
                                   :channels
-                                  (map :display-name)))
+                                  (m/distinct-by :id)
+                                  (m/distinct-by :display-name)
+                                  (mapv (fn [{:keys [display-name id]}]
+                                          {:displayName display-name :id id}))))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
@@ -314,14 +338,22 @@
   [_route-params
    _query-params
    {:keys [cards channels] :as body} :- [:map
+                                         ;; the saved subscription this is a test send of, when there is one.
+                                         ;; `send-pulse!` builds the non-user unsubscribe link out of it, and the
+                                         ;; email template drops the whole "Unsubscribe" footer without a link
+                                         [:id                  {:optional true} [:maybe ms/PositiveInt]]
                                          [:name                ms/NonBlankString]
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
-                                         [:channels            [:+ :map]]
+                                         [:channels            [:+ PulseChannel]]
                                          [:skip_if_empty       {:default false} [:maybe :boolean]]
                                          [:disable_links       {:default false} [:maybe :boolean]]
                                          [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]]
+                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
+                                         [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
+                                         [:alert_condition     {:optional true} [:maybe models.pulse/AlertConditions]]
+                                         [:alert_first_only    {:optional true} [:maybe :boolean]]
+                                         [:alert_above_goal    {:optional true} [:maybe :boolean]]]
    request]
   ;; Check permissions on cards that exist. Placeholders and iframes don't matter.
   (check-card-read-permissions

@@ -1,7 +1,7 @@
 import { Component, createRef } from "react";
 import { t } from "ttag";
 
-import { forceRedraw } from "metabase/lib/dom";
+import { forceRedraw } from "metabase/utils/dom";
 
 export type TextWidgetProps = {
   value: string | number;
@@ -92,6 +92,7 @@ export class TextWidget extends Component<TextWidgetProps, State> {
           if (e.nativeEvent.isComposing) {
             return;
           }
+          // Unjustified type cast. FIXME
           const target = e.target as HTMLInputElement;
           if (e.key === "Enter") {
             target.blur();

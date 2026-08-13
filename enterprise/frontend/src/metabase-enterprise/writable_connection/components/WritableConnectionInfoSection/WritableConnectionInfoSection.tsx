@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/components/DatabaseConnectionHealthInfo";
@@ -6,15 +5,16 @@ import {
   DatabaseInfoSection,
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
+import { useUpdateDatabaseMutation } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   hasDbRoutingEnabled,
   isDbModifiable,
-} from "metabase/admin/databases/utils";
-import { useUpdateDatabaseMutation } from "metabase/api";
-import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import * as Urls from "metabase/lib/urls";
+} from "metabase/common/utils/database";
 import type { WritableConnectionInfoSectionProps } from "metabase/plugins/oss/writable-connection";
 import { Alert, Button, Group, Icon } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 export function WritableConnectionInfoSection({
   database,
@@ -70,8 +70,8 @@ export function WritableConnectionInfoSection({
         <>
           <DatabaseInfoSectionDivider />
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
             mb="md"
           >
@@ -84,7 +84,11 @@ export function WritableConnectionInfoSection({
         <>
           <DatabaseInfoSectionDivider condensed />
           <Group>
-            <Button variant="filled" color="error" onClick={handleRemove}>
+            <Button
+              variant="filled"
+              color="feedback-negative"
+              onClick={handleRemove}
+            >
               {t`Remove writable connection`}
             </Button>
           </Group>

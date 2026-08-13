@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { Text } from "metabase/ui";
 import { getCurrentTask } from "metabase-enterprise/remote_sync/selectors";
 

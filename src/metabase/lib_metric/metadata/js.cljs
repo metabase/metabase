@@ -9,6 +9,7 @@
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.metadata.provider :as provider]
    [metabase.lib.js.metadata :as js-metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util :as u]))
 
 (defn- object-get [obj k]
@@ -97,16 +98,18 @@
 
 ;;; ------------------------------------------------- Dimension Fetching -------------------------------------------------
 
-(defn- parse-dimension
+(defn parse-dimension
   "Parse a single dimension, converting keys to kebab-case keywords and type values to keywords.
    Similar to how metabase.lib.js.metadata parses fields."
   [dim]
-  (let [converted (update-keys dim (comp keyword u/->kebab-case-en))]
+  (let [m         (if (map? dim) dim (js->clj dim :keywordize-keys true))
+        converted (update-keys m (comp keyword u/->kebab-case-en))]
     (cond-> converted
       (:effective-type converted)   (update :effective-type keyword)
       (:semantic-type converted)    (update :semantic-type keyword)
       (:base-type converted)        (update :base-type keyword)
       (:has-field-values converted) (update :has-field-values keyword)
+      (:default-temporal-unit converted) (update :default-temporal-unit keyword)
       (:sources converted)          (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs)))
       (:group converted)            (update :group u/normalize-map))))
 
@@ -118,10 +121,12 @@
     [{:type :field, :field-id field-id}]))
 
 (defn- extract-dimensions-from-entity
-  "Extract dimensions from a parsed metric or measure, annotating with source info."
+  "Extract dimensions from a parsed metric or measure, annotating with source info.
+   Mappings are normalized to the canonical kebab-case shape; `:target` (an MBQL ref)
+   passes through untouched."
   [entity source-type]
   (let [dims     (:dimensions entity)
-        mappings (:dimension-mappings entity)
+        mappings (mapv u/normalize-map (:dimension-mappings entity))
         mappings-by-dim-id (into {} (map (juxt :dimension-id identity) mappings))]
     (for [dim dims
           :let [parsed-dim (parse-dimension dim)
@@ -183,6 +188,15 @@
                            (let [provider (js-metadata/metadata-provider db-id metadata)]
                              (swap! db-provider-cache assoc db-id provider)
                              provider)))
+        ;; Segments live globally under `metadata.segments`, not per-database.
+        ;; Looking them up via `table->db-fn` + `db-provider-fn` means a user
+        ;; who hasn't loaded the metric's source table metadata sees no
+        ;; segments (because `table->db-fn` returns nil and routing short-
+        ;; circuits). Route segment requests through a db-agnostic provider
+        ;; so they always resolve against the full metadata snapshot.
+        segment-provider (delay (js-metadata/metadata-provider nil metadata))
+        segment-fetcher-fn (fn [spec]
+                             (lib.metadata.protocols/metadatas @segment-provider spec))
         setting-fn (fn [setting-key]
                      (some-> settings (object-get (name setting-key))))]
     (provider/metric-context-metadata-provider
@@ -190,6 +204,8 @@
      (when parsed-measures
        (fn [spec] (filter-measures parsed-measures spec)))
      (fn [spec] (filter-dimensions all-dimensions spec))
+     segment-fetcher-fn
      (fn [table-id] (get table->db-id table-id))
      db-provider-fn
-     setting-fn)))
+     setting-fn
+     nil)))

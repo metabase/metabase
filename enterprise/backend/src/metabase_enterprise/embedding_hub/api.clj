@@ -38,7 +38,7 @@
        (t2/exists? :model/Sandbox)))
 
 (defn- has-configured-sso? []
-  (or (and (premium-features/has-feature? :sso-jwt) (sso-settings/jwt-enabled) (sso-settings/jwt-configured))
+  (or (and (premium-features/has-feature? :sso-jwt) (sso-settings/jwt-enabled-and-configured))
       (and (premium-features/has-feature? :sso-saml) (sso-settings/saml-enabled) (sso-settings/saml-configured))))
 
 (defn- has-user-created-models? []
@@ -48,9 +48,11 @@
                                    [:or
                                     [:and
                                      [:!= :collection_id (:id (audit/default-audit-collection))]
-                                     [:not-in :collection_id {:select :id
-                                                              :from   [(t2/table-name :model/Collection)]
-                                                              :where  [:= :is_sample true]}]]
+                                     [:not [:exists {:select [1]
+                                                     :from   [[(t2/table-name :model/Collection) :sample_coll]]
+                                                     :where  [:and
+                                                              [:= :sample_coll.is_sample true]
+                                                              [:= :sample_coll.id :report_card.collection_id]]}]]]
                                     [:is :collection_id nil]]]}))
 
 (defn- has-user-created-tenants? []
@@ -60,6 +62,14 @@
   (t2/exists? :model/Collection {:where [:and
                                          [:= :namespace "shared-tenant-collection"]
                                          [:= :archived false]]}))
+
+(defn- shared-collection-has-dashboards? []
+  (when-let [shared-coll-id (t2/select-one-pk :model/Collection {:where [:and
+                                                                         [:= :namespace "shared-tenant-collection"]
+                                                                         [:= :archived false]]})]
+    (t2/exists? :model/Dashboard {:where [:and
+                                          [:= :collection_id shared-coll-id]
+                                          [:= :archived false]]})))
 
 (defn- has-configured-data-segregation-strategy? []
   ;; Check if any of the 3 data segregation strategies are enabled:
@@ -102,6 +112,7 @@
 
       ;; for the "configure data permissions and enable tenants" sub-checklist page
       "enable-tenants"                    enable-tenants?
+      "move-dashboard-to-shared"          (boolean (shared-collection-has-dashboards?))
       "create-tenants"                    create-tenants?
       "setup-data-segregation-strategy"   setup-data-segregation-strategy?
 
@@ -125,6 +136,7 @@
      ["sso-configured"                       :boolean]
      ["data-permissions-and-enable-tenants"  :boolean]
      ["enable-tenants"                       :boolean]
+     ["move-dashboard-to-shared"             :boolean]
      ["create-tenants"                       :boolean]
      ["setup-data-segregation-strategy"      :boolean]
      ["sso-auth-manual-tested"               :boolean]]]

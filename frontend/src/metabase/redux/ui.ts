@@ -1,8 +1,8 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
 import { isProduction } from "metabase/env";
-import { isSerializable } from "metabase/lib/objects";
-import type { ModalState } from "metabase-types/store/modal";
+import type { ModalState } from "metabase/redux/store/modal";
+import { isSerializable } from "metabase/utils/objects";
 
 type SetOpenModalPayload = ModalState["id"];
 /**
@@ -36,6 +36,7 @@ function validateSerializableProps(props: unknown): void {
   );
 }
 
+// Unjustified type cast. FIXME
 const DEFAULT_MODAL_STATE = {
   id: null,
   props: null,

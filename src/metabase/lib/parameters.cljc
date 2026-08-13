@@ -52,7 +52,7 @@
 (mu/defn parameter-target-field-ref :- [:maybe :mbql.clause/field]
   "If a parameter `:target` wraps a legacy `:field` ref, find it, convert it to MBQL 5, and return it."
   [target :- ::lib.schema.parameter/target]
-  (some-> target parameter-target-legacy-field-ref lib.convert/->pMBQL))
+  (some-> target parameter-target-legacy-field-ref lib.convert/->mbql5))
 
 (mu/defn parameter-target-field-id :- [:maybe ::lib.schema.id/field]
   "If a parameter `:target` wraps a field ID ref return the Field ID."
@@ -81,7 +81,7 @@
 (mu/defn parameter-target-expression-ref :- [:maybe :mbql.clause/expression]
   "If a parameter `:target` wraps a legacy `:expression` ref, find it, convert it to MBQL 5, and return it."
   [target :- ::lib.schema.parameter/target]
-  (some-> target parameter-target-legacy-expression-ref lib.convert/->pMBQL))
+  (some-> target parameter-target-legacy-expression-ref lib.convert/->mbql5))
 
 (mu/defn parameter-target-expression-name :- [:maybe :string]
   "If a parameter `:target` wraps an `:expression` ref return the expression name."
@@ -118,7 +118,7 @@
       0))
 
 (mu/defn update-parameter-target-field-ref :- ::lib.schema.parameter/target
-  "If parameter `:target` wraps a legacy `:field` ref, convert it to pMBQL, apply `(apply f field-ref args)`, convert
+  "If parameter `:target` wraps a legacy `:field` ref, convert it to MBQL 5, apply `(apply f field-ref args)`, convert
   the result back to legacy, and place it back in the target. If there is no `:field` ref, returns target unchanged."
   [target :- ::lib.schema.parameter/target
    f & args]

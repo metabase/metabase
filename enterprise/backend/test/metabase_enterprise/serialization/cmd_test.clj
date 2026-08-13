@@ -1,7 +1,6 @@
 (ns metabase-enterprise.serialization.cmd-test
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
@@ -22,8 +21,8 @@
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
         (.mkdirs (io/file dump-dir))
         (.setWritable (io/file dump-dir) false)
-        (with-redefs [v2.extract/extract (fn [& _args]
-                                           (throw (ex-info "Do not call me!" {})))]
+        (mt/with-dynamic-fn-redefs [v2.extract/extract (fn [& _args]
+                                                         (throw (ex-info "Do not call me!" {})))]
           (is (thrown-with-msg? Exception #"Destination path is not writeable: "
                                 (cmd/export dump-dir))))))))
 
@@ -34,7 +33,7 @@
         (snowplow-test/with-fake-snowplow-collector
           (ts/with-random-dump-dir [dump-dir "serdesv2-"]
             (let [coll (ts/create! :model/Collection :name "coll")
-                  card (ts/create! :model/Card :name "card" :collection_id (:id coll))]
+                  _card (ts/create! :model/Card :name "card" :collection_id (:id coll))]
               (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")
               (testing "Snowplow export event was sent"
                 (is (=? {"event"           "serialization"
@@ -53,7 +52,6 @@
                         (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
                              (filter #(= "serialization" (get % "event")))
                              first))))
-
               (testing "Snowplow import event was sent"
                 (cmd/import dump-dir)
                 (is (=? {"event"         "serialization"
@@ -65,9 +63,8 @@
                          "success"       true
                          "error_message" nil}
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
-
-              (with-redefs [v2.storage/store-settings! (fn [_opts _settings]
-                                                         (throw (Exception. "Cannot load settings")))]
+              (mt/with-dynamic-fn-redefs [v2.storage/store! (fn [_stream _backend]
+                                                              (throw (Exception. "Cannot load settings")))]
                 (is (thrown? Exception
                              (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")))
                 (testing "Snowplow export event about error was sent"
@@ -87,14 +84,13 @@
                           (->> (map :data (snowplow-test/pop-event-data-and-user-id!))
                                (filter #(= "serialization" (get % "event")))
                                first)))))
-
-              (let [ingest-file @#'v2.ingest/ingest-file]
+              (let [ingest-file (mt/original-fn #'v2.ingest/ingest-file)]
                 ;; overriding ingest-file is weird, but ingest-one is a protocol function and with-redefs won't
                 ;; override that reliably
-                (with-redefs [v2.ingest/ingest-file (fn [^java.io.File file]
-                                                      (cond-> (ingest-file file)
-                                                        (str/includes? (.getName file) (:entity_id card))
-                                                        (assoc :collection_id "DoesNotExist")))]
+                (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (fn [^java.io.File file]
+                                                                    (cond-> (ingest-file file)
+                                                                      (= (.getName file) "card.yaml")
+                                                                      (assoc :collection_id "DoesNotExist")))]
                   (is (thrown? Exception
                                (cmd/import dump-dir)))
                   (testing "Snowplow import event about error was sent"

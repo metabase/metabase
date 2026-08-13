@@ -251,18 +251,19 @@ describe("issue 45890", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.visit("/admin/performance/databases");
-    H.main().within(() => {
-      cy.findByLabelText(/Edit policy for database 'Sample Database'/)
-        .findByText("No caching")
-        .click();
+    H.main()
+      .findByLabelText(/Edit policy for database 'Sample Database'/)
+      .findByText("No caching")
+      .click();
 
-      cy.findByText("Schedule").click();
+    // The strategy picker is a dropdown; its options render in a portal.
+    H.main().findByTestId("cache-strategy-select").click();
+    cy.findByRole("option", { name: /Schedule/ }).click();
 
-      cy.button("Save changes").click();
-    });
+    H.main().button("Save changes").click();
   });
 
   it("should correctly reset caching schedule form when discarding changes", () => {

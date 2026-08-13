@@ -13,7 +13,6 @@ import type { NativeQuerySnippet } from "./snippets";
 import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, Table } from "./table";
 import type { Transform } from "./transform";
-import type { WorkspaceTransform } from "./workspace";
 
 export type DependencyId = number;
 
@@ -21,7 +20,6 @@ export const DEPENDENCY_TYPES = [
   "card",
   "table",
   "transform",
-  "workspace-transform",
   "snippet",
   "dashboard",
   "document",
@@ -37,7 +35,6 @@ export const DEPENDENCY_GROUP_TYPES = [
   "metric",
   "table",
   "transform",
-  "workspace-transform",
   "snippet",
   "dashboard",
   "document",
@@ -79,18 +76,6 @@ export type TransformDependencyNodeData = Pick<
   Transform,
   "name" | "description" | "table" | "creator" | "created_at" | "owner"
 >;
-
-export type WorkspaceTransformDependencyNodeData = Pick<
-  WorkspaceTransform,
-  "name" | "ref_id" | "workspace_id"
-> & {
-  target?: {
-    db: number;
-    schema: string;
-    table: string;
-    table_id?: number | null;
-  };
-};
 
 export type CardDependencyNodeData = Pick<
   Card,
@@ -163,11 +148,6 @@ export type TransformDependencyNode = BaseDependencyNode<
   TransformDependencyNodeData
 >;
 
-export type WorkspaceTransformDependencyNode = BaseDependencyNode<
-  "workspace-transform",
-  WorkspaceTransformDependencyNodeData
->;
-
 export type CardDependencyNode = BaseDependencyNode<
   "card",
   CardDependencyNodeData
@@ -220,7 +200,6 @@ export type MeasureDependencyNode = BaseDependencyNode<
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
-  | WorkspaceTransformDependencyNode
   | CardDependencyNode
   | SnippetDependencyNode
   | DashboardDependencyNode
@@ -232,6 +211,8 @@ export type DependencyNode =
 export type AnalysisFindingErrorId = number;
 
 export const ANALYSIS_FINDING_ERROR_TYPES = [
+  "missing-table",
+  "missing-card",
   "missing-column",
   "missing-table-alias",
   "duplicate-column",
@@ -279,21 +260,6 @@ export type ListNodeDependentsRequest = {
   "sort-column"?: DependencySortColumn;
   "sort-direction"?: SortDirection;
 };
-
-export type CheckDependenciesResponse = {
-  success: boolean;
-  bad_cards?: Card[];
-  bad_transforms?: Transform[];
-};
-
-export type CheckCardDependenciesRequest = Pick<Card, "id"> &
-  Partial<Pick<Card, "type" | "dataset_query" | "result_metadata">>;
-
-export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
-  Partial<Pick<NativeQuerySnippet, "name" | "content">>;
-
-export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
-  Partial<Pick<Transform, "source">>;
 
 export const DEPENDENCY_SORT_COLUMNS = [
   "name",

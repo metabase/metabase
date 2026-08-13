@@ -1,13 +1,13 @@
-import type { CurrencyStyle } from "metabase/lib/formatting";
-import { formatNumber as appFormatNumber } from "metabase/lib/formatting/numbers";
+import { formatNumber as appFormatNumber } from "metabase/utils/formatting";
+import type { CurrencyStyle } from "metabase-types/api";
 
-export type NumberStyle = "currency" | "decimal" | "scientific" | "percentage";
+export type NumberStyle = "currency" | "decimal" | "scientific" | "percent";
 
 export type NumberFormatOptions = {
   number_style?: NumberStyle;
   currency?: string;
   currency_style?: CurrencyStyle;
-  number_separators?: ".,";
+  number_separators?: string;
   decimals?: number;
   scale?: number;
   prefix?: string;
@@ -35,6 +35,3 @@ export const formatNumber = (number: number, options?: NumberFormatOptions) => {
 
   return `${prefix}${appFormatNumber(number, optionsWithDefault)}${suffix}`;
 };
-
-export const formatPercent = (percent: number) =>
-  `${(100 * percent).toFixed(Math.abs(percent) === 1 ? 0 : 2)} %`;

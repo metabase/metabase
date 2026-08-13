@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mongo.connection :as mongo.connection]
@@ -19,13 +18,11 @@
 (tx/add-test-extensions! :mongo)
 
 (doseq [feature [:test/time-type
-                 :test/timestamptz-type]]
+                 :test/timestamptz-type
+                 :test/date-type]]
   (defmethod driver/database-supports? [:mongo feature]
     [_driver _feature _database]
     false))
-
-;; During tests don't treat Mongo as having FK support
-(defmethod driver/database-supports? [:mongo :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."

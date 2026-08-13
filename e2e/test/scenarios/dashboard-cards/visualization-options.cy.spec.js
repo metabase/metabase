@@ -94,6 +94,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
       H.getDraggableElements().contains("ID").as("dragElement");
       H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 100,
+        useMouseEvents: true,
       });
       const idButton = () =>
         cy.get('[data-testid="draggable-item-ID"]').closest("[role=button]");

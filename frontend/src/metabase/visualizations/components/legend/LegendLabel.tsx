@@ -8,9 +8,9 @@ import {
   forwardRef,
   useCallback,
 } from "react";
-import type { LinkProps } from "react-router";
-import { Link } from "react-router";
 
+import type { LinkProps } from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box } from "metabase/ui";
 

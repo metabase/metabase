@@ -26,7 +26,7 @@ export const commandPaletteInput = () =>
 export const commandPaletteSearch = (query, viewAll = true) => {
   cy.intercept("GET", "/api/search?q=*").as("paletteSearch");
   commandPaletteButton().click();
-  commandPaletteInput().type(query);
+  commandPaletteInput().clear().type(query);
   cy.wait("@paletteSearch");
 
   if (viewAll) {

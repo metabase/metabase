@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.advanced-math-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.advanced-math-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.advanced-math-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

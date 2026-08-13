@@ -14,6 +14,8 @@ Row and column security lets you give granular permissions for different groups 
 
 You can use row and column security to set up [self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics), so that each of your customers can only view the rows that match their customer ID. For example, if you have an Accounts table with information about your customers, you can add permissions to the table so that each customer only sees the data relevant to them.
 
+![Row and column security](./images/row-and-column-level-security.png)
+
 > Row and column security was formerly called data sandboxing. It's the same feature, it just now has a more descriptive name.
 
 ## Row and column security examples
@@ -93,7 +95,7 @@ Examples of user attributes in play:
 1. Make sure to do the [prerequisites for row security](#prerequisites-for-row-security) first.
 2. Go to **Admin** > **Permissions**.
 3. Select the database and table that you want to secure.
-4. Find the group that you want to put in the secure.
+4. Find the group that you want to secure.
 5. Click on the dropdown under **View data** for that group.
 6. Select "Row and column security".
 7. Click the dropdown under **Column** and enter the column to filter the table on, such as "Plan".
@@ -254,7 +256,7 @@ If you put Vincent Accountman in both groups, he'll have conflicting permissions
 To resolve row and column security permissions conflicts:
 
 - Remove the person from all but one of the groups.
-- Set the all but one of the group's [View data](./data.md#view-data-permissions) access to the datatabase to "Blocked".
+- Set all but one of the group's [View data](./data.md#view-data-permissions) access to the database to "Blocked".
 
 ### You cannot secure the rows or columns of SQL results
 
@@ -287,7 +289,7 @@ Some things to keep in mind when using row and column security.
 ### Groups with native query permissions (access to the SQL editor) can bypass row and column security
 
 Row and column security is limited to the [query builder](../questions/query-builder/editor.md).
-You can't set up [native query persmissons](./data.md#create-queries-permissions) for groups with row and column security.
+You can't set up [native query permissions](./data.md#create-queries-permissions) for groups with row and column security.
 
 To enforce row-level permissions with the native query editor, check out [impersonation](./impersonation.md).
 
@@ -299,7 +301,7 @@ Since Metabase can't parse SQL queries, the results of SQL questions will always
 
 ### Non-SQL databases have limited row and column security
 
-MongoDB only supports [row-level security](#row-level-security-filter-by-a-column-in-the-table). Row and column security permissions are unavailable for Apache Druid.
+MongoDB and Druid only support [row-level security](#row-level-security-filter-by-a-column-in-the-table). Neither supports column-level security.
 
 ### Advanced data types require a workaround
 

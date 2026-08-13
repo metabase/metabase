@@ -3,12 +3,11 @@ import { usePrevious } from "react-use";
 import { jt, t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import {
-  BasicAdminSettingInput,
-  SetByEnvVar,
-} from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
+import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { getErrorMessage } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { useAdminSetting } from "metabase/settings";
 import { Stack, TextInput } from "metabase/ui";
 import type { HelpLinkSetting } from "metabase-types/api";
 
@@ -95,6 +94,7 @@ export const HelpLinkSettings = () => {
             { label: t`Go to a custom destination...`, value: "custom" },
           ]}
           onChange={(newValue) =>
+            // Unjustified type cast. FIXME
             handleRadioChange(newValue as HelpLinkSetting)
           }
         />

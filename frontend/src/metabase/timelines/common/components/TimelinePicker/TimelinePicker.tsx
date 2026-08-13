@@ -1,8 +1,7 @@
 import { useCallback } from "react";
 import { msgid, ngettext } from "ttag";
 
-import { getEventCount } from "metabase/lib/timelines";
-import type { IconName } from "metabase/ui";
+import { getEventCount } from "metabase/common/utils/timelines";
 import type { Timeline } from "metabase-types/api";
 
 import {
@@ -57,7 +56,7 @@ const TimelineCard = ({
   return (
     <CardRoot key={timeline.id} isSelected={isSelected} onClick={handleClick}>
       <CardIconContainer>
-        <CardIcon name={timeline.icon as unknown as IconName} />
+        <CardIcon name={timeline.icon} />
       </CardIconContainer>
       <CardBody>
         <CardTitle>{timeline.name}</CardTitle>

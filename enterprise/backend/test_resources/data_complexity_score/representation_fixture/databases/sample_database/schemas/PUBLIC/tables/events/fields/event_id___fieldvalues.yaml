@@ -1,0 +1,21 @@
+field_id:
+- Sample Database
+- PUBLIC
+- events
+- event_id
+type: full
+values:
+- 'evt-1'
+- 'evt-2'
+created_at: '2026-04-02T00:00:00Z'
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: events
+  model: Table
+- id: event_id
+  model: Field
+- id: full
+  model: FieldValues

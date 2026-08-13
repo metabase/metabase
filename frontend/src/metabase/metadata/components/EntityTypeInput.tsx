@@ -1,4 +1,3 @@
-import type { FocusEvent } from "react";
 import { t } from "ttag";
 
 import { getEntityIcon } from "metabase/detail-view/utils";
@@ -14,14 +13,8 @@ export const EntityTypeInput = ({
   comboboxProps,
   value,
   onChange,
-  onFocus,
   ...props
 }: Props) => {
-  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
-    event.target.select();
-    onFocus?.(event);
-  };
-
   const entities = [
     { value: "entity/GenericTable", label: t`Generic` },
     { value: "entity/UserTable", label: t`Person` },
@@ -62,7 +55,6 @@ export const EntityTypeInput = ({
       placeholder={t`Select entity type`}
       value={value}
       onChange={(value) => onChange(value)}
-      onFocus={handleFocus}
       {...props}
     />
   );

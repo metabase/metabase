@@ -38,11 +38,12 @@ export const mockSeries = ({
   comparisonType = PREVIOUS_PERIOD_COMPARISON,
 }: MockSeriesOptions) => {
   const cols = [
-    DateTimeColumn({ name: "Month" }),
-    NumberColumn({ name: "Count" }),
-    NumberColumn({ name: "Sum" }),
+    DateTimeColumn({ name: "Month", source: "breakout" }),
+    NumberColumn({ name: "Count", source: "aggregation" }),
+    NumberColumn({ name: "Sum", source: "aggregation" }),
   ];
 
+  // Unjustified type cast. FIXME
   return [
     {
       card: {

@@ -1,19 +1,19 @@
 import { useContext } from "react";
 
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { EmbeddingDataPickerContext } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
+import { useSelector } from "metabase/redux";
 import {
   DEFAULT_EMBEDDING_ENTITY_TYPES,
   getDataPicker,
   getEntityTypes,
 } from "metabase/redux/embedding-data-picker";
+import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { CardType, TableId } from "metabase-types/api";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import { DataPickerTarget } from "../DataPickerTarget";
 
@@ -21,6 +21,7 @@ type EmbeddingDataPickerProps = {
   query: Lib.Query;
   stageIndex: number;
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
+  title: string;
   placeholder: string;
   canChangeDatabase: boolean;
   isDisabled: boolean;
@@ -30,6 +31,7 @@ export function EmbeddingDataPicker({
   query,
   stageIndex,
   table,
+  title,
   placeholder,
   canChangeDatabase,
   isDisabled,
@@ -39,6 +41,7 @@ export function EmbeddingDataPicker({
     useSearchQuery({
       models: ["dataset", "table"],
       limit: 0,
+      context: "data-picker",
     });
 
   const databaseId = Lib.databaseID(query);
@@ -139,6 +142,7 @@ export function EmbeddingDataPicker({
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
       canSelectQuestion={entityTypes.includes("question")}
+      popoverAriaLabel={title}
       triggerElement={
         <DataPickerTarget
           table={table}
@@ -165,6 +169,7 @@ function useSourceEntityCollectionId(query: Lib.Query) {
   const sourceTable = useSourceTable(query);
   const isCard =
     sourceTable?.type &&
+    // Unjustified type cast. FIXME
     (["model", "question"] as CardType[]).includes(sourceTable.type);
   const cardId = isCard
     ? getQuestionIdFromVirtualTableId(sourceTable?.id)

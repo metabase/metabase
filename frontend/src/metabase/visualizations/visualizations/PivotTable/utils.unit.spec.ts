@@ -10,10 +10,12 @@ import {
 import type { HeaderItem } from "./types";
 import {
   addMissingCardBreakouts,
+  checkRenderable,
   getColumnValues,
   getLeftHeaderWidths,
   isColumnValid,
   isFormattablePivotColumn,
+  leftHeaderCellSizeAndPositionGetter,
   updateValueWithCurrentColumns,
 } from "./utils";
 
@@ -245,6 +247,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("should return the wider of the column header or data width", () => {
+      // Unjustified type cast. FIXME
       const data = [
         { depth: 0, value: "x".repeat(150) },
         { depth: 0, value: "foo2" },
@@ -271,6 +274,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("should factor in the toggle icon width for columns with subtotals", () => {
+      // Unjustified type cast. FIXME
       const data = [
         { depth: 0, value: "x".repeat(100), hasSubtotal: true },
         { depth: 0, value: "foo2" },
@@ -297,8 +301,38 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
   });
 
+  describe("checkRenderable", () => {
+    it("should throw when pivot_rows_truncated is set", () => {
+      const data = {
+        cols: [
+          createMockColumn({ source: "breakout", name: "field-1" }),
+          createMockColumn({ source: "aggregation", name: "count" }),
+        ],
+        rows: [],
+        pivot_rows_truncated: 100000,
+      };
+      // Unjustified type cast. FIXME
+      expect(() => checkRenderable([{ data }] as any, {} as any)).toThrow(
+        /Too many rows/,
+      );
+    });
+
+    it("should not throw when pivot_rows_truncated is not set", () => {
+      const data = {
+        cols: [
+          createMockColumn({ source: "breakout", name: "field-1" }),
+          createMockColumn({ source: "aggregation", name: "count" }),
+        ],
+        rows: [],
+      };
+      // Unjustified type cast. FIXME
+      expect(() => checkRenderable([{ data }] as any, {} as any)).not.toThrow();
+    });
+  });
+
   describe("getColumnValues", () => {
     it("can collect column values from left header data", () => {
+      // Unjustified type cast. FIXME
       const data = [
         { depth: 0, value: "foo1" },
         { depth: 0, value: "foo2" },
@@ -320,6 +354,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("detects columns with subtotals", () => {
+      // Unjustified type cast. FIXME
       const data = [
         { depth: 0, value: "foo1", hasSubtotal: false },
         { depth: 0, value: "foo2", hasSubtotal: true },
@@ -338,6 +373,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
 
     it("handles null values", () => {
+      // Unjustified type cast. FIXME
       const data = [
         { depth: 0, value: "foo1", hasSubtotal: false },
         { depth: 0, value: null, hasSubtotal: true },
@@ -353,6 +389,38 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         { values: ["bar1", "bar2"], hasSubtotal: false },
         { values: ["baz1"], hasSubtotal: true },
       ]);
+    });
+  });
+
+  describe("leftHeaderCellSizeAndPositionGetter", () => {
+    it("should return the correct width for a subtotal", () => {
+      const result = leftHeaderCellSizeAndPositionGetter(
+        // Unjustified type cast. FIXME
+        { depth: 1, maxDepthBelow: 0, isSubtotal: true } as HeaderItem,
+        [100, 100, 100],
+        [0, 1, 2],
+      );
+      expect(result.width).toBe(200);
+    });
+
+    it("should return the correct width for a non-subtotal", () => {
+      const result = leftHeaderCellSizeAndPositionGetter(
+        // Unjustified type cast. FIXME
+        { depth: 1, maxDepthBelow: 1, isSubtotal: false } as HeaderItem,
+        [100, 100, 100],
+        [0, 1, 2],
+      );
+      expect(result.width).toBe(100);
+    });
+
+    it("non-subtotal widths should not increase when columns are collapsed", () => {
+      const result = leftHeaderCellSizeAndPositionGetter(
+        // Unjustified type cast. FIXME
+        { depth: 1, maxDepthBelow: 0, isSubtotal: false } as HeaderItem,
+        [100, 100, 100],
+        [0, 1, 2],
+      );
+      expect(result.width).toBe(100);
     });
   });
 });

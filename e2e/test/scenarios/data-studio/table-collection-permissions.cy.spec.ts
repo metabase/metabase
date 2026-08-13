@@ -53,7 +53,7 @@ describe("scenarios > data studio > table collection permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.createLibrary();
   });
 
@@ -130,7 +130,6 @@ describe("scenarios > data studio > table collection permissions", () => {
     it("should create a question with a table segment", () => {
       H.createSegment({
         name: "ID segment",
-        table_id: PRODUCTS_ID,
         definition: {
           database: SAMPLE_DB_ID,
           type: "query",

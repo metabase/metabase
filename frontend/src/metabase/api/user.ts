@@ -1,5 +1,3 @@
-import { storeTemporaryPassword } from "metabase/admin/people/people";
-import { userUpdated } from "metabase/redux/user";
 import type {
   CreateUserRequest,
   ListUsersRequest,
@@ -18,7 +16,6 @@ import {
   provideUserListTags,
   provideUserTags,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const userApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -46,6 +43,16 @@ export const userApi = Api.injectEndpoints({
       }),
       providesTags: (user) => (user ? provideUserTags(user) : []),
     }),
+    getCurrentUser: builder.query<User, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/user/current",
+      }),
+      providesTags: (user) => (user ? [idTag("current-user", user.id)] : []),
+      // Don't garbage-collect the current user from the cache
+      // since it's used in many places and we don't want to refetch it unnecessarily.
+      keepUnusedDataFor: Infinity,
+    }),
     createUser: builder.mutation<User, CreateUserRequest>({
       query: (body) => ({
         method: "POST",
@@ -58,13 +65,6 @@ export const userApi = Api.injectEndpoints({
           listTag("tenant"),
           listTag("permissions-group"),
         ]),
-      onQueryStarted: (request, { dispatch, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, (user) => {
-          if (request.password) {
-            const payload = { id: user.id, password: request.password };
-            dispatch(storeTemporaryPassword(payload));
-          }
-        }),
     }),
     updatePassword: builder.mutation<void, UpdatePasswordRequest>({
       query: ({ id, old_password, password }) => ({
@@ -72,9 +72,6 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}/password`,
         body: { old_password, password },
       }),
-      onQueryStarted: ({ id, password }, { dispatch }) => {
-        dispatch(storeTemporaryPassword({ id, password }));
-      },
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
@@ -109,32 +106,54 @@ export const userApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("user"), idTag("user", id)]),
-      onQueryStarted: (_request, { dispatch, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, (user) => {
-          // used to keep current user state in sync
-          dispatch(userUpdated(user));
-        }),
+        invalidateTags(error, [
+          listTag("user"),
+          idTag("user", id),
+          idTag("current-user", id),
+        ]),
+    }),
+    getPasswordResetUrl: builder.mutation<
+      { password_reset_url: string },
+      UserId
+    >({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/user/${id}/password-reset-url`,
+      }),
     }),
     listUserAttributes: builder.query<string[], void>({
       query: () => "/api/mt/user/attributes",
       providesTags: (response) => (response ? [listTag("user")] : []),
     }),
+    updateUserModalQbnewb: builder.mutation<void, UserId>({
+      query: (id) => ({
+        method: "PUT",
+        url: `/api/user/${id}/modal/qbnewb`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("user", id), idTag("current-user", id)]),
+    }),
   }),
 });
 
-/** To minimize requests, useListUsersQuery should be invoked where possible
- * with this limit and an offset of 0 */
-export const STANDARD_USER_LIST_PAGE_SIZE = 27;
+export const loadCurrentUser = () =>
+  userApi.endpoints.getCurrentUser.initiate();
+
+export const refetchCurrentUser = () =>
+  userApi.endpoints.getCurrentUser.initiate(undefined, { forceRefetch: true });
 
 export const {
   useListUsersQuery,
   useListUserRecipientsQuery,
   useGetUserQuery,
+  useGetCurrentUserQuery,
+  useLazyGetCurrentUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useUpdateUserMutation,
+  useGetPasswordResetUrlMutation,
   useListUserAttributesQuery,
+  useUpdateUserModalQbnewbMutation,
 } = userApi;

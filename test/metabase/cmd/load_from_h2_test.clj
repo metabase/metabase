@@ -1,4 +1,6 @@
 (ns metabase.cmd.load-from-h2-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.cmd.load-from-h2-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.cmd.load-from-h2-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]

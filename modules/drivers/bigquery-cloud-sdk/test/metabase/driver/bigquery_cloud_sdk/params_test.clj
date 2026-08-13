@@ -1,10 +1,22 @@
 (ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk.params-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.bigquery-cloud-sdk.params-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor :as qp]
-   [metabase.test :as mt]))
+   [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
+   [metabase.query-processor.test :as qp]
+   [metabase.test :as mt])
+  (:import
+   (com.google.cloud.bigquery QueryParameterValue StandardSQLTypeName)))
 
 (set! *warn-on-reflection* true)
+
+(deftest ^:parallel integral-parameter-types-test
+  (testing "every integral representation is declared INT64"
+    (doseq [v [(int 100) (long 100) (short 100) (byte 100) (bigint 100) (biginteger 100)]]
+      (testing (.getCanonicalName (class v))
+        (let [^QueryParameterValue param (#'bigquery.params/->QueryParameterValue v)]
+          (is (= StandardSQLTypeName/INT64
+                 (.getType param))))))))
 
 (deftest ^:parallel set-parameters-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -18,6 +30,7 @@
                             [(short 100)                                {:base-type :type/Integer}]
                             [(byte 100)                                 {:base-type :type/Integer}]
                             [(bigint 100)                               {:base-type :type/Integer}]
+                            [(biginteger 100)                           {:base-type :type/Integer}]
                             [(float 100.0)                              {:base-type :type/Float}]
                             [(double 100.0)                             {:base-type :type/Float}]
                             ;; one case for NUMERIC/DECIMAL

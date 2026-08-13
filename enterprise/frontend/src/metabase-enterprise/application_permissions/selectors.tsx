@@ -9,8 +9,12 @@ import {
   getDefaultGroup,
   getOrderedGroups,
 } from "metabase/admin/permissions/selectors/data-permissions/groups";
-import { getGroupNameLocalized, isAdminGroup } from "metabase/lib/groups";
+import {
+  getGroupNameLocalized,
+  isAdminGroup,
+} from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { getUser } from "metabase/selectors/user";
 import type { Group } from "metabase-types/api";
 
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
@@ -34,12 +38,12 @@ export function getPermissionWarning(
 }
 
 export const canManageSubscriptions = createSelector(
-  (state: ApplicationPermissionsState) => state.currentUser,
+  (state: ApplicationPermissionsState) => getUser(state),
   (user) => user?.permissions?.can_access_subscription ?? false,
 );
 
 export const canAccessSettings = createSelector(
-  (state: ApplicationPermissionsState) => state.currentUser,
+  (state: ApplicationPermissionsState) => getUser(state),
   (user) => user?.permissions?.can_access_setting ?? false,
 );
 

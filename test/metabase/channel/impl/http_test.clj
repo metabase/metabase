@@ -1,4 +1,5 @@
 (ns metabase.channel.impl.http-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.channel.impl.http-test]}}}}}}
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
@@ -12,6 +13,7 @@
    [metabase.server.middleware.json :as mw.json]
    [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [ring.adapter.jetty :as jetty]
    [ring.middleware.params :refer [wrap-params]]
    [toucan2.core :as t2])
@@ -151,7 +153,6 @@
                             (can-connect? {:url         (str url (:path route))
                                            :auth-method "none"
                                            :method      "get"}))]
-
         (testing "connect successfully with 200"
           (is (true? (can-connect?* get-200))))
         (testing "connect successfully with 302 redirect to 200"
@@ -182,7 +183,6 @@
                                   :method      "get"
                                   :auth-method "header"
                                   :auth-info   {:x-api-key "SECRET"}}))))
-
       (testing "fail to connect with header auth"
         (is (= {:request-status 401
                 :request-body   "Unauthorized"}
@@ -244,15 +244,12 @@
       (is (= {:errors {:url [(deferred-tru "value must be a valid URL.")]}}
              (exception-data (can-connect? {:url         "not-an-url"
                                             :auth-method "none"})))))
-
     (testing "testing missing auth-method"
       (is (= {:errors {:auth-method ["missing required key"]}}
              (exception-data (can-connect? {:url "https://www.secret_service.xyz"})))))
-
     (testing "include undefined key"
       (is (=? {:errors {:xyz ["disallowed key"]}}
               (exception-data (can-connect? {:xyz "hello world"})))))
-
     (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
       (with-server [url [get-400]]
         (is (= {:request-body   "Bad request"
@@ -260,7 +257,6 @@
                (exception-data (can-connect? {:url         (str url (:path get-400))
                                               :method      "get"
                                               :auth-method "none"})))))
-
       (with-server [url [(make-route :get "/test_http_channel_400"
                                      (fn [_]
                                        {:status 400
@@ -285,7 +281,6 @@
                       {:method       :get
                        :url          "https://www.secret_service.xyz"})
                (first @requests)))))
-
     (testing "default method is post"
       (with-captured-http-requests [requests]
         (channel/send! {:type    :channel/http
@@ -296,7 +291,6 @@
                       {:method       :post
                        :url          "https://www.secret_service.xyz"})
                (first @requests)))))
-
     (testing "preserves req headers when use auth-method=:header"
       (with-captured-http-requests [requests]
         (channel/send! {:type    :channel/http
@@ -311,7 +305,6 @@
                        :headers      {:Authorization "Bearer 123"
                                       :X-Request-Id "123"}})
                (first @requests)))))
-
     (testing "preserves req query-params when use auth-method=:query-param"
       (with-captured-http-requests [requests]
         (channel/send! {:type    :channel/http
@@ -326,6 +319,23 @@
                        :query-params {:token "123"
                                       :page 1}})
                (first @requests)))))))
+
+(deftest send!-humanized-invalid-url-test
+  (mu/disable-enforcement
+    (testing "a missing webhook URL throws a human-readable error rather than an NPE (#76802)"
+      (doseq [channel [{:type :channel/http}
+                       {:type :channel/http :details {}}
+                       {:type :channel/http :details {:url "" :auth-method "none"}}]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"No URL is configured for this webhook"
+                              (channel/send! channel nil)))))
+    (testing "an unparseable webhook URL throws a human-readable error (#76802)"
+      (mt/with-temporary-setting-values [http-channel-host-strategy :external-only]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid webhook URL"
+                              (channel/send! {:type    :channel/http
+                                              :details {:url "not-a-url" :auth-method "none"}}
+                                             nil)))))))
 
 (deftest alert-http-channel-e2e-test
   (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]

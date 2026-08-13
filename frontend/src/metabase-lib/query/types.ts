@@ -1,16 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unused-vars -- used for types */
-import type { DefinedClauseName } from "metabase/querying/expressions";
 import type {
   CardId,
   DatabaseId,
   DatasetColumn,
+  DatetimeUnit,
   FieldId,
   FieldValuesType,
   RowValue,
   SchemaId,
   TableId,
   TableVisibilityType,
-  TemporalUnit,
 } from "metabase-types/api";
 
 import type {
@@ -30,6 +29,7 @@ import type {
   TimeFilterOperator,
 } from "../common";
 
+import type { DefinedClauseName } from "./clauses";
 import type { ColumnExtractionTag } from "./extractions";
 
 /**
@@ -148,7 +148,7 @@ declare const BucketSymbol: unique symbol;
 export type Bucket = unknown & { _opaque: typeof BucketSymbol };
 
 export type BucketDisplayInfo = {
-  shortName: TemporalUnit;
+  shortName: DatetimeUnit;
   displayName: string;
   default?: boolean;
   selected?: boolean;
@@ -222,16 +222,16 @@ export type TextFingerprintDisplayInfo = {
   percentUrl: number;
 };
 
-// We're setting the values here as unknown even though
-// the API will return numbers most of the time, because
-// sometimes it doesn't!
+// Properties are typed as optional unknown: the API returns numbers most of
+// the time but sometimes returns non-numbers, and sometimes omits the property
+// entirely.
 export type NumberFingerprintDisplayInfo = {
-  avg: unknown;
-  max: unknown;
-  min: unknown;
-  q1: unknown;
-  q3: unknown;
-  sd: unknown;
+  avg?: unknown;
+  max?: unknown;
+  min?: unknown;
+  q1?: unknown;
+  q3?: unknown;
+  sd?: unknown;
 };
 
 export type DateTimeFingerprintDisplayInfo = {
@@ -457,6 +457,9 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
+export type AutomaticInsightsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/automatic-insights">;
+
 declare const ColumnExtractionSymbol: unique symbol;
 export type ColumnExtraction = unknown & {
   _opaque: typeof ColumnExtractionSymbol;
@@ -545,6 +548,7 @@ export type ZoomGeographicDrillThruInfo =
   };
 
 export type DrillThruDisplayInfo =
+  | AutomaticInsightsDrillThruInfo
   | ColumnExtractDrillThruInfo
   | CombineColumnsDrillThruInfo
   | QuickFilterDrillThruInfo
@@ -585,6 +589,18 @@ export interface ClickObjectDataRow {
   value: RowValue;
 }
 
+export type BrushRange =
+  | {
+      type: "temporal";
+      start: string;
+      end: string;
+    }
+  | {
+      type: "numeric";
+      start: number;
+      end: number;
+    };
+
 export interface ClickObject {
   value?: RowValue;
   column?: DatasetColumn;
@@ -602,7 +618,22 @@ export interface ClickObject {
   };
   extraData?: Record<string, unknown>;
   data?: ClickObjectDataRow[];
+  brushRange?: BrushRange;
 }
+
+export interface BrushClickObject extends ClickObject {
+  brushRange: BrushRange;
+  column: DatasetColumn;
+  event: MouseEvent;
+}
+
+export const isBrushClickObject = (
+  clicked: ClickObject | null | undefined,
+): clicked is BrushClickObject =>
+  clicked != null &&
+  clicked.brushRange != null &&
+  clicked.column != null &&
+  clicked.event != null;
 
 export interface FieldValuesSearchInfo {
   fieldId: FieldId | null;
@@ -642,6 +673,6 @@ export type ValidationError = { message: string };
 
 export type JsColumnTypeInfo = {
   base_type?: string;
-  effective_type?: string;
+  effective_type?: string | null;
   semantic_type?: string | null;
 };

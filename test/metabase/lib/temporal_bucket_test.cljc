@@ -260,3 +260,16 @@
             (->> (lib/breakouts query)
                  first
                  (lib/display-info query -1))))))
+
+(deftest ^:parallel extraction-unit-strips-temporal-effective-type-in-next-stage-test
+  (testing "after a stage breaks out by an extraction unit (e.g. :day-of-week), the column in the next stage
+            must not advertise a temporal effective-type, so the FE doesn't propose nonsensical buckets/binning
+            like \"Month\" on top of an integer (#48932)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :day-of-week))
+                    lib/append-stage)
+          [created-at] (lib/visible-columns query 1)]
+      (is (=? {:name           "CREATED_AT"
+               :display-name   "Created At: Day of week"
+               :effective-type :type/Integer}
+              created-at)))))

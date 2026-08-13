@@ -1,42 +1,32 @@
-import type { LocationDescriptor } from "history";
-import type { MouseEvent } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName } from "metabase/ui";
-import type { RecentItem } from "metabase-types/api";
+import type { To } from "metabase/router";
+import type { ColorName } from "metabase/ui/colors/types";
+import type { IconName, RecentItem } from "metabase-types/api";
 
-import { BASIC_ACTION_ORDER } from "./hooks/useCommandPaletteBasicActions";
+import { METABASE_DOCS_LABELS } from "./constants";
 import type { PaletteActionImpl } from "./types";
-
-const BASIC_ACTION_ORDER_BY_NAME = BASIC_ACTION_ORDER.reduce<
-  Record<string, number>
->((acc, actionName, index) => {
-  acc[actionName] = index;
-  return acc;
-}, {});
 
 export const processResults = (
   results: (string | PaletteActionImpl)[],
-  searchTerm: string,
+  hasSearchTerm: boolean,
 ): (string | PaletteActionImpl)[] => {
   const groupedResults = _.groupBy(
     results.filter((r): r is PaletteActionImpl => !(typeof r === "string")),
     "section",
   );
 
-  const actions = processSection(
-    t`Actions`,
-    groupedResults["basic"],
-    BASIC_ACTION_ORDER_BY_NAME,
-  );
+  const actions = processSection(t`Actions`, groupedResults["basic"]);
   const search = processSection(t`Results`, groupedResults["search"]);
   const recent = processSection(t`Recents`, groupedResults["recent"]);
   const admin = processSection(t`Admin`, groupedResults["admin"]);
-  const docs = processSection(t`Documentation`, groupedResults["docs"]);
+  const docs = processSection(
+    METABASE_DOCS_LABELS.section,
+    groupedResults["docs"],
+  );
 
-  if (searchTerm.trim().length === 0) {
+  if (!hasSearchTerm) {
     return [...recent];
   }
 
@@ -53,18 +43,8 @@ export const processResults = (
 export const processSection = (
   sectionName: string,
   items?: PaletteActionImpl[],
-  sortOrder?: Record<string, number>,
 ) => {
   if (items && items.length > 0) {
-    if (sortOrder) {
-      const sortedItems = [...items].sort((a, b) => {
-        const aOrder = sortOrder[a.id] ?? Number.MAX_SAFE_INTEGER;
-        const bOrder = sortOrder[b.id] ?? Number.MAX_SAFE_INTEGER;
-        return aOrder - bOrder;
-      });
-
-      return [sectionName, ...sortedItems];
-    }
     return [sectionName, ...items];
   } else {
     return [];
@@ -116,8 +96,9 @@ export const getCommandPaletteIcon = (
   item: PaletteActionImpl,
 ): { name: IconName; c: ColorName } => {
   const icon = {
+    // Unjustified type cast. FIXME
     name: item.icon as IconName,
-    c: item.extra?.iconColor || "brand",
+    c: item.extra?.iconColor || "core-brand",
   };
 
   return icon;
@@ -126,21 +107,13 @@ export const getCommandPaletteIcon = (
 export const isAbsoluteURL = (url: string) =>
   url.startsWith("http://") || url.startsWith("https://");
 
-export const locationDescriptorToURL = (
-  locationDescriptor: LocationDescriptor,
-) => {
-  if (typeof locationDescriptor === "string") {
-    return locationDescriptor;
+export const navigationTargetToURL = (target: To) => {
+  if (typeof target === "string") {
+    return target;
   } else {
-    const { pathname = "", query = null, hash = null } = locationDescriptor;
-    const queryString = query
-      ? "?" + new URLSearchParams(query).toString()
-      : "";
+    const { pathname = "", search = "", hash = null } = target;
     const hashString = hash ? "#" + hash : "";
 
-    return `${pathname}${queryString}${hashString}`;
+    return `${pathname}${search}${hashString}`;
   }
 };
-
-export const isNormalClick = (e: MouseEvent): boolean =>
-  !e.ctrlKey && !e.shiftKey && !e.metaKey && !e.altKey && e.button === 0;

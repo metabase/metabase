@@ -11,6 +11,8 @@ export interface Segment {
   table_id: TableId;
   table?: Table;
   archived: boolean;
+  caveats?: string;
+  points_of_interest?: string;
   // Backend always returns MBQL5 format
   definition: DatasetQuery;
   definition_description: string;
@@ -23,7 +25,6 @@ export interface Segment {
 
 export interface CreateSegmentRequest {
   name: string;
-  table_id: TableId;
   definition: DatasetQuery;
   description?: string;
 }

@@ -1,5 +1,4 @@
 (ns metabase.channel.template.handlebars-helper
-  (:refer-clojure :exclude [hash])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]

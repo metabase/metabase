@@ -1,4 +1,5 @@
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 
 import { mergeVisualizerData } from "./merge-data";
@@ -117,5 +118,76 @@ describe("mergeVisualizerData", () => {
       "COLUMN_2",
       "COLUMN_3",
     ]);
+  });
+
+  it.each([
+    { label: "undefined", dataset: undefined },
+    { label: "null", dataset: null },
+    {
+      label: "errored (e.g. permission denied)",
+      dataset: createMockDataset({
+        error: { status: 403 },
+        error_type: SERVER_ERROR_TYPES.missingPermissions,
+      }),
+    },
+  ])(
+    "should return an empty merge when a referenced dataset is $label",
+    ({ dataset }) => {
+      const column = createMockColumn(StringColumn({ name: "COLUMN_1" }));
+      const result = mergeVisualizerData({
+        columns: [column],
+        columnValuesMapping: {
+          COLUMN_1: [
+            {
+              sourceId: "card:1",
+              originalName: "CREATED_AT",
+              name: "COLUMN_1",
+            },
+          ],
+        },
+        datasets: { "card:1": dataset },
+        dataSources: [
+          { id: "card:1", sourceId: 1, type: "card", name: "Chart 1" },
+        ],
+      });
+
+      expect(result.cols).toEqual([column]);
+      expect(result.rows).toEqual([]);
+      expect(result.insights).toEqual([]);
+    },
+  );
+
+  it("should carry the results timezone from the source dataset so charts render in the report timezone (#73972)", () => {
+    const result = mergeVisualizerData({
+      columns: [
+        createMockColumn(StringColumn({ name: "COLUMN_1" })),
+        createMockColumn(NumberColumn({ name: "COLUMN_2" })),
+      ],
+      columnValuesMapping: {
+        COLUMN_1: [
+          { sourceId: "card:1", originalName: "CREATED_AT", name: "COLUMN_1" },
+        ],
+        COLUMN_2: [
+          { sourceId: "card:1", originalName: "count", name: "COLUMN_2" },
+        ],
+      },
+      datasets: {
+        "card:1": createMockDataset({
+          data: {
+            cols: [
+              createMockColumn(StringColumn({ name: "CREATED_AT" })),
+              createMockColumn(NumberColumn({ name: "count" })),
+            ],
+            rows: [["2025-01-01T00:00:00-08:00", 1]],
+            results_timezone: "America/Los_Angeles",
+          },
+        }),
+      },
+      dataSources: [
+        { id: "card:1", sourceId: 1, type: "card", name: "Chart 1" },
+      ],
+    });
+
+    expect(result.results_timezone).toBe("America/Los_Angeles");
   });
 });

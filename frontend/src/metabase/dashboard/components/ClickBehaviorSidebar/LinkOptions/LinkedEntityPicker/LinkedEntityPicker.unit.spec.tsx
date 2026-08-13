@@ -15,8 +15,10 @@ import {
   screen,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
-import { checkNotNull } from "metabase/lib/types";
+import { ROOT_COLLECTION as ROOT } from "metabase/common/collections/constants";
+import type { StoreDashboard } from "metabase/redux/store";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   CollectionItem,
   Dashboard,
@@ -33,8 +35,6 @@ import {
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { StoreDashboard } from "metabase-types/store";
-import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { LinkedEntityPicker } from "./LinkedEntityPicker";
 
@@ -58,15 +58,17 @@ const PUBLIC_COLLECTION = createMockCollection({
 });
 
 const collectionInRootCollectionItem = createMockCollectionItem({
+  // Unjustified type cast. FIXME
   id: PUBLIC_COLLECTION.id as number,
   name: PUBLIC_COLLECTION.name,
   model: "collection",
   here: ["card", "dashboard"],
+  // Unjustified type cast. FIXME
   collection_id: PUBLIC_COLLECTION.id as number,
 });
 
 const PERSONAL_COLLECTION = createMockCollection({
-  id: CURRENT_USER.personal_collection_id,
+  id: CURRENT_USER.personal_collection_id ?? undefined,
   name: "Personal collection",
   can_write: true,
   is_personal: true,
@@ -165,6 +167,7 @@ describe("LinkedEntityPicker", () => {
     describe("dashboard in a public collection", () => {
       const dashboardInPublicCollection = createMockDashboard({
         collection: PUBLIC_COLLECTION,
+        // Unjustified type cast. FIXME
         collection_id: PUBLIC_COLLECTION.id as number,
       });
 
@@ -227,6 +230,7 @@ describe("LinkedEntityPicker", () => {
     describe("dashboard in a personal collection", () => {
       const dashboardInPersonalCollection = createMockDashboard({
         collection: PERSONAL_COLLECTION,
+        // Unjustified type cast. FIXME
         collection_id: PERSONAL_COLLECTION.id as number,
       });
 
@@ -303,6 +307,7 @@ describe("LinkedEntityPicker", () => {
     describe("dashboard in a public collection", () => {
       const dashboardInPublicCollection = createMockDashboard({
         collection: PUBLIC_COLLECTION,
+        // Unjustified type cast. FIXME
         collection_id: PUBLIC_COLLECTION.id as number,
       });
 
@@ -373,6 +378,7 @@ describe("LinkedEntityPicker", () => {
     describe("dashboard in a personal collection", () => {
       const dashboardInPersonalCollection = createMockDashboard({
         collection: PERSONAL_COLLECTION,
+        // Unjustified type cast. FIXME
         collection_id: PERSONAL_COLLECTION.id as number,
       });
 

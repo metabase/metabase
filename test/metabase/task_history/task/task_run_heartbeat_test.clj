@@ -32,7 +32,8 @@
 (deftest send-heartbeat-ignores-other-processes-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "send-heartbeat! does NOT update runs belonging to other processes"
-      (let [old-time      (t/minus (t/offset-date-time) (t/hours 3))
+      ;; millisecond-clean so app-DB storage rounding can't shift it (truncation below can't undo rounding-up)
+      (let [old-time      (t/truncate-to (t/minus (t/offset-date-time) (t/hours 3)) :millis)
             other-uuid    "other-process-uuid"]
         (mt/with-temp [:model/TaskRun {run-id :id} {:run_type     :sync
                                                     :entity_type  :database
@@ -238,7 +239,6 @@
           (heartbeat/send-heartbeat!)
           (let [orphaned-run-ids (heartbeat/mark-orphaned-runs!)]
             (heartbeat/mark-orphaned-tasks! orphaned-run-ids))
-
           ;; Live run should have updated heartbeat, dead run should be orphaned
           (let [live-run (t2/select-one :model/TaskRun :id live-run-id)
                 dead-run (t2/select-one :model/TaskRun :id dead-run-id)]
@@ -246,7 +246,6 @@
             (is (t/after? (:updated_at live-run) old-time) "live run got heartbeat")
             (is (= :abandoned (:status dead-run)) "dead run marked abandoned")
             (is (some? (:ended_at dead-run)) "dead run has ended_at"))
-
           ;; Live task should be unchanged, dead task should be marked unknown
           (let [live-task (t2/select-one :model/TaskHistory :id live-task-id)
                 dead-task (t2/select-one :model/TaskHistory :id dead-task-id)]

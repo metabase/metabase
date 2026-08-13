@@ -1,9 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isTransientId } from "metabase/dashboard/utils";
-import { stripId } from "metabase/lib/formatting";
 import type { ComboboxItem } from "metabase/ui";
+import { isTransientId } from "metabase/utils/dashboard";
+import { stripId } from "metabase/utils/formatting";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
   canListFieldValues,
@@ -303,4 +303,17 @@ export function getOption(
   }
 
   return { value: String(value), label: String(label ?? value) };
+}
+
+export function parseStringValue(value: unknown): string | null {
+  const trimmedValue = trim(value);
+  if (trimmedValue === "") {
+    return null;
+  }
+
+  return trimmedValue;
+}
+
+function trim(value: unknown) {
+  return String(value || "").trim();
 }

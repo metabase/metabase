@@ -159,15 +159,15 @@
 (deftest ^:parallel projections-returns-projections-from-definition-test
   (let [projection  [:dimension {} uuid-1]
         definition  (-> (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)
-                        (assoc :projections [{:type :metric :id 42 :projection [projection]}]))]
-    (is (= [{:type :metric :id 42 :projection [projection]}]
+                        (assoc :projections [{:type :metric :id 42 :lib/uuid "tp-uuid" :projection [projection]}]))]
+    (is (= [{:type :metric :id 42 :lib/uuid "tp-uuid" :projection [projection]}]
            (lib-metric.definition/projections definition)))))
 
 (deftest ^:parallel projections-returns-multiple-projections-test
   (let [projection-1 [:dimension {} uuid-1]
         projection-2 [:dimension {:temporal-unit :month} uuid-2]
         definition   (-> (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)
-                         (assoc :projections [{:type :metric :id 42 :projection [projection-1 projection-2]}]))]
+                         (assoc :projections [{:type :metric :id 42 :lib/uuid "tp-uuid" :projection [projection-1 projection-2]}]))]
     (is (= [projection-1 projection-2]
            (lib-metric.definition/flat-projections (lib-metric.definition/projections definition))))))
 
@@ -204,13 +204,13 @@
     (let [dr1 [:dimension {} "d1"]
           dr2 [:dimension {} "d2"]]
       (is (= [dr1 dr2]
-             (lib-metric.definition/flat-projections [{:type :metric :id 1 :projection [dr1 dr2]}])))))
+             (lib-metric.definition/flat-projections [{:type :metric :id 1 :lib/uuid "a" :projection [dr1 dr2]}])))))
   (testing "multiple entries"
     (let [dr1 [:dimension {} "d1"]
           dr2 [:dimension {} "d2"]]
       (is (= [dr1 dr2]
-             (lib-metric.definition/flat-projections [{:type :metric :id 1 :projection [dr1]}
-                                                      {:type :measure :id 2 :projection [dr2]}]))))))
+             (lib-metric.definition/flat-projections [{:type :metric :id 1 :lib/uuid "a" :projection [dr1]}
+                                                      {:type :measure :id 2 :lib/uuid "b" :projection [dr2]}]))))))
 
 ;;; -------------------------------------------------- expression-leaves --------------------------------------------------
 
@@ -240,6 +240,13 @@
           expr  [:* {} inner leaf3]]
       (is (= [leaf1 leaf2 leaf3] (lib-metric.definition/expression-leaves expr))))))
 
+(deftest ^:parallel expression-leaves-with-constant-test
+  (testing "arithmetic with constant returns only the metric leaf"
+    (let [leaf [:metric {:lib/uuid "a"} 1]]
+      (is (= [leaf] (lib-metric.definition/expression-leaves [:* {} leaf 100])))))
+  (testing "bare number returns empty vector"
+    (is (= [] (lib-metric.definition/expression-leaves 42)))))
+
 (deftest ^:parallel expression-leaves-invalid-input-test
   (testing "nil returns empty vector"
     (is (= [] (lib-metric.definition/expression-leaves nil))))
@@ -260,6 +267,106 @@
                (lib-metric.definition/expression-leaves [op {} leaf1 leaf2]))
             (str "operator " op " should be supported"))))))
 
+;;; -------------------------------------------------- projection-valid? --------------------------------------------------
+
+(deftest ^:parallel projection-valid?-single-leaf-no-projections-test
+  (testing "single leaf with no projections is not valid"
+    (let [definition (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)]
+      (is (not (lib-metric.definition/projection-valid? definition))))))
+
+(deftest ^:parallel projection-valid?-single-leaf-with-projection-test
+  (testing "single leaf with a projection is valid"
+    (let [definition (-> (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)
+                         (assoc :projections [{:type :metric :id 42
+                                               :projection [[:dimension {} uuid-1]]}]))]
+      (is (lib-metric.definition/projection-valid? definition)))))
+
+(deftest ^:parallel projection-valid?-single-leaf-empty-projection-vector-test
+  (testing "single leaf with empty projection vector is not valid"
+    (let [definition (-> (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)
+                         (assoc :projections [{:type :metric :id 42
+                                               :projection []}]))]
+      (is (not (lib-metric.definition/projection-valid? definition))))))
+
+(deftest ^:parallel projection-valid?-arithmetic-all-projected-test
+  (testing "arithmetic expression with all leaves projected is valid"
+    (let [definition {:lib/type          :metric/definition
+                      :expression        [:+ {} [:metric {:lib/uuid "a"} 1] [:measure {:lib/uuid "b"} 2]]
+                      :filters           []
+                      :projections       [{:type :metric  :id 1 :projection [[:dimension {} uuid-1]]}
+                                          {:type :measure :id 2 :projection [[:dimension {} uuid-2]]}]
+                      :metadata-provider mock-provider}]
+      (is (lib-metric.definition/projection-valid? definition)))))
+
+(deftest ^:parallel projection-valid?-arithmetic-one-missing-test
+  (testing "arithmetic expression with one leaf missing projection is not valid"
+    (let [definition {:lib/type          :metric/definition
+                      :expression        [:+ {} [:metric {:lib/uuid "a"} 1] [:measure {:lib/uuid "b"} 2]]
+                      :filters           []
+                      :projections       [{:type :metric :id 1 :projection [[:dimension {} uuid-1]]}]
+                      :metadata-provider mock-provider}]
+      (is (not (lib-metric.definition/projection-valid? definition))))))
+
+(deftest ^:parallel projection-valid?-constant-in-arithmetic-test
+  (testing "only real leaves need projections when constants present"
+    (let [definition {:lib/type          :metric/definition
+                      :expression        [:* {} [:metric {:lib/uuid "a"} 1] 100]
+                      :filters           []
+                      :projections       [{:type :metric :id 1 :projection [[:dimension {} uuid-1]]}]
+                      :metadata-provider mock-provider}]
+      (is (lib-metric.definition/projection-valid? definition)))))
+
+(deftest ^:parallel projection-valid?-wrong-type-match-test
+  (testing "projection with wrong type does not match"
+    (let [definition {:lib/type          :metric/definition
+                      :expression        [:metric {:lib/uuid "a"} 1]
+                      :filters           []
+                      :projections       [{:type :measure :id 1 :projection [[:dimension {} uuid-1]]}]
+                      :metadata-provider mock-provider}]
+      (is (not (lib-metric.definition/projection-valid? definition))))))
+
+;;; -------------------------------------------------- unprojected-sources --------------------------------------------------
+
+(deftest ^:parallel unprojected-sources-single-leaf-no-projections-test
+  (testing "single leaf with no projections returns the leaf"
+    (let [definition (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)
+          result     (lib-metric.definition/unprojected-sources definition)]
+      (is (= 1 (count result)))
+      (is (= :metric (first (first result))))
+      (is (= 42 (nth (first result) 2))))))
+
+(deftest ^:parallel unprojected-sources-single-leaf-with-projection-test
+  (testing "single leaf with projection returns empty"
+    (let [definition (-> (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)
+                         (assoc :projections [{:type :metric :id 42
+                                               :projection [[:dimension {} uuid-1]]}]))
+          result     (lib-metric.definition/unprojected-sources definition)]
+      (is (empty? result)))))
+
+(deftest ^:parallel unprojected-sources-arithmetic-one-missing-test
+  (testing "arithmetic with one missing returns that leaf"
+    (let [leaf-b     [:measure {:lib/uuid "b"} 2]
+          definition {:lib/type          :metric/definition
+                      :expression        [:+ {} [:metric {:lib/uuid "a"} 1] leaf-b]
+                      :filters           []
+                      :projections       [{:type :metric :id 1 :projection [[:dimension {} uuid-1]]}]
+                      :metadata-provider mock-provider}
+          result     (lib-metric.definition/unprojected-sources definition)]
+      (is (= 1 (count result)))
+      (is (= :measure (first (first result))))
+      (is (= 2 (nth (first result) 2))))))
+
+(deftest ^:parallel unprojected-sources-all-projected-test
+  (testing "all sources projected returns empty"
+    (let [definition {:lib/type          :metric/definition
+                      :expression        [:+ {} [:metric {:lib/uuid "a"} 1] [:measure {:lib/uuid "b"} 2]]
+                      :filters           []
+                      :projections       [{:type :metric  :id 1 :projection [[:dimension {} uuid-1]]}
+                                          {:type :measure :id 2 :projection [[:dimension {} uuid-2]]}]
+                      :metadata-provider mock-provider}
+          result     (lib-metric.definition/unprojected-sources definition)]
+      (is (empty? result)))))
+
 ;;; -------------------------------------------------- Schema Validation --------------------------------------------------
 
 (deftest ^:parallel metric-definition-schema-test
@@ -279,5 +386,5 @@
     (testing "definition with typed projections"
       (is (nil? (me/humanize (mr/explain ::lib-metric.schema/metric-definition
                                          (assoc valid-definition
-                                                :projections [{:type :metric :id 1
+                                                :projections [{:type :metric :id 1 :lib/uuid uuid-1
                                                                :projection [[:dimension {} uuid-1]]}]))))))))

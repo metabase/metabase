@@ -57,8 +57,12 @@ export const assertIsNotEllipsified = (element) => {
 };
 
 export const isEllipsified = (element) => {
+  // Skip axes that don't clip; `overflow-y: visible` elements report scrollHeight > clientHeight without being truncated.
+  const { overflowX, overflowY } = window.getComputedStyle(element);
+  const verticalClips = overflowY !== "visible";
+  const horizontalClips = overflowX !== "visible";
   return (
-    element.scrollHeight > element.clientHeight ||
-    element.scrollWidth > element.clientWidth
+    (verticalClips && element.scrollHeight > element.clientHeight) ||
+    (horizontalClips && element.scrollWidth > element.clientWidth)
   );
 };

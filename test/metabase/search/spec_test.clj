@@ -4,6 +4,8 @@
    [metabase.search.spec :as search.spec]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel test-qualify-column
   (is (= [:table.column :column] (#'search.spec/qualify-column :table :column)))
   (is (= :qualified.column (#'search.spec/qualify-column :table :qualified.column)))
@@ -66,6 +68,7 @@
                                                       :document_id
                                                       :last_used_at
                                                       :name
+                                                      :query_type
                                                       :type
                                                       :view_count
                                                       :created_at
@@ -95,12 +98,13 @@
 (deftest ^:parallel search-model-hooks-test-2
   ;; TODO replace real specs with frozen test ones once things have stabilized
   (is (= #:model{:Table      #{{:search-model "segment",
-                                :fields       #{:description :schema :name :db_id}
+                                :fields       #{:description :schema :name :db_id :display_name}
                                 :where        [:= :updated.id :this.table_id]}
                                {:search-model "table",
                                 :fields
                                 #{:active :description :schema :name :id :db_id :initial_sync_status :display_name
-                                  :visibility_type :view_count :created_at :updated_at :collection_id :is_published}
+                                  :visibility_type :view_count :created_at :updated_at :collection_id :is_published
+                                  :data_layer :data_authority}
                                 :where        [:= :updated.id :this.id]}},
                  :Database   #{{:search-model "table"
                                 :fields #{:name :router_database_id}
@@ -110,7 +114,6 @@
                                 :where        [:= :updated.id :this.id]}}
                  :Collection #{{:search-model "collection"
                                 :fields       #{:authority_level :archived :description :name :type :id
-
                                                 :archived_directly :location :namespace :created_at}
                                 :where        [:= :updated.id :this.id]}
                                {:search-model "table"
@@ -144,6 +147,36 @@
           (is (actual-models em))))
       (testing "... and nothing else does"
         (is (empty? (sort-by name (remove expected-models actual-models))))))))
+
+(deftest ^:parallel model-hooks-are-cached-test
+  ;; The first call resolves lazily loaded models, which registers more spec methods and changes the cache key.
+  (search.spec/model-hooks)
+  (is (identical? (search.spec/model-hooks) (search.spec/model-hooks))))
+
+(deftest ^:synchronized model-hooks-cache-invalidates-on-spec-redefinition-test
+  (testing "replacing a spec method invalidates the cached model-hooks"
+    ;; Registering a throwaway spec would derive a fake model into :hook/search-index and break
+    ;; every-model-is-hooked-test, so probe by swapping an existing method out and back.
+    (let [spec-multifn search.spec/spec*
+          ;; The first call resolves lazily loaded models, registering spec methods as it goes, so it caches
+          ;; under a key that is stale by the time it returns. The second call warms the settled method table.
+          _            (search.spec/model-hooks)
+          warm         (search.spec/model-hooks)
+          original     (get-method spec-multifn "card")]
+      ;; Without a hit here the probe below would miss whatever the cache key did, proving nothing.
+      (is (identical? warm (search.spec/model-hooks)))
+      (try
+        (.addMethod ^clojure.lang.MultiFn spec-multifn
+                    "card"
+                    (fn [_]
+                      (update (original "card") :render-terms assoc :cache-probe :cache_probe)))
+        (is (contains? (->> (get (search.spec/model-hooks) :model/Card)
+                            (filter #(= "card" (:search-model %)))
+                            first
+                            :fields)
+                       :cache_probe))
+        (finally
+          (.addMethod ^clojure.lang.MultiFn spec-multifn "card" original))))))
 
 (deftest ^:parallel index-version-hash-test
   (testing "index-version-hash returns a consistent value"

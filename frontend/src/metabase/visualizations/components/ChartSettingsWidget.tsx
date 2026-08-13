@@ -1,27 +1,27 @@
 import cx from "classnames";
-import type { ComponentType } from "react";
+import type { WidgetMount } from "custom-viz";
+import type { CSSProperties, ComponentType } from "react";
 
-import PopoverS from "metabase/common/components/Popover/Popover.module.css";
 import FormS from "metabase/css/components/form.module.css";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
 
-import { Root } from "./ChartSettingsWidget.styled";
+import S from "./ChartSettingsWidget.module.css";
+
+export type ChartSettingsWidgetVariant = "default" | "form-field";
 
 type Props = {
   title?: string;
   description?: string;
   hint?: string;
   hidden?: boolean;
-  disabled?: boolean;
-  widget?: string | ComponentType<{ id: string }>;
+  widget?: string | ComponentType<{ id: string }> | WidgetMount;
   inline?: boolean;
-  marginBottom?: string;
   props?: Record<string, unknown>;
-  noPadding?: boolean;
-  variant?: "default" | "form-field";
-  borderBottom?: boolean;
+  variant?: ChartSettingsWidgetVariant;
   dataTestId?: string;
   id: string;
+  style?: CSSProperties;
 };
 
 const ChartSettingsWidget = ({
@@ -29,16 +29,12 @@ const ChartSettingsWidget = ({
   description,
   hint,
   hidden,
-  disabled,
   variant = "default",
   inline = false,
-  marginBottom = undefined,
   widget: Widget,
   dataTestId,
   props,
-  // disables X padding for certain widgets so divider line extends to edge
-  noPadding,
-  borderBottom,
+  style,
   // NOTE: pass along special props to support:
   // * adding additional fields
   // * substituting widgets
@@ -46,19 +42,17 @@ const ChartSettingsWidget = ({
 }: Props) => {
   const isFormField = variant === "form-field";
   return (
-    <Root
+    <Box
       hidden={hidden}
-      noPadding={noPadding}
-      disabled={disabled}
       className={cx({
         [FormS.FormField]: isFormField,
-        [PopoverS.FormField]: isFormField,
+        [S.inline]: inline && !hidden,
       })}
-      inline={inline}
-      marginBottom={marginBottom}
+      mx="lg"
+      mb="lg"
       data-testid={dataTestId ?? `chart-settings-widget-${extraWidgetProps.id}`}
       data-field-title={title}
-      borderBottom={borderBottom}
+      style={style}
     >
       {title && (
         <Group align="center" gap="xs" mb={inline && !hidden ? 0 : "sm"}>
@@ -83,8 +77,16 @@ const ChartSettingsWidget = ({
           {description}
         </Box>
       )}
-      {Widget && <Widget {...extraWidgetProps} {...props} />}
-    </Root>
+      {Widget &&
+        (PLUGIN_CUSTOM_VIZ.isWidgetMount(Widget) ? (
+          <PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget
+            mount={Widget}
+            widgetProps={{ ...extraWidgetProps, ...props }}
+          />
+        ) : (
+          <Widget {...extraWidgetProps} {...props} />
+        ))}
+    </Box>
   );
 };
 

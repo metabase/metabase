@@ -76,6 +76,16 @@ export interface MetabaseDashboardAttributes {
   "initial-parameters"?: object;
 
   /**
+   * Controlled dashboard filters values, e.g. `{ 'productId': '42' }`.
+   * Setting this attribute supersedes `initial-parameters` as the seed
+   * and stays in sync with subsequent mutations. Pair with the
+   * `parameters-change` DOM event to track edits.
+   *
+   * @remarks Pro/Enterprise, Guest embed
+   */
+  parameters?: object;
+
+  /**
    * List of filter names to hide from the dashboard, e.g. `['productId']`.
    *
    * @remarks Pro/Enterprise
@@ -90,6 +100,13 @@ export interface MetabaseDashboardAttributes {
    * @remarks Pro/Enterprise
    */
   "enable-entity-navigation"?: boolean;
+
+  /**
+   * Optional custom context string passed through to the guest token endpoint.
+   *
+   * @remarks Guest embed
+   */
+  "custom-context"?: string;
 }
 
 /**
@@ -104,7 +121,8 @@ export interface MetabaseQuestionAttributes {
   /**
    * The ID of the question to embed. Can be a regular ID or an
    * [entity ID](https://www.metabase.com/docs/latest/installation-and-operation/serialization#entity-ids-work-with-embedding).
-   * Use `"new"` to embed the query builder. Only for SSO embeds — guest embeds use `token`.
+   * Use `"new"` to embed the query builder, or `"new-native"` to embed the SQL editor.
+   * Only for SSO embeds — guest embeds use `token`.
    */
   "question-id": number | string;
 
@@ -156,6 +174,16 @@ export interface MetabaseQuestionAttributes {
   "initial-sql-parameters"?: object;
 
   /**
+   * Controlled SQL parameter values, e.g. `{ "productId": "42" }`. Setting
+   * this attribute supersedes `initial-sql-parameters` as the seed and
+   * stays in sync with subsequent mutations. Pair with the
+   * `sql-parameters-change` DOM event to track edits.
+   *
+   * @remarks Pro/Enterprise, Guest embed
+   */
+  "sql-parameters"?: object;
+
+  /**
    * List of parameter names to hide from the question.
    *
    * @remarks Pro/Enterprise
@@ -185,6 +213,13 @@ export interface MetabaseQuestionAttributes {
    * @remarks Pro/Enterprise, Guest embed
    */
   "entity-types"?: ("model" | "table")[];
+
+  /**
+   * Optional custom context string passed through to the guest token endpoint.
+   *
+   * @remarks Guest embed
+   */
+  "custom-context"?: string;
 }
 
 /**
@@ -247,7 +282,7 @@ export interface MetabaseBrowserAttributes {
   "data-picker-entity-types"?: ("model" | "table")[];
 
   /**
-   * Whether to show the "New exploration" button.
+   * Whether to show the "New question" button.
    *
    * @defaultValue true
    */

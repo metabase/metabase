@@ -2,9 +2,10 @@
   "Functions shared by the various SSO implementations"
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as ee-sso-settings]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -28,15 +29,15 @@
 
 (defmethod check-user-provisioning :saml
   [_]
-  (maybe-throw-user-provisioning (sso-settings/saml-user-provisioning-enabled?)))
+  (maybe-throw-user-provisioning (ee-sso-settings/saml-user-provisioning-enabled?)))
 
 (defmethod check-user-provisioning :ldap
   [_]
-  (maybe-throw-user-provisioning (sso-settings/ldap-user-provisioning-enabled?)))
+  (maybe-throw-user-provisioning (ee-sso-settings/ldap-user-provisioning-enabled?)))
 
 (defmethod check-user-provisioning :jwt
   [_]
-  (maybe-throw-user-provisioning (sso-settings/jwt-user-provisioning-enabled?)))
+  (maybe-throw-user-provisioning (ee-sso-settings/jwt-user-provisioning-enabled?)))
 
 (defmethod check-user-provisioning :slack-connect
   [_]
@@ -44,7 +45,7 @@
 
 (defmethod check-user-provisioning :oidc
   [_]
-  (maybe-throw-user-provisioning (sso-settings/oidc-user-provisioning-enabled?)))
+  (maybe-throw-user-provisioning (ee-sso-settings/oidc-user-provisioning-enabled?)))
 
 (defn relative-uri?
   "Checks that given `uri` is not an absolute (so no scheme and no host)."
@@ -70,7 +71,7 @@
                          (= (.getHost redirect) our-host)))
       redirect-url)
     (catch Exception e
-      (log/error e "Invalid redirect URL")
+      (log/errorf "Invalid redirect URL: %s" (ex-message e))
       (throw (ex-info (tru "Invalid redirect URL")
                       {:status-code  400
                        :redirect-url redirect-url})))))
@@ -89,16 +90,21 @@
   (-> group-mappings vals flatten set))
 
 (defn stringify-valid-attributes
-  "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings"
+  "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings.
+  Multi-value attributes (vectors, lists, lazy seqs — produced by SAML/JWT for repeated attributes) are joined into a
+  comma-separated string so that downstream code receives a usable string value."
   [attrs]
   (->> attrs
        (keep (fn [[key value]]
                (cond
-                 (or (vector? value) (map? value) (nil? value))
-                 (log/warnf "Dropping attribute '%s' with non-stringable value: %s" (name key) value)
+                 (or (map? value) (nil? value))
+                 (log/warnf "Dropping attribute '%s' with non-stringable value" (name key))
 
                  (str/starts-with? (name key) "@")
                  (log/warnf "Dropping attribute '%s', keys beginning with `@` are reserved" (name key))
+
+                 (sequential? value)
+                 [(u/qualified-name key) (str/join "," (map str value))]
 
                  :else
                  [(u/qualified-name key) (str value)])))

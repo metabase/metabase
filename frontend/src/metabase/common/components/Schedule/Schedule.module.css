@@ -38,7 +38,7 @@
 .Horizontal {
   display: flex;
   flex-flow: row wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.25rem 0.5rem;
 }
 

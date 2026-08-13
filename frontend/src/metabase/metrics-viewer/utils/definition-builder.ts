@@ -292,6 +292,7 @@ export function getDefinitionColumnName(def: MetricDefinition): string | null {
   if (!meta) {
     return null;
   }
+  // Unjustified type cast. FIXME
   const info = LibMetric.displayInfo(def, meta) as
     | MetricDisplayInfo
     | MeasureDisplayInfo;

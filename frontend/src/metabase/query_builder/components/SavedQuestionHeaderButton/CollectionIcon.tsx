@@ -24,7 +24,7 @@ export const CollectionIcon = ({
 
   return (
     <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-      c="brand"
+      c="core-brand"
       collection={collection}
       entity={question.type()}
     />

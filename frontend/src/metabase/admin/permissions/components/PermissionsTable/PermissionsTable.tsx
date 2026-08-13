@@ -3,9 +3,8 @@ import cx from "classnames";
 import { memo, useCallback, useRef, useState } from "react";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import { Flex, Text, Tooltip } from "metabase/ui";
+import { Ellipsified, Flex, Text, Tooltip } from "metabase/ui";
 
 import type {
   DataPermissionValue,
@@ -232,10 +231,7 @@ const EntityRow = memo(function EntityRow({
     <PermissionsTableRow aria-label={`${entity.name} permissions`}>
       <PermissionsTableCell>
         {entity.canSelect ? (
-          // @ts-expect-error - Link expects a `to` prop, but we don't have one. maybe this should be a button?
-          <EntityNameLink //force line break so we can type check next line
-            onClick={() => onSelect?.(entity)}
-          >
+          <EntityNameLink onClick={() => onSelect?.(entity)}>
             {entityName}
           </EntityNameLink>
         ) : (

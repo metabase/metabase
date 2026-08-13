@@ -7,7 +7,7 @@ redirect_from:
 
 # Migrating to a production application database
 
-This page covers how to convert a Metabase that's been using the built-in application database, H2, to a production-ready instance PostgreSQL. For more on why you should use Postgres as your app DB, check out [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
+This page covers how to convert a Metabase that's been using the built-in application database, H2, to a production-ready instance of PostgreSQL. For more on why you should use Postgres as your app DB, check out [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
 
 If you'd rather move to Metabase Cloud, check out [Migrate to Metabase Cloud](../cloud/migrate/guide.md).
 
@@ -31,9 +31,9 @@ You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase
 
 We recommend using PostgreSQL for your application database.
 
-- [PostgreSQL](https://www.postgresql.org/). Minimum version: `12`. Postgres is our preferred choice for Metabase's application database.
-- [MySQL](https://www.mysql.com/). Minimum version: `8.0.17`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
-- [MariaDB](https://mariadb.org/). Minimum version: `10.4.0`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
+- [PostgreSQL](https://www.postgresql.org/). Minimum version: `14`. Postgres is our preferred choice for Metabase's application database.
+- [MySQL](https://www.mysql.com/). Minimum version: `8.4.0`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
+- [MariaDB](https://mariadb.org/). Minimum version: `10.6.0`. Required settings (which are the default): `utf8mb4_unicode_ci` collation, `utf8mb4` character set, and `innodb_large_prefix=ON`.
 
 ## How can I tell if my Metabase instance uses H2?
 
@@ -153,13 +153,13 @@ export MB_DB_CONNECTION_URI="jdbc:postgresql://<host>:5432/metabase?user=<userna
 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
 ```
 
-Metabase will start up, perform the migration (meaning, it'll take the data from the H2 file and put it into your new app db, in this a Postgres db), and then exit.
+Metabase will start up, perform the migration (meaning, it'll take the data from the H2 file and put it into your new app db, in this case a Postgres db), and then exit.
 
 See [Configuring the application database](configuring-application-database.md).
 
 ### 6. Start a new Docker container that uses the new app db
 
-With your new application database populated with your Metabase data, you can start a new container and tell the Metabase in the container to connect to the appdb. The command will looks something like this:
+With your new application database populated with your Metabase data, you can start a new container and tell the Metabase in the container to connect to the appdb. The command will look something like this:
 
 ```
 docker run -d -p 3000:3000 \

@@ -61,7 +61,7 @@
         {:message (tru "Unable to connect to database.")})
       (catch Throwable e
         (when (and log-exception (not (some->> e ex-cause ex-data ::driver/can-connect-message?)))
-          (log/error e "Cannot connect to Database"))
+          (log/errorf "Cannot connect to Database: %s" (ex-message e)))
         (if (-> e ex-data :message)
           (ex-data e)
           {:message (ex-message e)})))))
@@ -91,9 +91,9 @@
                                     (nil? (test-database-connection engine details-with-ssl :log-exception false)))
                            details-with-ssl)]
     (or
-      ;; Opportunistic SSL
+     ;; Opportunistic SSL
      details-with-ssl
-      ;; Try with original parameters
+     ;; Try with original parameters
      (some-> (test-database-connection engine details)
              (assoc :valid false))
      details)))

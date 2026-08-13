@@ -106,6 +106,24 @@
   (for [col (meta/fields table)]
     (meta/field-metadata table col)))
 
+(deftest ^:parallel columns-mapped-to-same-field-id-stay-distinct-test
+  (testing "distinct-named columns all mapped to the same field id remain separate columns (metabase#33427)"
+    (let [rm (for [[i n] (map-indexed vector ["A" "B" "C"])]
+               (assoc (meta/field-metadata :orders :id)
+                      :name         n
+                      :display-name (str "ID" (inc i))))
+          mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id              1
+                        :name            "M"
+                        :database-id     (meta/id)
+                        :dataset-query   (lib.tu/native-query)
+                        :result-metadata (vec rm)}]})
+          q  (lib/query mp (lib.metadata/card mp 1))]
+      (is (= 3 (count (lib/returned-columns q))))
+      (is (= ["ID1" "ID2" "ID3"]
+             (map #(:display-name (lib/display-info q %)) (lib/returned-columns q)))))))
+
 (defn- sort-cols [cols]
   (sort-by (juxt :id :name :lib/join-alias :lib/desired-column-alias) cols))
 
@@ -217,7 +235,6 @@
                          (map #(dissoc % :id :table-id))
                          sorted)
                     (->> nested lib.metadata.calculation/returned-columns sorted)))
-
             (is (=? (->> (concat (from :source/card (cols-of :orders))
                                  (from :source/card (cols-of :products)))
                          (map #(dissoc % :id :table-id))
@@ -308,16 +325,16 @@
   [{:keys [result-metadata-style result-metadata-fn]}]
   (let [result-metadata-fn (or result-metadata-fn
                                (case result-metadata-style
-                                 ::mlv2-returned-columns lib.metadata.calculation/returned-columns
-                                 ::mlv2-expected-columns lib.metadata.result-metadata/returned-columns
-                                 ::legacy-snake-case-qp  (mu/fn :- [:sequential :map]
-                                                           [query]
-                                                           (for [col (lib.metadata.result-metadata/returned-columns query)]
-                                                             (-> col
-                                                                 (update-keys (fn [k]
-                                                                                (cond-> k
-                                                                                  (simple-keyword? k) u/->snake_case_en)))
-                                                                 (dissoc :lib/type))))))]
+                                 ::lib-returned-columns lib.metadata.calculation/returned-columns
+                                 ::lib-expected-columns lib.metadata.result-metadata/returned-columns
+                                 ::legacy-snake-case-qp (mu/fn :- [:sequential :map]
+                                                          [query]
+                                                          (for [col (lib.metadata.result-metadata/returned-columns query)]
+                                                            (-> col
+                                                                (update-keys (fn [k]
+                                                                               (cond-> k
+                                                                                 (simple-keyword? k) u/->snake_case_en)))
+                                                                (dissoc :lib/type))))))]
     (as-> meta/metadata-provider mp
       (lib.tu/mock-metadata-provider
        mp
@@ -361,7 +378,7 @@
 ;;; adapted from [[metabase.queries-rest.api.card-test/model-card-test-2]]
 (deftest ^:parallel preserve-edited-metadata-test
   (testing "Cards preserve their edited metadata"
-    (doseq [result-metadata-style [::mlv2-returned-columns ::mlv2-expected-columns ::legacy-snake-case-qp]]
+    (doseq [result-metadata-style [::lib-returned-columns ::lib-expected-columns ::legacy-snake-case-qp]]
       (testing (str "result metadata style = " (name result-metadata-style))
         (let [mp (preserve-edited-metadata-test-mock-metadata-provider {:result-metadata-style result-metadata-style})]
           (letfn [(only-user-edits [col]
@@ -688,7 +705,7 @@
           model-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
           mp (lib.tu/mock-metadata-provider
               meta/metadata-provider
-               ;; intentionally omitting `:dataset-query`
+              ;; intentionally omitting `:dataset-query`
               {:cards [{:id              model-id
                         :type            :model
                         :database-id     (meta/id)

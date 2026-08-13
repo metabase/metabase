@@ -42,44 +42,47 @@ New customers can sign up for a [Metabase Cloud instance with storage](https://s
 
 ### Existing cloud customers
 
-Current customers can add storage through the Metabase Store:
+To add storage to an existing instance, use the following steps.
 
-1. Log in to the [Metabase Store](https://store.metabase.com/).
-2. In the **Instances** section, click **Add Storage** for the instance you'd like to add storage to.
-3. Choose how much storage you would like to add. You can start with 500K stored rows per month and add more storage later.
+1. Log in to your Metabase [Store account](https://store.metabase.com).
+2. Navigate to **Instances**.
+3. In the instance you want to add storage to, click **Manage plan**.
+4. Find the **Manage add-ons** section.
+5. In the **Storage** field, click **Enable**.
+6. Use the slider to select the number of stored rows you want to add.
+7. Click **Add storage**.
 
 ## Metabase Cloud Storage pricing
 
 Pricing depends on how much data you need to store. See the Storage section on our [pricing page](https://www.metabase.com/pricing/).
 
-## Increasing Metabase Cloud Storage
+### Increase Metabase Cloud Storage
 
-To increase the number of rows you can store:
+To increase the number of stored rows, use the following steps:
 
-1. Log in to your [Metabase Store account](https://store.metabase.com/)
-2. In the **Instances** tab, navigate to the relevant instance.
-3. Click on **Manage storage**.
-4. Click **Edit**.
-5. Click **Add storage**.
+1. Log in to your Metabase [Store account](https://store.metabase.com).
+2. Navigate to **Instances**.
+3. In the instance you want to increase storage for, click **Manage plan**.
+4. Find the **Manage add-ons** section.
+5. In the **Storage** field, click **Manage**.
+6. Click **Edit**.
+7. Use the slider to increase the number of stored rows.
+8. Click **Add storage**.
 
-You can select from the following row counts:
+## Delete Metabase Cloud Storage
 
-- 500K
-- 1M
-- 5M
-- 10M
-- 20M
+> **WARNING:** This action permanently erases all data in your Metabase Cloud Storage.
 
-## Deleting Metabase Cloud Storage
+To remove Metabase Cloud Storage, use the following steps:
 
-To remove Metabase Cloud Storage (which will _permanently_ erase all its data):
-
-1. Log in to your [Metabase Store account](https://store.metabase.com/)
-2. In the **Instances** tab, navigate to the relevant instance.
-3. Click **Manage storage**.
-4. Click **Edit**.
-5. Click **Disable storage**.
-6. Click **Erase all data**, which---**WARNING**--will erase _all of its data_. We won't be able to recover the data, so only do this if you're certain you no longer need the storage and its data.
+1. Log in to your Metabase [Store account](https://store.metabase.com).
+2. Navigate to **Instances**.
+3. In the instance you want to delete storage from, click **Manage plan**.
+4. Find the **Manage add-ons** section.
+5. In the **Storage** field, click **Manage**.
+6. Click **Edit**.
+7. Click **Disable storage**.
+8. To confirm, click **Erase all data**.
 
 ## Syncing Google Sheets with Metabase
 

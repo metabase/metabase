@@ -1,7 +1,7 @@
 import { action } from "@storybook/addon-actions";
 import type { StoryFn } from "@storybook/react";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 
 import {
   ModalContent,
@@ -33,7 +33,7 @@ const Template: StoryFn<ModalContentProps> = (args) => {
     <div
       style={{
         width: 1200,
-        background: color("background-primary"),
+        background: color("background_page-primary"),
         border: "1px solid black",
       }}
     >

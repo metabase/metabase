@@ -1,0 +1,61 @@
+name: Schemaless Query
+description: Query on schema-less SQLite database
+entity_id: schemaless-query
+created_at: '2026-01-01T00:00:00.000000Z'
+creator_id: test@metabase.com
+display: table
+archived: false
+query_type: query
+database_id: SQLite DB
+table_id:
+- SQLite DB
+- null
+- users
+dataset_query:
+  database: SQLite DB
+  query:
+    source-table:
+    - SQLite DB
+    - null
+    - users
+  type: query
+result_metadata:
+- base_type: type/Integer
+  display_name: ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - SQLite DB
+    - null
+    - users
+    - id
+  - null
+  id:
+  - SQLite DB
+  - null
+  - users
+  - id
+  name: id
+  semantic_type: type/PK
+- base_type: type/Text
+  display_name: Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - SQLite DB
+    - null
+    - users
+    - name
+  - null
+  id:
+  - SQLite DB
+  - null
+  - users
+  - name
+  name: name
+  semantic_type: type/Name
+serdes/meta:
+- id: schemaless-query
+  label: schemaless_query
+  model: Card
+type: question

@@ -5,8 +5,10 @@ import { forwardRef, useCallback } from "react";
 import type { ChipGroupProps, GroupProps, TextProps } from "metabase/ui";
 import { Chip, Group, Text } from "metabase/ui";
 
-export interface FormChipGroupProps
-  extends Omit<ChipGroupProps, "value" | "error"> {
+export interface FormChipGroupProps extends Omit<
+  ChipGroupProps,
+  "value" | "error"
+> {
   name: string;
   label: string;
   groupProps?: GroupProps;

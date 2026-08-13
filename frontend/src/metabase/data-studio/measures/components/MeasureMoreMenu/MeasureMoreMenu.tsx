@@ -14,6 +14,7 @@ export function MeasureMoreMenu({
   return (
     <MoreMenu
       previewUrl={previewUrl}
+      previewLabel={t`Explore`}
       onRemove={onRemove}
       ariaLabel={t`Measure actions`}
       removeLabel={t`Remove measure`}

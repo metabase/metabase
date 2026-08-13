@@ -1,9 +1,10 @@
 import { Component } from "react";
-import type * as tippy from "tippy.js";
 
-import { getEventTarget } from "metabase/lib/dom";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/redux";
+import type { Dispatch } from "metabase/redux/store";
+import type { Path } from "metabase/router";
 import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
+import { getEventTarget } from "metabase/utils/dom";
 import { performAction } from "metabase/visualizations/lib/action";
 import type {
   ClickObject,
@@ -14,7 +15,6 @@ import type {
 import { isPopoverClickAction } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { Series, VisualizationSettings } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 import { ClickActionsView } from "./ClickActionsView";
 
@@ -29,6 +29,7 @@ interface ChartClickActionsProps {
     question?: Question,
   ) => void;
   onUpdateQuestion?: (question: Question) => void;
+  onSameOriginNavigation?: (location: Partial<Path>) => void;
   onClose?: () => void;
 }
 
@@ -43,8 +44,6 @@ export class ClickActionsPopover extends Component<
   state: State = {
     popoverAction: null,
   };
-
-  instance: tippy.Instance | null = null;
 
   componentDidUpdate(prevProps: Readonly<ChartClickActionsProps>): void {
     const { clicked } = this.props;
@@ -64,7 +63,12 @@ export class ClickActionsPopover extends Component<
   };
 
   handleClickAction = (action: RegularClickAction) => {
-    const { dispatch, onChangeCardAndRun, onUpdateQuestion } = this.props;
+    const {
+      dispatch,
+      onChangeCardAndRun,
+      onUpdateQuestion,
+      onSameOriginNavigation,
+    } = this.props;
     if (isPopoverClickAction(action)) {
       this.setState({ popoverAction: action });
     } else {
@@ -72,6 +76,7 @@ export class ClickActionsPopover extends Component<
         dispatch,
         onChangeCardAndRun,
         onUpdateQuestion,
+        onSameOriginNavigation,
       });
       if (didPerform) {
         this.close();
@@ -115,10 +120,9 @@ export class ClickActionsPopover extends Component<
       popover = (
         <PopoverContent
           onClick={this.handleClickAction}
-          onResize={() => {
-            this.instance?.popperInstance?.update();
-          }}
-          onChangeCardAndRun={onChangeCardAndRun}
+          onChangeCardAndRun={(options) =>
+            onChangeCardAndRun({ drillName: popoverAction.name, ...options })
+          }
           onClose={this.close}
           series={series}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}

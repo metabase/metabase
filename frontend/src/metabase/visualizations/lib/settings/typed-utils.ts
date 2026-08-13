@@ -54,17 +54,8 @@ const mergeTableColumns = (
     ({ name }) =>
       secondTableColumns.findIndex((col) => col.name === name) === -1,
   );
-  const removedColumns = secondTableColumns
-    .filter(
-      ({ name }) =>
-        firstTableColumns.findIndex((col) => col.name === name) === -1,
-    )
-    .map(({ name }) => name);
 
-  return [
-    ...secondTableColumns.filter(({ name }) => !removedColumns.includes(name)),
-    ...addedColumns,
-  ];
+  return [...secondTableColumns, ...addedColumns];
 };
 
 export const isSettingHiddenOnDashboards = (
@@ -89,10 +80,10 @@ export function sanitizeDashcardSettings(
   });
 }
 
-export function extendCardWithDashcardSettings(
-  card: Card | VirtualCard,
+export function extendCardWithDashcardSettings<T extends Card | VirtualCard>(
+  card: T,
   dashcardSettings?: VisualizationSettings,
-): Card | VirtualCard {
+): T {
   // Legacy broken behavior: When editing dashcard viz settings, we save both the edited setting and any settings with
   // persistDefault: true. This leads to saving data settings like graph.dimensions/graph.metrics even when they can't be edited in dashboards.
   const visualization = getVisualization(card.display);

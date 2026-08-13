@@ -5,7 +5,7 @@ summary: Use Python to wrangle your data in Metabase and write the results back 
 
 # Python transforms
 
-> Python transforms require the **Transforms add-on**.
+> Python transforms require the [Advanced transforms add-on](addons.md)
 
 Use Python to write [transforms](transforms-overview.md).
 
@@ -108,7 +108,7 @@ To use functions or classes from your Python library:
 
 ## Incremental Python transforms
 
-By default, Metabase will process all the data in all input tables, drop the existing target table (if one exists), and create a new table with the processed data. You can tell Metabase to only write **new** data to your target table by marking your transform as incremental.
+By default, Metabase will process all the data in all input tables, drop the existing target table (if one exists), and create a new table with the processed data. You can tell Metabase to only process **new** data by marking your transform as incremental.
 
 ### Prerequisites for incremental transforms
 
@@ -120,9 +120,8 @@ To make a Python transform incremental:
 
 1. Go to the transform's page in **Data studio > Transforms**.
 2. Switch to **Settings** tab.
-3. In **Column to check for new values**, select the column that Metabase should check to determine which values are new. See [Prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms) for more information on the requirements for that column.
-
-   Unlike [Query transforms](./query-transforms.md), where you select an _output_ column as the column to check for new values, with Python transforms, you have to select a column from the _input_ tables as the column to check for new values.
+3. In **Field to check for new values**, select the field in one of the source tables that Metabase should scan to determine which records are new or changed. Only some fields are eligible. See [prerequisites for incremental transforms](./transforms-overview.md#prerequisites-for-incremental-transforms).
+4. (Optional) To update matching rows instead of appending new ones, [add a merge key](./transforms-overview.md#add-merge-keys-to-upsert-rows).
 
 ## Current limitations of Python transforms
 

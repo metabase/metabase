@@ -1,4 +1,5 @@
-import { getPathnameWithoutSubPath, isWithinIframe } from "metabase/lib/dom";
+import { getPathnameWithoutSubPath } from "metabase/utils/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 /**
  * Returns whether the current route is in sync with the given pathname,

@@ -11,8 +11,21 @@ import {
   indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
-import { openSearchPanel, searchKeymap } from "@codemirror/search";
-import { EditorView, drawSelection, keymap } from "@codemirror/view";
+import {
+  closeSearchPanel,
+  getSearchQuery,
+  openSearchPanel,
+  search,
+  searchKeymap,
+  searchPanelOpen,
+} from "@codemirror/search";
+import {
+  EditorView,
+  ViewPlugin,
+  type ViewUpdate,
+  drawSelection,
+  keymap,
+} from "@codemirror/view";
 import {
   type BasicSetupOptions,
   type EditorState,
@@ -21,13 +34,13 @@ import {
   Prec,
   type Transaction,
 } from "@uiw/react-codemirror";
-import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
-import { isMac } from "metabase/lib/browser";
-import { isNotNull } from "metabase/lib/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
+import { isMac } from "metabase/utils/browser";
+import { getCspNonce } from "metabase/utils/csp";
+import { isNotNull } from "metabase/utils/types";
 
 import { highlightRanges } from "./highlights";
 
@@ -83,7 +96,9 @@ function useBaseExtensions({
       bracketMatching({
         brackets: "()",
       }),
+      search(),
       keyboardShortcuts({ onFormat }),
+      closeSearchPanelAfterLastReplace(),
       EditorView.lineWrapping,
       highlighting(),
       folds(),
@@ -101,7 +116,7 @@ function useBaseExtensions({
 // CodeMirror injects css into the DOM,
 // to make this work, it needs the have the correct CSP nonce.
 function nonce() {
-  const nonce = getNonce();
+  const nonce = getCspNonce();
   if (!nonce) {
     return null;
   }
@@ -120,6 +135,34 @@ function fonts() {
     "&": shared,
     ".cm-content": shared,
   });
+}
+
+function closeSearchPanelAfterLastReplace() {
+  return ViewPlugin.define((view) => ({
+    update(update: ViewUpdate) {
+      if (
+        !searchPanelOpen(update.startState) ||
+        !update.transactions.some((tr) => tr.isUserEvent("input.replace"))
+      ) {
+        return;
+      }
+
+      const query = getSearchQuery(update.state);
+      if (!query.valid) {
+        return;
+      }
+
+      const cursor = query.getCursor(update.state, 0, update.state.doc.length);
+      const hasMoreMatches = !cursor.next().done;
+
+      if (!hasMoreMatches) {
+        // closeSearchPanel dispatches; cannot run during ViewPlugin.update.
+        queueMicrotask(() => {
+          closeSearchPanel(view);
+        });
+      }
+    },
+  }));
 }
 
 function keyboardShortcuts({ onFormat }: { onFormat?: () => void }) {

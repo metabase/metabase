@@ -17,14 +17,13 @@ type Props = {
  * The banner will not be shown if:
  * - Inside an iframe
  * - The token has expired.
- * - The banner was never dismissed (i.e., `lastDismissed` is null) or
- * - The banner dismissal information is not available (i.e., `lastDismissed` is undefined).
+ * - There are more than 7 days remaining in the trial.
  *
  * If the trial is within the last 3 days, the function checks if the banner
  * was dismissed on the current day. Unless it was dismissed on that day,
  * the banner will be shown to the user.
  *
- * If the trial has more than 3 days remaining, the banner will be shown only if
+ * If the trial has between 4 and 7 days remaining, the banner will be shown only if
  * the user has never dismissed it.
  */
 export function shouldShowTrialBanner({
@@ -40,6 +39,11 @@ export function shouldShowTrialBanner({
 
   // No banner if the trial already expired
   if (daysRemaining < 0) {
+    return false;
+  }
+
+  // No banner if more than 7 days remaining
+  if (daysRemaining > 7) {
     return false;
   }
 

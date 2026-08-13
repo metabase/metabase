@@ -1,13 +1,13 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { CollectionInfoSidebar } from "../CollectionInfoSidebar";
 

@@ -1,22 +1,22 @@
 import { type HTMLAttributes, useCallback, useMemo } from "react";
 import { c, t } from "ttag";
 
+import { Schedule } from "metabase/common/components/Schedule/Schedule";
 import {
   cronToScheduleSettings,
   cronUnitToNumber,
   isRepeatingEvery,
-} from "metabase/admin/performance/utils";
-import { Schedule } from "metabase/common/components/Schedule/Schedule";
-import { getScheduleExplanation } from "metabase/lib/cron";
-import { formatNotificationScheduleDescription } from "metabase/lib/notifications";
-import { useSelector } from "metabase/lib/redux";
+} from "metabase/common/components/Schedule/cron";
 import {
   DEFAULT_ALERT_CRON_SCHEDULE,
   DEFAULT_ALERT_SCHEDULE,
+  formatNotificationScheduleDescription,
 } from "metabase/notifications/utils";
-import { getSetting } from "metabase/selectors/settings";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { getSetting } from "metabase/settings";
 import { Box, type BoxProps, Flex, Text } from "metabase/ui";
+import { getScheduleExplanation } from "metabase/utils/cron";
 import type {
   NotificationCronSubscription,
   ScheduleSettings,
@@ -62,6 +62,7 @@ export const NotificationSchedule = ({
       schedule: ScheduleSettings,
       cronExpression: string,
     ) {
+      // Unjustified type cast. FIXME
       if (PERIODIC_SCHEDULE_TYPES.includes(schedule.schedule_type as string)) {
         return null;
       }

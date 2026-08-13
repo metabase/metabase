@@ -46,36 +46,15 @@ If you surround your attribute value with double quotes, make sure to use single
 ></metabase-dashboard>
 ```
 
-## Resizing dashboards to fit their content
-
-The `<metabase-dashboard>` web component automatically resizes to fit its content. No additional configuration is needed.
-
 ## Question
 
-To render a question (chart):
-
-```html
-<metabase-question question-id="1"></metabase-question>
-```
-
-You can also use the question component to create new questions:
-
-- `question-id="new"` — opens the visual query builder.
-- `question-id="new-native"` — opens the SQL editor.
-
-For example, to embed the SQL editor:
-
-```html
-<metabase-question question-id="new-native"></metabase-question>
-```
-
-### Attributes
-
-{% include_file "{{ dirname }}/eajs/snippets/MetabaseQuestionAttributes.md" snippet="properties" %}
+- [Embed a chart](./chart.md)
+- [Embed a query editor](./query-builder.md)
+- [Question component reference](./question-reference.md), for `<metabase-question>` attributes and SDK props
 
 ## Browser
 
-{% include plans-blockquote.html feature="Browser component" convert_pro_link_to_embbedding=true%}
+{% include plans-blockquote.html feature="Browser component" convert_pro_link_to_embedding=true%}
 
 Browser component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
 
@@ -96,7 +75,7 @@ To render a collection browser so people can navigate a collection and open dash
 
 ## AI chat
 
-{% include plans-blockquote.html feature="AI chat component" convert_pro_link_to_embbedding=true%}
+{% include plans-blockquote.html feature="AI chat component" convert_pro_link_to_embedding=true%}
 
 AI chat component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
 
@@ -106,13 +85,15 @@ To render the AI chat interface:
 <metabase-metabot></metabase-metabot>
 ```
 
+If you're using the SDK, you can use either the [`MetabotQuestion`](./sdk/ai-chat.md#example) component or the [`useMetabot`](./sdk/ai-chat.md#building-custom-ai-chat-uis-with-usemetabot) hook for a custom UI.
+
 ### Attributes
 
 {% include_file "{{ dirname }}/eajs/snippets/MetabaseMetabotAttributes.md" snippet="properties" %}
 
 ## Customizing loader and error components
 
-{% include plans-blockquote.html feature="Customizing loader and error componentst" convert_pro_link_to_embbedding=true%}
+{% include plans-blockquote.html feature="Customizing loader and error components" convert_pro_link_to_embedding=true%}
 
 If you're using the [modular embedding SDK](./sdk/introduction.md), you can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 
@@ -125,4 +106,5 @@ If you're using the [modular embedding SDK](./sdk/introduction.md), you can prov
 ## Further reading
 
 - [Appearance](./appearance.md)
+- [Custom visualizations in embeds](./custom-visualizations.md)
 - [Modular embedding SDK](./sdk/introduction.md).

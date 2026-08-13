@@ -16,9 +16,11 @@ import {
   getIsEditing,
 } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
-import { getSetting } from "metabase/selectors/settings";
+import { useDispatch, useSelector } from "metabase/redux";
+import { useMaybeLocation } from "metabase/router";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
+import { getSetting } from "metabase/settings";
 import { Flex, Loader } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
@@ -35,10 +37,13 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
   const dispatch = useDispatch();
+  // The SDK renders the dashboard header outside the app router.
+  const location = useMaybeLocation() ?? undefined;
   const { isGuestEmbed } = useDashboardContext();
+  const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   useMount(() => {
-    if (!isGuestEmbed) {
+    if (!isGuestEmbed && canManageSubscriptions) {
       dispatch(fetchPulseFormInput());
     }
   });
@@ -80,7 +85,7 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
         options: { preserveParameters: true },
       }),
     );
-    dispatch(cancelEditingDashboard());
+    dispatch(cancelEditingDashboard(location));
     closeModal();
   };
 

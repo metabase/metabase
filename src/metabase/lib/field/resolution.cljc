@@ -46,20 +46,15 @@
   [metadata-providerable             :- ::lib.schema.metadata/metadata-providerable
    {:keys [parent-id], :as metadata} :- ::lib.schema.metadata/column]
   (if-some [parent-metadata (when parent-id (lib.metadata/field metadata-providerable parent-id))]
-    (let [{parent-name         :name
-           parent-nfc-path     :nfc-path
+    (let [{parent-nfc-path     :nfc-path
            parent-display-name :display-name} (add-parent-column-metadata metadata-providerable parent-metadata)
-          new-name                            (str parent-name
-                                                   \.
-                                                   ((some-fn :lib/original-name :name) metadata))
-          new-display-name                    (str parent-display-name
-                                                   ": "
-                                                   ((some-fn :lib/original-display-name :display-name)
-                                                    metadata))]
+          new-display-name (str parent-display-name
+                                ": "
+                                ((some-fn :lib/original-display-name :display-name) metadata))]
       (-> metadata
-          (assoc :name                                   new-name
-                 :nfc-path                               (conj (vec parent-nfc-path) (:name parent-metadata))
-                 :display-name                           new-display-name
+          (assoc :name                    (lib.field.util/parent-qualified-name metadata-providerable metadata)
+                 :nfc-path                (conj (vec parent-nfc-path) (:name parent-metadata))
+                 :display-name            new-display-name
                  ;; this is used by the `display-name-method` for `:metadata/column` in [[metabase.lib.field]]
                  :lib/simple-display-name new-display-name)))
     metadata))
@@ -78,7 +73,7 @@
                          (pos-int? table-id))
                     (first (lib.metadata.protocols/metadatas
                             (lib.metadata/->metadata-provider metadata-providerable)
-                            {:lib/type :metadata/column, :table-id table-id, :name #{id-or-name}})))]
+                            {:lib/type :metadata/column, :table-ids #{table-id}, :name #{id-or-name}})))]
     (-> col
         (assoc :lib/source                :source/table-defaults
                :lib/source-column-alias   (:name col)
@@ -124,10 +119,10 @@
       (if <>
         (log/debugf "Found match %s"
                     (pr-str (select-keys <> [:id :lib/desired-column-alias :lib/deduplicated-name])))
-        (log/debugf "Failed to find match for %s. Found:\n%s"
+        (log/debugf "Failed to find match for %s. Found: %s"
                     (pr-str id-or-name)
-                    (u/pprint-to-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
-                                          previous-stage-cols)))))))
+                    (pr-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
+                                 previous-stage-cols)))))))
 
 (def ^:private opts-propagated-keys
   "Keys to copy non-nil values directly from `:field` opts into column metadata."
@@ -135,8 +130,7 @@
     :effective-type
     :display-name
     :lib/transformation-added-base-type
-    :lib/original-effective-type
-    :qp.pivot/pivot-grouping?})
+    :lib/original-effective-type})
 
 (def ^:private opts-propagated-renamed-keys
   "Keys in `:field` opts that get copied into column metadata with different keys when they have non-nil values.
@@ -250,6 +244,7 @@
      :display-name
      :id
      :semantic-type
+     :settings
      :table-id}))
 
 (declare resolve-in-previous-stage-returned-columns-and-update-keys)
@@ -520,10 +515,10 @@
                    (m/find-first #(= (:id %) id-or-name) current-stage-metadata-columns))
           (if <>
             (log/debugf "Found match: %s" (pr-str (select-keys <> [:id :lib/source-column-alias :lib/deduplicated-name])))
-            (log/debugf "Failed to find match for %s. Found:\n%s"
+            (log/debugf "Failed to find match for %s. Found: %s"
                         (pr-str id-or-name)
-                        (u/pprint-to-str (map #(select-keys % [:id :lib/source-column-alias :lib/deduplicated-name])
-                                              current-stage-metadata-columns)))))))))
+                        (pr-str (map #(select-keys % [:id :lib/source-column-alias :lib/deduplicated-name])
+                                     current-stage-metadata-columns)))))))))
 
 (mu/defn- resolve-in-source-card-metadata :- [:maybe ::lib.metadata.calculation/visible-column]
   [query        :- ::lib.schema/query
@@ -631,48 +626,56 @@
 
 (declare resolve-from-previous-stage-or-source)
 
+(def ^:private ^:dynamic *in-deduplicated-column-resolution?* false)
+
 (defn- resolve-nonexistent-deduplicated-column-name
-  "Resolve a ref like `CATEGORY_2` to `CATEGORY` if the query only has the latter."
+  "Resolve a ref like `CATEGORY_2` to `CATEGORY` if the query only has the latter.
+  Uses a dynamic guard to prevent mutual recursion with [[resolve-from-previous-stage-or-source]]
+  which could cause a StackOverflowError for large suffixes (e.g. `name_5000`)."
   [query stage-number id-or-name]
-  (when (string? id-or-name)
+  (when (and (string? id-or-name)
+             (not *in-deduplicated-column-resolution?*))
     (when-let [[_match original-name suffix] (re-matches #"^(\w+)_([1-9]\d*)$" id-or-name)]
-      (let [suffix     (parse-long suffix)
-            new-suffix (dec suffix)
-            ;; e.g. `CATEGORY_3` becomes `CATEGORY_2`; `CATEGORY_2` becomes `CATEGORY`
-            new-name   (if (<= new-suffix 1)
-                         original-name
-                         (str original-name \_ new-suffix))]
-        (log/debugf "Failed to resolve %s, trying to resolve Field %s instead..." (pr-str id-or-name) (pr-str new-name))
-        (let [resolved (resolve-from-previous-stage-or-source query stage-number new-name)]
-          (if (::fallback-metadata? resolved)
-            (do
-              (log/debugf "Failed to resolve %s as %s" (pr-str id-or-name) (pr-str new-name))
-              nil)
-            (do
-              (log/debugf "Successfully resolved %s as %s" (pr-str id-or-name) (pr-str new-name))
-              resolved)))))))
+      (binding [*in-deduplicated-column-resolution?* true]
+        (loop [current-suffix (dec (parse-long suffix))]
+          (let [new-name (if (<= current-suffix 1)
+                           original-name
+                           (str original-name \_ current-suffix))]
+            (log/debugf "Failed to resolve %s, trying to resolve Field %s instead..." (pr-str id-or-name) (pr-str new-name))
+            (let [resolved (resolve-from-previous-stage-or-source query stage-number new-name)]
+              (if (::fallback-metadata? resolved)
+                (do
+                  (log/debugf "Failed to resolve %s as %s" (pr-str id-or-name) (pr-str new-name))
+                  (when (> current-suffix 1)
+                    (recur (dec current-suffix))))
+                (do
+                  (log/debugf "Successfully resolved %s as %s" (pr-str id-or-name) (pr-str new-name))
+                  resolved)))))))))
 
 (mu/defn- resolve-from-previous-stage-or-source :- ::lib.metadata.calculation/visible-column
   [query        :- ::lib.schema/query
    stage-number :- :int
    id-or-name   :- ::id-or-name]
   (log/debugf "Resolving %s from previous stage, source table, or source card" (pr-str id-or-name))
-  (let [col (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
-                (do
-                  (log/debugf "Failed to resolve Field %s in stage %s. Trying other methods..." (pr-str id-or-name) (pr-str stage-number))
-                  (resolve-ref-missing-join-alias query stage-number id-or-name))
-                ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
-                ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
-                ;; let QP code worry about that.
-                (fallback-metadata-for-field query stage-number id-or-name)
-                ;; try looking in the expressions in this stage to see if someone incorrectly used a field ref for an
-                ;; expression.
-                (maybe-resolve-expression-in-current-stage query stage-number id-or-name)
-                ;; if that fails and this is a deduplicated name like `CATEGORY_2` then try looking for `CATEGORY` and
-                ;; so forth
-                (resolve-nonexistent-deduplicated-column-name query stage-number id-or-name)
-                ;; if we STILL can't find a match, return made-up fallback metadata.
-                (fallback-metadata id-or-name))]
+  (let [col (or ;; Allow nested dedup resolution for other columns encountered through card resolution,
+             ;; join resolution, etc. Only the direct dedup call below should be blocked by the guard.
+             (binding [*in-deduplicated-column-resolution?* false]
+               (or (resolve-from-previous-stage-or-source* query stage-number id-or-name)
+                   (do
+                     (log/debugf "Failed to resolve Field %s in stage %s. Trying other methods..." (pr-str id-or-name) (pr-str stage-number))
+                     (resolve-ref-missing-join-alias query stage-number id-or-name))
+                   ;; if we haven't found a match yet try getting metadata from the metadata provider if this is a
+                   ;; Field ID ref. It's likely a ref that makes little or no sense (e.g. wrong table) but we can
+                   ;; let QP code worry about that.
+                   (fallback-metadata-for-field query stage-number id-or-name)
+                   ;; try looking in the expressions in this stage to see if someone incorrectly used a field ref for an
+                   ;; expression.
+                   (maybe-resolve-expression-in-current-stage query stage-number id-or-name)))
+             ;; if that fails and this is a deduplicated name like `CATEGORY_2` then try looking for `CATEGORY` and
+             ;; so forth. The *in-deduplicated-column-resolution?* guard prevents re-entry here.
+             (resolve-nonexistent-deduplicated-column-name query stage-number id-or-name)
+             ;; if we STILL can't find a match, return made-up fallback metadata.
+             (fallback-metadata id-or-name))]
     (when col
       (merge-metadata [col (additional-metadata-from-source-card query stage-number col)]))))
 

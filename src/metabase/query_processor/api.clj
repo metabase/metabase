@@ -84,16 +84,20 @@
                               (:constraints query))]
             (qp.pivot/run-pivot-query (-> query
                                           (assoc :constraints constraints)
-                                          (update :info merge info))
+                                          ;; Use assoc rather than merge so :info comes entirely from the
+                                          ;; server-built map. :info carries :card-id and similar fields the
+                                          ;; server derives, so we replace it rather than combining it with
+                                          ;; whatever was on the incoming query.
+                                          (assoc :info info))
                                       rff))
-          (qp/process-query (update query :info merge info) rff))))))
+          (qp/process-query (assoc query :info info) rff))))))
 
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
-   query :- [:map
+   query :- [:map {:closed false}
              [:database {:optional true} [:maybe :int]]]]
   (run-streaming-query
    (-> query
@@ -129,20 +133,24 @@
    {{:keys [was-pivot] :as query} :query
     format-rows                   :format_rows
     pivot-results                 :pivot_results
+    csv-include-bom               :csv_include_bom
     visualization-settings        :visualization_settings}
    ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
    :- [:map
        [:query                  [:map
-                                 {:decode/api (fn [x]
+                                 {:closed     false
+                                  :decode/api (fn [x]
                                                 (cond-> x
                                                   (string? x) json/decode+kw))}]]
        [:visualization_settings {:default {}} [:map
-                                               {:decode/api (fn [x]
+                                               {:closed     false
+                                                :decode/api (fn [x]
                                                               (cond-> x
                                                                 (string? x) (json/decode viz-setting-key-fn)))}]]
        [:format_rows            {:default false} ms/BooleanValue]
-       [:pivot_results          {:default false} ms/BooleanValue]]]
+       [:pivot_results          {:default false} ms/BooleanValue]
+       [:csv_include_bom         {:default false} ms/BooleanValue]]]
   (let [viz-settings                  (-> visualization-settings
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
@@ -153,6 +161,7 @@
                                                                    (dissoc :add-default-userland-constraints? :js-int-to-string?)
                                                                    (assoc :format-rows?           (or format-rows false)
                                                                           :pivot?                 (or pivot-results false)
+                                                                          :csv-include-bom?       (if (some? csv-include-bom) csv-include-bom false)
                                                                           :process-viz-settings?  true
                                                                           :skip-results-metadata? true))))]
     (run-streaming-query
@@ -177,15 +186,14 @@
   visibility_type :sensitive in the response."
   [_route-params
    _query-params
-   query :- [:map
+   query :- [:map {:closed false}
              [:database ms/PositiveInt]
              [:settings {:optional true} [:maybe [:map
                                                   [:include_sensitive_fields {:optional true} :boolean]]]]]]
-  (lib-be/with-metadata-provider-cache
-    (queries/batch-fetch-query-metadata
-     [query]
-     (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
-       {:include-sensitive-fields? include-sensitive-fields}))))
+  (queries/batch-fetch-query-metadata
+   [query]
+   (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
+     {:include-sensitive-fields? include-sensitive-fields})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -195,7 +203,7 @@
   "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
-   {:keys [database pretty] :as query} :- [:map
+   {:keys [database pretty] :as query} :- [:map {:closed false}
                                            [:database ms/PositiveInt]
                                            [:pretty   {:default true} [:maybe :boolean]]]]
   (model-persistence/with-persisted-substituion-disabled
@@ -211,7 +219,7 @@
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
-   {:keys [database] :as query} :- [:map
+   {:keys [database] :as query} :- [:map {:closed false}
                                     [:database ms/PositiveInt]]]
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*

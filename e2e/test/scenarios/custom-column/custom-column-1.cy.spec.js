@@ -567,23 +567,6 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("equal", "Sum([MyCC \\[2027\\]])");
   });
 
-  it("should work with `isNull` function (metabase#15922)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.getNotebookStep("data").button("Custom column").click();
-    H.enterCustomColumnDetails({
-      formula: "isnull([Discount])",
-      name: "No discount",
-    });
-    cy.button("Done").click();
-
-    H.visualize((response) => {
-      expect(response.body.error).to.not.exist;
-    });
-
-    cy.findAllByRole("gridcell").contains("37.65");
-    cy.findAllByTestId("header-cell").contains("No discount");
-  });
-
   it("should be able to add a date range filter to a custom column", () => {
     H.visitQuestionAdhoc({
       display: "table",
@@ -602,14 +585,20 @@ describe("scenarios > question > custom column", () => {
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Fixed date range…").click();
-      cy.findByLabelText("Start date").clear().type("12/10/2024");
-      cy.findByLabelText("End date").clear().type("01/05/2025");
+      cy.findByLabelText("Start date").clear().type("12/10/2027");
+      cy.findByLabelText("End date").clear().type("01/05/2028");
       cy.button("Add filter").click();
     });
 
     cy.wait("@dataset");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 487 rows").should("be.visible");
+    cy.findByTestId("question-row-count")
+      .should("be.visible")
+      .and("have.text", "Showing 487 rows");
+
+    cy.findByTestId("filter-pill").should(
+      "have.text",
+      "CustomDate is Dec 10, 2027 – Jan 5, 2028",
+    );
   });
 
   it("should work with relative date filter applied to a custom column (metabase#16273)", () => {
@@ -632,7 +621,7 @@ describe("scenarios > question > custom column", () => {
     cy.findByRole("listbox").findByText("years").click();
 
     H.popover().within(() => {
-      cy.findByText("Include this year").click();
+      cy.findByLabelText("Include this year").click();
       cy.button("Add filter").click();
     });
 

@@ -7,8 +7,8 @@ import {
   useLogRecentItemMutation,
   useSearchQuery,
 } from "metabase/api";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { DefaultSelectItem, FixedSizeIcon, Loader, Select } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import {
   type DependencyEntry,
   type SearchModel,
@@ -54,6 +54,7 @@ export function EntrySearchInput({
     {
       q: searchQuery,
       models: searchModels,
+      context: "dependencies",
     },
     {
       skip: !isSearchEnabled,

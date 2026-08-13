@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { Box, Button, Icon, Tooltip } from "metabase/ui";
+import { Box, Button, Ellipsified, Icon, Tooltip } from "metabase/ui";
 import type {
   Field,
   VisualizationDisplay,
@@ -50,7 +49,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
             >
               <Icon
                 className={S.WarningIcon}
-                c="danger"
+                c="feedback-negative"
                 name="warning_round_filled"
                 size={10}
               />

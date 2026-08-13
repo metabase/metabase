@@ -158,9 +158,7 @@
                         (add-ns-logger! ns appender level additive)))]
     (.start appender)
     (.addAppender config appender)
-
     (.updateLoggers (context))
-
     (reify AutoCloseable
       (close [_]
         (let [^AbstractConfiguration config (configuration)]

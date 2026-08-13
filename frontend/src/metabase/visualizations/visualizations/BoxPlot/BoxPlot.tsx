@@ -2,7 +2,7 @@ import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { extractRemappings } from "metabase/visualizations";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
@@ -13,7 +13,7 @@ import {
   getBoxPlotOption,
   getBoxPlotTooltipOption,
 } from "metabase/visualizations/echarts/boxplot";
-import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
+import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import {
   useClickedStateTooltipSync,
@@ -28,7 +28,7 @@ import {
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 
-import { BOXPLOT_CHART_DEFINITION } from "./chart-definition";
+import { BOXPLOT_CHART_DEFINITION } from "./definition";
 import { useBoxPlotEvents } from "./events";
 
 function BoxPlotInner({
@@ -120,9 +120,9 @@ function BoxPlotInner({
     [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
-  const chartMeasurements = useMemo(
+  const cartesianLayout = useMemo(
     () =>
-      getChartMeasurements(
+      getChartLayout(
         { ...chartModel, dataset: chartModel.boxDataset },
         settings,
         false,
@@ -137,18 +137,12 @@ function BoxPlotInner({
     () =>
       getBoxPlotLayoutModel({
         chartModel,
-        chartMeasurements,
+        cartesianLayout,
         settings,
         chartWidth: chartSize.width,
         renderingContext,
       }),
-    [
-      chartModel,
-      chartMeasurements,
-      settings,
-      chartSize.width,
-      renderingContext,
-    ],
+    [chartModel, cartesianLayout, settings, chartSize.width, renderingContext],
   );
 
   const option = useMemo(() => {
@@ -162,8 +156,6 @@ function BoxPlotInner({
       ...getBoxPlotOption(
         chartModel,
         layoutModel,
-        null,
-        [],
         settings,
         shouldAnimate,
         renderingContext,
@@ -233,6 +225,7 @@ function BoxPlotInner({
         <ResponsiveEChartsRenderer
           key={hasValidOption ? "chart" : "measuring"}
           ref={containerRef}
+          display="boxplot"
           option={option ?? {}}
           eventHandlers={hasValidOption ? eventHandlers : undefined}
           onInit={handleInit}
@@ -243,7 +236,7 @@ function BoxPlotInner({
   );
 }
 
-export function BoxPlot(props: VisualizationProps) {
+function BoxPlotComponent(props: VisualizationProps) {
   return (
     <ChartRenderingErrorBoundary onRenderError={props.onRenderError}>
       <BoxPlotInner {...props} />
@@ -251,4 +244,7 @@ export function BoxPlot(props: VisualizationProps) {
   );
 }
 
-Object.assign(BoxPlot, BOXPLOT_CHART_DEFINITION);
+export const BoxPlot = Object.assign(
+  BoxPlotComponent,
+  BOXPLOT_CHART_DEFINITION,
+);

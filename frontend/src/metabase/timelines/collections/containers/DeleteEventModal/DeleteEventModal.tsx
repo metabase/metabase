@@ -1,42 +1,55 @@
-import { push } from "react-router-redux";
-import _ from "underscore";
-
-import { TimelineEvents } from "metabase/entities/timeline-events";
-import { Timelines } from "metabase/entities/timelines";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import {
+  skipToken,
+  useDeleteTimelineEventMutation,
+  useGetTimelineEventQuery,
+  useGetTimelineQuery,
+} from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { useNavigate } from "metabase/router";
 import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
+import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
-import type { ModalParams } from "../../types";
+function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
+  const navigate = useNavigate();
+  const timelineId = Urls.extractEntityId(params.timelineId);
+  const eventId = Urls.extractEntityId(params.timelineEventId);
+  const {
+    data: timeline,
+    isLoading: isTimelineLoading,
+    error: timelineError,
+  } = useGetTimelineQuery(
+    timelineId != null ? { id: timelineId, include: "events" } : skipToken,
+  );
+  const {
+    data: event,
+    isLoading: isEventLoading,
+    error: eventError,
+  } = useGetTimelineEventQuery(eventId ?? skipToken);
+  const [deleteTimelineEvent] = useDeleteTimelineEventMutation();
 
-interface DeleteEventModalProps {
-  params: ModalParams;
+  const onSubmit = async (event: TimelineEvent, timeline: Timeline) => {
+    await deleteTimelineEvent(event.id).unwrap();
+    navigate(Urls.timelineArchiveInCollection(timeline));
+  };
+
+  const isLoading = isTimelineLoading || isEventLoading;
+  const error = timelineError ?? eventError;
+
+  if (isLoading || error || !event || !timeline) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <DeleteEventModal
+      event={event}
+      timeline={timeline}
+      onSubmit={onSubmit}
+      onClose={onClose}
+    />
+  );
 }
 
-const timelineProps = {
-  id: (state: State, props: DeleteEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
-  query: { include: "events" },
-};
-
-const timelineEventProps = {
-  id: (state: State, props: DeleteEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineEventId),
-  entityAlias: "event",
-};
-
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (event: TimelineEvent, timeline: Timeline) => {
-    await dispatch(TimelineEvents.actions.delete(event));
-    dispatch(push(Urls.timelineArchiveInCollection(timeline)));
-  },
-});
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.load(timelineProps),
-  TimelineEvents.load(timelineEventProps),
-  connect(null, mapDispatchToProps),
-)(DeleteEventModal);
+export default DeleteEventModalContainer;

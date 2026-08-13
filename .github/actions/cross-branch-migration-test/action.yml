@@ -1,4 +1,7 @@
 name: Cross-branch migration test
+description: >-
+  Boot Metabase on the base branch to migrate the app db, then boot the PR branch against the
+  same db, verifying the PR's migrations apply cleanly on top of the base branch's schema.
 
 inputs:
   base-ref: ## Base branch PR came from
@@ -11,7 +14,7 @@ runs:
   steps:
     ## First we deploy the base branch
     - name: Check out base branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ inputs.base-ref }}
 
@@ -42,7 +45,7 @@ runs:
 
     ## Then we deploy the PR branch to ensure it migrates up successfully
     - name: Check out pull request branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ inputs.head-ref }}
 
@@ -81,7 +84,7 @@ runs:
       shell: bash
 
     - name: Re-check out base branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ inputs.base-ref }}
 

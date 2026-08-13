@@ -18,7 +18,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -59,9 +59,9 @@
 
 (methodical/defmethod perform-action!* :around :default
   [action context inputs]
-  (log/tracef "In action %s\nScope: %s\nInvocation stack:%s\nInputs: %s" action (:scope context) (:invocation-stack context) (pr-str inputs))
+  (log/tracef "In action %s\nScope: %s\nInvocation stack:%s" action (:scope context) (:invocation-stack context))
   (u/prog1 (next-method action context inputs)
-    (log/tracef "Out action %s: %s" action (pr-str <>))))
+    (log/tracef "Out action %s" action)))
 
 (defn- known-implicit-actions
   "Set of all known legacy actions."
@@ -78,14 +78,14 @@
         known-actions (known-implicit-actions)]
     ;; return 404 if the action doesn't exist.
     (when-not (contains? known-actions action)
-      (throw (ex-info (i18n/tru "Unknown Action {0}. Valid Actions are: {1}"
-                                action
-                                (pr-str known-actions))
+      (throw (ex-info (tru "Unknown Action {0}. Valid Actions are: {1}"
+                           action
+                           (pr-str known-actions))
                       {:status-code 404})))
     ;; return 400 if the action does exist but is not supported by this DB
-    (throw (ex-info (i18n/tru "Action {0} is not supported for {1} Databases."
-                              action
-                              (pr-str driver))
+    (throw (ex-info (tru "Action {0} is not supported for {1} Databases."
+                         action
+                         (pr-str driver))
                     {:status-code 400}))))
 
 (def ^:dynamic *misc-value-cache*
@@ -116,14 +116,14 @@
   "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
   [{db-id :id driver :engine db-name :name :as db}]
   (when-not (driver.u/supports? driver :actions db)
-    (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
-                              (u/qualified-name driver)
-                              (format "%d %s" db-id (pr-str db-name)))
+    (throw (ex-info (tru "{0} Database {1} does not support actions."
+                         (u/qualified-name driver)
+                         (format "%d %s" db-id (pr-str db-name)))
                     {:status-code 400, :database-id db-id})))
 
   (setting/with-database db
     (when-not (actions.settings/database-enable-actions)
-      (throw (ex-info (i18n/tru "Actions are not enabled.")
+      (throw (ex-info (tru "Actions are not enabled.")
                       {:status-code 400, :database-id db-id}))))
 
   nil)
@@ -132,14 +132,14 @@
   "Throws an appropriate error if editing is unsupported or disabled for a database, otherwise returns nil."
   [{db-id :id driver :engine db-name :name :as db}]
   (when-not (driver.u/supports? driver :actions/data-editing db)
-    (throw (ex-info (i18n/tru "{0} Database {1} does not support data editing."
-                              (u/qualified-name driver)
-                              (format "%d %s" db-id (pr-str db-name)))
+    (throw (ex-info (tru "{0} Database {1} does not support data editing."
+                         (u/qualified-name driver)
+                         (format "%d %s" db-id (pr-str db-name)))
                     {:status-code 400, :database-id db-id})))
 
   (setting/with-database db
     (when-not (actions.settings/database-enable-table-editing)
-      (throw (ex-info (i18n/tru "Data editing is not enabled.")
+      (throw (ex-info (tru "Data editing is not enabled.")
                       {:status-code 400, :database-id db-id}))))
 
   nil)
@@ -187,7 +187,6 @@
         (log/debug "Started perform action")
         (actions.events/publish-action-invocation! action-kw context-before inputs)
         (try
-          (log/tracef "perform action inputs: %s" (pr-str inputs))
           (u/prog1 (perform-action!* action-kw context-before inputs)
             (let [{context-after :context, :keys [outputs]} <>]
               (doseq [k [:invocation-id :invocation-stack :user-id]]
@@ -205,7 +204,7 @@
                   info (with-meta info (merge (meta info) {:exception e}))]
               ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
               (actions.events/publish-action-failure! action-kw context-before msg info)
-              (log/error e "Failed to perform action")
+              (log/errorf "Failed to perform action: %s" (ex-message e))
               (throw e))))))))
 
 (defn perform-nested-action!
@@ -239,11 +238,6 @@
   [table-id]
   (assert table-id "Id cannot be nil")
   (cached-database (:db_id (cached-value [:table-by-db-ids table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
-
-(defn- log-before-after
-  [level context before after]
-  (log/logf level "%s %s => %s" context before after)
-  after)
 
 (mu/defn- check-permissions
   [policy   :- :keyword
@@ -281,8 +275,7 @@
                           (= "data-editing" (namespace action-kw))  :data-editing
                           :else                                     :ad-hoc-invocation))
           spec      (actions.args/action-arg-map-schema action-kw)
-          arg-maps  (log-before-after :trace "normalize map" arg-maps
-                                      (map (partial actions.args/normalize-action-arg-map action-kw) arg-maps))
+          arg-maps  (map (partial actions.args/normalize-action-arg-map action-kw) arg-maps)
           _        (actions.args/validate-inputs! action-kw arg-maps)
           errors   (for [arg-map arg-maps
                          :when (not (mr/validate spec arg-map))]
@@ -313,7 +306,7 @@
           (do
             ;; TODO more granular controls
             (when-not (api/check-superuser)
-              (throw (ex-info (i18n/tru "You don''t have permissions to do that.") {:status-code 403})))
+              (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
             (check-data-editing-enabled-for-database! db))))
       (log/with-context {:db-id (:id db)}
         (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]

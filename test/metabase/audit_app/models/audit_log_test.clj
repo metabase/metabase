@@ -6,11 +6,12 @@
    [clojure.test.check.properties :as prop]
    [malli.generator :as mg]
    [metabase.audit-app.models.audit-log :as audit-log]
+   [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(derive :event/test-event :metabase/event)
+(events/derive! :event/test-event :metabase/event)
 
 (def topic-generator (gen/fmap (fn [k] (keyword "event" (name k))) (mg/generator :keyword)))
 
@@ -56,7 +57,6 @@
                 :model_id card-id
                 :details  {:name "Test card"}}
                (t2/select-one :model/AuditLog :model_id card-id)))))
-
       (testing "Test that `record-event!` succesfully records basic card events with the user, model, and model ID specified"
         (mt/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
           (audit-log/record-event! :event/card-create
@@ -71,7 +71,6 @@
                 :model_id card-id
                 :details  {:name "Test card"}}
                (t2/select-one :model/AuditLog :model_id card-id)))))
-
       (testing "Test that `record-event!` records an event with arbitrary data and no model specified"
         (audit-log/record-event! :event/test-event {:details {:foo "bar"}})
         (is (partial=

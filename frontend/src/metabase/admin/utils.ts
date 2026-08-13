@@ -1,69 +1,36 @@
 import { useLayoutEffect } from "react";
-import { push, replace, routerActions } from "react-router-redux";
-import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
-import { getAdminPaths } from "metabase/admin/app/selectors";
-import { MetabaseReduxContext, connect } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
-import type { State } from "metabase-types/store";
-import type { AdminPath } from "metabase-types/store/admin";
+import { shouldShowTenantsUpsell } from "metabase/admin/people/selectors";
+import { useSelector } from "metabase/redux";
+import { createRedirectGuard } from "metabase/route-guards";
+import { useNavigate } from "metabase/router";
+import { getAdminPaths } from "metabase/selectors/admin";
+import { getSetting } from "metabase/settings";
 
-export const createAdminRouteGuard = (routeKey: string) => {
-  const Wrapper = connectedReduxRedirect<any, State>({
-    wrapperDisplayName: `CanAccess(${routeKey})`,
-    redirectPath: "/unauthorized",
-    allowRedirectBack: false,
-    authenticatedSelector: (state) =>
+export const createAdminRouteGuard = (routeKey: string) =>
+  createRedirectGuard(
+    (state) =>
       getAdminPaths(state)?.find((path) => path.key === routeKey) != null,
-    redirectAction: routerActions.replace,
-    context: MetabaseReduxContext,
-  });
+    "/unauthorized",
+  );
 
-  return Wrapper(({ children }) => children);
-};
+export const RedirectToAllowedSettings = () => {
+  const adminItems = useSelector(getAdminPaths);
+  const navigate = useNavigate();
 
-const mapStateToProps = (state: State, props: { location: Location }) => ({
-  adminItems: getAdminPaths(state),
-  path: props.location.pathname,
-});
-
-const mapDispatchToProps = {
-  push,
-  replace,
-};
-
-interface RedirectToAllowedSettingsInnerProps {
-  adminItems: AdminPath[];
-  replace: (path: string) => void;
-}
-
-const RedirectToAllowedSettingsInner = ({
-  adminItems,
-  replace,
-}: RedirectToAllowedSettingsInnerProps) => {
   useLayoutEffect(() => {
-    replace(adminItems.length === 0 ? "/unauthorized" : adminItems[0].path);
-  }, [adminItems, replace]);
+    navigate(adminItems.length === 0 ? "/unauthorized" : adminItems[0].path, {
+      replace: true,
+    });
+  }, [adminItems, navigate]);
 
   return null;
 };
 
-export const RedirectToAllowedSettings = connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(RedirectToAllowedSettingsInner);
-
-export const createTenantsRouteGuard = () => {
-  const Wrapper = connectedReduxRedirect<any, State>({
-    wrapperDisplayName: "CanAccessTenants",
-    redirectPath: "/admin/people",
-    allowRedirectBack: false,
-    authenticatedSelector: (state) =>
+export const createTenantsRouteGuard = () =>
+  createRedirectGuard(
+    (state) =>
       getAdminPaths(state)?.find((path) => path.key === "people") != null &&
-      getSetting(state, "use-tenants"),
-    redirectAction: routerActions.replace,
-    context: MetabaseReduxContext,
-  });
-
-  return Wrapper(({ children }) => children);
-};
+      (getSetting(state, "use-tenants") || shouldShowTenantsUpsell(state)),
+    "/admin/people",
+  );

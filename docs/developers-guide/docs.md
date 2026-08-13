@@ -14,7 +14,7 @@ You can check for broken links in the [docs](../) directory by running:
 bun run docs-lint-links
 ```
 
-This command uses [Markdown link check](https://github.com/tcort/markdown-link-check) to vet links in all of the markdown files in the [docs](../) directory. We recommend writing the command's output to a file. E.links.,
+This command uses [Markdown link check](https://github.com/tcort/markdown-link-check) to vet links in all of the markdown files in the [docs](../) directory. We recommend writing the command's output to a file. E.g.,
 
 ```
 touch ~/links-to-fix.txt && bun run docs-lint-links > ~/links-to-fix.txt

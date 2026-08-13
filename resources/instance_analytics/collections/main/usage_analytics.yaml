@@ -1,0 +1,9 @@
+name: Usage analytics
+description: Your instance data. To customize these questions and dashboards, you can duplicate them and save them in the custom reports collection.
+entity_id: vG58R8k-QddHWA7_47umn
+slug: usage_analytics
+created_at: '2023-06-08T14:12:32.4457Z'
+type: instance-analytics
+namespace: analytics
+serdes/meta:
+- {id: vG58R8k-QddHWA7_47umn, label: usage_analytics, model: Collection}

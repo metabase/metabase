@@ -1,4 +1,4 @@
-import { asNotNull } from "metabase/lib/types";
+import { asNotNull } from "metabase/utils/types";
 import type { FieldId } from "metabase-types/api";
 import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 
@@ -7,11 +7,33 @@ import {
   STRING_PK_FIELD_ID,
   metadata,
 } from "./testMocks.spec";
-import { getValuesMode, isSearchable, searchField } from "./utils";
+import {
+  getValuesMode,
+  isSearchable,
+  parseStringValue,
+  searchField,
+} from "./utils";
 
 const getField = (id: FieldId) => asNotNull(metadata.field(id));
 
 describe("Components > FieldValuesWidget > utils", () => {
+  describe("parseStringValue", () => {
+    it("should return null for falsy and whitespace values", () => {
+      expect(parseStringValue("")).toBeNull();
+      expect(parseStringValue(" ")).toBeNull();
+      expect(parseStringValue(" \n ")).toBeNull();
+      expect(parseStringValue(null)).toBeNull();
+      expect(parseStringValue(false)).toBeNull();
+      expect(parseStringValue(0)).toBeNull();
+    });
+
+    it("should return truthy values coerced into strings", () => {
+      expect(parseStringValue(123)).toBe("123");
+      expect(parseStringValue(true)).toBe("true");
+      expect(parseStringValue(" abc 123 \n ")).toBe("abc 123");
+    });
+  });
+
   describe("isSearchable", () => {
     const listField = getField(PRODUCTS.CATEGORY);
     const searchField = getField(PEOPLE.EMAIL);

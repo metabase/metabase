@@ -2,9 +2,12 @@ import {
   getActionErrorMessage,
   getActionExecutionMessage,
 } from "metabase/actions/utils";
+import { actionApi, publicApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import type { Dispatch } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { ActionsApi, PublicApi } from "metabase/services";
+import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
   ActionFormSubmitResult,
@@ -12,31 +15,8 @@ import type {
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
-import { getDashboardType } from "../utils";
-
-import { setDashCardAttributes } from "./core";
 import { closeSidebar, setSidebar } from "./ui";
-
-type EditableActionButtonAttrs = Pick<
-  ActionDashboardCard,
-  "card_id" | "action" | "parameter_mappings" | "visualization_settings"
->;
-
-export function updateButtonActionMapping(
-  dashCardId: number,
-  attributes: EditableActionButtonAttrs,
-) {
-  return (dispatch: Dispatch) => {
-    dispatch(
-      setDashCardAttributes({
-        id: dashCardId,
-        attributes: attributes,
-      }),
-    );
-  };
-}
 
 export type ExecuteRowActionPayload = {
   dashboard: Dashboard;
@@ -53,20 +33,29 @@ export const executeRowAction = async ({
   dispatch,
   shouldToast = true,
 }: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
-  const executeAction =
-    getDashboardType(dashboard.id) === "public"
-      ? PublicApi.executeDashcardAction
-      : ActionsApi.executeDashcardAction;
+  const executeActionRequest = {
+    dashboardId: dashboard.id,
+    dashcardId: dashcard.id,
+    modelId: dashcard.card_id,
+    parameters,
+  };
 
   try {
-    const result = await executeAction({
-      dashboardId: dashboard.id,
-      dashcardId: dashcard.id,
-      modelId: dashcard.card_id,
-      parameters,
-    });
+    const result =
+      getDashboardType(dashboard.id) === "public"
+        ? await runRtkEndpoint(
+            executeActionRequest,
+            dispatch,
+            publicApi.endpoints.executePublicDashcardAction,
+          )
+        : await runRtkEndpoint(
+            executeActionRequest,
+            dispatch,
+            actionApi.endpoints.executeDashcardAction,
+          );
 
     const message = getActionExecutionMessage(
+      // Unjustified type cast. FIXME
       dashcard.action as WritebackAction,
       result,
     );
@@ -74,7 +63,7 @@ export const executeRowAction = async ({
     if (shouldToast) {
       dispatch(
         addUndo({
-          toastColor: "success",
+          toastColor: "feedback-positive",
           message,
         }),
       );
@@ -88,7 +77,7 @@ export const executeRowAction = async ({
       dispatch(
         addUndo({
           icon: "warning",
-          toastColor: "error",
+          toastColor: "feedback-negative",
           message,
         }),
       );

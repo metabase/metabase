@@ -1,7 +1,11 @@
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { isJWT } from "metabase/lib/utils";
-import { isUuid } from "metabase/lib/uuid";
-import type { DashboardId, JsonQuery, Parameter } from "metabase-types/api";
+import { isEmbedPreview as getIsEmbedPreview } from "metabase/embedding/config";
+import { isJWT } from "metabase/utils/jwt";
+import { isUuid } from "metabase/utils/uuid";
+import type {
+  DashboardId,
+  JsonQuery,
+  NormalizedQueryParameter,
+} from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 interface TileCoordinate {
@@ -20,11 +24,12 @@ interface TileUrlParams {
   datasetQuery?: JsonQuery;
   uuid?: string;
   token?: EntityToken;
-  parameters?: Parameter[];
+  parameters?: NormalizedQueryParameter[];
   /**
    * Indicates whether the tile URL is being generated for a preview embed context.
-   * You probably don't need to set this manually as it defaults to `IS_EMBED_PREVIEW` (it's used for tests).
-   * @default IS_EMBED_PREVIEW
+   * You probably don't need to set this manually; it defaults to `isEmbedPreview()`
+   * from `metabase/embedding/config`.
+   * @defaultValue isEmbedPreview()
    */
   isEmbedPreview?: boolean;
 }
@@ -42,7 +47,7 @@ export function getTileUrl(params: TileUrlParams): string {
     uuid,
     token,
     parameters,
-    isEmbedPreview = IS_EMBED_PREVIEW,
+    isEmbedPreview = getIsEmbedPreview(),
   } = params;
 
   const isDashboard = dashboardId && dashcardId && cardId;

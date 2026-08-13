@@ -26,7 +26,7 @@ export function TableHeader({
       align="center"
       p="0.5rem 1rem 0.5rem 2rem"
       mih="4rem"
-      bg="background-primary"
+      bg="background_page-primary"
     >
       {database && table ? (
         <TableBreadcrumbs

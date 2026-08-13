@@ -13,10 +13,10 @@ export const parametersApi = Api.injectEndpoints({
       ParameterValues,
       GetParameterValuesRequest
     >({
-      query: (params) => ({
+      query: (body) => ({
         method: "POST",
         url: `/api/dataset/parameter/values`,
-        params,
+        body,
       }),
       providesTags: (_values, _error, params) => [
         idTag("parameter-values", params.parameter.id),
@@ -26,11 +26,15 @@ export const parametersApi = Api.injectEndpoints({
       ParameterValues,
       SearchParameterValuesRequest
     >({
-      query: (params) => ({
+      query: ({ query, ...body }) => ({
         method: "POST",
-        url: `/api/dataset/parameter/search/${params.query}`,
-        params,
+        url: `/api/dataset/parameter/search/${encodeURIComponent(query)}`,
+        body,
       }),
+      // Each distinct search term is its own cache entry and RTK Query has no
+      // entry-count cap, so retaining type-ahead results would let the cache
+      // grow unbounded. Drop them as soon as the request is no longer in use.
+      keepUnusedDataFor: 0,
     }),
   }),
 });

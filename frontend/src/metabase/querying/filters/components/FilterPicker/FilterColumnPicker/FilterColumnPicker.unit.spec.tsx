@@ -1,5 +1,7 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { SAMPLE_DB_FIELD_VALUES } from "metabase-types/api/mocks/presets";
@@ -35,18 +37,16 @@ describe("FilterColumnPicker", () => {
     );
   });
 
-  test("Searching by displayName should works (#39622)", () => {
+  it("Searching by displayName should work (#39622)", async () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const stageIndexes = [0];
     setup({ query, stageIndexes });
 
-    screen.getByText("User").click();
-    fireEvent.change(screen.getByTestId("list-search-field"), {
-      target: { value: "Birth Date" },
-    });
+    await userEvent.click(screen.getByText("User"));
+    await userEvent.type(screen.getByTestId("list-search-field"), "Birth Date");
 
     expect(
-      screen.getByRole("option", { name: "Birth Date" }),
+      await screen.findByRole("option", { name: "Birth Date" }),
     ).toBeInTheDocument();
   });
 });

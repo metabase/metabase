@@ -1,9 +1,11 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -12,8 +14,8 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
@@ -29,6 +31,23 @@
   (if (resolve `mt/with-dynamic-redefs)
     `(mt/with-dynamic-redefs ~bindings ~@body)
     `(mt/with-dynamic-fn-redefs ~bindings ~@body)))
+
+(deftest ^:parallel expr->columns-test
+  (testing "splits a ClickHouse key expression into its top-level columns/expressions (no live DB needed)"
+    ;; the catalog strings here are the real stored forms: `system.tables.sorting_key` is unwrapped, a single-expression
+    ;; `system.data_skipping_indices.expr` is paren-wrapped, and a function key carries its own inner comma.
+    (are [expr expected] (= expected (#'clickhouse/expr->columns expr))
+      "a, b"                ["a" "b"]                  ; sorting key, no wrapper
+      "(a, b)"              ["a" "b"]                  ; skip-index, wrapped
+      "a"                   ["a"]
+      "(lower(s))"          ["lower(s)"]               ; wrapped single expression, not truncated
+      "a, cityHash64(s, b)" ["a" "cityHash64(s, b)"]   ; function key's inner comma is not a split point
+      ;; a backtick-quoted name can hold a comma or paren; it must stay one column and come out bare
+      "`weird,name`, b"     ["weird,name" "b"]
+      "`paren(col`, b"      ["paren(col" "b"]
+      "`back``tick`"        ["back`tick"]              ; doubled backtick is an escaped backtick
+      ""                    []                         ; blank -> [], so :key-columns stays schema-valid
+      nil                   [])))
 
 (deftest ^:parallel clickhouse-version
   (mt/test-driver :clickhouse
@@ -399,9 +418,9 @@
 (deftest ^:synchronized csv-upload-and-sync-test
   (testing "ClickHouse CSV uploads work correctly when cloud mode is enabled"
     (mt/test-driver :clickhouse
-      (with-redefs [clickhouse-version/dbms-version (constantly {:cloud true
-                                                                 :version "24.8.1"
-                                                                 :semantic-version {:major 24 :minor 8}})]
+      (mt/with-dynamic-fn-redefs [clickhouse-version/dbms-version (constantly {:cloud true
+                                                                               :version "24.8.1"
+                                                                               :semantic-version {:major 24 :minor 8}})]
         (let [details   (-> (mt/dbdef->connection-details :clickhouse :db {:database-name "uploads_schema"})
                             (assoc :enable-multiple-db false))
               conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]
@@ -487,17 +506,45 @@
                        (qp/process-query)
                        (mt/rows))))))))))
 
+(deftest ^:parallel recursive-cte-native-query-test
+  (mt/test-driver :clickhouse
+    (testing "can execute a native query with a recursive CTE (#73161)"
+      (is (= [[1] [2] [3]]
+             (->> "WITH RECURSIVE t AS ( SELECT 1 AS n UNION ALL SELECT n + 1 FROM t WHERE n < 3 ) SELECT * FROM t;"
+                  (lib/native-query (mt/metadata-provider))
+                  (qp/process-query)
+                  (mt/formatted-rows [int])))))))
+
+(deftest ^:parallel query-with-boolean-setting-test
+  (mt/test-driver :clickhouse
+    (testing "can execute a query with settings set to a boolean (#73431)"
+      (is (= [[2]]
+             (->> "select 2 SETTINGS use_query_cache = true"
+                  (lib/native-query (mt/metadata-provider))
+                  (qp/process-query)
+                  (mt/rows)))))))
+
+(defn- check-legacy-dbname [dbname exp-name]
+  (let [details (assoc (:details (mt/db)) :dbname dbname)
+        spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
+    (is (true? (driver/can-connect? :clickhouse details)))
+    (is (= (format "//localhost:8123/%s" exp-name)
+           (:subname spec)))))
+
 (deftest ^:parallel handle-db-names-with-spaces-test
   (mt/test-driver :clickhouse
-    (are [dbname exp-name] (let [details (assoc (:details (mt/db)) :dbname dbname)
-                                 spec   (sql-jdbc.conn/connection-details->spec :clickhouse details)]
-                             (is (true? (driver/can-connect? :clickhouse details)))
-                             (is (= (format "//localhost:8123/%s" exp-name)
-                                    (:subname spec))))
+    (are [dbname exp-name] (check-legacy-dbname dbname exp-name)
       "test_data default fake_db" "test_data"
-      "test_data" "test_data"
-      "" ""
-      nil "default")))
+      "test_data"                 "test_data"
+      ""                          ""
+      nil                         "default")))
+
+(deftest ^:parallel handle-db-names-with-commas-test
+  (mt/test-driver :clickhouse
+    (are [dbname exp-name] (check-legacy-dbname dbname exp-name)
+      "test_data, fake_db" "test_data"
+      "test_data,fake_db"  "test_data"
+      "test_data,"         "test_data")))
 
 ;; TODO (lbrdnk 2026-01-23): Excplicit exceptions from [[metabase.driver.util/parsed-query]] are shutdown
 ;;                           at the moment to avoid potential log flooding. We should revisit this during further
@@ -519,3 +566,17 @@
                                     (driver/native-result-metadata :clickhouse broken-query)))
               (is (thrown-with-msg? Exception #"SQL parsing failed."
                                     (driver/validate-native-query-fields :clickhouse broken-query)))))))))
+
+(deftest ^:parallel set-role-statement-escape-quotes-test
+  (are [role sql] (= sql
+                     (sql-jdbc/set-role-statement :clickhouse nil role))
+    "x"                             "SET ROLE \"x\""
+    ;; don't re-quote something that already has quotes
+    "\"x\""                         "SET ROLE \"x\""
+    ;; split on commas and quote separately
+    "x,y"                           "SET ROLE \"x\",\"y\""
+    ;; default database role, don't quote
+    "NONE"                          "SET ROLE NONE"
+    ;; escape double-quotes in the role
+    "x\"; SELECT sleep(10); --"     "SET ROLE \"x\"\"; SELECT sleep(10); --\""
+    "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""))

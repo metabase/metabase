@@ -1,0 +1,14 @@
+## TODO: quick description of what feature/bug this migration is for
+
+databaseChangeLog:
+  - changeSet:
+      id: v63.9lrcl8
+      author: camsaul
+      comment: Migrate databases using legacy druid driver to druid-jdbc
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_database
+              SET engine = 'druid-jdbc'
+              WHERE engine = 'druid';
+      rollback: # nothing to do

@@ -2,8 +2,8 @@
 import { css } from "@emotion/react";
 import Color from "color";
 
-import { isDark, isLight } from "metabase/lib/colors";
 import type { MantineTheme, MantineThemeOverride } from "metabase/ui";
+import { isDark, isLight } from "metabase/ui/colors";
 
 import type { ColorOperation } from "../types/private/css-variables";
 
@@ -41,7 +41,7 @@ export function applyColorOperation(
  * Determine if the current color scheme is dark based on the palette.
  */
 export function getIsDarkThemeFromPalette(theme: MantineThemeOverride) {
-  const backgroundColor = theme.fn?.themeColor?.("background-primary");
+  const backgroundColor = theme.fn?.themeColor?.("background_page-primary");
   const foregroundColor = theme.fn?.themeColor?.("text-primary");
 
   // Dark background color indicates a dark theme.

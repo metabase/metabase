@@ -35,8 +35,9 @@ export const useSaveStrategy = (
       const { strategies } = PLUGIN_CACHING;
 
       const isRoot = targetId === rootId;
+      const apiModel = model === "metric" ? "question" : model;
       const baseConfig: Pick<CacheConfig, "model" | "model_id"> = {
-        model: isRoot ? "root" : model,
+        model: isRoot ? "root" : apiModel,
         model_id: targetId,
       };
       const shouldDeleteStrategy =
@@ -50,6 +51,7 @@ export const useSaveStrategy = (
         // for fields that are not in the new strategy,
         // so let's remove these fields
         const validFields = getFieldsForStrategyType(values.type);
+        // Unjustified type cast. FIXME
         const newStrategy = _.pick(values, validFields) as CacheStrategy;
 
         const strategyData = strategies[values.type];

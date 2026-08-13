@@ -1,18 +1,18 @@
 .radioCard {
   cursor: pointer;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 }
 
 .radioCard[data-checked] {
-  border-color: var(--mb-color-brand);
-  background: var(--mb-color-background-hover);
+  border-color: var(--mb-color-core-brand);
+  background: var(--mb-color-background_surface-hover);
 }
 
 .radioCard[data-checked] .radioCardTitle {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .cardIcon {
   flex-shrink: 0;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }

@@ -61,7 +61,6 @@
       (doseq [case failed-cases]
         (testing (format "case: %s should fail" (pr-str case))
           (is (false? (mr/validate schema case)))))
-
       (doseq [case success-cases]
         (testing (format "case: %s should success" (pr-str case))
           (is (true? (mr/validate schema case))))))))

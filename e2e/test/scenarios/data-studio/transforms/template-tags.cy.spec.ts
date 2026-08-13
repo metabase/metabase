@@ -13,7 +13,8 @@ describe("scenarios > admin > transforms", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
@@ -24,9 +25,6 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("POST", "/api/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
-    cy.intercept("POST", "/api/ee/dependencies/check_transform").as(
-      "checkTransformDependencies",
-    );
   });
 
   it("should be able to use the data reference and snippets when writing a SQL transform", () => {
@@ -140,6 +138,7 @@ describe("scenarios > admin > transforms", () => {
         "try saving transform, an error is shown about missing parameters",
       );
       queryEditor().button("Save").should("be.enabled").click();
+      cy.wait("@updateTransform");
       H.undoToast()
         .should("contain.text", "missing required parameters")
         .icon("close")
@@ -159,6 +158,7 @@ describe("scenarios > admin > transforms", () => {
       setDefaultValue();
 
       queryEditor().button("Save").should("be.enabled").click();
+      cy.wait("@updateTransform");
       H.undoToast()
         .should("have.text", "Transform query updated")
         .icon("close")
@@ -208,6 +208,7 @@ describe("scenarios > admin > transforms", () => {
 
       cy.log("saving works");
       queryEditor().button("Save").should("be.enabled").click();
+      cy.wait("@updateTransform");
       H.undoToast()
         .should("have.text", "Transform query updated")
         .icon("close")
@@ -235,6 +236,7 @@ describe("scenarios > admin > transforms", () => {
       assertNoParameterSettingsAreVisible();
 
       queryEditor().button("Save").should("be.enabled").click();
+      cy.wait("@updateTransform");
       H.undoToast()
         .should("have.text", "Transform query updated")
         .icon("close")

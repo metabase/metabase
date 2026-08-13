@@ -15,18 +15,22 @@ import {
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
-import { defer } from "metabase/lib/promise";
+import { defer } from "metabase/utils/promise";
 
 const { H } = cy;
 
 const sdkBundleCleanup = () => {
   getSdkBundleScriptElement()?.remove();
+  // Unjustified type cast. FIXME
   delete (window as any).METABASE_EMBEDDING_SDK_BUNDLE;
+  // Unjustified type cast. FIXME
   delete (window as any).METABASE_PROVIDER_PROPS_STORE;
+  // Unjustified type cast. FIXME
   delete (window as any).METABASE_EMBEDDING_SDK_AUTH_STATE;
   // Clean up webpack chunk registries so stale runtimes from a previous test
   // don't interfere with chunks loaded by the next test.
   delete (window as any).webpackChunkembedding_sdk_bundle;
+  // Unjustified type cast. FIXME
   delete (window as any).webpackChunkembedding_sdk_legacy;
   deleteConflictingCljsGlobals();
 };
@@ -279,9 +283,19 @@ describe(
         cy.log("Unmounting");
         cy.mount(<></>);
 
-        cy.log("Checking METABASE_PROVIDER_PROPS_STORE cleaned up");
+        cy.log("Checking METABASE_PROVIDER_PROPS_STORE state was reset");
+        // cleanup() resets the props store state in place rather than dropping
+        // the singleton (EMB-1684 — dropping the singleton orphaned consumers
+        // that outlive a provider unmount). The store object stays on
+        // `window`, but its state should be back to initial (no props, no
+        // redux store).
         cy.window().should((win) => {
-          expect((win as any).METABASE_PROVIDER_PROPS_STORE).to.be.undefined;
+          // Unjustified type cast. FIXME
+          const store = (win as any).METABASE_PROVIDER_PROPS_STORE;
+          expect(store, "store singleton persists").to.exist;
+          const state = store.getState();
+          expect(state.props, "props reset").to.be.null;
+          expect(state.internalProps.reduxStore, "reduxStore reset").to.be.null;
         });
       });
 
@@ -325,7 +339,7 @@ describe(
         cy.intercept("GET", /\/auth\/sso(\?preferred_method=\w+)?$/).as(
           "authSsoDiscovery",
         );
-        cy.intercept("GET", /\/auth\/sso\?.*jwt=/).as("authSsoTokenExchange");
+        cy.intercept("POST", "**/auth/sso").as("authSsoTokenExchange");
         cy.intercept("GET", "/api/user/current").as("getCurrentUser");
         cy.intercept("GET", "/api/session/properties").as(
           "getSessionProperties",

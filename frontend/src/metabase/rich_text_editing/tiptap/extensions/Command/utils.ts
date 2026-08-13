@@ -2,17 +2,21 @@ import { t } from "ttag";
 
 import type { CommandSection } from "./types";
 
+export type MetabotCommandConfig = {
+  name: string;
+};
+
 export const getAllCommandSections = (
-  isMetabotEnabled: boolean,
+  metabotCommand?: MetabotCommandConfig | null,
 ): CommandSection[] => {
   return [
     {
       items: [
-        ...(isMetabotEnabled
+        ...(metabotCommand
           ? ([
               {
                 icon: "metabot" as const,
-                label: t`Ask Metabot`,
+                label: t`Ask ${metabotCommand.name}`,
                 command: "metabot",
                 isAllowedAtPosition: (editor) =>
                   !editor.isActive("supportingText"),

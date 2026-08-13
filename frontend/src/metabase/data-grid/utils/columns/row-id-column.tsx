@@ -19,12 +19,14 @@ export const getRowIdColumn = <TRow, TValue>({
   const shouldShowIndex = ["index", "indexExpand"].includes(variant);
   const canExpand = variant !== "index";
   return {
+    // Unjustified type cast. FIXME
     accessorFn: (_row, index) => index as TValue,
     id: ROW_ID_COLUMN_ID,
     minSize: getRowIdColumnSize(variant),
     enableSorting: false,
     enableResizing: false,
     enablePinning: true,
+    meta: { isUtilityColumn: true },
     cell: ({ row, table }) => {
       // HACK: When table has client-side sorting we cannot use row.index for the index column as it shows
       // row index in the original dataset

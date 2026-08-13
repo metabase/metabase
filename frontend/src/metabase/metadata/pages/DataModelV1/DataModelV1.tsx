@@ -1,6 +1,5 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import type { Location } from "history";
-import { type ReactNode, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,9 +8,10 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import * as Urls from "metabase/lib/urls";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { Outlet, useLocation, useParams } from "metabase/router";
 import { Box, Flex, Stack, rem } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import {
   FieldEmptyState,
@@ -31,13 +31,9 @@ import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
 import type { RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
-interface Props {
-  children?: ReactNode;
-  location: Location;
-  params: RouteParams;
-}
-
-export const DataModelV1 = ({ children, location, params }: Props) => {
+export const DataModelV1 = () => {
+  const location = useLocation();
+  const params = useParams<RouteParams>();
   const parsedParams = parseRouteParams(params);
   const { databaseId, fieldId, schemaName, tableId } = parsedParams;
   const { data: databasesData, isLoading: isLoadingDatabases } =
@@ -96,9 +92,9 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
   }
 
   return (
-    <Flex bg="background-secondary" data-testid="data-model" h="100%">
+    <Flex bg="background_page-secondary" data-testid="data-model" h="100%">
       <Stack
-        bg="background-primary"
+        bg="background_page-primary"
         className={S.column}
         flex={COLUMN_CONFIG.nav.flex}
         gap={0}
@@ -117,7 +113,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
         </Box>
       </Stack>
 
-      {isSegments && children}
+      {isSegments && <Outlet />}
 
       {!isSegments && (
         <>

@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import {
   SettingsPageWrapper,
@@ -49,7 +49,9 @@ export function WhiteLabelBrandingSettingsPage() {
       <SettingsSection>
         <AdminSettingInput
           name="loading-message"
-          title={t`Loading message`}
+          title={c(
+            "Label for a setting that selects the message shown to users while Metabase is loading",
+          ).t`Loading message`}
           inputType="select"
           options={getLoadingMessageOptions()}
         />

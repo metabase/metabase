@@ -1,93 +1,372 @@
 (ns metabase.llm.settings
-  "Settings for OSS LLM integration."
+  "Settings for LLM integration (provider credentials, model defaults, provider configuration)."
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru tru]])
+  (:import
+   (java.net MalformedURLException URL)
+   (software.amazon.awssdk.regions Region)))
+
+(set! *warn-on-reflection* true)
+
+(def known-aws-regions
+  "The set of AWS region ids known to the bundled AWS SDK, e.g. `\"us-east-1\"`.
+  Used to validate [[llm-bedrock-region]]."
+  (into #{} (map str) (Region/regions)))
+
+(defn- trimmed-string
+  [value]
+  (when (string? value)
+    (not-empty (str/trim value))))
+
+(defn- set-trimmed-string!
+  "Set a string setting to the trimmed `new-value`; blank values are stored as nil."
+  [setting-key new-value]
+  (setting/set-value-of-type! :string setting-key (trimmed-string new-value)))
+
+(def ^:private loopback-hosts
+  "Hostnames that resolve to the local machine. `URL.getHost` returns IPv6 hosts
+  wrapped in brackets, e.g. `[::1]`."
+  #{"localhost" "127.0.0.1" "[::1]" "::1"})
+
+(defn assert-llm-host-allowed!
+  "Safeguard for Cypress e2e tests: refuse to send an LLM request to any host
+  other than localhost. e2e tests are expected to point the LLM URL at a local
+  mock server (see `startMockLlmServer`), so throwing here keeps a misconfigured
+  test run from sending traffic to a real provider. No-op outside of e2e mode and
+  for blank URLs (so the normal not-configured handling still runs)."
+  [url]
+  (when (and config/is-e2e? (not (str/blank? url)))
+    (let [host (try
+                 (u/lower-case-en (.getHost (URL. ^String url)))
+                 ;; A malformed URL can't be verified as localhost — treat it as
+                 ;; not allowed (fail closed) rather than throwing raw.
+                 (catch MalformedURLException _ nil))]
+      (when-not (and host (contains? loopback-hosts host))
+        (throw (ex-info (tru "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server." (or host url))
+                        {:status-code 400
+                         :llm-url     url}))))))
+
+(defn- set-prefixed-api-key!
+  [setting-key prefix deferred-message new-value]
+  (let [trimmed (trimmed-string new-value)]
+    (when (and trimmed (not (str/starts-with? trimmed prefix)))
+      (throw (ex-info (str deferred-message) {:status-code 400})))
+    (setting/set-value-of-type! :string setting-key trimmed)))
+
+(defn normalize-llm-base-url
+  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
+  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
+  [value]
+  (some-> (trimmed-string value)
+          (str/replace #"/+$" "")
+          not-empty))
+
+(defn- set-normalized-base-url!
+  "Set a base-URL setting to `new-value` with trailing slashes trimmed; blank values are stored as nil.
+  Adapters build request URLs as `(str base-url path)`, so a pasted trailing slash would otherwise
+  produce `//models`."
+  [setting-key new-value]
+  (setting/set-value-of-type! :string setting-key (normalize-llm-base-url new-value)))
+
+;;; ------------------------------------------------- Anthropic -------------------------------------------------
 
 (defsetting llm-anthropic-api-key
-  (deferred-tru "Anthropic API key for AI-assisted SQL generation.")
-  :encryption :when-encryption-key-set
-  :visibility :settings-manager
-  :export? false
-  :setter     (fn [new-value]
-                (let [trimmed (when (string? new-value)
-                                (not-empty (str/trim new-value)))]
-                  (when (and trimmed (not (str/starts-with? trimmed "sk-ant-")))
-                    (throw (ex-info (tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")
-                                    {:status-code 400})))
-                  (setting/set-value-of-type! :string :llm-anthropic-api-key trimmed)))
-  :doc false)
+  (deferred-tru "The Anthropic API Key.")
+  :sensitive?       true
+  :visibility       :settings-manager
+  :export?          false
+  :deprecated-name  :ee-anthropic-api-key
+  :setter           (partial set-prefixed-api-key!
+                             :llm-anthropic-api-key
+                             "sk-ant-"
+                             (deferred-tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")))
 
 (defsetting llm-anthropic-api-key-configured?
-  "Whether an Anthropic API key has been configured for AI-assisted SQL generation."
+  "Whether an Anthropic API key has been configured."
   :type       :boolean
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(boolean (some? (llm-anthropic-api-key)))
+  :getter     #(some? (llm-anthropic-api-key))
   :doc        false)
 
 (defsetting llm-anthropic-model
-  (deferred-tru "Anthropic model for AI-assisted SQL generation.")
+  (deferred-tru "The Anthropic model to use.")
   :encryption :no
   :visibility :settings-manager
   :default "claude-opus-4-5-20251101"
-  :export? false
-  :doc false)
+  :export? false)
 
-(defsetting llm-anthropic-api-url
-  (deferred-tru "Anthropic Base API URL for AI-assisted SQL generation.")
-  :encryption :no
-  :visibility :internal
-  :default "https://api.anthropic.com"
-  :export? false
-  :doc false)
+(defsetting llm-anthropic-api-base-url
+  (deferred-tru "The Anthropic API base URL.")
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          "https://api.anthropic.com"
+  :export?          false
+  :deprecated-name  :ee-anthropic-api-base-url)
 
 (defsetting llm-anthropic-api-version
-  (deferred-tru "Anthropic API version for AI-assisted SQL generation.")
+  (deferred-tru "The Anthropic API version.")
   :encryption :no
   :visibility :internal
   :default "2023-06-01"
   :export? false
   :doc false)
 
+;;; -------------------------------------------------- OpenAI ---------------------------------------------------
+
+(defsetting llm-openai-model
+  (deferred-tru "The OpenAI Model (e.g. ''gpt-5.5'', ''gpt-5.4-mini'')")
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          "gpt-5.4"
+  :export?          false
+  :deprecated-name  :ee-openai-model)
+
+(defsetting llm-openai-api-base-url
+  (deferred-tru "The OpenAI API base URL.")
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          "https://api.openai.com"
+  :export?          false
+  :deprecated-name  :ee-openai-api-base-url)
+
+(defsetting llm-openai-api-key
+  (deferred-tru "The OpenAI API Key.")
+  :sensitive?       true
+  :visibility       :settings-manager
+  :export?          false
+  :deprecated-name  :ee-openai-api-key
+  :setter           (partial set-prefixed-api-key!
+                             :llm-openai-api-key
+                             "sk-"
+                             (deferred-tru "Invalid OpenAI API key format. Key must start with ''sk-''.")))
+
+;;; ------------------------------------------------- OpenRouter ------------------------------------------------
+
+(defsetting llm-openrouter-api-base-url
+  (deferred-tru "The OpenRouter API base URL used for Chat Completions.")
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          "https://openrouter.ai/api"
+  :export?          false
+  :deprecated-name  :ee-openrouter-api-base-url)
+
+(defsetting llm-openrouter-api-key
+  (deferred-tru "The OpenRouter API Key.")
+  :sensitive?       true
+  :visibility       :settings-manager
+  :export?          false
+  :deprecated-name  :ee-openrouter-api-key
+  :setter           (partial set-prefixed-api-key!
+                             :llm-openrouter-api-key
+                             "sk-or-v1-"
+                             (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''.")))
+
+;;; --------------------------------------------------- Z.AI ----------------------------------------------------
+
+(defsetting llm-zai-api-base-url
+  (deferred-tru "The Z.AI API base URL used for Chat Completions.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.z.ai/api/paas/v4"
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-zai-api-base-url))
+
+(defsetting llm-zai-api-key
+  (deferred-tru "The Z.AI API Key.")
+  ;; Z.AI keys are `{id}.{secret}` pairs with no documented prefix, so unlike the other
+  ;; direct-provider keys there is no format validation.
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-zai-api-key))
+
+;;; -------------------------------------------------- Mistral ---------------------------------------------------
+
+(defsetting llm-mistral-api-base-url
+  (deferred-tru "The Mistral API base URL used for Chat Completions.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.mistral.ai/v1"
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-mistral-api-base-url))
+
+(defsetting llm-mistral-api-key
+  (deferred-tru "The Mistral API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-mistral-api-key))
+
+;;; ------------------------------------------------- Moonshot --------------------------------------------------
+
+(defsetting llm-moonshot-api-base-url
+  (deferred-tru "The Moonshot AI API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.moonshot.ai/v1"
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-moonshot-api-base-url))
+
+(defsetting llm-moonshot-api-key
+  (deferred-tru "The Moonshot AI API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-moonshot-api-key))
+
+;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
+
+(defsetting llm-bedrock-access-key-id
+  (deferred-tru "The AWS Access Key ID for Amazon Bedrock.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-trimmed-string! :llm-bedrock-access-key-id))
+
+(defsetting llm-bedrock-secret-access-key
+  (deferred-tru "The AWS Secret Access Key for Amazon Bedrock.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-trimmed-string! :llm-bedrock-secret-access-key))
+
+(defsetting llm-bedrock-session-token
+  (deferred-tru "The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-trimmed-string! :llm-bedrock-session-token))
+
+(defn- set-bedrock-region!
+  [new-value]
+  (let [region (trimmed-string new-value)]
+    (when (and region (not (contains? known-aws-regions region)))
+      (throw (ex-info (tru "Invalid AWS region {0}." (pr-str region)) {:status-code 400})))
+    (setting/set-value-of-type! :string :llm-bedrock-region region)))
+
+(defsetting llm-bedrock-region
+  (deferred-tru "The AWS region for Amazon Bedrock (e.g. us-east-1).")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     "us-east-1"
+  :export?     false
+  :setter      set-bedrock-region!)
+
+(defsetting llm-bedrock-configured?
+  "Whether the required AWS Bedrock credentials are configured."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #(boolean (and (trimmed-string (llm-bedrock-access-key-id))
+                             (trimmed-string (llm-bedrock-secret-access-key))))
+  :doc        false)
+
+;;; ----------------------------------------------- Microsoft Azure ---------------------------------------------
+
+(defsetting llm-azure-api-key
+  (deferred-tru "The API key for the Azure resource hosting your models.")
+  ;; Azure data-plane keys are unprefixed, so unlike the direct-provider keys there is no format validation.
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-trimmed-string! :llm-azure-api-key))
+
+(defsetting llm-azure-api-base-url
+  (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-normalized-base-url! :llm-azure-api-base-url))
+
+;;; --------------------------------------------------- Proxy ---------------------------------------------------
+
+(defsetting llm-proxy-base-url
+  (deferred-tru "Base URL for the LLM proxy. When set, requests to the managed Metabase AI service are routed through this proxy and authenticated with the instance token instead of a provider API key. Harbormaster adds /llm component into the url.")
+  ;; For details on llm component see the https://github.com/metabase/metabase/pull/74526#discussion_r3282553435.
+  :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
+                         (premium-features/has-feature? :metabot-v3))
+  :encryption       :no
+  :visibility       :internal
+  :default          nil
+  :export?          false
+  :doc              false)
+
+(defsetting ai-service-base-url
+  (deferred-tru "Base URL for the managed Metabase AI service.")
+  :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
+                         (premium-features/has-feature? :metabot-v3))
+  :encryption       :no
+  :visibility       :internal
+  :default          nil
+  :export?          false
+  :doc              false)
+
+(defsetting llm-proxy-configured?
+  (deferred-tru "Whether the LLM proxy is configured for the managed Metabase AI service.")
+  :encryption       :no
+  :visibility       :settings-manager
+  :export?          false
+  :setter           :none
+  :getter           #(some? (llm-proxy-base-url))
+  :doc              false)
+
+;;; -------------------------------------------------- General --------------------------------------------------
+
+(defsetting ai-features-enabled?
+  (deferred-tru "Whether AI features are enabled.")
+  :type       :boolean
+  :visibility :public
+  :default    true
+  :export?    true)
+
 (defsetting llm-max-tokens
   (deferred-tru "Maximum tokens for LLM responses.")
   :type :integer
   :default 4096
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-request-timeout-ms
-  (deferred-tru "Socket timeout in milliseconds for LLM API requests.")
+  (deferred-tru
+   (str "Socket (inter-byte read) timeout in milliseconds for LLM API requests. "
+        "For streaming responses this bounds the gap between successive chunks, "
+        "NOT the total response time. Picked generously: extended thinking can "
+        "pause for tens of seconds between chunks. Without it, a hung read inside "
+        "the stream blocks the worker indefinitely — observed in production when "
+        "an upstream proxy held the connection open without sending data."))
   :type :integer
-  :default 60000
+  :default 120000
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-connection-timeout-ms
-  (deferred-tru "Connection timeout in milliseconds for LLM API requests.")
+  (deferred-tru
+   (str "TCP connection timeout in milliseconds for LLM API requests. A provider "
+        "that is down or unreachable should fail fast instead of holding a worker "
+        "thread forever."))
   :type :integer
-  :default 5000
+  :default 10000
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-rate-limit-per-user
   (deferred-tru "Maximum SQL generation requests per user per minute.")
   :type :integer
   :default 20
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)
 
 (defsetting llm-rate-limit-per-ip
   (deferred-tru "Maximum SQL generation requests per IP address per minute.")
   :type :integer
   :default 100
   :visibility :settings-manager
-  :export? false
-  :doc false)
+  :export? false)

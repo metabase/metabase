@@ -1,95 +1,111 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import {
+  trackMetricsViewerMetricAdded,
+  trackMetricsViewerMetricRemoved,
+} from "metabase/metrics-viewer/analytics";
+import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import { Box, Button, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
-import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
+import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  SelectedMetric,
-  SourceColorMap,
-} from "../../types/viewer-state";
+import type { SelectedMetric } from "../../types/viewer-state";
+import type { DefinitionSource } from "../../utils/definition-sources";
+import {
+  applyDefinitionToFormulaEntities,
+  getDefinitionSources,
+} from "../../utils/definition-sources";
 import { FilterPopover } from "../FilterPopover";
-import type { DefinitionSource } from "../FilterPopover/FilterPopoverContent";
-import { MetricSearch } from "../MetricSearch";
+import { MetricSearchInput as MetricSearch } from "../MetricSearch";
 import { MetricsFilterPills } from "../MetricsFilterPills";
 
 import S from "./MetricSearchPanel.module.css";
 
-type MetricSearchPanelProps = {
-  selectedMetrics: SelectedMetric[];
-  metricColors: SourceColorMap;
-  definitions: MetricsViewerDefinitionEntry[];
-  onAddMetric: (metric: SelectedMetric) => void;
-  onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
-  onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
-  onSetBreakout: (
-    id: MetricSourceId,
-    dimension: ProjectionClause | undefined,
-  ) => void;
-  onUpdateDefinition: (
-    id: MetricSourceId,
-    definition: MetricDefinition,
-  ) => void;
-};
-
-export function MetricSearchPanel({
-  selectedMetrics,
-  metricColors,
-  definitions,
-  onAddMetric,
-  onRemoveMetric,
-  onSwapMetric,
-  onSetBreakout,
-  onUpdateDefinition,
-}: MetricSearchPanelProps) {
+export function MetricSearchPanel() {
+  const {
+    definitions,
+    formulaEntities,
+    activeDimensionBreakout,
+    selectedMetrics,
+    sourceColors: metricColors,
+    setFormulaEntities: onFormulaEntitiesChange,
+    addMetric,
+    removeMetric,
+    swapMetric: onSwapMetric,
+    setBreakoutDimension: onSetBreakout,
+  } = useMetricsViewerContext();
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
 
-  const readyDefinitions = useMemo(
-    () =>
-      definitions.filter(
-        (definition): definition is DefinitionSource =>
-          definition.definition != null,
-      ),
-    [definitions],
+  const onAddMetric = useCallback(
+    (metric: SelectedMetric) => {
+      addMetric(metric);
+      trackMetricsViewerMetricAdded(metric.id, metric.sourceType);
+    },
+    [addMetric],
+  );
+
+  const onRemoveMetric = useCallback(
+    (metricId: number, sourceType: "metric" | "measure") => {
+      removeMetric(metricId, sourceType);
+      trackMetricsViewerMetricRemoved(metricId, sourceType);
+    },
+    [removeMetric],
+  );
+
+  const definitionSources = useMemo(
+    () => getDefinitionSources(formulaEntities, definitions),
+    [formulaEntities, definitions],
   );
 
   const filterCount = useMemo(
     () =>
-      readyDefinitions.reduce(
-        (count, definition) =>
-          count + LibMetric.filters(definition.definition).length,
+      definitionSources.reduce(
+        (count, source) => count + LibMetric.filters(source.definition).length,
         0,
       ),
-    [readyDefinitions],
+    [definitionSources],
   );
 
-  const hasDefinitions = readyDefinitions.length > 0;
+  const handleSourceDefinitionChange = useCallback(
+    (source: DefinitionSource, newDefinition: MetricDefinition) => {
+      onFormulaEntitiesChange(
+        applyDefinitionToFormulaEntities(
+          formulaEntities,
+          source,
+          newDefinition,
+        ),
+      );
+    },
+    [formulaEntities, onFormulaEntitiesChange],
+  );
+
+  const hasDefinitions = definitionSources.length > 0;
   const hasFilters = filterCount > 0;
   const toggleLabel = isFilterPillsExpanded ? t`Hide filters` : t`Show filters`;
 
   return (
-    <Stack gap="sm">
-      <Flex align="center" justify="space-between">
-        <Text fw={700} size="lg">{t`Explore`}</Text>
+    <Stack gap="md">
+      <Flex align="center" justify="space-between" mih="1.875rem">
+        <Text fw={700} size="lg" component="h1">
+          {t`Explore`}
+        </Text>
         {hasDefinitions && (
           <FilterPopover
-            definitions={readyDefinitions}
+            definitionSources={definitionSources}
             metricColors={metricColors}
-            onUpdateDefinition={onUpdateDefinition}
+            onSourceDefinitionChange={handleSourceDefinitionChange}
           >
             <Button.Group>
               <Button
                 variant="light"
-                color="filter"
+                color="core-filter"
                 size="xs"
                 p="sm"
                 leftSection={
                   <Icon
                     name={hasFilters ? "filter_plus" : "filter"}
-                    size={14}
+                    size={16}
                   />
                 }
                 className={hasFilters ? S.filterButtonWithCount : undefined}
@@ -100,7 +116,7 @@ export function MetricSearchPanel({
                 <Tooltip label={toggleLabel}>
                   <Button
                     variant="light"
-                    color="filter"
+                    color="core-filter"
                     size="xs"
                     py="sm"
                     px="md"
@@ -122,9 +138,12 @@ export function MetricSearchPanel({
       <Box className={S.container}>
         <Box>
           <MetricSearch
+            definitions={definitions}
+            formulaEntities={formulaEntities}
+            activeDimensionBreakout={activeDimensionBreakout}
+            onFormulaEntitiesChange={onFormulaEntitiesChange}
             selectedMetrics={selectedMetrics}
             metricColors={metricColors}
-            definitions={definitions}
             onAddMetric={onAddMetric}
             onRemoveMetric={onRemoveMetric}
             onSwapMetric={onSwapMetric}
@@ -136,12 +155,12 @@ export function MetricSearchPanel({
             className={S.filterPillsSection}
             px="sm"
             py="xs"
-            bg="background-filter"
+            bg="background_page-filter"
           >
             <MetricsFilterPills
-              definitions={readyDefinitions}
+              definitionSources={definitionSources}
               sourceColors={metricColors}
-              onUpdateDefinition={onUpdateDefinition}
+              onSourceDefinitionChange={handleSourceDefinitionChange}
             />
           </Box>
         )}

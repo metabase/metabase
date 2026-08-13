@@ -3,18 +3,18 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { useAdminSetting } from "metabase/api/utils";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { useAdminSetting } from "metabase/settings";
+import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
-  type CurrencyStyle,
   getCurrencyOptions,
   getCurrencyStyleOptions,
+} from "metabase/utils/formatting";
+import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/lib/formatting";
-import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
-import type { FormattingSettings } from "metabase-types/api";
-
-import { SetByEnvVar } from "./AdminSettingInput";
+} from "metabase/value-formatting";
+import type { CurrencyStyle, FormattingSettings } from "metabase-types/api";
 
 const DEFAULT_FORMATTING_SETTINGS: FormattingSettings = {
   "type/Temporal": {
@@ -67,6 +67,7 @@ export function FormattingWidget() {
     localValue?.["type/Currency"] || {};
 
   const [currencyOptions, currencyStyleOptions] = useMemo(() => {
+    // Unjustified type cast. FIXME
     const currencyOptions = (
       getCurrencyOptions() as { name: string; value: string }[]
     ).map(mapNameToLabel);
@@ -103,6 +104,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Temporal": {
                     ...localValue?.["type/Temporal"],
+                    // Unjustified type cast. FIXME
                     date_style: newValue as string,
                   },
                 })
@@ -125,6 +127,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Temporal": {
                     ...localValue?.["type/Temporal"],
+                    // Unjustified type cast. FIXME
                     date_abbreviate: checked as boolean,
                   },
                 })
@@ -146,6 +149,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Temporal": {
                     ...localValue?.["type/Temporal"],
+                    // Unjustified type cast. FIXME
                     time_style: newValue as string,
                   },
                 })
@@ -170,6 +174,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Number": {
                     ...localValue?.["type/Number"],
+                    // Unjustified type cast. FIXME
                     number_separators: newValue as string,
                   },
                 })
@@ -182,12 +187,14 @@ export function FormattingWidget() {
               label={t`Unit of currency`}
               value={currency}
               inputType="select"
+              searchable
               options={currencyOptions}
               onChange={(newValue) =>
                 handleChange({
                   ...localValue,
                   "type/Currency": {
                     ...localValue?.["type/Currency"],
+                    // Unjustified type cast. FIXME
                     currency: newValue as string,
                   },
                 })
@@ -204,6 +211,7 @@ export function FormattingWidget() {
                   ...localValue,
                   "type/Currency": {
                     ...localValue?.["type/Currency"],
+                    // Unjustified type cast. FIXME
                     currency_style: newValue as CurrencyStyle,
                   },
                 })
@@ -223,6 +231,7 @@ function FormattingInput({
   onChange,
   options,
   inputType,
+  searchable,
 }: {
   id: string;
   label: string;
@@ -230,6 +239,7 @@ function FormattingInput({
   onChange: (newValue: string | boolean | number) => void;
   options?: { label: string; value: string }[];
   inputType: "boolean" | "select" | "radio";
+  searchable?: boolean;
 }) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -253,6 +263,7 @@ function FormattingInput({
           value={localValue}
           onChange={handleChange}
           data={options ?? []}
+          searchable={searchable}
         />
       )}
       {inputType === "boolean" && (

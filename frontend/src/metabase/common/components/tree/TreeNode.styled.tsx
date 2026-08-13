@@ -3,9 +3,9 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { lighten } from "metabase/lib/colors";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
+import { lighten } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
 interface TreeNodeRootProps {
@@ -17,8 +17,9 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   display: flex;
   align-items: center;
   color: ${(props) =>
-    props.isSelected ? color("text-primary-inverse") : color("brand")};
-  background-color: ${(props) => (props.isSelected ? color("brand") : "unset")};
+    props.isSelected ? color("text-primary-inverse") : color("core-brand")};
+  background-color: ${(props) =>
+    props.isSelected ? color("core-brand") : "unset"};
   padding-left: ${(props) => props.depth + 0.5}rem;
   padding-right: 0.5rem;
   cursor: pointer;
@@ -26,7 +27,7 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
 
   &:hover {
     background-color: ${(props) =>
-      props.isSelected ? color("brand") : lighten("brand", 0.6)};
+      props.isSelected ? color("core-brand") : lighten("core-brand", 0.6)};
   }
 `;
 

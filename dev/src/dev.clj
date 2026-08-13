@@ -51,6 +51,7 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
+   [clojure.core.memoize :as memoize]
    [clojure.main]
    [clojure.string :as str]
    [clojure.test]
@@ -157,7 +158,6 @@
   (let [h2-dbs (t2/select :model/Database :engine :h2)
         in-memory? (fn [db] (some-> db :details :db (str/starts-with? "mem:")))
         can-connect? (fn [db]
-                       #_:clj-kondo/ignore
                        (binding [driver.settings/*allow-testing-h2-connections* true]
                          (try
                            (driver/can-connect? :h2 (:details db))
@@ -467,3 +467,9 @@
   (mt/initialize-if-needed! :test-users)
   ;; seed test db
   (mt/id))
+
+(defn reset-static!
+  "Reset static and template caches to pick up new js"
+  []
+  ((requiring-resolve 'stencil.loader/invalidate-cache))
+  (memoize/memo-clear! @(requiring-resolve 'metabase.server.routes.index/load-inline-js)))

@@ -1,9 +1,11 @@
+import type { ComponentType } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { isStorybookActive } from "metabase/env";
 import type {
   DatasetData,
+  IconName,
   RawSeries,
   Series,
   TransformedSeries,
@@ -11,10 +13,18 @@ import type {
 } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./types";
-import type { Visualization } from "./types/visualization";
+import type {
+  Visualization,
+  VisualizationDefinition,
+} from "./types/visualization";
 
-const visualizations = new Map<VisualizationDisplay, Visualization>();
-const aliases = new Map<string, Visualization>();
+// The static-viz bundle registers bare definitions with no component; the app
+// bundles register full components carrying their definition statics.
+export type RegisteredVisualization = Visualization | VisualizationDefinition;
+
+const visualizations = new Map<VisualizationDisplay, RegisteredVisualization>();
+const aliases = new Map<string, RegisteredVisualization>();
+const settingWidgets = new Map<string, ComponentType<any>>();
 visualizations.get = function (key) {
   return (
     Map.prototype.get.call(this, key) ||
@@ -23,22 +33,20 @@ visualizations.get = function (key) {
   );
 };
 
-export function getSensibleDisplays(data: DatasetData) {
-  return Array.from(visualizations)
-    .filter(
-      ([, viz]) =>
-        // don't rule out displays if there's no data
-        data.rows.length <= 1 || (viz.isSensible && viz.isSensible(data)),
-    )
-    .map(([display]) => display);
-}
-
-let defaultVisualization: Visualization;
-export function setDefaultVisualization(visualization: Visualization) {
+let defaultVisualization: RegisteredVisualization;
+export function setDefaultVisualization(
+  visualization: RegisteredVisualization,
+) {
   defaultVisualization = visualization;
 }
 
-export function registerVisualization(visualization: Visualization) {
+function isVisualizationComponent(
+  visualization: RegisteredVisualization | undefined,
+) {
+  return typeof visualization === "function";
+}
+
+export function registerVisualization(visualization: RegisteredVisualization) {
   if (visualization == null) {
     throw new Error(t`Visualization is null`);
   }
@@ -50,25 +58,51 @@ export function registerVisualization(visualization: Visualization) {
     );
   }
   if (visualizations.has(identifier)) {
-    if (isStorybookActive) {
-      console.error(
-        `Visualization with that identifier is already registered: ` +
-          visualization.name,
-      );
+    const registeredVisualization = visualizations.get(identifier);
+    const isReplacingDefinitionWithComponent =
+      isVisualizationComponent(visualization) &&
+      !isVisualizationComponent(registeredVisualization);
+    const isRegisteringDefinitionOverComponent =
+      !isVisualizationComponent(visualization) &&
+      isVisualizationComponent(registeredVisualization);
 
-      // do not throw if it's storybook
+    if (isRegisteringDefinitionOverComponent) {
       return;
     }
 
-    throw new Error(
-      t`Visualization with that identifier is already registered: ` +
-        visualization.name,
-    );
+    if (!isReplacingDefinitionWithComponent) {
+      if (isStorybookActive) {
+        console.error(
+          `Visualization with that identifier is already registered: ` +
+            visualization.name,
+        );
+
+        // do not throw if it's storybook
+        return;
+      }
+
+      throw new Error(
+        t`Visualization with that identifier is already registered: ` +
+          visualization.name,
+      );
+    }
   }
   visualizations.set(identifier, visualization);
   for (const alias of visualization.aliases || []) {
     aliases.set(alias, visualization);
   }
+}
+
+export function registerSettingWidgets(
+  widgets: Record<string, ComponentType<any>>,
+) {
+  for (const [key, widget] of Object.entries(widgets)) {
+    settingWidgets.set(key, widget);
+  }
+}
+
+export function getSettingWidgetComponent(key: string) {
+  return settingWidgets.get(key);
 }
 
 type SeriesLike = Array<{ card: { display: VisualizationDisplay } }>;
@@ -79,7 +113,7 @@ export function getVisualization(display: VisualizationDisplay | null) {
 
 export function getVisualizationRaw(
   series: SeriesLike,
-): Visualization | undefined {
+): RegisteredVisualization | undefined {
   return visualizations.get(series[0].card.display);
 }
 
@@ -116,9 +150,15 @@ export function getVisualizationTransformed(
   return { series, visualization };
 }
 
-export function getIconForVisualizationType(display: VisualizationDisplay) {
+export function getIconForVisualizationType(display: VisualizationDisplay): {
+  name: IconName;
+  iconUrl?: string;
+} {
   const viz = visualizations.get(display);
-  return viz?.iconName ?? "unknown";
+  return {
+    name: viz?.iconName ?? "unknown",
+    iconUrl: viz?.iconUrl,
+  };
 }
 
 export const extractRemappings = (series: Series) => {

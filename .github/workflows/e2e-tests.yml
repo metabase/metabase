@@ -24,11 +24,11 @@ jobs:
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Remove test results comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | # js
             const { owner, repo } = context.repo;
@@ -75,12 +75,12 @@ jobs:
 
   collect-timings:
     name: Collect E2E Timings
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     needs: e2e-tests
     if: always() && !cancelled() && github.ref == 'refs/heads/master'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             .github
@@ -88,7 +88,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Download all timing artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: timing-data-*
           path: timing-files
@@ -98,7 +98,7 @@ jobs:
       - name: Merge split timings
         id: merge
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -129,7 +129,7 @@ jobs:
 
       - name: Upload merged timing files
         if: steps.merge.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: merged-e2e-timings
           path: e2e/support/runTimings.json
@@ -138,7 +138,7 @@ jobs:
   e2e-tests-result:
     needs:
       - e2e-tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: e2e-tests-result
     if: always() && !cancelled()

@@ -1,5 +1,4 @@
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { Box, Icon } from "metabase/ui";
+import { Box, Ellipsified, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { DatasetColumn } from "metabase-types/api";
 

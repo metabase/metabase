@@ -1,20 +1,26 @@
 (ns metabase.transforms.schema
   (:require
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
+
+(mr/def ::lookback
+  "A lookback window: each run re-reads source rows up to `value` `unit`s behind the checkpoint,
+  so late-arriving rows older than the watermark still get picked up. Only supported for
+  temporal checkpoint columns."
+  [:map
+   [:value pos-int?]
+   [:unit (into [:enum] (map name) (sort u.date/add-units))]])
 
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
-   ;; for native
-   [:checkpoint-filter {:optional true} :string]
-   ;; for mbql and python
-   [:checkpoint-filter-unique-key {:optional true}
-    ::lib.schema/column-unique-key]])
+   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]
+   [:lookback {:optional true} [:maybe ::lookback]]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}
@@ -31,12 +37,7 @@
     [:map
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
-     ;; decode/normalize: convert FE map format to vec and enrich with DB metadata
-     [:source-tables   [:sequential {:decode/normalize (fn [st]
-                                                         (if (map? st)
-                                                           (transforms-base.u/source-tables-map->vec st)
-                                                           st))}
-                        ::transforms-base.u/source-table-entry]]
+     [:source-tables   [:sequential ::transforms-base.u/source-table-entry]]
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
@@ -44,9 +45,22 @@
 (mr/def ::append-config
   [:map [:type [:= "append"]]])
 
+(mr/def ::merge-key-column
+  "One column of a merge unique key. Carries a resolved `:field-id` when the target column is known,
+  degrading to a `:name` ref when the target table doesn't exist yet (mirrors `::source-table-entry`)."
+  [:map
+   [:name {:optional true} ms/NonBlankString]
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]])
+
+(mr/def ::merge-config
+  [:map
+   [:type [:= "merge"]]
+   [:unique-key [:sequential ::merge-key-column]]])
+
 (mr/def ::target-incremental-strategy
   [:multi {:dispatch :type}
-   ["append" ::append-config]])
+   ["append" ::append-config]
+   ["merge"  ::merge-config]])
 
 (mr/def ::table-target
   [:map

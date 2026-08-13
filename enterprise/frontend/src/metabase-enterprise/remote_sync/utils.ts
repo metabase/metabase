@@ -1,8 +1,12 @@
 import { t } from "ttag";
 
-import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName } from "metabase/ui";
-import type { Collection, RemoteSyncEntityStatus } from "metabase-types/api";
+import type { ColorName } from "metabase/ui/colors/types";
+import type {
+  Collection,
+  IconName,
+  RemoteSyncEntityStatus,
+  SettingDefinition,
+} from "metabase-types/api";
 
 import type { CollectionPathSegment } from "./displayGroups";
 
@@ -16,6 +20,10 @@ export {
 type ErrorData = {
   message?: string;
   conflicts?: boolean;
+  /** Set by the backend CAS guard when the requested branch != the configured remote-sync-branch. */
+  branch_mismatch?: boolean;
+  /** The authoritative branch the instance is actually on, when branch_mismatch is set. */
+  current_branch?: string;
 };
 
 export type SyncError = {
@@ -26,6 +34,25 @@ export type SyncError = {
 type ParsedError = {
   errorMessage: string | null;
   hasConflict: boolean;
+  /** True when the request was rejected because the branch changed in another session. */
+  hasBranchMismatch: boolean;
+  /** The branch the instance is actually on, when hasBranchMismatch is true. */
+  currentBranch: string | null;
+};
+
+// TODO: Should merge with getExtraFormFieldProps from admin/settings/utils.ts
+export const getEnvSettingProps = <T>(
+  setting?: SettingDefinition,
+  extras?: T,
+) => {
+  if (setting?.is_env_setting) {
+    return {
+      description: t`Using ${setting.env_name}`,
+      readOnly: true,
+      ...extras,
+    };
+  }
+  return {};
 };
 
 export const getSyncStatusIcon = (status: RemoteSyncEntityStatus): IconName => {
@@ -48,15 +75,15 @@ export const getSyncStatusColor = (
 ): ColorName => {
   switch (status) {
     case "create":
-      return "success";
+      return "feedback-positive";
     case "removed":
     case "delete":
-      return "danger";
+      return "feedback-negative";
     case "update":
     case "touch":
-      return "saturated-blue";
+      return "core-blue-saturated";
     default:
-      return "info";
+      return "core-info";
   }
 };
 
@@ -72,7 +99,12 @@ const getErrorMessage = (data: ErrorData): string | undefined =>
 
 export const parseSyncError = (exportError: SyncError | null): ParsedError => {
   if (!exportError) {
-    return { errorMessage: null, hasConflict: false };
+    return {
+      errorMessage: null,
+      hasConflict: false,
+      hasBranchMismatch: false,
+      currentBranch: null,
+    };
   }
 
   if (
@@ -84,12 +116,26 @@ export const parseSyncError = (exportError: SyncError | null): ParsedError => {
     const messageFromData = getErrorMessage(errorData);
     const hasConflict = hasConflictProperty(errorData);
 
+    if (errorData.branch_mismatch) {
+      const currentBranch = errorData.current_branch ?? null;
+      return {
+        errorMessage:
+          messageFromData ||
+          t`The sync branch changed in another session. Refresh the page and try again.`,
+        hasConflict: false,
+        hasBranchMismatch: true,
+        currentBranch,
+      };
+    }
+
     if (hasConflict) {
       return {
         errorMessage:
           messageFromData ||
           t`Your changes conflict with the remote repository. You can force push to override them.`,
         hasConflict: true,
+        hasBranchMismatch: false,
+        currentBranch: null,
       };
     }
 
@@ -97,6 +143,8 @@ export const parseSyncError = (exportError: SyncError | null): ParsedError => {
       errorMessage:
         messageFromData || t`Something went wrong. Please try again.`,
       hasConflict: false,
+      hasBranchMismatch: false,
+      currentBranch: null,
     };
   }
 
@@ -105,12 +153,16 @@ export const parseSyncError = (exportError: SyncError | null): ParsedError => {
       errorMessage:
         exportError.message || t`Something went wrong. Please try again.`,
       hasConflict: false,
+      hasBranchMismatch: false,
+      currentBranch: null,
     };
   }
 
   return {
     errorMessage: t`Something went wrong. Please try again.`,
     hasConflict: false,
+    hasBranchMismatch: false,
+    currentBranch: null,
   };
 };
 

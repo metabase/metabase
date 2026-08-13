@@ -4,9 +4,9 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection, CollectionId } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { useGetDefaultCollectionId } from "./use-get-default-collection-id";
 
@@ -52,18 +52,19 @@ const setup = ({
   collections: Collection[];
   hasRootAccess?: boolean;
 }) => {
-  setupCollectionByIdEndpoint({ collections });
+  const allCollections = [
+    createMockCollection({
+      id: "root",
+      name: "Our analytics",
+      can_write: hasRootAccess,
+    }),
+    ...collections,
+  ];
+  setupCollectionByIdEndpoint({ collections: allCollections });
   setupAuditInfoEndpoint();
 
   const entitiesState = createMockEntitiesState({
-    collections: [
-      createMockCollection({
-        id: "root",
-        name: "Our analytics",
-        can_write: hasRootAccess,
-      }),
-      ...collections,
-    ],
+    collections: allCollections,
   });
   const state = createMockState({ currentUser: user, entities: entitiesState });
 

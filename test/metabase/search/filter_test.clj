@@ -14,7 +14,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
-                                  (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
+                                  (search.tu/with-appdb-search-if-available-otherwise-legacy (thunk)))))
 
 (defn- filter-keys []
   (remove #{:ids} (map :context-key (vals search.config/filters))))
@@ -66,19 +66,15 @@
   (testing "All models (except transforms, which are admin-only) are relevant if we're not looking in the trash"
     (is (= (disj search.config/all-models "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
-
   (testing "We only search for certain models in the trash"
-    (is (= #{"dashboard" "dataset" "document" "segment" "measure" "collection" "action" "metric" "card"}
+    (is (= #{"dashboard" "dataset" "document" "exploration" "segment" "measure" "collection" "action" "metric" "card"}
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
-
   (testing "Indexed entities and transforms (which are admin-only) are not visible for sandboxed users"
     (is (= (disj search.config/all-models "indexed-entity" "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-sandboxed-user {:archived? false})))))
-
   (testing "All models including transforms are visible for superusers"
     (is (= search.config/all-models
            (search.filter/search-context->applicable-models (with-all-models-and-superuser {:archived? false})))))
-
   (doseq [active-filters (active-filter-combinations)]
     (testing (str "Consistent models included when filtering on " (vec active-filters))
       (let [search-ctx (with-all-models-and-regular-user (create-test-filter-context active-filters))]
@@ -96,9 +92,8 @@
    :last-edited-at                 "2024-10-02"
    :search-native-query            true
    :verified                       true
+   :curated?                       true
    :ids                            [1 2 3 4]
-   :non-temporal-dim-ids           "[1]"
-   :has-temporal-dim               true
    :display-type                   ["line"]
    :models                         (disj search.config/all-models "dataset")
    :enabled-transform-source-types #{"mbql"}})
@@ -107,7 +102,6 @@
   (mt/with-premium-features #{}
     (testing "The kitchen sink context is complete"
       (is (empty? (remove kitchen-sink-filter-context (filter-keys)))))
-
     (testing "In the general case, we simply filter by models, and exclude dashboard cards"
       (is (= {:select [:some :stuff],
               :from :somewhere,
@@ -123,7 +117,6 @@
                [:in :search_index.model ["a"]]
                [:or [:= nil :search_index.dashboard_id] nil]]}
              (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
-
     (testing "We can insert appropriate constraints for all the filters"
       (is (= {:select [:some :stuff],
               :from :somewhere,
@@ -133,6 +126,7 @@
                 [:or [:= :search_index.collection_id 5] [:like :collection.location "%/5/%"]]
                 [:not= :search_index.model [:inline "table"]]
                 [:= :search_index.archived true]
+                [:= :search_index.curated true]
                 [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                 [:or
                  [:= nil :search_index.dashboard_id]
@@ -146,6 +140,7 @@
                    "measure"
                    "transform"
                    "document"
+                   "exploration"
                    "database"
                    "action"
                    "indexed-entity"
@@ -155,11 +150,31 @@
                 [:in :search_index.model_id ["1" "2" "3" "4"]]
                 [:< [:cast :search_index.last_edited_at :date] #t "2024-10-03"]
                 [:>= [:cast :search_index.model_created_at :date] #t "2024-10-01"]
-                [:= :search_index.non_temporal_dim_ids "[1]"]
-                [:= :search_index.has_temporal_dim true]
                 :and
                 [:= :search_index.database_id 231]
                 [:in :search_index.display_type ["line"]]
                 [:>= [:cast :search_index.last_edited_at :date] #t "2024-10-02"]}}
              (-> (search.filter/with-filters kitchen-sink-filter-context {:select [:some :stuff], :from :somewhere})
                  (update :where set)))))))
+
+(deftest personal-collections-where-clause-set-based-test
+  (testing "the \"exclude\" branch uses a single NOT EXISTS subquery rather than one :not-like clause per personal collection"
+    (let [clause (search.filter/personal-collections-where-clause
+                  {:filter-items-in-personal-collection "exclude"
+                   :current-user-id                     1}
+                  :search_index.collection_id)]
+      (is (=? [:or any? [:and any? [:not [:exists any?]]]]
+              clause))))
+  (testing "the \"only\" branch uses a single EXISTS subquery rather than one :like clause per personal collection"
+    (let [clause (search.filter/personal-collections-where-clause
+                  {:filter-items-in-personal-collection "only"
+                   :current-user-id                     1}
+                  :search_index.collection_id)]
+      (is (=? [:or any? [:exists any?]]
+              clause)))))
+
+(deftest in-place-curated-table-filter-counts-authoritative-test
+  (testing "the in-place curated table filter counts authoritative tables regardless of publish state,
+            mirroring collections.curation/curated? (BOT-1570)"
+    (let [where (:where (#'search.in-place.filter/build-optional-filter-query :curated "table" {} true))]
+      (is (some #{"authoritative"} (tree-seq coll? seq where))))))

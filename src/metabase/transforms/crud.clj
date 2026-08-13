@@ -1,40 +1,27 @@
 (ns metabase.transforms.crud
   "CRUD operations for transforms. Extracted from `metabase.transforms-rest.api.transform`
-   so that non-REST modules (e.g. metabot-v3, workspaces) can use them without depending
+   so that non-REST modules (e.g. metabot-v3) can use them without depending
    on the `-rest` module."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
-   [metabase.models.transforms.transform :as transform.model]
-   [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.sql PreparedStatement)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;; TODO(FE-source-tables): Remove this function and all call sites when FE adopts the array format for source-tables.
-(defn source-tables-vec->map-for-fe
-  "Convert source-tables from internal vec format to legacy map format for FE compatibility.
-  Remove this when FE adopts the array format."
-  [transform]
-  (if (transforms-base.u/python-transform? transform)
-    (update-in transform [:source :source-tables]
-               transforms-base.u/source-tables-vec->alias-id-map)
-    transform))
 
 (defn check-database-feature
   "Check that the target database supports the required features for this transform."
@@ -65,98 +52,94 @@
                     (assoc error
                            :status-code 400)))))
 
-(defn extract-all-columns-from-query
-  "Extracts column metadata (name and type) from a query.
+(defn validate-target-schema!
+  "Require a non-blank `:target.schema` when the target database supports schemas.
 
-  Returns a sequence of maps with `:name` and `:base_type` keys, or nil if extraction fails.
+  On schemas-supporting drivers a nil schema makes post-run sync miss the physical table
+  and leaves the Metabase table with zero fields."
+  [transform]
+  (let [db-id (transforms-base.i/target-db-id transform)
+        db    (t2/select-one :model/Database db-id)]
+    (when (and db (driver.u/supports? (:engine db) :schemas db))
+      (api/check-400 (not (str/blank? (get-in transform [:target :schema])))
+                     (deferred-tru "A target schema is required for this database.")))))
 
-  The query is first compiled to native SQL, then uses PreparedStatement.getMetaData()
-  to inspect the query structure. This works for most modern JDBC drivers but may not
-  be supported by all drivers or for all query types."
-  [driver database-id query]
-  (try
-    (let [{:keys [query]} (qp.compile/compile query)]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       database-id
-       {}
-       (fn [conn]
-         (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn query [])]
-           (when-let [rsmeta (.getMetaData stmt)]
-             (seq (sql-jdbc.execute/column-metadata driver rsmeta)))))))
-    (catch Exception e
-      (log/debugf e "Failed to extract columns from query: %s" (ex-message e))
-      nil)))
-
-(defn extract-incremental-filter-columns-from-query
-  "Extracts column names suitable for incremental transform checkpoint filtering.
-
-  This function is specifically for incremental transform checkpoint column selection.
-  It only returns columns with types supported for checkpoint filtering:
-  - Temporal types (timestamp, timestamp with timezone)
-  - Numeric types (integer, float, decimal)
-
-  Text, boolean, and other types are filtered out as they are not supported for
-  incremental checkpointing.
-
-  Returns a vector of column names (as strings), or nil if extraction fails.
-
-  The query is first compiled to native SQL, then uses PreparedStatement.getMetaData()
-  to inspect the query structure. This works for most modern JDBC drivers but may not
-  be supported by all drivers or for all query types."
-  [driver database-id query]
-  (some->> (extract-all-columns-from-query driver database-id query)
-           (filter (comp transforms-base.u/supported-incremental-filter-type? :base_type))
-           (mapv :name)))
+(defn- field->column
+  "Adapt a t2 Field row to the kebab-case column shape `lib.types.isa` predicates expect."
+  [field]
+  {:base-type (:base_type field), :effective-type (:effective_type field)})
 
 (defn validate-incremental-column-type!
   "Validates that the checkpoint column for an incremental transform has a supported type.
 
-  For MBQL/Python transforms, resolves the column from the query using the unique key.
-  For native queries, extracts columns from the query and checks the checkpoint-filter column.
+  Resolves the field by ID and checks that its base-type is numeric or temporal.
+  Throws a 400 error if the field cannot be found or its type is not supported."
+  [{:keys [source] :as transform}]
+  (when (transforms-base.u/checkpoint-source? transform)
+    (let [checkpoint-filter-field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
+          field (t2/select-one :model/Field checkpoint-filter-field-id)]
+      (api/check-400 field (deferred-tru "Checkpoint field not found."))
+      (let [column (field->column field)]
+        (api/check-400 (transforms-base.u/supported-checkpoint-column? column)
+                       (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
+                                     (:name field)
+                                     (pr-str (lib.types.isa/column-type column))))))))
 
-  Throws a 400 error if the column type is not supported or cannot be resolved."
-  [{:keys [source]}]
-  (when-let [{:keys [checkpoint-filter checkpoint-filter-unique-key] strategy-type :type}
-             (:source-incremental-strategy source)]
-    (when (and (= :query (:type source)) (= "checkpoint" strategy-type))
-      (let [{:keys [query]} source
-            database-id (:database query)
-            database    (api/check-404 (t2/select-one :model/Database :id database-id))
-            driver-name (driver/the-initialized-driver (:engine database))]
-        (cond
-          ;; For MBQL, resolve column from query metadata
-          checkpoint-filter-unique-key
-          (let [column (lib/column-with-unique-key query checkpoint-filter-unique-key)]
-            (api/check-400 column (deferred-tru "Checkpoint column not found in query."))
-            (api/check-400 (transforms-base.u/supported-incremental-filter-type? (:base-type column))
-                           (deferred-tru "Checkpoint column type {0} is not supported. Only numeric and temporal types are supported for incremental filtering."
-                                         (pr-str (:base-type column)))))
+(defn validate-lookback!
+  "Validates a configured lookback window: only date and datetime checkpoint columns support one
+  (time-only columns wrap at midnight), and date-only columns need a day-or-coarser unit."
+  [{:keys [source] :as transform}]
+  (let [{:keys [lookback checkpoint-filter-field-id]} (:source-incremental-strategy source)]
+    (when-let [{:keys [unit]} (and (transforms-base.u/checkpoint-source? transform) lookback)]
+      (when-let [field (t2/select-one :model/Field checkpoint-filter-field-id)]
+        (let [column (field->column field)]
+          (api/check-400 (lib.types.isa/date-or-datetime? column)
+                         (deferred-tru "A lookback window is only supported for date or datetime checkpoint columns."))
+          (when (lib.types.isa/date-without-time? column)
+            (api/check-400 (contains? #{"day" "week" "month" "quarter" "year"} unit)
+                           (deferred-tru "A lookback window on a date checkpoint column must use days or a coarser unit."))))))))
 
-          ;; For native query with checkpoint-filter, validate type if we can extract the column metadata
-          checkpoint-filter
-          (when-some [column-metadata (seq (extract-all-columns-from-query driver-name database-id query))]
-            (when-some [column (first (filter #(= checkpoint-filter (:name %)) column-metadata))]
-              (api/check-400 (transforms-base.u/supported-incremental-filter-type? (:base_type column))
-                             (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
-                                           checkpoint-filter
-                                           (pr-str (:base_type column)))))))))))
+(defn validate-incremental-table-tag!
+  "Reject a table-incremental native-query transform whose source query has no table template tag for
+  the incremental range filter to target.
+
+  Without that table variable the incremental filter has nowhere to be injected, so the transform is
+  in a broken state. This surfaces the error eagerly at create/update time instead of only when the
+  transform is run."
+  [transform]
+  (when (and (transforms-base.u/incremental-target? transform)
+             (transforms-base.u/native-query-transform? transform))
+    (api/check-400 (transforms-base.u/incremental-table-tag-name transform)
+                   (deferred-tru "Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field."))))
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last-run-start-time last-run-statuses tag-ids]}]
+  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
   (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (t2/select :model/Transform {:where    [:in :source_type enabled-types]
+    (let [transforms (t2/select :model/Transform {:where    (into [:and [:in :source_type enabled-types]]
+                                                                  (when database-id
+                                                                    [[:= :source_database_id database-id]]))
                                                   :order-by [[:id :asc]]})]
-      (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
+      (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
            (into []
                  (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
                        (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                        (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
-                       (map #(update % :last_run transforms-base.u/localize-run-timestamps))
-                       (map transforms.u/add-source-readable)
-                       (map source-tables-vec->map-for-fe))))))) ;; TODO(FE-source-tables): remove
+                       (map #(update % :last_run transforms-base.u/present-run))
+                       (map transforms.u/add-source-readable)))))))
+
+(defn- requestable-indexes
+  "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
+  [transform]
+  (when-let [db-id (transforms-base.i/target-db-id transform)]
+    (when-let [database (t2/select-one :model/Database db-id)]
+      (let [methods (try
+                      (driver/supported-index-methods (:engine database) database)
+                      (catch Throwable e
+                        (log/warn "Failed to fetch supported index methods for transform" (:id transform) (ex-message e))
+                        nil))]
+        (not-empty methods)))))
 
 (defn get-transform
   "Get a specific transform."
@@ -164,20 +147,23 @@
   (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms-base.u/target-table (transforms-base.i/target-db-id transform) target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :creator :owner)
-        (u/update-some :last_run transforms-base.u/localize-run-timestamps)
+        (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
+        (u/update-some :last_run transforms-base.u/present-run)
         (assoc :table target-table)
-        transforms.u/add-source-readable
-        source-tables-vec->map-for-fe))) ;; TODO(FE-source-tables): remove
+        (assoc :requestable_indexes (requestable-indexes transform))
+        transforms.u/add-source-readable)))
 
 (defn create-transform!
   "Create new transform in the appdb.
-   Optionally accepts a creator-id to use instead of the current user (for workspace merges)."
+   Optionally accepts a creator-id to use instead of the current user."
   ([body]
    (create-transform! body nil))
   ([body creator-id]
    (when (transforms-base.u/query-transform? body)
      (validate-transform-query! body))
+   (validate-target-schema! body)
+   (validate-incremental-table-tag! body)
+   (validate-lookback! body)
    (let [creator-id (or creator-id api/*current-user-id*)
          transform  (t2/with-transaction [_]
                       (let [tag-ids       (:tag_ids body)
@@ -194,7 +180,7 @@
                         (when (seq tag-ids)
                           (transform.model/update-transform-tags! (:id transform) tag-ids))
                         ;; Return with hydrated tag_ids
-                        (t2/hydrate transform :transform_tag_ids :creator :owner)))]
+                        (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute)))]
      (events/publish-event! :event/transform-create {:object transform :user-id creator-id})
      transform)))
 
@@ -208,11 +194,16 @@
                           new (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       (api/check-403 (and (mi/can-write? old) (mi/can-write? new)))
-
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
                       (check-database-feature new)
-                      (validate-incremental-column-type! new)
+                      (when (contains? body :target)
+                        (validate-target-schema! new))
+                      (when (contains? body :source)
+                        (validate-incremental-column-type! new))
+                      (when (or (contains? body :source) (contains? body :target))
+                        (validate-incremental-table-tag! new)
+                        (validate-lookback! new))
                       (when (transforms-base.u/query-transform? old)
                         (validate-transform-query! new)
                         (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]
@@ -226,11 +217,10 @@
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
+                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
-        transforms.u/add-source-readable
-        source-tables-vec->map-for-fe))) ;; TODO(FE-source-tables): remove
+        transforms.u/add-source-readable)))
 
 (defn delete-transform!
   "Delete a transform and publish the delete event."

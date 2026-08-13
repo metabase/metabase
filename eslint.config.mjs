@@ -22,7 +22,13 @@ import storybookPlugin from "eslint-plugin-storybook";
 import i18nextPlugin from "eslint-plugin-i18next";
 import ttagPlugin from "eslint-plugin-ttag";
 
+import boundaries from "eslint-plugin-boundaries";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
+import {
+  elements as boundaryElements,
+  enforcedRules as boundaryRules,
+  getPublicApiModules,
+} from "./frontend/lint/module-boundaries.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -30,6 +36,15 @@ const shouldLintCssModules =
   process.env.LINT_CSS_MODULES === "true" || process.env.CI;
 
 const TEST_FILES_NAME_PATTERN_ERROR_MESSAGE = `Please name your test setup and utils files with a ".spec.*" in the filename, or put them under "/tests", e.g. "setup.spec.ts", "MyComponent.setup.spec.ts", or "tests/setup.ts". This is to ensure they won't be imported in the SDK build.`;
+
+// ttag string extraction only understands contexts chained inline, e.g. c("...").t`...`;
+// a c() call stored in a variable silently drops its strings from the .pot file.
+const unchainedTtagContextRestriction = {
+  selector:
+    "CallExpression[callee.name=c]:not(MemberExpression > CallExpression)",
+  message:
+    "Unchained ttag c() — its strings are dropped from the translation template. Chain it inline: c('context').t`...`",
+};
 
 const baseMetabaseRestrictedConfig = {
   patterns: [
@@ -42,7 +57,11 @@ const baseMetabaseRestrictedConfig = {
     {
       name: "react-redux",
       importNames: ["useSelector", "useDispatch", "connect"],
-      message: "Please import from `metabase/lib/redux` instead.",
+      message: "Please import from `metabase/redux` instead.",
+    },
+    {
+      name: "react-router",
+      message: "Please import routing from `metabase/router` instead.",
     },
     {
       name: "@mantine/core",
@@ -70,10 +89,18 @@ const configs = [
     ignores: [
       "frontend/src/cljs/**",
       "frontend/src/cljs_release/**",
+      "**/*.d.ts",
       "e2e/support/cypress_sample_database.js",
       "e2e/support/cypress_sample_instance_data.js",
+      "e2e/support/assets/**",
       "e2e/embedding-sdk-host-apps/**",
-      "frontend/src/metabase-types/openapi/types.gen.ts",
+      "e2e/tmp/**",
+      "frontend/test/__support__/custom-viz-fixtures/**/*.js",
+      "**/custom-viz/fixtures/example_custom_viz_plugin/**",
+      // The data-app dev entry is served verbatim to the consumer's Vite (it
+      // imports `@metabase/embedding-sdk-react/*` + a virtual config module), so
+      // it can't be resolved/linted in this repo.
+      "enterprise/frontend/src/embedding-sdk-package/data-app-dev-entry.tsx",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",
@@ -118,7 +145,7 @@ const configs = [
     },
     settings: {
       "import-x/internal-regex":
-        "^metabase($|/)|^metabase-lib($|/)|^metabase-types($|/)|^metabase-enterprise($|/)|^embedding-sdk-bundle($|/)|^embedding-sdk-shared($|/)|^embedding-sdk-package($|/)|^e2e($|/)|^__support__($|/)|^assets/|^cljs/|^ee-plugins($|/)|^sdk-ee-plugins($|/)|^build-configs/",
+        "^metabase($|/)|^metabase-lib($|/)|^metabase-types($|/)|^metabase-enterprise($|/)|^embedding-sdk-bundle($|/)|^embedding-sdk-shared($|/)|^embedding-sdk-package($|/)|^e2e($|/)|^__support__($|/)|^assets/|^cljs/|^ee-plugins($|/)|^sdk-ee-plugins($|/)|^build-configs/|^docs/",
       "import-x/resolver": {
         node: true,
         webpack: {
@@ -142,6 +169,7 @@ const configs = [
     rules: {
       // Base ESLint rules
       strict: ["error", "never"],
+      "no-restricted-syntax": ["error", unchainedTtagContextRestriction],
       "no-undef": "error",
       "no-var": "warn",
       "no-unused-vars": [
@@ -249,6 +277,7 @@ const configs = [
       "metabase/no-color-literals": "error",
       "metabase/no-literal-metabase-strings": "error",
       "metabase/no-oss-reinitialize-import": "error",
+      "metabase/no-analytics-import-outside-analytics-files": "error",
 
       "depend/ban-dependencies": [
         "error",
@@ -271,6 +300,39 @@ const configs = [
     },
   },
   {
+    files: [
+      "frontend/src/**/*.{js,jsx,ts,tsx}",
+      "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
+    ],
+    plugins: {
+      boundaries,
+      metabase: metabasePlugin,
+    },
+    settings: {
+      "boundaries/elements": boundaryElements,
+      "boundaries/ignore": ["**/e2e/**", "test/**"],
+      "boundaries/dependency-nodes": ["import", "dynamic-import"],
+    },
+    rules: {
+      "boundaries/element-types": [
+        "error",
+        {
+          default: "disallow",
+          rules: boundaryRules,
+          message: "${file.type} cannot import from ${dependency.type}",
+        },
+      ],
+      // Modules flagged `enforcePublicApi` in module-boundaries.mjs must be imported through their index.
+      // Their own files must import relatively.
+      "metabase/enforce-module-public-api": [
+        "error",
+        { modules: getPublicApiModules() },
+      ],
+      // Every file frontend/src/ and enterprise/frontend/src/ must belong to a declared module.
+      "boundaries/no-unknown-files": "error",
+    },
+  },
+  {
     files: ["**/*.js", "**/*.jsx"],
     languageOptions: {
       parser: babelParser,
@@ -288,6 +350,7 @@ const configs = [
     files: [
       "**/*.unit.spec.*",
       "frontend/src/metabase/admin/**/*",
+      "frontend/src/metabase/monitor/tools/**/*",
       "frontend/src/metabase/setup/**/*",
       "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
       "enterprise/frontend/src/metabase-enterprise/embedding/**/*",
@@ -311,7 +374,7 @@ const configs = [
   },
   {
     files: [
-      "**/*.unit.spec.*",
+      "**/*.spec.*",
       "frontend/lint/**/*",
       "**/*.stories.*",
       "**/stories-data.*",
@@ -335,6 +398,7 @@ const configs = [
       parser: tseslint.parser,
     },
     rules: {
+      "metabase/no-unjustified-type-casts": "error",
       "prefer-rest-params": "off",
       "react/prop-types": "off",
       "@typescript-eslint/explicit-module-boundary-types": "off",
@@ -415,6 +479,10 @@ const configs = [
     plugins: {
       cypress: cypressPlugin,
       "chai-friendly": chaiFriendlyPlugin,
+      // Declared here so the metabase and import rules below also resolve for non-JS/TS e2e files
+      // which don't match the `**/*.{js,ts,...}` base.
+      metabase: metabasePlugin,
+      import: importXPlugin,
     },
     rules: {
       "metabase/no-unscoped-text-selectors": "error",
@@ -475,7 +543,7 @@ const configs = [
           patterns: [
             {
               // There might be things that we might benefit from importing, like `defer`, in those cases we can change the regex here to allow them
-              regex: "^metabase/(?!lib/promise$|embedding-sdk/test/).*",
+              regex: "^metabase/(?!utils/promise$|embedding-sdk/test/).*",
               allowTypeImports: true,
               message:
                 "We should avoid importing `metabase/` code in the component tests, we might accidentally include CLJS in the dependencies and that can create issues. Component tests should only use the code it needs to test, which is in the package.",
@@ -504,6 +572,13 @@ const configs = [
     },
   },
   {
+    // Standalone Node service — console logging is appropriate here.
+    files: ["frontend/src/static-viz-server/**/*.ts"],
+    rules: {
+      "no-console": "off",
+    },
+  },
+  {
     files: ["frontend/src/metabase/**/*"],
     plugins: {
       ttag: fixupPluginRules(ttagPlugin),
@@ -525,18 +600,13 @@ const configs = [
       "ttag/no-module-declaration": "error",
       "no-restricted-syntax": [
         "error",
+        unchainedTtagContextRestriction,
         {
           selector: "Literal[value=/mb-base-color-/]",
           message:
             "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
         },
       ],
-    },
-  },
-  {
-    files: ["frontend/src/metabase/app.js"],
-    rules: {
-      "import/no-duplicates": "off",
     },
   },
   {
@@ -547,7 +617,16 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/lib/redux/hooks.ts"],
+    // MCP UI app is a standalone SDK consumer — allow embedding-sdk-package imports
+    // and raw hex color literals (used for MCP host theme fallback values).
+    files: ["frontend/src/metabase/embedding/mcp/**/*"],
+    rules: {
+      "no-restricted-imports": "off",
+      "metabase/no-color-literals": "off",
+    },
+  },
+  {
+    files: ["frontend/src/metabase/utils/redux/hooks.ts"],
     rules: {
       "no-restricted-imports": "off",
     },
@@ -564,6 +643,14 @@ const configs = [
     },
   },
   {
+    // The router facade is the single seam allowed to import `react-router`
+    // directly; every other file goes through `metabase/router`.
+    files: ["frontend/src/metabase/router/**/*"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
+  {
     files: ["frontend/src/metabase/ui/**/*.{js,jsx,ts,tsx}"],
     rules: {
       "no-restricted-imports": [
@@ -575,6 +662,10 @@ const configs = [
             "cljs/metabase.lib*",
           ],
           paths: [
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
             {
               name: "@emotion/styled",
               message: "Please style components using css modules.",
@@ -609,7 +700,11 @@ const configs = [
             {
               name: "react-redux",
               importNames: ["useSelector", "useDispatch", "connect"],
-              message: "Please import from `metabase/lib/redux` instead.",
+              message: "Please import from `metabase/redux` instead.",
+            },
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
             },
             {
               name: "@mantine/core",
@@ -648,23 +743,22 @@ const configs = [
               group: [
                 "metabase/*",
                 "!metabase/env",
-                "!metabase/lib",
+                "!metabase/utils",
                 "!metabase/querying",
                 "!metabase/services",
               ],
             },
             {
               group: [
-                "metabase/lib/*",
-                "!metabase/lib/colors",
-                "!metabase/lib/encoding",
-                "!metabase/lib/formatting",
-                "!metabase/lib/number",
-                "!metabase/lib/time",
-                "!metabase/lib/time-dayjs",
-                "!metabase/lib/types",
-                "!metabase/lib/urls",
-                "!metabase/lib/utils",
+                "metabase/utils/*",
+                "!metabase/utils/encoding",
+                "!metabase/utils/formatting",
+                "!metabase/utils/number",
+                "!metabase/utils/time",
+                "!metabase/utils/time-dayjs",
+                "!metabase/utils/types",
+                "!metabase/urls",
+                "!metabase/utils/clone",
               ],
             },
           ],
@@ -787,6 +881,10 @@ const configs = [
           ],
           paths: [
             {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
+            {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
             },
@@ -837,7 +935,7 @@ const configs = [
               message: 'Please use "useSdkSelector", "useSdkDispatch"',
             },
             {
-              name: "metabase/lib/redux",
+              name: "metabase/redux",
               importNames: ["useStore", "useDispatch"],
               message: 'Please use "useSdkStore", "useSdkDispatch"',
             },
@@ -859,6 +957,10 @@ const configs = [
         {
           patterns: [{ group: ["cljs/metabase.lib*"] }],
           paths: [
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
@@ -936,6 +1038,23 @@ const configs = [
     },
   },
   {
+    files: ["frontend/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "custom-viz",
+              allowTypeImports: true,
+              message: "Please use only type-only imports from 'custom-viz'.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["enterprise/frontend/src/embedding-sdk-package/bin/**/*"],
     rules: {
       "metabase/no-literal-metabase-strings": "off",
@@ -948,6 +1067,13 @@ const configs = [
       "metabase/no-literal-metabase-strings": "off",
       "metabase/no-color-literals": "off",
       "no-console": "off",
+    },
+  },
+  {
+    files: ["enterprise/frontend/src/custom-viz/src/templates/index.tsx"],
+    rules: {
+      "import/no-default-export": "off",
+      "metabase/no-color-literals": "off",
     },
   },
   {
@@ -974,7 +1100,7 @@ const configs = [
     },
   },
   {
-    files: ["frontend/lint/**/*.js"],
+    files: ["frontend/lint/**/*.js", "frontend/lint/**/*.mjs"],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -997,6 +1123,7 @@ const configs = [
       "rspack.*.js",
       "bin/**/*.js",
       ".github/scripts/**/*.js",
+      ".github/scripts/**/*.mjs",
     ],
     languageOptions: {
       globals: {

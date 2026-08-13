@@ -2,14 +2,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateSettingsMutation } from "metabase/api";
-import { useSetting, useToast } from "metabase/common/hooks";
-import { UtilApi } from "metabase/services";
+import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
+import { useToast } from "metabase/common/hooks";
+import { useSetting, useUpdateSettingsMutation } from "metabase/settings";
 import { Button, Group, Stack, Text, TextInput } from "metabase/ui";
 
 export const SetupJwtStep = ({ onSuccess }: { onSuccess: () => void }) => {
   const [sendToast] = useToast();
   const [updateSettings, { isLoading }] = useUpdateSettingsMutation();
+  const [generateRandomToken] = useLazyGenerateRandomTokenQuery();
 
   const existingJwtIdentityProviderUri = useSetting(
     "jwt-identity-provider-uri",
@@ -26,7 +27,7 @@ export const SetupJwtStep = ({ onSuccess }: { onSuccess: () => void }) => {
 
   const handleEnableJwt = useCallback(async () => {
     try {
-      const { token } = await UtilApi.random_token();
+      const { token } = await generateRandomToken().unwrap();
 
       await updateSettings({
         "jwt-identity-provider-uri": jwtIdentityProviderUri.trim(),
@@ -39,11 +40,17 @@ export const SetupJwtStep = ({ onSuccess }: { onSuccess: () => void }) => {
     } catch (error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`Failed to enable JWT authentication`,
       });
     }
-  }, [jwtIdentityProviderUri, updateSettings, sendToast, onSuccess]);
+  }, [
+    jwtIdentityProviderUri,
+    generateRandomToken,
+    updateSettings,
+    sendToast,
+    onSuccess,
+  ]);
 
   return (
     <Stack gap="lg">

@@ -9,6 +9,7 @@ const UNAGGREGATED_DATA_WARNING_PIE = "UNAGGREGATED_DATA_WARNING_PIE";
 const UNEXPECTED_QUERY_TIMEZONE = "UNEXPECTED_QUERY_TIMEZONE";
 const MULTIPLE_TIMEZONES = "MULTIPLE_TIMEZONES";
 const PIE_NEGATIVES = "PIE_NEGATIVES";
+const TREEMAP_NEGATIVES = "TREEMAP_NEGATIVES";
 
 type VisualizationWarningKey =
   | typeof NULL_DIMENSION_WARNING
@@ -17,7 +18,8 @@ type VisualizationWarningKey =
   | typeof UNAGGREGATED_DATA_WARNING_PIE
   | typeof UNEXPECTED_QUERY_TIMEZONE
   | typeof MULTIPLE_TIMEZONES
-  | typeof PIE_NEGATIVES;
+  | typeof PIE_NEGATIVES
+  | typeof TREEMAP_NEGATIVES;
 
 export type VisualizationWarning = {
   key: VisualizationWarningKey;
@@ -88,5 +90,12 @@ export function pieNegativesWarning(): VisualizationWarning {
   return {
     key: PIE_NEGATIVES,
     text: t`Negative values in measure column have been omitted from pie chart.`,
+  };
+}
+
+export function treemapNegativesWarning(): VisualizationWarning {
+  return {
+    key: TREEMAP_NEGATIVES,
+    text: t`Negative values in measure column have been omitted from treemap chart.`,
   };
 }

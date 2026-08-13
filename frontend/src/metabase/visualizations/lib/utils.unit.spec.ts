@@ -95,16 +95,19 @@ const savedMultiseriesCard: Card = {
   dataset_query: breakoutMultiseriesQuery,
 };
 const derivedMultiseriesCard = createMockCard({
+  // Unjustified type cast. FIXME
   id: null as unknown as CardId, // id is not present when drilling through series / multiseries
   dataset_query: derivedBreakoutMultiseriesQuery,
   display: savedCard.display,
 });
 const newCard = createMockCard({
+  // Unjustified type cast. FIXME
   id: null as unknown as CardId, // id is not present when drilling through series / multiseries
   dataset_query: baseQuery,
   display: "line",
 });
 const modifiedNewCard = createMockCard({
+  // Unjustified type cast. FIXME
   id: null as unknown as CardId, // id is not present when drilling through series / multiseries
   dataset_query: derivedQuery,
   display: "line",

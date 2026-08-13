@@ -1,11 +1,11 @@
-import type { IconName } from "metabase/ui";
 import { Box, Flex, Icon } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./SourceColorIndicator.module.css";
 
 type SourceColorIndicatorProps = {
   colors?: string[];
-  fallbackIcon: IconName;
+  fallbackIcon?: IconName;
   size?: number;
   limit?: number;
 };
@@ -25,6 +25,7 @@ export function SourceColorIndicator({
           <Box
             key={index}
             className={S.colorDot}
+            data-testid="color-indicator"
             w={size}
             h={size}
             ml={index === 0 ? 0 : -overlap}
@@ -35,7 +36,28 @@ export function SourceColorIndicator({
     );
   }
 
+  const color = colors?.[0] ?? "var(--mb-color-text-primary)";
+
   return (
-    <Icon name={fallbackIcon} size={size} style={{ color: colors?.[0] }} />
+    <Flex align="center" data-testid="color-indicator-container">
+      {fallbackIcon ? (
+        <Icon
+          name={fallbackIcon}
+          data-testid="color-indicator"
+          size={size}
+          style={{ color }}
+        />
+      ) : (
+        <Box
+          className={S.colorDot}
+          data-testid="color-indicator"
+          w={size}
+          h={size}
+          style={{
+            backgroundColor: color,
+          }}
+        />
+      )}
+    </Flex>
   );
 }

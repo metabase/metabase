@@ -1,0 +1,162 @@
+name: Metabot Messages
+description: One row per non-deleted Metabot message, with role, profile, tokens, user, and the owning conversation.
+entity_id: H20MNO_ZroDFEmgYzMLcZ
+created_at: '2026-04-22T05:29:01.750254Z'
+creator_id: internal@metabase.com
+display: table
+collection_id: vG58R8k-QddHWA7_47umn
+collection_position: 21
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_metabot_messages]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - source-table: [Internal Metabase Database, public, v_metabot_messages]
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Integer
+  coercion_strategy: null
+  description: Primary key from metabot_message.id.
+  display_name: Message ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_messages, message_id]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_metabot_messages, message_id]
+  name: message_id
+  semantic_type: type/PK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: UUID of the owning conversation.
+  display_name: Conversation ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_messages, conversation_id]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_metabot_messages, conversation_id]
+  name: conversation_id
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: Timestamp when the message was stored.
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_messages, created_at]
+  - {temporal-unit: default}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_metabot_messages, created_at]
+  name: created_at
+  semantic_type: type/CreationTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: Role of the message sender (e.g. user, assistant).
+  display_name: Role
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_messages, role]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_metabot_messages, role]
+  name: role
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: Metabot profile (e.g. default, embedded) that produced the message.
+  display_name: Profile ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_messages, profile_id]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_metabot_messages, profile_id]
+  name: profile_id
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: Total tokens consumed for this message (prompt + completion).
+  display_name: Total Tokens
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_messages, total_tokens]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_metabot_messages, total_tokens]
+  name: total_tokens
+  semantic_type: type/Quantity
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: ID of the user who owns this conversation.
+  display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_messages, user_id]
+  - null
+  fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
+  id: [Internal Metabase Database, public, v_metabot_messages, user_id]
+  name: user_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: Slack message timestamp; null for web-originated messages.
+  display_name: Slack Msg ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_messages, slack_msg_id]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_metabot_messages, slack_msg_id]
+  name: slack_msg_id
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: Slack channel ID; null for web-originated messages.
+  display_name: Channel ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_metabot_messages, channel_id]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_metabot_messages, channel_id]
+  name: channel_id
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- {id: H20MNO_ZroDFEmgYzMLcZ, label: metabot_messages, model: Card}
+type: model

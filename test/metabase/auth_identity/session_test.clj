@@ -18,6 +18,7 @@
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-123"
                          :embedded false
+                         :token_exchange false
                          :device_description "Test Browser"
                          :ip_address "127.0.0.1"}
             session (auth-identity/create-session-with-auth-tracking!
@@ -36,6 +37,7 @@
                                                     :metadata {:sso_source "google"}}]
       (let [device-info {:device_id "test-device-456"
                          :embedded false
+                         :token_exchange false
                          :device_description "Chrome Browser"
                          :ip_address "127.0.0.1"}
             session (auth-identity/create-session-with-auth-tracking! user device-info :provider/google)]
@@ -52,6 +54,7 @@
                                                   :metadata {:login_attributes {:uid "testuser"}}}]
       (let [device-info {:device_id "test-device-789"
                          :embedded false
+                         :token_exchange false
                          :device_description "Firefox Browser"
                          :ip_address "127.0.0.1"}
             session (auth-identity/create-session-with-auth-tracking! user device-info :provider/ldap)]
@@ -66,6 +69,7 @@
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-last-used"
                          :embedded false
+                         :token_exchange false
                          :device_description "Test Browser"
                          :ip_address "127.0.0.1"}
             original-last-used (:last_used_at password-auth)]
@@ -80,10 +84,12 @@
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info-1 {:device_id "device-1"
                            :embedded false
+                           :token_exchange false
                            :device_description "Browser 1"
                            :ip_address "127.0.0.1"}
             device-info-2 {:device_id "device-2"
                            :embedded false
+                           :token_exchange false
                            :device_description "Browser 2"
                            :ip_address "127.0.0.1"}
             session-1 (auth-identity/create-session-with-auth-tracking!
@@ -102,6 +108,7 @@
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-cascade"
                          :embedded false
+                         :token_exchange false
                          :device_description "Test Browser"
                          :ip_address "127.0.0.1"}
             session (auth-identity/create-session-with-auth-tracking!
@@ -119,6 +126,7 @@
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-multi"
                          :embedded false
+                         :token_exchange false
                          :device_description "Test Browser"
                          :ip_address "127.0.0.1"}
             password-session (auth-identity/create-session-with-auth-tracking!
@@ -135,6 +143,7 @@
     (mt/with-temp [:model/User user {}]
       (let [device-info {:device_id "test-device-type"
                          :embedded false
+                         :token_exchange false
                          :device_description "Test Browser"
                          :ip_address "127.0.0.1"}
             session (auth-identity/create-session-with-auth-tracking! user device-info :provider/password)]
@@ -148,6 +157,7 @@
       (mt/with-temp [:model/User user {}]
         (let [device-info {:device_id "test-device-type"
                            :embedded false
+                           :token_exchange false
                            :device_description "Test Browser"
                            :ip_address "127.0.0.1"}
               session (auth-identity/create-session-with-auth-tracking! user device-info :provider/password)]
@@ -163,6 +173,7 @@
         (t2/update! :model/AuthIdentity (:id password-auth) {:expires_at expires-at})
         (let [device-info {:device_id "test-device-expires"
                            :embedded false
+                           :token_exchange false
                            :device_description "Test Browser"
                            :ip_address "127.0.0.1"}
               session (auth-identity/create-session-with-auth-tracking! user device-info :provider/password)]
@@ -179,6 +190,7 @@
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-no-expires"
                          :embedded false
+                         :token_exchange false
                          :device_description "Test Browser"
                          :ip_address "127.0.0.1"}
             session (auth-identity/create-session-with-auth-tracking! user device-info :provider/password)]

@@ -1,6 +1,7 @@
 import { type KeyboardShortcutId, shortcuts } from ".";
 
 const getShortcutsWithPrefix = (prefix: string) => {
+  // Unjustified type cast. FIXME
   const allIds = Object.keys(shortcuts) as KeyboardShortcutId[];
   return allIds
     .filter((id) => id.startsWith(prefix))

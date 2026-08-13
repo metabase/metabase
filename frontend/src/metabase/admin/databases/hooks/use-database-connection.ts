@@ -1,10 +1,10 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { getDefaultEngineKey } from "metabase/databases/utils/engine";
-import { useDispatch } from "metabase/lib/redux";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
+import { useNavigate } from "metabase/router";
 import type { DatabaseId, Engine, EngineKey } from "metabase-types/api";
 
 interface UseDatabaseConnectionProps {
@@ -16,10 +16,11 @@ export const useDatabaseConnection = ({
   databaseId,
   engines,
 }: UseDatabaseConnectionProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const queryParams = new URLSearchParams(location.search);
   const preselectedEngine =
     queryParams.get("engine") ?? getDefaultEngineKey(engines || {});
+  const fromEmbeddingSetupGuide = queryParams.has(RETURN_TO_SETUP_GUIDE_PARAM);
   const addingNewDatabase = databaseId === undefined;
 
   const databaseReq = useGetDatabaseQuery(
@@ -34,16 +35,17 @@ export const useDatabaseConnection = ({
   };
 
   const handleCancel = () => {
-    dispatch(
-      database?.id
-        ? push(`/admin/databases/${database.id}`)
-        : push(`/admin/databases`),
+    navigate(
+      database?.id ? `/admin/databases/${database.id}` : `/admin/databases`,
     );
   };
 
   const handleOnSubmit = (savedDB: { id: DatabaseId }) => {
     if (addingNewDatabase) {
-      dispatch(push(`/admin/databases/${savedDB.id}`));
+      const param = fromEmbeddingSetupGuide
+        ? `?${RETURN_TO_SETUP_GUIDE_PARAM}=true`
+        : "";
+      navigate(`/admin/databases/${savedDB.id}${param}`);
     } else {
       handleCancel();
     }

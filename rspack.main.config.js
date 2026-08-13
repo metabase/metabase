@@ -1,12 +1,18 @@
 // @ts-check
 /* eslint-env node */
-/* eslint-disable import/no-commonjs */
+
 const fs = require("fs");
 
 const rspack = require("@rspack/core");
-const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
+const { ReactRefreshRspackPlugin } = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
+const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
 
 const {
   IS_DEV_MODE,
@@ -24,10 +30,23 @@ const {
 const {
   RESOLVE_ALIASES,
 } = require("./frontend/build/shared/rspack/resolve-aliases");
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("./frontend/build/shared/rspack/side-effect-free-modules");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
 const SRC_PATH = __dirname + "/frontend/src/metabase";
+const ENTERPRISE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
+
+// Data apps are an enterprise plugin (the iframe entry + its template live in the
+// enterprise tree), so their build entries and HTML are only produced in EE builds.
+const isEEBuild = process.env.MB_EDITION === "ee";
+
+// For sharing the embedding snippets in the docs with the embedding
+// onboarding flow in the app to keep the snippets always in sync.
+const SDK_DOCS_SNIPPETS_PATH = __dirname + "/docs/embedding/sdk/snippets";
 
 const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
 const isDevMode = IS_DEV_MODE;
@@ -60,7 +79,13 @@ const SWC_LOADER = {
         tsx: true,
       },
       experimental: {
-        plugins: [["@swc/plugin-emotion", { sourceMap: isDevMode }]],
+        plugins: [
+          ["@swc/plugin-emotion", { sourceMap: isDevMode }],
+          // instrumentation slows builds significantly and should only run in the nightly coverage CI job.
+          ...(process.env.INSTRUMENT_COVERAGE === "true"
+            ? [["swc-plugin-coverage-instrument", {}]]
+            : []),
+        ],
       },
     },
 
@@ -73,20 +98,23 @@ const SWC_LOADER = {
 };
 
 class OnScriptError {
-  apply(compiler) {
-    compiler.hooks.compilation.tap("OnScriptError", (compilation) => {
-      HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
-        "OnScriptError",
-        (data, cb) => {
-          // Manipulate the content
-          data.assetTags.scripts.forEach((script) => {
-            script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
-          });
-          // Tell webpack to move on
-          cb(null, data);
-        },
-      );
-    });
+  apply(/** @type {import("webpack").Compiler} */ compiler) {
+    compiler.hooks.compilation.tap(
+      "OnScriptError",
+      (/** @type {import("webpack").Compilation} */ compilation) => {
+        HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
+          "OnScriptError",
+          (data, cb) => {
+            // Manipulate the content
+            data.assetTags.scripts.forEach((script) => {
+              script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
+            });
+            // Tell webpack to move on
+            cb(null, data);
+          },
+        );
+      },
+    );
   }
 }
 
@@ -98,12 +126,18 @@ const config = {
   // output a bundle for the app JS and a bundle for styles
   // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
   entry: {
-    "app-main": "./app-main.js",
+    "app-main": "./app-main.ts",
     "app-public": "./app-public.ts",
     "app-embed": "./app-embed.ts",
     "app-embed-sdk": "./app-embed-sdk.tsx",
-    "vendor-styles": "./css/vendor.css",
+    "app-embed-mcp": "./app-embed-mcp.tsx",
     styles: "./css/index.module.css",
+    ...(isEEBuild && {
+      "app-data-app":
+        ENTERPRISE_SRC_PATH + "/data_apps/runtime/app-data-app.tsx",
+      "data-app-vendors":
+        ENTERPRISE_SRC_PATH + "/data_apps/runtime/iframe-vendors.ts",
+    }),
   },
 
   // we override it for dev mode below
@@ -111,7 +145,6 @@ const config = {
 
   externals: {
     canvg: "canvg",
-    dompurify: "dompurify",
   },
 
   // output to "dist"
@@ -126,6 +159,7 @@ const config = {
 
   module: {
     rules: [
+      SIDE_EFFECT_FREE_RULE,
       {
         // swc breaks styles for the whole app if we process this file
         test: /css\/core\/fonts\.styled\.ts$/,
@@ -133,8 +167,20 @@ const config = {
         use: [BABEL_LOADER],
       },
       {
+        // Embedding onboarding flow requires sharing snippets from
+        // docs, so we treat TypeScript files inside docs/ as raw text
+        test: /\.tsx?$/,
+        include: [SDK_DOCS_SNIPPETS_PATH],
+        type: "asset/source",
+      },
+      {
         test: /\.(tsx?|jsx?)$/,
-        exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
+        exclude: [
+          /node_modules/,
+          /cljs/,
+          /css\/core\/fonts\.styled\.ts/,
+          SDK_DOCS_SNIPPETS_PATH,
+        ],
         use: [SWC_LOADER],
         type: "javascript/auto",
       },
@@ -210,24 +256,34 @@ const config = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas|html2canvas-pro)[\\/])/,
-          chunks: "all",
+          test: /[\\/]node_modules[\\/]/,
+          // The data-app iframe is isolated from main-app CSS/JS by design;
+          // sharing the vendor chunk would re-link them. Keep its
+          // node_modules in its own chunks.
+          chunks: (chunk) =>
+            chunk.canBeInitial() &&
+            chunk.name !== "data-app-vendors" &&
+            chunk.name !== "app-data-app",
           name: "vendor",
+          priority: -10,
         },
         sqlFormatter: {
-          test: /[\\/]node_modules[\\/]sql-formatter[\\/]/,
+          test: /[\\/]sql-formatter[\\/]/,
           chunks: "all",
           name: "sql-formatter",
+          priority: 10,
         },
         jspdf: {
-          test: /[\\/]node_modules[\\/]jspdf[\\/]/,
+          test: /[\\/]jspdf[\\/]/,
           chunks: "all",
           name: "jspdf",
+          priority: 10,
         },
         html2canvas: {
-          test: /[\\/]node_modules[\\/](html2canvas|html2canvas-pro)[\\/]/,
+          test: /[\\/](html2canvas|html2canvas-pro)[\\/]/,
           chunks: "all",
           name: "html2canvas",
+          priority: 10,
         },
       },
     },
@@ -235,6 +291,7 @@ const config = {
   },
 
   plugins: [
+    ...bundleStatsPlugins("stats-main.json"),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
       filename: isDevMode ? "[name].css" : "[name].[contenthash].css",
@@ -249,26 +306,51 @@ const config = {
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-main"],
+      chunks: ["vendor", "styles", "app-main"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../public.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-public"],
+      chunks: ["vendor", "styles", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-embed"],
+      chunks: ["vendor", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed-sdk.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
+      chunks: ["vendor", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
+    }),
+    // Enterprise-only: data apps are an enterprise plugin, so the iframe HTML is
+    // only emitted in EE builds (its chunks only exist there).
+    ...(isEEBuild
+      ? [
+          new HtmlWebpackPlugin({
+            filename: "../../data-app.html",
+            chunksSortMode: "manual",
+            chunks: ["data-app-vendors", "app-data-app"],
+            template:
+              __dirname + "/resources/frontend_client/data_app_template.html",
+          }),
+        ]
+      : []),
+    new HtmlWebpackPlugin({
+      filename: "../../embed-mcp.html",
+      chunksSortMode: "manual",
+      chunks: ["vendor", "styles", "app-embed-mcp"],
+      template: __dirname + "/resources/frontend_client/mcp_apps_template.html",
+
+      // MCP apps are rendered inside a sandboxed srcdoc iframe (about:srcdoc),
+      // so asset URLs must point to the Metabase instance. We embed a Mustache
+      // variable in publicPath — HtmlWebpackPlugin emits it literally, then
+      // Stencil substitutes it at runtime with the real instance URL.
+      publicPath: "{{{instanceUrlRaw}}}/app/dist/",
     }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     // https://github.com/orgs/remarkjs/discussions/903
@@ -281,6 +363,7 @@ const config = {
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
+    ...COMPRESSION_CONFIG,
   ],
 };
 
@@ -297,6 +380,9 @@ if (shouldEnableHotRefresh) {
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
     `http://localhost:${PORT}/` + config.output.publicPath;
+
+  // Disable lazy compilation explicitly to match behavior of rspack 1.x
+  config.lazyCompilation = false;
 
   config.devServer = {
     port: PORT, // make the port explicit so it errors if it's already in use
@@ -332,8 +418,10 @@ if (shouldEnableHotRefresh) {
   };
 
   config.plugins.unshift(
-    new ReactRefreshPlugin({
-      overlay: false,
+    new ReactRefreshRspackPlugin({
+      // app-embed-mcp runs in an isolated iframe with CSP restrictions.
+      // Excluding it avoids injecting the React Refresh runtime which uses eval.
+      exclude: [SDK_DOCS_SNIPPETS_PATH, /app-embed-mcp/],
     }),
   );
 }
@@ -366,11 +454,16 @@ if (isDevMode) {
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";
 
+  if (!process.env.DISABLE_BUILD_NOTIFICATIONS) {
+    config.plugins.push(
+      new WebpackNotifierPlugin({
+        excludeWarnings: true,
+        skipFirstNotification: true,
+      }),
+    );
+  }
+
   config.plugins.push(
-    new WebpackNotifierPlugin({
-      excludeWarnings: true,
-      skipFirstNotification: true,
-    }),
     new CssVarsDeclarationPlugin({
       frontendSrcPath: __dirname + "/frontend/src",
       rootPath: __dirname,

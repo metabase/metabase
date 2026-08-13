@@ -4,6 +4,7 @@ import Field from "metabase-lib/v1/metadata/Field";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import {
   createMockNativeCard,
+  createMockNormalizedField,
   createMockParameter,
 } from "metabase-types/api/mocks";
 
@@ -160,7 +161,7 @@ describe("parameters/utils/field-filters", () => {
 });
 
 function createMockField(mocks: Record<string, unknown>): Field {
-  return Object.assign(new Field(), mocks);
+  return Object.assign(new Field(createMockNormalizedField({})), mocks);
 }
 
 function createMockDimension(
@@ -175,6 +176,7 @@ function createMockDimension(
   const dimension = new TemplateTagDimension(
     "tag",
     metadata,
+    // Unjustified type cast. FIXME
     question.legacyNativeQuery() as NativeQuery,
   );
   return Object.assign(dimension, mocks);

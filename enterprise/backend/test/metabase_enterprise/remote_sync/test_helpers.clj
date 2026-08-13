@@ -3,8 +3,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :as t]
+   [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -97,7 +100,6 @@ serdes/meta:
   model: Card
 archived_directly: false
 dashboard_id: null
-metabase_version: v1.54.4-SNAPSHOT (c6780bb)
 source_card_id: null
 type: %s
 document_id: null
@@ -163,7 +165,13 @@ width: fixed
 "
             name entity-id collection-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_") dashcards-yaml)))
 
-(defrecord MockSourceSnapshot [source-id base-url branch fail-mode files-atom]
+(defn- top-level-dir
+  "Extracts the first path segment from a file path."
+  [path]
+  (when-let [idx (str/index-of path "/")]
+    (subs path 0 idx)))
+
+(defrecord MockSourceSnapshot [source-id base-url branch fail-mode files-atom managed-dirs]
   source.p/SourceSnapshot
   (list-files [_this]
     (case fail-mode
@@ -175,6 +183,10 @@ width: fixed
       ;; Default success case - return files from atom
       (keys (get @files-atom branch {}))))
 
+  ;; Derived from `list-files` (which propagates this mock's failure modes), as the non-git snapshots do.
+  (list-dir [this path]
+    (source/paths->children (source.p/list-files this) path))
+
   (read-file [_this path]
     (case fail-mode
       :read-file-error (throw (Exception. "Failed to read file"))
@@ -182,36 +194,47 @@ width: fixed
       :auth-error (throw (Exception. "Authentication failed"))
       :repo-not-found (throw (Exception. "Repository not found"))
       :branch-error (throw (Exception. "Invalid branch specified"))
-      ;; Default success case - return file content from atom
-      (get-in @files-atom [branch path] "")))
+      ;; Default success case - return file content from atom, or nil if absent (matches the real
+      ;; git read-file contract).
+      (get-in @files-atom [branch path])))
 
-  (write-files! [_this _message files]
-    (case fail-mode
-      :write-files-error (throw (Exception. "Failed to write files"))
-      :store-error (throw (Exception. "Store failed"))
-      :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
-      ;; Default success case - handle both writes and removals
-      (let [write-entries (remove #(or (:remove? %) (str/blank? (:path %))) files)
-            removal-prefixes (into #{} (comp (filter :remove?)
-                                             (map :path)
-                                             (remove str/blank?))
+  (open-commit [_this]
+    (let [upserts      (atom [])
+          deletes      (atom #{})
+          replace-all? (atom false)
+          apply-staged (fn [current]
+                         (let [managed (if @replace-all? (set managed-dirs) #{})]
+                           (as-> (or current {}) files
+                             (into {} (remove (fn [[p _]] (or (managed (top-level-dir p))
+                                                              (contains? @deletes p))))
                                    files)
-            current-files (get @files-atom branch {})
-            ;; Remove files matching removal prefixes
-            after-removals (into {}
-                                 (remove (fn [[path _]]
-                                           (some #(or (= path %) (str/starts-with? path %))
-                                                 removal-prefixes))
-                                         current-files))
-            ;; Add new files
-            final-files (into after-removals (map (juxt :path :content) write-entries))]
-        (swap! files-atom assoc branch final-files)))
-    "write-files-version")
+                             (into files (comp (remove #(str/blank? (:path %))) (map (juxt :path :content)))
+                                   @upserts))))]
+      (reify source.p/CommitBuilder
+        (stage-upsert! [_ file-spec] (swap! upserts conj file-spec) nil)
+        (stage-delete! [_ path] (swap! deletes conj path) nil)
+        (replace-all! [_] (reset! replace-all? true) nil)
+        (empty-commit? [_]
+          (let [current (get @files-atom branch)]
+            (= current (apply-staged current))))
+        (finish-commit! [this _message]
+          (source.p/finish-commit! this _message nil))
+        (finish-commit! [_ _message report-progress]
+          (case fail-mode
+            :write-files-error   (throw (Exception. "Failed to write files"))
+            :store-error         (throw (Exception. "Store failed"))
+            :apply-changes-error (throw (Exception. "Failed to apply changes"))
+            :network-error       (throw (java.net.UnknownHostException. "Remote host not found"))
+            (swap! files-atom update branch apply-staged))
+          (when report-progress (report-progress 0.8))
+          ;; version string discriminates a wholesale replace (replace-all!) from an incremental patch
+          (if @replace-all? "write-files-version" "apply-changes-version"))
+        (abort-commit! [_] nil))))
 
   (version [_this]
     "mock-version"))
 
-(defrecord MockSource [source-id base-url branch fail-mode files-atom branches-atom]
+(defrecord MockSource [source-id base-url branch fail-mode files-atom branches-atom managed-dirs]
   source.p/Source
   (create-branch [_this branch _base]
     (swap! branches-atom conj [branch (str branch "-ref")]))
@@ -228,14 +251,20 @@ width: fixed
     "main")
 
   (snapshot [_this]
-    (->MockSourceSnapshot source-id base-url branch fail-mode files-atom)))
+    (->MockSourceSnapshot source-id base-url branch fail-mode files-atom managed-dirs))
+
+  (snapshot-at [_this _version]
+    ;; The mock is version-agnostic (always reports "mock-version"), so any historical snapshot is just
+    ;; the current view of the files.
+    (->MockSourceSnapshot source-id base-url branch fail-mode files-atom managed-dirs)))
 
 (defn create-mock-source
-  "Create a mock Source for testing. Optionally accepts `:branch`, `:fail-mode`, and `:initial-files`."
-  [& {:keys [branch fail-mode initial-files]
+  "Create a mock Source for testing. Optionally accepts `:branch`, `:fail-mode`, `:initial-files`, and `:managed-dirs`."
+  [& {:keys [branch fail-mode initial-files managed-dirs]
       :or {branch "main"
            fail-mode nil
-           initial-files nil}}]
+           initial-files nil
+           managed-dirs ingest/legal-top-level-paths}}]
   (let [default-files {"main" {"collections/M-Q4pcV0qkiyJ0kiSWECl_some_collection/M-Q4pcV0qkiyJ0kiSWECl_some_collection.yaml"
                                (generate-collection-yaml "M-Q4pcV0qkiyJ0kiSWECl" "Some Collection")
 
@@ -254,7 +283,75 @@ width: fixed
 
         files-atom (atom (or initial-files default-files))
         branches-atom (atom #{["main" "main-ref"] ["develop" "develop-ref"]})]
-    (->MockSource "test-source" "https://test.example.com" branch fail-mode files-atom branches-atom)))
+    (->MockSource "test-source" "https://test.example.com" branch fail-mode files-atom branches-atom managed-dirs)))
+
+(defn versioned-source
+  "A fake Source for exercising the `async-import!`/`async-export!` base-snapshot resolution end-to-end.
+
+  Unlike [[create-mock-source]] (which always reports \"mock-version\"), this lets a test control
+  versions: `:current` is the version `snapshot` reports, and `:trees` maps version -> {path content}.
+  `snapshot-at` returns a snapshot for a version present in `trees`, or nil for an unknown version (to
+  model a base orphaned by a force-push/rebase). Committing (via `open-commit`) records the written set
+  under a fresh version, advances `:current`, and returns the new version so an export can fast-forward onto it."
+  [& {:keys [current trees branch managed-dirs]
+      :or   {current "v-remote" branch "main" managed-dirs ingest/legal-top-level-paths}}]
+  (let [managed     (set managed-dirs)
+        state       (atom {:current current :trees (or trees {}) :counter 0})
+        diff-trees  (fn [old-tree new-tree]
+                      (let [oks (set (keys old-tree)) nks (set (keys new-tree))]
+                        {:added    (into #{} (remove oks) nks)
+                         :deleted  (into #{} (remove nks) oks)
+                         :modified (into #{} (filter #(and (contains? old-tree %) (not= (old-tree %) (new-tree %)))) nks)}))
+        mk-snapshot (fn mk-snapshot [version]
+                      (reify
+                        source.p/Diffable
+                        ;; In-memory mirror of git's tree diff: nil when the base version is unknown (models
+                        ;; a base orphaned by force-push), so the importer falls back to a full import.
+                        (changed-files* [_ from-version]
+                          (let [trees (:trees @state)]
+                            (when (and (contains? trees from-version) (contains? trees version))
+                              (diff-trees (get trees from-version) (get trees version)))))
+
+                        source.p/SourceSnapshot
+                        (list-files [_] (vec (keys (get-in @state [:trees version] {}))))
+                        (list-dir [_ path]
+                          (source/paths->children (keys (get-in @state [:trees version] {})) path))
+                        (read-file [_ path] (get-in @state [:trees version path]))
+                        (open-commit [_]
+                          (let [staged-upserts (atom [])
+                                staged-deletes (atom #{})
+                                replace-all?   (atom false)
+                                staged-tree    (fn []
+                                                 (let [replace-dirs (if @replace-all? managed #{})] ; `managed` = (set managed-dirs)
+                                                   (as-> (get-in @state [:trees version] {}) t
+                                                     (into {} (remove (fn [[p _]] (or (replace-dirs (top-level-dir p))
+                                                                                      (contains? @staged-deletes p)))) t)
+                                                     (into t (comp (remove #(str/blank? (:path %)))
+                                                                   (map (juxt :path :content)))
+                                                           @staged-upserts))))]
+                            (reify source.p/CommitBuilder
+                              (stage-upsert! [_ file-spec] (swap! staged-upserts conj file-spec) nil)
+                              (stage-delete! [_ path] (swap! staged-deletes conj path) nil)
+                              (replace-all! [_] (reset! replace-all? true) nil)
+                              (empty-commit? [_]
+                                (= (get-in @state [:trees version] {}) (staged-tree)))
+                              (finish-commit! [this _message]
+                                (source.p/finish-commit! this _message nil))
+                              (finish-commit! [_ _message report-progress]
+                                (let [n           (:counter (swap! state update :counter inc))
+                                      new-version (str "written-" n)
+                                      tree        (staged-tree)]
+                                  (swap! state #(-> % (assoc-in [:trees new-version] tree) (assoc :current new-version)))
+                                  (when report-progress (report-progress 0.8))
+                                  new-version))
+                              (abort-commit! [_] nil))))
+                        (version [_] version)))]
+    (reify source.p/Source
+      (branches [_] [branch])
+      (create-branch [_ _ _] nil)
+      (default-branch [_] branch)
+      (snapshot [_] (mk-snapshot (:current @state)))
+      (snapshot-at [_ v] (when (contains? (:trees @state) v) (mk-snapshot v))))))
 
 (defn clean-object
   "Test fixture that resets the RemoteSyncObject table before running tests to prevent existing
@@ -326,6 +423,20 @@ width: fixed
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
   model tables (Transform, TransformTag, PythonLibrary) are clean."
   (t/compose-fixtures clean-object (t/compose-fixtures clean-task-table clean-optional-feature-models)))
+
+(defn commit-with-temp
+  "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a
+  `:rollback-only` transaction (by binding `*thread-local*` false).
+
+  Required by remote-sync tests that call `import!`: the import reports progress on a separate pool
+  connection (`wrap-progress-ingestable`), and on MySQL that connection blocks on the uncommitted
+  `RemoteSyncTask` row for the full 50s `innodb_lock_wait_timeout` — once per ingested entity — turning
+  each such test into minutes (and timing out the EE MySQL app-db job). Committing the temp rows avoids
+  the cross-connection lock wait. Safe because these tests are non-parallel and clean up via other
+  fixtures. No effect on H2 (same-connection/MVCC). Compose after `clean-remote-sync-state`."
+  [thunk]
+  (binding [tu.thread-local/*thread-local* false]
+    (thunk)))
 
 (defn generate-table-yaml
   "Generate YAML content for a table with the given `table-name` and `db-name`.
@@ -671,3 +782,16 @@ serdes/meta:
 "
           name entity-id content (or collection-id "null")
           entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+
+(defn generate-transform-tag-yaml
+  "Generates YAML content for a TransformTag with the given `entity-id` and `name`."
+  [entity-id name]
+  (format "created_at: '2024-08-28T09:46:18.671622Z'
+entity_id: %s
+name: %s
+serdes/meta:
+- id: %s
+  label: %s
+  model: TransformTag
+"
+          entity-id name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))

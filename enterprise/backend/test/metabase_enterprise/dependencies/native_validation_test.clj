@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.native-validation-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.native-validation :as deps.native-validation]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
    [metabase.driver.sql :as driver.sql]
@@ -9,7 +10,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- fake-query
   ([mp query]
@@ -57,25 +62,25 @@
 (deftest ^:parallel basic-deps-test
   (let [mp     (deps.tu/default-metadata-provider)
         driver (:engine (lib.metadata/database mp))]
-    (is (= #{{:table (meta/id :products)}} ; how is a driver supposed to work out the ID of the table??
+    (is (= #{{:table (mt/id :products)}} ; how is a driver supposed to work out the ID of the table??
            (->> (lib.metadata/card mp 4)
                 :dataset-query
                 (lib-be/normalize-query mp)
                 (deps.native-validation/native-query-deps driver))))
-    (is (= #{{:table (meta/id :products)}
+    (is (= #{{:table (mt/id :products)}
              {:card 1}}
            (->> (lib.metadata/card mp 5)
                 :dataset-query
                 (lib-be/normalize-query mp)
                 (deps.native-validation/native-query-deps driver))))
-    (is (= #{{:table (meta/id :products)}
+    (is (= #{{:table (mt/id :products)}
              {:card 1}
              {:snippet 1}}
            (->> (lib.metadata/card mp 6)
                 :dataset-query
                 (lib-be/normalize-query mp)
                 (deps.native-validation/native-query-deps driver))))
-    (is (= #{{:table (meta/id :products)}
+    (is (= #{{:table (mt/id :products)}
              {:card 1}
              {:snippet 1}
              {:snippet 2}}
@@ -83,8 +88,8 @@
                 :dataset-query
                 (lib-be/normalize-query mp)
                 (deps.native-validation/native-query-deps driver))))
-    (is (= #{{:table (meta/id :products)}
-             {:table (meta/id :orders)}
+    (is (= #{{:table (mt/id :products)}
+             {:table (mt/id :orders)}
              {:card 1}
              {:card 2}}
            (->> (lib.metadata/card mp 9)
@@ -114,7 +119,7 @@
         (is (= (normalize-error-names driver
                                       #{(merge (lib/missing-column-error "bad")
                                                {:source-entity-type :table
-                                                :source-entity-id   (meta/id :products)})})
+                                                :source-entity-id   (mt/id :products)})})
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select bad from products"))))))))
@@ -132,27 +137,26 @@
   (testing "validate-native-query should detect invalid columns in subqueries"
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
-
       (testing "Valid query - selecting existing columns from subquery"
         (validates? mp driver 10 empty?))
       (testing "Invalid query - selecting non-existent column from subquery"
         (validates? mp driver 11 #{(merge (lib/missing-column-error "CATEGORY")
                                           {:source-entity-type :table
-                                           :source-entity-id   (meta/id :people)})})
+                                           :source-entity-id   (mt/id :people)})})
         (validates? mp driver 12 #{(merge (lib/missing-column-error "CATEGORY")
                                           {:source-entity-type :table
-                                           :source-entity-id   (meta/id :people)})}))
+                                           :source-entity-id   (mt/id :people)})}))
       (testing "Nested subqueries"
         (validates? mp driver 13 empty?)
         (validates? mp driver 14 #{(merge (lib/missing-column-error "CATEGORY")
                                           {:source-entity-type :table
-                                           :source-entity-id   (meta/id :people)})}))
+                                           :source-entity-id   (mt/id :people)})}))
       (testing "SELECT * from subquery expands to subquery columns"
         (validates? mp driver 15 empty?)
         (validates? mp driver 16 empty?)
         (validates? mp driver 17 #{(merge (lib/missing-column-error "EMAIL")
                                           {:source-entity-type :table
-                                           :source-entity-id   (meta/id :people)})})))))
+                                           :source-entity-id   (mt/id :people)})})))))
 
 (deftest ^:parallel validate-card-reference-after-expansion-test
   (testing "Validation of queries after card references have been expanded"
@@ -204,12 +208,12 @@
         (validates? mp driver 27
                     #{(merge (lib/missing-column-error "BAD")
                              {:source-entity-type :table
-                              :source-entity-id   (meta/id :products)})}))
+                              :source-entity-id   (mt/id :products)})}))
       (testing "Mixed table+card, missing column + unknown alias"
         (validates? mp driver 28
                     #{(merge (lib/missing-column-error "BAD")
                              {:source-entity-type :table
-                              :source-entity-id   (meta/id :products)})
+                              :source-entity-id   (mt/id :products)})
                       (lib/missing-table-alias-error "xix")})))))
 
 (defn- check-result-metadata [driver mp query expected]
@@ -230,17 +234,17 @@
         (check-result-metadata
          driver mp
          "select * from orders"
-         (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
+         (add-desired-column-alias (lib.metadata/fields mp (mt/id :orders)))))
       (testing "Selecting a table wildcard"
         (check-result-metadata
          driver mp
          "select orders.* from orders"
-         (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
+         (add-desired-column-alias (lib.metadata/fields mp (mt/id :orders)))))
       (testing "Selecting a single col"
         (check-result-metadata
          driver mp
          "select total from orders"
-         (add-desired-column-alias [(lib.metadata/field mp (meta/id :orders :total))])))
+         (add-desired-column-alias [(lib.metadata/field mp (mt/id :orders :total))])))
       (testing "Selecting a nonexistent col"
         (check-result-metadata
          driver mp
@@ -325,7 +329,7 @@
                                       #{{:type               :missing-column
                                          :name               "bad"
                                          :source-entity-type :table
-                                         :source-entity-id   (meta/id :products)}})
+                                         :source-entity-id   (mt/id :products)}})
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select bad from products")))))
@@ -341,7 +345,7 @@
                                       #{{:type               :missing-column
                                          :name               "bad"
                                          :source-entity-type :table
-                                         :source-entity-id   (meta/id :products)}})
+                                         :source-entity-id   (mt/id :products)}})
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select products.bad from products join orders on products.id = orders.product_id")))))
@@ -350,7 +354,7 @@
                                       #{{:type               :missing-column
                                          :name               "bad"
                                          :source-entity-type :table
-                                         :source-entity-id   (meta/id :products)}})
+                                         :source-entity-id   (mt/id :products)}})
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select p.bad from products p join orders o on p.id = o.product_id")))))
@@ -368,7 +372,7 @@
                                     #{{:type               :missing-column
                                        :name               "bad"
                                        :source-entity-type :table
-                                       :source-entity-id   (meta/id :products)}})
+                                       :source-entity-id   (mt/id :products)}})
              (deps.native-validation/validate-native-query
               driver
               (fake-query mp "WITH cte AS (SELECT id, title FROM products) SELECT bad FROM cte")))))))
@@ -516,3 +520,113 @@
                                                {:source-entity-type :card
                                                 :source-entity-id 1234})})
                (deps.native-validation/validate-native-query driver query)))))))
+
+;;; ===========================================================================
+;;; Transform duplicate-column detection
+;;;
+;;; The :transform check in deps.analysis groups output fields by their
+;;; user-visible name (the alias when present), not the underlying column's
+;;; :name. Otherwise `t1.name AS user_name` and `t2.name AS venue_name` would
+;;; look like duplicates because both columns have :name "name".
+;;; ===========================================================================
+
+(defn- mp-with-transform [native-sql]
+  (let [query     (lib/->legacy-MBQL (lib/native-query meta/metadata-provider native-sql))
+        transform {:id     1
+                   :name   "tx"
+                   :source {:type :query :query query}
+                   :target {:type :table :schema "public" :name "out"}}]
+    (lib.tu/mock-metadata-provider meta/metadata-provider {:transforms [transform]})))
+
+(deftest ^:parallel transform-aliased-name-columns-not-duplicate-test
+  (testing "two `xxx.name` columns aliased to distinct names are NOT flagged as duplicates"
+    (let [mp     (mp-with-transform
+                  "SELECT u.NAME AS user_name, v.NAME AS venue_name
+                   FROM CHECKINS c
+                   JOIN USERS u ON c.USER_ID = u.ID
+                   JOIN VENUES v ON c.VENUE_ID = v.ID")
+          errors (deps.analysis/check-entity mp :transform 1)
+          dupes  (filter #(= :duplicate-column (:type %)) errors)]
+      (is (empty? dupes)
+          (str "Expected no :duplicate-column errors, got: " (pr-str dupes))))))
+
+(deftest ^:parallel transform-real-duplicate-still-flagged-test
+  (testing "a genuine output-name collision IS still flagged"
+    (let [mp     (mp-with-transform
+                  "SELECT TOTAL, SUBTOTAL AS total FROM ORDERS")
+          errors (deps.analysis/check-entity mp :transform 1)
+          dupes  (filter #(= :duplicate-column (:type %)) errors)]
+      (is (= [{:type :duplicate-column :name "TOTAL"}] dupes)
+          (str "Expected one :duplicate-column error, got: " (pr-str dupes))))))
+
+;;; ===========================================================================
+;;; Derived-table / CTE column resolution
+;;;
+;;; Columns defined in inline derived tables (subqueries in FROM) or by
+;;; window functions in CTEs must resolve correctly when the outer SELECT
+;;; aliases them to a different name. A mutation bug in sql_tools.py's
+;;; _find_returned_fields caused the source column's alias to be overwritten
+;;; with the outer alias, breaking resolution for later references to the
+;;; same column.
+;;; ===========================================================================
+
+(deftest ^:parallel derived-table-column-with-alias-test
+  (testing "column from derived table resolves when aliased to a different name"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (validates? mp driver 4 #{})
+      (testing "simple derived table"
+        (is (empty? (deps.native-validation/validate-native-query driver
+                                                                  (fake-query mp "SELECT datum AS b FROM (SELECT 1 AS datum) DQ")))))
+      (testing "multiple references to derived-table column with different aliases"
+        (is (empty? (deps.native-validation/validate-native-query driver
+                                                                  (fake-query mp "SELECT datum AS b, datum - 1 AS d FROM (SELECT 1 AS datum) DQ")))))
+      (testing "derived table from GENERATE_SERIES with expressions"
+        (is (empty? (deps.native-validation/validate-native-query driver
+                                                                  (fake-query mp
+                                                                              "SELECT TO_CHAR(datum, 'yyyymmdd') AS a, datum AS b, datum + 1 AS c
+                         FROM (SELECT SEQUENCE.DAY AS datum
+                               FROM GENERATE_SERIES(0, 100) AS SEQUENCE (DAY)
+                               GROUP BY SEQUENCE.DAY) DQ"))))))))
+
+(deftest ^:parallel cte-window-function-column-test
+  (testing "column defined by window function in CTE resolves in outer query"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))]
+      (is (empty? (deps.native-validation/validate-native-query driver
+                                                                (fake-query mp
+                                                                            "WITH ranked AS (
+                         SELECT ID, TOTAL,
+                                LAG(TOTAL) OVER (ORDER BY ID) AS prev_total
+                         FROM ORDERS)
+                       SELECT prev_total AS source, TOTAL AS target
+                       FROM ranked")))))))
+
+(deftest ^:parallel table-template-tag-skipped-test
+  (testing "queries with table-type template tags are skipped (table is dynamic)"
+    (let [mp     (deps.tu/default-metadata-provider)
+          driver (:engine (lib.metadata/database mp))
+          query  (-> (lib/native-query mp "SELECT * FROM {{my_table}}")
+                     (lib/with-template-tags {"my_table" {:type         :table
+                                                          :name         "my_table"
+                                                          :display-name "My Table"
+                                                          :table-id     1}}))]
+      (is (empty? (deps.native-validation/validate-native-query driver query))))))
+
+(deftest ^:sequential validate-native-query-with-database-routing-test
+  (testing "native query validation works on databases with routing enabled (#74084)"
+    (mt/with-premium-features #{:database-routing}
+      (let [mp     (mt/metadata-provider)
+            driver (:engine (lib.metadata/database mp))]
+        (mt/with-temp [:model/DatabaseRouter _ {:database_id    (mt/id)
+                                                :user_attribute "db_name"}]
+          (testing "validate-native-query doesn't throw"
+            ;; Without the fix, this would throw:
+            ;; "Anonymous users cannot access a database with routing enabled."
+            (is (set? (deps.native-validation/validate-native-query
+                       driver
+                       (lib/native-query mp "SELECT * FROM ORDERS")))))
+          (testing "native-query-deps doesn't throw (backfill path)"
+            (is (set? (deps.native-validation/native-query-deps
+                       driver
+                       (lib/native-query mp "SELECT * FROM ORDERS"))))))))))

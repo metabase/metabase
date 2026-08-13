@@ -1,27 +1,30 @@
+import type { UpdateDataPermissionParams } from "metabase/admin/permissions/permissions";
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
-  DimensionRef,
+  GroupId,
   GroupTableAccessPolicy,
+  ParameterTarget,
+  TableId,
   UserAttributeKey,
 } from "metabase-types/api";
-import type { RequestState, RequestsState } from "metabase-types/store";
 
-export type GroupTableAccessPolicyParams = { groupId: string; tableId: string };
+export type RawGroupTableAccessPolicyParams = Pick<
+  UpdateDataPermissionParams,
+  "entityId" | "groupId" | "view"
+>;
+
+// route-param strings and UPDATE_DATA_PERMISSION payload numbers template
+// into the same policy key
+export type GroupTableAccessPolicyParams = {
+  groupId: GroupId | string;
+  tableId: TableId | string;
+};
 
 export interface SandboxesState extends EnterpriseState {
-  requests: RequestsState & {
-    plugins: {
-      sandboxesPlugin: {
-        policies: Record<string, RequestState>;
-      };
-      shared: EnterpriseSharedState;
-    };
-  };
   plugins: {
     sandboxingPlugin: {
       groupTableAccessPolicies: Record<string, GroupTableAccessPolicy>;
-      originalGroupTableAccessPolicies: Record<string, GroupTableAccessPolicy>;
     };
     shared: EnterpriseSharedState;
   };
@@ -32,7 +35,7 @@ export type GroupTableAccessPolicyDraft = Pick<
   "card_id" | "table_id" | "group_id"
 > & {
   attribute_remappings: {
-    [key: string]: string | DimensionRef | null;
+    [key: string]: string | ParameterTarget | null;
   };
 };
 

@@ -78,7 +78,7 @@
      {:style/indent 0}
      [& body]
      (macros/case
-      :clj
+       :clj
        `(binding [mu.fn/*enforce* false]
           ~@body)
 
@@ -97,8 +97,8 @@
                                                           (symbol multifn))
                                     :dispatch-value ~dispatch-value-symb}
               f#                   ~(if instrument?
-                                      (mu.fn/instrumented-fn-form error-context-symb (mu.fn/parse-fn-tail fn-tail))
-                                      (mu.fn/deparameterized-fn-form (mu.fn/parse-fn-tail fn-tail)))]
+                                      (mu.fn/instrumented-fn-form error-context-symb :clj (mu.fn/parse-fn-tail fn-tail))
+                                      (mu.fn/deparameterized-fn-form :clj (mu.fn/parse-fn-tail fn-tail)))]
           (.addMethod ~(vary-meta multifn assoc :tag 'clojure.lang.MultiFn)
                       ~dispatch-value-symb
                       f#)))))
@@ -107,15 +107,15 @@
      "Impl for [[defmethod]] for ClojureScript."
      [multifn dispatch-value & fn-tail]
      `(core/defmethod ~multifn ~dispatch-value
-        ~@(mu.fn/deparameterized-fn-tail (mu.fn/parse-fn-tail fn-tail)))))
+        ~@(mu.fn/deparameterized-fn-tail :cljs (mu.fn/parse-fn-tail fn-tail)))))
 
 #?(:clj
    (defmacro defmethod
      "Like [[schema.core/defmethod]], but for Malli."
      [multifn dispatch-value & fn-tail]
      (macros/case
-      :clj  `(-defmethod-clj ~multifn ~dispatch-value ~@fn-tail)
-      :cljs `(-defmethod-cljs ~multifn ~dispatch-value ~@fn-tail))))
+       :clj  `(-defmethod-clj ~multifn ~dispatch-value ~@fn-tail)
+       :cljs `(-defmethod-cljs ~multifn ~dispatch-value ~@fn-tail))))
 
 #?(:clj
    (defn validate-throw
@@ -150,3 +150,17 @@
             (mc/children schema))
       :and (some map-schema-keys (mc/children schema))
       nil)))
+
+(core/defn dispatched-map
+  "A `:multi` schema on `dispatch` whose every branch declares `common-entries` on top of its own entries.
+
+  This is what `[:merge [:map common-entries] [:multi ...]]` looks like it does, but does not: `:merge` pushes itself
+  inside each branch, nesting a second dispatch there instead of adding the common keys to it. A branch given
+  anything other than a vector of entries is used as its own schema."
+  [dispatch common-entries branches]
+  (into [:multi {:dispatch dispatch}]
+        (map (core/fn [[dispatch-value entries]]
+               [dispatch-value (if (vector? entries)
+                                 (into (into [:map] common-entries) entries)
+                                 entries)]))
+        branches))

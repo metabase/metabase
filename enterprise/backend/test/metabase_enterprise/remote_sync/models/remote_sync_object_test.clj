@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.models.remote-sync-object-test
   "Unit tests for the remote-sync-object namespace.
   Tests the public methods: dirty? and dirty-objects."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.models.remote-sync-object-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as rs-object]
@@ -331,7 +332,6 @@
     (testing "when no dirty items exist"
       (is (false? (rs-object/dirty?)))
       (is (empty? (rs-object/dirty-objects))))
-
     (testing "when dirty items exist"
       (mt/with-temp
         [:model/Collection collection {:name "Test Collection"
@@ -454,7 +454,7 @@
 (deftest dirty-objects-all-model-types-including-new-test
   (testing "dirty-objects handles all supported model types including Table, Field, and Segment"
     ;; Mock excluded-model-types to return empty set so all model types (including NativeQuerySnippet) are included
-    (with-redefs [spec/excluded-model-types (constantly #{})]
+    (mt/with-dynamic-fn-redefs [spec/excluded-model-types (constantly #{})]
       (mt/with-temp
         [:model/Collection collection {:name "Test Collection"
                                        :location "/"}

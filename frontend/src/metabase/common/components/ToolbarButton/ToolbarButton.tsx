@@ -1,11 +1,13 @@
 import type { ButtonHTMLAttributes, MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 
-import type { ActionIconProps, IconName, TooltipProps } from "metabase/ui";
+import type { ActionIconProps, IconProps, TooltipProps } from "metabase/ui";
 import { ActionIcon, Box, Icon, Tooltip } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 export type ToolbarButtonProps = {
   icon?: IconName;
+  iconProps?: Partial<IconProps>;
   tooltipPosition?: TooltipProps["position"];
   visibleOnSmallScreen?: boolean;
   isActive?: boolean;
@@ -27,6 +29,7 @@ export type ToolbarButtonProps = {
 export const ToolbarButton = forwardRef(function ToolbarButton(
   {
     icon = "unknown",
+    iconProps,
     "aria-label": ariaLabel,
     onClick,
     tooltipLabel,
@@ -67,7 +70,13 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
       disabled={disabled}
       {...actionIconProps}
     >
-      {children ?? <Icon name={icon} c={isActive ? "brand" : undefined} />}
+      {children ?? (
+        <Icon
+          name={icon}
+          c={isActive ? "core-brand" : undefined}
+          {...iconProps}
+        />
+      )}
     </ActionIcon>
   );
 

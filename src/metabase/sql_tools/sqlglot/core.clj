@@ -1,15 +1,12 @@
 (ns metabase.sql-tools.sqlglot.core
   (:require
-   [clojure.string :as str]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as sql-tools.common]
    [metabase.sql-tools.interface :as sql-tools]
-   [metabase.util.log :as log])
-  (:import
-   (org.graalvm.polyglot PolyglotException)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,6 +23,7 @@
     ;; Fallback: pass through if already in correct format or unknown type
     error))
 
+;; TODO(rileythomp, 2026-03): Should this be a driver multimethod?
 (defn driver->dialect
   "Map a Metabase driver keyword to a SQLGlot dialect string.
    Returns nil for drivers that should use SQLGlot's default dialect (e.g., H2)."
@@ -41,6 +39,8 @@
     :sqlserver           "tsql"
     :sparksql            "spark"
     :presto-jdbc         "presto"
+    :starburst           "trino"
+    :clickhouse          "clickhouse"
     :vertica             nil
     :h2                  nil
     ;; Default: try using the driver name as dialect
@@ -51,22 +51,23 @@
 (defn- referenced-tables
   [driver query]
   (try
-    (let [db-tables (lib.metadata/tables query)
-          db-transforms (lib.metadata/transforms query)
-          sql (lib/raw-native-query query)
+    (let [sql (lib/raw-native-query query)
           default-schema (sql.normalize/default-schema driver)
-          query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
+          query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)
+          specs (map (fn [[_catalog table-schema table]]
+                       (sql-tools.common/normalize-table-spec
+                        driver {:table table
+                                :schema (or table-schema default-schema)}))
+                     query-tables)
+          table-ids (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table specs))
+          db-tables (lib.metadata/bulk-metadata query :metadata/table table-ids)
+          db-transforms (lib.metadata/transforms query)]
       (into #{}
-            (keep (fn [[_catalog table-schema table]]
-                    (sql-tools.common/find-table-or-transform
-                     driver db-tables db-transforms
-                     (sql-tools.common/normalize-table-spec
-                      driver {:table table
-                              :schema (or table-schema default-schema)}))))
-            query-tables))
-    (catch PolyglotException e
+            (keep #(sql-tools.common/find-table-or-transform driver db-tables db-transforms %))
+            specs))
+    (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
-      (if (str/starts-with? (str (.getMessage e)) "ParseError")
+      (if (sql-parsing/parse-error? e)
         #{}
         (throw e)))))
 
@@ -149,9 +150,9 @@
       (mapv (fn [[_catalog schema table]]
               {:schema schema :table table})
             table-tuples))
-    (catch PolyglotException e
+    (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
-      (if (str/starts-with? (str (.getMessage e)) "ParseError")
+      (if (sql-parsing/parse-error? e)
         []
         (throw e)))))
 
@@ -161,7 +162,7 @@
     ;; No dialect available from caller, use nil for SQLGlot's default dialect
     (sql-parsing/simple-query? nil sql-string)
     (catch Exception e
-      (log/debugf e "Failed to parse query: %s" (ex-message e))
+      (log/debugf "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
 (defmethod sql-tools/add-into-clause-impl :sqlglot
@@ -176,3 +177,7 @@
                           (update :tables #(when % (vec %)))
                           (update :columns #(when % (vec %))))]
     (sql-parsing/replace-names (driver->dialect driver) sql-string replacements')))
+
+(defmethod sql-tools/transpile-sql-impl :sqlglot
+  [_parser sql from-dialect to-dialect]
+  (sql-parsing/transpile-sql sql from-dialect to-dialect))

@@ -36,8 +36,8 @@
   [schema]
   (let [schema      (try #_:clj-kondo/ignore
                      (eval schema)
-                         (catch Exception _ #_:clj-kondo/ignore
-                                (requiring-resolve-form schema)))
+                         (catch Exception _
+                           (requiring-resolve-form schema)))
         schema-type (mc/type schema)
         {regex :api/regex} (mc/properties schema)]
     [schema-type

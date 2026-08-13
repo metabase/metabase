@@ -1,11 +1,11 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isLibraryCollection } from "metabase/collections/utils";
-import type { IconName } from "metabase/ui";
+import { isLibraryCollection } from "metabase/common/collections/utils";
 import type {
   Collection,
   CollectionId,
+  IconName,
   RemoteSyncEntity,
   RemoteSyncEntityModel,
   RemoteSyncEntityStatus,

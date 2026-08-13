@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
@@ -74,10 +75,11 @@
   (testing "usages returns cards that depend on a source card"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "usages-test@test.com"}]
+        (let [user (mt/fetch-user :rasta)]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [source-card (card/create-card! (card-with-query "Source card" :products) user)
                   child-card  (card/create-card! (card-sourced-from "Child card" source-card) user)
+                  _            (deps.test/synchronously-run-backfill!)
                   found-usages (replacement.usages/transitive-usages [:card (:id source-card)])]
               (is (some #(= [:card (:id child-card)] %) found-usages)
                   "Child card should appear in usages"))))))))
@@ -86,11 +88,12 @@
   (testing "usages returns transitive dependents (grandchildren)"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "usages-transitive@test.com"}]
+        (let [user (mt/fetch-user :rasta)]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [source-card      (card/create-card! (card-with-query "Source card" :products) user)
                   child-card       (card/create-card! (card-sourced-from "Child card" source-card) user)
                   grandchild-card  (card/create-card! (card-sourced-from "Grandchild card" child-card) user)
+                  _                (deps.test/synchronously-run-backfill!)
                   found-usages     (replacement.usages/transitive-usages [:card (:id source-card)])]
               (is (some #(= [:card (:id child-card)] %) found-usages)
                   "Child card should appear in usages")
@@ -101,9 +104,10 @@
   (testing "usages returns empty seq for cards with no dependents"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "usages-empty@test.com"}]
+        (let [user (mt/fetch-user :rasta)]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [lonely-card  (card/create-card! (card-with-query "Lonely card" :products) user)
+                  _            (deps.test/synchronously-run-backfill!)
                   found-usages (replacement.usages/transitive-usages [:card (:id lonely-card)])]
               (is (empty? found-usages)
                   "Card with no dependents should have empty usages"))))))))
@@ -112,9 +116,10 @@
   (testing "usages returns cards that depend on a table"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "usages-table@test.com"}]
+        (let [user (mt/fetch-user :rasta)]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [card-on-table (card/create-card! (card-with-query "Card on products" :products) user)
+                  _             (deps.test/synchronously-run-backfill!)
                   found-usages  (replacement.usages/transitive-usages [:table (mt/id :products)])]
               (is (some #(= [:card (:id card-on-table)] %) found-usages)
                   "Card using table should appear in usages"))))))))

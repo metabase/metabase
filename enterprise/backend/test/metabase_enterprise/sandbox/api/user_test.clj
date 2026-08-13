@@ -47,12 +47,10 @@
   (mt/with-premium-features #{}
     (testing "requires sandbox enabled"
       (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :get 402 "mt/user/attributes"))))
-
   (mt/with-premium-features #{:sandboxes}
     (testing "requires admin"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "mt/user/attributes"))))
-
     (testing "returns set of user attributes"
       (mt/with-temp
         [:model/User _ {:login_attributes {:foo "bar"}}
@@ -85,7 +83,6 @@
                             :attributes {"tenant-key-3" "value3"
                                          "tenant-key-1" "different-value"}}
            :model/User _ {:login_attributes {:user-key "user-value"}}]
-
           (let [attributes (set (mt/user-http-request :crowberto :get 200 "mt/user/attributes"))]
             (is (set/subset? #{"tenant-key-1" "tenant-key-2" "tenant-key-3" "user-key"}
                              attributes))))))))
@@ -94,16 +91,13 @@
   (mt/with-premium-features #{}
     (testing "requires sandbox enabled"
       (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 (format "mt/user/%d/attributes" (mt/user->id :crowberto)) {}))))
-
   (mt/with-premium-features #{:sandboxes}
     (testing "requires admin"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (format "mt/user/%d/attributes" (mt/user->id :rasta)) {}))))
-
     (testing "404 if user does not exist"
       (is (= "Not found."
              (mt/user-http-request :crowberto :put 404 (format "mt/user/%d/attributes" Integer/MAX_VALUE) {}))))
-
     (testing "Admin can update user attributes"
       (mt/with-temp
         [:model/User {id :id} {}]
@@ -126,13 +120,11 @@
             (is (contains? (set response) "department"))
             (is (contains? (set response) "role"))
             (is (contains? (set response) "team")))
-
           (testing "includes keys from jwt_attributes"
             (is (contains? (set response) "session_id"))
             (is (contains? (set response) "scope"))
             (is (contains? (set response) "auth_level"))
             (is (contains? (set response) "region")))
-
           (testing "does not include duplicate keys"
             (let [response-counts (frequencies response)]
               (is (every? #(= 1 %) (vals response-counts))))))))))

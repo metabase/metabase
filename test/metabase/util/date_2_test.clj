@@ -178,19 +178,22 @@
                          :es-MX #{"2 de abril de 2021 02:42:09 PM (Hora de verano del Pacífico)"
                                   "2 de abril de 2021 14:42:09 (Hora de verano del Pacífico)"
                                   "2 de abril de 2021 14:42:09 (hora de verano del Pacífico)"
-                                  "2 de abril de 2021, 14:42:09 (Hora de verano del Pacífico)"}}
+                                  "2 de abril de 2021, 14:42:09 (Hora de verano del Pacífico)"
+                                  "2 de abril de 2021, 2:42:09 p.m. (hora de verano del Pacífico)"}}
 
                         #t "2021-04-02T14:42:09.524392-07:00" ; OffsetDateTime
                         {:en-US #{"April 2, 2021 2:42:09 PM (GMT-07:00)"
                                   "April 2, 2021, 2:42:09 PM (GMT-07:00)"}
                          :es-MX #{"2 de abril de 2021 02:42:09 PM (GMT-07:00)"
-                                  "2 de abril de 2021 14:42:09 (GMT-07:00)"}}
+                                  "2 de abril de 2021 14:42:09 (GMT-07:00)"
+                                  "2 de abril de 2021, 2:42:09 p.m. (GMT-07:00)"}}
 
                         #t "2021-04-02T14:42:09.524392" ; LocalDateTime
                         {:en-US #{"April 2, 2021 2:42:09 PM"
                                   "April 2, 2021, 2:42:09 PM"}
                          :es-MX #{"2 de abril de 2021 02:42:09 PM"
-                                  "2 de abril de 2021 14:42:09"}}
+                                  "2 de abril de 2021 14:42:09"
+                                  "2 de abril de 2021, 2:42:09 p.m."}}
 
                         #t "2021-04-02" ; LocalDate
                         {:en-US "April 2, 2021"
@@ -199,12 +202,14 @@
                         #t "14:42:09.524392-07:00" ; OffsetTime
                         {:en-US "2:42:09 PM (GMT-07:00)"
                          :es-MX #{"02:42:09 PM (GMT-07:00)"
-                                  "14:42:09 (GMT-07:00)"}}
+                                  "14:42:09 (GMT-07:00)"
+                                  "2:42:09 p.m. (GMT-07:00)"}}
 
                         #t "14:42:09.524392" ; LocalTime
                         {:en-US "2:42:09 PM"
                          :es-MX #{"02:42:09 PM"
-                                  "14:42:09"}}}
+                                  "14:42:09"
+                                  "2:42:09 p.m."}}}
           [locale expected] expected]
     (mt/with-user-locale locale
       (testing (format "%s %s" (.getCanonicalName (class t)) (pr-str t))
@@ -425,7 +430,9 @@
                (comparison-range :>= nil)))
         (testing "exclusive start"
           (is (= {:start (t/local-date "2019-10-31")}
-                 (comparison-range :>= {:start :exclusive})))))))
+                 (comparison-range :>= {:start :exclusive}))))))))
+
+(deftest ^:parallel comparison-range-test-2
   (testing "Comparing DAY"
     (letfn [(comparison-range [comparison-type options]
               (u.date/comparison-range (t/local-date-time "2019-11-18T12:00") :day comparison-type (merge {:resolution :minute} options)))]
@@ -516,80 +523,61 @@
           [[(t/zoned-date-time 2011 4 18 0 0 0 0 (t/zone-id "Asia/Tokyo"))
             (t/zoned-date-time "2011-04-17T15:00:00Z[UTC]")
             "UTC"]
-
            [(t/zoned-date-time 2011 4 18 0 0 0 0 (t/zone-id "Asia/Tokyo"))
             (t/zoned-date-time "2011-04-18T00:00:00+09:00[Asia/Tokyo]")
             "Asia/Tokyo"]
-
            [(t/zoned-date-time 2011 4 18 0 0 0 0 (t/zone-id "UTC"))
             (t/zoned-date-time "2011-04-18T09:00:00+09:00[Asia/Tokyo]")
             "Asia/Tokyo"]
-
            [(t/zoned-date-time 2011 4 18 0 0 0 0 (t/zone-id "UTC"))
             (t/zoned-date-time "2011-04-18T00:00:00Z[UTC]")
             "UTC"]
-
            [(t/offset-date-time 2011 4 18 0 0 0 0 (t/zone-offset 9))
             (t/offset-date-time "2011-04-17T15:00:00Z")
             "UTC"]
-
            [(t/offset-date-time 2011 4 18 0 0 0 0 (t/zone-offset 9))
             (t/offset-date-time "2011-04-18T00:00:00+09:00")
             "Asia/Tokyo"]
-
            [(t/offset-date-time 2011 4 18 0 0 0 0 (t/zone-offset 0))
             (t/offset-date-time "2011-04-18T09:00:00+09:00")
             "Asia/Tokyo"]
-
            ;; instants should return arg as-is since they're always normalized to UTC
            [(t/instant (t/offset-date-time 2011 4 18 0 0 0 0 (t/zone-offset 0)))
             (t/instant "2011-04-18T00:00:00Z")
             "UTC"]
-
            [(t/instant (t/offset-date-time 2011 4 18 0 0 0 0 (t/zone-offset 0)))
             (t/instant "2011-04-18T00:00:00Z")
             "Asia/Tokyo"]
-
            [(t/instant (t/offset-date-time 2011 4 18 0 0 0 0 (t/zone-offset 0)))
             (t/instant "2011-04-18T00:00:00Z")
             "UTC"]
-
            [(t/local-date-time 2011 4 18 0 0 0 0)
             (t/offset-date-time "2011-04-18T00:00:00+09:00")
             "Asia/Tokyo"]
-
            [(t/local-date-time 2011 4 18 0 0 0 0)
             (t/offset-date-time "2011-04-18T00:00:00Z")
             "UTC"]
-
            [(t/local-date 2011 4 18)
             (t/offset-date-time "2011-04-18T00:00:00+09:00")
             "Asia/Tokyo"]
-
            [(t/local-date 2011 4 18)
             (t/offset-date-time "2011-04-18T00:00:00Z")
             "UTC"]
-
            [(t/offset-time 19 55 0 0 (t/zone-offset 9))
             (t/offset-time "10:55:00Z")
             "UTC"]
-
            [(t/offset-time 19 55 0 0 (t/zone-offset 9))
             (t/offset-time "19:55:00+09:00")
             "Asia/Tokyo"]
-
            [(t/offset-time 19 55 0 0 (t/zone-offset 0))
             (t/offset-time "19:55:00Z")
             "UTC"]
-
            [(t/offset-time 19 55 0 0 (t/zone-offset 0))
             (t/offset-time "04:55:00+09:00")
             "Asia/Tokyo"]
-
            [(t/local-time 19 55)
             (t/offset-time "19:55:00Z")
             "UTC"]
-
            [(t/local-time 19 55)
             (t/offset-time "19:55:00+09:00")
             "Asia/Tokyo"]]]

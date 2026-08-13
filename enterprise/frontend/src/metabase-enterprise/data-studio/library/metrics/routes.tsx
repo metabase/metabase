@@ -1,29 +1,37 @@
-import { IndexRoute, Route } from "react-router";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Route } from "metabase/router";
 
-import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
-
-import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";
-import { MetricOverviewPage } from "./pages/MetricOverviewPage";
-import { MetricQueryPage } from "./pages/MetricQueryPage";
-import { NewMetricPage } from "./pages/NewMetricPage";
+import { DataStudioMetricAboutPage } from "./pages/DataStudioMetricAboutPage";
+import { DataStudioMetricDependenciesPage } from "./pages/DataStudioMetricDependenciesPage";
+import { DataStudioMetricDimensionsPage } from "./pages/DataStudioMetricDimensionsPage";
+import { DataStudioMetricHistoryPage } from "./pages/DataStudioMetricHistoryPage";
+import { DataStudioMetricOverviewPage } from "./pages/DataStudioMetricOverviewPage";
+import { DataStudioMetricQueryPage } from "./pages/DataStudioMetricQueryPage";
+import { DataStudioNewMetricPage } from "./pages/NewMetricPage";
 
 export function getDataStudioMetricRoutes() {
   return (
     <Route path="metrics">
-      <Route path="new" component={NewMetricPage} />
-      <Route path=":cardId" component={MetricOverviewPage} />
-      <Route path=":cardId/query" component={MetricQueryPage} />
+      <Route path="new" element={<DataStudioNewMetricPage />} />
+      <Route path=":cardId" element={<DataStudioMetricAboutPage />} />
+      <Route
+        path=":cardId/overview"
+        element={<DataStudioMetricOverviewPage />}
+      />
+      <Route
+        path=":cardId/dimensions"
+        element={<DataStudioMetricDimensionsPage />}
+      />
+      <Route path=":cardId/query" element={<DataStudioMetricQueryPage />} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route path=":cardId/dependencies" component={MetricDependenciesPage}>
-          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+        <Route
+          path=":cardId/dependencies"
+          element={<DataStudioMetricDependenciesPage />}
+        >
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
-      {PLUGIN_CACHING.isGranularCachingEnabled() && (
-        <Route
-          path=":cardId/caching"
-          component={PLUGIN_CACHING.MetricCachingPage}
-        />
-      )}
+      <Route path=":cardId/history" element={<DataStudioMetricHistoryPage />} />
     </Route>
   );
 }

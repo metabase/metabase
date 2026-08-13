@@ -1,7 +1,7 @@
 import CS from "metabase/css/core/index.css";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
 import { getUiControls } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
+import { setUIControls } from "metabase/redux/query-builder";
 
 import { QuestionDisplayToggle } from "../QuestionDisplayToggle/QuestionDisplayToggle";
 

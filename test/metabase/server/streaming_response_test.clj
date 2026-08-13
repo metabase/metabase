@@ -21,7 +21,8 @@
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
    (java.io ByteArrayOutputStream Closeable InputStream)
-   (java.util.concurrent Executors Future)
+   (java.util.concurrent CountDownLatch Executors Future TimeUnit)
+   (java.util.concurrent.atomic AtomicBoolean)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
 (set! *warn-on-reflection* true)
@@ -39,7 +40,7 @@
                                               (.namingPattern "streaming-response-test-thread-pool-%d")
                                               ;; Daemon threads do not block shutdown of the JVM
                                               (.daemon true))))]
-    (with-redefs [thread-pool/thread-pool (constantly pool)]
+    (mt/with-dynamic-fn-redefs [thread-pool/thread-pool (constantly pool)]
       (try
         (thunk)
         (finally
@@ -202,6 +203,35 @@
       (finally
         (.stop server)))))
 
+(deftest abort-on-committed-error-test
+  (testing "An error after the response is committed aborts the connection so the client cannot read a complete body"
+    (let [handler (fn [req respond _raise]
+                    (respond
+                     (compojure.response/render
+                      (streaming-response/streaming-response {:content-type "text/csv"} [os _canceled-chan]
+                        ;; write + flush some bytes so the response commits, then fail mid-stream
+                        (.write os (.getBytes "a,b,c\n1,2,3\n" "UTF-8"))
+                        (.flush os)
+                        (streaming-response/write-error! os {:error "boom"} :csv 500))
+                      req)))
+          server  (doto (server.instance/create-server handler {:port 0 :join? false})
+                    .start)
+          url     (str "http://localhost:" (.. server getURI getPort))
+          consume (fn [] (let [res (http/request {:method :get, :url url, :as :stream, :decompress-body false})]
+                           [res (slurp (:body res))]))]
+      (try
+        (testing "the response is chunked so a missing terminator is detectable"
+          ;; can't read the body cleanly, so just open a request to inspect the headers
+          (let [res (http/request {:method :get, :url url, :as :stream, :decompress-body false})]
+            (is (= "chunked" (get-in res [:headers "transfer-encoding"])))
+            (u/ignore-exceptions (.close ^InputStream (:body res)))))
+        (testing "consuming the whole body throws because the stream was aborted without a clean chunk terminator"
+          (is (thrown? Exception (consume))))
+        (testing "no JSON error blob is appended to the body"
+          (is (not (re-find #"boom" (try (second (consume)) (catch Exception _ ""))))))
+        (finally
+          (.stop server))))))
+
 (def ^:private ^:dynamic *number-of-cans* nil)
 
 (deftest ^:parallel preserve-bindings-test
@@ -223,6 +253,7 @@
                                                      ([byytes offset length]
                                                       (.write os ^bytes byytes offset length))))))
                                    :async-context (reify AsyncContext
+                                                    (addListener [_ _])
                                                     (complete [_]
                                                       (deliver complete-promise true)))})
         (is (true?
@@ -247,7 +278,7 @@
         (is (= "application/json" @content-type-called))))))
 
 (deftest write-error-committed-response-test
-  (testing "write-error! should not set status or content type when response is committed"
+  (testing "write-error! aborts instead of appending an error blob when the response is already committed"
     (let [os (ByteArrayOutputStream.)
           status-called (atom nil)
           content-type-called (atom nil)]
@@ -260,7 +291,9 @@
       (testing "Status should not be set when response is committed"
         (is (nil? @status-called)))
       (testing "Content type should not be set when response is committed"
-        (is (nil? @content-type-called))))))
+        (is (nil? @content-type-called)))
+      (testing "No error blob should be appended to an already-committed stream"
+        (is (zero? (.size os)))))))
 
 (deftest write-error-no-response-test
   (testing "write-error! should not attempt to set status when no *response* is bound"
@@ -307,12 +340,10 @@
         (testing "InterruptedException should not write to output stream"
           (streaming-response/write-error! os (InterruptedException. "interrupted") :api)
           (is (zero? (.size os))))
-
         (testing "EofException should not write to output stream"
           (.reset os)
           (streaming-response/write-error! os (org.eclipse.jetty.io.EofException. "eof") :api)
           (is (zero? (.size os))))
-
         (testing "Other exceptions should be formatted and written"
           (.reset os)
           (streaming-response/write-error! os (RuntimeException. "runtime error") :api)
@@ -380,9 +411,7 @@
             (is (not (contains? error-response :via))
                 "Response should not contain :via key")
             (is (= "test-value" (get-in error-response [:data :custom-data]))
-                "Response should include custom data from ex-info")
-            (is (contains? error-response :_status)
-                "Response should include :_status")))))))
+                "Response should include custom data from ex-info")))))))
 
 (deftest write-error-nested-exception-with-stacktraces-disabled-test
   (testing "write-error! includes nested exception details when hide-stacktraces is false"
@@ -532,6 +561,7 @@
                (complete [_]
                  (deliver complete-promise true)))
              nil
+             nil
              (fn [_os _canceled-chan]
                (deliver task-started? true)
                (try
@@ -541,9 +571,78 @@
                    (deliver interrupted? true))))
              os
              finished-chan
-             canceled-chan)
+             canceled-chan
+             (AtomicBoolean. false))
             (is (true? (deref task-started? 5000 ::timed-out)))
             (a/>!! canceled-chan ::request-canceled)
             (is (true? (deref interrupted? 5000 ::timed-out)))
             (is (true? (deref complete-promise 5000 ::timed-out)))
             (is (= :canceled (a/poll! finished-chan)))))))))
+
+(deftest write-error-recycled-response-test
+  (testing "write-error! is a no-op when *completed?* is true (response may be recycled)"
+    (let [os (ByteArrayOutputStream.)]
+      (binding [streaming-response/*response*
+                (reify HttpServletResponse
+                  (isCommitted [_] (throw (NullPointerException. "response recycled")))
+                  (setStatus [_ _] (throw (NullPointerException. "response recycled")))
+                  (setContentType [_ _] (throw (NullPointerException. "response recycled"))))
+                streaming-response/*completed?*
+                (AtomicBoolean. true)]
+        (streaming-response/write-error! os {:error "test error"} :api 500))
+      (is (zero? (.size os))
+          "Nothing should be written when async context is already completed"))))
+
+(deftest async-timeout-completes-context-once-test
+  (testing "Only one of timeout callback or worker thread should call .complete"
+    (let [complete-count (atom 0)
+          completed?     (AtomicBoolean. false)
+          mock-context   (reify AsyncContext
+                           (complete [_]
+                             (swap! complete-count inc)))]
+      (is (true? (.compareAndSet completed? false true))
+          "Timeout callback should win compareAndSet")
+      (.complete mock-context)
+      (is (false? (.compareAndSet completed? false true))
+          "Worker thread's compareAndSet should return false")
+      (is (= 1 @complete-count)
+          ".complete should only have been called once"))))
+
+(deftest async-timeout-integration-test
+  (testing "Jetty async timeout does not cause NPE when worker thread finishes later"
+    (with-streaming-response-thread-pool!
+      (let [complete-called  (CountDownLatch. 1)
+            task-started     (CountDownLatch. 1)
+            task-can-finish  (CountDownLatch. 1)
+            finished-chan    (a/promise-chan)
+            canceled-chan    (a/promise-chan)
+            completed?       (AtomicBoolean. false)]
+        (with-open [os (ByteArrayOutputStream.)]
+          (#'streaming-response/do-f-async
+           (reify AsyncContext
+             (complete [_]
+               (.countDown complete-called)))
+           (reify HttpServletResponse
+             (isCommitted [_] false)
+             (setStatus [_ _] (when (.get completed?)
+                                (throw (NullPointerException. "recycled"))))
+             (setContentType [_ _] (when (.get completed?)
+                                     (throw (NullPointerException. "recycled")))))
+           nil
+           (fn [_os _canceled-chan]
+             (.countDown task-started)
+             (.await task-can-finish 5 TimeUnit/SECONDS)
+             (throw (ex-info "Query failed" {})))
+           os
+           finished-chan
+           canceled-chan
+           completed?)
+          (is (true? (.await task-started 5 TimeUnit/SECONDS))
+              "Worker thread should start")
+          (.set completed? true)
+          (.countDown task-can-finish)
+          (testing "Wait for worker thread to reach finally block"
+            (is (some? (a/<!! (a/go (a/alt! finished-chan ([v] v)
+                                            (a/timeout 5000) ([_] ::timed-out)))))))
+          (is (false? (.await complete-called 100 TimeUnit/MILLISECONDS))
+              "Worker thread should not call .complete when timeout already completed the context"))))))

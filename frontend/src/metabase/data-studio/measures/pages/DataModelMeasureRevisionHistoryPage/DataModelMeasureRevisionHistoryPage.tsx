@@ -1,4 +1,5 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { DataModelMeasureBreadcrumbs } from "../../components/MeasureBreadcrumbs";
@@ -12,13 +13,8 @@ type DataModelMeasureRevisionHistoryPageParams = {
   measureId: string;
 };
 
-type DataModelMeasureRevisionHistoryPageProps = {
-  params: DataModelMeasureRevisionHistoryPageParams;
-};
-
-export function DataModelMeasureRevisionHistoryPage({
-  params,
-}: DataModelMeasureRevisionHistoryPageProps) {
+export function DataModelMeasureRevisionHistoryPage() {
+  const params = useParams<DataModelMeasureRevisionHistoryPageParams>();
   const { isLoading, error, measure, table, tabUrls, onRemove } =
     useDataModelMeasurePage(params);
 

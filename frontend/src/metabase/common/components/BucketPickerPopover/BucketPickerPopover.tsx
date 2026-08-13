@@ -1,11 +1,16 @@
 import cx from "classnames";
-import { useCallback, useMemo, useState } from "react";
+import {
+  type MouseEvent,
+  type TouchEvent,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { SelectList } from "metabase/common/components/SelectList";
-import type { ColorName } from "metabase/lib/colors/types";
-import { Button, Icon, Popover } from "metabase/ui";
+import { Button, Ellipsified, Icon, Popover } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 
 import S from "./BucketPickerPopover.module.css";
@@ -34,7 +39,7 @@ export function BucketPickerPopover({
   items,
   onSelect,
   initiallyVisibleItemsCount,
-  color: colorProp = "brand",
+  color: colorProp = "core-brand",
   hasChevronDown,
   className,
   classNames = {},
@@ -52,7 +57,7 @@ export function BucketPickerPopover({
 
   const [isExpanded, setIsExpanded] = useState(shouldBeExpanded);
 
-  const handleExpand = useCallback((event: React.MouseEvent) => {
+  const handleExpand = useCallback((event: MouseEvent) => {
     event.stopPropagation();
     setIsExpanded(true);
   }, []);
@@ -94,7 +99,7 @@ export function BucketPickerPopover({
           h="auto"
           py={0}
           variant="subtle"
-          color="white"
+          color="core-white"
           classNames={{ label: S.triggerButtonLabel }}
         >
           <Ellipsified>{triggerLabel}</Ellipsified>
@@ -109,15 +114,19 @@ export function BucketPickerPopover({
           )}
         </Button>
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown
+        // Prevent scroll from leaking to the parent on touch devices
+        style={{ overscrollBehavior: "contain", touchAction: "pan-y" }}
+        onTouchStart={(e: TouchEvent) => e.stopPropagation()}
+        onTouchMove={(e: TouchEvent) => e.stopPropagation()}
+      >
         <SelectList
           p="sm"
           miw="10rem"
-          style={
-            {
-              "--bucket-picker-active-color": activeColor,
-            } as React.CSSProperties
-          }
+          style={{
+            "--bucket-picker-active-color": activeColor,
+            overscrollBehavior: "contain",
+          }}
         >
           {visibleItems.map((item) => (
             <SelectList.Item
@@ -138,7 +147,7 @@ export function BucketPickerPopover({
               className={S.moreButton}
               onClick={handleExpand}
               variant="subtle"
-              color="brand"
+              color="core-brand"
               fullWidth
               px="md"
               py="sm"

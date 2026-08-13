@@ -70,6 +70,10 @@ Use saved questions as data sources in your native queries.
 
 Reuse and share bits of SQL.
 
+## [Metrics Explorer](./metrics-explorer.md)
+
+Explore metrics and measures across dimensions, compare them side by side, and drill into the data — without building a question from scratch.
+
 ## Sharing results
 
 There are many different ways to share the results of questions. To share the results of a dashboard, see [Dashboard subscriptions](../dashboards/subscriptions.md).

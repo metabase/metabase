@@ -117,7 +117,7 @@ Add these people to a group (or create a new group) that has permissions to view
 
 ### Has an administrator hidden fields in the table?
 
-**Root cause:**: An administrator has hidden fields in the table.
+**Root cause**: An administrator has hidden fields in the table.
 
 **Steps to take:**
 

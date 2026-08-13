@@ -23,7 +23,7 @@ export type CardOrDashboardRevisionDiff = {
   after: Record<string, unknown>;
 };
 
-export type RevisionDiff = SegmentRevisionDiff | CardOrDashboardRevisionDiff;
+type RevisionDiff = SegmentRevisionDiff | CardOrDashboardRevisionDiff;
 
 export type RevisionDiffKey =
   | keyof SegmentRevisionDiff
@@ -54,10 +54,10 @@ export type RevisionEntityType =
   | "document"
   | "transform";
 
-export interface ListRevisionRequest {
+export type ListRevisionRequest = {
   entity: RevisionEntityType;
   id: number | string;
-}
+};
 
 export interface RevertRevisionRequest {
   entity: RevisionEntityType;

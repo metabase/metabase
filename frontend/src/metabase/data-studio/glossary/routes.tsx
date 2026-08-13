@@ -1,7 +1,7 @@
-import { Route } from "react-router";
+import { Route } from "metabase/router";
 
 import { GlossaryPage } from "./pages/GlossaryPage";
 
 export function getDataStudioGlossaryRoutes() {
-  return <Route path="glossary" component={GlossaryPage} />;
+  return <Route path="glossary" element={<GlossaryPage />} />;
 }

@@ -1,3 +1,5 @@
+import path from "path";
+
 import type { StorybookConfig } from "@storybook/react-webpack5";
 const appConfig = require("../rspack.main.config.js");
 const webpack = require("webpack");
@@ -7,8 +9,8 @@ const { CSS_CONFIG } = require("../frontend/build/shared/rspack/css-config");
 
 const mainAppStories = [
   "../frontend/**/*.mdx",
-  "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
-  "../enterprise/frontend/**/*.stories.@(js|jsx|ts|tsx)",
+  "../frontend/*/!(embedding-sdk-bundle|embedding-sdk-shared)/**/*.stories.@(js|jsx|ts|tsx)",
+  "../enterprise/frontend/*/!(embedding-sdk-ee|embedding-sdk-package)/**/*.stories.@(js|jsx|ts|tsx)",
 ];
 
 // Allow filtering to specific story files via env var (used by stress tests)
@@ -20,7 +22,14 @@ const stories = process.env.STORYBOOK_STORIES_FILTER
 
 const config: StorybookConfig = {
   stories,
-  staticDirs: ["../resources/frontend_client", "./msw-public"],
+  staticDirs: [
+    "../resources/frontend_client",
+    "./msw-public",
+    {
+      from: "../frontend/test/__support__/custom-viz-fixtures/calendar-heatmap",
+      to: "/custom-viz-fixtures/calendar-heatmap",
+    },
+  ],
   addons: [
     "@storybook/addon-webpack5-compiler-babel",
     "@storybook/addon-essentials",
@@ -36,6 +45,9 @@ const config: StorybookConfig = {
   },
   typescript: {
     reactDocgen: "react-docgen-typescript",
+    reactDocgenTypescriptOptions: {
+      tsconfigPath: path.resolve(__dirname, "../tsconfig.json"),
+    },
   },
 
   webpackFinal: (config) => {

@@ -1,12 +1,12 @@
 import { getDefaultTab } from "metabase/dashboard/actions";
 import { INITIAL_DASHBOARD_STATE } from "metabase/dashboard/constants";
+import type { DashboardState } from "metabase/redux/store";
 import {
   createMockCard,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
-import type { DashboardState } from "metabase-types/store";
 
 const TEST_CARD = createMockCard({
   dataset_query: {

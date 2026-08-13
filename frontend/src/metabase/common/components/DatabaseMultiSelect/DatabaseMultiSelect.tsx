@@ -2,14 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import {
-  type ComboboxItem,
-  Flex,
-  Icon,
-  MultiAutocomplete,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
+import { type ComboboxItem, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
 
 import S from "./DatabaseMultiSelect.module.css";
@@ -90,7 +84,7 @@ export const DatabaseMultiSelect = ({
           className={isDisabled ? S.optionIconDisabled : S.optionIcon}
         />
 
-        <Text size="md" c={isDisabled ? "text-tertiary" : undefined}>
+        <Text size="md" c={isDisabled ? "text-disabled" : undefined}>
           {option.label}
         </Text>
 
@@ -104,7 +98,7 @@ export const DatabaseMultiSelect = ({
   };
 
   return (
-    <MultiAutocomplete
+    <MultiAutocompleteWithTranslation
       value={databaseIds}
       data={options}
       placeholder={placeholder}

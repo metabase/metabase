@@ -253,12 +253,19 @@ export async function publishRelease({
   version,
   owner,
   repo,
-  issues,
   github,
-}: ReleaseProps & { oss_checksum: string, ee_checksum: string, issues: Issue[] }) {
+}: ReleaseProps) {
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
+  
+  const minorVersion = getMinorVersion(version);
+  if (Number(minorVersion) > 1) {
+    // just print a warning since this shouldn't fail the workflow calling this function
+    console.warn("Skipping Github release as these are only published for major or gold releases (ex. v0.58.0 or v0.58.1).");
+    return;
+  }
+  
   const payload = {
     owner,
     repo,
@@ -266,7 +273,7 @@ export async function publishRelease({
     name: getReleaseTitle(version),
     body: generateReleaseNotes({
       version,
-      issues,
+      issues: [], // we don't actually post any issue data with this template
       template: githubReleaseTemplate,
     }),
     draft: true,
@@ -326,7 +333,7 @@ export async function getChangelog({
   });
 
   return generateReleaseNotes({
-    template: githubReleaseTemplate,
+    template: websiteChangelogTemplate,
     version,
     issues,
   });

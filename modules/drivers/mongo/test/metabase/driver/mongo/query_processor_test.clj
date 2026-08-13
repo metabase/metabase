@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.mongo.query-processor-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.mongo.query-processor-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.mongo.query-processor-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -9,11 +11,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.alternative-date-test :as qp.alternative-date-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.date-time-zone-functions-test :as qp.datetime-test]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
@@ -22,11 +24,11 @@
 
 (deftest ^:parallel query->collection-name-test
   (testing "query->collection-name"
-    (testing "should be able to extract :collection from :source-query")
-    (is (= "checkins"
-           (#'mongo.qp/query->collection-name {:query {:source-query
-                                                       {:collection "checkins"
-                                                        :native     []}}})))
+    (testing "should be able to extract :collection from :source-query"
+      (is (= "checkins"
+             (#'mongo.qp/query->collection-name {:query {:source-query
+                                                         {:collection "checkins"
+                                                          :native     []}}}))))
     (testing "should work for nested-nested queries"
       (is (= "checkins"
              (#'mongo.qp/query->collection-name {:query {:source-query {:source-query
@@ -233,7 +235,6 @@
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
                      :filter      [:= $tips.source.username "tupac"]}))))
-
           (is (= {:projections ["source.username" "count"]
                   :query       [{"$group" {"_id"   {"source" {"username" "$source.username"}}
                                            "count" {"$sum" 1}}}
@@ -434,7 +435,7 @@
   (mt/test-driver :mongo
     (mt/with-metadata-provider (mt/id)
       (testing "Mixed integer and date arithmetic works with Mongo 5+"
-        (with-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
+        (mt/with-dynamic-fn-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
           (mt/with-clock #t "2022-06-21T15:36:00+02:00[Europe/Berlin]"
             (is (= {"$expr"
                     {"$lt"
@@ -465,7 +466,7 @@
   (mt/test-driver :mongo
     (mt/with-metadata-provider (mt/id)
       (testing "Date arithmetic fails with Mongo 4-"
-        (with-redefs [mongo.qp/get-mongo-version (constantly {:version "4", :semantic-version [4]})]
+        (mt/with-dynamic-fn-redefs [mongo.qp/get-mongo-version (constantly {:version "4", :semantic-version [4]})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Date arithmetic not supported in versions before 5"
@@ -589,9 +590,9 @@
             compiled (qp.compile/compile query)
             indices (reduce (fn [acc lookup-stage]
                               (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
-                                   ;; Following expression ensures index is an integer.
+                                    ;; Following expression ensures index is an integer.
                                     index (parse-long (re-find #"\d+$" let-var-name))]
-                               ;; Following expression tests that index is unique.
+                                ;; Following expression tests that index is unique.
                                 (is (not (contains? acc index)))
                                 (conj acc index)))
                             #{}
@@ -657,6 +658,31 @@
                   [2 "Felipinho Asklepios" "2013-11-19T00:00:00Z"]
                   [2 "Felipinho Asklepios" "2015-03-06T00:00:00Z"]]
                  (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel join-alias-sanitized-in-let-variable-name-test
+  (mt/test-driver :mongo
+    (mt/dataset geographical-tips
+      (mt/with-metadata-provider (mt/id)
+        (testing (str "A join alias used in another join's condition is sanitized in the "
+                      "Mongo `$lookup` let variable name (#76722)")
+          (let [mp          (mt/metadata-provider)
+                tips        (lib.metadata/table mp (mt/id :tips))
+                tips-id     (lib.metadata/field mp (mt/id :tips :id))
+                first-alias "Has: Colon"
+                query       (-> (lib/query mp tips)
+                                (lib/join (-> (lib/join-clause
+                                               tips
+                                               [(lib/= tips-id (lib/with-join-alias tips-id first-alias))])
+                                              (lib/with-join-alias first-alias)))
+                                (lib/join (lib/join-clause
+                                           tips
+                                           [(lib/= (lib/with-join-alias tips-id first-alias)
+                                                   (lib/with-join-alias tips-id "Second"))])))
+                compiled    (mongo.qp/mbql->native query)
+                let-vars    (mapcat #(-> % (get "$lookup") :let keys)
+                                    (filter #(contains? % "$lookup") (:query compiled)))]
+            (is (seq let-vars))
+            (is (every? #(re-matches #"[A-Za-z0-9_]+" %) let-vars))))))))
 
 (deftest ^:parallel mongo-multiple-joins-test
   (testing "should be able to join multiple mongo collections"
@@ -761,7 +787,6 @@
                     :base_type                :type/Float
                     :effective_type           :type/Float}
                    {:lib/desired-column-alias "pivot-grouping"
-                    :field_ref                [:expression "pivot-grouping"]
                     :base_type                :type/Integer
                     :effective_type           :type/Integer}
                    {:lib/desired-column-alias "count"
@@ -771,3 +796,21 @@
                     :effective_type           :type/Integer}]
                   :rows [[14 37.65 0 1] [nil 37.65 1 1] [14 nil 2 1] [nil nil 3 1]]}}
                 (qp.pivot/run-pivot-query pivot-query)))))))
+
+(deftest ^:parallel nested-native-card-recompile-no-bson-wrappers-test
+  (mt/test-driver :mongo
+    (testing "a nested query over a converted-to-native Mongo card compiles to a Bson-wrapper-free pipeline (#38181, #40557)"
+      (let [mp     (mt/metadata-provider)
+            ;; compiled mongo pipelines are vectors; a real saved native mongo query stores the JSON text
+            native (json/encode
+                    (:query (qp.compile/compile
+                             (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                 (lib/with-fields [(lib.metadata/field mp (mt/id :venues :price))])))))]
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:dataset_query (-> (lib/native-query mp native)
+                                           (lib/with-native-extras {:collection "venues"}))}]
+          (let [compiled (qp.compile/compile (lib/query (mt/metadata-provider)
+                                                        (lib.metadata/card (mt/metadata-provider) card-id)))]
+            ;; match the entire `BsonXxx` wrapper-class family, not just a hand-picked subset.
+            (is (not (re-find #"Bson[A-Z]\w*"
+                              (pr-str (:query compiled)))))))))))

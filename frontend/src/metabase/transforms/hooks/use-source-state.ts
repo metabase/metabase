@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import {
+  deactivateSuggestedTransform,
+  getMetabotSuggestedTransform,
+} from "metabase/metabot/state";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -41,6 +44,12 @@ function normalizeSource(
   if (source.type !== "query") {
     return source;
   }
+  // Orphan: the source database has been deleted (e.g. a serdes-imported
+  // transform whose source database is missing). The body is preserved as a
+  // breadcrumb but cannot be normalized through MLv2 without a database.
+  if (source.query?.database == null) {
+    return source;
+  }
 
   const question = Question.create({ dataset_query: source.query, metadata });
   const query = question.query();
@@ -66,7 +75,7 @@ export function useSourceState({
   const metadata = useSelector(getMetadata);
 
   const suggestedTransform = useSelector((state) =>
-    PLUGIN_METABOT.getMetabotSuggestedTransform(state, transformId),
+    getMetabotSuggestedTransform(state, transformId),
   );
 
   const [source, setSource] = useState(() => {
@@ -97,9 +106,7 @@ export function useSourceState({
 
   const setSourceAndRejectProposed = (source: DraftTransformSource) => {
     if (suggestedTransform != null) {
-      dispatch(
-        PLUGIN_METABOT.deactivateSuggestedTransform(suggestedTransform.id),
-      );
+      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
     }
     setSource(source);
   };
@@ -107,17 +114,13 @@ export function useSourceState({
   const acceptProposed = () => {
     if (suggestedTransform != null) {
       setSource(normalizeSource(suggestedTransform.source, metadata));
-      dispatch(
-        PLUGIN_METABOT.deactivateSuggestedTransform(suggestedTransform.id),
-      );
+      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
     }
   };
 
   const rejectProposed = () => {
     if (suggestedTransform != null) {
-      dispatch(
-        PLUGIN_METABOT.deactivateSuggestedTransform(suggestedTransform.id),
-      );
+      dispatch(deactivateSuggestedTransform(suggestedTransform.id));
     }
   };
 

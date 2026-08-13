@@ -1,0 +1,9 @@
+created_at: '2024-09-11T15:36:01.845352Z'
+details:
+  auth-method: none
+  url: http://example.com
+name: HTTP Channel
+type: channel/http
+serdes/meta:
+- id: HTTP Channel
+  model: Channel

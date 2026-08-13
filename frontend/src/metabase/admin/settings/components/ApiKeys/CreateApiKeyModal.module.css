@@ -1,0 +1,6 @@
+/* The form Input theme defaults descriptions to text-primary; the design
+   calls for the muted text-secondary. !important beats the theme's
+   equal-specificity .description rule regardless of bundle order. */
+.groupDescription {
+  color: var(--mb-color-text-secondary) !important;
+}

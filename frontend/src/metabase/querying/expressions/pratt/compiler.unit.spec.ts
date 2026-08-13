@@ -3,7 +3,6 @@ import * as Lib from "metabase-lib";
 import { compileExpression } from "../compile-expression";
 import { query } from "../test/shared";
 import { value } from "../test/utils";
-import type { ExpressionType } from "../types";
 
 import { compile, lexify, parse } from ".";
 
@@ -815,7 +814,7 @@ describe("resolve", () => {
       query,
       stageIndex,
       availableColumns: Lib.expressionableColumns(query, stageIndex),
-      resolver(type: ExpressionType, name: string) {
+      resolver(type: Lib.ExpressionType, name: string) {
         if (type === "boolean") {
           segments.push(name);
         } else if (type === "aggregation") {

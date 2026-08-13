@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { canDownloadResults } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
-import { isWithinIframe } from "metabase/lib/dom";
-import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
+import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
+import { canDownloadResults } from "metabase/common/utils/dataset";
 import { Icon, Menu } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
@@ -15,7 +15,6 @@ export interface CardEmbedMenuContext {
   isNativeQuestion: boolean | undefined;
   commentsPath: string;
   hasUnsavedChanges: boolean;
-  unresolvedCommentsCount: number;
 }
 
 export interface CardEmbedMenuActions {
@@ -48,7 +47,6 @@ export const CardEmbedMenuDropdown = ({
   isNativeQuestion,
   commentsPath,
   hasUnsavedChanges,
-  unresolvedCommentsCount,
   // Actions
   handleDownload,
   handleEditVisualizationSettings,
@@ -81,11 +79,7 @@ export const CardEmbedMenuDropdown = ({
         <Menu.Item
           leftSection={<Icon name="add_comment" size={14} />}
           component={ForwardRefLink}
-          to={
-            unresolvedCommentsCount > 0
-              ? commentsPath
-              : `${commentsPath}?new=true`
-          }
+          to={commentsPath}
           onClick={(e) => {
             if (!commentsPath || hasUnsavedChanges) {
               e.preventDefault();

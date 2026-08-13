@@ -1,5 +1,4 @@
-import { getIcon } from "metabase/lib/icon";
-import type { CollectionItemModel } from "metabase-types/api";
+import { renderHook } from "@testing-library/react";
 
 import {
   type EntityPickerProps,
@@ -9,15 +8,14 @@ import {
 } from "./types";
 import {
   getCollectionType,
-  getEntityPickerIcon,
   getItemFunctions,
   getNamespacesFromModels,
-  getValidCollectionItemModels,
   isSelectedItem,
+  useGetEntityPickerIcon,
 } from "./utils";
 
-jest.mock("metabase/lib/icon", () => ({
-  getIcon: jest.fn(),
+jest.mock("metabase/hooks/use-icon", () => ({
+  useGetIcon: () => jest.fn().mockReturnValue({ name: "unknown" }),
 }));
 
 describe("EntityPicker utils", () => {
@@ -25,12 +23,21 @@ describe("EntityPicker utils", () => {
     jest.clearAllMocks();
   });
 
-  describe("getEntityPickerIcon", () => {
+  describe("useGetEntityPickerIcon", () => {
+    const setupHook = (mockReturn: { name: string; color?: string }) => {
+      const mockGetIcon = jest.fn().mockReturnValue(mockReturn);
+      jest.requireMock("metabase/hooks/use-icon").useGetIcon = () =>
+        mockGetIcon;
+      const { result } = renderHook(() => useGetEntityPickerIcon());
+      return { getEntityPickerIcon: result.current, mockGetIcon };
+    };
+
     it("should return the icon from getIcon", () => {
-      (getIcon as jest.Mock).mockReturnValue({
+      const { getEntityPickerIcon, mockGetIcon } = setupHook({
         name: "table",
         color: "text-dark",
       });
+      // Unjustified type cast. FIXME
       const item = { id: 1, model: "table" } as OmniPickerItem;
       const result = getEntityPickerIcon(item);
       expect(result).toEqual({
@@ -38,13 +45,18 @@ describe("EntityPicker utils", () => {
         c: "text-dark",
         color: undefined,
       });
-      expect(getIcon).toHaveBeenCalledWith(item, { isTenantUser: undefined });
+      expect(mockGetIcon).toHaveBeenCalledWith(item, {
+        isTenantUser: undefined,
+      });
     });
 
     it("should set color to text-primary-inverse if selected and no color present", () => {
-      (getIcon as jest.Mock).mockReturnValue({ name: "table" });
+      const { getEntityPickerIcon } = setupHook({ name: "table" });
+      // Unjustified type cast. FIXME
       const item = { id: 1, model: "table" } as OmniPickerItem;
-      const result = getEntityPickerIcon(item, { isSelected: true });
+      const result = getEntityPickerIcon(item, {
+        isSelected: true,
+      });
       expect(result).toEqual({
         name: "table",
         c: "text-primary-inverse",
@@ -53,12 +65,15 @@ describe("EntityPicker utils", () => {
     });
 
     it("should change folder icon to folder_filled if selected", () => {
-      (getIcon as jest.Mock).mockReturnValue({
+      const { getEntityPickerIcon } = setupHook({
         name: "folder",
         color: "text-yellow",
       });
+      // Unjustified type cast. FIXME
       const item = { id: 1, model: "collection" } as OmniPickerItem;
-      const result = getEntityPickerIcon(item, { isSelected: true });
+      const result = getEntityPickerIcon(item, {
+        isSelected: true,
+      });
       expect(result).toEqual({
         name: "folder_filled",
         c: "text-yellow",
@@ -69,39 +84,49 @@ describe("EntityPicker utils", () => {
 
   describe("isSelectedItem", () => {
     it("should return true if items match id and model", () => {
+      // Unjustified type cast. FIXME
       const item1 = { id: 1, model: "table" } as OmniPickerItem;
+      // Unjustified type cast. FIXME
       const item2 = { id: 1, model: "table" } as OmniPickerItem;
       expect(isSelectedItem(item1, item2)).toBe(true);
     });
 
     it("should return false if items have different id", () => {
+      // Unjustified type cast. FIXME
       const item1 = { id: 1, model: "table" } as OmniPickerItem;
+      // Unjustified type cast. FIXME
       const item2 = { id: 2, model: "table" } as OmniPickerItem;
       expect(isSelectedItem(item1, item2)).toBe(false);
     });
 
     it("should return false if items have different model", () => {
+      // Unjustified type cast. FIXME
       const item1 = { id: 1, model: "table" } as OmniPickerItem;
+      // Unjustified type cast. FIXME
       const item2 = { id: 1, model: "database" } as OmniPickerItem;
       expect(isSelectedItem(item1, item2)).toBe(false);
     });
 
     it("should return false if selectedItem is null", () => {
+      // Unjustified type cast. FIXME
       const item1 = { id: 1, model: "table" } as OmniPickerItem;
       expect(isSelectedItem(item1, null)).toBe(false);
     });
 
     it("should check namespace if present", () => {
+      // Unjustified type cast. FIXME
       const item1 = {
         id: 1,
         model: "collection",
         namespace: "snippets",
       } as OmniPickerItem;
+      // Unjustified type cast. FIXME
       const item2 = {
         id: 1,
         model: "collection",
         namespace: "snippets",
       } as OmniPickerItem;
+      // Unjustified type cast. FIXME
       const item3 = {
         id: 1,
         model: "collection",
@@ -114,18 +139,21 @@ describe("EntityPicker utils", () => {
   });
 
   describe("getItemFunctions", () => {
+    // Unjustified type cast. FIXME
     const models = ["table", "card"] as EntityPickerProps["models"];
 
     describe("isFolderItem", () => {
       it("should return true for Database and Schema models", () => {
         const { isFolderItem } = getItemFunctions({ models });
         expect(
+          // Unjustified type cast. FIXME
           isFolderItem({
             id: 1,
             model: OmniPickerFolderModel.Database,
           } as OmniPickerItem),
         ).toBe(true);
         expect(
+          // Unjustified type cast. FIXME
           isFolderItem({
             id: 1,
             model: OmniPickerFolderModel.Schema,
@@ -135,7 +163,9 @@ describe("EntityPicker utils", () => {
 
       it("should return false for invalid items", () => {
         const { isFolderItem } = getItemFunctions({ models });
+        // Unjustified type cast. FIXME
         expect(isFolderItem(null as any)).toBe(false);
+        // Unjustified type cast. FIXME
         expect(isFolderItem({} as any)).toBe(false);
       });
 
@@ -143,10 +173,13 @@ describe("EntityPicker utils", () => {
         const customIsFolderItem = jest.fn().mockReturnValue(true);
         const { isFolderItem } = getItemFunctions({
           models,
+          // Unjustified type cast. FIXME
           isFolderItem: customIsFolderItem as any,
         });
 
+        // Unjustified type cast. FIXME
         const cardItem = { id: 1, model: "card" } as OmniPickerItem;
+        // Unjustified type cast. FIXME
         const dbItem = {
           id: 1,
           model: OmniPickerFolderModel.Database,
@@ -164,6 +197,7 @@ describe("EntityPicker utils", () => {
 
       it("should return true for Collection if it contains allowed models", () => {
         const { isFolderItem } = getItemFunctions({ models: ["card"] });
+        // Unjustified type cast. FIXME
         const item = {
           id: 1,
           model: OmniPickerFolderModel.Collection,
@@ -174,6 +208,7 @@ describe("EntityPicker utils", () => {
 
       it("should return false for Collection if it does not contain allowed models", () => {
         const { isFolderItem } = getItemFunctions({ models: ["card"] });
+        // Unjustified type cast. FIXME
         const item = {
           id: 1,
           model: OmniPickerFolderModel.Collection,
@@ -184,6 +219,7 @@ describe("EntityPicker utils", () => {
 
       it("should return false for Collection if it has neither 'here' nor 'below'", () => {
         const { isFolderItem } = getItemFunctions({ models: ["card"] });
+        // Unjustified type cast. FIXME
         const item = {
           id: 1,
           model: OmniPickerFolderModel.Collection,
@@ -196,6 +232,7 @@ describe("EntityPicker utils", () => {
       it("should return true if model is in allowed models", () => {
         const { isSelectableItem } = getItemFunctions({ models: ["table"] });
         expect(
+          // Unjustified type cast. FIXME
           isSelectableItem({ id: 1, model: "table" } as OmniPickerItem),
         ).toBe(true);
       });
@@ -209,6 +246,7 @@ describe("EntityPicker utils", () => {
       it("should return false if model is not in allowed models", () => {
         const { isSelectableItem } = getItemFunctions({ models: ["table"] });
         expect(
+          // Unjustified type cast. FIXME
           isSelectableItem({ id: 1, model: "card" } as OmniPickerItem),
         ).toBe(false);
       });
@@ -220,7 +258,9 @@ describe("EntityPicker utils", () => {
           isSelectableItem: customIsSelectableItem,
         });
 
+        // Unjustified type cast. FIXME
         const dashboardItem = { id: 1, model: "dashboard" } as OmniPickerItem;
+        // Unjustified type cast. FIXME
         const tableItem = { id: 1, model: "table" } as OmniPickerItem;
 
         // When the function is permissive, base behavior applies
@@ -237,6 +277,7 @@ describe("EntityPicker utils", () => {
     describe("isHiddenItem", () => {
       it("should return true for invalid items", () => {
         const { isHiddenItem } = getItemFunctions({ models: [] });
+        // Unjustified type cast. FIXME
         expect(isHiddenItem(null as any)).toBe(true);
       });
 
@@ -247,7 +288,9 @@ describe("EntityPicker utils", () => {
           isHiddenItem: customIsHiddenItem,
         });
 
+        // Unjustified type cast. FIXME
         const tableItem = { id: 1, model: "table" } as OmniPickerItem;
+        // Unjustified type cast. FIXME
         const cardItem = { id: 1, model: "card" } as OmniPickerItem;
 
         // base behavior not modified by permissive custom function
@@ -269,12 +312,14 @@ describe("EntityPicker utils", () => {
 
       it("should return false if item is selectable", () => {
         const { isHiddenItem } = getItemFunctions({ models: ["table"] });
+        // Unjustified type cast. FIXME
         const item = { id: 1, model: "table" } as OmniPickerItem;
         expect(isHiddenItem(item)).toBe(false);
       });
 
       it("should return false if item is a folder", () => {
         const { isHiddenItem } = getItemFunctions({ models: ["table"] });
+        // Unjustified type cast. FIXME
         const item = {
           id: 1,
           model: OmniPickerFolderModel.Database,
@@ -292,6 +337,7 @@ describe("EntityPicker utils", () => {
 
       it("should return false for valid items", () => {
         const { isDisabledItem } = getItemFunctions({ models: [] });
+        // Unjustified type cast. FIXME
         const item = { id: 1, model: "card" } as OmniPickerItem;
         expect(isDisabledItem(item)).toBe(false);
       });
@@ -306,6 +352,7 @@ describe("EntityPicker utils", () => {
 
         // @ts-expect-error: testing invalid item
         const invalidItem = { idx: 1, model: "dashboard" } as OmniPickerItem;
+        // Unjustified type cast. FIXME
         const validItem = { id: 1, model: "card" } as OmniPickerItem;
 
         // doesn't validate invalid item
@@ -321,31 +368,6 @@ describe("EntityPicker utils", () => {
         // now valid item is also disabled
         expect(isDisabledItem(validItem)).toBe(true);
       });
-    });
-  });
-
-  describe("getValidCollectionItemModels", () => {
-    it("should filter valid collection models and append 'collection'", () => {
-      const input = [
-        "card",
-        "dashboard",
-        "pikachu",
-        "table",
-        "transform",
-        "snippet",
-        "",
-      ];
-      const result = getValidCollectionItemModels(
-        input as CollectionItemModel[],
-      );
-      expect(result).toEqual([
-        "card",
-        "dashboard",
-        "table",
-        "transform",
-        "snippet",
-        "collection",
-      ]);
     });
   });
 
@@ -365,6 +387,7 @@ describe("EntityPicker utils", () => {
     });
 
     it("should return null if not present", () => {
+      // Unjustified type cast. FIXME
       const item = {} as any;
       expect(getCollectionType(item)).toBeNull();
     });

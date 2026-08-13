@@ -19,7 +19,7 @@
     }
 
     &[data-position="left"] {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 }
@@ -38,6 +38,11 @@
 
   &[data-expanded="true"] {
     cursor: text;
+  }
+
+  &[data-disabled] {
+    background: transparent;
+    cursor: not-allowed;
   }
 }
 
@@ -58,10 +63,15 @@
     width: 0.75rem !important;
     height: 0.75rem !important;
   }
+
+  [data-disabled] & {
+    background: transparent;
+    cursor: not-allowed;
+  }
 }
 
 .metricLink {
   :hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }

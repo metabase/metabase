@@ -3,8 +3,10 @@
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.channel.render.pdf :as render.pdf]
    [metabase.channel.render.preview :as render.preview]
    [metabase.channel.render.style :as style]
+   [metabase.channel.render.table-data :as table-data]
    [potemkin :as p]))
 
 (p/import-vars
@@ -25,11 +27,19 @@
  [render.card
   detect-pulse-chart-type
   defaulted-timezone
+  error-rendered-part
   render-pulse-card
   render-pulse-card-for-display
   render-pulse-section
   render-pulse-card-to-png
+  render-adhoc-card-to-png
   render-pulse-card-to-base64
   png-from-render-info]
+ [render.pdf
+  render-dashboard-to-pdf]
  [js.svg
-  icon])
+  icon]
+ [table-data
+  show-in-table?
+  create-remapping-lookup
+  prepare-table-data])

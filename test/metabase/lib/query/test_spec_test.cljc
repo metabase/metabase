@@ -45,11 +45,9 @@
                             :fields [{:type :column
                                       :name "ID"
                                       :source-name "ORDERS"}
-
                                      ;; column without source-name can be found if it is unambiguous
                                      {:type :column
                                       :name "TOTAL"}
-
                                      ;; implicitly joined column
                                      {:type :column
                                       :name "NAME"
@@ -113,6 +111,17 @@
                             :aggregations [{:type     :operator
                                             :operator :count}]}]})]
       (is (=? [[:count {}]]
+              (lib/aggregations query))))))
+
+(deftest ^:parallel test-query-with-metric-aggregation-test
+  (testing "test-query adds Metrics as aggregations"
+    (let [query (lib.query.test-spec/test-query
+                 lib.tu/metadata-provider-with-metric
+                 {:stages [{:source       {:type :table
+                                           :id   (meta/id :checkins)}
+                            :aggregations [{:type :metric
+                                            :id   1}]}]})]
+      (is (=? [[:metric {} 1]]
               (lib/aggregations query))))))
 
 (deftest ^:parallel test-query-with-breakouts-test
@@ -460,7 +469,6 @@
       (is (=? [[:desc {}
                 [:field {:temporal-unit :month} (meta/id :checkins :date)]]]
               (lib/order-bys query)))))
-
   (testing "test-query adds order-by with temporal bucketing when selecting the second column"
     (let [query (lib.query.test-spec/test-query
                  meta/metadata-provider
@@ -575,7 +583,6 @@
                                                            :source-name "PRODUCTS"}
                                                     :right {:type :column
                                                             :name "PRODUCT_ID"}}]}]}]})]
-
       (is (=? [{:strategy :left-join
                 :alias "Products"}
                {:strategy :right-join
@@ -615,20 +622,17 @@
                                                            :value 42}
                                                           {:type :column
                                                            :name "PRICE"}]}}]}]})]
-
       (is (=? [[:=
                 {} "Gadget"
                 [:field
                  {:source-field (meta/id :orders :product-id)}
                  (meta/id :products :category)]]]
               (lib/filters query)))
-
       (is (=? [[:sum {}
                 [:field
                  {:source-field (meta/id :orders :product-id)}
                  (meta/id :products :price)]]]
               (lib/aggregations query)))
-
       (is (=? [[:+
                 {:lib/expression-name "Custom"}
                 42
@@ -636,19 +640,27 @@
                  {:source-field (meta/id :orders :product-id)}
                  (meta/id :products :price)]]]
               (lib/expressions query)))
-
       (is (=? [[:field
                 {:source-field (meta/id :orders :product-id)}
                 (meta/id :products :created-at)]]
               (lib/breakouts query)))
-
+      (let [query (lib.query.test-spec/test-query
+                   meta/metadata-provider
+                   {:stages [{:source    {:type :table
+                                          :id   (meta/id :orders)}
+                              :breakouts [{:type            :column
+                                           :name            "CATEGORY"
+                                           :source-field-id (meta/id :orders :product-id)}]}]})]
+        (is (=? [[:field
+                  {:source-field (meta/id :orders :product-id)}
+                  (meta/id :products :category)]]
+                (lib/breakouts query))))
       (let [query (lib.query.test-spec/test-query
                    meta/metadata-provider
                    {:stages [{:source {:type :table
                                        :id   (meta/id :orders)}
                               :order-bys [{:type :column
                                            :name "PRICE"}]}]})]
-
         (is (=? [[:asc {} [:field
                            {:source-field (meta/id :orders :product-id)}
                            (meta/id :products :price)]]]
@@ -766,7 +778,6 @@
                                          :name        "CREATED_AT"
                                          :source-name "ORDERS"
                                          :direction   :desc}]}
-
                            ;; Stage 1
                            {:expressions [{:name  "doubled-count"
                                            :value {:type     :operator
@@ -786,7 +797,6 @@
                             :order-bys [{:type      :column
                                          :name      "total-revenue"
                                          :direction :asc}]}
-
                            ;; Stage 2
                            {:filters [{:type     :operator
                                        :operator :<
@@ -796,64 +806,48 @@
                                                    :value 500}]}]
 
                             :limit 25}]})]
-
       (is (= 3 (lib/stage-count query)))
-
       ;; Stage 0
       (is (=? [{:strategy :left-join
                 :alias "Products"}
                {:strategy :inner-join
                 :alias "People - User"}]
               (lib/joins query 0)))
-
       (is (=? [[:* {:lib/expression-name "discounted-price"} [:field {} (meta/id :products :price)] 0.9]
                [:/ {:lib/expression-name "double-discount"} [:expression {} "discounted-price"] 2]]
               (lib/expressions query 0)))
-
       (is (empty? (lib/fields query 0)))
-
       (is (=? [[:and {}
                 [:> {} [:field {} (meta/id :orders :total)] 50]
                 [:or {}
                  [:= {} [:field {:join-alias "Products"} (meta/id :products :category)] "Widget"]
                  [:< {} [:expression {} "double-discount"] 10]]]]
               (lib/filters query 0)))
-
       (is (=? [[:count {:display-name "total-count"}]
                [:sum {:display-name "total-revenue"} [:field {} (meta/id :orders :total)]]
                [:avg {} [:field {:join-alias "Products"} (meta/id :products :price)]]]
               (lib/aggregations query 0)))
-
       (is (=? [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
                [:field {:binning {:strategy :num-bins :num-bins 10}} (meta/id :orders :quantity)]]
               (lib/breakouts query 0)))
-
       (is (=? [[:desc {} [:field {:temporal-unit :month} (meta/id :orders :created-at)]]]
               (lib/order-bys query 0)))
-
       ;; Stage 1
       (is (=? [[:* {:lib/expression-name "doubled-count"}
                 [:field {} "total-count"]
                 2]]
               (lib/expressions query 1)))
-
       (is (=? [[:> {} [:field {} "total-revenue"] 1000]]
               (lib/filters query 1)))
-
       (is (=? [[:asc {} [:field {} "total-revenue"]]]
               (lib/order-bys query 1)))
-
       (is (empty? (lib/fields query 1)))
-
       ;; Stage 2
       (is (=? [[:< {} [:field {} "doubled-count"] 500]]
               (lib/filters query 2)))
-
       (is (empty? (lib/fields query 2)))
-
       (is (= 25 (lib/current-limit query 2))))))
 
-#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel test-query-comprehensive-all-features-test-with-fields
   (testing "test-query exercises all functionality in a comprehensive multi-stage query, with fields clause"
     (let [query (lib.query.test-spec/test-query
@@ -926,7 +920,6 @@
                                       :source-name "PRODUCTS"}
                                      {:type :column
                                       :name "double-discount"}]}
-
                            ;; Stage 1
                            {:expressions [{:name  "half-discount"
                                            :value {:type     :operator
@@ -942,7 +935,6 @@
                                                    :name "half-discount"}
                                                   {:type  :literal
                                                    :value 1000}]}]}
-
                            ;; Stage 2
                            {:filters [{:type     :operator
                                        :operator :<
@@ -952,57 +944,44 @@
                                                    :value 500}]}]
 
                             :limit 25}]})]
-
       (is (= 3 (lib/stage-count query)))
-
       ;; Stage 0
       (is (=? [{:strategy :left-join
                 :alias "Products"}
                {:strategy :inner-join
                 :alias "People - User"}]
               (lib/joins query 0)))
-
       (is (=? [[:* {:lib/expression-name "discounted-price"} [:field {} (meta/id :products :price)] 0.9]
                [:/ {:lib/expression-name "double-discount"} [:expression {} "discounted-price"] 2]]
               (lib/expressions query 0)))
-
       (is (=? [[:field {} (meta/id :orders :total)]
                [:field {:join-alias "Products"} (meta/id :products :category)]
                [:expression {} "double-discount"]
                [:expression {} "discounted-price"]]
               (lib/fields query 0)))
-
       (is (=? [[:and {}
                 [:> {} [:field {} (meta/id :orders :total)] 50]
                 [:or {}
                  [:= {} [:field {:join-alias "Products"} (meta/id :products :category)] "Widget"]
                  [:< {} [:expression {} "double-discount"] 10]]]]
               (lib/filters query 0)))
-
       (is (empty? (lib/aggregations query 0)))
       (is (empty? (lib/breakouts query 0)))
-
       (is (=? [[:desc {} [:field {} (meta/id :orders :created-at)]]]
               (lib/order-bys query 0)))
-
       ;; Stage 1
       (is (=? [[:/ {:lib/expression-name "half-discount"}
                 [:field {} "double-discount"]
                 4]]
               (lib/expressions query 1)))
-
       (is (=? [[:> {} [:expression {} "half-discount"] 1000]]
               (lib/filters query 1)))
-
       (is (empty? (lib/order-bys query 1)))
       (is (empty? (lib/fields query 1)))
-
       ;; Stage 2
       (is (=? [[:< {} [:field {} "half-discount"] 500]]
               (lib/filters query 2)))
-
       (is (empty? (lib/fields query 2)))
-
       (is (= 25 (lib/current-limit query 2))))))
 
 (deftest ^:parallel test-native-query-basic-test
@@ -1026,10 +1005,9 @@
                                                  :display-name "Venue Name"}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues WHERE name = {{venue_name}}"))
-
-      (is (=? {"venue_name" {:type         :text
-                             :name         "venue_name"
-                             :display-name "Venue Name"}}
+      (is (=? [{:type         :text
+                :name         "venue_name"
+                :display-name "Venue Name"}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-number-tag-test
@@ -1043,9 +1021,9 @@
                                             :display-name "Price"}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues WHERE price = {{price}}"))
-      (is (=? {"price" {:type         :number
-                        :name         "price"
-                        :display-name "Price"}}
+      (is (=? [{:type         :number
+                :name         "price"
+                :display-name "Price"}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-date-tag-test
@@ -1059,9 +1037,9 @@
                                            :display-name "Date"}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM orders WHERE created_at = {{date}}"))
-      (is (=? {"date" {:type         :date
-                       :name         "date"
-                       :display-name "Date"}}
+      (is (=? [{:type         :date
+                :name         "date"
+                :display-name "Date"}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-boolean-tag-test
@@ -1075,10 +1053,9 @@
                                                 :display-name "Is Active"}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM users WHERE active = {{is_active}}"))
-
-      (is (=? {"is_active" {:type         :boolean
-                            :name         "is_active"
-                            :display-name "Is Active"}}
+      (is (=? [{:type         :boolean
+                :name         "is_active"
+                :display-name "Is Active"}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-dimension-tag-test
@@ -1094,12 +1071,11 @@
                                                       :widget-type  :text}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues WHERE {{category_filter}}"))
-
-      (is (=? {"category_filter" {:type         :dimension
-                                  :name         "category_filter"
-                                  :display-name "Category Filter"
-                                  :dimension    [:field {} (meta/id :venues :category-id)]
-                                  :widget-type  :text}}
+      (is (=? [{:type         :dimension
+                :name         "category_filter"
+                :display-name "Category Filter"
+                :dimension    [:field {} (meta/id :venues :category-id)]
+                :widget-type  :text}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-temporal-unit-tag-test
@@ -1114,11 +1090,10 @@
                                                 :dimension    (meta/id :orders :created-at)}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM orders WHERE {{date_unit}}"))
-
-      (is (=? {"date_unit" {:type         :temporal-unit
-                            :name         "date_unit"
-                            :display-name "Date Unit"
-                            :dimension    [:field {} (meta/id :orders :created-at)]}}
+      (is (=? [{:type         :temporal-unit
+                :name         "date_unit"
+                :display-name "Date Unit"
+                :dimension    [:field {} (meta/id :orders :created-at)]}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-snippet-tag-test
@@ -1133,11 +1108,10 @@
                                                           :snippet-name "my-snippet"}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM {{snippet: my-snippet}}"))
-
-      (is (=? {"snippet: my-snippet" {:type         :snippet
-                                      :name         "snippet: my-snippet"
-                                      :display-name "My Snippet"
-                                      :snippet-name "my-snippet"}}
+      (is (=? [{:type         :snippet
+                :name         "snippet: my-snippet"
+                :display-name "My Snippet"
+                :snippet-name "my-snippet"}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-card-tag-test
@@ -1152,11 +1126,10 @@
                                            :card-id      1}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM {{#123}}"))
-
-      (is (=? {"#123" {:type         :card
-                       :name         "#123"
-                       :display-name "Card 123"
-                       :card-id      1}}
+      (is (=? [{:type         :card
+                :name         "#123"
+                :display-name "Card 123"
+                :card-id      1}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-with-multiple-tags-test
@@ -1178,41 +1151,40 @@
                                                       :widget-type  :text}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues WHERE name = {{name}} AND price > {{min_price}} AND {{category_filter}}"))
-
-      (is (=? {"name"            {:type         :text
-                                  :name         "name"
-                                  :display-name "Name"}
-               "min_price"       {:type         :number
-                                  :name         "min_price"
-                                  :display-name "Min Price"}
-               "category_filter" {:type         :dimension
-                                  :name         "category_filter"
-                                  :display-name "Category Filter"
-                                  :dimension    [:field {} (meta/id :venues :category-id)]
-                                  :widget-type  :text}}
+      (is (=? [{:type         :text
+                :name         "name"
+                :display-name "Name"}
+               {:type         :number
+                :name         "min_price"
+                :display-name "Min Price"}
+               {:type         :dimension
+                :name         "category_filter"
+                :display-name "Category Filter"
+                :dimension    [:field {} (meta/id :venues :category-id)]
+                :widget-type  :text}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-inferred-tags-test
   (testing "test-native-query infers template tags from query text"
     (let [query (lib.query.test-spec/test-native-query
                  meta/metadata-provider
-                 {:database-id    (meta/id)
-                  :query          "SELECT * FROM venues WHERE name = {{venue_name}}"
-                  :template-tags  {"venue_name" {:type         :text
-                                                 :display-name "Custom Name"
-                                                 :default      "Foo"
-                                                 :widget-type  "string/contains"
-                                                 :required     true}}})]
+                 {:database-id   (meta/id)
+                  :query         "SELECT * FROM venues WHERE name = {{venue_name}}"
+                  :template-tags {"venue_name" {:type         :text
+                                                :name         "venue_name"
+                                                :display-name "Custom Name"
+                                                :default      "Foo"
+                                                :widget-type  "string/contains"
+                                                :required     true}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues WHERE name = {{venue_name}}"))
-
-      (is (=? {"venue_name" {:type         :text
-                             :name         "venue_name"
-                             :display-name "Custom Name"
-                             :default      "Foo"
-                             :required     true
-                             :widget-type  "string/contains"
-                             :id           string?}}
+      (is (=? [{:type         :text
+                :name         "venue_name"
+                :display-name "Custom Name"
+                :default      "Foo"
+                :required     true
+                :widget-type  "string/contains"
+                :id           string?}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-empty-template-tags-test
@@ -1230,44 +1202,44 @@
   (testing "test-native-query infers template tags from query text, when passing spec from JS"
     (let [query (lib.query.test-spec/test-native-query
                  meta/metadata-provider
-                 {:database-id    (meta/id)
-                  "query"          "SELECT * FROM venues WHERE name = {{venue_name}}"
-                  "templateTags"  {"venue_name" {:type         :text
-                                                 :displayName "Custom Name"
-                                                 :default      "Foo"
-                                                 :widgetType  "string/contains"
-                                                 :required     true}}})]
+                 {:database-id   (meta/id)
+                  "query"        "SELECT * FROM venues WHERE name = {{venue_name}}"
+                  "templateTags" {"venue_name" {:type        :text
+                                                :displayName "Custom Name"
+                                                :default     "Foo"
+                                                :name        "venue_name"
+                                                :widgetType  "string/contains"
+                                                :required    true}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues WHERE name = {{venue_name}}"))
-
-      (is (=? {"venue_name" {:type         :text
-                             :name         "venue_name"
-                             :display-name "Custom Name"
-                             :default      "Foo"
-                             :required     true
-                             :widget-type  "string/contains"
-                             :id           string?}}
+      (is (=? [{:type         :text
+                :name         "venue_name"
+                :display-name "Custom Name"
+                :default      "Foo"
+                :required     true
+                :widget-type  "string/contains"
+                :id           string?}]
               (lib/template-tags query))))))
 
 (deftest ^:parallel test-native-query-inferred-optional-tags-test
   (testing "test-native-query infers optional template tags from query text"
     (let [query (lib.query.test-spec/test-native-query
                  meta/metadata-provider
-                 {:database-id    (meta/id)
-                  :query          "SELECT * FROM venues [WHERE name = {{venue_name}}]"
-                  :template-tags  {"venue_name" {:type         :text
-                                                 :display-name "Custom Name"
-                                                 :default      "Foo"
-                                                 :widget-type  "string/contains"
-                                                 :required     true}}})]
+                 {:database-id   (meta/id)
+                  :query         "SELECT * FROM venues [WHERE name = {{venue_name}}]"
+                  :template-tags {"venue_name" {:type         :text
+                                                :display-name "Custom Name"
+                                                :default      "Foo"
+                                                :name         "venue_name"
+                                                :widget-type "string/contains"
+                                                :required     true}}})]
       (is (=? (lib/raw-native-query query)
               "SELECT * FROM venues [WHERE name = {{venue_name}}]"))
-
-      (is (=? {"venue_name" {:type         :text
-                             :name         "venue_name"
-                             :display-name "Custom Name"
-                             :default      "Foo"
-                             :required     true
-                             :widget-type  "string/contains"
-                             :id           string?}}
+      (is (=? [{:type         :text
+                :name         "venue_name"
+                :display-name "Custom Name"
+                :default      "Foo"
+                :required     true
+                :widget-type  "string/contains"
+                :id           string?}]
               (lib/template-tags query))))))

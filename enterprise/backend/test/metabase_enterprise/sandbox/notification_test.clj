@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.notification-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.notification-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
@@ -21,7 +22,6 @@
                                         :result
                                         :data
                                         :rows))]
-
           (is (= [[100]]
                  (send-alert-by-user! :crowberto)))
           (is (= [[10]]

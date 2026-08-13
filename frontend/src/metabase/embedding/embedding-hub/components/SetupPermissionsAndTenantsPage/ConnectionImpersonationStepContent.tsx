@@ -1,12 +1,12 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- This string only shows for admins */
 
 import { useCallback, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { DatabaseMultiSelect } from "metabase/common/components/DatabaseMultiSelect";
+import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { Button, Flex, Stack, Text } from "metabase/ui";
 import type { Database, DatabaseId } from "metabase-types/api";
@@ -26,7 +26,8 @@ export const ConnectionImpersonationStepContent = ({
   const [isUpdatingPermissions, setUpdatingPermissions] = useState(false);
 
   const { data: databasesResponse } = useListDatabasesQuery();
-  const { updateDataAccess } = useUpdateAllTenantUsersGroupPermissions();
+  const { updateDataAccess, isReady } =
+    useUpdateAllTenantUsersGroupPermissions();
 
   const databases = useMemo(
     () => databasesResponse?.data ?? [],
@@ -59,13 +60,13 @@ export const ConnectionImpersonationStepContent = ({
         t`Failed to configure connection impersonation`,
       );
 
-      sendToast({ icon: "warning", toastColor: "error", message });
+      sendToast({ icon: "warning", toastColor: "feedback-negative", message });
     } finally {
       setUpdatingPermissions(false);
     }
   }, [selectedDatabaseIds, updateDataAccess, onNext, sendToast]);
 
-  const isNextDisabled = selectedDatabaseIds.length === 0;
+  const isNextDisabled = !isReady || selectedDatabaseIds.length === 0;
 
   if (!hasCompatibleDatabases) {
     return (

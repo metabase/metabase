@@ -2,15 +2,8 @@ import { useElementSize } from "@mantine/hooks";
 import { useLayoutEffect } from "react";
 import _ from "underscore";
 
-import {
-  Button,
-  type ButtonProps,
-  Flex,
-  Icon,
-  type IconName,
-  Tooltip,
-} from "metabase/ui";
-
+import { Button, type ButtonProps, Flex, Icon, Tooltip } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 interface Props extends Omit<ButtonProps, "leftSection"> {
   children: string;
   icon: IconName;

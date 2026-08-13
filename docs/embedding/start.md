@@ -6,6 +6,8 @@ redirect_from:
 
 # Embedding overview
 
+You can use Metabase as a BI tool for your own team, or embed Metabase in your app so your customers can explore their own data.
+
 ## [Introduction](./introduction.md)
 
 What is embedding, and how does it work?
@@ -24,9 +26,25 @@ With the Modular embedding SDK, you can embed individual Metabase components wit
 
 Jump to a SDK quickstart with a sample React application.
 
+### [Embed a chart](./chart.md)
+
+Embed a single chart, view-only or interactive, with web components or the React SDK.
+
+### [Embed the query builder](./query-builder.md)
+
+Embed Metabase's visual query builder or SQL editor, so people can build and save their own questions.
+
+### [Question component reference](./question-reference.md)
+
+Every `<metabase-question>` attribute, the `StaticQuestion` and `InteractiveQuestion` props, and the components you can use to build your own question layout.
+
 ### [Guest embedding](./guest-embedding.md)
 
 Guest embedding is a secure way to embed charts and dashboards. Guest embeds are view-only; people won't be able to drill-through charts and tables.
+
+### [Custom visualizations in embeds](./custom-visualizations.md)
+
+Allowlist the custom visualizations that your embedded components can load. Available in modular embeds that use SSO, with web components or the React SDK.
 
 ### [Translating embeds](./translations.md)
 
@@ -51,3 +69,7 @@ Admins can also create unsecured public links or embeds of questions and dashboa
 ## [Securing embeds](./securing-embeds.md)
 
 How to make sure the right people can see the right data in your embedded Metabase.
+
+## [AI agent resources](./ai-agent-resources.md)
+
+Machine-readable docs and agent skills to help AI coding agents with embedding setup, upgrades, and migrations.

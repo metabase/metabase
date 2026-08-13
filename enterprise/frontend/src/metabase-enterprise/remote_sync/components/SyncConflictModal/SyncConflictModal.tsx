@@ -1,13 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-} from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useSelector } from "metabase/redux";
+import { useGetSettingsQuery, useSetting } from "metabase/settings";
 import { Box, Button, Group, Icon, Modal } from "metabase/ui";
 import {
   useGetBranchesQuery,
@@ -15,30 +11,32 @@ import {
 } from "metabase-enterprise/api";
 import { useGetLibraryCollection } from "metabase-enterprise/data-studio/library/utils";
 import {
-  BRANCH_KEY,
   COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,
-  TOKEN_KEY,
   TRANSFORMS_KEY,
-  TYPE_KEY,
-  URL_KEY,
 } from "metabase-enterprise/remote_sync/constants";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
+  ForcePushCasualties,
   RemoteSyncConfigurationSettings,
   RemoteSyncConflictVariant,
 } from "metabase-types/api";
 
 import { ChangesLists } from "../ChangesLists";
+import { CommitMessageSection } from "../PushChangesModal/CommitMessageSection";
 
 import { BranchNameInput } from "./BranchNameInput";
+import { ConflictingChangesList } from "./ConflictingChangesList";
+import { ForcePushWarning } from "./ForcePushWarning";
 import { OutOfSyncOptions } from "./OutOfSyncOptions";
 import { SetupConflictInfo } from "./SetupConflictInfo";
 import {
   useDiscardChangesAndImportAction,
+  useMergeChangesAction,
+  useMergeImportAction,
   usePushChangesAction,
   useStashToNewBranchAction,
-} from "./mutation-wrappers";
+} from "./hooks";
 import {
   type OptionValue,
   getContinueButtonText,
@@ -47,20 +45,39 @@ import {
 
 interface UnsyncedWarningModalProps {
   currentBranch: string;
+  /** switch-branch variant only: the branch to switch to once the chosen action resolves local changes. */
   nextBranch?: string | null;
   onClose: VoidFunction;
   variant: RemoteSyncConflictVariant;
+  /** Push variant only: whether a 3-way merge would apply cleanly (offers the Merge option). */
+  canMerge?: boolean;
+  /** Push variant only: labels of entities that conflict (shown when the merge isn't clean). */
+  conflicts?: string[];
+  /** Remote content a force push would discard; surfaced when the force-push option is selected. */
+  forcePushCasualties?: ForcePushCasualties;
+  /** Whether the remote history was rewritten (no merge base); adds context to the force-push warning. */
+  historyRewritten?: boolean;
 }
 
 export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
-  const { onClose, currentBranch, nextBranch, variant } = props;
+  const {
+    onClose,
+    currentBranch,
+    nextBranch,
+    variant,
+    canMerge,
+    conflicts,
+    forcePushCasualties,
+    historyRewritten,
+  } = props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
+  // The push variant collects a commit message here, since merge/force/new-branch all push.
+  const [commitMessage, setCommitMessage] = useState<string>("");
   const { sendErrorToast } = useMetadataToasts();
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const { data: settingValues } = useGetSettingsQuery();
-  const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const { data: libraryCollection } = useGetLibraryCollection({
     skip: !isRemoteSyncEnabled,
   });
@@ -72,6 +89,8 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const [updateRemoteSyncSettings, { isLoading: isUpdatingSettings }] =
     useUpdateRemoteSyncSettingsMutation();
   const { pushChanges, isPushingChanges } = usePushChangesAction();
+  const { mergeChanges, isMerging } = useMergeChangesAction();
+  const { mergeImport, isMergingImport } = useMergeImportAction();
   const { stashToNewBranch, isStashing } =
     useStashToNewBranchAction(existingBranches);
   const { discardChangesAndImport, isImporting } =
@@ -80,14 +99,10 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   const markLibraryAndTransformsAsSynced = useCallback(async () => {
     try {
       const remoteSyncSettings: RemoteSyncConfigurationSettings = {
-        [URL_KEY]: settingDetails?.[URL_KEY]?.value || null,
-        [TOKEN_KEY]: settingDetails?.[TOKEN_KEY]?.value || null,
-        [BRANCH_KEY]: settingValues?.[BRANCH_KEY] || null,
-        [TYPE_KEY]: settingValues?.[TYPE_KEY] || null,
+        // Unjustified type cast. FIXME
         [COLLECTIONS_KEY]: (settingValues as RemoteSyncConfigurationSettings)[
           COLLECTIONS_KEY
         ],
-        [REMOTE_SYNC_KEY]: true,
         [TRANSFORMS_KEY]: true,
       };
 
@@ -106,10 +121,11 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
   }, [
     libraryCollection?.id,
     sendErrorToast,
-    settingDetails,
     settingValues,
     updateRemoteSyncSettings,
   ]);
+
+  const message = commitMessage.trim() || undefined;
 
   const handleContinueButtonClick = async () => {
     if (!optionValue) {
@@ -117,7 +133,21 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     }
 
     if (optionValue === "push" || optionValue === "force-push") {
-      await pushChanges(currentBranch, optionValue === "force-push", onClose);
+      await pushChanges(
+        currentBranch,
+        optionValue === "force-push",
+        onClose,
+        message,
+      );
+    }
+
+    if (optionValue === "merge") {
+      // Pull merges into local only; push merges and pushes the result.
+      if (variant === "pull") {
+        await mergeImport(currentBranch, onClose);
+      } else {
+        await mergeChanges(currentBranch, onClose, message);
+      }
     }
 
     if (optionValue === "new-branch") {
@@ -125,16 +155,28 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
         await markLibraryAndTransformsAsSynced();
       }
 
-      await stashToNewBranch(newBranchName, onClose);
+      await stashToNewBranch(newBranchName, onClose, message);
     }
 
     if (optionValue === "discard") {
-      await discardChangesAndImport(nextBranch || currentBranch, onClose);
+      // nextBranch is set on a switch-branch discard (the branch we're switching to); otherwise we discard
+      // and reload the current branch. currentBranch is the expected-branch assertion (caught if a stale tab
+      // switched under us).
+      await discardChangesAndImport(
+        nextBranch || currentBranch,
+        currentBranch,
+        onClose,
+      );
     }
   };
 
   const isProcessing =
-    isImporting || isPushingChanges || isStashing || isUpdatingSettings;
+    isImporting ||
+    isPushingChanges ||
+    isMerging ||
+    isMergingImport ||
+    isStashing ||
+    isUpdatingSettings;
   const isButtonDisabled = useMemo(() => {
     let disabled = !optionValue || isProcessing;
 
@@ -151,11 +193,17 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
       opened
       padding="xl"
       styles={{ title: { lineHeight: "2rem" } }}
-      title={getModalTitle(variant)}
+      title={getModalTitle(variant, canMerge)}
       withCloseButton={false}
     >
       <Box pt="md">
-        {variant === "setup" ? <SetupConflictInfo /> : <ChangesLists />}
+        {variant === "setup" ? (
+          <SetupConflictInfo />
+        ) : conflicts && conflicts.length > 0 ? (
+          <ConflictingChangesList conflicts={conflicts} />
+        ) : (
+          <ChangesLists />
+        )}
 
         <OutOfSyncOptions
           currentBranch={currentBranch}
@@ -163,7 +211,16 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
           isRemoteSyncReadOnly={isRemoteSyncReadOnly}
           optionValue={optionValue}
           variant={variant}
+          canMerge={canMerge}
         />
+
+        {optionValue === "force-push" && forcePushCasualties && (
+          <ForcePushWarning
+            casualties={forcePushCasualties}
+            branch={currentBranch}
+            historyRewritten={historyRewritten}
+          />
+        )}
 
         {optionValue === "new-branch" && (
           <BranchNameInput
@@ -173,12 +230,24 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
           />
         )}
 
+        {/* Pushing (merge / force / new branch) needs a commit message; pull/switch/setup don't. */}
+        {variant === "push" && optionValue && optionValue !== "discard" && (
+          <Box mt="lg">
+            <CommitMessageSection
+              value={commitMessage}
+              onChange={setCommitMessage}
+            />
+          </Box>
+        )}
+
         <Group gap="sm" justify="end" mt="lg">
           <Button onClick={onClose} variant="subtle">
             {t`Cancel`}
           </Button>
           <Button
-            color={optionValue === "discard" ? "error" : "brand"}
+            color={
+              optionValue === "discard" ? "feedback-negative" : "core-brand"
+            }
             disabled={isButtonDisabled}
             leftSection={
               optionValue === "force-push" ? <Icon name="warning" /> : undefined

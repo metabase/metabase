@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import userEvent from "@testing-library/user-event";
 
 import {
   setupEnterpriseOnlyPlugin,
@@ -12,7 +12,9 @@ import { setupPerformanceEndpoints } from "__support__/server-mocks/performance"
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
-import type { TokenFeatures } from "metabase-types/api";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+import type { CacheConfig, TokenFeatures } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 import {
   createMockCacheConfig,
@@ -23,18 +25,35 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
 export interface SetupOpts {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
   tokenFeatures?: Partial<TokenFeatures>;
+  cacheConfigs?: CacheConfig[];
 }
+
+const getDefaultCacheConfigs = (): CacheConfig[] => [
+  createMockCacheConfigWithMultiplierStrategy({ model_id: 1 }),
+  createMockCacheConfigWithDoNotCacheStrategy({ model_id: 2 }),
+  createMockCacheConfigWithDurationStrategy({ model_id: 3 }),
+  createMockCacheConfig({
+    model: "root",
+    model_id: 0,
+    strategy: {
+      type: "duration",
+      duration: 1,
+      unit: CacheDurationUnit.Hours,
+      refresh_automatically: false,
+    },
+  }),
+];
 
 export const setupStrategyEditorForDatabases = ({
   enterprisePlugins,
   tokenFeatures = {},
+  cacheConfigs = getDefaultCacheConfigs(),
 }: SetupOpts = {}) => {
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({}),
@@ -54,21 +73,6 @@ export const setupStrategyEditorForDatabases = ({
   }
   setupTokenStatusEndpoint({ valid: !!enterprisePlugins });
 
-  const cacheConfigs = [
-    createMockCacheConfigWithMultiplierStrategy({ model_id: 1 }),
-    createMockCacheConfigWithDoNotCacheStrategy({ model_id: 2 }),
-    createMockCacheConfigWithDurationStrategy({ model_id: 3 }),
-    createMockCacheConfig({
-      model: "root",
-      model_id: 0,
-      strategy: {
-        type: "duration",
-        duration: 1,
-        unit: CacheDurationUnit.Hours,
-        refresh_automatically: false,
-      },
-    }),
-  ];
   setupPerformanceEndpoints(cacheConfigs);
 
   const databases = Array.from({ length: 4 }, (_, i) =>
@@ -79,7 +83,7 @@ export const setupStrategyEditorForDatabases = ({
   const TestStrategyEditorForDatabases = () => <StrategyEditorForDatabases />;
 
   return renderWithProviders(
-    <Route path="*" component={TestStrategyEditorForDatabases} />,
+    <Route path="*" element={<TestStrategyEditorForDatabases />} />,
     {
       storeInitialState,
       withRouter: true,
@@ -90,14 +94,24 @@ export const setupStrategyEditorForDatabases = ({
 export const getSaveButton = async () =>
   await screen.findByTestId("strategy-form-submit-button");
 
+/** The strategy picker is a Mantine Select; its options stack a bold title
+ * over a description, so match `name` against the title prefix (e.g. `/^Duration/i`). */
+export const selectCacheStrategy = async (name: RegExp) => {
+  await userEvent.click(await screen.findByTestId("cache-strategy-select"));
+  await userEvent.click(await screen.findByRole("option", { name }));
+};
+
+export const getCacheStrategySelect = () =>
+  screen.getByTestId("cache-strategy-select");
+
 export const changeInput = async (
   label: RegExp,
   expectedPlaceholder: number,
   value: number,
 ) => {
-  const input = (await screen.findByRole("spinbutton", {
+  const input = await screen.findByRole("spinbutton", {
     name: new RegExp(label),
-  })) as HTMLInputElement;
+  });
   expect(input).toHaveAttribute("placeholder", expectedPlaceholder.toString());
   act(() => {
     fireEvent.change(input, { target: { value } });

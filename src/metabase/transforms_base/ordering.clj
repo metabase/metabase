@@ -7,14 +7,13 @@
    [clojure.string :as str]
    [flatland.ordered.set :refer [ordered-set]]
    [metabase.driver :as driver]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
@@ -64,75 +63,154 @@
 
 ;;; ------------------------------------------------- Ordering Logic -------------------------------------------------
 
-(defn- dependency-map [transforms]
-  (into {}
-        (map (juxt :id transforms-base.i/table-dependencies))
-        transforms))
+(defn stored-or-live-deps
+  "Dependencies of `transform`, preferring the precomputed `:table_dependencies` column and falling
+  back to a live `table-dependencies` call when it is absent (`nil`). An empty (but non-nil) stored
+  value is taken at face value as \"no dependencies\"."
+  [transform]
+  (if-some [deps (:table_dependencies transform)]
+    deps
+    (transforms-base.i/table-dependencies
+     ;; load :source on demand on a cache miss, so callers can omit the heavy blob from their select
+     (cond-> transform
+       (and (not (:source transform)) (:id transform))
+       (assoc :source (t2/select-one-fn :source [:model/Transform :id :source] (:id transform)))))))
+
+(defn references-card-or-snippet?
+  "True if `transform`'s source query reads through a saved card or native snippet."
+  [transform]
+  (let [query (:query (or (:source transform)
+                          (t2/select-one-fn :source [:model/Transform :id :source] (:id transform))))]
+    (boolean
+     (when query
+       (try
+         (or (seq (lib/all-source-card-ids query))
+             (seq (lib/all-template-tag-snippet-ids query)))
+         (catch Throwable _ false))))))
+
+(defn safe-table-dependencies
+  "Like `stored-or-live-deps`, but returns `#{}` if the computation throws. Used by cycle
+  detection where a single broken transform must not block the whole check. Callers that need
+  to know *which* transforms failed should walk the graph themselves and capture the failure
+  ids — see `transform-ordering`."
+  [transform]
+  (try
+    (stored-or-live-deps transform)
+    (catch Throwable _ #{})))
 
 (mu/defn- output-table-map
-  [mp :- ::lib.schema.metadata/metadata-provider transforms]
-  (let [table-map (into {}
-                        (map (fn [{:keys [schema name id]}]
-                               [[schema name] id]))
-                        (lib.metadata/tables mp))]
-    (into {}
-          (keep (fn [transform]
-                  (when-let [output-table (table-map [(get-in transform [:target :schema])
-                                                      (get-in transform [:target :name])])]
-                    [output-table (:id transform)])))
-          transforms)))
-
-(defn- target-ref-map
-  "Build a map from [database_id schema table_name] -> transform_id for all transforms."
   [transforms]
   (into {}
-        (map (fn [{:keys [id target]}]
-               [[(:database target) (:schema target) (:name target)] id]))
+        (keep (fn [{:keys [target_table_id id]}]
+                (when target_table_id
+                  [target_table_id id])))
         transforms))
+
+(defn- target-ref-map
+  "Build maps for resolving dependencies to transform ids.
+   Returns {:by-triple {[database_id schema table_name] -> transform_id}
+            :by-table-id {table_id -> transform_id}}"
+  [transforms]
+  {:by-triple   (into {}
+                      (map (fn [{:keys [id target]}]
+                             [[(:database target) (:schema target) (:name target)] id]))
+                      transforms)
+   :by-table-id (into {}
+                      (keep (fn [{:keys [id target_table_id]}]
+                              (when target_table_id
+                                [target_table_id id])))
+                      transforms)})
 
 (defn- resolve-dependency
   "Resolve a single dependency to a transform id, or nil if not resolvable.
   Used to map table/transform/table-ref dependencies to actual transform ids."
-  [{:keys [table transform table-ref]} output-tables transform-ids target-refs]
-  (or (output-tables table)
-      (transform-ids transform)
+  [{dep-table :table dep-transform :transform :keys [table-ref]} output-tables transform-ids target-refs]
+  (or (get output-tables dep-table)
+      (get (:by-table-id target-refs) dep-table)
+      (get transform-ids dep-transform)
       (when table-ref
         (let [{:keys [database_id schema table]} table-ref]
-          (target-refs [database_id schema table])))))
+          (get (:by-triple target-refs) [database_id schema table])))))
 
 (defn transform-ordering
-  "Computes an 'ordering' of a given list of transforms.
+  "Compute the execution ordering for the dependency closure of `start-ids`.
 
-  The result is a map of transform id -> #{transform ids the transform depends on}. Dependencies are limited to just
-  the transforms in the original list -- if a transform depends on some transform not in the list, the 'extra'
-  dependency is ignored. Both query and Python transforms can have dependencies on tables produced by other transforms."
-  [transforms]
-  (let [;; Group all transforms by their database, skipping transforms with no target db
-        transforms-by-db (->> transforms
-                              (keep (fn [transform]
-                                      (when-let [db-id (transforms-base.i/target-db-id transform)]
-                                        {db-id [transform]})))
-                              (apply merge-with into))
-        transform-ids    (into #{} (map :id) transforms)
-        target-refs      (target-ref-map transforms)
-        {:keys [output-tables
-                dependencies]} (->> transforms-by-db
-                                    (map (mu/fn [[db-id db-transforms] :- [:tuple
-                                                                           [:maybe ::lib.schema.id/database]
-                                                                           [:maybe [:sequential :any]]]]
-                                           (let [mp (lib-be/application-database-metadata-provider db-id)]
-                                             {:output-tables (output-table-map mp db-transforms)
-                                              :dependencies  (dependency-map db-transforms)})))
-                                    (apply merge-with merge))]
-    ;; Transforms without a target database are invalid and shouldn't form part of the dependency graph.
-    ;; Give them empty dependency sets so they don't interfere with ordering.
-    (into (zipmap (map :id transforms) (repeat #{}))
-          (update-vals dependencies
-                       (fn [deps]
-                         (into #{}
-                               (keep (fn [dep]
-                                       (resolve-dependency dep output-tables transform-ids target-refs)))
-                               deps))))))
+  Walks the dependency graph starting from `start-ids`, calling `table-dependencies` only on
+  transforms it actually visits. `all-transforms` provides the resolution context: when a
+  transform in the closure references a table produced by another transform, that producer is
+  discovered by looking it up in lookup tables built from `all-transforms`. This is what makes
+  cross-DB dependencies (e.g. Python transforms pulling from a database different from their
+  target) resolve correctly.
+
+  Per-transform `table-dependencies` failures are caught and treated as no dependencies, with
+  the failing id captured in `:failed`. The ordering is a best-effort scheduling hint —
+  execution-time checks (e.g. `throw-if-db-routing-enabled!`) are the source of truth for
+  whether a transform can actually run. This means a single broken transform anywhere in the
+  system can never poison the scheduler: it will simply be treated as a leaf in the closure
+  (or skipped entirely if no caller depends on it), and any actual problem with running it
+  will surface at execution time and be attributed to the transform that tried to run it.
+
+  Returns a map:
+
+      {:dependencies {transform-id -> #{transform-ids it depends on}}
+       :not-found    #{ids in start-ids that don't refer to any transform in all-transforms}
+       :failed       #{ids whose table-dependencies threw}
+       :uncached     {transform-id -> raw-deps} for visited transforms whose `:table_dependencies`
+                     column was absent, computed live, and safe to cache}
+
+  `:dependencies` is restricted to the transitive closure reachable from `start-ids`. `:uncached`
+  lets the caller persist freshly computed deps so later reads hit the cache instead.
+  Diagnostics in `:not-found` and `:failed` let the caller decide how to surface them
+  (logging, metrics, error responses)."
+  [start-ids all-transforms]
+  (let [id->xf        (u/index-by :id all-transforms)
+        output-tables (output-table-map all-transforms)
+        target-refs   (target-ref-map all-transforms)
+        all-ids       (into #{} (map :id) all-transforms)]
+    (loop [visited   {}
+           not-found #{}
+           failed    #{}
+           uncached  {}
+           queue     (vec start-ids)]
+      (if-let [id (first queue)]
+        (cond
+          (contains? visited id)
+          (recur visited not-found failed uncached (rest queue))
+
+          (not (id->xf id))
+          (recur visited (conj not-found id) failed uncached (rest queue))
+
+          :else
+          (let [transform        (id->xf id)
+                miss?            (nil? (:table_dependencies transform))
+                [raw-deps fail?] (try
+                                   [(stored-or-live-deps transform) false]
+                                   (catch Throwable _ [#{} true]))
+                resolved-ids     (into #{}
+                                       (keep (fn [dep]
+                                               (resolve-dependency dep output-tables all-ids target-refs)))
+                                       raw-deps)]
+            (recur (assoc visited id resolved-ids)
+                   not-found
+                   (cond-> failed fail? (conj id))
+                   ;; Only cache transforms that don't read through a card/snippet; those pass through
+                   ;; since their deps can change without the transform doing.
+                   (cond-> uncached (and miss? (not fail?) (not (references-card-or-snippet? transform)))
+                           (assoc id raw-deps))
+                   (into (rest queue) resolved-ids))))
+        {:dependencies visited
+         :not-found    not-found
+         :failed       failed
+         :uncached     uncached}))))
+
+(defenterprise persist-table-dependencies!
+  "Best-effort write-back of `:uncached` deps from `transform-ordering` into the
+  `transform.table_dependencies` column, keyed by transform id.
+
+  OSS fallback: a no-op. Caching transform dependencies is an EE-only optimization."
+  metabase-enterprise.transforms.core
+  [_id->raw-deps]
+  nil)
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`.
@@ -168,21 +246,24 @@
   ```
 "
   [{transform-id :id :as to-check}]
-  (let [transforms       (map (fn [{:keys [id] :as transform}]
+  (let [db-id            (get-in to-check [:source :query :database])
+        ;; Recompute the transform under test live — its source may have just changed, so any stored
+        ;; deps are stale — and pin its source db. Every other transform uses its stored deps.
+        to-check         (-> to-check (assoc :source_database_id db-id) (dissoc :table_dependencies))
+        transforms       (map (fn [{:keys [id] :as transform}]
                                 (if (= id transform-id)
                                   to-check
                                   transform))
-                              (t2/select :model/Transform))
+                              (t2/select [:model/Transform :id :name :target :target_table_id
+                                          :source_database_id :table_dependencies]))
         transforms-by-id (into {}
                                (map (juxt :id identity))
                                transforms)
-        db-id            (get-in to-check [:source :query :database])
-        mp               (lib-be/application-database-metadata-provider db-id)
-        db-transforms    (filter #(= (get-in % [:source :query :database]) db-id) transforms)
-        output-tables    (output-table-map mp db-transforms)
+        db-transforms    (filter #(= (:source_database_id %) db-id) transforms)
+        output-tables    (output-table-map db-transforms)
         transform-ids    (into #{} (map :id) db-transforms)
         target-refs      (target-ref-map transforms)
-        node->children   #(->> % transforms-by-id transforms-base.i/table-dependencies
+        node->children   #(->> % transforms-by-id safe-table-dependencies
                                (keep (fn [dep] (resolve-dependency dep output-tables transform-ids target-refs))))
         id->name         (comp :name transforms-by-id)
         cycle            (find-cycle node->children [transform-id])]

@@ -1,4 +1,6 @@
 (ns metabase.auth-provider.impl-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.auth-provider.impl-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.auth-provider.impl-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.auth-provider.impl :as auth-provider]

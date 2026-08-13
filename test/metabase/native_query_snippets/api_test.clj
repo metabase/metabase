@@ -38,6 +38,28 @@
                 (is (contains? snippets-from-api (select-keys snippet-1 test-snippet-fields)))
                 (is (contains? snippets-from-api (select-keys snippet-2 test-snippet-fields)))))))))))
 
+(deftest list-snippets-call-count-test
+  (testing "GET /api/native-query-snippet app-DB call count should not scale with the number of snippets"
+    (mt/with-model-cleanup [:model/NativeQuerySnippet]
+      (letfn [(insert-snippets! [n]
+                (dotimes [_ n]
+                  (t2/insert! :model/NativeQuerySnippet
+                              {:name       (mt/random-name)
+                               :content    "1 = 1"
+                               :creator_id (mt/user->id :crowberto)})))
+              (warm-call-count! []
+                ;; first request pays one-time priming; measure the second. Use a non-admin so the
+                ;; per-snippet permission check does not short-circuit on superuser status.
+                (mt/user-http-request :rasta :get 200 (snippet-url))
+                (t2/with-call-count [call-count]
+                  (mt/user-http-request :rasta :get 200 (snippet-url))
+                  (call-count)))]
+        (insert-snippets! 2)
+        (let [calls-with-2  (warm-call-count!)
+              _             (insert-snippets! 8)
+              calls-with-10 (warm-call-count!)]
+          (is (<= calls-with-10 (+ calls-with-2 3))))))))
+
 (deftest read-snippet-api-test
   (mt/with-full-data-perms-for-all-users!
     (testing "GET /api/native-query-snippet/:id"
@@ -56,19 +78,15 @@
       (testing "new snippet field validation"
         (is (=? {:errors {:content "string"}}
                 (mt/user-http-request :rasta :post 400 (snippet-url) {})))
-
         (is (name-schema-error? (mt/user-http-request :rasta
                                                       :post 400 (snippet-url)
                                                       {:content "NULL"})))
-
         (is (name-schema-error? (mt/user-http-request :rasta :post 400 (snippet-url)
                                                       {:content "NULL"
                                                        :name    " starts with a space"})))
-
         (is (name-schema-error? (mt/user-http-request :rasta :post 400 (snippet-url)
                                                       {:content "NULL"
                                                        :name    "contains a } character"}))))))
-
   (testing "successful create returns new snippet's data"
     (doseq [[message user] {"admin user should be able to create" :crowberto
                             "non-admin user should be able to create" :rasta}]
@@ -89,7 +107,6 @@
                  snippet-from-api)))
           (finally
             (t2/delete! :model/NativeQuerySnippet :name "test-snippet"))))))
-
   (testing "Attempting to create a Snippet with a name that's already in use should throw an error"
     (try
       (mt/with-temp [:model/NativeQuerySnippet _ {:name "test-snippet-1", :content "1"}]
@@ -99,7 +116,6 @@
                (t2/count :model/NativeQuerySnippet :name "test-snippet-1"))))
       (finally
         (t2/delete! :model/NativeQuerySnippet :name "test-snippet-1"))))
-
   (testing "Shouldn't be able to specify non-default creator_id"
     (try
       (let [snippet (mt/user-http-request :crowberto :post 200 (snippet-url)
@@ -129,14 +145,12 @@
               (testing "\nobject in application DB"
                 (is (=? {:collection_id collection-id}
                         db)))))
-
           (testing "\nShould throw an error if the Collection isn't in the 'snippets' namespace"
             (mt/with-temp [:model/Collection {collection-id :id}]
               (is (= {:errors               {:collection_id "A NativeQuerySnippet can only go in Collections in the :snippets namespace."}
                       :allowed-namespaces   ["snippets"]
                       :collection-namespace nil}
                      (:response (create! 400 collection-id))))))
-
           (testing "\nShould throw an error if Collection does not exist"
             (is (= {:errors {:collection_id "Collection does not exist."}}
                    (:response (create! 404 Integer/MAX_VALUE))))))))))
@@ -154,7 +168,6 @@
                     updated-snippet (mt/user-http-request user :put 200 (snippet-url (:id snippet))
                                                           {:description updated-desc})]
                 (is (= updated-desc (:description updated-snippet)))))))
-
         (testing "Attempting to change Snippet's name to one that's already in use should throw an error"
           (mt/with-temp [:model/NativeQuerySnippet _         {:name "test-snippet-1" :content "1"}
                          :model/NativeQuerySnippet snippet-2 {:name "test-snippet-2" :content "2"}]
@@ -162,12 +175,10 @@
                    (mt/user-http-request :crowberto :put 400 (snippet-url (:id snippet-2)) {:name "test-snippet-1"})))
             (is (= 1
                    (t2/count :model/NativeQuerySnippet :name "test-snippet-1")))
-
             (testing "Passing in the existing name (no change) shouldn't cause an error"
               (is (= {:id (:id snippet-2), :name "test-snippet-2"}
                      (select-keys (mt/user-http-request :crowberto :put 200 (snippet-url (:id snippet-2)) {:name "test-snippet-2"})
                                   [:id :name]))))))
-
         (testing "Shouldn't be able to change creator_id"
           (mt/with-temp [:model/NativeQuerySnippet snippet {:name "test-snippet", :content "1", :creator_id (mt/user->id :lucky)}]
             (mt/user-http-request :crowberto :put 200 (snippet-url (:id snippet)) {:creator_id (mt/user->id :rasta)})
@@ -193,7 +204,6 @@
                   (testing "\nvalue in app DB"
                     (is (= (:id dest)
                            (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id)))))))))
-
         (testing "\nShould throw an error if you try to move it to a Collection not in the 'snippets' namespace"
           (mt/with-temp [:model/Collection         {collection-id :id} {}
                          :model/NativeQuerySnippet {snippet-id :id}    {}]
@@ -201,7 +211,6 @@
                     :allowed-namespaces   ["snippets"]
                     :collection-namespace nil}
                    (mt/user-http-request :rasta :put 400 (snippet-url snippet-id) {:collection_id collection-id})))))
-
         (testing "\nShould throw an error if Collection does not exist"
           (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id}]
             (is (= {:errors {:collection_id "Collection does not exist."}}

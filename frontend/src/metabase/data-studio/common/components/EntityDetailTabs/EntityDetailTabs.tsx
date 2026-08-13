@@ -3,10 +3,9 @@ import { t } from "ttag";
 import {
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
+} from "metabase/common/data-studio/components/PaneHeader";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation } from "metabase/router";
 
 export type EntityDetailTabUrls = {
   definition: string;
@@ -19,7 +18,7 @@ type EntityDetailTabsProps = {
 };
 
 export function EntityDetailTabs({ urls }: EntityDetailTabsProps) {
-  const location = useSelector(getLocation);
+  const location = useLocation();
 
   const tabs: PaneHeaderTab[] = [
     {

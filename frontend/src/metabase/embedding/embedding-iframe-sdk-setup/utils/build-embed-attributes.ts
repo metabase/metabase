@@ -35,8 +35,10 @@ export const buildEmbedAttributes = ({
 
   const settingsWithOverrides = match(experience)
     .with("chart", () => {
+      // Unjustified type cast. FIXME
       const questionSettings = settings as SdkIframeQuestionEmbedSettings;
 
+      // Unjustified type cast. FIXME
       return {
         ...questionSettings,
         token,
@@ -53,8 +55,10 @@ export const buildEmbedAttributes = ({
       } as QuestionEmbedOptions;
     })
     .with("exploration", () => {
+      // Unjustified type cast. FIXME
       const explorationSettings = settings as ExplorationEmbedOptions;
 
+      // Unjustified type cast. FIXME
       return {
         ...explorationSettings,
         questionId: "new" as const,
@@ -65,8 +69,10 @@ export const buildEmbedAttributes = ({
       } as unknown as ExplorationEmbedOptions;
     })
     .with("dashboard", () => {
+      // Unjustified type cast. FIXME
       const dashboardSettings = settings as SdkIframeDashboardEmbedSettings;
 
+      // Unjustified type cast. FIXME
       return {
         ...dashboardSettings,
         token,
@@ -108,7 +114,10 @@ export const formatAttributeValue = (
   return wrapWithQuotes ? `"${value}"` : String(value);
 };
 
-type SettingKey = Exclude<keyof SdkIframeEmbedBaseSettings, "_isLocalhost">;
+type SettingKey = Exclude<
+  keyof SdkIframeEmbedBaseSettings,
+  "_isLocalhost" | "_embedReferrer"
+>;
 
 function transformEmbedSettingsToAttributes({
   settings,
@@ -122,6 +131,7 @@ function transformEmbedSettingsToAttributes({
   const attributes: [string, string][] = [];
 
   for (const key of keysToProcess) {
+    // Unjustified type cast. FIXME
     const value = (settings as any)[key];
 
     if (value === undefined || value === null) {

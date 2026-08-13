@@ -2,8 +2,12 @@ import dayjs from "dayjs";
 import { match } from "ts-pattern";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
-import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { CHART_ANALYSIS_RENDER_FORMATS } from "metabase/metabot/utils/chart-analysis";
+import {
+  extractRemappings,
+  getVisualizationTransformed,
+} from "metabase/visualizations";
 import {
   getChartImagePngDataUri,
   getChartSelector,
@@ -11,6 +15,7 @@ import {
   getVisualizationSvgDataUri,
 } from "metabase/visualizations/lib/image-exports";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -24,7 +29,7 @@ import type {
 import {
   getFirstQueryResult,
   getQuestion,
-  getTransformedSeries,
+  getRawSeries,
   getVisibleTimelineEvents,
   getVisualizationSettings,
 } from "../selectors";
@@ -92,15 +97,30 @@ const getMetrics = (visualizationSettings: ComputedVisualizationSettings) => {
   return [];
 };
 
+// Turns the raw query result series into the per-series shape Metabot consumes.
+//
+// For most charts that means `getVisualizationTransformed`. Row charts are the exception: their `transformSeries`
+// (RowChart.tsx) overrides `cols` to `[dimension, metric]` but leaves the original un-pivoted `rows` in place. The
+// resulting misaligned cols/rows makes the reduce below read a text dimension's values as the numeric metric and send
+// those strings to Metabot as `y_values`, crashing the analysis (BOT-1598).  So for row charts we call
+// `transformCartesianSeries` instead. It pivots `rows` and `cols` together yielding a correctly aligned breakout
+// series whose `y_values` are guaranteed to be the metric.
+function transformSeries(rawSeries: RawSeries): RawSeries {
+  const remappedSeries = extractRemappings(rawSeries);
+  return rawSeries[0]?.card.display === "row"
+    ? transformCartesianSeries(remappedSeries)
+    : getVisualizationTransformed(remappedSeries).series;
+}
+
 export function processSeriesData(
-  transformedSeriesData: RawSeries,
+  seriesData: RawSeries,
   visualizationSettings: ComputedVisualizationSettings | undefined,
 ) {
   if (!visualizationSettings) {
     return {};
   }
 
-  return transformedSeriesData
+  return transformSeries(seriesData)
     .filter((series) => !!series.data.cols && !!series.data.rows)
     .reduce(
       (acc, series, index) => {
@@ -141,6 +161,7 @@ export function processSeriesData(
           },
         });
       },
+      // Unjustified type cast. FIXME
       {} as Record<string, MetabotSeriesConfig>,
     );
 }
@@ -161,8 +182,10 @@ function getVisualizationDataUri(question: Question) {
   const display = question.card().display;
 
   const format =
-    PLUGIN_AI_ENTITY_ANALYSIS.chartAnalysisRenderFormats[display] ??
-    ("none" as const);
+    // Unjustified type cast. FIXME
+    (CHART_ANALYSIS_RENDER_FORMATS as Record<string, "png" | "svg" | "none">)[
+      display
+    ] ?? ("none" as const);
 
   return match(format)
     .with("none", () => undefined)
@@ -230,10 +253,20 @@ export const registerQueryBuilderMetabotContextFn = async ({
 
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
+  const hasDataSource = isNative
+    ? Lib.databaseID(query) != null
+    : Lib.sourceTableOrCardId(query) != null;
+  if (!hasDataSource) {
+    return {};
+  }
+
   const queryCtx = {
     query: question.datasetQuery(),
     sql_engine: isNative ? Lib.engine(query) : undefined,
-    error: queryResult?.error,
+    // Coerce to string to avoid passing objects with circular references
+    // (e.g. Metadata ↔ Database) that would break JSON.stringify in the
+    // streaming request body.
+    error: queryResult?.error?.toString(),
   };
 
   const chart_configs = await getChartConfigs({
@@ -255,12 +288,12 @@ export const registerQueryBuilderMetabotContextFn = async ({
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
 
   useRegisterMetabotContextProvider(
     async (state) => {
       const question = getQuestion(state);
-      const series = getTransformedSeries(state);
+      const series = getRawSeries(state);
       const visualizationSettings = getVisualizationSettings(state);
       const timelineEvents = getVisibleTimelineEvents(state);
       const queryResult = getFirstQueryResult(state);

@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 
 import { ColorPill, type ColorPillProps } from "./ColorPill";
 
@@ -17,7 +17,7 @@ export const Default = {
   render: Template,
 
   args: {
-    color: color("brand"),
+    color: color("core-brand"),
   },
 };
 
@@ -25,7 +25,7 @@ export const Auto = {
   render: Template,
 
   args: {
-    color: color("brand"),
+    color: color("core-brand"),
     isAuto: true,
   },
 };

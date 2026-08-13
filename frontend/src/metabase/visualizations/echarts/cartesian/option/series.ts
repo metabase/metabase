@@ -7,10 +7,10 @@ import type {
 } from "echarts/types/src/util/types";
 import _ from "underscore";
 
-import { getTextColorForBackground } from "metabase/lib/colors/palette";
-import { formatValue } from "metabase/lib/formatting";
-import { getObjectValues } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { getTextColorForBackground } from "metabase/ui/colors/palette";
+import { getObjectValues } from "metabase/utils/objects";
+import { isNotNull } from "metabase/utils/types";
+import { formatValue } from "metabase/value-formatting";
 import {
   INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -45,10 +45,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { RowValue, SeriesSettings, XAxisScale } from "metabase-types/api";
 
-import type {
-  ChartMeasurements,
-  TicksRotation,
-} from "../chart-measurements/types";
+import type { ChartLayout, TicksRotation } from "../layout/types";
 import {
   isCategoryAxis,
   isNumericAxis,
@@ -60,6 +57,7 @@ import {
 } from "../model/series";
 import { getBarSeriesDataLabelKey } from "../model/util";
 
+import { getPadding } from "./ticks";
 import { getSeriesYAxisIndex } from "./utils";
 
 const MIN_LABEL_SPACING_PX = 40;
@@ -172,6 +170,7 @@ export function getDataLabelFormatter(
   );
 
   return (params: CallbackDataParams) => {
+    // Unjustified type cast. FIXME
     const datum = params.data as Datum;
     const value = accessor != null ? accessor(datum) : datum[dataKey];
 
@@ -303,7 +302,7 @@ export const buildEChartsLabelOptions = (
     fontWeight: CHART_STYLE.seriesLabels.weight,
     fontSize,
     color: renderingContext.getColor("text-primary"),
-    textBorderColor: renderingContext.getColor("background-primary"),
+    textBorderColor: renderingContext.getColor("background_page-primary"),
     textBorderWidth: 3,
     formatter:
       formatter &&
@@ -331,8 +330,12 @@ export const computeContinuousScaleBarWidth = (
     return 1;
   }
 
+  const padding = isTimeSeriesAxis(xAxisModel)
+    ? getPadding(xAxisModel.intervalsCount)
+    : 0.5;
+
   let barWidth =
-    (boundaryWidth / (xAxisModel.intervalsCount + 2)) *
+    (boundaryWidth / (xAxisModel.intervalsCount + 1 + 2 * padding)) *
     CHART_STYLE.series.barWidth;
 
   if (!stackedOrSingleSeries) {
@@ -403,6 +406,7 @@ export const buildEChartsStackLabelOptions = (
       renderingContext.getColor,
     ),
     formatter: (params: CallbackDataParams) => {
+      // Unjustified type cast. FIXME
       const transformedDatum = params.data as Datum;
       const originalIndex = transformedDatum[INDEX_KEY] ?? params.dataIndex;
       const datum = originalDataset[originalIndex];
@@ -458,6 +462,7 @@ function getDataLabelSeriesOption(
   const stackName = seriesOption.stack;
 
   const dataLabelSeriesOption = {
+    xAxisIndex: seriesOption.xAxisIndex,
     yAxisIndex: seriesOption.yAxisIndex,
     silent: true,
     symbolSize: 0,
@@ -479,7 +484,7 @@ function getDataLabelSeriesOption(
       fontWeight: CHART_STYLE.seriesLabels.weight,
       fontSize: CHART_STYLE.seriesLabels.size,
       color: renderingContext.getColor("text-primary"),
-      textBorderColor: renderingContext.getColor("background-primary"),
+      textBorderColor: renderingContext.getColor("background_page-primary"),
       textBorderWidth: 3,
     },
     labelLayout: {
@@ -506,7 +511,7 @@ const buildEChartsBarSeries = (
   originalDataset: ChartDataset,
   xAxisModel: XAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   seriesModel: SeriesModel,
   stackName: string | undefined,
   settings: ComputedVisualizationSettings,
@@ -518,6 +523,7 @@ const buildEChartsBarSeries = (
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
   stackModel: StackModel | undefined,
+  xAxisIndex?: number,
 ): BarSeriesOption | BarSeriesOption[] => {
   const stack = stackName ?? `bar_${seriesModel.dataKey}`;
   const isStacked = settings["stackable.stack_type"] != null;
@@ -529,6 +535,7 @@ const buildEChartsBarSeries = (
       itemStyle: {
         color: seriesModel.color,
       },
+      blurScope: "global",
     },
     blur: {
       label: getBlurLabelStyle(settings, hasMultipleSeries),
@@ -538,13 +545,14 @@ const buildEChartsBarSeries = (
     },
     type: "bar",
     z: Z_INDEXES.series,
+    xAxisIndex,
     yAxisIndex,
     barGap: 0,
     barMinHeight: 1,
     stack,
     barWidth: computeBarWidth(
       xAxisModel,
-      chartMeasurements.boundaryWidth,
+      chartLayout.boundaryWidth,
       barSeriesCount,
       isStacked,
       settings["graph.x_axis.scale"],
@@ -577,7 +585,7 @@ const buildEChartsBarSeries = (
           dataset,
           settings,
           seriesModel.dataKey,
-          chartMeasurements.stackedBarTicksRotation,
+          chartLayout.stackedBarTicksRotation,
         )
       : getBarLabelLayout({
           settings,
@@ -659,6 +667,7 @@ const buildEChartsLineAreaSeries = (
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
+  xAxisIndex?: number,
 ): LineSeriesOption => {
   const isSymbolVisible = getShowSymbol(
     chartDataDensity,
@@ -681,6 +690,7 @@ const buildEChartsLineAreaSeries = (
       areaStyle: {
         opacity: CHART_STYLE.opacity.areaFocused,
       },
+      blurScope: "global",
     },
     blur: {
       itemStyle: {
@@ -699,6 +709,7 @@ const buildEChartsLineAreaSeries = (
       type: seriesSettings["line.style"],
       width: lineWidth,
     },
+    xAxisIndex,
     yAxisIndex,
     showSymbol: true,
     showAllSymbol: true,
@@ -734,7 +745,7 @@ const buildEChartsLineAreaSeries = (
     },
     symbol: "circle", // default is "emptyCircle", but it's filled with white, so we need to handle the fill ourselves for dark mode
     itemStyle: {
-      color: renderingContext.getColor("background-primary"),
+      color: renderingContext.getColor("background_page-primary"),
       borderColor: seriesModel.color,
       borderWidth: lineWidth,
       opacity: isSymbolVisible ? 1 : 0, // Make the symbol invisible to keep it for event trigger for tooltip
@@ -788,6 +799,7 @@ function getStackedDataLabelFormatter(
     }
 
     const stackValue = getStackTotalValue(
+      // Unjustified type cast. FIXME
       params.data as Datum,
       stackDataKeys,
       signKey,
@@ -887,7 +899,8 @@ export const getStackTotalsSeries = (
     "stack",
   );
 
-  return getObjectValues(seriesByStackName).flatMap((seriesOptions) => {
+  return Object.values(seriesByStackName).flatMap((seriesOptions) => {
+    // Unjustified type cast. FIXME
     const stackDataKeys = seriesOptions // we set string dataKeys as series IDs
       .map((s) => s.id)
       .filter(isNotNull) as string[];
@@ -895,6 +908,7 @@ export const getStackTotalsSeries = (
 
     const labelFormatter = firstSeriesInStack.stack
       ? chartModel.stackedLabelsFormatters?.[
+          // Unjustified type cast. FIXME
           firstSeriesInStack.stack as "bar" | "area"
         ]
       : undefined;
@@ -948,9 +962,11 @@ export const buildEChartsSeries = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartWidth: number,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   renderingContext: RenderingContext,
 ): EChartsSeriesOption[] => {
+  const isSplitPanels = chartLayout.panelHeight != null;
+
   const seriesSettingsByDataKey = getDisplaySeriesSettingsByDataKey(
     chartModel.seriesModels,
     chartModel.stackModels,
@@ -965,22 +981,35 @@ export const buildEChartsSeries = (
       );
       return acc;
     },
+    // Unjustified type cast. FIXME
     {} as Record<DataKey, number>,
   );
 
-  const barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
+  const hasAnyBarSeries = Object.values(seriesSettingsByDataKey).some(
     (seriesSettings) => seriesSettings.display === "bar",
-  ).length;
+  );
+  const barSeriesCount = isSplitPanels
+    ? 1
+    : Object.values(seriesSettingsByDataKey).filter(
+        (seriesSettings) => seriesSettings.display === "bar",
+      ).length;
 
   const hasMultipleSeries = chartModel.seriesModels.length > 1;
 
-  const series = chartModel.seriesModels
-    .filter((seriesModel) => seriesModel.visible)
-    .map((seriesModel) => {
+  const visibleSeries = chartModel.seriesModels.filter(
+    (seriesModel) => seriesModel.visible,
+  );
+
+  const series = visibleSeries
+    .map((seriesModel, visibleIndex) => {
       const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
-      const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];
-      const stackName =
-        chartModel.stackModels == null
+      const panelIndex = isSplitPanels ? visibleIndex : undefined;
+      const yAxisIndex = isSplitPanels
+        ? visibleIndex
+        : seriesYAxisIndexByDataKey[seriesModel.dataKey];
+      const stackName = isSplitPanels
+        ? undefined
+        : chartModel.stackModels == null
           ? undefined
           : chartModel.stackModels.find((stackModel) =>
               stackModel.seriesKeys.includes(seriesModel.dataKey),
@@ -1001,6 +1030,7 @@ export const buildEChartsSeries = (
             chartWidth,
             chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
+            panelIndex,
           );
         case "bar": {
           const stackModel =
@@ -1014,7 +1044,7 @@ export const buildEChartsSeries = (
             chartModel.dataset,
             chartModel.xAxisModel,
             chartModel.yAxisScaleTransforms,
-            chartMeasurements,
+            chartLayout,
             seriesModel,
             stackName,
             settings,
@@ -1026,12 +1056,33 @@ export const buildEChartsSeries = (
             chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
             stackModel,
+            panelIndex,
           );
         }
       }
     })
     .flat()
     .filter(isNotNull);
+
+  // ECharts extends time/value axis min/max when bar series are present
+  // (adjustScaleForOverflow). Panels with only line/area series don't get this,
+  // causing x-position misalignment. Hidden bar series force the same adjustment.
+  if (isSplitPanels && hasAnyBarSeries) {
+    visibleSeries.forEach((seriesModel, panelIndex) => {
+      if (seriesSettingsByDataKey[seriesModel.dataKey]?.display !== "bar") {
+        series.push({
+          type: "bar",
+          xAxisIndex: panelIndex,
+          yAxisIndex: panelIndex,
+          encode: { y: seriesModel.dataKey, x: X_AXIS_DATA_KEY },
+          barGap: 0,
+          itemStyle: { opacity: 0 },
+          silent: true,
+          z: -1,
+        });
+      }
+    });
+  }
 
   const hasStackedSeriesTotalLabels =
     settings["graph.show_values"] &&

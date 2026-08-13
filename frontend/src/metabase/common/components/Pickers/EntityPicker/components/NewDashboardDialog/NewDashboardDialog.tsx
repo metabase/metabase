@@ -3,8 +3,7 @@ import { t } from "ttag";
 
 import { useCreateDashboardMutation } from "metabase/api";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import { canPlaceEntityInCollection } from "metabase/data-studio/utils";
+import { canPlaceEntityInCollection } from "metabase/common/data-studio/collection-utils";
 import {
   Form,
   FormErrorMessage,
@@ -45,8 +44,6 @@ export const NewDashboardDialog = () => {
           : undefined,
     };
   }, [path]);
-
-  useEscapeToCloseModal(close, { capture: true });
 
   if (!options.canCreateDashboards) {
     return null;
@@ -101,7 +98,6 @@ export const NewDashboardDialog = () => {
         data-testid="create-dashboard-on-the-go"
         trapFocus={true}
         withCloseButton={false}
-        closeOnEscape={false}
         styles={{
           content: {
             padding: "1rem",

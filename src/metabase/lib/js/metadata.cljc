@@ -1,5 +1,4 @@
 (ns metabase.lib.js.metadata
-  (:refer-clojure :exclude [keywordize-keys])
   (:require
    #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.legacy-mbql.normalize :as legacy-mbql.normalize])
@@ -59,7 +58,7 @@
                        (remove (set skip-keys))
                        (map (fn [k]
                               [k (object-get obj k)]))
-                        ;; ignore values that are functions
+                       ;; ignore values that are functions
                        (remove (fn [[_k v]]
                                  (js-fn? v)))
                        xform)
@@ -147,10 +146,10 @@
     (fn [object]
       (try
         (let [parsed (assoc (obj->clj xform object opts) :lib/type lib-type-name)]
-          (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
+          (log/debugf "Parsed metadata %s %s" object-type (:id parsed))
           parsed)
         (catch #?(:cljs js/Error :clj Exception) e
-          (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
+          (log/errorf "Error parsing %s: %s" object-type (ex-message e))
           nil)))))
 
 (defmulti ^:private parse-objects
@@ -229,8 +228,7 @@
 
 (defmethod excluded-keys :field
   [_object-type]
-  #{:_comesFromEndpoint
-    :database
+  #{:database
     :metrics
     :table})
 
@@ -503,8 +501,11 @@
 
 (defmethod parse-field-fn :measure
   [_object-type]
-  (fn [_k v]
-    v))
+  (fn [k v]
+    (case k
+      :definition #?(:cljs (js->clj v :keywordize-keys true)
+                     :clj  (perf/keywordize-keys v))
+      v)))
 
 (defmethod parse-objects-default-key :measure
   [_object-type]
@@ -522,6 +523,8 @@
   [_object-type]
   (fn [k v]
     (case k
+      ;; TODO (Cam 2026-07-06) not sure this is needed since this should be done automatically as part of normalizing
+      ;; a `:metabase.lib.schema.metadata/native-query-snippet` these days
       :template-tags (lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map
                                               #?(:cljs (js->clj v)
                                                  :clj  v))
@@ -532,7 +535,7 @@
     (try
       (parse-objects object-type metadata)
       (catch #?(:cljs js/Error :clj Exception) e
-        (log/errorf e "Error parsing %s objects: %s" object-type (ex-message e))
+        (log/errorf "Error parsing %s objects: %s" object-type (ex-message e))
         nil))))
 
 (defn- card->metric-card
@@ -615,8 +618,8 @@
               setting-key
               (setting unparsed-metadata setting-key)))
 
-      ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
-      ;; thing at once.
+       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
+       ;; thing at once.
        clojure.core.protocols/Datafiable
        (datafy [_this]
          (perf/postwalk
@@ -635,5 +638,5 @@
      :clj  (metadata-provider* database-id unparsed-metadata)))
 
 (def parse-column
-  "Parses a JS column provided by the FE into a :metadata/column value for use in MLv2."
+  "Parses a JS column provided by the FE into a :metadata/column value for use in Lib."
   (parse-object-fn :field))

@@ -26,6 +26,10 @@ echo "ALL_FEATURES: ${CYPRESS_MB_ALL_FEATURES_TOKEN:+set}" && echo "PRO_SELF_HOS
 
 If tokens are missing, tell the user: "EE tokens are not set. Either export them and restart Claude Code, or add `MB_EDITION=oss` to run OSS-only tests."
 
+## Looking up duration without running
+
+If the user asks "how long does this test take" / "what's the timing" — **do not run it**. Read `e2e/support/timings.json`, which holds the latest CI duration (in ms) per spec. Match on the spec path (entries are stored as `../test/scenarios/...`). Per-`it()` granularity is not recorded there; for that you'd need the Cypress JSON reporter, which requires running the spec.
+
 ## Running
 
 First check if snapshots exist:

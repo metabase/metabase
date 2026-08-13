@@ -1,9 +1,14 @@
 (ns metabase.sql-parsing.core-test
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.analytics-interface.core :as analytics-interface]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.util :as u]))
+   [metabase.sql-parsing.graal :as graal]
+   [metabase.util :as u])
+  (:import
+   (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
 
@@ -13,13 +18,11 @@
   (testing "Simple table extraction"
     (is (= [[nil nil "users"]]
            (sql-parsing/referenced-tables "postgres" "SELECT * FROM users"))))
-
   (testing "Multiple tables from JOIN"
     (is (= [[nil nil "orders"] [nil nil "users"]]
            (sql-parsing/referenced-tables
             "postgres"
             "SELECT * FROM users u LEFT JOIN orders o ON u.id = o.user_id"))))
-
   (testing "Schema-qualified tables are preserved"
     (is (= [[nil "other" "users"] [nil "public" "users"]]
            (sql-parsing/referenced-tables
@@ -27,7 +30,6 @@
             "SELECT public.users.id, other.users.id
              FROM public.users u1
              LEFT JOIN other.users u2 ON u1.id = u2.id"))))
-
   (testing "CTE names are excluded"
     (is (= [[nil nil "users"]]
            (sql-parsing/referenced-tables
@@ -155,7 +157,6 @@
               (format "dialect %s: should return vector, got %s" dialect (type result)))
           (is (every? vector? result)
               (format "dialect %s: each element should be [catalog schema table] tuple" dialect)))))
-
     (doseq [[dialect sql] udtf-with-table-queries]
       (testing (str "dialect: " dialect " - UDTF mixed with real table")
         (let [result (sql-parsing/referenced-tables (name dialect) sql)]
@@ -290,18 +291,14 @@
   (testing "Valid queries against schema"
     (testing "simple select with existing columns"
       (is (= "ok" (:status (sql-parsing/validate-query nil "SELECT id, title FROM products" "PUBLIC" test-schema)))))
-
     (testing "wildcard select"
       (is (= "ok" (:status (sql-parsing/validate-query nil "SELECT * FROM products" "PUBLIC" test-schema)))))
-
     (testing "table-qualified columns"
       (is (= "ok" (:status (sql-parsing/validate-query nil "SELECT products.id, products.title FROM products" "PUBLIC" test-schema)))))
-
     (testing "join with valid columns"
       (is (= "ok" (:status (sql-parsing/validate-query nil
                                                        "SELECT o.id, p.title FROM orders o JOIN products p ON o.product_id = p.id"
                                                        "PUBLIC" test-schema)))))
-
     (testing "subquery"
       (is (= "ok" (:status (sql-parsing/validate-query nil
                                                        "SELECT * FROM (SELECT id, title FROM products) AS sub"
@@ -314,7 +311,6 @@
         (is (= "error" (:status result)))
         (is (= "column_not_resolved" (:type result)))
         (is (re-find #"(?i)bad_column" (:column result)))))
-
     (testing "column from wrong table"
       (let [result (sql-parsing/validate-query nil "SELECT email FROM products" "PUBLIC" test-schema)]
         (is (= "error" (:status result)))
@@ -327,7 +323,6 @@
         (is (= "error" (:status result)))
         ;; SQLGlot reports this as unknown_table
         (is (contains? #{"unknown_table" "column_not_resolved"} (:type result)))))
-
     (testing "qualified column with non-existent alias"
       (let [result (sql-parsing/validate-query nil "SELECT p.id FROM products" "PUBLIC" test-schema)]
         (is (= "error" (:status result)))))))
@@ -354,7 +349,6 @@
     (let [result (sql-parsing/referenced-tables "postgres" "SELECT 1 LIMIT")]
       (is (= [] result)
           "No tables are referenced in 'SELECT 1 LIMIT'")))
-
   (testing "To reliably trigger SQL errors, use nonexistent tables instead"
     ;; This is the recommended pattern for tests that need to trigger SQL failures
     (let [result (sql-parsing/referenced-tables "postgres" "SELECT * FROM nonexistent_table_xyz")]
@@ -362,7 +356,6 @@
           "Nonexistent table reference is parsed and will fail at execution time"))))
 
 (comment
-  (require '[clojure.string :as str])
   (def query-corpus-path "/Users/bcm/dv/mb/query_corpus/")
 
   (def sentinel (re-pattern "\n-----end-query-----\n"))
@@ -372,7 +365,6 @@
   (let [driver (first drivers)
         corpus (slurp (str query-corpus-path driver ".log"))
         queries (sort (distinct (str/split corpus sentinel)))]
-
     (frequencies
      (doall
       (for [q queries]
@@ -449,6 +441,335 @@
                      "\n  Expected: " (pr-str (normalize-fields expected))
                      "\n  Actual:   " (pr-str (normalize-fields actual))))))))))
 
+;;; -------------------------------------- Large literal-list stripping tests --------------------------------------
+
+(deftest ^:parallel strip-large-values-test
+  (testing "Small VALUES clauses are preserved"
+    (let [sql "SELECT * FROM (VALUES (1, 'a'), (2, 'b'), (3, 'c')) AS t(id, name)"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "No VALUES keyword returns SQL unchanged"
+    (let [sql "SELECT * FROM users WHERE id = 1"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Large VALUES clause is replaced with NULLs preserving column count"
+    (let [tuples (str/join ", " (map #(format "(%d, '%s', %d)" % (str "name" %) (* % 10))
+                                     (range 200)))
+          sql    (str "SELECT * FROM (VALUES " tuples ") AS t(id, name, score)")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (str/includes? result "VALUES (NULL, NULL, NULL)"))
+      (is (str/includes? result "AS t(id, name, score)"))
+      (is (not (str/includes? result "name0")))))
+  (testing "Multiple large VALUES clauses are all stripped"
+    (let [tuples1 (str/join ", " (map #(format "(%d)" %) (range 200)))
+          tuples2 (str/join ", " (map #(format "(%d, %d)" % (* % 2)) (range 200)))
+          sql     (str "WITH a AS (SELECT * FROM (VALUES " tuples1 ") AS t(x)), "
+                       "b AS (SELECT * FROM (VALUES " tuples2 ") AS t(y, z)) "
+                       "SELECT * FROM a JOIN b ON a.x = b.y")
+          result  (sql-parsing/strip-large-literal-lists sql)]
+      (is (str/includes? result "VALUES (NULL)"))
+      (is (str/includes? result "VALUES (NULL, NULL)"))))
+  (testing "VALUES keyword casing is preserved"
+    (let [tuples (str/join ", " (map #(format "(%d)" %) (range 200)))
+          sql    (str "select * from (values " tuples ") as t(x)")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (str/includes? result "values (NULL)"))))
+  (testing "VALUES inside a string literal is not stripped"
+    (let [sql "SELECT 'INSERT INTO foo VALUES (1,2,3)' AS example FROM bar"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Column named values is not stripped"
+    (let [sql "SELECT values FROM my_table WHERE values > 10"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "VALUES keyword not followed by paren is not stripped"
+    (let [sql "SELECT * FROM t WHERE col IN (SELECT values FROM other)"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "INSERT INTO ... VALUES is stripped when large"
+    (let [tuples (str/join ", " (map #(format "(%d, 'x')" %) (range 200)))
+          sql    (str "INSERT INTO foo VALUES " tuples)
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (str/includes? result "VALUES (NULL, NULL)"))
+      (is (not (str/includes? result "(0, 'x')"))))))
+
+(deftest ^:parallel strip-large-in-lists-test
+  (testing "Small IN lists are preserved"
+    (let [sql "SELECT * FROM t WHERE id IN (1, 2, 3)"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Large literal IN list is replaced with IN (NULL)"
+    (let [sql    (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 200)) ") AND active = true")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "SELECT * FROM t WHERE id IN (NULL) AND active = true" result))))
+  (testing "Large IN list of strings, negatives, and decimals is stripped"
+    (let [items  (concat (map #(format "'name %d'" %) (range 100))
+                         (map #(str "-" %) (range 50))
+                         ["1.5" "+2"])
+          sql    (str "SELECT * FROM t WHERE name IN (" (str/join ", " items) ")")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "SELECT * FROM t WHERE name IN (NULL)" result))))
+  (testing "IN keyword casing is preserved"
+    (let [sql    (str "SELECT * FROM t WHERE id in (" (str/join ", " (range 200)) ")")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (str/includes? result "in (NULL)"))))
+  (testing "NOT IN with a large literal list is stripped"
+    (let [sql    (str "SELECT * FROM t WHERE id NOT IN (" (str/join ", " (range 200)) ")")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "SELECT * FROM t WHERE id NOT IN (NULL)" result))))
+  (testing "Multiple large IN lists are all stripped"
+    (let [in1    (str/join ", " (range 200))
+          in2    (str/join ", " (map #(format "'x%d'" %) (range 200)))
+          sql    (str "SELECT * FROM t WHERE a IN (" in1 ") OR b IN (" in2 ")")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "SELECT * FROM t WHERE a IN (NULL) OR b IN (NULL)" result))))
+  (testing "IN with a subquery is not stripped"
+    (let [sql "SELECT * FROM t WHERE id IN (SELECT id FROM other)"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "A large IN list nested inside an unstripped IN subquery is still stripped"
+    (let [sql    (str "SELECT * FROM t WHERE id IN (SELECT id FROM other WHERE x IN ("
+                      (str/join ", " (range 200)) "))")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "SELECT * FROM t WHERE id IN (SELECT id FROM other WHERE x IN (NULL))" result))))
+  (testing "Large IN lists containing non-literals are not stripped"
+    (doseq [extra-item ["col_ref" "foo(1)" "?" "$1" "{{param}}" "1e5" "DATE '2024-01-01'" "NULL"]]
+      (let [sql (str "SELECT * FROM t WHERE id IN (" (str/join ", " (concat (range 200) [extra-item])) ")")]
+        (is (= sql (sql-parsing/strip-large-literal-lists sql))
+            (str "list containing " (pr-str extra-item) " should not be stripped")))))
+  (testing "Word boundaries: JOIN ( and INT( do not trigger IN matching"
+    (let [sql "SELECT CAST(x AS INT) FROM a JOIN (SELECT * FROM b) c ON a.id = c.id"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Large VALUES and IN in the same statement are both stripped"
+    (let [tuples (str/join ", " (map #(format "(%d)" %) (range 200)))
+          sql    (str "WITH v AS (SELECT * FROM (VALUES " tuples ") AS t(x)) "
+                      "SELECT * FROM v WHERE x IN (" (str/join ", " (range 200)) ")")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "WITH v AS (SELECT * FROM (VALUES (NULL)) AS t(x)) SELECT * FROM v WHERE x IN (NULL)" result)))))
+
+(deftest ^:parallel large-in-list-referenced-tables-test
+  (testing "referenced-tables and referenced-fields work on queries with massive IN lists"
+    (let [sql (str "SELECT a.name FROM accounts a WHERE a.id IN (" (str/join ", " (range 20000)) ")")]
+      (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables "postgres" sql)))
+      (is (= [[nil nil "accounts" "id"] [nil nil "accounts" "name"]]
+             (sort (sql-parsing/referenced-fields "postgres" sql)))))))
+
+(defn- in-list
+  "Build `IN (0, 1, ..., n-1)` with `n` items."
+  [n]
+  (str "IN (" (str/join ", " (range n)) ")"))
+
+(deftest ^:parallel strip-threshold-boundary-test
+  (testing "IN lists at or below the 100-item threshold are preserved, above it stripped"
+    (doseq [n [1 2 50 99 100]]
+      (let [sql (str "SELECT * FROM t WHERE id " (in-list n))]
+        (is (= sql (sql-parsing/strip-large-literal-lists sql))
+            (str n " items should not be stripped"))))
+    (doseq [n [101 102 150 1000 10000]]
+      (let [sql (str "SELECT * FROM t WHERE id " (in-list n))]
+        (is (= "SELECT * FROM t WHERE id IN (NULL)" (sql-parsing/strip-large-literal-lists sql))
+            (str n " items should be stripped")))))
+  (testing "VALUES at or below the 100-tuple threshold are preserved, above it stripped"
+    (doseq [[n stripped?] {1 false, 100 false, 101 true, 1000 true}]
+      (let [tuples (str/join ", " (map #(format "(%d, %d)" % %) (range n)))
+            sql    (str "SELECT * FROM (VALUES " tuples ") AS t(x, y)")
+            result (sql-parsing/strip-large-literal-lists sql)]
+        (if stripped?
+          (is (= "SELECT * FROM (VALUES (NULL, NULL)) AS t(x, y)" result)
+              (str n " tuples should be stripped"))
+          (is (= sql result)
+              (str n " tuples should not be stripped")))))))
+
+(deftest ^:parallel strip-in-list-literal-shapes-test
+  (testing "Lists of each literal shape are stripped"
+    (doseq [[shape item-fn] {"integers"       str
+                             "decimals"       #(str % ".5")
+                             "negatives"      #(str "-" %)
+                             "plus-signed"    #(str "+" %)
+                             "single-quoted"  #(format "'name %d'" %)
+                             "commas-inside-strings"  #(format "'a,%d,b'" %)
+                             "escaped-quotes" #(format "'it''s %d'" %)}]
+      (let [sql (str "SELECT * FROM t WHERE x IN (" (str/join ", " (map item-fn (range 150))) ")")]
+        (is (= "SELECT * FROM t WHERE x IN (NULL)" (sql-parsing/strip-large-literal-lists sql))
+            (str shape " should be stripped")))))
+  (testing "Whitespace variants are stripped"
+    (doseq [sql [(str "SELECT * FROM t WHERE x IN(" (str/join "," (range 150)) ")")
+                 (str "SELECT * FROM t WHERE x IN\n  (" (str/join " ,\n" (range 150)) ")")
+                 (str "SELECT * FROM t WHERE x in (" (str/join ",\t" (range 150)) ")")]]
+      (is (str/includes? (sql-parsing/strip-large-literal-lists sql) "(NULL)")
+          (pr-str (subs sql 0 40))))))
+
+(deftest ^:parallel strip-in-list-disqualifiers-test
+  (testing "One non-literal item anywhere in a large list prevents stripping"
+    (doseq [bad ["col_ref" "some_column" "foo(1)" "?" "$1" "{{param}}" "%(name)s"
+                 "1e5" "NULL" "DATE '2024-01-01'" "TIMESTAMP '2024-01-01 00:00:00'"
+                 "1::int" "x.y" "CURRENT_DATE" "-- comment" "héllo" "N'abc'"
+                 "\"quoted_identifier\"" "null1"]
+            position [:first :middle :last]]
+      (let [items (map str (range 150))
+            items (case position
+                    :first  (cons bad items)
+                    :middle (concat (take 75 items) [bad] (drop 75 items))
+                    :last   (concat items [bad]))
+            sql   (str "SELECT * FROM t WHERE x IN (" (str/join ", " items) ")")]
+        (is (= sql (sql-parsing/strip-large-literal-lists sql))
+            (str (pr-str bad) " at " position " should prevent stripping")))))
+  (testing "Subqueries are never stripped regardless of size"
+    (let [sql "SELECT * FROM t WHERE x IN (SELECT id FROM u WHERE y = 'a' AND z IN ('b', 'c'))"]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "A large list of double-quoted identifiers is not stripped (they are column references
+            in identifier-quoting dialects, not strings)"
+    (let [sql (str "SELECT * FROM t WHERE x IN (" (str/join ", " (map #(format "\"col_%d\"" %) (range 150))) ")")]
+      (is (identical? sql (sql-parsing/strip-large-literal-lists sql))))))
+
+(deftest ^:parallel strip-preserves-surroundings-test
+  (testing "Everything around a stripped list is preserved byte-for-byte"
+    (let [prefix "WITH cte AS (SELECT 1 AS x) SELECT t.a, cte.x FROM t JOIN cte ON TRUE WHERE t.id "
+          suffix " AND t.status = 'active' ORDER BY t.a LIMIT 5"
+          sql    (str prefix (in-list 150) suffix)]
+      (is (= (str prefix "IN (NULL)" suffix)
+             (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Several lists in one statement are stripped/kept independently"
+    (let [sql (str "SELECT * FROM t WHERE a " (in-list 150)
+                   " OR b " (in-list 3)
+                   " OR c NOT " (in-list 200)
+                   " OR d IN (SELECT x FROM u)")]
+      (is (= (str "SELECT * FROM t WHERE a IN (NULL)"
+                  " OR b " (in-list 3)
+                  " OR c NOT IN (NULL)"
+                  " OR d IN (SELECT x FROM u)")
+             (sql-parsing/strip-large-literal-lists sql))))))
+
+(deftest ^:parallel strip-nesting-test
+  (testing "A large IN list inside a small VALUES tuple is stripped"
+    (let [sql (str "SELECT * FROM (VALUES ((SELECT count(*) FROM u WHERE u.id " (in-list 150) "))) t")]
+      (is (= "SELECT * FROM (VALUES ((SELECT count(*) FROM u WHERE u.id IN (NULL)))) t"
+             (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "A large IN list inside a stripped VALUES clause disappears with it"
+    (let [tuples (str/join ", " (map #(format "(%d)" %) (range 150)))
+          sql    (str "SELECT * FROM (VALUES " tuples ", ((SELECT 1 WHERE x " (in-list 150) "))) t")
+          result (sql-parsing/strip-large-literal-lists sql)]
+      (is (= "SELECT * FROM (VALUES (NULL)) t" result))))
+  (testing "IN subqueries nest arbitrarily deep and the innermost large list is still found"
+    (let [sql (str "SELECT * FROM a WHERE x IN "
+                   "(SELECT x FROM b WHERE y IN "
+                   "(SELECT y FROM c WHERE z " (in-list 150) "))")]
+      (is (= (str "SELECT * FROM a WHERE x IN "
+                  "(SELECT x FROM b WHERE y IN "
+                  "(SELECT y FROM c WHERE z IN (NULL)))")
+             (sql-parsing/strip-large-literal-lists sql))))))
+
+(deftest ^:parallel strip-idempotency-and-identity-test
+  (testing "Stripping is idempotent"
+    (doseq [sql [(str "SELECT * FROM t WHERE id " (in-list 150))
+                 (str "INSERT INTO foo VALUES " (str/join ", " (map #(format "(%d)" %) (range 150))))]]
+      (let [once (sql-parsing/strip-large-literal-lists sql)]
+        (is (= once (sql-parsing/strip-large-literal-lists once))))))
+  (testing "When nothing is stripped the original string instance is returned"
+    (doseq [sql ["SELECT * FROM t"
+                 "SELECT * FROM t WHERE id IN (1, 2, 3)"
+                 "SELECT * FROM t WHERE id IN (SELECT id FROM u)"
+                 "SELECT * FROM (VALUES (1), (2)) AS t(x)"]]
+      (is (identical? sql (sql-parsing/strip-large-literal-lists sql))))))
+
+(deftest ^:parallel strip-malformed-sql-test
+  (testing "Malformed or degenerate input never throws and is left unchanged"
+    (doseq [sql [""
+                 "IN ("
+                 "VALUES ("
+                 (str "SELECT * FROM t WHERE id IN (" (str/join ", " (range 150)))  ; no closing paren
+                 (str "SELECT * FROM t WHERE id IN ('unterminated string, " (str/join ", " (range 150)) ")")
+                 "SELECT * FROM t WHERE id IN ()"
+                 "IN () VALUES ()"
+                 "in(   )"]]
+      (is (= sql (sql-parsing/strip-large-literal-lists sql))
+          (pr-str (subs sql 0 (min 40 (count sql))))))))
+
+(deftest ^:parallel strip-keyword-false-positives-test
+  (testing "Words containing 'in'/'values' and quoted identifiers are not treated as keywords"
+    (doseq [sql ["SELECT margin FROM t WHERE margin > 10"
+                 "SELECT * FROM t JOIN (SELECT * FROM u) v ON t.id = v.id"
+                 "SELECT CAST(x AS INT) FROM t"
+                 "SELECT * FROM logins (1, 2, 3)"
+                 "SELECT \"in\" FROM t"
+                 "SELECT t.values FROM t WHERE t.values > 10"]]
+      (is (identical? sql (sql-parsing/strip-large-literal-lists sql)) sql))))
+
+(deftest ^:parallel strip-tuple-in-list-test
+  (testing "Tuple IN lists below the comma threshold are preserved, above it stripped"
+    ;; n two-element tuples contain 2n-1 commas; the threshold is 100 commas, so 51 tuples strip
+    (doseq [[n stripped?] {1 false, 50 false, 51 true, 1000 true}]
+      (let [tuples (str/join ", " (map #(format "(%d, %d)" % (* % 2)) (range n)))
+            sql    (str "SELECT * FROM t WHERE (a, b) IN (" tuples ")")
+            result (sql-parsing/strip-large-literal-lists sql)]
+        (if stripped?
+          (is (= "SELECT * FROM t WHERE (a, b) IN (NULL)" result)
+              (str n " tuples should be stripped"))
+          (is (identical? sql result)
+              (str n " tuples should not be stripped"))))))
+  (testing "NOT IN and string tuples"
+    (let [tuples (str/join ", " (map #(format "(%d, '%d')" % %) (range 150)))
+          sql    (str "SELECT * FROM t WHERE (a, b) NOT IN (" tuples ")")]
+      (is (= "SELECT * FROM t WHERE (a, b) NOT IN (NULL)"
+             (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Tuple lists containing non-simple tuples are not stripped"
+    (doseq [bad ["(SELECT 1, 2)" "(x, 1)" "(foo(1), 2)" "(?, ?)"]]
+      (let [tuples (str/join ", " (concat (map #(format "(%d, %d)" % %) (range 150)) [bad]))
+            sql    (str "SELECT * FROM t WHERE (a, b) IN (" tuples ")")]
+        (is (identical? sql (sql-parsing/strip-large-literal-lists sql))
+            (str "tuple list containing " (pr-str bad) " should not be stripped"))))))
+
+(defn- array-literal
+  "Build `ARRAY[0, 1, ..., n-1]` with `n` items."
+  [n]
+  (str "ARRAY[" (str/join ", " (range n)) "]"))
+
+(deftest ^:parallel strip-array-literal-test
+  (testing "ARRAY literals at or below the threshold are preserved, above it stripped"
+    (doseq [n [1 100]]
+      (let [sql (str "SELECT * FROM t WHERE id = ANY(" (array-literal n) ")")]
+        (is (identical? sql (sql-parsing/strip-large-literal-lists sql))
+            (str n " items should not be stripped"))))
+    (doseq [n [101 1000]]
+      (let [sql (str "SELECT * FROM t WHERE id = ANY(" (array-literal n) ")")]
+        (is (= "SELECT * FROM t WHERE id = ANY(ARRAY[NULL])" (sql-parsing/strip-large-literal-lists sql))
+            (str n " items should be stripped")))))
+  (testing "Casing and string arrays"
+    (let [sql (str "SELECT array['" (str/join "', '" (range 150)) "'] AS a FROM t")]
+      (is (= "SELECT array[NULL] AS a FROM t" (sql-parsing/strip-large-literal-lists sql)))))
+  (testing "Array literals containing non-literals are not stripped"
+    (doseq [bad ["col_ref" "foo(1)" "ARRAY[1]" "1:5"]]
+      (let [sql (str "SELECT ARRAY[" (str/join ", " (concat (range 150) [bad])) "] FROM t")]
+        (is (identical? sql (sql-parsing/strip-large-literal-lists sql))
+            (str "array containing " (pr-str bad) " should not be stripped")))))
+  (testing "Array subscript access on a column named array is untouched"
+    (doseq [sql ["SELECT array[1] FROM t"
+                 "SELECT arr[1] FROM t"
+                 "SELECT arr[1:5] FROM t"]]
+      (is (identical? sql (sql-parsing/strip-large-literal-lists sql)) sql)))
+  (testing "A large ARRAY nested inside an unstripped IN subquery is still stripped"
+    (let [sql (str "SELECT * FROM t WHERE id IN (SELECT id FROM u WHERE tags && " (array-literal 150) ")")]
+      (is (= "SELECT * FROM t WHERE id IN (SELECT id FROM u WHERE tags && ARRAY[NULL])"
+             (sql-parsing/strip-large-literal-lists sql))))))
+
+(deftest ^:parallel stripped-sql-parses-e2e-test
+  (testing "every analysis entry point tolerates SQL whose lists were stripped"
+    (let [sql (str "SELECT a.name FROM accounts a WHERE a.id " (in-list 150))]
+      (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables "postgres" sql)))
+      (is (= {:is_simple true} (sql-parsing/simple-query? "postgres" sql)))
+      (is (=? {:status "ok"} (sql-parsing/validate-query "postgres" sql nil)))
+      (is (=? {:used-fields set? :returned-fields vector? :errors #{}}
+              (sql-parsing/field-references "postgres" sql)))))
+  (testing "tuple IN lists and ARRAY literals also parse after stripping"
+    (doseq [sql [(str "SELECT a.name FROM accounts a WHERE (a.id, a.org_id) IN ("
+                      (str/join ", " (map #(format "(%d, %d)" % %) (range 20000))) ")")
+                 (str "SELECT a.name FROM accounts a WHERE a.id = ANY(" (array-literal 20000) ")")]]
+      (is (= [[nil nil "accounts"]] (sql-parsing/referenced-tables "postgres" sql)))
+      (is (=? {:errors #{}} (sql-parsing/field-references "postgres" sql))))))
+
+(deftest ^:parallel large-values-referenced-tables-test
+  (testing "referenced-tables works on queries with massive VALUES clauses"
+    (let [tuples (str/join ", " (map #(format "(%d, %d)" % (mod % 100)) (range 20000)))
+          sql    (str "WITH lookup AS (SELECT * FROM (VALUES " tuples
+                      ") AS v(id, score)) "
+                      "SELECT a.name, l.score FROM accounts a "
+                      "JOIN lookup l ON l.id = a.id")
+          result (sql-parsing/referenced-tables "postgres" sql)]
+      (is (= [[nil nil "accounts"]] result)))))
+
 (deftest ^:parallel referenced-fields-dialect-support-test
   (testing "Referenced fields works across different SQL dialects"
     (doseq [dialect ["postgres" "mysql" "snowflake" "bigquery" "redshift" "duckdb"]]
@@ -464,21 +785,42 @@
     (testing "Unqualified wildcard - single table"
       (let [result (sql-parsing/referenced-fields "postgres" "SELECT * FROM users")]
         (is (fields-match? [["users" "*"]] result))))
-
     (testing "Unqualified wildcard - multiple tables"
       (let [result (sql-parsing/referenced-fields "postgres" "SELECT * FROM users u LEFT JOIN orders o ON u.id = o.user_id")]
         (is (some #(= ["orders" "*"] %) (normalize-fields result))
             "Should include orders wildcard")
         (is (some #(= ["users" "*"] %) (normalize-fields result))
             "Should include users wildcard")))
-
     (testing "Qualified wildcard"
       (let [result (sql-parsing/referenced-fields "postgres" "SELECT u.* FROM users u")]
         (is (fields-match? [["users" "*"]] result))))
-
     (testing "Mixed wildcards and specific columns"
       (let [result (sql-parsing/referenced-fields "postgres" "SELECT u.*, t.total FROM users u, transactions t WHERE u.id = t.user_id")]
         (is (some #(= ["users" "*"] %) (normalize-fields result))
             "Should include users wildcard")
         (is (some #(= ["transactions" "total"] %) (normalize-fields result))
             "Should include transactions.total")))))
+
+;;; ------------------------------------------------ Parse errors --------------------------------------------------
+
+(deftest parse-error-test
+  (testing "unparseable SQL surfaces as a transport-agnostic parse error"
+    (let [e (try
+              (sql-parsing/referenced-tables "postgres" "SELECT !!!")
+              (catch Exception e e))]
+      (is (sql-parsing/parse-error? e)))))
+
+;;; ------------------------------------------------ Timeout robustness --------------------------------------------
+
+(deftest timeout-surfaces-even-when-metric-inc-fails-test
+  (testing (str "A fired Python-call timeout still surfaces as TimeoutException from the API even if "
+                "the timeout-metric bump throws — a misconfigured analytics registry must not shadow "
+                "the timeout (#77084).")
+    (with-redefs [;; force the timeout branch of do-with-python-context without waiting 30s
+                  graal/with-timeout* (fn [_ _] :metabase.sql-parsing.graal/timeout)
+                  ;; poison only the timeout metric; leave the acquisition inc! alone
+                  analytics-interface/inc! (fn [k & _]
+                                             (when (= k :metabase-sql-parsing/context-timeouts)
+                                               (throw (Exception. "boom"))))]
+      (is (thrown? TimeoutException
+                   (sql-parsing/referenced-tables "postgres" "SELECT 1"))))))

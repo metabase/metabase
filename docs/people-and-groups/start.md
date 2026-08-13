@@ -25,11 +25,13 @@ Make people use longer and more complex passwords.
 
 Tell Metabase how long it should wait before asking people to log in again.
 
+## [Two-factor authentication](./two-factor-authentication.md)
+
+Have people confirm their identity with an authenticator app when they log in.
+
 ## Authentication
 
 Metabase offers several options for authentication.
-
-> If you need to set up 2-step or multi-factor authentication (2FA or MFA) for your Metabase, consider using one of the SSO options below.
 
 ### SSO for Metabase Open Source and Starter plans
 
@@ -44,6 +46,8 @@ With [Pro and Enterprise plans](https://www.metabase.com/pricing/), you have mor
 - LDAP advanced features
   - [Group membership filter](./ldap.md#ldap-group-membership-filter)
   - [Syncing user attributes](./ldap.md#syncing-user-attributes-with-ldap)
+- [OIDC][oidc]
+  - [Keycloak][oidc-keycloak]
 - [SAML][saml]
   - [Auth0][saml-auth0]
   - [Microsoft Entra ID][azure-ad]
@@ -59,6 +63,8 @@ Create keys to authenticate API calls.
 
 Metabase supports user provisioning via the SCIM protocol.
 
+[oidc]: ./authenticating-with-oidc.md
+[oidc-keycloak]: ./oidc-keycloak.md
 [azure-ad]: ./saml-azure.md
 [google-sign-in]: ./google-and-ldap.md#enabling-google-sign-in
 [jwt]: ./authenticating-with-jwt.md

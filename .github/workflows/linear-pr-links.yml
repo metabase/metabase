@@ -6,12 +6,12 @@ on:
 
 jobs:
   add-issue-references:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Run the link script
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
            LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}

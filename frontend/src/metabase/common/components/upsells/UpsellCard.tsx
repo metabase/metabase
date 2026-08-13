@@ -111,7 +111,7 @@ export const UpsellCardInner: React.FC<UpsellCardProps> = ({
           <Text lh="1rem" px="1rem">
             {children}
           </Text>
-          <Box mx="md" mb="lg">
+          <Box mx="md">
             <UpsellCta
               style={buttonStyle}
               onClick={handleClick}

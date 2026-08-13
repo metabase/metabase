@@ -2,7 +2,7 @@ import Color from "color";
 
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { colors } from "metabase/lib/colors";
+import { colors } from "metabase/ui/colors";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -380,6 +380,10 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       Color(colors.success).rgb().string(),
     );
 
+    // open the metric column's formatting (now in a popover, since the date
+    // column is also configurable)
+    H.leftSidebar().findByTestId("Count-settings-button").click();
+
     // style
     cy.findByTestId("scalar-container").findByText("344");
     cy.findByLabelText("Style").click();
@@ -521,6 +525,71 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     H.cartesianChartCircle().should("have.length", 3);
   });
 
+  it("should keep full date granularity for native questions and let users pick a coarser granularity (metabase#69525)", () => {
+    H.createNativeQuestion(
+      {
+        name: "69525",
+        native: {
+          query:
+            "SELECT CAST('2023-06-30 12:00:00' AS TIMESTAMP) AS parsed_date, 733.93 AS amount\nUNION ALL SELECT CAST('2024-06-30 12:00:00' AS TIMESTAMP), 794.29",
+        },
+        display: "smartscalar",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.log("the full date is shown by default, not collapsed to the year");
+    cy.findByTestId("scalar-period")
+      .findByText("June 30, 2024, 12:00 PM")
+      .should("be.visible");
+
+    H.openVizSettingsSidebar();
+    cy.findByTestId("chartsettings-sidebar").findByText("Display").click();
+    H.leftSidebar().findByTestId("PARSED_DATE-settings-button").click();
+
+    cy.log("the date format controls are available for the full date");
+    H.popover().within(() => {
+      cy.findByText("Date granularity").should("be.visible");
+      cy.findByText("Date style").should("be.visible");
+      cy.findByText("Show the time").should("be.visible");
+    });
+
+    cy.log(
+      "a coarser granularity collapses the date and hides format controls",
+    );
+    H.popover().findByDisplayValue("Full date").click();
+    H.popover().findByRole("option", { name: "Year" }).click();
+
+    cy.findByTestId("scalar-period").findByText("2024").should("be.visible");
+    H.popover().within(() => {
+      cy.findByText("Date granularity").should("be.visible");
+      cy.findByText("Date style").should("not.be.visible");
+      cy.findByText("Show the time").should("not.be.visible");
+    });
+
+    cy.log("quarter and month granularities keep the relevant period");
+    H.popover().findByDisplayValue("Year").click();
+    H.popover().findByRole("option", { name: "Quarter and year" }).click();
+    cy.findByTestId("scalar-period").findByText("Q2 2024").should("be.visible");
+
+    H.popover().findByDisplayValue("Quarter and year").click();
+    H.popover().findByRole("option", { name: "Month and year" }).click();
+    cy.findByTestId("scalar-period")
+      .findByText("June 2024")
+      .should("be.visible");
+
+    cy.log("switching back to the full date restores everything");
+    H.popover().findByDisplayValue("Month and year").click();
+    H.popover().findByRole("option", { name: "Full date" }).click();
+    cy.findByTestId("scalar-period")
+      .findByText("June 30, 2024, 12:00 PM")
+      .should("be.visible");
+    H.popover().within(() => {
+      cy.findByText("Date style").should("be.visible");
+      cy.findByText("Show the time").should("be.visible");
+    });
+  });
+
   it("should support quick-filter drill thru (metabase#46168)", () => {
     H.createQuestion(
       {
@@ -538,7 +607,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     );
 
     cy.findByTestId("scalar-period")
-      .findByText("Apr 2026")
+      .findByText("Apr 2029")
       .should("be.visible");
     cy.findByTestId("scalar-container").findByText("344").click();
 
@@ -556,7 +625,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // Validate that the filter was applied
     cy.findByTestId("scalar-period")
-      .findByText("Mar 2026")
+      .findByText("Mar 2029")
       .should("be.visible");
     cy.findByTestId("scalar-container").findByText("527").should("be.visible");
   });

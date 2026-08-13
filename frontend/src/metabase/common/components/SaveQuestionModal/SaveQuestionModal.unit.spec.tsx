@@ -7,6 +7,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupCustomVizPluginListEndpoint,
   setupDashboardEndpoints,
   setupDatabasesEndpoints,
   setupLibraryEndpoints,
@@ -20,10 +21,13 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import * as qbSelectors from "metabase/query_builder/selectors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -42,10 +46,6 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -123,6 +123,7 @@ const setup = async (
   setupDashboardEndpoints(BAR_DASH);
   setupLibraryEndpoints();
   setupDatabasesEndpoints([]);
+  setupCustomVizPluginListEndpoint();
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupRecentViewsAndSelectionsEndpoints(
@@ -809,11 +810,6 @@ describe("SaveQuestionModal", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
-      // simulate slow response and further re-render of the modal
-      jest
-        .spyOn(qbSelectors, "getIsSavedQuestionChanged")
-        .mockReturnValue(false);
-
       rerender();
 
       // verify that modal still has content
@@ -915,7 +911,9 @@ describe("SaveQuestionModal", () => {
         collectionItems: [
           createMockCollectionItem({
             ...COLLECTION.PARENT,
+            // Unjustified type cast. FIXME
             id: COLLECTION.PARENT.id as number,
+            // Unjustified type cast. FIXME
             entity_id: COLLECTION.PARENT.entity_id as BaseEntityId,
             location: COLLECTION.PARENT.location || "/",
             type: undefined,
@@ -928,7 +926,9 @@ describe("SaveQuestionModal", () => {
         collectionItems: [
           createMockCollectionItem({
             ...COLLECTION.CHILD,
+            // Unjustified type cast. FIXME
             id: COLLECTION.CHILD.id as number,
+            // Unjustified type cast. FIXME
             entity_id: COLLECTION.CHILD.entity_id as BaseEntityId,
             location: COLLECTION.CHILD.location || "/",
             type: undefined,

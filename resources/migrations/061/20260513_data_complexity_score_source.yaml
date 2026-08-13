@@ -1,0 +1,32 @@
+## Add `source` column to data_complexity_score so we can distinguish rows produced from the live
+## appdb (cron, API, CLI --source appdb) from rows produced by the CLI scoring a representation
+## directory (CLI --source representation --write-to-appdb true).
+##
+## TODO (v62+): drop the `defaultValue: appdb` below. It exists only so old nodes that don't yet
+## know about the `source` column can still insert during a rolling deploy. Once every deployment
+## has rolled past v61, the default is dead weight and any insert that omits `source` is a bug we
+## want to surface rather than silently label "appdb".
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+  - changeSet:
+      id: v61.2026-05-13T10:00:00
+      author: christruter
+      comment: |
+        Add NOT NULL source column with a default of 'appdb'. The default backfills existing rows
+        and keeps old nodes' inserts safe during rolling deploys (they don't know to set source).
+      changes:
+        - addColumn:
+            tableName: data_complexity_score
+            columns:
+              - column:
+                  name: source
+                  type: varchar(255)
+                  defaultValue: appdb
+                  constraints:
+                    nullable: false
+                  remarks: Provenance — "appdb" for cron/API/CLI-from-appdb, or "representation:<digest>" for CLI runs that scored a representation directory.
+      rollback:
+        - dropColumn:
+            tableName: data_complexity_score
+            columnName: source

@@ -1,172 +1,300 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
-import { Flex, Popover, TextInput } from "metabase/ui";
+import { CodeMirror } from "metabase/common/components/CodeMirror";
+import { Button, Flex, Icon } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 
 import type {
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutState,
+  MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
 } from "../../../types/viewer-state";
+import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
+import { getEffectiveDefinitionEntry } from "../../../utils/definition-entries";
+import {
+  computeMetricSlots,
+  findStandaloneSlot,
+  slotsForEntity,
+} from "../../../utils/metric-slots";
 import {
   createMeasureSourceId,
   createMetricSourceId,
 } from "../../../utils/source-ids";
+import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
-import { MetricSearchDropdown } from "../MetricSearchDropdown";
-import { getSelectedMeasureIds, getSelectedMetricIds } from "../utils";
+import {
+  MetricSearchDropdown,
+  type MetricSearchDropdownRef,
+} from "../MetricSearchDropdown";
+import { buildFullTextWithIdentities } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
+import { buildEditorExtensions } from "./editorExtensions";
+import { useFormulaEditor } from "./useFormulaEditor";
+import { useMetricNameTracking } from "./useMetricNameTracking";
 
 type MetricSearchInputProps = {
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
+  activeDimensionBreakout: MetricsViewerDimensionBreakoutState | null;
+  onFormulaEntitiesChange: (
+    entities: MetricsViewerFormulaEntity[],
+    slotMapping?: Map<number, number>,
+  ) => void;
   selectedMetrics: SelectedMetric[];
   metricColors: SourceColorMap;
-  definitions: MetricsViewerDefinitionEntry[];
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onSetBreakout: (
-    id: MetricSourceId,
+    entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
 };
 
 export function MetricSearchInput({
+  definitions,
+  formulaEntities,
+  activeDimensionBreakout,
+  onFormulaEntitiesChange,
   selectedMetrics,
   metricColors,
-  definitions,
   onAddMetric,
   onRemoveMetric,
   onSwapMetric,
   onSetBreakout,
 }: MetricSearchInputProps) {
-  const [searchText, setSearchText] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
+  const dropdownRef = useRef<MetricSearchDropdownRef>(null);
 
-  const selectedMetricIds = useMemo(
-    () => getSelectedMetricIds(selectedMetrics),
-    [selectedMetrics],
+  const {
+    metricNames,
+    metricNamesRef,
+    handleAddMetric,
+    handleRemoveMetric,
+    handleSwapMetric,
+    setSearchMetricNames,
+  } = useMetricNameTracking({
+    definitions,
+    onAddMetric,
+    onRemoveMetric,
+    onSwapMetric,
+  });
+
+  const {
+    isFocused,
+    isOpen,
+    setIsOpen,
+    currentWord,
+    validationError,
+    anchorRect,
+    isExpressionDirty,
+    pendingFocusRef,
+    handleInputFocus,
+    handleEditorCreate,
+    handleInputBlur,
+    handleEditExpression,
+    handleChange,
+    handleSelect,
+    handleRemoveItem,
+    handleContainerClick,
+    handleEditorClick,
+    handleEditorKeyDown,
+    handleRun,
+    handleRunRef,
+  } = useFormulaEditor({
+    formulaEntities,
+    onFormulaEntitiesChange,
+    selectedMetrics,
+    definitions,
+    metricNamesRef,
+    handleAddMetric,
+    handleRemoveMetric,
+    editorRef,
+    containerRef,
+    dropdownRef,
+  });
+
+  const editorExtensions = useMemo(
+    () =>
+      buildEditorExtensions(formulaEntities.length, {
+        handleRunRef,
+        dropdownRef,
+      }),
+    [formulaEntities.length, handleRunRef, dropdownRef],
   );
 
-  const selectedMeasureIds = useMemo(
-    () => getSelectedMeasureIds(selectedMetrics),
-    [selectedMetrics],
+  const isCollapsed = !isFocused && formulaEntities.length > 0;
+  const metricSlots = useMemo(
+    () => computeMetricSlots(formulaEntities),
+    [formulaEntities],
   );
-
-  const definitionsBySourceId = useMemo(
-    () => new Map(definitions.map((entry) => [entry.id, entry] as const)),
-    [definitions],
+  // The initial document for a fresh editor: the same text useFormulaEditor
+  // initializes every editing session with. Once the session is active the
+  // document is the source of truth — @uiw/react-codemirror's value-sync
+  // replacement is cancelled by the trustedDocChangesOnly transaction filter.
+  const sessionText = useMemo(
+    () => buildFullTextWithIdentities(formulaEntities, metricNames).text,
+    [formulaEntities, metricNames],
   );
-
-  const handleSelect = useCallback(
-    (metric: SelectedMetric) => {
-      onAddMetric(metric);
-      setSearchText("");
-      setIsOpen(false);
-    },
-    [onAddMetric],
-  );
-
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
-      if (
-        event.key === "Backspace" &&
-        searchText === "" &&
-        selectedMetrics.length > 0
-      ) {
-        const last = selectedMetrics[selectedMetrics.length - 1];
-        onRemoveMetric(last.id, last.sourceType);
-      }
-    },
-    [searchText, selectedMetrics, onRemoveMetric],
-  );
-
-  const handleContainerClick = useCallback(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const handleInputClick = useCallback(() => {
-    setIsOpen(true);
-  }, []);
 
   return (
     <Flex
+      ref={containerRef}
       className={S.inputWrapper}
-      bg="background-secondary"
       align="center"
       gap="sm"
-      px="sm"
-      py="xs"
       onClick={handleContainerClick}
+      data-has-error={validationError ? true : undefined}
+      data-testid="metrics-formula-input"
     >
-      <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2.25rem">
-        {selectedMetrics.map((metric) => {
-          const sid =
-            metric.sourceType === "metric"
-              ? createMetricSourceId(metric.id)
-              : createMeasureSourceId(metric.id);
-          const entry = definitionsBySourceId.get(sid);
-          if (!entry) {
-            return null;
-          }
-          return (
-            <MetricPill
-              key={`${metric.sourceType}-${metric.id}`}
-              metric={metric}
-              colors={metricColors[sid]}
-              definitionEntry={entry}
-              selectedMetricIds={selectedMetricIds}
-              selectedMeasureIds={selectedMeasureIds}
-              onSwap={onSwapMetric}
-              onRemove={onRemoveMetric}
-              onSetBreakout={(dimension) => onSetBreakout(sid, dimension)}
-              onOpen={() => setIsOpen(false)}
-            />
-          );
-        })}
-        <Popover
-          opened={isOpen}
-          onChange={setIsOpen}
-          position="bottom-start"
-          shadow="md"
-          withinPortal
-        >
-          <Popover.Target>
-            <TextInput
-              ref={inputRef}
-              classNames={{ input: S.inputField }}
-              flex={1}
-              miw="7.5rem"
-              ml="xs"
-              variant="unstyled"
-              placeholder={
-                selectedMetrics.length === 0 ? t`Search for metrics...` : ""
+      <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2rem">
+        {isCollapsed ? (
+          // Unfocused: each formula entity rendered as MetricPill or MetricExpressionPill
+          <>
+            {formulaEntities.map((entry, entryIndex) => {
+              if (isMetricEntry(entry)) {
+                const metric = selectedMetrics.find((m) => {
+                  const sid =
+                    m.sourceType === "metric"
+                      ? createMetricSourceId(m.id)
+                      : createMeasureSourceId(m.id);
+                  return sid === entry.id;
+                });
+                if (!metric) {
+                  return null;
+                }
+                const definition = getEffectiveDefinitionEntry(
+                  entry,
+                  definitions,
+                );
+                const metricSlot = findStandaloneSlot(metricSlots, entryIndex);
+                const isDisabled =
+                  activeDimensionBreakout != null &&
+                  activeDimensionBreakout.type !== "scalar" &&
+                  metricSlot != null &&
+                  activeDimensionBreakout.dimensionMapping[
+                    metricSlot.slotIndex
+                  ] == null;
+                return (
+                  <span key={`${entry.id}-${entryIndex}`}>
+                    <MetricPill
+                      metric={metric}
+                      colors={metricColors[entryIndex]}
+                      definitionEntry={definition}
+                      isDisabled={isDisabled}
+                      onSwap={handleSwapMetric}
+                      onRemove={(_id, _sourceType) =>
+                        handleRemoveItem(entryIndex)
+                      }
+                      onSetBreakout={(dimension) =>
+                        onSetBreakout(entry, dimension)
+                      }
+                    />
+                  </span>
+                );
               }
-              value={searchText}
-              onChange={(event) => {
-                setSearchText(event.target.value);
-                setIsOpen(true);
-              }}
-              onClick={handleInputClick}
-              onKeyDown={handleKeyDown}
-              data-testid="metrics-viewer-search-input"
-            />
-          </Popover.Target>
-          <Popover.Dropdown p={0} miw="19rem" maw="25rem">
+
+              if (isExpressionEntry(entry)) {
+                const expressionColors = metricColors[entryIndex]
+                  ? [metricColors[entryIndex][0]]
+                  : undefined;
+                const expressionSlots = slotsForEntity(metricSlots, entryIndex);
+                const isDisabled =
+                  activeDimensionBreakout != null &&
+                  activeDimensionBreakout.type !== "scalar" &&
+                  expressionSlots.some(
+                    (slot) =>
+                      activeDimensionBreakout.dimensionMapping[
+                        slot.slotIndex
+                      ] == null,
+                  );
+
+                return (
+                  <span
+                    key={`${entry.id}-${entryIndex}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MetricExpressionPill
+                      expressionEntry={entry}
+                      metricNames={metricNames}
+                      colors={expressionColors}
+                      isDisabled={isDisabled}
+                      onNameChange={(newName) => {
+                        const updated = [...formulaEntities];
+                        updated[entryIndex] = { ...entry, name: newName };
+                        onFormulaEntitiesChange(updated);
+                      }}
+                      onRemove={() => handleRemoveItem(entryIndex)}
+                      onEdit={() => handleEditExpression(entryIndex)}
+                    />
+                  </span>
+                );
+              }
+
+              return null;
+            })}
+          </>
+        ) : (
+          // Focused: CodeMirror editor with syntax highlighting.
+          // The Popover is anchored to a zero-size fixed span that tracks the
+          // viewport position of the word under the cursor, so the dropdown
+          // appears directly below the current word rather than the full input.
+          <>
+            <div
+              className={S.codeEditor}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
+              onClick={handleEditorClick}
+              onKeyDown={handleEditorKeyDown}
+            >
+              <CodeMirror
+                ref={editorRef}
+                basicSetup={false}
+                autoFocus
+                value={sessionText}
+                onChange={handleChange}
+                onCreateEditor={handleEditorCreate}
+                extensions={editorExtensions}
+                data-testid="metrics-viewer-search-input"
+              />
+            </div>
             {isOpen && (
               <MetricSearchDropdown
-                selectedMetricIds={selectedMetricIds}
-                selectedMeasureIds={selectedMeasureIds}
+                anchorRect={anchorRect}
                 onSelect={handleSelect}
-                externalSearchText={searchText}
+                searchQuery={currentWord}
+                onClose={() => setIsOpen(false)}
+                ref={dropdownRef}
+                setSearchMetricNames={setSearchMetricNames}
               />
             )}
-          </Popover.Dropdown>
-        </Popover>
+          </>
+        )}
       </Flex>
+      {isFocused && !pendingFocusRef.current && isExpressionDirty && (
+        <Button
+          variant="light"
+          color="core-brand"
+          size="xs"
+          py="sm"
+          px="sm"
+          leftSection={<Icon size="0.75rem" name="enter_or_return" />}
+          disabled={!!validationError}
+          data-testid="run-expression-button"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            handleRun();
+          }}
+        >{t`Run`}</Button>
+      )}
     </Flex>
   );
 }

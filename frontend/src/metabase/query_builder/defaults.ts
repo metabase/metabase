@@ -2,7 +2,7 @@ import type {
   QueryBuilderLoadingControls,
   QueryBuilderQueryStatus,
   QueryBuilderUIControls,
-} from "metabase-types/store";
+} from "metabase/redux/store";
 
 export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   dataReferenceStack: null,
@@ -16,12 +16,13 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isShowingChartSettingsSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
+  focusedTimelineEventIds: null,
   isShowingAIQuestionAnalysisSidebar: false,
   isNativeEditorOpen: false,
   initialChartSetting: {},
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: "view", // "view" | "notebook" | "dataset"
-  previousQueryBuilderMode: false,
+  previousQueryBuilderMode: null,
   snippetCollectionId: null,
   datasetEditorTab: "query",
   isShowingQuestionDetailsSidebar: false,
@@ -33,6 +34,8 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   modalContext: null,
   highlightedNativeQueryLineNumbers: [],
   isShowingListViewConfiguration: false,
+  nativeEditorSelectedRange: [],
+  questionDetailsTimelineDrawerState: null,
 };
 
 export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {
@@ -56,6 +59,7 @@ export const UI_CONTROLS_SIDEBAR_DEFAULTS: Partial<QueryBuilderUIControls> = {
   isShowingChartTypeSidebar: false,
   isShowingAIQuestionAnalysisSidebar: false,
   isShowingTimelineSidebar: false,
+  focusedTimelineEventIds: null,
   isShowingQuestionInfoSidebar: false,
   isShowingDataReference: false,
 };
@@ -66,4 +70,5 @@ export const CLOSED_NATIVE_EDITOR_SIDEBARS: Partial<QueryBuilderUIControls> = {
   isShowingSnippetSidebar: false,
   isShowingDataReference: false,
   isShowingTimelineSidebar: false,
+  focusedTimelineEventIds: null,
 };

@@ -5,9 +5,9 @@ import type {
   GroupPermissionsDiff,
   PermissionsGraphDiff,
 } from "metabase/admin/permissions/types";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import CS from "metabase/css/core/index.css";
 import { Tooltip } from "metabase/ui";
+import { DataPermissionValue } from "metabase-types/api";
 
 const GroupName = ({ group }: { group: GroupPermissionsDiff }) => (
   <span className={CS.textBrand}>{group.name}</span>
@@ -91,7 +91,7 @@ export const PermissionsConfirm = ({
                 jt`${(
                   <GroupName key="group-name" group={group} />
                 )} will only be able to use the query
-                  builder for ${(<DatabaseName key="database-name" database={database} />)}.`}
+                  builder for ${<DatabaseName key="database-name" database={database} />}.`}
               {database.native ===
                 DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
                 jt`${(

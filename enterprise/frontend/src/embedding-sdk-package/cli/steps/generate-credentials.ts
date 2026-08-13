@@ -1,6 +1,6 @@
 import { input } from "@inquirer/prompts";
 
-import { isEmail } from "metabase/lib/email";
+import { isEmail } from "metabase/utils/email";
 
 import type { CliStepMethod } from "../types/cli";
 import { generateRandomDemoPassword } from "../utils/generate-password";

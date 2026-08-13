@@ -9,13 +9,11 @@ import type {
   TaggedTransform,
   Transform,
   UnsavedTransform,
-  WorkspaceTransform,
 } from "metabase-types/api";
 
 type AnyTransform =
   | Transform
   | TaggedTransform
-  | WorkspaceTransform
   | UnsavedTransform
   | SuggestedTransform;
 
@@ -49,6 +47,7 @@ export const registerTransformMetabotContextFn = ({
 
   return {
     user_is_viewing: [
+      // Unjustified type cast. FIXME
       {
         ...transform,
         type: "transform",

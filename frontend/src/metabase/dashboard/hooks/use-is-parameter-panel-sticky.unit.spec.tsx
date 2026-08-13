@@ -26,7 +26,9 @@ describe("useIsParameterPanelSticky", () => {
   const invokeIntersection = (isIntersecting: boolean) => {
     act(() => {
       intersectionCallback?.(
+        // Unjustified type cast. FIXME
         [{ isIntersecting } as IntersectionObserverEntry],
+        // Unjustified type cast. FIXME
         {} as IntersectionObserver,
       );
     });
@@ -42,9 +44,7 @@ describe("useIsParameterPanelSticky", () => {
 
     intersectionCallback = null;
 
-    global.IntersectionObserver = class MockedIntersectionObserver
-      implements IntersectionObserver
-    {
+    global.IntersectionObserver = class MockedIntersectionObserver implements IntersectionObserver {
       constructor(callback: IntersectionObserverCallback) {
         intersectionCallback = callback;
       }
@@ -53,6 +53,7 @@ describe("useIsParameterPanelSticky", () => {
       disconnect = mockDisconnect;
       root: Element | null = null;
       rootMargin: string = "";
+      scrollMargin: string = "";
       thresholds: ReadonlyArray<number> = [];
       takeRecords(): IntersectionObserverEntry[] {
         return [];

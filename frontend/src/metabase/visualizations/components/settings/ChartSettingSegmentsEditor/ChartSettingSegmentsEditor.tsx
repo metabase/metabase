@@ -4,9 +4,9 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
-import { getAccentColors } from "metabase/lib/colors/groups";
 import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import { getAccentColors } from "metabase/ui/colors/groups";
 import type { ScalarSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
@@ -103,7 +103,7 @@ export const ChartSettingSegmentsEditor = ({
                 <td>
                   {(segments.length > 1 || canRemoveAll) && (
                     <Button
-                      leftSection={<Icon name="trash" c="text-tertiary" />}
+                      leftSection={<Icon name="trash" c="text-disabled" />}
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }
@@ -138,10 +138,10 @@ export const ChartSettingSegmentsEditor = ({
 function getColorPalette() {
   return [
     ...getAccentColors(),
-    Color(color("error")).hex(),
-    Color(color("warning")).hex(),
-    Color(color("success")).hex(),
-    Color(color("background-tertiary")).hex(),
+    Color(color("feedback-negative")).hex(),
+    Color(color("feedback-warning")).hex(),
+    Color(color("feedback-positive")).hex(),
+    Color(color("background_page-tertiary")).hex(),
   ];
 }
 

@@ -30,15 +30,15 @@ describe("scenarios > embedding-sdk > mantine styles leakage", () => {
   it("css variables should not leak outside of mb-wrapper", () => {
     cy.mount(
       <MantineProvider
-        theme={{ colors: { brand: colorTuple("rgb(255, 0, 255)") } }}
+        theme={{ colors: { "core-brand": colorTuple("rgb(255, 0, 255)") } }}
       >
-        <Button color="brand">outside sdk provider</Button>
+        <Button color="core-brand">outside sdk provider</Button>
 
         <MetabaseProvider
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={{ colors: { brand: "rgb(255, 0, 0)" } }}
         >
-          <Button color="brand">outside sdk wrapper</Button>
+          <Button color="core-brand">outside sdk wrapper</Button>
 
           <InteractiveQuestion questionId={ORDERS_QUESTION_ID} isSaveEnabled />
         </MetabaseProvider>

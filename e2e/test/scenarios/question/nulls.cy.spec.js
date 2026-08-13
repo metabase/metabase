@@ -132,12 +132,11 @@ describe("scenarios > question > null", () => {
 
   it("should filter by clicking on the row with `null` value (metabase#18386)", () => {
     H.openOrdersTable();
+    const findGridcell = (text) =>
+      cy.findByRole("grid").findByRole("gridcell", { name: text });
 
     // Total of "39.72", and the next cell is the `discount` (which is empty)
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("39.72")
-      .closest("[role=gridcell]")
-      .parent()
+    findGridcell("39.72")
       .next()
       .find("div")
       .should("be.empty")
@@ -146,11 +145,9 @@ describe("scenarios > question > null", () => {
 
     H.popover().contains("=").click();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("39.72");
+    findGridcell("39.72").should("be.visible");
     // This row ([id] 3) had the `discount` column value and should be filtered out now
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("49.21").should("not.exist");
+    findGridcell("49.21").should("not.exist");
   });
 
   describe("aggregations with null values", () => {

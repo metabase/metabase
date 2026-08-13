@@ -2,6 +2,7 @@
   "Malli schemas for metric dimensions, dimension-mappings, and dimension-references."
   (:refer-clojure :exclude [some])
   (:require
+   [metabase.lib-metric.operators :as operators]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -22,9 +23,10 @@
 (mr/def ::binning
   "Schema for `:binning` options passed to a `:dimension` clause."
   [:and
-   [:map
-    {:decode/normalize lib.schema.common/normalize-map}
-    [:strategy [:ref ::binning-strategy]]]
+   {:decode/normalize (fn [binning]
+                        (when-some [binning (lib.schema.common/normalize-map binning)]
+                          (cond-> binning
+                            (:strategy binning) (update :strategy lib.schema.common/normalize-keyword))))}
    [:multi {:dispatch (fn [x]
                         (keyword (some #(get x %) [:strategy "strategy"])))
             :error/fn (fn [{:keys [value]} _]
@@ -227,13 +229,16 @@
 
 (mr/def ::arithmetic-operator
   "Arithmetic operators for metric math."
-  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :+ :- :* :/])
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}]
+        (operators/arithmetic-operator-keywords)))
 
 (defn normalize-math-expression
   "Recursively normalize a metric math expression from API format.
-   Handles string keys, string operators, and nested expressions."
+   Handles string keys, string operators, nested expressions, and bare numeric constants."
   [x]
-  (when (sequential? x)
+  (cond
+    (number? x) x
+    (sequential? x)
     (let [[first-el] x]
       (if (and (>= (count x) 3)
                (let [tag (lib.schema.common/normalize-keyword first-el)]
@@ -245,7 +250,8 @@
           (let [[op opts & exprs] x]
             (into [(lib.schema.common/normalize-keyword op)
                    (lib.schema.common/normalize-options-map (or opts {}))]
-                  (map normalize-math-expression exprs))))))))
+                  (map normalize-math-expression exprs))))))
+    :else nil))
 
 (mr/def ::metric-math-expression
   "A recursive metric math expression tree.
@@ -256,12 +262,13 @@
    {:decode/normalize normalize-math-expression}
    [:or
     ::expression-leaf
+    number?
     [:and
      vector?
      [:fn {:error/message "must be arithmetic expression [op opts expr expr ...] with at least 2 operands"}
       (fn [x]
         (and (>= (count x) 4)
-             (#{:+ :- :* :/} (first x))
+             (operators/arithmetic? (first x))
              (map? (second x))))]]]])
 
 ;;; ------------------------------------------------- Per-Instance Filters -------------------------------------------------
@@ -279,14 +286,17 @@
   [:sequential ::instance-filter])
 
 ;;; ------------------------------------------------- Typed Projections -------------------------------------------------
-;;; Projections keyed by source type and ID.
+;;; Projections keyed by :lib/uuid from the expression leaf, with type and ID for metadata resolution.
 
 (mr/def ::typed-projection
-  "A projection associated with a specific source type and ID."
+  "A projection associated with a specific expression leaf instance via :lib/uuid.
+   The :type and :id identify the source metric/measure for metadata resolution.
+   The :lib/uuid disambiguates multiple references to the same metric/measure in an expression."
   [:map
    {:decode/normalize lib.schema.common/normalize-map}
    [:type       [:enum {:decode/normalize lib.schema.common/normalize-keyword} :metric :measure]]
    [:id         pos-int?]
+   [:lib/uuid   ::lib.schema.common/non-blank-string]
    [:projection [:sequential ::dimension-reference]]])
 
 (mr/def ::typed-projections
@@ -308,16 +318,20 @@
    and any issues that prevent them from being used.
    Note: target field references are stored in dimension-mappings, not here."
   [:map
-   [:id              ::dimension-id]
-   [:name            {:optional true} [:maybe :string]]
-   [:display-name    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:effective-type  {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type   {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:id               ::dimension-id]
+   [:name             {:optional true} [:maybe :string]]
+   [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:description      {:optional true} [:maybe :string]]
+   [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
-   [:status          {:optional true} [:maybe ::dimension-status]]
-   [:status-message  {:optional true} [:maybe :string]]
-   [:sources         {:optional true} [:maybe [:sequential ::dimension-source]]]
-   [:group           {:optional true} [:maybe ::dimension-group]]])
+   [:status           {:optional true} [:maybe ::dimension-status]]
+   [:status-message   {:optional true} [:maybe :string]]
+   [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
+   [:group            {:optional true} [:maybe ::dimension-group]]
+   [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
+   ;; At most one dimension per entity may be the default.
+   [:default          {:optional true} [:maybe :boolean]]])
 
 (mr/def ::persisted-dimensions
   "Schema for a sequence of persisted dimensions."
@@ -365,6 +379,8 @@
    [:status-message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group            {:optional true} [:maybe ::dimension-group]]
+   [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
+   [:default          {:optional true} [:maybe :boolean]]
    ;; Source tracking
    [:source-type      ::dimension-source-type]
    [:source-id        pos-int?]

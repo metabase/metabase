@@ -72,7 +72,7 @@
 
 (deftest ^:parallel transforms-normalizes-query-test
   (testing "transforms (plural) should normalize queries like transform (singular) does"
-    (let [;; Create a legacy MBQL query (not pMBQL)
+    (let [;; Create a legacy MBQL query (not MBQL 5)
           legacy-query {:database (meta/id)
                         :type     :query
                         :query    {:source-table (meta/id :orders)}}
@@ -86,9 +86,9 @@
                         {:transforms [transform]})
           ;; Get the single transform - this normalizes the query
           single-transform (lib.metadata/transform mp 1)]
-      (testing "transform (singular) normalizes the query to pMBQL"
+      (testing "transform (singular) normalizes the query to MBQL 5"
         (is (= :mbql/query (get-in single-transform [:source :query :lib/type]))
-            "transform should return a normalized pMBQL query with :lib/type"))
+            "transform should return a normalized MBQL 5 query with :lib/type"))
       (testing "transforms (plural) should return the same normalized metadata"
         (let [all-transforms  (lib.metadata/transforms mp)
               first-transform (first all-transforms)]

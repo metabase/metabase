@@ -62,10 +62,12 @@ function SearchModelPopover({
     models: ["card"],
     limit: 0,
     calculate_available_models: true,
+    context: "dependencies",
   });
   const items = data ? getSearchModelItems(data) : [];
 
   const handleChange = (value: string[]) => {
+    // Unjustified type cast. FIXME
     onSearchModelsChange(value as SearchModel[]);
   };
 

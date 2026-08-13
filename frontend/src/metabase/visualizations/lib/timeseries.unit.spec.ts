@@ -1,5 +1,5 @@
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   createMockColumn,
@@ -23,7 +23,16 @@ describe("visualization.lib.timeseries", () => {
       19210413,
     ];
 
-    const NOT_DATES = ["100", "100 %", "scanner 005", 99999999];
+    const NOT_DATES = [
+      "100",
+      "100 %",
+      "scanner 005",
+      99999999,
+      true,
+      false,
+      { foo: "bar" },
+      null,
+    ];
 
     it("should detect Date column as timeseries", () => {
       expect(

@@ -1,10 +1,13 @@
 import { memo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { EntityMenu } from "metabase/common/components/EntityMenu";
-import { getEventCount, getTimelineName } from "metabase/lib/timelines";
-import * as Urls from "metabase/lib/urls";
-import type { IconName } from "metabase/ui";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import {
+  getEventCount,
+  getTimelineName,
+} from "metabase/common/utils/timelines";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 
 import {
@@ -35,7 +38,7 @@ const TimelineCard = ({
 
   return (
     <CardRoot to={!timeline.archived ? timelineUrl : ""}>
-      <CardIcon name={timeline.icon as unknown as IconName} />
+      <CardIcon name={timeline.icon} />
       <CardBody>
         <CardTitle>{getTimelineName(timeline)}</CardTitle>
         {timeline.description && (
@@ -44,7 +47,14 @@ const TimelineCard = ({
       </CardBody>
       {hasMenuItems && (
         <CardMenu>
-          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+          <Menu position="bottom-end" shadow="md">
+            <Menu.Target>
+              <ActionIcon variant="subtle" aria-label={t`Timeline menu`}>
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+          </Menu>
         </CardMenu>
       )}
       {hasEventCount && (
@@ -69,14 +79,16 @@ const getMenuItems = (
   }
 
   return [
-    {
-      title: t`Unarchive timeline`,
-      action: () => onUnarchive?.(timeline),
-    },
-    {
-      title: t`Delete timeline`,
-      link: Urls.deleteTimelineInCollection(timeline),
-    },
+    <Menu.Item key="unarchive-timeline" onClick={() => onUnarchive?.(timeline)}>
+      {t`Unarchive timeline`}
+    </Menu.Item>,
+    <Menu.Item
+      key="delete-timeline"
+      component={ForwardRefLink}
+      to={Urls.deleteTimelineInCollection(timeline)}
+    >
+      {t`Delete timeline`}
+    </Menu.Item>,
   ];
 };
 

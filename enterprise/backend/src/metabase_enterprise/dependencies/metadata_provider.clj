@@ -23,7 +23,7 @@
 
 (defn- metadatas [delegate overrides {metadata-type :lib/type
                                       search-name :name
-                                      :keys [id card-id table-id]
+                                      :keys [id card-ids table-ids]
                                       :as metadata-spec}]
   (let [type-overrides  (get overrides metadata-type)
         metadata-keys   (set (or id search-name))]
@@ -35,7 +35,6 @@
            (seq metadata-keys))
       (let [overrides       (if (seq id)
                               (select-keys type-overrides id)
-
                               (into {} (keep #(when-let [x (deref %)]
                                                 (when (search-name (:name x))
                                                   [(:name x) %])))
@@ -57,13 +56,23 @@
         (into entities (lib.metadata.protocols/metadatas delegate metadata-spec))
         (m/distinct-by :id entities))
 
-      ;; For columns, return overrides if they're present.
+      ;; For columns, return overrides if they're present. `:card-ids` and `:table-ids` are sets of ids; entities
+      ;; with overrides use the overridden columns, the rest are delegated.
       (= metadata-type :metadata/column)
-      (if-let [overridden-columns (cond
-                                    card-id  (get-in overrides [::card-columns  card-id])
-                                    table-id (get-in overrides [::table-columns table-id]))]
-        @overridden-columns
-        (lib.metadata.protocols/metadatas delegate metadata-spec))
+      (let [[override-k spec-k ids] (cond
+                                      card-ids  [::card-columns  :card-ids  card-ids]
+                                      table-ids [::table-columns :table-ids table-ids])]
+        (if-not override-k
+          (lib.metadata.protocols/metadatas delegate metadata-spec)
+          (let [id->overridden (into {}
+                                     (keep (fn [id]
+                                             (when-let [columns (get-in overrides [override-k id])]
+                                               [id columns])))
+                                     ids)
+                missing-ids    (into #{} (remove id->overridden) ids)]
+            (concat (mapcat (comp deref val) id->overridden)
+                    (when (seq missing-ids)
+                      (lib.metadata.protocols/metadatas delegate (assoc metadata-spec spec-k missing-ids)))))))
 
       :else (throw (ex-info "Unknown :lib/metadata type for OverridingMetadataProvider" metadata-spec)))))
 
@@ -125,7 +134,7 @@
     ;; should be ignored.
     {[:metadata/card id] (delay (let [temp (merge (when id
                                                     (-> (inner-mp mp)
-                                                        (lib.metadata/card id)))
+                                                        (lib.metadata.protocols/card id)))
                                                   updates)
                                       result-metadata (or (:result-metadata updates)
                                                           (and (.returned-columns-fn mp)

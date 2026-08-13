@@ -3,13 +3,14 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
-import S from "metabase/common/components/Sidebar.module.css";
-import { SidebarItem } from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
-import type { Database } from "metabase-types/api";
+import S from "metabase/reference/components/Sidebar.module.css";
+import { SidebarItem } from "metabase/reference/components/SidebarItem";
+
+import type { StubbedDatabase } from "../types";
 
 interface DatabaseSidebarProps {
-  database: Database;
+  database: StubbedDatabase;
 }
 
 const DatabaseSidebar = ({ database }: DatabaseSidebarProps) => (

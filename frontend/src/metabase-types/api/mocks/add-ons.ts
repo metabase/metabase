@@ -1,5 +1,73 @@
 import type { ICloudAddOnProduct } from "metabase-types/api";
 
+export const mockAdvancedTransformsSelfHostedAddOn: ICloudAddOnProduct = {
+  description: "Advanced Transforms Add-on (self-hosted) (Monthly)-  metered",
+  name: "Advanced Transforms Add-on (self-hosted) metered",
+  self_service: true,
+  trial_days: 0,
+  short_name: "Advanced Transforms (self-hosted) - metered",
+  is_metered: true,
+  product_type: "transforms-advanced-metered",
+  default_total_units: 1,
+  free_units: 1000,
+  billing_period_months: 1,
+  default_base_fee: 0,
+  active: true,
+  id: 110,
+  deployment: "selfhosted",
+  token_features: ["transforms-python", "transforms-basic"],
+  default_included_units: 0,
+  default_price_per_unit: 0.01,
+  product_tiers: [],
+  default_prepaid_units: 1,
+};
+
+export const mockAdvancedTransformsCloudAddOn: ICloudAddOnProduct = {
+  active: true,
+  billing_period_months: 1,
+  default_base_fee: 0,
+  default_included_units: 0,
+  default_prepaid_units: 1,
+  default_price_per_unit: 0.02,
+  default_total_units: 1,
+  deployment: "hosting",
+  description: "Advanced Transforms Add-on (Monthly)-  metered",
+  free_units: 1000,
+  id: 1,
+  is_metered: true,
+  name: "Advanced Transforms Add-on metered",
+  product_tiers: [],
+  product_type: "transforms-advanced-metered",
+  self_service: true,
+  short_name: "Advanced Transforms - metered",
+  token_features: ["transforms-python", "transforms-basic"],
+  trial_days: 0,
+};
+
+export const mockStorageCloudAddOn: ICloudAddOnProduct = {
+  active: true,
+  billing_period_months: 1,
+  default_base_fee: 0,
+  default_included_units: 1_000_000,
+  default_prepaid_units: 0,
+  default_price_per_unit: 0.000002,
+  default_total_units: 1_000_000,
+  deployment: "hosting",
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- test mock fixture
+  description: "Metabase Storage (Monthly) - metered",
+  free_units: 0,
+  id: 200,
+  is_metered: true,
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- test mock fixture
+  name: "Metabase Storage metered",
+  product_tiers: [],
+  product_type: "dwh-rent",
+  self_service: true,
+  short_name: "Storage - metered",
+  token_features: ["attached_dwh", "upload_management"],
+  trial_days: 0,
+};
+
 export function createMockCloudAddOns(
   opts?: Partial<ICloudAddOnProduct>,
 ): Partial<ICloudAddOnProduct>[] {
@@ -97,8 +165,19 @@ export function createMockCloudAddOns(
           is_default: true,
         },
       ],
-      product_type: "other",
+      // test unexpected product_type
+      product_type: "other" as any,
       self_service: true,
+    },
+
+    // transforms
+    {
+      ...mockAdvancedTransformsSelfHostedAddOn,
+      billing_period_months,
+    },
+    {
+      ...mockAdvancedTransformsCloudAddOn,
+      billing_period_months,
     },
   ];
 }

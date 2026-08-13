@@ -1,13 +1,10 @@
 import type { FormEvent, MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
-import { push } from "react-router-redux";
-import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
+import { useGetDatabaseUsageInfoQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { MetabaseApi } from "metabase/services";
+import { useNavigate } from "metabase/router";
 import {
   Alert,
   Box,
@@ -18,9 +15,9 @@ import {
   Input,
   Modal,
   Stack,
-  Text,
   UnstyledButton,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import ContentRemovalConfirmation from "../ContentRemovalConfirmation";
@@ -66,10 +63,10 @@ export const DeleteDatabaseModal = ({
   onDelete,
   ...props
 }: DeleteDatabaseModalProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  const { value: usageInfo, loading } = useAsync(
-    async () => await MetabaseApi.db_usage_info({ dbId: database.id }),
+  const { data: usageInfo, isLoading: loading } = useGetDatabaseUsageInfoQuery(
+    database.id,
   );
 
   const [isContentRemovalConfirmed, setIsContentRemovalConfirmed] =
@@ -92,7 +89,7 @@ export const DeleteDatabaseModal = ({
   const handleEditConnectionDetailsClick: MouseEventHandler = (e) => {
     e.preventDefault();
     onClose();
-    dispatch(push(Urls.editDatabase(database.id)));
+    navigate(Urls.editDatabase(database.id));
   };
 
   const hasContent = usageInfo && hasContentInDatabase(usageInfo);
@@ -103,9 +100,7 @@ export const DeleteDatabaseModal = ({
   const canDelete =
     (isContentRemovalConfirmed || !hasContent) && isDatabaseNameConfirmed;
 
-  const deleteButtonLabel = hasContent
-    ? t`Delete this content and the DB connection`
-    : t`Delete`;
+  const deleteButtonLabel = t`Delete this DB connection`;
 
   const errorMessage = getErrorMessage(error);
   const hasMoreThanOneEntityType = usageInfo && entityTypesCount(usageInfo) > 1;
@@ -134,17 +129,15 @@ export const DeleteDatabaseModal = ({
         >
           {hasContent && (
             <DeleteDatabaseModalSection isHidden={isContentRemovalConfirmed}>
-              <Alert color="info" icon={<Icon name="info" />}>
-                <Text>
-                  {jt`If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just ${(
-                    <UnstyledButton
-                      key="button"
-                      onClick={handleEditConnectionDetailsClick}
-                      c="brand"
-                      fw="bold"
-                    >{t`edit your connection details.`}</UnstyledButton>
-                  )}`}
-                </Text>
+              <Alert icon={<Icon name="info" />}>
+                {jt`If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just ${(
+                  <UnstyledButton
+                    key="button"
+                    onClick={handleEditConnectionDetailsClick}
+                    c="core-brand"
+                    fw="bold"
+                  >{t`edit your connection details.`}</UnstyledButton>
+                )}`}
               </Alert>
             </DeleteDatabaseModalSection>
           )}
@@ -167,8 +160,8 @@ export const DeleteDatabaseModal = ({
           <DeleteDatabaseModalSection
             isHidden={!isContentRemovalConfirmed && hasContent}
           >
-            <Alert icon={<Icon name="warning" />} color="error">
-              <Text>{defaultDatabaseRemovalMessage}</Text>
+            <Alert size="compact" icon={<Icon name="warning" />} color="error">
+              {defaultDatabaseRemovalMessage}
             </Alert>
           </DeleteDatabaseModalSection>
           <DeleteDatabaseModalSection
@@ -191,13 +184,13 @@ export const DeleteDatabaseModal = ({
           </DeleteDatabaseModalSection>
           <Flex gap="sm" justify="flex-end" align="center">
             {errorMessage && (
-              <Box c="error" px="md">
+              <Box c="feedback-negative" px="md">
                 {errorMessage}
               </Box>
             )}
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
             <Button
-              color="error"
+              color="feedback-negative"
               variant="filled"
               type="submit"
               disabled={!canDelete}

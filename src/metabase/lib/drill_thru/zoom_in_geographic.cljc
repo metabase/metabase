@@ -103,9 +103,9 @@
     [:lon-value  [:maybe number?]]]])
 
 (mu/defn- context-with-lat-lon :- [:maybe ContextWithLatLon]
-  [query                      :- ::lib.schema/query
-   stage-number               :- :int
-   {:keys [row], :as context} :- ::lib.schema.drill-thru/context]
+  [query                                 :- ::lib.schema/query
+   stage-number                          :- :int
+   {:keys [row dimensions], :as context} :- ::lib.schema.drill-thru/context]
   (let [;; First check returned columns in case we breakout by lat/lon so we maintain the binning, otherwise check visible.
         [lat-column lon-column] (some
                                  (fn [columns]
@@ -119,12 +119,20 @@
                 (if (:id col-x)
                   (= (:id col-x) (:id col-y))
                   (= (:lib/desired-column-alias col-x) (:lib/desired-column-alias col-y))))
-              (column-value [column]
+              (row-value [column]
                 (some
-                 (fn [row-value]
-                   (when (same-column? column (:column row-value))
-                     (:value row-value)))
-                 row))]
+                 (fn [row-v]
+                   (when (same-column? column (:column row-v))
+                     (:value row-v)))
+                 row))
+              (dimensions-value [column]
+                (some (fn [dimension]
+                        (when (same-column? column (:column dimension))
+                          (:value dimension)))
+                      dimensions))
+              (column-value [column]
+                (or (row-value column)
+                    (dimensions-value column)))]
         (assoc context
                :lat-column lat-column
                :lon-column lon-column

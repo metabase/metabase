@@ -1,5 +1,5 @@
 .root {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 
   &:active {
     color: var(--mb-color-text-primary);

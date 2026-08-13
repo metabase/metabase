@@ -2,7 +2,7 @@
   "This is a map type that catches attempts to get `:snake_case` values from it. In prod, it logs a warning and gets the
   value for the equivalent `kebab-case` key; in tests and dev it throws an Exception.
 
-  This is here so we can catch driver code that needs to be updated in 48+ to use MLv2 metadata rather than Toucan
+  This is here so we can catch driver code that needs to be updated in 48+ to use Lib metadata rather than Toucan
   instances. After 51 we can remove this, everything should be updated by then."
   (:require
    [clojure.string :as str]
@@ -23,7 +23,7 @@
                            (pr-str (u/->kebab-case-en k)))
                    {:k k})]
     (if config/is-prod?
-      (log/warn e)
+      (log/warn (ex-message e))
       (throw e))))
 
 (defn- normalize-key [k]
@@ -48,6 +48,8 @@
       (if (identical? m m')
         this
         (->SnakeHatingMap m'))))
+  (containsKey [this k]
+    (contains? m (normalize-key k)))
   (keys [_this]
     (keys m))
   (meta [_this]
@@ -75,12 +77,12 @@
 (defn snake-hating-map
   "Create a new map that handles either `snake_case` or `kebab-case` keys, but warns is you use `snake_case`
   keys (in prod) or throws an Exception (in dev and tests). This is here so we can catch code that needs to be updated
-  to use MLv2 metadata in 48+."
+  to use Lib metadata in 48+."
   ([]
    (snake-hating-map {}))
   ([m]
    (-> (or m {})
-       (vary-meta assoc :metabase.driver/metadata-type :metabase.driver/metadata-type.mlv2)
+       (vary-meta assoc :metabase.driver/metadata-type :metabase.driver/metadata-type.lib)
        ->SnakeHatingMap))
   ([k v & more]
    (snake-hating-map (into {k v} (partition-all 2) more))))

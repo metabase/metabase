@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -53,7 +53,9 @@ const metadata = createMockMetadata({
   databases: [sampleDb, savedQuestionsDb],
 });
 
+// Unjustified type cast. FIXME
 const db = metadata.database(SAMPLE_DB_ID) as Database;
+// Unjustified type cast. FIXME
 const productsTable = metadata.table(PRODUCTS_ID) as Table;
 const provider = createMetadataProvider({
   databaseId: db.id,

@@ -1,8 +1,7 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { FieldId, Table } from "metabase-types/api";
-import { createMockTable } from "metabase-types/api/mocks";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { TableSection } from "./TableSection";
 
@@ -17,7 +16,7 @@ function setup({ table = createMockTable(), fieldId }: SetupOpts = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <TableSection
           table={table}
           fieldId={fieldId}
@@ -25,7 +24,7 @@ function setup({ table = createMockTable(), fieldId }: SetupOpts = {}) {
           getFieldHref={(fieldId) => `/field/${fieldId}`}
           onSyncOptionsClick={onSyncOptionsClick}
         />
-      )}
+      }
     />,
     { withRouter: true },
   );
@@ -44,5 +43,12 @@ describe("TableSection", () => {
       "href",
       `/question#?db=${table.db_id}&table=${table.id}`,
     );
+  });
+
+  it("should not render the sync options button when the database is hosted", () => {
+    const database = createMockDatabase({ is_attached_dwh: true });
+    const table = createMockTable({ db: database });
+    setup({ table });
+    expect(screen.queryByText("Sync options")).not.toBeInTheDocument();
   });
 });

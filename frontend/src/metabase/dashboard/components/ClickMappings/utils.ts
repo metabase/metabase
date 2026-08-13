@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
+import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Dashboard, DatasetColumn, Parameter } from "metabase-types/api";

@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import type { DashboardSubscriptionsButtonProps } from "embedding-sdk-bundle/components/public/notifications";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useHasEmailSetup } from "metabase/common/hooks";
 import { toggleSharing } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { useDispatch } from "metabase/lib/redux";
+import type { DashboardSubscriptionsButtonProps } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 
 /**
  * @internal Do not import this component directly, use either SDK or EAJS EE plugins instead.

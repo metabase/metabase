@@ -1,7 +1,7 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 
 import { ColorSelector, type ColorSelectorProps } from "./ColorSelector";
 
@@ -24,7 +24,11 @@ export const Default = {
   render: Template,
 
   args: {
-    value: color("brand"),
-    colors: [color("brand"), color("summarize"), color("filter")],
+    value: color("core-brand"),
+    colors: [
+      color("core-brand"),
+      color("core-summarize"),
+      color("core-filter"),
+    ],
   },
 };

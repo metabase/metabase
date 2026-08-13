@@ -266,8 +266,10 @@
 
 (defn check-404
   "Throw a `404` if `arg` is `false` or `nil`, otherwise return as-is."
-  [arg]
-  (check arg generic-404))
+  ([arg]
+   (check arg generic-404))
+  ([arg msg]
+   (check arg [404 msg])))
 
 (defmacro let-404
   "Bind a form as with `let`; throw a 404 if it is `nil` or `false`."
@@ -337,7 +339,7 @@
    (try
      (check-403 (mi/can-read? obj))
      (catch clojure.lang.ExceptionInfo e
-       (log/error e "Read permissions failure")
+       (log/errorf "Read permissions failure: %s" (ex-message e))
        (events/publish-event! :event/read-permission-failure {:user-id    *current-user-id*
                                                               :object     obj
                                                               :has-access false})
@@ -611,6 +613,7 @@
    "database"          {:db-model :model/Database           :alias :database}
    "dataset"           {:db-model :model/Card               :alias :card}
    "document"          {:db-model :model/Document           :alias :document}
+   "exploration"       {:db-model :model/Exploration        :alias :exploration}
    "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model-index-value}
    "metric"            {:db-model :model/Card               :alias :card}
    "segment"           {:db-model :model/Segment            :alias :segment}

@@ -110,15 +110,20 @@ describe("scenarios > embedding > modular embedding", () => {
       cy.wait("@getCardQuery");
 
       frame.within(() => {
-        // clientWidth excludes the scrollbar gutter, giving us the actual content area
+        // clientWidth excludes the scrollbar gutter, giving us the actual content area.
+        // Use .should() instead of .then() so Cypress retries until the
+        // async column-expansion cycle has finished painting.
         H.tableInteractive()
           .findByTestId("table-scroll-container")
-          .then(($scrollContainer) => {
+          .should(($scrollContainer) => {
             const contentWidth = $scrollContainer[0].clientWidth;
+            expect(contentWidth).to.be.greaterThan(0);
 
             const $headerCells = $scrollContainer.find(
               '[data-testid="header-cell"]',
             );
+            expect($headerCells.length).to.be.greaterThan(0);
+
             let totalHeaderWidth = 0;
             $headerCells.each((_, el) => {
               totalHeaderWidth += el.getBoundingClientRect().width;
@@ -229,8 +234,8 @@ describe("scenarios > embedding > modular embedding", () => {
 
     cy.log("1. call embed.setAttribute to update the question id");
     frame.window().then((win) => {
-      win
-        .document!.querySelector("metabase-question")!
+      win.document
+        .querySelector("metabase-question")!
         .setAttribute("question-id", ORDERS_COUNT_QUESTION_ID.toString());
     });
 
@@ -313,7 +318,7 @@ describe("scenarios > embedding > modular embedding", () => {
 
     cy.log("2. call setAttribute to show the title");
     frame.window().then((win) => {
-      const element = win.document!.querySelector("metabase-dashboard")!;
+      const element = win.document.querySelector("metabase-dashboard")!;
       element.setAttribute("with-title", "true");
     });
 
@@ -518,7 +523,7 @@ describe("scenarios > embedding > modular embedding", () => {
       });
 
       frame.within(() => {
-        cy.findByText("Order 448").click();
+        cy.findByText("Order 1").click();
       });
 
       cy.log("Verify handleLink was called with the correct URL");
@@ -526,7 +531,7 @@ describe("scenarios > embedding > modular embedding", () => {
         .its("handleLinkCalls")
         .should("have.length", 1)
         .its(0)
-        .should("include", "https://example.org/order/448");
+        .should("include", "https://example.org/order/1");
 
       cy.log("Verify that no default navigation happened");
       cy.get("iframe")
@@ -808,6 +813,32 @@ describe("scenarios > embedding > modular embedding", () => {
             ],
           },
         ],
+      });
+    });
+
+    it("should not send SDK tracker events through the analytics proxy", () => {
+      let proxyCallCount = 0;
+      cy.intercept("POST", "/api/analytics-proxy", () => {
+        proxyCallCount++;
+      }).as("analyticsProxy");
+
+      cy.signOut();
+      cy.visit("http://localhost:4000");
+      H.loadSdkIframeEmbedTestPage({
+        origin: "http://different-than-metabase-instance.com",
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: { dashboardId: ORDERS_DASHBOARD_ID },
+          },
+        ],
+        selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`,
+      }).within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+      });
+
+      cy.wrap(null).then(() => {
+        expect(proxyCallCount).to.eq(0);
       });
     });
 

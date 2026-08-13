@@ -14,17 +14,25 @@ import type {
   RemappingHydratedDatasetColumn,
   TooltipRowModel,
 } from "metabase/visualizations/types";
-import type { SeriesSettings, VisualizationSettings } from "metabase-types/api";
+import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockNumericColumn,
 } from "metabase-types/api/mocks";
 
-import { getHoverData, getStackedTooltipRows } from "./events";
+import {
+  getClickData,
+  getHoverData,
+  getLegendClickData,
+  getStackedTooltipRows,
+} from "./events";
 
 const datasetColumns = [
+  // Unjustified type cast. FIXME
   { name: "y", display_name: "Y" } as RemappingHydratedDatasetColumn,
+  // Unjustified type cast. FIXME
   { name: "x", display_name: "X" } as RemappingHydratedDatasetColumn,
+  // Unjustified type cast. FIXME
   { name: "x1", display_name: "X1" } as RemappingHydratedDatasetColumn,
 ];
 
@@ -114,7 +122,7 @@ describe("events utils", () => {
           series_settings: {
             [chartColumns.metrics[0].column.name]: {
               title: "my custom label",
-            } as SeriesSettings,
+            },
           },
         },
         {
@@ -144,6 +152,7 @@ describe("events utils", () => {
           barData,
           {
             "stackable.stack_type":
+              // Unjustified type cast. FIXME
               stackType as VisualizationSettings["stackable.stack_type"],
           },
           chartColumns,
@@ -474,6 +483,131 @@ describe("events utils", () => {
         tooltipData.data?.find(({ col }) => col?.name === "TOTALSPEND")?.value,
       ).toBe(600);
     });
+  });
+});
+
+describe("getClickData", () => {
+  it("passes raw null dimension value through to drill-thru (QUE2-97)", () => {
+    const dimensionColumn = createMockColumn({
+      name: "label",
+      display_name: "Label",
+    });
+    const breakoutColumn = createMockColumn({
+      name: "quarter",
+      display_name: "Quarter",
+    });
+    const metricColumn = createMockNumericColumn({
+      name: "count",
+      display_name: "Count",
+    });
+    const datasetColumns = [dimensionColumn, breakoutColumn, metricColumn];
+
+    const chartColumns: BreakoutChartColumns = {
+      dimension: { index: 0, column: dimensionColumn },
+      breakout: { index: 1, column: breakoutColumn },
+      metric: { index: 2, column: metricColumn },
+    };
+
+    const datum: GroupedDatum = {
+      dimensionValue: null,
+      metrics: { count: 5 },
+      isClickable: true,
+      rawRows: [[null, null, 5]],
+      breakout: {
+        "(empty)": {
+          metrics: { count: 5 },
+          rawRows: [[null, null, 5]],
+        },
+      },
+    };
+
+    const series: Series<GroupedDatum, SeriesInfo> = {
+      seriesKey: "(empty)",
+      seriesName: "(empty)",
+      seriesInfo: {
+        metricColumn,
+        dimensionColumn,
+        breakoutValue: "(empty)",
+      },
+      xAccessor: (datum: GroupedDatum) => datum.metrics["count"],
+      yAccessor: SERIES_Y_ACCESSOR,
+    };
+
+    const bar: BarData<GroupedDatum, SeriesInfo> = {
+      isNegative: false,
+      xStartValue: 0,
+      xEndValue: 5,
+      yValue: "(empty)",
+      datum,
+      datumIndex: 0,
+      series,
+      seriesIndex: 0,
+    };
+
+    const clickData = getClickData(bar, {}, chartColumns, datasetColumns);
+
+    expect(clickData.dimensions).toEqual([
+      { column: dimensionColumn, value: null },
+      { column: breakoutColumn, value: null },
+    ]);
+  });
+});
+
+describe("getLegendClickData", () => {
+  it("passes raw null breakout value through to drill-thru (QUE2-97)", () => {
+    const dimensionColumn = createMockColumn({
+      name: "label",
+      display_name: "Label",
+    });
+    const breakoutColumn = createMockColumn({
+      name: "quarter",
+      display_name: "Quarter",
+    });
+    const metricColumn = createMockNumericColumn({
+      name: "count",
+      display_name: "Count",
+    });
+
+    const chartColumns: BreakoutChartColumns = {
+      dimension: { index: 0, column: dimensionColumn },
+      breakout: { index: 1, column: breakoutColumn },
+      metric: { index: 2, column: metricColumn },
+    };
+
+    const groupedData: GroupedDatum[] = [
+      {
+        dimensionValue: "A",
+        metrics: { count: 5 },
+        isClickable: true,
+        rawRows: [["A", null, 5]],
+        breakout: {
+          "(empty)": {
+            metrics: { count: 5 },
+            rawRows: [["A", null, 5]],
+          },
+        },
+      },
+    ];
+
+    const series: Series<GroupedDatum, SeriesInfo>[] = [
+      {
+        seriesKey: "(empty)",
+        seriesName: "(empty)",
+        seriesInfo: {
+          metricColumn,
+          dimensionColumn,
+          breakoutValue: "(empty)",
+        },
+        xAccessor: (datum: GroupedDatum) => datum.metrics["count"],
+        yAccessor: SERIES_Y_ACCESSOR,
+      },
+    ];
+
+    const result = getLegendClickData(0, series, {}, chartColumns, groupedData);
+
+    expect(result.dimensions).toEqual([
+      { column: breakoutColumn, value: null },
+    ]);
   });
 });
 

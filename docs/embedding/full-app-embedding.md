@@ -8,11 +8,9 @@ redirect_from:
 
 # Full app embedding
 
-{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embbedding=true %}
+{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embedding=true %}
 
-{% include shared/in-page-promo-embedding-workshop.html %}
-
-**Full app embedding** lets you embed the entire Metabase app in an iframe. Full app embedding integrates your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](../questions/query-builder/editor.md) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
+**Full app embedding** lets you embed the entire Metabase app in an iframe. Full app embedding integrates your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](../questions/query-builder/editor.md) and [drill-down](../questions/visualizations/drill-through.md) into your data.
 
 > If you are just starting out with Metabase embedding, consider using [Modular embedding](./modular-embedding.md) instead of full app embedding - it's an improved, more customizable option for embedding individual Metabase components.
 
@@ -75,7 +73,7 @@ To embed a specific Metabase dashboard, you'll want to use the dashboard's Entit
 src="https://metabase.yourcompany.com/dashboard/entity/[Entity ID]"
 ```
 
-To get a dashboard's Entity ID, visit the dashboard and click on the **info** button. In the **Overview** tab, copy the **Entity ID**. Then in your iframe's `src` attribute to:
+To get a dashboard's Entity ID, visit the dashboard and click on the **info** button. In the **Overview** tab, copy the **Entity ID**. Then set your iframe's `src` attribute to:
 
 ```
 src=https://metabase.yourcompany.com/dashboard/entity/Dc_7X8N7zf4iDK9Ps1M3b
@@ -110,6 +108,8 @@ If you're using [JWT](../people-and-groups/authenticating-with-jwt.md), you can 
 ```
 https://metabase.example.com/auth/sso?jwt=<token>&return_to=%2Fdashboard%2F1
 ```
+
+To avoid putting the JWT in the URL, you can also authenticate with a `POST` request and a JSON body. See [JWT-based authentication](../people-and-groups/authenticating-with-jwt.md).
 
 You must URL encode (or double encode, depending on your web setup) all of the parameters in your redirect link, including parameters for filters (e.g., `filter=value`) and [UI settings](#showing-or-hiding-metabase-ui-components) (e.g., `top_nav=true`). For example, if you added two filter parameters to the JWT example shown above, your `src` link would become:
 
@@ -166,8 +166,6 @@ To manually log someone out of Metabase, load the following URL (for example, in
 ```sh
 https://metabase.yourcompany.com/auth/logout
 ```
-
-If you're using [JWT](../people-and-groups/authenticating-with-jwt.md) for SSO, we recommend setting the `exp` (expiration time) property to a short duration (e.g., 1 minute).
 
 ## Supported postMessage messages _from_ embedded Metabase
 

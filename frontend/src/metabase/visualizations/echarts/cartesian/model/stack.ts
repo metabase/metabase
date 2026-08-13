@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { getObjectKeys } from "metabase/lib/objects";
+import { getObjectKeys } from "metabase/utils/objects";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
 import type { SeriesModel, StackModel } from "./types";
@@ -48,7 +48,7 @@ export const getStackModels = (
 
       return {
         axis,
-        display: display as "bar" | "area", // Ensured by filtering above
+        display,
         seriesKeys: seriesModelsByDisplay[display].map(
           (seriesModel) => seriesModel.dataKey,
         ),

@@ -1,12 +1,9 @@
-import _ from "underscore";
+import { useCallback } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
-import { type IconData, getIcon } from "metabase/lib/icon";
-import type {
-  CollectionItemModel,
-  CollectionNamespace,
-  CollectionType,
-} from "metabase-types/api";
+import type { IconData } from "metabase/common/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
+import type { ColorName } from "metabase/ui/colors/types";
+import type { CollectionNamespace, CollectionType } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import {
@@ -18,35 +15,42 @@ import {
   type PickerItemFunctions,
 } from "./types";
 
-export const getEntityPickerIcon = (
-  item: OmniPickerItem,
-  {
-    isSelected,
-    isTenantUser,
-  }: {
-    isSelected?: boolean;
-    isTenantUser?: boolean;
-  } = {},
-): IconData & { c?: ColorName } => {
-  const icon = getIcon(item, { isTenantUser });
+export const useGetEntityPickerIcon = () => {
+  const getIcon = useGetIcon();
 
-  if (item.id === "search-results") {
-    icon.name = "search";
-  }
+  return useCallback(
+    (
+      item: OmniPickerItem,
+      {
+        isSelected,
+        isTenantUser,
+      }: {
+        isSelected?: boolean;
+        isTenantUser?: boolean;
+      } = {},
+    ): IconData & { c?: ColorName } => {
+      const icon = getIcon(item, { isTenantUser });
 
-  if (isSelected && !icon.color) {
-    icon.color = "text-primary-inverse";
-  }
+      if (item.id === "search-results") {
+        icon.name = "search";
+      }
 
-  if (icon.name === "folder" && isSelected) {
-    icon.name = "folder_filled";
-  }
+      if (isSelected && !icon.color) {
+        icon.color = "text-primary-inverse";
+      }
 
-  if (item.id === "recents") {
-    icon.name = "clock";
-  }
+      if (icon.name === "folder" && isSelected) {
+        icon.name = "folder_filled";
+      }
 
-  return { ...icon, color: undefined, c: icon.color ?? "brand" };
+      if (item.id === "recents") {
+        icon.name = "clock";
+      }
+
+      return { ...icon, color: undefined, c: icon.color ?? "core-brand" };
+    },
+    [getIcon],
+  );
 };
 
 const isSameNamespace = (
@@ -107,6 +111,15 @@ export function getItemFunctions({
     if (
       item.model === OmniPickerFolderModel.Database ||
       item.model === OmniPickerFolderModel.Schema
+    ) {
+      return true;
+    }
+
+    if (
+      item.model === OmniPickerFolderModel.Table &&
+      modelSet.has("measure") &&
+      "measures" in item &&
+      (item.measures?.length ?? 0) > 0
     ) {
       return true;
     }
@@ -190,42 +203,6 @@ export function getItemFunctions({
     isSelectableItem: isSelectable,
   };
 }
-
-export const validCollectionModels = new Set<CollectionItemModel>([
-  "collection",
-  "dashboard",
-  "document",
-  "card",
-  "dataset",
-  "metric",
-  "table",
-  "snippet",
-  "transform",
-]);
-
-export const allCollectionModels = Array.from(validCollectionModels);
-
-const isValidModel = (
-  model: OmniPickerItem["model"],
-): model is CollectionItemModel =>
-  validCollectionModels.has(model as CollectionItemModel);
-
-export const getValidCollectionItemModels = (
-  models: OmniPickerItem["model"][],
-): CollectionItemModel[] =>
-  _.uniq(models.filter(isValidModel).concat(["collection"]));
-
-// this ensures that we get cache hits by sending the same options for collection item requests
-export const getCollectionItemsOptions = ({
-  models,
-}: {
-  models: OmniPickerItem["model"][];
-}) => {
-  return {
-    models: getValidCollectionItemModels(models),
-    include_can_run_adhoc_query: models.includes("table"),
-  };
-};
 
 export const isCollection = (
   item: OmniPickerItem,

@@ -85,7 +85,6 @@
             (reconcile-breakout-and-order-by-bucketing
              :breakout [[:field 2 {:temporal-unit :day}]]
              :order-by [[:asc [:field 1 nil]]]))))
-
   (testing (str "similarly, if a datetime field is already bucketed in a different way in the order-by than the same "
                 "Field in a breakout clause, we should not do anything, even though the query is likely invalid "
                 "(we assume you know what you're doing if you explicitly specify a bucketing)")

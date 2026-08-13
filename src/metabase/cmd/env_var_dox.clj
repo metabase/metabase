@@ -69,7 +69,7 @@
   "Formats an environment variable name with the 'MB_' prefix
    Example: MB_ENV_VAR_NAME or MB_OLD_SETTING [DEPRECATED]"
   [env-var]
-  (let [base-name (str "MB_" (u/->SCREAMING_SNAKE_CASE_EN (:munged-name env-var)))]
+  (let [base-name (setting/env-var-name (:name env-var))]
     (if (:deprecated env-var)
       (str base-name " [DEPRECATED]")
       base-name)))
@@ -123,11 +123,25 @@
     (when (string? d)
       d)))
 
-(defn- format-config-name
-  "Formats the configuration file name for an environment variable."
+(defn settable-in-config-file?
+  "Can this setting be set via the `settings:` section of a configuration file?
+   Settings with `:setter` `:none` are read-only: the config file calls the same `setting/set!` path as
+   the Admin settings, so it will always reject them."
   [env-var]
-  (if (= (:visibility env-var) :internal)
+  (not= :none (:setter env-var)))
+
+(defn- format-config-name
+  "Formats the configuration file name for an environment variable, or notes that the setting is
+  read-only and can only be set with an environment variable."
+  [env-var]
+  (cond
+    (not (settable-in-config-file? env-var))
+    "Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md)."
+
+    (= (:visibility env-var) :internal)
     ""
+
+    :else
     (str "[Configuration file name](./config-file.md): `" (:munged-name env-var) "`")))
 
 (defn- list-item
@@ -170,16 +184,16 @@
   [env-var]
   (or (false? (:doc env-var))
       (false? (:can-read-from-env? env-var))
-              ;; Ideally, we'd move off of this list completely,
-              ;; but not all environment variables are defsettings.
+      ;; Ideally, we'd move off of this list completely,
+      ;; but not all environment variables are defsettings.
       (contains? env-vars-not-to-mess-with (format-prefix env-var))))
 
 (defn- setter-none?
-  "Used to remove settings that lack a setter (`:setter :none`).
+  "Used to remove undocumented settings that lack a setter (`:setter :none`).
    For example, settings that are derived from other settings."
   [env-var]
-   ;; If the `defsetting` has a `:doc` key with a string, we should document it.
-   ;; Checking that the `:doc` value is truthy because `:doc false` is a valid value.
+  ;; If the `defsetting` has a `:doc` key with a string, we should document it.
+  ;; Checking that the `:doc` value is truthy because `:doc false` is a valid value.
   (when-not (boolean (:doc env-var))
     (= :none (:setter env-var))))
 

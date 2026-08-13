@@ -34,6 +34,7 @@
    {:keys [term definition]} :- [:map
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
+  (api/check-data-analyst)
   (let [glossary (t2/insert-returning-instance! :model/Glossary
                                                 {:term       term
                                                  :definition definition
@@ -54,6 +55,7 @@
    {:keys [term definition]} :- [:map
                                  [:term ms/NonBlankString]
                                  [:definition ms/NonBlankString]]]
+  (api/check-data-analyst)
   (let [previous-glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
     (t2/update! :model/Glossary id {:term term :definition definition})
     (let [glossary (t2/select-one :model/Glossary :id id)]
@@ -70,6 +72,7 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete a glossary entry."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-data-analyst)
   (let [glossary (api/check-404 (t2/select-one :model/Glossary :id id))]
     (t2/delete! :model/Glossary :id id)
     (events/publish-event! :event/glossary-delete

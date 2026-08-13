@@ -1,0 +1,22 @@
+.scrollableLayout {
+  overflow: hidden;
+}
+
+.roundedBox {
+  display: grid;
+  grid-template-columns: minmax(5rem, 30rem);
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.roundedBoxTwoColumns {
+  grid-template-columns: minmax(5rem, 30rem) minmax(5rem, auto);
+}
+
+.formPanel {
+  overflow-y: auto;
+}
+
+.formPanelWithLeftBorder {
+  border-left: 1px solid var(--mb-color-border-neutral);
+}

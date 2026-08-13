@@ -38,10 +38,6 @@
   [path]
   (t2/select-one :model/Glossary :term (:id (first path))))
 
-(defmethod serdes/hash-fields :model/Glossary
-  [_item]
-  [:term])
-
 (defmethod serdes/make-spec "Glossary" [_model-name _opts]
   {:copy      [:term :definition]
    :transform {:created_at (serdes/date)
@@ -49,4 +45,4 @@
                :creator_id (serdes/fk :model/User)}})
 
 (defmethod serdes/storage-path "Glossary" [item _]
-  ["glossary" (:term item)])
+  [{:label "glossary"} {:label (:term item) :key (:term item)}])

@@ -8,60 +8,234 @@
     (referenced-tables sql dialect) → [[catalog schema table] ...]
     (referenced-fields dialect sql) → [[catalog schema table field] ...]
     (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
-    (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}"
+    (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
+
+  The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (the
+  GraalPy or native-CPython implementation, per [[metabase.sql-parsing.parser/parser]]); this namespace
+  owns the JVM-side pre- and post-processing around it."
   (:require
    [clojure.string :as str]
-   [metabase.analytics.core :as analytics]
-   [metabase.sql-parsing.common :as common]
-   [metabase.sql-parsing.pool :as python.pool]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [medley.core :as m]
+   [metabase.sql-parsing.parser :as parser]
+   [metabase.sql-parsing.protocol :as protocol]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf])
   (:import
-   (java.io Closeable)
-   (java.util.concurrent ExecutionException TimeoutException)
-   (org.graalvm.polyglot Value)))
+   (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
 
-;;; -------------------------------------------------- Timeout handling --------------------------------------------------
+(defn- parser
+  "The [[metabase.sql-parsing.protocol/SqlParser]] implementation for the configured mode."
+  []
+  (parser/parser))
 
-(def ^:private ^:const default-timeout-ms
-  "Default timeout for Python operations in milliseconds.
-   GraalVM Python can occasionally hang (DEV-1393), so we wrap calls with a timeout."
-  30000) ; 30 seconds
+(defn parse-error?
+  "True if `e` is a sqlglot ParseError — the SQL could not be parsed — regardless of which parser
+  backend threw it. Other Python-side failures (and non-sqlglot exceptions) are false."
+  [e]
+  (let [data (ex-data e)]
+    (boolean (and (:sql-parsing/error data)
+                  (= "ParseError" (:sql-parsing/python-error-type data))))))
 
-(defn- with-timeout*
-  "Execute f in a future with timeout. On timeout, throws TimeoutException.
-   The caller is responsible for cleaning up resources (e.g., disposing context)."
-  [timeout-ms f]
-  (let [fut (future (f))]
-    (try
-      (deref fut timeout-ms ::timeout)
-      (catch ExecutionException e
-        ;; Unwrap execution exception to get the real cause
-        (throw (or (.getCause e) e)))
-      (finally
-        ;; If we timed out or got an exception, try to cancel the future
-        ;; Note: This won't actually interrupt GraalVM, but prevents resource leaks
-        (future-cancel fut)))))
+;;; ------------------------------------- Large literal-list stripping -----------------------------------------
 
-(defmacro ^:private with-python-timeout
-  "Execute body with a timeout. If timeout is reached:
-   1. Interrupts the GraalVM context (actually stops execution)
-   2. Poisons context so it gets disposed rather than returned to pool
-   3. Logs warning and throws TimeoutException"
-  [ctx timeout-ms & body]
-  `(let [result# (with-timeout* ~timeout-ms (^:once fn* [] ~@body))]
-     (if (= result# ::timeout)
-       (do
-         ;; Actually interrupt the GraalVM context (1s grace period for soft interrupt)
-         ;; This is necessary because future-cancel doesn't stop GraalVM execution
-         (python.pool/interrupt! ~ctx 1000)
-         (python.pool/poison! ~ctx)
-         (analytics/inc! :metabase-sql-parsing/timeouts)
-         (log/warn "Python execution timed out after" ~timeout-ms "ms - GraalVM interrupted")
-         (throw (TimeoutException. (str "Python execution timed out after " ~timeout-ms "ms"))))
-       result#)))
+;; Large literal lists — VALUES clauses, IN lists (flat or tuple), and ARRAY literals with
+;; thousands of items — cause GraalPy OOM/timeouts due to ~114KB per AST node (vs ~1-2KB on
+;; CPython). We strip them on the JVM side before passing SQL to Python, because GraalPy is too
+;; slow at character-by-character string scanning over multi-MB inputs.
+
+(def ^:private ^:const strip-threshold
+  "Strip VALUES clauses with more than this many tuples, and IN lists / ARRAY literals with at
+   least this many commas."
+  100)
+
+(def ^:private literal-list-keyword-pattern
+  "Pattern to find a VALUES, IN, or ARRAY keyword followed by its opening delimiter."
+  (re-pattern "(?i)\\b(?:VALUES\\s*\\(|IN\\s*\\(|ARRAY\\s*\\[)"))
+
+(defn- skip-whitespace
+  "Return the first non-whitespace position at or after `pos`."
+  ^long [^String sql ^long pos ^long n]
+  (loop [p pos]
+    (if (and (< p n) (Character/isWhitespace (.charAt sql p)))
+      (recur (inc p))
+      p)))
+
+(defn- skip-string-literal
+  "Starting at an opening quote (single or double), advance past the matching closing quote,
+   treating a doubled quote as an escape. Returns the position immediately after the closing quote."
+  ^long [^String sql ^long pos ^long n]
+  (let [q (.charAt sql pos)]
+    (loop [i (inc pos)]
+      (if (>= i n)
+        i
+        (if (= (.charAt sql i) q)
+          (if (and (< (inc i) n) (= (.charAt sql (inc i)) q))
+            (recur (+ i 2)) ; escaped (doubled) quote
+            (inc i))
+          (recur (inc i)))))))
+
+(defn- skip-balanced-parens
+  "Starting at an opening `(`, advance past the matching `)`.
+   Handles nested parens and SQL string literals. Returns the position immediately after the closing `)`."
+  ^long [^String sql ^long pos ^long n]
+  (loop [pos pos, depth 0]
+    (if (>= pos n)
+      pos
+      (let [ch (.charAt sql pos)]
+        (cond
+          (or (= ch \') (= ch \")) (recur (skip-string-literal sql pos n) depth)
+          (= ch \()                (recur (inc pos) (inc depth))
+          (= ch \))                (if (= depth 1)
+                                     (inc pos) ; done
+                                     (recur (inc pos) (dec depth)))
+          :else                    (recur (inc pos) depth))))))
+
+(defn- count-top-level-commas
+  "Count top-level comma-separated items inside a tuple's content string.
+   `(1, 'a', 3)` → inner content `1, 'a', 3` → 3 items."
+  ^long [^String content]
+  (let [n (.length content)]
+    (loop [i 0, depth 0, items 1]
+      (if (>= i n)
+        items
+        (let [ch (.charAt content i)]
+          (cond
+            (or (= ch \') (= ch \"))    (recur (skip-string-literal content i n) depth items)
+            (= ch \()                   (recur (inc i) (inc depth) items)
+            (= ch \))                   (recur (inc i) (dec depth) items)
+            (and (= ch \,) (= depth 0)) (recur (inc i) depth (inc items))
+            :else                       (recur (inc i) depth items)))))))
+
+(defn- count-and-skip-tuples
+  "Starting after the first tuple, count how many more `, (...)` tuples follow.
+   Returns [total-tuple-count position-after-last-tuple]."
+  [^String sql ^long pos ^long n]
+  (loop [pos pos, count (int 1)]
+    (let [pos (skip-whitespace sql pos n)]
+      (if (or (>= pos n) (not= (.charAt sql pos) \,))
+        [count pos]
+        (let [pos (skip-whitespace sql (inc pos) n)]
+          (if (or (>= pos n) (not= (.charAt sql pos) \())
+            [count pos]
+            (recur (skip-balanced-parens sql pos n) (inc count))))))))
+
+(defn- make-null-placeholder
+  "Build `VALUES (NULL, NULL, ...)` preserving the original keyword casing."
+  ^String [^String original-keyword ^long col-count]
+  (let [nulls (str/join ", " (repeat col-count "NULL"))]
+    (str original-keyword " (" nulls ")")))
+
+(defn- extract-keyword
+  "Extract just the keyword text from a regex match like `VALUES (`, `IN (`, or `ARRAY [`."
+  ^String [^String sql ^long match-start ^long match-end]
+  (-> (.substring sql match-start match-end)
+      str/trimr
+      (str/replace #"[\(\[]$" "")
+      str/trimr))
+
+(defn- strip-values-at
+  "Decide whether to strip the VALUES clause whose `VALUES (` match spans [match-start, match-end).
+   Returns [replacement resume-pos]: a single-row NULL placeholder (column count taken from the
+   first tuple) covering the SQL up to resume-pos, or [nil match-end] to leave the clause untouched."
+  [^String sql ^long match-start ^long match-end ^long n]
+  (let [paren-start (dec match-end)
+        first-end   (skip-balanced-parens sql paren-start n)
+        [tuple-count end-pos] (count-and-skip-tuples sql first-end n)]
+    (if (and (> (long tuple-count) strip-threshold)
+             (> first-end (inc paren-start)))
+      [(make-null-placeholder (extract-keyword sql match-start match-end)
+                              (count-top-level-commas (.substring sql (inc paren-start) (dec first-end))))
+       end-pos]
+      [nil match-end])))
+
+(defn- simple-list-end
+  "Scan the list opening at `open-pos` (`(` or `[`). If it contains only numbers, single-quoted
+   strings, signs, commas, whitespace, and balanced parens (VALUES-style tuples), return
+   [comma-count end-pos] with end-pos just past the matching closing delimiter. Any other
+   character — subqueries, column references, casts, bind parameters — returns nil, leaving the
+   list untouched."
+  [^String sql ^long open-pos ^long n]
+  (let [close-ch (char (if (= (.charAt sql open-pos) \[) \] \)))]
+    (loop [i (inc open-pos), depth 1, commas 0]
+      (when (< i n)
+        (let [ch (.charAt sql i)]
+          (cond
+            (and (= ch close-ch) (= depth 1)) [commas (inc i)]
+            (= ch \')                         (recur (skip-string-literal sql i n) depth commas)
+            (= ch \()                         (recur (inc i) (inc depth) commas)
+            (= ch \))                         (when (> depth 1) (recur (inc i) (dec depth) commas))
+            (= ch \,)                         (recur (inc i) depth (inc commas))
+            (or (Character/isDigit ch)
+                (Character/isWhitespace ch)
+                (= ch \.) (= ch \-) (= ch \+))
+            (recur (inc i) depth commas)
+
+            :else nil))))))
+
+(defn- strip-list-at
+  "Decide whether to strip the IN list or ARRAY literal whose keyword match spans
+   [match-start, match-end). Returns [replacement resume-pos]: `IN (NULL)` / `ARRAY[NULL]`
+   covering the whole list, or [nil match-end] to leave it untouched (resuming just inside the
+   delimiter, so a large list nested in a subquery — `IN (SELECT ... WHERE x IN (...))` — is
+   still found)."
+  [^String sql ^long match-start ^long match-end ^long n]
+  (let [open-pos         (dec match-end)
+        [commas end-pos] (simple-list-end sql open-pos n)]
+    (if (and commas (>= (long commas) strip-threshold))
+      [(str (extract-keyword sql match-start match-end)
+            (if (= (.charAt sql open-pos) \[) "[NULL]" " (NULL)"))
+       end-pos]
+      [nil match-end])))
+
+(defn- strip-large-literal-lists*
+  "Single pass over `sql`, replacing every oversized literal list — VALUES clause or literal-only
+   IN list — with a NULL placeholder. Returns `sql` itself when nothing was stripped."
+  ^String [^String sql]
+  (let [matcher (re-matcher literal-list-keyword-pattern sql)
+        n       (.length sql)]
+    (if-not (.find matcher)
+      sql
+      (let [sb (StringBuilder.)]
+        (loop [i 0, stripped? false, match? true]
+          (if-not match?
+            (if stripped?
+              (-> sb (.append sql (int i) (int n)) .toString)
+              sql)
+            (let [match-start (.start matcher)
+                  match-end   (.end matcher)
+                  [replacement resume] (let [ch (.charAt sql match-start)]
+                                         (if (or (= ch \V) (= ch \v))
+                                           (strip-values-at sql match-start match-end n)
+                                           (strip-list-at sql match-start match-end n)))]
+              (if replacement
+                (-> sb (.append sql (int i) (int match-start)) (.append ^String replacement))
+                (.append sb sql (int i) (int resume)))
+              (recur (long resume)
+                     (or stripped? (some? replacement))
+                     (.find matcher (int resume))))))))))
+
+(defn strip-large-literal-lists
+  "Replace large literal lists with NULL placeholders: VALUES clauses with more than
+   [[strip-threshold]] tuples become a single-row NULL tuple (preserving the column count from the
+   first tuple), and simple IN lists / ARRAY literals — numbers, single-quoted strings, and
+   VALUES-style tuples of them — with at least [[strip-threshold]] commas become `IN (NULL)` /
+   `ARRAY[NULL]`. All surrounding SQL structure is preserved.
+
+   This runs on the JVM side (fast) before passing SQL to GraalPy (slow at char scanning).
+   On any error, returns the original SQL unchanged so parsing can proceed normally.
+
+   Best-effort by design: stripping only feeds fail-soft analysis, and execution paths restore the
+   original SQL when anything was stripped ([[is-single-stmt-of-type?]]), so edge cases like
+   keyword-shaped text inside string literals or comments are deliberately not guarded against."
+  ^String [^String sql]
+  (try
+    (strip-large-literal-lists* sql)
+    (catch Exception e
+      (log/warnf "Error stripping large literal lists, passing SQL through unchanged: %s" (ex-message e))
+      sql)))
 
 ;;; -------------------------------------------------- Public API --------------------------------------------------
 
@@ -74,13 +248,7 @@
    This is the pure parsing layer - it returns what's literally in the SQL.
    Default schema resolution happens in the matching layer (core.clj)."
   [dialect sql]
-  (-> (with-open [^Closeable ctx (python.pool/python-context)]
-        (with-python-timeout ctx default-timeout-ms
-          (-> ^Value (common/eval-python ctx "sql_tools.referenced_tables")
-              (.execute ^Value (object-array [sql dialect]))
-              .asString)))
-      json/decode
-      vec))
+  (protocol/referenced-tables (parser) dialect (strip-large-literal-lists sql)))
 
 (defn referenced-fields
   "Extract field references from SQL, returning only fields from actual database tables.
@@ -106,13 +274,7 @@
    (referenced-fields \"bigquery\" \"SELECT * FROM myproject.analytics.events\")
    => [[\"myproject\" \"analytics\" \"events\" \"*\"]]"
   [dialect sql]
-  (-> (with-open [^Closeable ctx (python.pool/python-context)]
-        (with-python-timeout ctx default-timeout-ms
-          (-> ^Value (common/eval-python ctx "sql_tools.referenced_fields")
-              (.execute ^Value (object-array [sql dialect]))
-              .asString)))
-      json/decode
-      vec))
+  (protocol/referenced-fields (parser) dialect (strip-large-literal-lists sql)))
 
 (defn returned-columns-lineage
   "Extract column lineage from SQL query, showing which output columns depend on which source columns.
@@ -132,17 +294,7 @@
    (returned-columns-lineage \"postgres\" \"SELECT id + 1 as computed FROM users\" nil schema)
    => [[\"computed\" false [[[nil \"users\" \"id\"]]]]]"
   [dialect sql default-table-schema sqlglot-schema]
-  (-> (with-open [^Closeable ctx (python.pool/python-context)]
-        (with-python-timeout ctx default-timeout-ms
-          ;; JSON-encode schema to avoid GraalVM polyglot map conversion issues
-          (-> ^Value (common/eval-python ctx "sql_tools.returned_columns_lineage")
-              (.execute ^Value (object-array [dialect
-                                              sql
-                                              default-table-schema
-                                              (json/encode sqlglot-schema)]))
-              .asString)))
-      json/decode
-      vec))
+  (protocol/returned-columns-lineage (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
 
 (defn validate-query
   "Validate a SQL query against a schema using sqlglot's qualify optimizer.
@@ -174,18 +326,10 @@
    - \"invalid_expression\": Syntax/parse error
    - \"unhandled\": Other errors"
   [dialect sql default-table-schema & [sqlglot-schema]]
-  (-> (with-open [^Closeable ctx (python.pool/python-context)]
-        (with-python-timeout ctx default-timeout-ms
-          ;; JSON-encode schema to avoid GraalVM polyglot map conversion issues
-          (-> ^Value (common/eval-python ctx "sql_tools.validate_query")
-              (.execute ^Value (object-array [dialect sql default-table-schema (json/encode (or sqlglot-schema "{}"))]))
-              .asString)))
-      json/decode+kw))
+  (protocol/validate-query (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
 
 (defn simple-query?
   "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.
-
-   Used by Workspaces to determine if automatic checkpoints can be inserted.
 
    Parameters:
    - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil for default
@@ -202,12 +346,7 @@
    (simple-query? nil \"SELECT * FROM users LIMIT 10\")
    => {:is_simple false :reason \"Contains a LIMIT\"}"
   [dialect sql]
-  (-> (with-open [^Closeable ctx (python.pool/python-context)]
-        (with-python-timeout ctx default-timeout-ms
-          (-> ^Value (common/eval-python ctx "sql_tools.simple_query")
-              (.execute ^Value (object-array [sql dialect]))
-              .asString)))
-      json/decode+kw))
+  (protocol/simple-query (parser) dialect (strip-large-literal-lists sql)))
 
 (defn add-into-clause
   "Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
@@ -225,11 +364,7 @@
 
    Returns: Modified SQL string with INTO clause"
   [dialect sql table-name]
-  (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout ctx default-timeout-ms
-      (-> ^Value (common/eval-python ctx "sql_tools.add_into_clause")
-          (.execute ^Value (object-array [sql table-name dialect]))
-          .asString))))
+  (protocol/add-into-clause (parser) dialect sql table-name))
 
 (defn- convert-field-type
   "Convert field type string (snake_case) to keyword (kebab-case)."
@@ -343,12 +478,7 @@
    'fail soft' pattern used for parsing failures."
   [dialect sql]
   (try
-    (let [raw (-> (with-open [^Closeable ctx (python.pool/python-context)]
-                    (with-python-timeout ctx default-timeout-ms
-                      (-> ^Value (common/eval-python ctx "sql_tools.field_references")
-                          (.execute ^Value (object-array [sql dialect]))
-                          .asString)))
-                  json/decode+kw)
+    (let [raw (protocol/field-references (parser) dialect (strip-large-literal-lists sql))
           used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
           returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
           errors (or (:errors raw) (get raw "errors") [])]
@@ -381,15 +511,40 @@
    (replace-names \"postgres\" \"SELECT * FROM people\" {:tables [[{:table \"people\"} \"users\"]]})
    => \"SELECT * FROM users\""
   [dialect sql replacements]
-  (with-open [^Closeable ctx (python.pool/python-context)]
-    (with-python-timeout ctx default-timeout-ms
-      (-> ^Value (common/eval-python ctx "sql_tools.replace_names")
-          (.execute ^Value (object-array [sql (json/encode replacements) dialect]))
-          .asString))))
+  (protocol/replace-names (parser) dialect sql replacements))
+
+(defn is-single-stmt-of-type?
+  "Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
+   and returns the query reconstructed from the parsed AST."
+  [dialect sql stmt-type]
+  (let [stripped-sql (strip-large-literal-lists sql)
+        result (-> (protocol/single-stmt-of-type (parser) dialect stripped-sql stmt-type)
+                   (perf/update-keys (comp keyword u/->kebab-case-en)))]
+    ;; The `:sql` in the `result` is the reconstructed SQL from the SQLGlot parser.
+    ;; We generally want to use the reconstructed SQL, but if the original SQL had its VALUES/IN
+    ;; literal lists stripped (to avoid GraalPy OOM) then we need to return the original SQL to
+    ;; preserve the values. (#74284)
+    (cond-> result
+      (not= sql stripped-sql) (assoc :sql sql))))
 
 (comment
   (referenced-tables "postgres" "select * from transactions")
 
-  (validate-sql-query "postgres" "SELECT * FROM users")
+  (validate-query "postgres" "SELECT * FROM users" nil)
 
   (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true"))
+
+;;;; Transpile sql
+
+(defn- normalize-transpilation-result
+  [result]
+  (-> result
+      (perf/update-keys (comp keyword u/->kebab-case-en))
+      (m/update-existing :status (comp keyword u/->kebab-case-en))
+      (m/update-existing :reason (comp keyword u/->kebab-case-en))))
+
+(defn transpile-sql
+  "Transpiles sql string from one dialect to another."
+  [sql from-dialect to-dialect]
+  (normalize-transpilation-result
+   (protocol/transpile-sql (parser) sql from-dialect to-dialect)))

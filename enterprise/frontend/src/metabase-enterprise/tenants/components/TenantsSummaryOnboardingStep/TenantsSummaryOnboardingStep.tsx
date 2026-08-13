@@ -1,14 +1,13 @@
 import type { ReactNode } from "react";
 import { useMemo } from "react";
-import { push } from "react-router-redux";
 import { jt, msgid, ngettext, t } from "ttag";
 
 import { RelatedSettingCard } from "metabase/admin/components/RelatedSettingsSection";
-import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
-import { conjunct } from "metabase/lib/formatting/strings";
-import { useDispatch } from "metabase/lib/redux";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
+import { useNavigate } from "metabase/router";
 import { Button, Flex, SimpleGrid, Stack, Text, Title } from "metabase/ui";
+import { conjunct } from "metabase/utils/formatting/strings";
+import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { useListTenantsQuery } from "../../../api/tenants";
 import { getIsolationFieldConfig } from "../CreateTenantsOnboardingStep/isolation-field-config";
@@ -38,14 +37,14 @@ export const TenantsSummaryOnboardingStep = ({
   rlsTableNames?: string[];
   rlsColumnName?: string | null;
 }) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const { data: tenantsData } = useListTenantsQuery(
     { status: "active" },
     { skip: tenants.length > 0 },
   );
 
-  const onDone = () => dispatch(push("/admin/embedding/setup-guide"));
+  const onDone = () => navigate("/admin/embedding/setup-guide");
 
   const tenantsToShow = useMemo(() => {
     // If we have tenants from the flow, use them
@@ -174,7 +173,7 @@ export function getDataPermissionsDescription({
     const tableList = conjunct(tableNames, t`and`);
     const tableWord = ngettext(msgid`table`, `tables`, tableNames.length);
 
-    return jt`All users in ${boldName} can view rows in the ${(<strong key="tables">{tableList}</strong>)} ${tableWord} where ${(<strong key="column">{columnName}</strong>)} field equals ${boldValue}.`;
+    return jt`All users in ${boldName} can view rows in the ${<strong key="tables">{tableList}</strong>} ${tableWord} where ${<strong key="column">{columnName}</strong>} field equals ${boldValue}.`;
   }
 
   if (strategy === "connection-impersonation") {

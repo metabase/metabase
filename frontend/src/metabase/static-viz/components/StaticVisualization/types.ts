@@ -12,4 +12,6 @@ export interface StaticChartProps {
   height?: number;
   isStorybook?: boolean;
   hasDevWatermark?: boolean;
+  // When true, width/height are the exact output box: charts fit their legend inside it
+  fitWithinBounds?: boolean;
 }

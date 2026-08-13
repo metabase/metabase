@@ -61,10 +61,8 @@
            '(describe-temporal-unit :- :string
                                     ([]
                                      (describe-temporal-unit 1 nil))
-
                                     ([unit]
                                      (describe-temporal-unit 1 unit))
-
                                     ([n    :- :int
                                       unit :- [:maybe :keyword]]
                                      (str n \space (or unit :day)))))))))
@@ -88,43 +86,43 @@
 
 (deftest ^:parallel instrumented-fn-form-test
   (are [form expected] (= expected
-                          (walk/macroexpand-all (mu.fn/instrumented-fn-form {} (mu.fn/parse-fn-tail form))))
+                          (walk/macroexpand-all (mu.fn/instrumented-fn-form {} :clj (mu.fn/parse-fn-tail form))))
     '([x :- :int y])
     '(let* [&f (fn* ([x y]))]
-       (fn* ([a b]
-             (try
-               (metabase.util.malli.fn/validate-input {} :int a)
-               (&f a b)
-               (catch java.lang.Exception error
-                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+       (fn* mufn ([a b]
+                  (try
+                    (metabase.util.malli.fn/validate-input {} :int a)
+                    (&f a b)
+                    (catch java.lang.Exception error
+                      (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '(:- :int [x :- :int y])
     '(let* [&f (fn* ([x y]))]
-       (fn* ([a b]
-             (try
-               (metabase.util.malli.fn/validate-input {} :int a)
-               (metabase.util.malli.fn/validate-output {} :int (&f a b))
-               (catch java.lang.Exception error
-                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+       (fn* mufn ([a b]
+                  (try
+                    (metabase.util.malli.fn/validate-input {} :int a)
+                    (metabase.util.malli.fn/validate-output {} :int (&f a b))
+                    (catch java.lang.Exception error
+                      (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '(:- :int [x :- :int y] (+ x y))
     '(let* [&f (fn* ([x y] (+ x y)))]
-       (fn* ([a b]
-             (try
-               (metabase.util.malli.fn/validate-input {} :int a)
-               (metabase.util.malli.fn/validate-output {} :int (&f a b))
-               (catch java.lang.Exception error
-                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+       (fn* mufn ([a b]
+                  (try
+                    (metabase.util.malli.fn/validate-input {} :int a)
+                    (metabase.util.malli.fn/validate-output {} :int (&f a b))
+                    (catch java.lang.Exception error
+                      (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '([x :- :int y] {:pre [(int? x)]})
     '(let* [&f (fn* ([x y]
                      {:pre [(int? x)]}))]
-       (fn* ([a b]
-             (try
-               (metabase.util.malli.fn/validate-input {} :int a)
-               (&f a b)
-               (catch java.lang.Exception error
-                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+       (fn* mufn ([a b]
+                  (try
+                    (metabase.util.malli.fn/validate-input {} :int a)
+                    (&f a b)
+                    (catch java.lang.Exception error
+                      (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '(:- :int
          ([x] (inc x))
@@ -134,6 +132,7 @@
                  ([x y]
                   (+ x y)))]
        (fn*
+         mufn
          ([a]
           (try
             (metabase.util.malli.fn/validate-output {} :int (&f a))
@@ -185,6 +184,7 @@
                         [path opts & {:keys [token-check?], :or {token-check? true}}]
                         (merge {:path path, :token-check? token-check?} opts))]
               (clojure.core/fn
+                mufn
                 ([a b & {:as kvs}]
                  (try
                    (metabase.util.malli.fn/validate-input {:fn-name 'my-fn} :map b)
@@ -218,6 +218,7 @@
                           (reduce + (list* x y more)))
                      &input-schema-0-a [:* :int]]
                 (clojure.core/fn
+                  mufn
                   ([a b & more]
                    (try
                      (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
@@ -228,7 +229,6 @@
                       (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :int))
                      (catch java.lang.Exception error
                        (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
-
              (macroexpand form)))
       (is (= [:=>
               [:cat :int :int [:* :int]]
@@ -257,6 +257,7 @@
                           {:options options, :output (+ x y)})
                      &input-schema-0-a [:map [:integer? :boolean]]]
                 (clojure.core/fn
+                  mufn
                   ([a b & {:as kvs}]
                    (try
                      (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
@@ -267,7 +268,6 @@
                       (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :map))
                      (catch java.lang.Exception error
                        (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
-
              (macroexpand form)))
       (is (= [:=>
               [:cat :int :int [:* :any]]
@@ -382,3 +382,108 @@
                     (f)))
              (catch Exception _e
                (is false "it threw a schema error")))))))
+
+(deftest ^:parallel pre-post-conditions-test-1-vanilla-pass-through
+  (testing "plain :pre and :post pass through the macros"
+    (testing "single arity"
+      (let [expansion (macroexpand '(metabase.util.malli.fn/fn [{:keys [a]}]
+                                      {:pre [(pos? a)] :post [(even? %)]}
+                                      (* a 2)))]
+        (is (=? '(let* [&f (clojure.core/fn [{:keys [a]}]
+                             {:pre [(pos? a)] :post [(even? %)]}
+                             (* a 2))
+                        &input-schema-0-a [:maybe :map]])
+                (take 2 expansion)))))
+    (testing "multiple arity"
+      (let [expansion (macroexpand '(metabase.util.malli.fn/fn
+                                      ([{:keys [a]}]
+                                       {:pre [(pos? a)] :post [(even? %)]}
+                                       (* a 2))
+                                      ([m k]
+                                       {:pre [(map? m)] :post [(map? %)]}
+                                       (update m k * 2))))]
+        (is (=? '(let* [&f (clojure.core/fn
+                             ([{:keys [a]}]
+                              {:pre [(pos? a)] :post [(even? %)]}
+                              (* a 2))
+                             ([m k]
+                              {:pre [(map? m)] :post [(map? %)]}
+                              (update m k * 2)))
+                        &input-schema-0-a [:maybe :map]])
+                (take 2 expansion)))))))
+
+(deftest ^:synchronized pre-post-conditions-test-2-include-test-variants
+  (testing ":test/pre and :test/post conditions"
+    (testing "single arity"
+      (let [form '(metabase.util.malli.fn/fn [{:keys [a]}]
+                    {:pre       [(pos? a)]
+                     :post      [(even? %)]
+                     :test/pre  [(int? a)]
+                     :test/post [(int? %)]}
+                    (* a 2))]
+        (testing "are included in dev and test"
+          (is (=? '(let* [&f (clojure.core/fn [{:keys [a]}]
+                               {:pre  [(pos? a)
+                                       (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
+                                                        (int? a))]
+                                :post [(even? %)
+                                       (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
+                                                        (int? %))]}
+                               (* a 2))
+                          &input-schema-0-a [:maybe :map]])
+                  (take 2 (macroexpand form)))))
+        (testing "are excluded in prod"
+          (with-redefs [config/is-prod? true]
+            (is (=? '(let* [&f (clojure.core/fn [{:keys [a]}]
+                                 {:pre  [(pos? a)],
+                                  :post [(even? %)]}
+                                 (* a 2))
+                            &input-schema-0-a [:maybe :map]])
+                    (take 2 (macroexpand form))))))))
+    (testing "multiple arity"
+      (let [form '(metabase.util.malli.fn/fn
+                    ([{:keys [a]}]
+                     {:pre       [(pos? a)]
+                      :post      [(even? %)]
+                      :test/pre  [(int? a)]
+                      :test/post [(int? %)]}
+                     (* a 2))
+                    ([m k]
+                     {:pre       [(map? m)]
+                      :post      [(map? %)]
+                      :test/pre  [(some? k)]
+                      :test/post [(contains? m k)]}
+                     (update m k * 2)))]
+        (testing "are included in dev and test"
+          (is (=? '(let* [&f (clojure.core/fn
+                               ([{:keys [a]}]
+                                {:pre  [(pos? a)
+                                        (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
+                                                         (int? a))]
+                                 :post [(even? %)
+                                        (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
+                                                         (int? %))]}
+                                (* a 2))
+                               ([m k]
+                                {:pre  [(map? m)
+                                        (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
+                                                         (some? k))]
+                                 :post [(map? %)
+                                        (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
+                                                         (contains? m k))]}
+                                (update m k * 2)))
+                          &input-schema-0-a [:maybe :map]])
+                  (take 2 (macroexpand form)))))
+        (testing "are excluded in prod"
+          (with-redefs [config/is-prod? true]
+            (is (=? '(let* [&f (clojure.core/fn
+                                 ([{:keys [a]}]
+                                  {:pre  [(pos? a)]
+                                   :post [(even? %)]}
+                                  (* a 2))
+                                 ([m k]
+                                  {:pre  [(map? m)]
+                                   :post [(map? %)]}
+                                  (update m k * 2)))
+                            &input-schema-0-a [:maybe :map]])
+                    (take 2 (macroexpand form))))))))))

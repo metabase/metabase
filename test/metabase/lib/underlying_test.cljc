@@ -25,7 +25,6 @@
                                            100)))]
           (is (identical? query
                           (lib.underlying/top-level-query query))))))
-
     (testing "returns the last stage with an aggregation"
       (let [agg-0 (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                       (lib/aggregate (lib/count))
@@ -42,7 +41,6 @@
                         (lib.underlying/top-level-query agg-1)))
         (is (= (update agg-0 :stages pop)
                (lib.underlying/top-level-query agg-0)))))
-
     (testing "returns the last stage with a breakout"
       (let [brk-0 (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                       (lib/breakout (meta/field-metadata :orders :product-id))
@@ -119,7 +117,6 @@
                                      (lib/returned-columns query))
             _          (is (some? binned-col))
             query      (lib/append-stage query)]
-
         (doseq [[col key-name] [[temporal-col "temporal-unit"]
                                 [binned-col "binning"]]
                 rename?        [true false]]
