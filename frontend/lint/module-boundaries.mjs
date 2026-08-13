@@ -172,6 +172,17 @@ const elements = [
       mode: "full",
     }),
   ),
+  // Storybook config is a composition root: preview wires app-tier decorators.
+  // Needs its own pattern because ** doesn't match dot-folders in the lint,
+  // and must come before shared/embedding-sdk-shared: the affected-tests
+  // tooling matches with `dot: true` and first-element-wins, so a later
+  // position would hand these files to the shared module in the test graph.
+  createElement({
+    type: "app",
+    name: "misc",
+    pattern: "frontend/src/embedding-sdk-shared/.storybook/**",
+    mode: "full",
+  }),
   createElement({
     type: "shared",
     name: "embedding-sdk-shared",
@@ -339,9 +350,6 @@ const elements = [
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
     "frontend/src/metabase/static-viz/index.tsx",
-    // Storybook config is a composition root: preview wires app-tier decorators.
-    // Needs its own pattern because ** doesn't match dot-folders.
-    "frontend/src/embedding-sdk-shared/.storybook/**",
   ].map((path) =>
     createElement({
       type: "app",
