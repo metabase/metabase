@@ -7,7 +7,7 @@
 (def ^:private non-blob-columns
   "Columns to select for normal data-app metadata reads, excluding the raw bundle blob."
   [:model/DataApp :id :name :display_name :description :bundle_path :enabled :allowed_hosts
-   :resource_collection_id :permission_group_id :query_sync_draft
+   :resource_collection_id :permission_group_id :draft
    :bundle_hash :last_synced_sha :last_synced_at :sync_error
    :created_at :updated_at])
 
@@ -45,6 +45,11 @@
   []
   (t2/select [:model/DataApp :name :display_name :description :allowed_hosts :bundle_path :bundle_hash :sync_error]))
 
+(defn table-database-id
+  "The database ID for the Table with `table-id`, or nil."
+  [table-id]
+  (t2/select-one-fn :db_id :model/Table :id table-id))
+
 (defn data-app-exists?
   "Whether a DataApp named `slug` exists."
   [slug]
@@ -73,9 +78,14 @@
 (defn delete-data-apps-not-named!
   "Delete non-draft DataApps whose name is not one of `slugs`, returning the number deleted."
   [slugs]
-  (t2/delete! :model/DataApp :name [:not-in slugs] :query_sync_draft false))
+  (t2/delete! :model/DataApp :name [:not-in slugs] :draft false))
 
 (defn delete-all-data-apps!
   "Delete every non-draft DataApp, returning the number deleted."
   []
-  (t2/delete! :model/DataApp :query_sync_draft false))
+  (t2/delete! :model/DataApp :draft false))
+
+(defn publish-data-app-drafts!
+  "Mark drafts named by `slugs` as published."
+  [slugs]
+  (t2/update! :model/DataApp :name [:in slugs] :draft true {:draft false}))

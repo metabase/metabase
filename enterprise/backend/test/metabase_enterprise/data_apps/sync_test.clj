@@ -64,8 +64,25 @@
           (is (not (t2/exists? :model/Collection :id resource_collection_id)))
           (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))))))))
 
+(deftest sync-restores-deleted-collection-and-permission-group-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
+      (data-app.sync/import-from-snapshot! (snapshot files))
+      (let [before (select-keys (t2/select-one :model/DataApp :name "sales")
+                                [:resource_collection_id :permission_group_id])]
+        (t2/delete! :model/Collection :id (:resource_collection_id before))
+        (t2/delete! :model/PermissionsGroup :id (:permission_group_id before))
+        (data-app.sync/import-from-snapshot! (snapshot files))
+        ; after syncing the app again, the data app collection and
+        ; permission group should be re-created
+        (let [after (select-keys (t2/select-one :model/DataApp :name "sales") (keys before))]
+          (is (every? pos-int? (vals after)))
+          (is (t2/exists? :model/Collection :id (:resource_collection_id after)))
+          (is (t2/exists? :model/PermissionsGroup :id (:permission_group_id after)))
+          (is (not= before after)))))))
+
 (deftest changed-count-tracks-content-not-sha-bumps-test
-  (mt/with-model-cleanup [:model/DataApp]
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [files (app-files "a" {:name "A" :path "index.js" :bundle "V1"})]
       (testing "the first sync counts the new app"
         (is (=? {:synced 1 :changed 1}
@@ -120,7 +137,7 @@
 
 (deftest switching-repos-prunes-old-apps-overrides-shared-adds-new-test
   (testing "syncing a different repo: drop apps only the old repo had, override shared slugs, add new ones"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       ;; Repo A: Foo + Bar
       (data-app.sync/import-from-snapshot!
        (snapshot (merge (app-files "foo" {:name "Foo" :path "index.js" :bundle "FOO"})
@@ -142,7 +159,7 @@
 
 (deftest an-empty-repo-prunes-all-apps-test
   (testing "syncing a repo with no data_apps/ removes every app (the repo has none)"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "solo" {:name "Solo" :path "index.js" :bundle "S"})))
       (is (= #{"solo"} (t2/select-fn-set :name :model/DataApp)))
@@ -150,31 +167,48 @@
               (data-app.sync/import-from-snapshot! (snapshot {}))))
       (is (empty? (t2/select-fn-set :name :model/DataApp))))))
 
-(deftest remote-sync-preserves-unpublished-query-sync-drafts-test
+(deftest remote-sync-preserves-unpublished-data-app-drafts-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (data-app.sync/prepare-query-sync! "draft-app")
+    (data-app.sync/ensure-draft! "draft-app")
     (is (=? {:removed 0}
             (data-app.sync/import-from-snapshot! (snapshot {}))))
-    (is (true? (t2/select-one-fn :query_sync_draft :model/DataApp :name "draft-app")))
+    (is (true? (t2/select-one-fn :draft :model/DataApp :name "draft-app")))
     (data-app.sync/import-from-snapshot!
      (snapshot (app-files "draft-app" {:name "Draft" :path "index.js" :bundle "BUNDLE"})))
-    (is (false? (t2/select-one-fn :query_sync_draft :model/DataApp :name "draft-app")))
+    (is (false? (t2/select-one-fn :draft :model/DataApp :name "draft-app")))
     (is (=? {:removed 1}
             (data-app.sync/import-from-snapshot! (snapshot {}))))
     (is (not (t2/exists? :model/DataApp :name "draft-app")))))
+
+(deftest repository-claims-a-draft-before-a-successful-import-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (data-app.sync/ensure-draft! "draft-app")
+    (data-app.sync/import-from-snapshot!
+     (snapshot {"data_apps/draft-app/data_app.yaml" "name: Draft\n"}))
+    (is (false? (t2/select-one-fn :draft :model/DataApp :name "draft-app")))
+    (is (=? {:removed 1}
+            (data-app.sync/import-from-snapshot! (snapshot {}))))
+    (is (not (t2/exists? :model/DataApp :name "draft-app")))))
+
+(deftest concurrent-draft-creation-is-safe-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [drafts (doall (repeatedly 2 #(future (data-app.sync/ensure-draft! "draft-app"))))]
+      (doseq [draft drafts]
+        @draft)
+      (is (= 1 (t2/count :model/DataApp :name "draft-app"))))))
 
 (deftest remote-sync-prunes-never-successful-repository-apps-test
   (mt/with-model-cleanup [:model/DataApp]
     (data-app.sync/import-from-snapshot!
      (snapshot {"data_apps/broken/data_app.yaml" "name: Broken\npath: missing.js\n"}))
-    (is (false? (t2/select-one-fn :query_sync_draft :model/DataApp :name "broken")))
+    (is (false? (t2/select-one-fn :draft :model/DataApp :name "broken")))
     (is (=? {:removed 1}
             (data-app.sync/import-from-snapshot! (snapshot {}))))
     (is (not (t2/exists? :model/DataApp :name "broken")))))
 
 (deftest a-broken-config-does-not-prune-the-existing-app-test
   (testing "a directory that still exists but whose data_app.yaml is now broken keeps the app (as a sync_error), it is not pruned"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "app" {:name "App" :path "index.js" :bundle "GOOD"})))
       (is (= "GOOD" (String. ^bytes (:bundle (t2/select-one :model/DataApp :name "app")) "UTF-8")))
@@ -196,7 +230,7 @@
 
 (deftest a-broken-config-for-a-brand-new-app-materializes-nothing-test
   (testing "an app whose config never parsed has no row to mark — it simply isn't materialized"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [result (data-app.sync/import-from-snapshot!
                     (snapshot {"data_apps/newbie/data_app.yaml" "name: Newbie\n" ; missing required "path"
                                "data_apps/newbie/index.js"      "X"}))]
@@ -209,7 +243,7 @@
 
 (deftest oversized-bundle-is-rejected-test
   (testing "a bundle over the size cap is rejected with a sync_error, no bundle cached"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "big" {:name "Big" :path "index.js"
                                    :bundle (oversized-bundle)})))
@@ -220,7 +254,7 @@
 
 (deftest oversized-resync-keeps-the-previous-bundle-test
   (testing "an oversized re-sync sets sync_error but keeps the last good bundle"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (data-app.sync/import-from-snapshot!
        (snapshot (app-files "app" {:name "App" :path "index.js" :bundle "GOOD"})))
       (data-app.sync/import-from-snapshot!
@@ -233,7 +267,7 @@
 
 (deftest a-directory-without-a-config-is-not-an-app-test
   (testing "a data_apps/<dir> that ships a bundle but no data_app.yaml is not discovered — no app, no error"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [result (data-app.sync/import-from-snapshot!
                     (snapshot {"data_apps/orphan/index.js" "BUNDLE"}))]
         (is (=? {:synced 0 :changed 0 :config-errors []} result))
@@ -241,7 +275,7 @@
 
 (deftest an-unreadable-config-is-a-config-error-test
   (testing "a data_app.yaml the snapshot lists but can't read is isolated as a config-error, not a crash"
-    (mt/with-model-cleanup [:model/DataApp]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       ;; the config is listed in the tree, but reading its blob yields nothing
       (let [result (data-app.sync/import-from-snapshot!
                     (snapshot {"data_apps/ghost/data_app.yaml" nil}))]

@@ -8,7 +8,9 @@
    `metabase.server.routes/static-files-handler`)."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -81,16 +83,23 @@
    [:configured :boolean]
    [:url [:maybe :string]]])
 
-(def ^:private QueryDefinition
+(def ^:private query-source
   [:map
-   [:stages [:sequential {:min 1} ms/Map]]])
+   [:type :string]
+   [:id ms/PositiveInt]])
 
-(def ^:private QueryResolutionResponse
+(def ^:private query-definition
+  [:map {:closed false}
+   [:stages [:sequential {:min 1}
+             [:map {:closed false}
+              [:source query-source]]]]])
+
+(def ^:private query-resolution-response
   [:map
    [:database_id ms/PositiveInt]
    [:dataset_query ms/Map]])
 
-(def ^:private QuerySyncPermissionsRequest
+(def ^:private query-sync-permissions-request
   [:map
    [:database_ids [:sequential {:distinct true} ms/PositiveInt]]])
 
@@ -177,45 +186,47 @@
    longer in it is pruned by that sync anyway."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
   (api/check-superuser)
-  ;; `t2/delete!` returns the row count; a 0 means the slug wasn't there → 404.
+  ;; The delete returns the row count; a 0 means the slug wasn't there → 404.
   (api/check-404 (pos? (data-apps.db/delete-data-app-by-slug! slug)))
   ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
 
-(api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- QueryResolutionResponse
+(api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- query-resolution-response
   "Resolve an authored data-app query definition into a serializable Metabase query."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
    _query-params
-   query-definition :- QueryDefinition]
+   query-definition :- query-definition]
   (api/check-superuser)
   (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
   (let [{source-type :type, table-id :id} (get-in query-definition [:stages 0 :source])
         _           (api/check-400 (= (keyword source-type) :table)
                                    "Data app query definitions must use a table source.")
-        database-id (api/check-404 (t2/select-one-fn :db_id :model/Table :id table-id))
+        database-id (api/check-404 (data-apps.db/table-database-id table-id))
         query        (-> (lib-be/application-database-metadata-provider database-id)
                          (lib/test-query query-definition)
                          lib/prepare-for-serialization)]
     {:database_id database-id
      :dataset_query query}))
 
-(api.macros/defendpoint :post ["/:slug/query-sync" :slug slug-regex] :- DataAppResponse
-  "Prepare a data app for query synchronization before its first repository import."
+(api.macros/defendpoint :post ["/:slug/draft" :slug slug-regex] :- DataAppResponse
+  "Create or reuse a data app draft before its first repository import."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
   (api/check-superuser)
-  (data-app.sync/prepare-query-sync! slug)
+  (api/check-400 (data-app.config/valid-slug? slug)
+                 "Data app draft slugs must use lowercase letters, numbers, and dashes.")
+  (data-app.sync/ensure-draft! slug)
   (data-apps.db/non-blob-data-app-by-slug slug))
 
 (api.macros/defendpoint :put ["/:slug/query-sync/permissions" :slug slug-regex] :- DataAppResponse
   "Reconcile the database view-data permissions required by a data app's queries."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
    _query-params
-   {database-ids :database_ids} :- QuerySyncPermissionsRequest]
+   {database-ids :database_ids} :- query-sync-permissions-request]
   (api/check-superuser)
-  (let [app (api/check-404 (data-app/select-one-non-blob :name slug))]
-    (data-app.sync/reconcile-query-permissions! app (set database-ids)))
-  (data-app/select-one-non-blob :name slug))
+  (let [app (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))]
+    (data-app.resources/reconcile-view-data! app (set database-ids)))
+  (data-apps.db/non-blob-data-app-by-slug slug))
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."

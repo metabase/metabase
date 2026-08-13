@@ -8,7 +8,7 @@ import {
   loadEnv,
 } from "vite";
 
-import { checkQuerySync } from "../query-sync/sync";
+import { checkQuerySync } from "../data-app-query-sync/sync";
 
 import { dataAppBuildPlugins, dataAppLibBuild } from "./config/build-config";
 import { getDataAppDefine } from "./config/define";

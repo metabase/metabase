@@ -131,6 +131,13 @@
   [^String dir]
   (subs dir (inc (str/last-index-of dir "/"))))
 
+(defn valid-slug?
+  "Whether `slug` can name a data app directory and API route."
+  [slug]
+  (and (string? slug)
+       (re-matches slug-pattern slug)
+       (not (contains? reserved-slugs slug))))
+
 (defn parse-app-config
   "Parse the bytes of one `data_app.yaml` from the app directory `dir` (e.g.
    `data_apps/sales`) into `{:slug ..., :display_name ..., :description ...,

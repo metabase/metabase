@@ -9,6 +9,23 @@ import { makeApp, setupQuerySyncTests, writeQuery } from "./setup";
 describe("query discovery", () => {
   setupQuerySyncTests();
 
+  it("discovers a direct named definition", async () => {
+    const appRoot = makeApp();
+    writeQuery(
+      appRoot,
+      `export const Orders = defineQuery({ savedQuestionSourceId: 10, source: { type: "table", id: 1 }, limit: 5 });`,
+    );
+
+    await expect(discoverQueries(appRoot)).resolves.toEqual([
+      expect.objectContaining({
+        exportName: "Orders",
+        savedQuestionSourceId: 10,
+        tableId: 1,
+        hash: expect.stringMatching(/^v1:sha256:[a-f0-9]{64}$/),
+      }),
+    ]);
+  });
+
   it("discovers direct named definitions and rejects copied IDs", async () => {
     const appRoot = makeApp();
     writeQuery(

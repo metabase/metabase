@@ -19,7 +19,6 @@ export function getQueryFingerprint(query: Record<string, unknown>) {
   }
 
   const tableId = source.id;
-
   const authoredDsl: Record<string, unknown> = {
     ...query,
     source: { type: "table" },
@@ -34,7 +33,7 @@ export function getQueryFingerprint(query: Record<string, unknown>) {
   return { tableId, hash: `v1:sha256:${hash}` };
 }
 
-/** Serializes a resolved query while normalizing generated Lib UUIDs. */
+/** Serializes a resolved query while removing generated Lib UUIDs. */
 export function getCanonicalQueryJson(value: unknown): string {
   const canonical = canonicalize(value);
   const generatedIds = new Map<string, number>();
@@ -47,7 +46,6 @@ export function getCanonicalQueryJson(value: unknown): string {
     ) {
       generatedIds.set(item, generatedIds.size);
     }
-
     return item;
   });
 
@@ -55,10 +53,8 @@ export function getCanonicalQueryJson(value: unknown): string {
     if (key === "lib/uuid") {
       return undefined;
     }
-
     const generatedId =
       typeof item === "string" ? generatedIds.get(item) : undefined;
-
     return generatedId === undefined
       ? item
       : `generated-query-id:${generatedId}`;
@@ -103,7 +99,15 @@ function canonicalize(value: unknown, seen = new Set<object>()): unknown {
     ? value.map((item) => canonicalize(item, seen))
     : Object.fromEntries(
         Object.entries(value)
-          .sort(([first], [second]) => first.localeCompare(second))
+          .sort(([first], [second]) => {
+            if (first < second) {
+              return -1;
+            }
+            if (first > second) {
+              return 1;
+            }
+            return 0;
+          })
           .map(([key, item]) => [key, canonicalize(item, seen)]),
       );
 

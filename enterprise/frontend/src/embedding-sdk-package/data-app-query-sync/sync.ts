@@ -64,7 +64,7 @@ export async function syncQueries({
   const previousEntries = readQueryLockfile(appRoot);
   const client = new MetabaseClient(metabaseUrl, apiKey);
   const slug = path.basename(appRoot);
-  const app = await client.prepareQuerySync(slug);
+  const app = await client.ensureDraft(slug);
   if (!isPositiveInteger(app.resource_collection_id)) {
     throw new Error(`Data app ${slug} does not have a resource collection.`);
   }
@@ -79,5 +79,5 @@ export async function syncQueries({
     log,
   });
 
-  await client.reconcileQuerySyncPermissions(slug, databaseIds);
+  await client.reconcilePermissions(slug, databaseIds);
 }
