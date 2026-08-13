@@ -454,9 +454,12 @@
                                             :view_count 0}]
     (let [candidate (first (metric-observations
                             {:card-ids (hash-set card-id)}))]
-      (is (= :count (first (:aggregation candidate))))
-      (is (seq (get-in candidate [:definition :stages 0 :filters])))
-      (is (nil? (:temporal-breakout candidate))))))
+      (is (=? {:aggregation-type :count
+               :has-filters? true
+               :temporal-breakout nil}
+              {:aggregation-type (first (:aggregation candidate))
+               :has-filters? (boolean (seq (get-in candidate [:definition :stages 0 :filters])))
+               :temporal-breakout (:temporal-breakout candidate)})))))
 
 (deftest candidate-metrics-aggregate-curation-and-use-best-source-for-naming-test
   (mt/with-temp [:model/Collection {official-collection-id :id} {:authority_level "official"}
@@ -478,14 +481,16 @@
     (let [candidate (first (metric-observations
                             {:card-ids (hash-set official-id verified-id)
                              :min-view-count 10}))]
-      (is (= "Verified metric name" (:suggested-name candidate)))
-      (is (= "Verified metric description" (:suggested-description candidate)))
-      (is (= {:distinct-source-count 2
-              :verified-source-count 1
-              :official-source-count 1
-              :popular-source-count 1
-              :total-view-count 100}
-             (dissoc (:evidence candidate) :source-items))))))
+      (is (=? {:suggested-name "Verified metric name"
+               :suggested-description "Verified metric description"
+               :evidence {:distinct-source-count 2
+                          :verified-source-count 1
+                          :official-source-count 1
+                          :popular-source-count 1
+                          :total-view-count 100}}
+              (-> candidate
+                  (select-keys [:suggested-name :suggested-description :evidence])
+                  (update :evidence dissoc :source-items)))))))
 
 (deftest candidate-metrics-keep-direct-joins-and-report-all-required-tables-test
   (mt/with-temp [:model/Card {card-id :id} {:name "Joined revenue"
@@ -494,10 +499,12 @@
                                             :view_count 0}]
     (let [candidate (first (metric-observations
                             {:card-ids (hash-set card-id)}))]
-      (is (= #{(mt/id :orders) (mt/id :products)}
-             (into #{} (map :id) (:required-tables candidate))))
-      (is (seq (get-in candidate [:definition :stages 0 :joins])))
-      (is (true? (get-in candidate [:evidence :source-items 0 :joined?]))))))
+      (is (=? {:required-table-ids [(mt/id :orders) (mt/id :products)]
+               :has-joins? true
+               :joined? true}
+              {:required-table-ids (mapv :id (:required-tables candidate))
+               :has-joins? (boolean (seq (get-in candidate [:definition :stages 0 :joins])))
+               :joined? (get-in candidate [:evidence :source-items 0 :joined?])})))))
 
 (deftest candidate-metrics-report-implicitly-joined-required-tables-test
   (mt/with-temp [:model/Card {card-id :id} {:name "Implicitly joined revenue"
@@ -506,9 +513,10 @@
                                             :view_count 0}]
     (let [candidate (first (metric-observations
                             {:card-ids (hash-set card-id)}))]
-      (is (= #{(mt/id :orders) (mt/id :products)}
-             (into #{} (map :id) (:required-tables candidate))))
-      (is (true? (get-in candidate [:evidence :source-items 0 :joined?]))))))
+      (is (=? {:required-table-ids [(mt/id :orders) (mt/id :products)]
+               :joined? true}
+              {:required-table-ids (mapv :id (:required-tables candidate))
+               :joined? (get-in candidate [:evidence :source-items 0 :joined?])})))))
 
 (deftest candidate-metrics-keep-direct-expressions-test
   (mt/with-temp [:model/Card {card-id :id} {:name "Adjusted revenue"
@@ -517,9 +525,10 @@
                                             :view_count 0}]
     (let [candidate (first (metric-observations
                             {:card-ids (hash-set card-id)}))]
-      (is (some? candidate))
-      (is (seq (get-in candidate [:definition :stages 0 :expressions])))
-      (is (= [(mt/id :orders)] (mapv :id (:required-tables candidate)))))))
+      (is (=? {:has-expressions? true
+               :required-table-ids [(mt/id :orders)]}
+              {:has-expressions? (boolean (seq (get-in candidate [:definition :stages 0 :expressions])))
+               :required-table-ids (mapv :id (:required-tables candidate))})))))
 
 (deftest candidate-metrics-exclude-measure-shaped-queries-test
   (mt/with-temp [:model/Card {sum-id :id} {:name "Plain sum"
