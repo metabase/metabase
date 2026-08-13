@@ -46,14 +46,14 @@ export class MetabaseClient {
     return body as T;
   }
 
-  prepareQuerySync(slug: string) {
+  ensureDraft(slug: string) {
     return this.request<DataAppMetadata>(
-      `apps/${encodeURIComponent(slug)}/query-sync`,
+      `apps/${encodeURIComponent(slug)}/draft`,
       { method: "POST" },
     );
   }
 
-  reconcileQuerySyncPermissions(slug: string, databaseIds: number[]) {
+  reconcilePermissions(slug: string, databaseIds: number[]) {
     return this.request<DataAppMetadata>(
       `apps/${encodeURIComponent(slug)}/query-sync/permissions`,
       {

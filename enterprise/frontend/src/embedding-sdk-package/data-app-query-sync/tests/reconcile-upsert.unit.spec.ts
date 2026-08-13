@@ -33,7 +33,7 @@ describe("query reconciliation upserts", () => {
           dataset_query: { database: 1, stages: [{ "source-table": 1 }] },
         });
       }
-      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+      if (pathname === `/api/apps/${slug}/draft` && method === "POST") {
         return jsonResponse({
           name: slug,
           resource_collection_id: 20,
@@ -123,7 +123,7 @@ describe("query reconciliation upserts", () => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
       requests.push({ method, pathname });
-      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+      if (pathname === `/api/apps/${slug}/draft` && method === "POST") {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       if (pathname === `/api/apps/${slug}/query` && method === "POST") {
@@ -187,7 +187,7 @@ describe("query reconciliation upserts", () => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
       requests.push({ method, pathname });
-      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+      if (pathname === `/api/apps/${slug}/draft` && method === "POST") {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       if (pathname === `/api/apps/${slug}/query`) {
@@ -243,7 +243,7 @@ describe("query reconciliation upserts", () => {
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
-      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+      if (pathname === `/api/apps/${slug}/draft` && method === "POST") {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       if (pathname === `/api/apps/${slug}/query`) {
@@ -309,7 +309,7 @@ describe("query reconciliation upserts", () => {
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
-      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+      if (pathname === `/api/apps/${slug}/draft` && method === "POST") {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       if (pathname === `/api/apps/${slug}/query` && method === "POST") {

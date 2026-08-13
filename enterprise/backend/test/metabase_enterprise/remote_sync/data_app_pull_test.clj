@@ -19,7 +19,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp)
-
 (defn- import-at!
   "Run `import!` against the source's snapshot at `version`, complete the task (so
   `last-version` advances for the next pull), and return the result."
@@ -58,7 +57,7 @@
     (search.tu/with-index-disabled
       (mt/with-premium-features #{:data-apps-preview}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
-          (mt/with-model-cleanup [:model/DataApp]
+          (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             (let [outcome (pull-outcome! (app-tree "sales" "BUNDLE-V1")
                                          (app-tree "sales" "BUNDLE-V2"))]
               (is (= "pulled" (:kind outcome)) "not reported as skipped")
@@ -69,7 +68,7 @@
     (search.tu/with-index-disabled
       (mt/with-premium-features #{:data-apps-preview}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
-          (mt/with-model-cleanup [:model/DataApp :model/Collection]
+          (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             ;; v1 adds a collection; the data app is byte-for-byte the same as v0.
             (let [app     (app-tree "sales" "BUNDLE")
                   outcome (pull-outcome! app (merge coll-file app))]
@@ -81,7 +80,7 @@
     (search.tu/with-index-disabled
       (mt/with-premium-features #{:data-apps-preview}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
-          (mt/with-model-cleanup [:model/DataApp :model/Collection]
+          (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             ;; v1 adds a collection AND changes the data app's bundle.
             (let [outcome (pull-outcome! (app-tree "ops" "BUNDLE")
                                          (merge coll-file (app-tree "ops" "BUNDLE-V2")))]
