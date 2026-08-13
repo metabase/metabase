@@ -8,30 +8,55 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private per-provider-credential-settings
-  "The settings [[metabase.llm.provider]] reads a connection out of when they are set by an environment variable."
-  [:llm-anthropic-api-key :llm-anthropic-api-base-url
-   :llm-openai-api-key :llm-openai-api-base-url
-   :llm-openrouter-api-key :llm-openrouter-api-base-url
-   :llm-mistral-api-key :llm-mistral-api-base-url
-   :llm-zai-api-key :llm-zai-api-base-url
-   :llm-azure-api-key :llm-azure-api-base-url
-   :llm-azure-model-family :llm-azure-deployment-name
-   :llm-bedrock-access-key-id :llm-bedrock-secret-access-key
-   :llm-bedrock-session-token :llm-bedrock-region
-   :llm-google-service-account-key :llm-google-oauth-access-token
-   :llm-google-project-id :llm-google-location :llm-google-api-base-url])
+(deftest per-provider-settings-write-through-to-the-connection-test
+  (testing (str "The per-provider credential settings are a view over the connection list, so config.yml "
+                "provisioning — which just calls setting/set! — keeps working now that the value lives there")
+    (mt/with-temporary-setting-values [llm-providers []]
+      (setting/set! :llm-anthropic-api-key "sk-ant-config-yml")
+      (is (= [{:key    "anthropic"
+               :type   "anthropic"
+               :name   "Anthropic"
+               :config {:api-key "sk-ant-config-yml"}}]
+             (vec (llm.settings/llm-providers))))
+      (testing "and the getter reads the value back off the connection"
+        (is (= "sk-ant-config-yml" (llm.settings/llm-anthropic-api-key))))
+      (testing "a second setting for the same provider lands on the same connection"
+        (setting/set! :llm-anthropic-api-base-url "https://self-hosted.example")
+        (is (= {:api-key "sk-ant-config-yml" :base-url "https://self-hosted.example"}
+               (:config (first (llm.settings/llm-providers))))))
+      (testing "a blank write clears the field"
+        (setting/set! :llm-anthropic-api-base-url "  ")
+        (is (= {:api-key "sk-ant-config-yml"}
+               (:config (first (llm.settings/llm-providers)))))))))
 
-(deftest per-provider-credential-settings-are-read-only-test
-  (testing (str "These configure a connection only from an environment variable, which is resolved on every read. A "
-                "write lands in the app DB where nothing reads it, so it is rejected rather than silently accepted — "
-                "connections are managed through the /api/llm/providers endpoints.")
-    (doseq [setting-k per-provider-credential-settings]
-      (testing setting-k
-        (is (thrown-with-msg?
-             UnsupportedOperationException
-             #"read-only setting"
-             (setting/set! setting-k "whatever")))))))
+(deftest per-provider-settings-keep-their-validation-test
+  (testing "the registry's field validation runs on writes, the way the settings' old setters validated"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"must start with 'sk-ant-'"
+           (setting/set! :llm-anthropic-api-key "not-an-anthropic-key")))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Invalid Region"
+           (setting/set! :llm-bedrock-region "mars-north-1")))
+      (is (= [] (vec (llm.settings/llm-providers)))))))
+
+(deftest per-provider-settings-read-defaults-and-env-test
+  (testing "with no connection, a setting still resolves its registry default"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (is (= "https://api.anthropic.com" (llm.settings/llm-anthropic-api-base-url)))))
+  (testing "an environment value shadows the stored connection's field"
+    (mt/with-temporary-setting-values [llm-providers [{:key    "anthropic"
+                                                       :type   "anthropic"
+                                                       :name   "Anthropic"
+                                                       :config {:api-key "sk-ant-stored"}}]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
+        (is (= "sk-ant-env" (llm.settings/llm-anthropic-api-key)))
+        (testing "while fields the environment does not supply keep resolving from the connection"
+          (is (= "https://api.anthropic.com" (llm.settings/llm-anthropic-api-base-url)))))))
+  (testing "an environment value resolves even when no connection exists at all"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env-only.example"]
+        (is (= "https://env-only.example" (llm.settings/llm-anthropic-api-base-url)))))))
 
 ;;; ------------------------------------------- llm-anthropic-api-key Tests -------------------------------------------
 

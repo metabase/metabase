@@ -90,6 +90,7 @@ export interface LlmProviderConnection {
   source: LlmProviderSource;
   usable: boolean;
   env_vars: string[];
+  env_fields: string[];
   config: LlmProviderConfig;
 }
 

@@ -41,6 +41,20 @@
                         {:status-code 400
                          :llm-url     url}))))))
 
+(defn- connection-field-getter
+  "Getter for a per-provider credential setting whose value lives on the `llm-providers` connection list.
+  Resolved late: [[metabase.llm.provider]] requires this namespace."
+  [setting-kw]
+  (fn []
+    ((requiring-resolve 'metabase.llm.provider/single-provider-setting-value) setting-kw)))
+
+(defn- connection-field-setter
+  "Setter counterpart of [[connection-field-getter]], writing through to the connection list so `config.yml`
+  provisioning and code that has always written these settings keep working."
+  [setting-kw]
+  (fn [new-value]
+    ((requiring-resolve 'metabase.llm.provider/set-single-provider-setting!) setting-kw new-value)))
+
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
 
 (defsetting llm-anthropic-api-key
@@ -49,8 +63,9 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-anthropic-api-key
-  :setter           :none
-  :doc              "Sets up the Anthropic provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
+  :getter           (connection-field-getter :llm-anthropic-api-key)
+  :setter           (connection-field-setter :llm-anthropic-api-key)
+  :doc              "Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-anthropic-api-key-configured?
   "Whether an Anthropic API key has been configured."
@@ -74,9 +89,10 @@
   :visibility       :settings-manager
   :default          "https://api.anthropic.com"
   :export?          false
-  :setter           :none
+  :getter           (connection-field-getter :llm-anthropic-api-base-url)
+  :setter           (connection-field-setter :llm-anthropic-api-base-url)
   :deprecated-name  :ee-anthropic-api-base-url
-  :doc              "The Anthropic API base URL used by the connection configured from the environment.")
+  :doc              "Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-anthropic-api-version
   (deferred-tru "The Anthropic API version.")
@@ -102,9 +118,10 @@
   :visibility       :settings-manager
   :default          "https://api.openai.com"
   :export?          false
-  :setter           :none
+  :getter           (connection-field-getter :llm-openai-api-base-url)
+  :setter           (connection-field-setter :llm-openai-api-base-url)
   :deprecated-name  :ee-openai-api-base-url
-  :doc              "The OpenAI API base URL used by the connection configured from the environment.")
+  :doc              "Backed by the openai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-openai-api-key
   (deferred-tru "The OpenAI API Key.")
@@ -112,8 +129,9 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-openai-api-key
-  :setter           :none
-  :doc              "Sets up the OpenAI provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
+  :getter           (connection-field-getter :llm-openai-api-key)
+  :setter           (connection-field-setter :llm-openai-api-key)
+  :doc              "Backed by the openai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 ;;; ------------------------------------------------- OpenRouter ------------------------------------------------
 
@@ -123,9 +141,10 @@
   :visibility       :settings-manager
   :default          "https://openrouter.ai/api"
   :export?          false
-  :setter           :none
+  :getter           (connection-field-getter :llm-openrouter-api-base-url)
+  :setter           (connection-field-setter :llm-openrouter-api-base-url)
   :deprecated-name  :ee-openrouter-api-base-url
-  :doc              "The OpenRouter API base URL used by the connection configured from the environment.")
+  :doc              "Backed by the openrouter connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-openrouter-api-key
   (deferred-tru "The OpenRouter API Key.")
@@ -133,8 +152,9 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-openrouter-api-key
-  :setter           :none
-  :doc              "Sets up the OpenRouter provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
+  :getter           (connection-field-getter :llm-openrouter-api-key)
+  :setter           (connection-field-setter :llm-openrouter-api-key)
+  :doc              "Backed by the openrouter connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 ;;; --------------------------------------------------- Z.AI ----------------------------------------------------
 
@@ -144,8 +164,9 @@
   :visibility :settings-manager
   :default    "https://api.z.ai/api/paas/v4"
   :export?    false
-  :setter     :none
-  :doc        "The Z.AI API base URL used by the connection configured from the environment.")
+  :getter     (connection-field-getter :llm-zai-api-base-url)
+  :setter     (connection-field-setter :llm-zai-api-base-url)
+  :doc        "Backed by the zai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-zai-api-key
   (deferred-tru "The Z.AI API Key.")
@@ -154,8 +175,9 @@
   :sensitive? true
   :visibility :settings-manager
   :export?    false
-  :setter     :none
-  :doc        "Sets up the Z.AI provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
+  :getter     (connection-field-getter :llm-zai-api-key)
+  :setter     (connection-field-setter :llm-zai-api-key)
+  :doc        "Backed by the zai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 ;;; -------------------------------------------------- Mistral ---------------------------------------------------
 
@@ -165,16 +187,18 @@
   :visibility :settings-manager
   :default    "https://api.mistral.ai/v1"
   :export?    false
-  :setter     :none
-  :doc        "The Mistral API base URL used by the connection configured from the environment.")
+  :getter     (connection-field-getter :llm-mistral-api-base-url)
+  :setter     (connection-field-setter :llm-mistral-api-base-url)
+  :doc        "Backed by the mistral connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-mistral-api-key
   (deferred-tru "The Mistral API Key.")
   :sensitive? true
   :visibility :settings-manager
   :export?    false
-  :setter     :none
-  :doc        "Sets up the Mistral provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
+  :getter     (connection-field-getter :llm-mistral-api-key)
+  :setter     (connection-field-setter :llm-mistral-api-key)
+  :doc        "Backed by the mistral connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 ;;; ------------------------------------------------- Moonshot --------------------------------------------------
 
@@ -184,16 +208,18 @@
   :visibility :settings-manager
   :default    "https://api.moonshot.ai/v1"
   :export?    false
-  :setter     :none
-  :doc        "The Moonshot AI API base URL used by the connection configured from the environment.")
+  :getter     (connection-field-getter :llm-moonshot-api-base-url)
+  :setter     (connection-field-setter :llm-moonshot-api-base-url)
+  :doc        "Backed by the moonshot connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-moonshot-api-key
   (deferred-tru "The Moonshot AI API Key.")
   :sensitive? true
   :visibility :settings-manager
   :export?    false
-  :setter     :none
-  :doc        "Sets up the Moonshot AI provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
+  :getter     (connection-field-getter :llm-moonshot-api-key)
+  :setter     (connection-field-setter :llm-moonshot-api-key)
+  :doc        "Backed by the moonshot connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 ;;; ------------------------------------ Google Gemini Enterprise Agent Platform --------------------------------
 ;;; The Gemini Enterprise Agent Platform (formerly Vertex AI). Every request applies to one Google Cloud project. The
@@ -204,16 +230,18 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :setter      :none
-  :doc         "Sets up the Gemini Enterprise Agent Platform provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
+  :getter      (connection-field-getter :llm-google-service-account-key)
+  :setter      (connection-field-setter :llm-google-service-account-key)
+  :doc         "Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-google-oauth-access-token
   (deferred-tru "A short-lived OAuth2 access token for the Gemini Enterprise Agent Platform (e.g. from `gcloud auth print-access-token`). Useful for testing.")
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :setter      :none
-  :doc         "The OAuth2 access token used by the Gemini Enterprise Agent Platform connection configured from the environment, when it carries no service account key.")
+  :getter      (connection-field-getter :llm-google-oauth-access-token)
+  :setter      (connection-field-setter :llm-google-oauth-access-token)
+  :doc         "Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (def ^:private google-project-id-pattern
   "Matches a Google Cloud project ID: 6 to 30 characters of lowercase letters, digits and hyphens, starting with a
@@ -250,16 +278,18 @@
   :encryption  :no
   :visibility  :settings-manager
   :export?     false
-  :setter      :none
-  :doc         "The Google Cloud project used by the Gemini Enterprise Agent Platform connection configured from the environment.")
+  :getter      (connection-field-getter :llm-google-project-id)
+  :setter      (connection-field-setter :llm-google-project-id)
+  :doc         "Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-google-location
   (deferred-tru "The Google Cloud location for the Gemini Enterprise Agent Platform (e.g. us-central1). Defaults to global.")
   :encryption  :no
   :visibility  :settings-manager
   :export?     false
-  :setter      :none
-  :doc         "The Google Cloud location used by the Gemini Enterprise Agent Platform connection configured from the environment.")
+  :getter      (connection-field-getter :llm-google-location)
+  :setter      (connection-field-setter :llm-google-location)
+  :doc         "Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (def google-global-api-base-url
   "Google's global Gemini Enterprise Agent Platform host, and the default for [[llm-google-api-base-url]].
@@ -273,8 +303,9 @@
   :visibility  :settings-manager
   :default     google-global-api-base-url
   :export?     false
-  :setter      :none
-  :doc         "The Gemini Enterprise Agent Platform API base URL used by the connection configured from the environment.")
+  :getter      (connection-field-getter :llm-google-api-base-url)
+  :setter      (connection-field-setter :llm-google-api-base-url)
+  :doc         "Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
@@ -283,24 +314,27 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :setter      :none
-  :doc         "Sets up the Amazon Bedrock provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
+  :getter      (connection-field-getter :llm-bedrock-access-key-id)
+  :setter      (connection-field-setter :llm-bedrock-access-key-id)
+  :doc         "Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-bedrock-secret-access-key
   (deferred-tru "The AWS Secret Access Key for Amazon Bedrock.")
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :setter      :none
-  :doc         "The AWS secret access key used by the Amazon Bedrock connection configured from the environment.")
+  :getter      (connection-field-getter :llm-bedrock-secret-access-key)
+  :setter      (connection-field-setter :llm-bedrock-secret-access-key)
+  :doc         "Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-bedrock-session-token
   (deferred-tru "The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials.")
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :setter      :none
-  :doc         "The AWS session token used by the Amazon Bedrock connection configured from the environment. Only needed for temporary credentials.")
+  :getter      (connection-field-getter :llm-bedrock-session-token)
+  :setter      (connection-field-setter :llm-bedrock-session-token)
+  :doc         "Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-bedrock-region
   (deferred-tru "The AWS region for Amazon Bedrock (e.g. us-east-1).")
@@ -308,8 +342,9 @@
   :visibility  :settings-manager
   :default     "us-east-1"
   :export?     false
-  :setter      :none
-  :doc         "The AWS region used by the Amazon Bedrock connection configured from the environment.")
+  :getter      (connection-field-getter :llm-bedrock-region)
+  :setter      (connection-field-setter :llm-bedrock-region)
+  :doc         "Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 ;;; ----------------------------------------------- Microsoft Azure ---------------------------------------------
 
@@ -319,32 +354,36 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :setter      :none
-  :doc         "Sets up the Azure provider connection from the environment. A connection configured this way is read-only in the UI and takes precedence over a stored connection with the same key; connections are otherwise managed on the admin AI settings page.")
+  :getter      (connection-field-getter :llm-azure-api-key)
+  :setter      (connection-field-setter :llm-azure-api-key)
+  :doc         "Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-azure-api-base-url
   (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.")
   :encryption  :no
   :visibility  :settings-manager
   :export?     false
-  :setter      :none
-  :doc         "The Azure API base URL used by the connection configured from the environment.")
+  :getter      (connection-field-getter :llm-azure-api-base-url)
+  :setter      (connection-field-setter :llm-azure-api-base-url)
+  :doc         "Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-azure-model-family
   (deferred-tru "Whether the Azure deployment configured from the environment serves an `openai` or an `anthropic` model. Defaults to `openai`.")
   :encryption :no
   :visibility :settings-manager
   :export?    false
-  :setter     :none
-  :doc        "The wire protocol the Azure deployment speaks, `openai` or `anthropic`. Only read when the Azure connection is configured from the environment.")
+  :getter     (connection-field-getter :llm-azure-model-family)
+  :setter     (connection-field-setter :llm-azure-model-family)
+  :doc        "Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 (defsetting llm-azure-deployment-name
   (deferred-tru "The name of the model deployment served by the Azure connection configured from the environment.")
   :encryption :no
   :visibility :settings-manager
   :export?    false
-  :setter     :none
-  :doc        "The deployment the Azure connection configured from the environment serves. Azure's listing endpoint returns the regional catalog rather than your deployments, so there is nothing to discover and the deployment has to be named. Optional: an instance that already names its deployment in `MB_LLM_METABOT_PROVIDER` (`azure/<family>/<deployment>`) keeps working without it, but setting it is what lets the deployment be picked from the model dropdown.")
+  :getter     (connection-field-getter :llm-azure-deployment-name)
+  :setter     (connection-field-setter :llm-azure-deployment-name)
+  :doc        "Backed by the azure connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
 ;;; ---------------------------------------------- Provider connections ------------------------------------------
 

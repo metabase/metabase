@@ -260,42 +260,63 @@
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key      "sk-ant-env"
                                     mb-llm-anthropic-api-base-url "https://env.example.com"]
-        (is (= [{:key      "anthropic"
-                 :type     "anthropic"
-                 :name     "Anthropic"
-                 :source   :env
-                 :env-vars #{"MB_LLM_ANTHROPIC_API_KEY" "MB_LLM_ANTHROPIC_API_BASE_URL"}
-                 :config   {:api-key "sk-ant-env" :base-url "https://env.example.com"}}]
+        (is (= [{:key        "anthropic"
+                 :type       "anthropic"
+                 :name       "Anthropic"
+                 :source     :env
+                 :env-vars   #{"MB_LLM_ANTHROPIC_API_KEY" "MB_LLM_ANTHROPIC_API_BASE_URL"}
+                 :env-fields #{:api-key :base-url}
+                 :config     {:api-key "sk-ant-env" :base-url "https://env.example.com"}}]
                (llm.provider/connections))))))
+  (testing "a variable that is not a credential shadows but does not create: alone it makes no connection"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (is (= [] (llm.provider/connections))))))
   (testing "stored and env-derived connections are merged, stored first"
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
       (mt/with-temp-env-var-value! [mb-llm-openai-api-key "sk-env"]
         (is (= [["anthropic" :db] ["openai" :env]]
                (map (juxt :key :source) (llm.provider/connections)))))))
-  (testing "the environment wins over a stored connection with the same key, replacing it in place rather than adding a duplicate"
-    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+  (testing "the environment shadows a stored connection with the same key field by field, not wholesale"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key  "sk-ant-db"
+                                                                   :base-url "https://stored.example.com"})]]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
-        (is (= [{:key      "anthropic"
-                 :type     "anthropic"
-                 :name     "Anthropic"
-                 :config   {:api-key "sk-ant-env" :base-url "https://api.anthropic.com"}
-                 :env-vars #{"MB_LLM_ANTHROPIC_API_KEY"}
-                 :source   :env}]
+        (is (= [{:key        "anthropic"
+                 :type       "anthropic"
+                 :name       "anthropic"
+                 ;; the env key wins; the stored base URL survives, so a lone base-url var can equally reach a
+                 ;; stored connection instead of doing nothing
+                 :config     {:api-key "sk-ant-env" :base-url "https://stored.example.com"}
+                 :env-vars   #{"MB_LLM_ANTHROPIC_API_KEY"}
+                 :env-fields #{:api-key}
+                 :source     :db}]
                (llm.provider/connections))))))
+  (testing "a lone base-url variable reaches the stored connection's base URL"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (is (= {:api-key "sk-ant-db" :base-url "https://env.example.com"}
+               (llm.provider/credentials "anthropic"))))))
+  (testing "a metabase/ reference pinned by the environment synthesizes the managed connection it names"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temp-env-var-value! [mb-llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
+        (is (=? [{:key "metabase" :type "metabase" :source :env}]
+                (llm.provider/connections)))
+        (is (=? {:connection-key "metabase" :type "anthropic" :ai-proxy? true}
+                (llm.provider/resolve-model-ref "metabase/anthropic/claude-sonnet-4-6"))))))
   (testing "the whole stored list is read-only when it comes from the environment"
     (mt/with-temp-env-var-value! [mb-llm-providers "[{\"key\":\"anthropic\",\"type\":\"anthropic\",\"name\":\"Anthropic\",\"config\":{\"api-key\":\"sk-ant-env\"}}]"]
       (is (= [["anthropic" :env]]
              (map (juxt :key :source) (llm.provider/connections)))))))
 
 (deftest stored-connections-keeps-a-connection-the-environment-shadows-test
-  (testing (str "A stored connection an env var shadows is missing from [[connections]], so writes rebuild the list "
-                "from here instead — otherwise saving any other connection would delete its credentials, and "
-                "removing the env var would not bring them back.")
+  (testing (str "The stored list keeps the credentials the environment shadows, so writes rebuild from here and "
+                "removing the env var brings the stored value back.")
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
         (is (= [{:key "anthropic" :type "anthropic" :name "anthropic" :config {:api-key "sk-ant-db"}}]
                (llm.provider/stored-connections)))
-        (is (= [:env] (map :source (llm.provider/connections))))))))
+        (is (= "sk-ant-env" (:api-key (llm.provider/credentials "anthropic"))))))))
 
 (deftest connection-lookup-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-db"})

@@ -341,6 +341,12 @@
     (when-let [problem (and value validate (validate value))]
       (throw (ex-info (str problem) {:status-code 400 :field key})))))
 
+(defn- validate-config-field!
+  "Run [[validate-field!]]'s checks for the single field `field-key` of `type-name` against `config`."
+  [type-name field-key config]
+  (when-let [field (u/find-first-map (:fields (provider-type type-name)) [:key] field-key)]
+    (validate-field! type-name field config)))
+
 (defn- validate-required-any!
   "Throw a 400 unless `config` satisfies one of `type-name`'s `:required-any` credential groups — for Google, a
   service account key on its own or an OAuth token together with a project ID."
@@ -404,6 +410,11 @@
 
 ;;; ---------------------------------------- Connections configured by env var ------------------------------------
 
+(def managed-connection-key
+  "The connection key reserved for the Metabase-managed provider. Requests for it are routed through the LLM proxy
+  and authenticated with the instance token."
+  "metabase")
+
 (def ^:private single-provider-settings
   "The per-type credential settings, keyed by the connection they configure.
 
@@ -436,8 +447,10 @@
                             :location            {:setting :llm-google-location}
                             :base-url            {:setting :llm-google-api-base-url}}}
    "azure"      {:type     "azure"
+                 ;; the base URL is not a credential: on its own it can shadow a stored connection's field, but it
+                 ;; must not bring a standalone — and unusable — connection into existence
                  :settings {:api-key         {:setting :llm-azure-api-key :credential? true}
-                            :base-url        {:setting :llm-azure-api-base-url :credential? true}
+                            :base-url        {:setting :llm-azure-api-base-url}
                             :model-family    {:setting :llm-azure-model-family}
                             :deployment-name {:setting :llm-azure-deployment-name}}}
    "bedrock"    {:type     "bedrock"
@@ -446,41 +459,45 @@
                             :session-token     {:setting :llm-bedrock-session-token}
                             :region            {:setting :llm-bedrock-region}}}})
 
-(defn- single-provider-setting-values
-  [settings value-fn]
-  (into {}
-        (keep (fn [[config-key {:keys [setting]}]]
-                (when-let [value (u/trimmed-string (value-fn setting))]
-                  [config-key value])))
-        settings))
+(defn- env-supplied-fields
+  "The `:config` fields the environment supplies for one [[single-provider-settings]] group:
+  `{:config {field value} :vars {field \"MB_...\"} :credential-set? bool}`."
+  [{:keys [settings]}]
+  (reduce-kv
+   (fn [acc config-key {:keys [setting credential?]}]
+     (if-some [value (u/trimmed-string (setting/env-var-value setting))]
+       (cond-> (-> acc
+                   (assoc-in [:config config-key] value)
+                   (assoc-in [:vars config-key] (setting/env-var-name setting)))
+         credential? (assoc :credential-set? true))
+       acc))
+   {:config {} :vars {}}
+   settings))
 
-(defn- env-configured-connection
-  [conn-key {:keys [type settings]}]
-  (let [env-set? (fn [config-key]
-                   (some? (setting/env-var-value (get-in settings [config-key :setting]))))]
-    (when (some (fn [[config-key {:keys [credential?]}]]
-                  (and credential? (env-set? config-key)))
-                settings)
-      {:key      conn-key
-       :type     type
-       :name     (str (:label (provider-type type)))
-       :source   :env
-       :env-vars (into (sorted-set)
-                       (keep (fn [[config-key {:keys [setting]}]]
-                               (when (env-set? config-key)
-                                 (setting/env-var-name setting))))
-                       settings)
-       :config   (single-provider-setting-values settings #(setting/get-value-of-type :string %))})))
-
-(defn- env-connections
-  "Connections configured by the single-provider `MB_LLM_*` environment variables.
-
-  Resolved on every read, so editing one of those variables takes effect on the next restart without anything
-  having to be migrated or re-saved."
+(defn- env-overlays
+  "The environment's contribution to each connection key, resolved on every read so editing a variable takes effect
+  on the next restart without anything having to be migrated or re-saved."
   []
-  (into []
-        (keep (fn [[conn-key spec]] (env-configured-connection conn-key spec)))
+  (into {}
+        (keep (fn [[conn-key spec]]
+                (let [{:keys [config] :as supplied} (env-supplied-fields spec)]
+                  (when (seq config)
+                    [conn-key (assoc supplied :type (:type spec))]))))
         single-provider-settings))
+
+(defn- env-managed-connection
+  "The managed connection `MB_LLM_METABOT_PROVIDER` demands: a `metabase/...` reference pinned by the environment
+  has to resolve even though the managed connection holds no credentials a variable could supply."
+  []
+  (when (some-> (setting/env-var-value :llm-metabot-provider)
+                (str/starts-with? (str managed-connection-key "/")))
+    {:key        managed-connection-key
+     :type       managed-connection-key
+     :name       (str (:label (provider-type managed-connection-key)))
+     :source     :env
+     :env-vars   (sorted-set (setting/env-var-name :llm-metabot-provider))
+     :env-fields #{}
+     :config     {}}))
 
 ;;; --------------------------------------------------- Connections -------------------------------------------------
 
@@ -505,18 +522,44 @@
   "Every connection this instance can use, in admin-facing order.
 
   Connections stored in [[llm-providers]] come first, then any synthesized from the single-provider environment
-  variables. Each carries a `:source` of `:db` or `:env`; `:env` connections are read-only, because a write to an
-  env-shadowed setting would be silently ignored on the next read.
+  variables. On a key collision the environment shadows the stored connection *field by field*, the way an env var
+  shadows any other setting: a lone `MB_LLM_ANTHROPIC_API_BASE_URL` reaches the stored connection's base URL
+  instead of doing nothing, and everything the environment does not supply stays editable. `:env-fields` names the
+  config keys the environment owns, and `:env-vars` the variables supplying them, so the form can disable exactly
+  those inputs.
 
-  On a key collision the environment wins and replaces the stored connection in place, matching how the settings
-  system resolves an env var over an app-DB value. Letting the stored one win would mean an admin edit silently
-  shadowed the environment while the credentials in use came from somewhere the UI never showed."
+  A standalone `:env` connection is synthesized only when a variable marked `:credential?` is set — credentials are
+  what bring a connection into existence; a base URL alone shadows but does not create. The managed connection is
+  synthesized whenever `MB_LLM_METABOT_PROVIDER` pins a `metabase/...` reference, so that reference resolves."
   []
-  (let [from-env (env-connections)
-        by-key   (into {} (map (juxt :key identity)) from-env)
-        stored   (map (fn [conn] (get by-key (:key conn) conn)) (annotated-stored-connections))
-        taken    (into #{} (map :key) stored)]
-    (into (vec stored) (remove #(contains? taken (:key %)) from-env))))
+  (let [overlays   (env-overlays)
+        overlaid   (mapv (fn [{conn-key :key :keys [type] :as conn}]
+                           (let [{env-config :config vars :vars :as overlay} (get overlays conn-key)]
+                             ;; only a same-typed overlay applies: the fields describe this provider type's config
+                             (if (and overlay (= type (:type overlay)))
+                               (-> conn
+                                   (update :config merge env-config)
+                                   (update :env-vars (fnil into (sorted-set)) (vals vars))
+                                   (assoc :env-fields (set (keys env-config))))
+                               conn)))
+                         (annotated-stored-connections))
+        taken      (into #{} (map :key) overlaid)
+        standalone (into []
+                         (keep (fn [[conn-key {:keys [type config vars credential-set?]}]]
+                                 (when (and credential-set? (not (contains? taken conn-key)))
+                                   {:key        conn-key
+                                    :type       type
+                                    :name       (str (:label (provider-type type)))
+                                    :source     :env
+                                    :env-vars   (into (sorted-set) (vals vars))
+                                    :env-fields (set (keys config))
+                                    :config     config})))
+                         overlays)
+        managed    (env-managed-connection)
+        all        (into overlaid standalone)]
+    (cond-> all
+      (and managed (not-any? #(= (:key managed) (:key %)) all))
+      (conj managed))))
 
 (defn connection
   "The connection identified by `conn-key`, or nil."
@@ -536,9 +579,9 @@
      (config-complete? type config))))
 
 (defn set-connections!
-  "Persist `conns` as the stored connection list, dropping the derived `:source` key."
+  "Persist `conns` as the stored connection list, dropping the derived annotation keys."
   [conns]
-  (llm.settings/llm-providers! (mapv #(dissoc % :source) conns)))
+  (llm.settings/llm-providers! (mapv #(dissoc % :source :env-vars :env-fields) conns)))
 
 ;;; --------------------------------------------------- Slugs ------------------------------------------------------
 
@@ -565,11 +608,6 @@
                      (map #(str base "-" %) (iterate inc 2)))))))
 
 ;;; ----------------------------------------------- Model references ------------------------------------------------
-
-(def managed-connection-key
-  "The connection key reserved for the Metabase-managed provider. Requests for it are routed through the LLM proxy
-  and authenticated with the instance token."
-  "metabase")
 
 (defn managed-model-ref?
   "Whether `model-ref` names the Metabase-managed connection."
@@ -631,19 +669,80 @@
          :credentials    (with-field-defaults type config)
          :ai-proxy?      false}))))
 
+;;; ------------------------------------------- Per-provider settings ----------------------------------------------
+
+(def ^:private setting->connection-field
+  "Which connection field each per-provider credential setting configures: setting keyword -> [conn-key field]."
+  (into {}
+        (mapcat (fn [[conn-key {:keys [settings]}]]
+                  (map (fn [[field {:keys [setting]}]] [setting [conn-key field]]) settings)))
+        single-provider-settings))
+
+(defn single-provider-setting-value
+  "What the per-provider credential setting `setting-kw` resolves to: the field on the connection its settings group
+  configures — environment overlay and registry defaults included — or the environment value and registry default
+  alone when no such connection exists.
+
+  Backs those settings' getters, so code that has always read e.g. `llm-anthropic-api-key` keeps working now that
+  the value lives on the connection list."
+  [setting-kw]
+  (let [[conn-key field] (get setting->connection-field setting-kw)
+        group-type       (:type (get single-provider-settings conn-key))
+        {:keys [type config]} (connection conn-key)]
+    (if (= type group-type)
+      (get (with-field-defaults type config) field)
+      (or (u/trimmed-string (setting/env-var-value setting-kw))
+          (get (with-field-defaults group-type {}) field)))))
+
+(defn set-single-provider-setting!
+  "Write `new-value` for the per-provider credential setting `setting-kw` into the connection its settings group
+  configures, creating the connection when a non-blank value arrives for one that does not exist yet; blank clears
+  the field. Values are checked against the field's own registry validation, the way the settings' old setters did.
+
+  Backs those settings' setters, so `config.yml` provisioning and code that has always written the setting keep
+  working now that the value lives on the connection list."
+  [setting-kw new-value]
+  (let [[conn-key field] (get setting->connection-field setting-kw)
+        group-type       (:type (get single-provider-settings conn-key))
+        value            (u/trimmed-string new-value)
+        stored           (stored-connections)
+        idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))]
+    ;; a client echoing back the mask [[metabase.settings.core/obfuscate-value]] handed it is not entering a new
+    ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings
+    (when-not (setting/obfuscated-value? value)
+      (when value
+        (validate-config-field! group-type field {field value}))
+      (cond
+        idx   (set-connections! (update-in stored [idx :config]
+                                           (fn [config]
+                                             (if value (assoc config field value) (dissoc config field)))))
+        value (set-connections! (conj stored {:key    conn-key
+                                              :type   group-type
+                                              :name   (str (:label (provider-type group-type)))
+                                              :config {field value}}))))))
+
 ;;; -------------------------------------------------- Redaction ----------------------------------------------------
+
+(defn- secret-or-unknown-field-keys
+  "The config keys to treat as secret for `type-name`, given `config`: the registry's secret fields, or — for a
+  type the registry does not know, which a hand-written `llm-providers` can hold — every key, because nothing says
+  which of them are credentials."
+  [type-name config]
+  (if (provider-type type-name)
+    (secret-field-keys type-name)
+    (set (keys config))))
 
 (defn redact
   "Mask a connection's secret fields so it can be returned over the API."
-  [{:keys [type] :as conn}]
+  [{:keys [type config] :as conn}]
   (update conn :config
-          (fn [config]
-            (reduce (fn [config field-key]
-                      (cond-> config
-                        (u/trimmed-string (get config field-key))
+          (fn [config']
+            (reduce (fn [config' field-key]
+                      (cond-> config'
+                        (u/trimmed-string (get config' field-key))
                         (update field-key setting/obfuscate-value)))
-                    (or config {})
-                    (secret-field-keys type)))))
+                    (or config' {})
+                    (secret-or-unknown-field-keys type config)))))
 
 (defn merge-config
   "Layer a client-supplied `config` over the `existing` one, keeping the stored secret whenever the client echoed
@@ -654,4 +753,4 @@
               (setting/obfuscated-value? (get config field-key))
               (assoc field-key (get existing field-key))))
           (merge existing config)
-          (secret-field-keys type-name)))
+          (secret-or-unknown-field-keys type-name existing)))

@@ -5,6 +5,7 @@ import {
   setupCreateLlmProviderEndpoint,
   setupUpdateLlmProviderEndpoint,
 } from "__support__/server-mocks/metabot";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { LlmProviderConnection } from "metabase-types/api";
 import {
@@ -163,7 +164,10 @@ const GOOGLE_TYPE = createMockLlmProviderType({
   ],
 });
 
-const setupGoogle = (connection?: LlmProviderConnection) => {
+const setupGoogle = (
+  connection?: LlmProviderConnection,
+  { modelRef }: { modelRef?: string } = {},
+) => {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
   setupCreateLlmProviderEndpoint();
@@ -176,6 +180,11 @@ const setupGoogle = (connection?: LlmProviderConnection) => {
       connection={connection}
       onSaved={onSaved}
     />,
+    {
+      storeInitialState: {
+        settings: mockSettings({ "llm-metabot-provider": modelRef ?? null }),
+      },
+    },
   );
 
   return { onSaved };
@@ -324,5 +333,46 @@ describe("ProviderConnectionForm with fields behind a choice", () => {
       config: { "service-account-key": key },
       model: "google/gemini-3.6-flash",
     });
+  });
+});
+
+describe("ProviderConnectionForm editing a fixed-catalog connection", () => {
+  it("starts the model picker on the model the connection is serving, not the type default", async () => {
+    setupGoogle(
+      createMockLlmProviderConnection({
+        key: "google",
+        type: "google",
+        name: "Google Gemini Enterprise",
+        config: {
+          "auth-method": "oauth-token",
+          "oauth-access-token": "**********en",
+          "project-id": "my-project",
+        },
+      }),
+      { modelRef: "google/google/gemini-3.6-flash" },
+    );
+
+    expect(await screen.findByLabelText("Model")).toHaveValue(
+      "gemini-3.6-flash",
+    );
+  });
+
+  it("disables the fields the environment owns and leaves the rest editable", async () => {
+    setupGoogle(
+      createMockLlmProviderConnection({
+        key: "google",
+        type: "google",
+        name: "Google Gemini Enterprise",
+        env_fields: ["project-id"],
+        config: {
+          "auth-method": "oauth-token",
+          "oauth-access-token": "**********en",
+          "project-id": "env-project",
+        },
+      }),
+    );
+
+    expect(await screen.findByLabelText("Project ID")).toBeDisabled();
+    expect(screen.getByLabelText("OAuth access token")).toBeEnabled();
   });
 });

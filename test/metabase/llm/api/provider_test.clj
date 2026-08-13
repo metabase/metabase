@@ -5,6 +5,7 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -134,34 +135,51 @@
                                                                  :base-url "https://api.anthropic.com"})
                                                     (connection "openai" "openai" {:api-key ""})]]
     (testing "secrets come back masked and non-secret fields come back as they are"
-      (is (= [{:key      "anthropic"
-               :type     "anthropic"
-               :name     "anthropic"
-               :source   "db"
-               :usable   true
-               :env_vars []
-               :config   {:api-key "**********et" :base-url "https://api.anthropic.com"}}
-              {:key      "openai"
-               :type     "openai"
-               :name     "openai"
-               :source   "db"
-               :usable   false
-               :env_vars []
-               :config   {:api-key ""}}]
+      (is (= [{:key        "anthropic"
+               :type       "anthropic"
+               :name       "anthropic"
+               :source     "db"
+               :usable     true
+               :env_vars   []
+               :env_fields []
+               :config     {:api-key "**********et" :base-url "https://api.anthropic.com"}}
+              {:key        "openai"
+               :type       "openai"
+               :name       "openai"
+               :source     "db"
+               :usable     false
+               :env_vars   []
+               :env_fields []
+               :config     {:api-key ""}}]
              (mt/user-http-request :crowberto :get 200 "llm/providers"))))))
 
 (deftest list-providers-marks-env-connections-test
   (testing "a connection synthesized from the single-provider environment variables is reported as read-only"
     (mt/with-temporary-setting-values [llm-providers []]
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
-        (is (= [{:key      "anthropic"
-                 :type     "anthropic"
-                 :name     "Anthropic"
-                 :source   "env"
-                 :usable   true
-                 :env_vars ["MB_LLM_ANTHROPIC_API_KEY"]
-                 :config   {:api-key "**********nv" :base-url "https://api.anthropic.com"}}]
+        (is (= [{:key        "anthropic"
+                 :type       "anthropic"
+                 :name       "Anthropic"
+                 :source     "env"
+                 :usable     true
+                 :env_vars   ["MB_LLM_ANTHROPIC_API_KEY"]
+                 :env_fields ["api-key"]
+                 ;; only what the environment supplies: the base URL's registry default is filled in when the
+                 ;; connection is resolved for a request, not stored on it
+                 :config     {:api-key "**********nv"}}]
                (mt/user-http-request :crowberto :get 200 "llm/providers")))))))
+
+(deftest list-providers-marks-env-shadowed-fields-test
+  (testing "a stored connection with an env-shadowed field stays editable, with just that field marked"
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key "sk-ant-stored"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
+        (is (=? [{:key        "anthropic"
+                  :source     "db"
+                  :env_vars   ["MB_LLM_ANTHROPIC_API_BASE_URL"]
+                  :env_fields ["base-url"]
+                  :config     {:api-key "**********ed" :base-url "https://env.example.com"}}]
+                (mt/user-http-request :crowberto :get 200 "llm/providers")))))))
 
 (deftest create-verifies-credentials-before-saving-test
   (mt/with-temporary-setting-values [llm-providers []]
@@ -173,13 +191,14 @@
                                         "credentials are verified before the connection is saved")
                                     {:models [{:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}]})]
         (testing "a created connection defaults its key and name to its provider type"
-          (is (= {:key      "anthropic"
-                  :type     "anthropic"
-                  :name     "Anthropic"
-                  :source   "db"
-                  :usable   true
-                  :env_vars []
-                  :config   {:api-key "**********id"}}
+          (is (= {:key        "anthropic"
+                  :type       "anthropic"
+                  :name       "Anthropic"
+                  :source     "db"
+                  :usable     true
+                  :env_vars   []
+                  :env_fields []
+                  :config     {:api-key "**********id"}}
                  (mt/user-http-request :crowberto :post 200 "llm/providers"
                                        {:type "anthropic" :config {:api-key "sk-ant-valid"}}))))
         (testing "the credentials are verified against the provider exactly once, unmasked and with the
@@ -240,11 +259,24 @@
           (is (= [{:key "anthropic" :type "anthropic" :name "anthropic" :config {:api-key "sk-ant-stored"}}
                   {:key "openai" :type "openai" :name "OpenAI" :config {:api-key "sk-valid"}}]
                  (llm.provider/stored-connections))))
-        (testing "and editing the shadowed key says so rather than 404ing"
+        (testing "and the shadowed connection stays editable, with the env-owned field left alone"
           (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key "sk-ant-env"]
-            (is (=? {:message "The \"anthropic\" connection is configured by environment variables and cannot be changed here."}
-                    (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic"
-                                          {:name "Renamed"})))))))))
+            (is (=? {:name       "Renamed"
+                     :env_fields ["api-key"]
+                     ;; the response reflects what the connection runs on: the env value, masked
+                     :config     {:api-key "**********nv"}}
+                    (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
+                                          {:name   "Renamed"
+                                           ;; the form echoes the mask of the env value for the disabled field;
+                                           ;; it must not replace the stored credential
+                                           :config {:api-key "**********nv"}})))
+            (testing "while the stored credential the environment shadows is untouched"
+              (is (= "sk-ant-stored"
+                     (->> (llm.provider/stored-connections)
+                          (filter #(= "anthropic" (:key %)))
+                          first
+                          :config
+                          :api-key))))))))))
 
 (deftest create-does-not-save-when-credentials-are-rejected-test
   (mt/with-temporary-setting-values [llm-providers []]
@@ -353,6 +385,25 @@
         (is (setting/obfuscated-value? (:service-account-key config)))
         (is (= "my-project" (:project-id config)))))))
 
+(deftest delete-managed-connection-requires-superuser-test
+  (testing (str "removing the managed connection cancels the Store subscription behind it, so settings access via "
+                "advanced permissions is not enough — everything else that can cancel add-ons is superuser-only")
+    (mt/with-premium-features #{:advanced-permissions :metabase-ai-managed}
+      (mt/with-temporary-setting-values [llm-providers      [(connection "metabase" "metabase")
+                                                             (connection "anthropic" "anthropic"
+                                                                         {:api-key "sk-ant-stored"})]
+                                         llm-proxy-base-url "https://proxy.example.com"]
+        (mt/with-user-in-groups [group {:name "Settings managers"}
+                                 user  [group]]
+          (perms/grant-application-permissions! group :setting)
+          (testing "settings access is enough to remove an ordinary connection"
+            (is (nil? (mt/user-http-request user :delete 204 "llm/providers/anthropic"))))
+          (testing "but not the managed one"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request user :delete 403 "llm/providers/metabase"))))
+          (testing "which is still there"
+            (is (some? (llm.provider/connection "metabase")))))))))
+
 (deftest create-managed-connection-skips-credential-verification-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-temporary-setting-values [llm-providers      []
@@ -376,13 +427,14 @@
                                   (is (= {:api-key "sk-ant-stored" :base-url "https://new.example.com"} credentials)
                                       "the stored secret is what gets verified, not the mask")
                                   {:models []})]
-      (is (= {:key      "anthropic"
-              :type     "anthropic"
-              :name     "Anthropic (prod)"
-              :source   "db"
-              :usable   true
-              :env_vars []
-              :config   {:api-key "**********ed" :base-url "https://new.example.com"}}
+      (is (= {:key        "anthropic"
+              :type       "anthropic"
+              :name       "Anthropic (prod)"
+              :source     "db"
+              :usable     true
+              :env_vars   []
+              :env_fields []
+              :config     {:api-key "**********ed" :base-url "https://new.example.com"}}
              (mt/user-http-request :crowberto :put 200 "llm/providers/anthropic"
                                    {:name   "Anthropic (prod)"
                                     :config {:api-key  "**********ed"
@@ -432,6 +484,44 @@
           (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
                                 {:config {:deployment-name "gpt-4.1"}})
           (is (= "azure/openai/gpt-4.1" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest update-follows-the-model-picked-for-a-fixed-catalog-connection-test
+  (testing (str "Google's edit form carries a model pick rather than a probe input, so saving with a different "
+                "model moves the selection when it points at this connection")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:oauth-access-token "ya29.token"
+                                                                     :project-id         "my-project"})]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                {:config {}
+                                 :model  "google/gemini-3.6-flash"})
+          (is (= "google/google/gemini-3.6-flash" (metabot.settings/llm-metabot-provider))))
+        (testing "while a selection on another connection is left alone"
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+            (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                  {:config {}
+                                   :model  "google/gemini-3.6-flash"})
+            (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))))
+
+(deftest ref-writes-leave-an-env-pinned-selection-alone-test
+  (testing (str "MB_LLM_METABOT_PROVIDER pins the selection, so the automatic follow-ups — pointing Metabot at a "
+                "first connection, following an edit, falling back after a delete — must not write a value that "
+                "loses to the env var on every read")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models [{:id "claude-sonnet-4-6"
+                                                                              :display_name "Claude Sonnet 4.6"}]})]
+      (mt/with-temp-env-var-value! [mb-llm-metabot-provider "openai/gpt-5.4"]
+        (testing "creating a first connection"
+          (mt/with-temporary-setting-values [llm-providers []]
+            (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+              (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                    {:type "anthropic" :config {:api-key "sk-ant-valid"}})
+              (is (nil? (setting/db-stored-value :llm-metabot-provider))))))
+        (testing "deleting the connection the env-pinned selection names"
+          (mt/with-temporary-setting-values [llm-providers [(connection "openai" "openai" {:api-key "sk-valid"})]]
+            (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+              (mt/user-http-request :crowberto :delete 204 "llm/providers/openai")
+              (is (nil? (setting/db-stored-value :llm-metabot-provider))))))))))
 
 (deftest update-leaves-a-selection-it-does-not-compose-alone-test
   (testing "a type whose model is chosen independently of its credentials keeps the model the admin selected"

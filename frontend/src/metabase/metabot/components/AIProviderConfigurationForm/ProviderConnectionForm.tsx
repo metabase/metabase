@@ -10,6 +10,7 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 import {
   Button,
   Collapse,
@@ -52,11 +53,23 @@ export function ProviderConnectionForm({
   const [config, setConfig] = useState<LlmProviderConfig>(
     connection?.config ?? {},
   );
-  const [model, setModel] = useState<string | undefined>(
-    () =>
-      providerTypes.find((option) => option.type === connection?.type)
-        ?.default_model ?? undefined,
-  );
+  // On edit, start the picker on the model the connection is actually serving Metabot, not the type default.
+  const modelRef = useSetting("llm-metabot-provider");
+  const [model, setModel] = useState<string | undefined>(() => {
+    const type = providerTypes.find(
+      (option) => option.type === connection?.type,
+    );
+    const [refKey, ...refModelParts] = (modelRef ?? "").split("/");
+    const refModel = refModelParts.join("/");
+    if (
+      connection != null &&
+      refKey === connection.key &&
+      type?.models.some((typeModel) => typeModel.id === refModel)
+    ) {
+      return refModel;
+    }
+    return type?.default_model ?? undefined;
+  });
   const [error, setError] = useState<string | undefined>();
 
   const [createProvider, createResult] = useCreateLlmProviderMutation();
@@ -219,6 +232,7 @@ export function ProviderConnectionForm({
                   setConfig((current) => ({ ...current, [key]: value }))
                 }
                 disabled={isSaving}
+                disabledFields={connection?.env_fields}
                 autoFocusFirstField
               />
               {selected.models.length > 0 && (
@@ -252,6 +266,7 @@ export function ProviderConnectionForm({
                     setConfig((current) => ({ ...current, [key]: value }))
                   }
                   disabled={isSaving}
+                  disabledFields={connection?.env_fields}
                 />
               </AdvancedSettings>
               {error && <Text c="error">{error}</Text>}

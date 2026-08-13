@@ -63,6 +63,7 @@
    [:source [:enum "db" "env"]]
    [:usable :boolean]
    [:env_vars [:sequential :string]]
+   [:env_fields [:sequential :string]]
    [:config [:map-of :keyword [:maybe :string]]]])
 
 (def ^:private llm-model-response-schema
@@ -119,14 +120,16 @@
    :fields        (mapv field-response fields)})
 
 (defn- connection-response
-  [{conn-key :key conn-name :name :keys [type source config env-vars] :as conn}]
-  {:key      conn-key
-   :type     type
-   :name     conn-name
-   :source   (name (or source :db))
-   :usable   (llm.provider/config-complete? type config)
-   :env_vars (vec env-vars)
-   :config   (or (:config (llm.provider/redact conn)) {})})
+  [{conn-key :key conn-name :name :keys [type source config env-vars env-fields] :as conn}]
+  {:key        conn-key
+   :type       type
+   :name       conn-name
+   :source     (name (or source :db))
+   :usable     (llm.provider/config-complete? type config)
+   :env_vars   (vec env-vars)
+   ;; the config keys the environment owns; the form disables exactly these inputs
+   :env_fields (mapv name env-fields)
+   :config     (or (:config (llm.provider/redact conn)) {})})
 
 ;;; ------------------------------------------------ Model listing -------------------------------------------------
 
@@ -252,6 +255,16 @@
   []
   nil)
 
+(defn- repoint-metabot!
+  "Write `model-ref` as the Metabot selection — unless `MB_LLM_METABOT_PROVIDER` pins it, in which case the write
+  would land in the app DB and lose to the env var on every read, leaving the UI claiming a selection the instance
+  is not actually using."
+  [model-ref]
+  (if (setting/env-var-value :llm-metabot-provider)
+    (log/warnf "Leaving llm-metabot-provider alone: %s is set by the environment"
+               (setting/env-var-name :llm-metabot-provider))
+    (setting/set! :llm-metabot-provider model-ref)))
+
 (defn- metabot-has-a-usable-model?
   "Whether `llm-metabot-provider` currently names a connection that can serve requests. Callers must read this
   *before* saving a new connection: the setting's default names the `anthropic` connection, which a freshly saved
@@ -268,7 +281,7 @@
   (when-let [model-ref (if (not-empty requested-model)
                          (str conn-key "/" requested-model)
                          (connection-model-ref conn))]
-    (setting/set! :llm-metabot-provider model-ref)))
+    (repoint-metabot! model-ref)))
 
 (defn- follow-edited-connection-model!
   "Keep `llm-metabot-provider` on the model an edited connection actually serves.
@@ -276,13 +289,18 @@
   A model reference stores the model as a string rather than as a live lookup, so for a type whose model comes from
   its own config — Azure, whose reference bakes in `{family}/{deployment-name}` — editing the connection can leave
   the selection naming a deployment that no longer exists. The connection still reports usable, and the next
-  request fails at the provider. Types whose model is chosen independently of their credentials are left alone."
-  [{conn-key :key :keys [type config] :as conn}]
-  (when (and (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
-             (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider))))
-    (let [model-ref (connection-model-ref conn)]
+  request fails at the provider. For a type with a fixed catalog the model in the edit form is a pick, not a
+  probe input: when the selection points at this connection, the pick follows through to it."
+  [{conn-key :key :keys [type config] :as conn} requested-model]
+  (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider)))
+    (when-let [model-ref (cond
+                           (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
+                           (connection-model-ref conn)
+
+                           (and (not-empty requested-model) (seq (llm.provider/fixed-models type)))
+                           (str conn-key "/" requested-model))]
       (when-not (= model-ref (metabot.settings/llm-metabot-provider))
-        (setting/set! :llm-metabot-provider model-ref)))))
+        (repoint-metabot! model-ref)))))
 
 ;;; -------------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -365,22 +383,29 @@
                                    [:model {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
   (check-connections-not-env-managed!)
-  (let [stored   (llm.provider/stored-connections)
-        idx      (first (keep-indexed (fn [i c] (when (= (:key c) conn-key) i)) stored))
-        _        (api/check-404 idx)
-        existing (nth stored idx)
-        _        (check-not-env-connection! (llm.provider/connection conn-key))
-        merged   (cond-> existing
-                   (some? config)     (assoc :config (without-blank-values
-                                                      (llm.provider/merge-config (:type existing)
-                                                                                 (:config existing)
-                                                                                 config)))
-                   (not-empty name)   (assoc :name name))]
-    (llm.provider/validate-config! (:type merged) (:config merged))
-    (verify-credentials! merged (:config merged) model)
+  (let [stored     (llm.provider/stored-connections)
+        idx        (first (keep-indexed (fn [i c] (when (= (:key c) conn-key) i)) stored))
+        _          (api/check-404 idx)
+        existing   (nth stored idx)
+        live       (llm.provider/connection conn-key)
+        _          (check-not-env-connection! live)
+        ;; fields the environment owns are not the client's to edit — the form disables them, and what it echoes
+        ;; back for them is the mask of the env value, which must not end up stored
+        env-config (select-keys (:config live) (:env-fields live))
+        merged     (cond-> existing
+                     (some? config)     (assoc :config (without-blank-values
+                                                        (llm.provider/merge-config
+                                                         (:type existing)
+                                                         (:config existing)
+                                                         (apply dissoc config (:env-fields live)))))
+                     (not-empty name)   (assoc :name name))
+        ;; what the connection will actually run on: the stored config with the environment layered back over it
+        effective  (merge (:config merged) env-config)]
+    (llm.provider/validate-config! (:type merged) effective)
+    (verify-credentials! merged effective model)
     (llm.provider/set-connections! (assoc stored idx merged))
-    (follow-edited-connection-model! merged)
-    (connection-response (assoc merged :source :db))))
+    (follow-edited-connection-model! merged model)
+    (connection-response (assoc (merge live merged) :config effective))))
 
 (api.macros/defendpoint :delete "/providers/:key" :- :nil
   "Delete a provider connection."
@@ -391,11 +416,14 @@
     (api/check-404 conn)
     (check-not-env-connection! conn)
     (when (llm.provider/managed-type? (:type conn))
+      ;; removing the managed connection cancels the Store subscription behind it, and everything else that can
+      ;; cancel add-ons is superuser-only — settings access must not be enough to end a paid contract
+      (api/check-superuser)
       (cancel-managed-ai-subscription!))
     (let [remaining (vec (remove #(= (:key %) conn-key) (llm.provider/stored-connections)))]
       (llm.provider/set-connections! remaining)
       (when (= conn-key (llm.provider/model-ref->connection-key (metabot.settings/llm-metabot-provider)))
-        (setting/set! :llm-metabot-provider (fallback-model-ref)))))
+        (repoint-metabot! (fallback-model-ref)))))
   nil)
 
 (api.macros/defendpoint :get "/models"

@@ -21,12 +21,15 @@ export function ProviderConfigFields({
   values,
   onChange,
   disabled,
+  disabledFields = [],
   autoFocusFirstField,
 }: {
   fields: LlmProviderField[];
   values: LlmProviderConfig;
   onChange: (key: string, value: string) => void;
   disabled?: boolean;
+  // fields the environment owns: shadowed by an MB_LLM_* variable, so editing them here would do nothing
+  disabledFields?: string[];
   autoFocusFirstField?: boolean;
 }) {
   const visibleFields = fields.filter((field) =>
@@ -45,7 +48,7 @@ export function ProviderConfigFields({
           field={field}
           value={values[field.key] ?? ""}
           onChange={(value) => onChange(field.key, value)}
-          disabled={disabled}
+          disabled={disabled || disabledFields.includes(field.key)}
           autoFocus={autoFocusFirstField && index === 0}
         />
       ))}

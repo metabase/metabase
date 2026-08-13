@@ -177,7 +177,12 @@ export function AIProviderList() {
         opened={deleting != null}
         onClose={() => setDeleting(undefined)}
         title={t`Remove this provider?`}
-        message={t`This provider's models will no longer be available, and its saved credentials will be deleted.`}
+        message={
+          providerTypes.find((type) => type.type === deleting?.type)?.managed
+            ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
+              t`This cancels your Metabase AI service subscription, and its models will no longer be available.`
+            : t`This provider's models will no longer be available, and its saved credentials will be deleted.`
+        }
         confirmButtonText={t`Remove provider`}
         onConfirm={handleConfirmDelete}
       />
@@ -315,10 +320,9 @@ function ProviderConnectionRow({
         </RowActions>
       </Group>
 
-      {isEnvManaged &&
-        connection.env_vars.map((varName) => (
-          <SetByEnvVar key={varName} varName={varName} />
-        ))}
+      {connection.env_vars.map((varName) => (
+        <SetByEnvVar key={varName} varName={varName} />
+      ))}
 
       {hasUsageDetails && (
         <Collapse id={detailsId} in={isShowingDetails}>

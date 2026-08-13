@@ -41,6 +41,7 @@ export const createMockLlmProviderConnection = (
   source: "db",
   usable: true,
   env_vars: [],
+  env_fields: [],
   config: {},
   ...opts,
 });
