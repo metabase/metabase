@@ -72,28 +72,36 @@
 (defn old-dataset-name?
   "Is this dataset name old enough to be deleted?
 
-  For new-format names (with hour): checks if more than [[old-dataset-hours-threshold]] hours old.
-  For old-format names (date only): checks if more than 1 day old for backwards compatibility.
+  For new-format names (with hour): checks if more than `hours-threshold` hours old, defaulting to
+  [[old-dataset-hours-threshold]]. The nightly orphan GC passes a smaller threshold than the in-process cleanup does;
+  see [[metabase.test.data.interface/gc-orphans!]].
+
+  For old-format names (date only): checks if more than 1 day old for backwards compatibility. This is deliberately
+  NOT parameterized -- those names truncate to midnight rather than to the hour, so an hours-based threshold would
+  read a name created at 23:00 as nearly a day old and could delete it out from under a running test.
+
   If the date/time is invalid, we return false (not old) to be safe - we only want to delete
   datasets that match our known format."
-  [dataset-name]
-  ;; Try new format first: YYYY_MM_DD_HH_<uuid>_...
-  (if-let [[_ year month day hour] (re-matches #"^(\d{4})_(\d{2})_(\d{2})_(\d{2})_.*$" dataset-name)]
-    (let [dataset-date-time (try
-                              (t/local-date-time (parse-long year) (parse-long month) (parse-long day) (parse-long hour) 0)
-                              (catch Throwable _ nil))]
-      (if-not dataset-date-time
-        false
-        (t/before? dataset-date-time (u.date/add (utc-date-time) :hour (- old-dataset-hours-threshold)))))
-    ;; TODO (bryan 12-23-25) Remove old-format checks when this has been running for a few days.
-    ;; Fall back to old format: YYYY_MM_DD_<uuid>_...
-    (when-let [[_ year month day] (re-matches #"^(\d{4})_(\d{2})_(\d{2})_.*$" dataset-name)]
-      (let [dataset-date (try
-                           (t/local-date (parse-long year) (parse-long month) (parse-long day))
-                           (catch Throwable _ nil))]
-        (if-not dataset-date
-          false
-          (t/before? dataset-date (u.date/add (utc-date) :day -1)))))))
+  ([dataset-name]
+   (old-dataset-name? dataset-name old-dataset-hours-threshold))
+  ([dataset-name hours-threshold]
+   ;; Try new format first: YYYY_MM_DD_HH_<uuid>_...
+   (if-let [[_ year month day hour] (re-matches #"^(\d{4})_(\d{2})_(\d{2})_(\d{2})_.*$" dataset-name)]
+     (let [dataset-date-time (try
+                               (t/local-date-time (parse-long year) (parse-long month) (parse-long day) (parse-long hour) 0)
+                               (catch Throwable _ nil))]
+       (if-not dataset-date-time
+         false
+         (t/before? dataset-date-time (u.date/add (utc-date-time) :hour (- hours-threshold)))))
+     ;; TODO (bryan 12-23-25) Remove old-format checks when this has been running for a few days.
+     ;; Fall back to old format: YYYY_MM_DD_<uuid>_...
+     (when-let [[_ year month day] (re-matches #"^(\d{4})_(\d{2})_(\d{2})_.*$" dataset-name)]
+       (let [dataset-date (try
+                            (t/local-date (parse-long year) (parse-long month) (parse-long day))
+                            (catch Throwable _ nil))]
+         (if-not dataset-date
+           false
+           (t/before? dataset-date (u.date/add (utc-date) :day -1))))))))
 
 (deftest ^:parallel old-dataset-name?-test
   (testing "old-format names (date only) - more than 1 day old"
@@ -136,4 +144,14 @@
       ;; Future dates are not old
       "2050_02_17_14_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"
       ;; invalid hour is not old - only delete datasets matching our known format
-      "2023_02_01_25_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data")))
+      "2023_02_01_25_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data"))
+  (testing "explicit hours-threshold, as passed by the nightly orphan GC"
+    (are [s] (old-dataset-name? s 2)
+      (str (unique-prefix* (u.date/add (utc-date-time) :hour -3)) "test-data")
+      (str (unique-prefix* (u.date/add (utc-date-time) :hour -4)) "test-data"))
+    (are [s] (not (old-dataset-name? s 2))
+      (str (unique-prefix*) "test-data")
+      (str (unique-prefix* (u.date/add (utc-date-time) :hour -1)) "test-data"))
+    (testing "a smaller threshold does not make old-format (date-only) names collectable any sooner"
+      (let [today (str/replace (str (utc-date)) "-" "_")]
+        (is (not (old-dataset-name? (str today "_82e897cb_ad31_4c82_a4b6_3e9e2e1dc1cb_test-data") 2)))))))

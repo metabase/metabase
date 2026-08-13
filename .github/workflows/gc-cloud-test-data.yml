@@ -1,0 +1,91 @@
+name: GC Cloud Test Data
+
+# Nightly sweep of orphaned test data in our shared cloud warehouses.
+#
+# Test runs clean up after themselves in metabase.test.data.interface/after-run, but that hook never fires when a CI
+# job is cancelled, times out, or is killed, and what it leaves behind costs real money -- a leaked Snowflake database
+# can hold a dynamic table that Snowflake goes on refreshing every minute forever. Per-driver in-process cleanup has
+# repeatedly been disabled for making CI flaky, so this sweep runs out of band where it cannot fail an unrelated run.
+#
+# See metabase.test.data.gc for what each threshold means and metabase.test.data.interface/gc-orphans! for the rules
+# an implementation has to follow. Athena and Databricks are deliberately not swept: their datasets are preloaded
+# rather than created by tests, so there is nothing there that is safe to delete.
+
+on:
+  schedule:
+    # 07:00 UTC daily -- late evening US Pacific, early morning Europe. The real protection against deleting a live
+    # job's data is the age threshold below, not this time; the quiet window just limits the blast radius if a future
+    # change gets that threshold wrong.
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      drivers:
+        description: 'Comma-separated drivers to sweep'
+        required: false
+        default: 'snowflake,bigquery-cloud-sdk,redshift'
+        type: string
+      older-than-hours:
+        description: 'Age in hours before per-run garbage is collected'
+        required: false
+        default: '2'
+        type: string
+      fixture-hours:
+        description: 'Age in hours before reusable (content-addressed) datasets are collected'
+        required: false
+        default: '72'
+        type: string
+      dry-run:
+        description: 'Report what would be deleted without deleting anything'
+        required: false
+        default: false
+        type: boolean
+
+# Never let two sweeps race each other; the second would just log failures for objects the first already dropped.
+concurrency:
+  group: gc-cloud-test-data
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  gc:
+    name: Sweep orphaned test data
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      # Inputs go through the environment rather than straight into the run script so nothing typed into the dispatch
+      # form is interpolated into a shell command. `inputs.*` is empty on a scheduled run, hence the `||` defaults.
+      GC_DRIVERS: ${{ inputs.drivers || 'snowflake,bigquery-cloud-sdk,redshift' }}
+      GC_OLDER_THAN_HOURS: ${{ inputs.older-than-hours || '2' }}
+      GC_FIXTURE_HOURS: ${{ inputs.fixture-hours || '72' }}
+      GC_DRY_RUN: ${{ inputs.dry-run || false }}
+      DRIVERS: ${{ inputs.drivers || 'snowflake,bigquery-cloud-sdk,redshift' }}
+      # Snowflake
+      MB_SNOWFLAKE_TEST_USER: METABASE CI
+      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      # BigQuery
+      MB_BIGQUERY_TEST_PROJECT_ID: ${{ secrets.BIGQUERY_TEST_PROJECT_ID }}
+      MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
+      MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
+      # Redshift
+      MB_REDSHIFT_TEST_USER: metabase_ci
+      MB_REDSHIFT_TEST_DB: testdb
+      MB_REDSHIFT_TEST_DB_ROUTING: dev
+      MB_REDSHIFT_TEST_HOSTS: ${{ secrets.MB_REDSHIFT_TEST_HOSTS }}
+      MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
+      MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/prepare-backend
+      - name: Sweep orphaned test data
+        run: |
+          clojure -X:dev:drivers:drivers-dev:test metabase.test.data.gc/gc-orphans! \
+            :drivers "\"$GC_DRIVERS\"" \
+            :older-than-hours "$GC_OLDER_THAN_HOURS" \
+            :fixture-hours "$GC_FIXTURE_HOURS" \
+            :dry-run? "$GC_DRY_RUN"

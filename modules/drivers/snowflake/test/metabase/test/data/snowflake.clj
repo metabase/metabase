@@ -193,6 +193,87 @@
   (when (compare-and-set! deleted-old-test-data? false true)
     (delete-old-test-data!)))
 
+;;; --------------------------------- Orphan GC ----------------------------------
+;;;
+;;; Out-of-band sweep for databases that leaked past [[tx/after-run]], driven nightly by
+;;; `.github/workflows/gc-cloud-test-data.yml`. This is deliberately separate from [[drop-old-datasets!]] above, which
+;;; runs in-process and is currently disabled for causing CI flakes: a sweep that runs in its own job can be as
+;;; aggressive as we like without any risk of failing an unrelated test run.
+
+(def ^:private orphan-db-prefixes
+  "Test database name prefixes that [[qualified-db-name]] generates, mapped to how aggressively the nightly sweep may
+  collect each. The two categories behave very differently and must not share a TTL:
+
+  - `isolate_` names are per-run garbage. CI builds them from a random int, nothing ever reuses one, and every run
+    that dies before [[tx/after-run]] leaves another behind forever. This is the unbounded leak, so it gets the short
+    `:older-than-hours` TTL.
+
+  - `sha_` names are content-addressed and deliberately reused -- [[tx/create-db!]] skips creation when a dataset with
+    that hash already exists -- so they are shared fixtures rather than garbage. Collecting them on the short TTL
+    would make every run rebuild its datasets from scratch and would reintroduce exactly the concurrent
+    half-created-dataset races that hashing them exists to prevent. They do still leak, whenever a dataset definition
+    changes and strands the old hash, but slowly and boundedly, so they get the long `:fixture-hours` TTL.
+
+  Any database not matching one of these prefixes is left alone -- notably `metabase_test_tracking`, which holds the
+  bookkeeping this sweep itself reads."
+  {"isolate_" :older-than-hours
+   "sha_"     :fixture-hours})
+
+(defn- orphan-databases
+  "Names of test databases old enough to be collected, oldest first, given a map of `:older-than-hours` and
+  `:fixture-hours`. See [[orphan-db-prefixes]] for which names each threshold governs.
+
+  Pure: reads the catalog and drops nothing, so it doubles as the preview for a dry run. Call it from a REPL to see
+  what the sweep would do.
+
+  Snowflake test database names carry no timestamp -- unlike the shared
+  [[metabase.driver.sql.test-util.unique-prefix]] convention the other cloud drivers use, [[qualified-db-name]] builds
+  them from a random int or a dataset hash -- so age has to come from the catalog's `created` column rather than from
+  the name."
+  [thresholds]
+  (let [collectable? (fn [db-name age-hours]
+                       (some (fn [[prefix threshold-key]]
+                               (and (str/starts-with? db-name prefix)
+                                    ;; a catalog row with no `created` can't be aged, so leave it alone
+                                    (some? age-hours)
+                                    (>= age-hours (get thresholds threshold-key))))
+                             orphan-db-prefixes))]
+    (into []
+          (keep (fn [{:keys [database_name age_hours]}]
+                  (when (collectable? database_name age_hours)
+                    database_name)))
+          (jdbc/query (no-db-connection-spec)
+                      ["select database_name,
+                               timestampdiff('hour', created, current_timestamp()) as age_hours
+                        from metabase_test_tracking.information_schema.databases
+                        order by created"]))))
+
+(defmethod tx/gc-orphans! :snowflake
+  [_driver {:keys [older-than-hours fixture-hours dry-run?] :as options}]
+  {:pre [(pos-int? older-than-hours) (pos-int? fixture-hours)]}
+  (let [found  (orphan-databases options)
+        report (assoc tx/empty-gc-report :found found)]
+    (if (or dry-run? (empty? found))
+      report
+      (with-write-stmt!
+        (fn [^java.sql.Statement stmt]
+          (reduce (fn [report db-name]
+                    (log/infof "[snowflake] dropping orphaned test database %s" db-name)
+                    (try
+                      ;; DROP first: that is the part that actually stops the bleeding, since a leaked database can
+                      ;; contain a dynamic table that Snowflake keeps refreshing on a schedule for as long as it
+                      ;; exists. Un-tracking is bookkeeping, and a stranded tracking row is harmless.
+                      (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" db-name))
+                      (.execute stmt (format "DELETE FROM metabase_test_tracking.PUBLIC.datasets WHERE name = '%s';"
+                                             db-name))
+                      (update report :dropped conj db-name)
+                      (catch Throwable e
+                        ;; most likely another job dropped it at the same moment; log it and keep sweeping
+                        (log/warnf "[snowflake] failed to drop %s: %s" db-name (ex-message e))
+                        (update report :failed conj {:name db-name, :error (ex-message e)}))))
+                  report
+                  found))))))
+
 (defn- set-current-user-timezone!
   [timezone]
   (sql-jdbc.execute/do-with-connection-with-options
