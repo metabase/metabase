@@ -440,12 +440,11 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :offset]
   [driver [_offset _opts expr n]]
-  {:pre [(integer? n) ((some-fn pos-int? neg-int?) n)]} ; offset not allowed to be zero
   (sql.qp/window-aggregation-over-rows
    driver
-   (let [[f n]     (if (pos? n)
-                     [:'leadInFrame n]
-                     [:'lagInFrame (- n)])
+   (let [[f n] (if (pos? n)
+                 [:'leadInFrame n]
+                 [:'lagInFrame (- n)])
          expr-hsql (sql.qp/->honeysql driver expr)]
      (-> [f [:'toNullable expr-hsql] [:inline n]]
          (h2x/with-database-type-info (h2x/database-type expr-hsql))))

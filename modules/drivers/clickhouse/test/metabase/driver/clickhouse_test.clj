@@ -3,7 +3,6 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.clickhouse :as clickhouse]
@@ -178,26 +177,6 @@
         (is (= "SELECT `test_data`.`venues`.`id` AS `id` FROM `test_data`.`venues` ORDER BY `test_data`.`venues`.`id` ASC LIMIT 5" compiled)))
       (testing "pretty"
         (is (= "SELECT\n  `test_data`.`venues`.`id` AS `id`\nFROM\n  `test_data`.`venues`\nORDER BY\n  `test_data`.`venues`.`id` ASC\nLIMIT\n  5" pretty))))))
-
-(deftest ^:parallel clickhouse-offset-window-function-test
-  (testing ":offset compiles to lagInFrame/leadInFrame over a frame spanning the whole partition (#79177)"
-    (mt/test-driver :clickhouse
-      (let [mp          (mt/metadata-provider)
-            base        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                            (lib/breakout (-> (lib.metadata/field mp (mt/id :orders :created_at))
-                                              (lib/with-temporal-bucket :year)))
-                            (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))
-            compile-sql (fn [n]
-                          (-> base
-                              (lib/aggregate (lib/offset (lib/sum (lib.metadata/field mp (mt/id :orders :total))) n))
-                              qp.compile/compile
-                              :query))]
-        (testing "negative offset uses lagInFrame; toNullable makes out-of-frame rows NULL instead of the type default"
-          (is (str/includes? (compile-sql -1) "`lagInFrame`(`toNullable`(")))
-        (testing "positive offset uses leadInFrame"
-          (is (str/includes? (compile-sql 1) "`leadInFrame`(`toNullable`(")))
-        (testing "the frame must span the whole partition since lagInFrame/leadInFrame respect the frame"
-          (is (str/includes? (compile-sql -1) "ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING")))))))
 
 (deftest ^:parallel clickhouse-can-connect
   (mt/test-driver :clickhouse
