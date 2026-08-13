@@ -1053,7 +1053,10 @@
                                                                      (lib/= product-id 1)))}))))
     (testing "matching semantic signatures are exact"
       (is (= :exact (relation-for-measure measure (assoc measure :signature "candidate"))))
-      (is (= :exact (relation-for-segment segment (assoc segment :signature "candidate")))))))
+      (is (= :exact (relation-for-segment segment (assoc segment :signature "candidate")))))
+    (testing "Measures with no resolvable aggregation base are not conflated with each other"
+      (is (nil? (relation-for-measure {:signature "candidate-y", :definition base-query}
+                                      {:signature "existing-y", :definition base-query}))))))
 
 (deftest completed-snapshot-survives-source-and-match-deletion-test
   (let [metadata-provider (mt/metadata-provider)
