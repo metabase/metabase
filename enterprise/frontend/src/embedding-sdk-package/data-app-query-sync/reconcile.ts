@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { injectSavedQuestionId } from "./ast/query-source";
 import { getCanonicalQueryJson } from "./canonical";
-import { injectSavedQuestionId } from "./discover";
 import { writeQueryLockfile } from "./lockfile";
 import type { MetabaseClient } from "./metabase-client";
 import { MetabaseApiError } from "./metabase-client";

@@ -33,7 +33,7 @@ describe("query reconciliation recovery", () => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
       requests.push({ method, pathname });
-      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+      if (pathname === `/api/apps/${slug}/draft` && method === "POST") {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       if (pathname === "/api/card/40" && method === "GET") {
@@ -94,7 +94,7 @@ describe("query reconciliation recovery", () => {
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
-      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+      if (pathname === `/api/apps/${slug}/draft` && method === "POST") {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       if (pathname === `/api/apps/${slug}/query`) {
@@ -160,7 +160,7 @@ describe("query reconciliation recovery", () => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
       requests.push({ method, pathname });
-      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+      if (pathname === `/api/apps/${slug}/draft` && method === "POST") {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       if (pathname === `/api/apps/${slug}/query` && method === "POST") {
@@ -217,7 +217,7 @@ describe("query reconciliation recovery", () => {
     jest.spyOn(global, "fetch").mockImplementation(async (input, init) => {
       const pathname = new URL(String(input)).pathname;
       const method = init?.method ?? "GET";
-      if (pathname === `/api/apps/${slug}/query-sync` && method === "POST") {
+      if (pathname === `/api/apps/${slug}/draft` && method === "POST") {
         return jsonResponse({ name: slug, resource_collection_id: 20 });
       }
       if (pathname === "/api/card/90" && method === "GET") {
