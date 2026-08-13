@@ -53,8 +53,8 @@ jobs:
       cypress-cache-key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
 
   generate-caches:
-    # Prevent a workflow_dispatch triggered from any branch besides master. This would overwrite the default  
-    # cache keys but the cache would be innacessible to other branches since Github prevents cross-branch  
+    # Prevent a workflow_dispatch triggered from any branch besides master. This would overwrite the default
+    # cache keys but the cache would be innacessible to other branches since Github prevents cross-branch
     # cache hits (except for the default branch), breaking the cache entirely.
     if: ${{ github.ref_name == 'master' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
