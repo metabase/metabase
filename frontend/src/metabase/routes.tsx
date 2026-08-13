@@ -155,6 +155,15 @@ const commentsSidesheet = () =>
   ).then(({ CommentsSidesheet }) => CommentsSidesheet);
 
 /**
+ * The metrics viewer, in its own chunk. Its search input builds CodeMirror
+ * extensions, which nothing outside this page needs on first paint.
+ */
+const metricsViewerPage = () =>
+  import("metabase/metrics-viewer").then(({ MetricsViewerPage }) => ({
+    Component: MetricsViewerPage,
+  }));
+
+/**
  * Hovering a link into one of these chunks starts the fetch, so it is usually in
  * hand by the time the click lands. The router still awaits `lazy` and still
  * commits the location a tick late, so this removes the round trip rather than

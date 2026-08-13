@@ -23,7 +23,7 @@ import type { Card, DatabaseId, Dataset, RawSeries } from "metabase-types/api";
 
 import S from "./NativeQueryModal.module.css";
 
-interface NativeQueryModalProps {
+export interface NativeQueryModalProps {
   card: Card;
   isOpen: boolean;
   onClose: () => void;

@@ -7,6 +7,17 @@ import { CodeEditor } from "metabase/common/components/CodeEditor";
 import S from "./PythonEditor.module.css";
 import { completion } from "./utils";
 
+export type PythonEditorProps = {
+  value: string;
+  proposedValue?: string;
+
+  onChange?: (value: string) => void;
+  withPandasCompletions?: boolean;
+  className?: string;
+  readOnly?: boolean;
+  extensions?: Extension[];
+};
+
 export function PythonEditor({
   value,
   proposedValue,
@@ -16,16 +27,7 @@ export function PythonEditor({
   readOnly,
   extensions: externalExtensions,
   ...rest
-}: {
-  value: string;
-  proposedValue?: string;
-
-  onChange?: (value: string) => void;
-  withPandasCompletions?: boolean;
-  className?: string;
-  readOnly?: boolean;
-  extensions?: Extension[];
-}) {
+}: PythonEditorProps) {
   const extensions = _.compact([
     ...(externalExtensions ?? []),
     withPandasCompletions ? completion : undefined,

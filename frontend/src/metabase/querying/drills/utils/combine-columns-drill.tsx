@@ -10,7 +10,7 @@ import type {
 import * as Lib from "metabase-lib";
 
 import { trackColumnCombineViaColumnHeader } from "../../analytics";
-import { CombineColumns } from "../../components/expressions";
+import { CombineColumns } from "../../components/expressions/CombineColumns";
 
 export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   question,

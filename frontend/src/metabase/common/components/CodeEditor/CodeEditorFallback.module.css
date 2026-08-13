@@ -1,0 +1,15 @@
+/*
+ * Stands in for the editor while the CodeMirror chunk downloads. It mirrors the
+ * editor's typography and block padding so the text does not move when the real
+ * editor replaces it.
+ */
+.fallback {
+  margin: 0;
+  padding-block: 8px;
+  overflow: auto;
+  white-space: pre;
+  color: var(--mb-color-text-primary);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}

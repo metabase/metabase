@@ -267,6 +267,17 @@ const config = {
           name: "vendor",
           priority: -10,
         },
+        // Every code editor is behind its own import(), so CodeMirror would be
+        // copied into each of those chunks. Collect it into one async chunk that
+        // they all share instead. Kept off `w3c-keyname`, which prosemirror also
+        // uses, so the document chunks do not end up depending on this one.
+        codemirror: {
+          test: /[\\/](@codemirror|@lezer|@uiw|@xiechao|style-mod|crelt)[\\/]/,
+          chunks: "async",
+          name: "codemirror",
+          priority: 20,
+          reuseExistingChunk: true,
+        },
         sqlFormatter: {
           test: /[\\/]sql-formatter[\\/]/,
           chunks: "all",

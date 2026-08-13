@@ -15,7 +15,7 @@ import {
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor/utils";
 import { useSelector } from "metabase/redux";
 import { type Location, useNavigate, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";

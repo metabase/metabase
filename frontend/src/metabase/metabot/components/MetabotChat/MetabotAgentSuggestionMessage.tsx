@@ -1,14 +1,11 @@
-import { unifiedMergeView } from "@codemirror/merge";
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useContext, useMemo, useState } from "react";
+import { useContext, useState } from "react";
 import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useLazyGetTransformQuery } from "metabase/api";
-import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { MetabotContext } from "metabase/metabot/context";
 import {
   type MetabotAgentDataPartMessage,
@@ -17,7 +14,6 @@ import {
   getIsSuggestedTransformActive,
 } from "metabase/metabot/state";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import EditorS from "metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -42,47 +38,10 @@ import type {
 } from "metabase-types/api";
 
 import S from "./MetabotAgentSuggestionMessage.module.css";
+import { SuggestionPreviewContent } from "./lazySuggestionPreviewContent";
 
 export type SuggestionMessage = Omit<MetabotAgentDataPartMessage, "part"> & {
   part: Extract<MetabotDataPart, { type: "data-transform_suggestion" }>;
-};
-
-const PreviewContent = ({
-  oldSource,
-  newSource,
-}: {
-  oldSource: string;
-  newSource: string;
-}) => {
-  const extensions = useMemo(
-    () =>
-      _.compact([
-        oldSource &&
-          unifiedMergeView({
-            original: oldSource,
-            mergeControls: false,
-            collapseUnchanged: {
-              margin: 1,
-              minSize: 1,
-            },
-          }),
-      ]),
-    [oldSource],
-  );
-
-  return (
-    <CodeMirror
-      className={cx(
-        EditorS.editor,
-        S.suggestionEditor,
-        !oldSource && S.suggestionEditorOnlyNew,
-      )}
-      extensions={extensions}
-      value={newSource}
-      readOnly
-      autoCorrect="off"
-    />
-  );
 };
 
 const useGetOldTransform = ({
@@ -255,7 +214,10 @@ export const AgentSuggestionMessage = ({
             </Flex>
           ))
           .with({ isLoading: false }, () => (
-            <PreviewContent oldSource={oldSource} newSource={newSource} />
+            <SuggestionPreviewContent
+              oldSource={oldSource}
+              newSource={newSource}
+            />
           ))
           .exhaustive()}
 

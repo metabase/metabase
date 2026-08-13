@@ -4,7 +4,7 @@ import { trackColumnExtractViaPlusModal } from "metabase/querying/analytics";
 import {
   ExtractColumn,
   hasExtractions,
-} from "metabase/querying/components/expressions";
+} from "metabase/querying/components/expressions/ExtractColumn";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Box, rem } from "metabase/ui";
