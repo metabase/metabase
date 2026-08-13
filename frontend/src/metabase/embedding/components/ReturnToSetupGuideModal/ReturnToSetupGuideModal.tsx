@@ -3,11 +3,10 @@ import { t } from "ttag";
 import { useNavigate } from "metabase/router";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 
-// Where the admin setup guide lives. Inlined here (rather than imported from
-// admin/) so this modal can live at the shared tier and be invoked from
-// dashboard/admin/etc. without a cross-feature dependency. Used only as the
-// fallback for callers that did not say where they came from.
-const ADMIN_SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
+// Fallback for callers that did not say where they came from. Inlined here
+// rather than imported so this modal can live at the shared tier and be invoked
+// from anywhere without a cross-feature dependency.
+const DEFAULT_SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 interface ReturnToSetupGuideModalProps {
   opened: boolean;
@@ -27,7 +26,7 @@ export const ReturnToSetupGuideModal = ({
   onClose,
   title,
   message,
-  returnTo = ADMIN_SETUP_GUIDE_PATH,
+  returnTo = DEFAULT_SETUP_GUIDE_PATH,
 }: ReturnToSetupGuideModalProps) => {
   const navigate = useNavigate();
 

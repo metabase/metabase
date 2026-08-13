@@ -7,8 +7,8 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { SetupGuideXrayPickerModal } from "../components/SetupGuideXrayPickerModal";
 import type { SetupGuideModalToTrigger } from "../types/setup-guide";
 
-// Where the admin guide lives, for callers that do not say where they are.
-const ADMIN_SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
+// Fallback for callers that do not say where they are.
+const DEFAULT_SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 /**
  * The checklist's modals and the state that opens them, so the stepper on the
@@ -19,7 +19,9 @@ const ADMIN_SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
  * leave the guide -- connecting a database, for one -- carry it so they can
  * return to the host the user actually started from.
  */
-export function useSetupGuideModals(returnTo: string = ADMIN_SETUP_GUIDE_PATH) {
+export function useSetupGuideModals({
+  returnTo = DEFAULT_SETUP_GUIDE_PATH,
+}: { returnTo?: string } = {}) {
   const [openedModal, setOpenedModal] =
     useState<SetupGuideModalToTrigger | null>(null);
 
@@ -31,7 +33,7 @@ export function useSetupGuideModals(returnTo: string = ADMIN_SETUP_GUIDE_PATH) {
         opened={openedModal?.type === "add-data"}
         onClose={closeModal}
         initialTab={
-          openedModal?.type === "add-data" ? openedModal?.initialTab : undefined
+          openedModal?.type === "add-data" ? openedModal.initialTab : undefined
         }
         returnToSetupGuide={returnTo}
       />

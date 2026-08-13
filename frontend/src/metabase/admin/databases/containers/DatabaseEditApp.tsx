@@ -55,7 +55,7 @@ function DatabaseEditAppInner({
 
   const databaseId = parseInt(params.databaseId ?? "", 10);
   // The param carries where the guide was opened from. Older links carry the
-  // literal "true", which falls back to the admin guide.
+  // literal "true", which falls back to the default guide path.
   const returnToSetupGuide = new URLSearchParams(window.location.search).get(
     RETURN_TO_SETUP_GUIDE_PARAM,
   );

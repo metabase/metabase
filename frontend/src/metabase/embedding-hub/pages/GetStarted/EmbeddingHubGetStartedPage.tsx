@@ -45,9 +45,10 @@ const SETUP_GUIDE_URLS = {
 };
 
 /**
- * The embedding hub's own step definition. It carries the action as well as the copy: the
- * shared checklist drives the home-page stepper, whose wording and wiring are
- * its own. Only completion is shared, keyed by `SetupGuideStepId`.
+ * The hub shares only completion state with the home-page checklist, keyed by
+ * `SetupGuideStepId`. Copy and actions are its own, because the two have
+ * different designs: the home page is a linear stepper, the hub is grouped
+ * cards with their own wording and entry points.
  */
 type HubStep = {
   id: SetupGuideStepId;
@@ -58,7 +59,6 @@ type HubStep = {
   onClick?: () => void;
 };
 
-/** Renders one card once its position in the checklist is known. */
 type NumberedCard = (step: number) => ReactNode;
 
 const UPSELL_CAMPAIGN = "embedding-hub";
@@ -67,9 +67,9 @@ const UPSELL_LOCATION = "embedding-hub-get-started";
 export function EmbeddingHubGetStartedPage() {
   const dispatch = useDispatch();
   const { data: completedSteps } = useCompletedSetupGuideSteps();
-  const { setOpenedModal, modals } = useSetupGuideModals(
-    Urls.embeddingHubGetStarted(),
-  );
+  const { setOpenedModal, modals } = useSetupGuideModals({
+    returnTo: Urls.embeddingHubGetStarted(),
+  });
 
   const openEmbedModal = useCallback(
     (initialState: SdkIframeEmbedSetupModalInitialState) => {
@@ -78,13 +78,8 @@ export function EmbeddingHubGetStartedPage() {
     [dispatch],
   );
 
-  // The embedding hub is the only host that renders the setup guide without
-  // `embedding_simple`: the home-page stepper checks it, and the admin guide's
-  // nav item is behind it too. So this is the one place that has to reckon with
-  // an unlicensed instance, and each Fine-tune step is locked by the feature it
-  // actually needs rather than one stand-in for "Pro" -- an instance can
-  // license SSO without modular embedding, and greying its SSO steps out would
-  // be wrong.
+  // The hub is the only place that renders the setup guide on OSS, so each step
+  // needs its own feature check rather than one stand-in for "Pro".
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
   const hasSsoJwt = useHasTokenFeature("sso_jwt");
   const hasTenants = useHasTokenFeature("tenants");
@@ -100,28 +95,31 @@ export function EmbeddingHubGetStartedPage() {
     location: UPSELL_LOCATION,
   });
 
-  // A feature-locked step carries no reason: naming a prerequisite would imply
-  // the step is reachable, and the upsell banner already says what it takes.
+  // A locked step carries a reason only when the prerequisite is actionable.
+  // Feature-locked steps leave it out: naming a prerequisite would imply the
+  // step is reachable, and the upsell banner already says what it takes.
   const lockedSteps: Partial<
-    Record<SetupGuideStepId, { reason?: string } | undefined>
+    Record<SetupGuideStepId, { isLocked: boolean; reason?: string }>
   > = useMemo(() => {
-    const isSsoConfigured = completedSteps?.["sso-configured"] ?? false;
+    const isSsoConfigured = completedSteps["sso-configured"];
 
     return {
-      "data-permissions-and-enable-tenants": hasTenants ? undefined : {},
-      "sso-configured": hasSsoJwt ? undefined : {},
+      "data-permissions-and-enable-tenants": { isLocked: !hasTenants },
+      "sso-configured": { isLocked: !hasSsoJwt },
       "embed-production": match({ hasSsoJwt, isSsoConfigured })
-        .with({ hasSsoJwt: false }, () => ({}))
+        .with({ hasSsoJwt: false }, () => ({ isLocked: true }))
         .with({ isSsoConfigured: false }, () => ({
+          isLocked: true,
           reason: t`Set up SSO to unlock`,
         }))
-        .otherwise(() => undefined),
+        .otherwise(() => ({ isLocked: false })),
     };
   }, [completedSteps, hasSsoJwt, hasTenants]);
 
-  const firstEmbedSteps = useMemo(
-    () => getFirstEmbedSteps({ setOpenedModal, openEmbedModal }),
-    [setOpenedModal, openEmbedModal],
+  const baseEmbedSteps = useMemo(
+    () =>
+      getBaseEmbedSteps({ setOpenedModal, openEmbedModal, hasSimpleEmbedding }),
+    [setOpenedModal, openEmbedModal, hasSimpleEmbedding],
   );
   const fineTuneSteps = useMemo(
     () => getFineTuneSteps({ openEmbedModal }),
@@ -129,7 +127,7 @@ export function EmbeddingHubGetStartedPage() {
   );
 
   function renderStep(step: HubStep, position: number) {
-    const isLocked = lockedSteps[step.id] != null;
+    const locked = lockedSteps[step.id];
 
     return (
       <ChecklistCard
@@ -138,9 +136,9 @@ export function EmbeddingHubGetStartedPage() {
         icon={step.icon}
         title={step.title}
         description={step.description}
-        isDone={completedSteps?.[step.id] ?? false}
-        isLocked={isLocked}
-        lockedReason={lockedSteps[step.id]?.reason}
+        isDone={completedSteps[step.id]}
+        isLocked={locked?.isLocked ?? false}
+        lockedReason={locked?.reason}
         to={step.to}
         onClick={step.onClick}
       />
@@ -148,27 +146,26 @@ export function EmbeddingHubGetStartedPage() {
   }
 
   const themeCard: NumberedCard = (position) => (
-    <CustomThemeCard
+    <ThemeCard
       key="custom-theme"
       step={position}
       isLocked={!hasSimpleEmbedding}
-      isDone={completedSteps?.["create-custom-theme"] ?? false}
+      isDone={completedSteps["create-custom-theme"]}
     />
   );
   const aiCard: NumberedCard = (position) => (
-    <ConfigureAiCard
+    <AiCard
       key="configure-ai"
       step={position}
-      isConfigured={completedSteps?.["configure-ai"] ?? false}
+      isConfigured={completedSteps["configure-ai"]}
     />
   );
 
   // Without modular embedding every Fine-tune step is locked, and AI is the one
   // advanced step still reachable -- so the design promotes it into the first
-  // section. `embedding_simple` rather than the plan: Starter cloud is a paid
-  // plan but cannot do modular embedding either, so a plan check would miss it.
+  // section.
   const firstSection: NumberedCard[] = [
-    ...firstEmbedSteps.map(
+    ...baseEmbedSteps.map(
       (step): NumberedCard =>
         (position) =>
           renderStep(step, position),
@@ -192,12 +189,12 @@ export function EmbeddingHubGetStartedPage() {
       </Title>
 
       <Stack gap="md">
-        <Stack gap={4}>
+        <Box>
           <Title order={3} c="text-primary">{t`Create your first embed`}</Title>
-          <Text c="text-secondary">
+          <Text c="text-secondary" mt={4}>
             {t`If all you want is a simple embedded dashboard, these steps are all you need.`}
           </Text>
-        </Stack>
+        </Box>
 
         <Box
           className={cx(S.cardGrid, !hasSimpleEmbedding && S.cardGridTwoColumn)}
@@ -207,31 +204,27 @@ export function EmbeddingHubGetStartedPage() {
       </Stack>
 
       <Stack gap="md">
-        {/* Below the paywall the design replaces the subtitle with the upsell
-            banner rather than stacking both. The banner is a sibling of the
-            heading, not part of its 4px stack, so it sits at the section's
-            own spacing. */}
-        <Stack gap={4}>
+        <Box>
           <Title order={3} c="text-primary">{t`Fine-tune your embed`}</Title>
 
-          {hasSimpleEmbedding && (
-            <Text c="text-secondary">
+          {hasSimpleEmbedding ? (
+            <Text c="text-secondary" mt={4}>
               {t`If you have a more sophisticated setup in mind, with many users and tenants, then keep going.`}
             </Text>
+          ) : (
+            <Box mt="md">
+              <UpsellBanner
+                title={t`Upgrade to Metabase Pro to configure advanced options.`}
+                campaign={UPSELL_CAMPAIGN}
+                location={UPSELL_LOCATION}
+                buttonText={t`Try Metabase Pro`}
+                buttonLink={upgradeUrl}
+                onClick={triggerUpsellFlow}
+                large
+              />
+            </Box>
           )}
-        </Stack>
-
-        {!hasSimpleEmbedding && (
-          <UpsellBanner
-            title={t`Upgrade to Metabase Pro to configure advanced options.`}
-            campaign={UPSELL_CAMPAIGN}
-            location={UPSELL_LOCATION}
-            buttonText={t`Try Metabase Pro`}
-            buttonLink={upgradeUrl}
-            onClick={triggerUpsellFlow}
-            large
-          />
-        )}
+        </Box>
 
         <Box
           className={cx(S.cardGrid, !hasSimpleEmbedding && S.cardGridTwoColumn)}
@@ -254,10 +247,11 @@ type StepHandlers = {
   openEmbedModal: (initialState: SdkIframeEmbedSetupModalInitialState) => void;
 };
 
-function getFirstEmbedSteps({
+function getBaseEmbedSteps({
   setOpenedModal,
   openEmbedModal,
-}: StepHandlers): HubStep[] {
+  hasSimpleEmbedding,
+}: StepHandlers & { hasSimpleEmbedding: boolean }): HubStep[] {
   return [
     {
       id: "add-data",
@@ -277,7 +271,9 @@ function getFirstEmbedSteps({
       id: "create-test-embed",
       icon: "embed",
       title: t`Get embed snippet`,
-      description: t`Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance.`,
+      description: hasSimpleEmbedding
+        ? t`Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance.`
+        : t`Embed a dashboard or question. Configure the experience and customize the appearance.`,
       onClick: () => openEmbedModal({}),
     },
   ];
@@ -318,7 +314,7 @@ function getFineTuneSteps({
  * puts on the home page for admins while the `embedding-homepage` setting is
  * visible. That page keeps the shared steps only, so these two live here.
  */
-function CustomThemeCard({
+function ThemeCard({
   step,
   isLocked,
   isDone,
@@ -343,10 +339,9 @@ function CustomThemeCard({
   );
 }
 
-// Deliberately not gated on a token feature: the admin AI page is available to
-// any admin, and neither `ai-features-enabled?` nor `embedded-metabot-enabled?`
-// is gated either, so a lock would claim the step is unavailable when it is not.
-function ConfigureAiCard({
+// AI is available on both OSS and Pro, so this is the only card that moves
+// between sections depending on the plan.
+function AiCard({
   step,
   isConfigured,
 }: {
@@ -361,7 +356,7 @@ function ConfigureAiCard({
         step={step}
         icon="metabot"
         title={t`Configure AI`}
-        description={t`Set up AI in the Admin to embed an AI chat interface to let your users query data using natural language.`}
+        description={t`Connect to an LLM provider to embed AI chat interfaces and let your users ask natural language queries.`}
         isDone={isConfigured}
         // Configured, the card links out to the admin AI page rather than
         // reopening the modal. That is a product decision, not a constraint --
@@ -379,14 +374,8 @@ function ConfigureAiCard({
 }
 
 function UsefulLinksSection() {
-  // `embedding_hub`, underscored, is what the existing hub already sends
-  // (setup-guide/components/SetupGuide.tsx). Hyphens are the house style
-  // everywhere else, but matching the live value keeps this one campaign
-  // across the rewrite rather than splitting it in two.
   const campaign = "embedding_hub";
 
-  // Content identifies the link, not the page: one value for all three would
-  // report clicks without saying which card was clicked.
   const docsUtm = (content: string) => ({
     utm_source: "product",
     utm_medium: "docs",
@@ -394,8 +383,6 @@ function UsefulLinksSection() {
     utm_content: content,
   });
 
-  // The embedding hub is admin-only, so these always show. The rule is already off for
-  // this directory in eslint.config.mjs, same as for admin/**.
   const { url: introductionUrl } = useDocsUrl("embedding/introduction", {
     utm: docsUtm("get-started-embedding-methods"),
   });
@@ -403,9 +390,6 @@ function UsefulLinksSection() {
     utm: docsUtm("get-started-documentation"),
   });
 
-  // The demo goes to marketing rather than the docs, so it does not run
-  // through useDocsUrl -- but it is the one link here that most wants
-  // attribution, so it gets the same treatment by hand.
   const demoUrl = useSelector((state) =>
     getUrlWithUtm(state, {
       url: MARKETING_DEMO_URL,

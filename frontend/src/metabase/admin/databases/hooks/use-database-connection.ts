@@ -43,7 +43,7 @@ export const useDatabaseConnection = ({
   const handleOnSubmit = (savedDB: { id: DatabaseId }) => {
     if (addingNewDatabase) {
       // Carried through so the post-sync modal returns to whichever host
-      // opened the guide, not always the admin one.
+      // opened the guide, not always the default one.
       const param =
         returnToSetupGuide != null
           ? `?${RETURN_TO_SETUP_GUIDE_PARAM}=${encodeURIComponent(returnToSetupGuide)}`

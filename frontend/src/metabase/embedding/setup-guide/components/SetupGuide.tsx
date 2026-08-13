@@ -21,7 +21,7 @@ export const SetupGuide = ({ returnTo }: { returnTo?: string } = {}) => {
 
   // Flows that leave the guide -- connecting a database, for one -- come back
   // here, and the guide has more than one host.
-  const { setOpenedModal, modals } = useSetupGuideModals(returnTo);
+  const { setOpenedModal, modals } = useSetupGuideModals({ returnTo });
 
   const lockedSteps: Partial<Record<SetupGuideStepId, boolean>> = useMemo(
     () => ({
