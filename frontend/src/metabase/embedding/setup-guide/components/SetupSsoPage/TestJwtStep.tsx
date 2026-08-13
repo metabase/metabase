@@ -112,8 +112,7 @@ const SsoTroubleshootingView = ({ onDone }: { onDone: () => void }) => {
 
         <Button
           component={Link}
-          // Relative so the wizard returns to whichever host mounted it: the
-          // admin setup guide, or the embedding hub's Get started tab.
+          // Relative so the wizard returns to whichever host mounted it.
           to=".."
           variant="filled"
           onClick={onDone}

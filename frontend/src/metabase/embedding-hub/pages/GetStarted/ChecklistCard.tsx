@@ -46,11 +46,7 @@ export function ChecklistCard({
 
   const content = (
     <Stack gap="sm" h="100%" justify="space-between">
-      {/* The description sits in the same column as the title, indented past
-          the icon, rather than starting back at the icon's edge. */}
       <Group gap="sm" align="flex-start" wrap="nowrap">
-        {/* FixedSizeIcon, not Icon: as a flex child next to the text the
-            plain icon shrinks below its declared size. */}
         <FixedSizeIcon
           name={icon}
           size={16}
@@ -63,7 +59,6 @@ export function ChecklistCard({
             {title}
           </Text>
 
-          {/* md is the theme's 14px, which is the design's body size. */}
           <Text
             fz="md"
             lh="lg"
@@ -75,16 +70,15 @@ export function ChecklistCard({
       </Group>
 
       <Flex justify="flex-end">
-        <StepBadge step={step} isDone={isDone} isLocked={isLocked} />
+        <StepBadge
+          step={step}
+          isDone={isDone && !isLocked}
+          isLocked={isLocked}
+        />
       </Flex>
     </Stack>
   );
 
-  // The link and action forms are spelled out separately rather than shared
-  // through a ternary on `component`: ForwardRefLink and UnstyledButton have
-  // polymorphic types that don't unify (see AreaTab for the same issue), and
-  // this is also what gives an onClick-only card a real focusable role
-  // instead of a bare div with a click handler.
   let card;
 
   if (isInteractive && to != null) {
@@ -126,6 +120,7 @@ export function ChecklistCard({
       </Card>
     );
   } else {
+    // Locked, or given neither `to` nor `onClick`: a plain div, with no click target.
     card = (
       <Card
         p="md"
@@ -138,8 +133,6 @@ export function ChecklistCard({
     );
   }
 
-  // "Complete the other steps to unlock" named nothing. The prerequisite is
-  // always a specific step, so say which one.
   if (isLocked && lockedReason) {
     return (
       <Tooltip label={lockedReason} position="top" withArrow>
