@@ -60,8 +60,8 @@
   table. `visited` is path-local: it prevents cycles without collapsing distinct model paths that
   happen to reach the same table."
   [card model-index model-lineage visited]
-  (try
-    (let [query (query-utils/wrap-query (:database_id card) (:dataset_query card))]
+  (query-utils/ignoring-exceptions
+   #(let [query (query-utils/wrap-query (:database_id card) (:dataset_query card))]
       (cond
         (nil? query)
         (unsupported-table-dependency :unreadable-query model-lineage)
@@ -79,12 +79,8 @@
                                             (conj visited (:id model)))))
                 (direct-table-dependencies query model-lineage)
                 (unvisited-models query model-index visited))))
-    (catch InterruptedException e
-      (.interrupt (Thread/currentThread))
-      (throw e))
-    (catch Exception e
-      (log/debug e "Failed to resolve candidate table dependencies")
-      (unsupported-table-dependency :unreadable-query model-lineage))))
+   #(log/debug % "Failed to resolve candidate table dependencies")
+   #(unsupported-table-dependency :unreadable-query model-lineage)))
 
 (defn- dependency-path-sort-key
   [{:keys [direct? models]}]
@@ -342,21 +338,19 @@
        :temporal-breakout (get-in definition [:stages 0 :breakout 0])})))
 
 (defn- prepare-metric-definition
+  "Resolve `card` into a candidate Metric definition, or `nil` if it isn't one.
+
+  Callers are responsible for catching and logging exceptions at a verbosity appropriate to their
+  use: a card failing to resolve is routine while mining raw candidates, but the same failure
+  while computing existing-Metric dedup signatures means dedup coverage for that card was lost."
   [card card-index]
-  (try
-    (let [query                   (query-utils/wrap-query (:database_id card) (:dataset_query card))
-          stage                   (candidate-metric-stage query)
-          {physical-stage :stage
-           :keys          [model-lineage]} (when stage (metric-source-stage card card-index query stage))
-          definition              (when physical-stage (clean-metric-definition query physical-stage))]
-      (when definition
-        (validated-metric-definition (:database_id card) definition model-lineage)))
-    (catch InterruptedException e
-      (.interrupt (Thread/currentThread))
-      (throw e))
-    (catch Exception e
-      (log/debug e "Failed to prepare candidate Metric definition")
-      nil)))
+  (let [query                   (query-utils/wrap-query (:database_id card) (:dataset_query card))
+        stage                   (candidate-metric-stage query)
+        {physical-stage :stage
+         :keys          [model-lineage]} (when stage (metric-source-stage card card-index query stage))
+        definition              (when physical-stage (clean-metric-definition query physical-stage))]
+    (when definition
+      (validated-metric-definition (:database_id card) definition model-lineage))))
 
 (defn- meaningful-metric-context?
   [{:keys [query]}]
@@ -371,7 +365,10 @@
 (defn- raw-metric-candidate
   [card card-index]
   (let [{:keys [definition query model-lineage table-ids aggregation temporal-breakout]
-         :as prepared} (prepare-metric-definition card card-index)]
+         :as prepared} (query-utils/ignoring-exceptions
+                        #(prepare-metric-definition card card-index)
+                        #(log/debug % "Failed to prepare candidate Metric definition")
+                        (constantly nil))]
     (when (and prepared (meaningful-metric-context? prepared))
       (cond-> {::candidate-mining/signature   (candidate-mining/canonical-signature definition)
                ::candidate-mining/source-item (assoc card
@@ -390,6 +387,12 @@
   (into [] (keep #(raw-metric-candidate % card-index)) cards))
 
 (defn- existing-metric-definition-signatures
+  "Signatures of every persisted Metric's definition, used to dedup newly mined Metric candidates.
+
+  A card whose definition fails to resolve is skipped (logged at `:warn`, not `:debug`) rather than
+  hidden as ordinary mining noise: unlike raw candidate mining, a missed signature here means we've
+  lost the ability to recognize that an equivalent Metric already exists, and may go on to suggest
+  creating a duplicate."
   []
   (let [metric-cards (t2/select [:model/Card :id :name :type :database_id :dataset_query :card_schema]
                                 :type :metric
@@ -397,7 +400,10 @@
         card-index   (candidate-mining/candidate-lineage-card-index metric-cards)]
     (into #{}
           (keep (fn [card]
-                  (some-> (prepare-metric-definition card card-index)
+                  (some-> (query-utils/ignoring-exceptions
+                           #(prepare-metric-definition card card-index)
+                           #(log/warn % "Failed to prepare existing Metric definition for dedup" {:card-id (:id card)})
+                           (constantly nil))
                           :definition
                           candidate-mining/canonical-signature)))
           metric-cards)))

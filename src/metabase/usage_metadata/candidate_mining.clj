@@ -275,17 +275,13 @@
 
 (defn- direct-columns
   [query stage-number clause]
-  (try
-    (let [columns (vec (distinct (lib/referenced-columns query stage-number clause)))]
+  (query-utils/ignoring-exceptions
+   #(let [columns (vec (distinct (lib/referenced-columns query stage-number clause)))]
       (when (and (seq columns)
-                 (every? #(and (pos-int? (:id %)) (pos-int? (:table-id %))) columns))
+                 (every? (fn [column] (and (pos-int? (:id column)) (pos-int? (:table-id column)))) columns))
         columns))
-    (catch InterruptedException e
-      (.interrupt (Thread/currentThread))
-      (throw e))
-    (catch Exception e
-      (log/debug e "Failed to resolve candidate fields")
-      nil)))
+   #(log/debug % "Failed to resolve candidate fields")
+   (constantly nil)))
 
 (defn- rewrite-physical-field-ref
   [query stage-number expected-table-id field-ref]
@@ -651,7 +647,7 @@
     (:table :metric)
     true
 
-    false))
+    (throw (ex-info "Unrecognized candidate-type" {:candidate-type candidate-type}))))
 
 (defn candidate-sort-key
   "Return the deterministic priority key for a normalized candidate observation."
