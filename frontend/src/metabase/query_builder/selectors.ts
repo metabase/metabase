@@ -720,7 +720,7 @@ export const getRawSeries = createSelector(
       return null;
     }
     const rawSeries = createRawSeries({
-      card: card,
+      card,
       queryResult,
       datasetQuery: lastRunDatasetQuery,
     });
