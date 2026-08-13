@@ -9,9 +9,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- conflict!
-  [message reason]
-  (throw (ex-info message {:status-code 409, :reason reason})))
+(defn conflict!
+  "Throw a 409 conflict ex-info with `reason` (and any extra `data`) attached."
+  [message reason & [data]]
+  (throw (ex-info message (merge {:status-code 409, :reason reason} data))))
 
 (defn current-candidate
   "Return the current candidate for `id`, or nil when it does not exist.
