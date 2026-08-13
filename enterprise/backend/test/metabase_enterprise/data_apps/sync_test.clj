@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase.permissions.core :as perms]
@@ -31,6 +32,20 @@
         (when description (format "description: %s\n" description)))
    (format "data_apps/%s/%s" dir path) bundle})
 
+(deftest resource-provisioning-failures-are-isolated-test
+  (mt/with-model-cleanup [:model/DataApp]
+    (let [files (merge (app-files "broken" {:name "Broken" :path "index.js" :bundle "BROKEN"})
+                       (app-files "working" {:name "Working" :path "index.js" :bundle "WORKING"}))]
+      (with-redefs [data-app.resources/ensure-resources!
+                    (fn [app]
+                      (when (= "broken" (:name app))
+                        (throw (ex-info "Resource provisioning failed." {}))))]
+        (is (=? {:synced 2 :changed 2}
+                (data-app.sync/import-from-snapshot! (snapshot files))))
+        (is (= "Resource provisioning failed."
+               (t2/select-one-fn :sync_error :model/DataApp :name "broken")))
+        (is (nil? (t2/select-one-fn :sync_error :model/DataApp :name "working")))))))
+
 (deftest sync-creates-stable-permission-resources-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
@@ -50,10 +65,11 @@
           (is (not (t2/exists? :model/Permissions
                                :group_id permission_group_id
                                :object (perms/collection-readwrite-path resource_collection_id))))
-          (is (every? #(= :no %)
-                      (t2/select-fn-vec :perm_value :model/DataPermissions
-                                        :group_id permission_group_id
-                                        :perm_type "perms/create-queries"))))
+          (let [permissions (t2/select-fn-vec :perm_value :model/DataPermissions
+                                              :group_id permission_group_id
+                                              :perm_type :perms/create-queries)]
+            (is (seq permissions))
+            (is (every? #(= :no %) permissions))))
         (testing "later syncs reuse the same resources"
           (data-app.sync/import-from-snapshot! (snapshot files))
           (is (=? {:resource_collection_id resource_collection_id

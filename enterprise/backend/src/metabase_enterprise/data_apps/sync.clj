@@ -22,7 +22,6 @@
    [toucan2.core :as t2])
   (:import
    (java.security MessageDigest)
-   (java.sql SQLIntegrityConstraintViolationException)
    (org.apache.commons.codec.binary Hex)))
 
 (set! *warn-on-reflection* true)
@@ -48,25 +47,18 @@
     (when-not (str/blank? url)
       url)))
 
-(defn- duplicate-data-app-name? [e]
-  (or (instance? SQLIntegrityConstraintViolationException e)
-      (instance? SQLIntegrityConstraintViolationException (ex-cause e))
-      (when-let [message (ex-message e)]
-        (and (re-find #"(?i)data_app" message)
-             (re-find #"(?i)duplicate|unique" message)))))
-
 (defn- create-draft!
   [slug]
-  (t2/with-transaction [_conn]
-    (when-not (data-apps.db/data-app-exists? slug)
-      (data-apps.db/insert-data-app!
-       {:name             slug
-        :display_name     slug
-        :bundle_path      (format "%s/%s/%s" data-app.config/apps-dir slug data-app.config/config-file-name)
-        :sync_error       (tru "Bundle not synced yet.")
-        :draft            true}))
-    (-> (data-apps.db/non-blob-data-app-by-slug slug)
-        data-app.resources/ensure-resources!)))
+  (let [app (t2/with-transaction [_conn]
+              (when-not (data-apps.db/data-app-exists? slug)
+                (data-apps.db/insert-data-app!
+                 {:name         slug
+                  :display_name slug
+                  :bundle_path  (format "%s/%s/%s" data-app.config/apps-dir slug data-app.config/config-file-name)
+                  :sync_error   (tru "Bundle not synced yet.")
+                  :draft        true}))
+              (data-apps.db/non-blob-data-app-by-slug slug))]
+    (data-app.resources/ensure-resources! app)))
 
 (defn ensure-draft!
   "Create a data app draft when needed and ensure its permission resources.
@@ -76,7 +68,7 @@
   (try
     (create-draft! slug)
     (catch Throwable e
-      (if (duplicate-data-app-name? e)
+      (if (data-apps.db/data-app-exists? slug)
         (create-draft! slug)
         (throw e)))))
 
@@ -186,8 +178,6 @@
                                      :last_synced_at  :%now
                                      :sync_error      nil
                                      :draft            false))
-        (-> (data-apps.db/non-blob-data-app-by-slug slug)
-            data-app.resources/ensure-resources!)
         (app-content-changed? existing fields)))
     (catch Throwable e
       (let [fields {:display_name  display_name
@@ -202,6 +192,22 @@
         (or (nil? existing)
             (not= (:sync_error existing) (ex-message e))
             (app-metadata-changed? existing fields))))))
+
+(defn- ensure-app-resources!
+  "Ensure one app's permission resources after its import transaction commits.
+   Returns whether the recorded sync state changed."
+  [slug]
+  (try
+    (-> (data-apps.db/non-blob-data-app-by-slug slug)
+        data-app.resources/ensure-resources!)
+    false
+    (catch Throwable e
+      (let [message (ex-message e)]
+        (log/warnf "[data-app] failed to ensure resources for app %s: %s" slug message)
+        (boolean
+         (when (not= (:sync_error (data-apps.db/non-blob-data-app-by-slug slug)) message)
+           (data-apps.db/update-data-app-by-slug! slug {:sync_error message})
+           true))))))
 
 (defn import-from-snapshot!
   "Materialize data apps from a synced repo `snapshot`:
@@ -252,10 +258,11 @@
                 removed (if (seq present-slugs)
                           (data-apps.db/delete-data-apps-not-named! present-slugs)
                           (data-apps.db/delete-all-data-apps!))]
-            {:changed changed, :removed removed}))]
+            {:changed changed, :removed removed}))
+        resource-changed (count (filter true? (map (comp ensure-app-resources! :slug) good)))]
     (log/infof "[data-app] synced sha=%s apps=%d changed=%d removed=%d errors=%d"
-               sha (count good) changed removed (count errors))
-    {:synced (count good), :changed changed, :removed removed, :sha sha, :config-errors errors}))
+               sha (count good) (+ changed resource-changed) removed (count errors))
+    {:synced (count good), :changed (+ changed resource-changed), :removed removed, :sha sha, :config-errors errors}))
 
 (defn sync-from-snapshot!
   "Entry point for the remote-sync import pipeline. Materializes data apps from

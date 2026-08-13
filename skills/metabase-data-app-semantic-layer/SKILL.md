@@ -115,7 +115,7 @@ export const RevenueQuery = defineQuery({ source: schema.tables.orders });
 
 Ensure `package.json` defines `"sync-queries": "embedding-sdk-react data-apps sync-queries"`. Run `npm run sync-queries` after adding, changing, renaming, or removing a query definition. The command loads `DATA_APP_MB_URL` and `DATA_APP_MB_API_KEY` from the repo-root `.env.local`, creates or reconciles the saved questions, injects `savedQuestionSourceId`, and updates `queries_metadata.json`.
 
-Before synchronization, verify that every `*.query.ts` definition is under the root-level `queries/` directory and that none remain under `src/queries/`. Treat a successful run that discovers no definitions as a failure when the app contains Metabase queries.
+Before synchronization, verify every named `defineQuery(...)` export is under the root-level `queries/` directory and that none remain under `src/queries/`. Discovery supports `.js`, `.jsx`, `.ts`, `.tsx`, `.cjs`, `.cts`, `.mjs`, and `.mts` files. Treat a successful run that discovers no definitions as a failure when the app contains Metabase queries.
 
 Treat inline `savedQuestionSourceId` values and `queries_metadata.json` as generated synchronization state. Do not delete or manually edit either one. If an inline ID is accidentally missing but the query's table and authored hash still match one unclaimed lockfile entry, `npm run sync-queries` restores it automatically.
 
@@ -188,14 +188,14 @@ Both query hooks take an optional second argument: the clauses that change while
 // revenue.query.ts — static, and identical on every render
 const orders = schema.tables.orders;
 
-export const RevenueQuery = {
+export const RevenueQuery = defineQuery({
   source: orders,
   aggregations: [aggregations.sum(orders.fields.total)],
   breakouts: [
     breakout(orders.fields.createdAt, { unit: "month" }),
     breakout(orders.fields.plan),
   ],
-} satisfies MetabaseQueryOptions<typeof orders>;
+});
 
 // the component supplies only what the UI changes
 const { data } = useMetabaseQuery(RevenueQuery, {

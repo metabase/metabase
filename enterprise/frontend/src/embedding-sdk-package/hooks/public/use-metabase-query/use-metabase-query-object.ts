@@ -49,8 +49,10 @@ export function useMetabaseQueryObject(
   const dynamicQueryRef = useRef(dynamicQuery);
   const pendingQueryKeyRef = useRef<string | null>(null);
 
-  queryRef.current = query;
-  dynamicQueryRef.current = dynamicQuery;
+  useEffect(() => {
+    queryRef.current = query;
+    dynamicQueryRef.current = dynamicQuery;
+  }, [query, dynamicQuery]);
 
   const [{ value, error, loading }, resolveQueryObject] =
     useAsyncFn(async (): Promise<QueryObjectState | null> => {

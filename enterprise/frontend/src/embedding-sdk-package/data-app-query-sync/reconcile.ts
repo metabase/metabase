@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { injectSavedQuestionId } from "./ast/query-source";
 import { getCanonicalQueryJson } from "./canonical";
+import { isPositiveInteger } from "./guards";
 import { writeQueryLockfile } from "./lockfile";
 import type { MetabaseClient } from "./metabase-client";
 import { MetabaseApiError } from "./metabase-client";
@@ -34,10 +35,6 @@ export interface ReconcileQueriesOptions {
   previousEntries: QueryLockEntry[];
   client: MetabaseClient;
   log: (message: string) => void;
-}
-
-function isPositiveInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
 function queryWithoutGeneratedId(query: DiscoveredQuery) {

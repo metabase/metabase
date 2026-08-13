@@ -89,7 +89,7 @@ export function breakout<TDimension extends object>(
 ) {
   return {
     ...dimension,
-    ...(options && "unit" in options ? { unit: options.unit } : undefined),
+    ...(options?.unit !== undefined ? { unit: options.unit } : undefined),
     ...getBinningOptions(options),
   };
 }
@@ -138,7 +138,7 @@ export function orderBy<TDimension>(
   return {
     ...orderableDimension,
     ...(direction ? { direction } : undefined),
-    ...(options && "unit" in options ? { unit: options.unit } : undefined),
+    ...(options?.unit !== undefined ? { unit: options.unit } : undefined),
     ...getBinningOptions(options),
   };
 }

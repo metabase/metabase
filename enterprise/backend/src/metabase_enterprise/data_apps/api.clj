@@ -83,23 +83,23 @@
    [:configured :boolean]
    [:url [:maybe :string]]])
 
-(def ^:private query-source
+(def ^:private QuerySource
   [:map
    [:type :string]
    [:id ms/PositiveInt]])
 
-(def ^:private query-definition
+(def ^:private QueryDefinition
   [:map {:closed false}
    [:stages [:sequential {:min 1}
              [:map {:closed false}
-              [:source query-source]]]]])
+              [:source QuerySource]]]]])
 
-(def ^:private query-resolution-response
+(def ^:private QueryResolutionResponse
   [:map
    [:database_id ms/PositiveInt]
    [:dataset_query ms/Map]])
 
-(def ^:private query-sync-permissions-request
+(def ^:private QuerySyncPermissionsRequest
   [:map
    [:database_ids [:sequential {:distinct true} ms/PositiveInt]]])
 
@@ -192,19 +192,19 @@
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
 
-(api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- query-resolution-response
+(api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- QueryResolutionResponse
   "Resolve an authored data-app query definition into a serializable Metabase query."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
    _query-params
-   query-definition :- query-definition]
+   query-def :- QueryDefinition]
   (api/check-superuser)
   (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))
-  (let [{source-type :type, table-id :id} (get-in query-definition [:stages 0 :source])
+  (let [{source-type :type, table-id :id} (get-in query-def [:stages 0 :source])
         _           (api/check-400 (= (keyword source-type) :table)
                                    "Data app query definitions must use a table source.")
         database-id (api/check-404 (data-apps.db/table-database-id table-id))
         query        (-> (lib-be/application-database-metadata-provider database-id)
-                         (lib/test-query query-definition)
+                         (lib/test-query query-def)
                          lib/prepare-for-serialization)]
     {:database_id database-id
      :dataset_query query}))
@@ -222,7 +222,7 @@
   "Reconcile the database view-data permissions required by a data app's queries."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
    _query-params
-   {database-ids :database_ids} :- query-sync-permissions-request]
+   {database-ids :database_ids} :- QuerySyncPermissionsRequest]
   (api/check-superuser)
   (let [app (api/check-404 (data-apps.db/non-blob-data-app-by-slug slug))]
     (data-app.resources/reconcile-view-data! app (set database-ids)))

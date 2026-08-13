@@ -32,6 +32,23 @@ describe("query canonicalization", () => {
     );
   });
 
+  it("rejects unsupported values and invalid table sources", () => {
+    const circular: { self?: unknown } = {};
+    circular.self = circular;
+
+    expect(() => canonicalJson(circular)).toThrow("circular references");
+    expect(() => canonicalJson({ value: new Date() })).toThrow(
+      "only plain objects",
+    );
+    expect(() => canonicalJson({ value: Infinity })).toThrow(
+      "non-finite numbers",
+    );
+    expect(() => getQueryFingerprint({})).toThrow("valid table source");
+    expect(() =>
+      getQueryFingerprint({ source: { type: "table", id: 0 } }),
+    ).toThrow("valid table source");
+  });
+
   it("preserves references while normalizing generated query IDs", () => {
     const queryWithGeneratedIds = (
       firstId: string,
