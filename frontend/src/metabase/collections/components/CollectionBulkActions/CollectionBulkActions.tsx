@@ -16,14 +16,15 @@ import {
   isMovable,
   useSetCollection,
 } from "metabase/common/hooks";
-import type { Collection, CollectionItem } from "metabase-types/api";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
 import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
 
 type CollectionBulkActionsProps = {
-  selected: any[];
+  selected: CollectionItem[];
   collection: Collection;
+  bookmarks?: Bookmark[];
   selectedItems: CollectionItem[] | null;
   setSelectedItems: (items: CollectionItem[] | null) => void;
   selectedAction: string | null;
@@ -35,6 +36,7 @@ export const CollectionBulkActions = memo(
   ({
     selected,
     collection,
+    bookmarks,
     selectedItems,
     setSelectedItems,
     selectedAction,
@@ -151,6 +153,7 @@ export const CollectionBulkActions = memo(
             <UnarchivedBulkActions
               selected={selected}
               collection={collection}
+              bookmarks={bookmarks ?? []}
               clearSelected={clearSelected}
               setSelectedItems={setSelectedItems}
               setSelectedAction={setSelectedAction}

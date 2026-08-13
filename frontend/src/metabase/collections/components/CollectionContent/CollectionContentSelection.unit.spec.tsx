@@ -336,6 +336,39 @@ describe("CollectionContent selection", () => {
     expect(await screen.findByText("1 item selected")).toBeInTheDocument();
   });
 
+  it("should adapt the bulk action bar overflow to the selection composition", async () => {
+    await setup();
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Pin all" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Unpin all" }),
+    ).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(getPinnedCard(pinnedDashboard.name));
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Pin all" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Unpin all" }),
+    ).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Unpin all" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Pin all" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("should open a row menu without selecting on shift+click", async () => {
     await setup();
     const row = screen.getByRole("row", {

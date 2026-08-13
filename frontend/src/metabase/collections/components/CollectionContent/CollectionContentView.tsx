@@ -315,6 +315,7 @@ export const CollectionContentView = ({
           />
           <CollectionBulkActions
             collection={collection}
+            bookmarks={bookmarks}
             selected={selected}
             clearSelected={clear}
             selectedItems={selectedItems}

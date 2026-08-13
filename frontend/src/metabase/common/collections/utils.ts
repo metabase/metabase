@@ -11,6 +11,7 @@ import type { IconProps } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
 import {
+  type Bookmark,
   type CardType,
   type Collection,
   type CollectionContentModel,
@@ -231,6 +232,26 @@ export function isItemCollection(item: Pick<CollectionItem, "model">) {
 
 export function isReadOnlyCollection(collection: CollectionItem) {
   return isItemCollection(collection) && !collection.can_write;
+}
+
+/**
+ * If item.model is `dataset` or `metric`, that is, a Model or a Metric in a
+ * product sense, call it "card" because they are treated the same in the
+ * back-end bookmark API.
+ */
+export function getItemBookmarkType(item: CollectionItem) {
+  return item.model === "dataset" || item.model === "metric"
+    ? "card"
+    : item.model;
+}
+
+export function isItemBookmarked(item: CollectionItem, bookmarks: Bookmark[]) {
+  const bookmarkType = getItemBookmarkType(item);
+
+  return bookmarks.some(
+    (bookmark) =>
+      bookmark.type === bookmarkType && bookmark.item_id === item.id,
+  );
 }
 
 export function canBookmarkItem({ model, type, archived }: CollectionItem) {

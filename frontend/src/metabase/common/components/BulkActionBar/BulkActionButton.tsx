@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { forwardRef } from "react";
 
 import { Button, type ButtonProps } from "metabase/ui";
 
@@ -8,12 +9,18 @@ type BulkActionButtonProps = ButtonProps & {
   classname?: string;
 };
 
-export const BulkActionButton = ({
-  classname,
-  ...props
-}: BulkActionButtonProps) => (
-  <Button className={cx(S.BulkActionButton, classname)} {...props} />
-);
+export const BulkActionButton = forwardRef<
+  HTMLButtonElement,
+  BulkActionButtonProps
+>(function BulkActionButton({ classname, ...props }, ref) {
+  return (
+    <Button
+      ref={ref}
+      className={cx(S.BulkActionButton, classname)}
+      {...props}
+    />
+  );
+});
 
 export const BulkActionDangerButton = ({
   classname,
