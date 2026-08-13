@@ -20,6 +20,12 @@
   (let [mp (lib-be/application-database-metadata-provider (mt/id))]
     (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
 
+(defn- expected-id-batch-sizes
+  "Batch sizes candidate-query-batch-size splits `total` ids into, so tests don't restate the
+  private batch-size constant as a bare literal."
+  [total]
+  (mapv count (partition-all @#'candidate-mining/candidate-query-batch-size (range total))))
+
 (deftest ^:parallel referenced-card-ids-support-current-and-legacy-references-test
   (let [referenced-card-ids @#'candidate-mining/referenced-card-ids]
     (is (= #{12 34 56}
@@ -221,12 +227,16 @@
 
 (deftest qualified-card-ids-bounds-recent-view-log-scan-test
   (let [scanned-card-ids (atom ::not-called)]
-    (with-redefs-fn {#'candidate-mining/recent-card-view-counts
+    (with-redefs-fn {#'candidate-mining/select-candidate-source-cards
+                     (fn [_card-ids _columns]
+                       [{:id 900001, :collection_id nil, :view_count 0}
+                        {:id 900002, :collection_id nil, :view_count 0}])
+                     #'candidate-mining/recent-card-view-counts
                      (fn [card-ids _window-days]
                        (reset! scanned-card-ids card-ids)
                        {})}
       #(candidate-mining/qualified-card-ids 10 90))
-    (is (set? @scanned-card-ids))))
+    (is (= #{900001 900002} @scanned-card-ids))))
 
 (deftest ^:parallel candidate-id-queries-are-bounded-test
   (let [mapcat-id-batches @#'candidate-mining/mapcat-id-batches
@@ -237,7 +247,7 @@
                                 (swap! batches conj batch)
                                 batch)
                               ids)))
-    (is (= [200 200 50] (mapv count @batches)))))
+    (is (= (expected-id-batch-sizes 450) (mapv count @batches)))))
 
 (deftest recent-card-view-counts-queries-bounded-id-batches-test
   (let [recent-card-view-counts @#'candidate-mining/recent-card-view-counts
@@ -248,7 +258,7 @@
                          (swap! batch-sizes conj (count batch))
                          []))}
       #(recent-card-view-counts (set (range 450)) 90))
-    (is (= [200 200 50] @batch-sizes))))
+    (is (= (expected-id-batch-sizes 450) @batch-sizes))))
 
 (deftest curation-queries-use-bounded-id-batches-test
   (let [verified-card-ids       @#'candidate-mining/verified-card-ids
@@ -269,5 +279,5 @@
       #(do
          (is (= ids (verified-card-ids ids)))
          (is (= ids (official-collection-ids ids)))))
-    (is (= [200 200 50] @moderation-batches))
-    (is (= [200 200 50] @collection-batches))))
+    (is (= (expected-id-batch-sizes 450) @moderation-batches))
+    (is (= (expected-id-batch-sizes 450) @collection-batches))))
