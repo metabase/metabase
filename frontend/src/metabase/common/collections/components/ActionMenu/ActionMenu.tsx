@@ -16,6 +16,7 @@ import type {
   DeleteBookmark,
   OnCopy,
   OnMove,
+  OnToggleSelected,
 } from "metabase/common/collections/types";
 import {
   canArchiveItem,
@@ -25,6 +26,7 @@ import {
 } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EntityItem } from "metabase/common/components/EntityItem";
+import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import {
   canMoveItem,
   canPinItem,
@@ -49,6 +51,8 @@ export interface ActionMenuProps {
   onMove?: OnMove;
   createBookmark?: CreateBookmark;
   deleteBookmark?: DeleteBookmark;
+  isSelected?: boolean;
+  onToggleSelected?: OnToggleSelected;
 }
 
 interface ActionMenuStateProps {
@@ -88,6 +92,8 @@ function ActionMenuInner({
   onMove,
   createBookmark,
   deleteBookmark,
+  isSelected,
+  onToggleSelected,
 }: ActionMenuProps & ActionMenuStateProps) {
   const archive = useSetArchive();
   const restore = useRestore();
@@ -102,6 +108,7 @@ function ActionMenuInner({
   const canRestore = item.can_restore;
   const canDelete = item.can_delete;
   const canCopy = onCopy && canCopyItem(item);
+  const canSelect = canSelectItems(collection, onToggleSelected);
 
   const handlePin = useCallback(() => {
     if (isPinnable(item)) {
@@ -160,8 +167,10 @@ function ActionMenuInner({
         className={`${S.EntityItemMenu} ${className || ""}`}
         item={item}
         isBookmarked={isBookmarked}
+        isSelected={isSelected}
         isXrayEnabled={!item.archived && isXrayEnabled}
         onPin={canPin ? handlePin : undefined}
+        onToggleSelected={canSelect ? onToggleSelected : undefined}
         onMove={canMove ? handleMove : undefined}
         onCopy={canCopy ? handleCopy : undefined}
         onArchive={canArchive ? handleArchive : undefined}

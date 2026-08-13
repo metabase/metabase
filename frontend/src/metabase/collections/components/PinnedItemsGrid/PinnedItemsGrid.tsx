@@ -22,6 +22,8 @@ import type {
   CollectionItem,
 } from "metabase-types/api";
 
+import { useIsShiftPressed } from "./use-is-shift-pressed";
+
 type Props = {
   databases?: Database[];
   bookmarks?: Bookmark[];
@@ -62,6 +64,10 @@ export function PinnedItemsGrid({
         }
       : skipToken,
   );
+  const canSelect = canSelectItems(collection, onToggleSelected);
+  const isSelectMode = canSelect && selected.length > 0;
+  const isShiftPressed = useIsShiftPressed(canSelect);
+  const showSelectAffordance = canSelect && !isSelectMode && isShiftPressed;
 
   const sortedItems = useMemo(() => {
     const items = pinnedItemsData?.data ?? [];
@@ -75,9 +81,6 @@ export function PinnedItemsGrid({
       </Box>
     );
   }
-
-  const canSelect = canSelectItems(collection, onToggleSelected);
-  const isSelectMode = canSelect && selected.length > 0;
 
   return (
     <Box mb={rem(48)} pos="relative" data-testid="pinned-items">
@@ -115,6 +118,7 @@ export function PinnedItemsGrid({
                     isSelectMode={isSelectMode}
                     isSelected={isSelected}
                     onToggleSelected={canSelect ? onToggleSelected : undefined}
+                    showSelectAffordance={showSelectAffordance}
                   />
                 </div>
               </ItemDragSource>
