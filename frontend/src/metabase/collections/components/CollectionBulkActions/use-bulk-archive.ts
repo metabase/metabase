@@ -1,7 +1,11 @@
 import { useCallback, useMemo } from "react";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
-import { type ArchivableItem, useSetArchive } from "metabase/archive/hooks";
+import {
+  type ArchivableItem,
+  type ArchivableModel,
+  useSetArchive,
+} from "metabase/archive/hooks";
 import { canArchiveItem } from "metabase/common/collections/utils";
 import type {
   Collection,
@@ -9,21 +13,20 @@ import type {
   CollectionItemModel,
 } from "metabase-types/api";
 
+const ARCHIVABLE_MODELS: ReadonlySet<CollectionItemModel> = new Set([
+  "card",
+  "metric",
+  "dataset",
+  "snippet",
+  "document",
+  "dashboard",
+  "collection",
+  "exploration",
+] satisfies Extract<CollectionItemModel, ArchivableModel>[]);
+
 const isArchivableItem = (
   item: CollectionItem,
-): item is CollectionItem & ArchivableItem => {
-  const archivableModels: CollectionItemModel[] = [
-    "card",
-    "metric",
-    "dataset",
-    "snippet",
-    "document",
-    "dashboard",
-    "collection",
-    "exploration",
-  ];
-  return archivableModels.includes(item.model);
-};
+): item is CollectionItem & ArchivableItem => ARCHIVABLE_MODELS.has(item.model);
 
 export const useBulkArchive = (
   selected: CollectionItem[],

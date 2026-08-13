@@ -7,9 +7,10 @@ const shortcutGroup: ShortcutGroup = "collection";
 export const collectionShortcuts = {
   "collection-send-items-to-trash": {
     get name() {
-      return t`Move collection items to trash`;
+      return t`Move selected items to trash`;
     },
-    shortcut: ["$mod+backspace"],
+    shortcut: ["(Delete|Backspace)"],
+    shortcutDisplay: ["Delete", "Backspace"],
     shortcutGroup,
   },
   "collection-clear-selection": {
@@ -17,22 +18,6 @@ export const collectionShortcuts = {
       return t`Clear selection`;
     },
     shortcut: ["Escape"],
-    shortcutGroup,
-  },
-  "collection-trash-selected-items": {
-    get name() {
-      return t`Move selected items to trash`;
-    },
-    shortcut: ["Delete"],
-    shortcutDisplay: ["Delete", "Backspace"],
-    shortcutGroup,
-  },
-  "collection-trash-selected-items-backspace": {
-    get name() {
-      return t`Move selected items to trash`;
-    },
-    shortcut: ["Backspace"],
-    hide: true,
     shortcutGroup,
   },
 };

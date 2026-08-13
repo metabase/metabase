@@ -107,6 +107,13 @@ async function openTableQuestionActions() {
   expect(await screen.findByRole("menu")).toBeInTheDocument();
 }
 
+async function openTypeFilter() {
+  await userEvent.click(screen.getByTestId("collection-type-filter-button"));
+  const popover = await screen.findByTestId("collection-type-filter-popover");
+  expect(popover).toBeInTheDocument();
+  return popover;
+}
+
 describe("CollectionContent selection shortcuts", () => {
   it("clears a mixed selection with Escape", async () => {
     await setup();
@@ -162,15 +169,31 @@ describe("CollectionContent selection shortcuts", () => {
     ).toBeInTheDocument();
   });
 
-  it("opens the trash confirmation with Ctrl+Backspace", async () => {
+  it.each(["Delete", "Backspace"])(
+    "opens the trash confirmation with %s after selecting all",
+    async (key) => {
+      await setup();
+      const selectAll = screen.getByLabelText("Select all items");
+      await userEvent.click(selectAll);
+      expect(selectAll).toHaveFocus();
+
+      await userEvent.keyboard(`{${key}}`);
+
+      expect(
+        await screen.findByTestId("move-to-trash-confirmation"),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("clears a select-all selection with Escape while the checkbox is focused", async () => {
     await setup();
-    await selectTableQuestion();
+    const selectAll = screen.getByLabelText("Select all items");
+    await userEvent.click(selectAll);
+    expect(selectAll).toHaveFocus();
 
-    await userEvent.keyboard("{Control>}{Backspace}{/Control}");
+    await userEvent.keyboard("{Escape}");
 
-    expect(
-      await screen.findByTestId("move-to-trash-confirmation"),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/items? selected/)).not.toBeInTheDocument();
   });
 
   it("does not open the trash confirmation for non-archivable items", async () => {
@@ -267,6 +290,46 @@ describe("CollectionContent selection shortcuts", () => {
       expect(
         screen.queryByTestId("move-to-trash-confirmation"),
       ).not.toBeInTheDocument();
+      expect(screen.getByText("1 item selected")).toBeInTheDocument();
+    },
+  );
+
+  it("closes the type filter with Escape and keeps the selection", async () => {
+    await setup();
+    await selectTableQuestion();
+    const popover = await openTypeFilter();
+    popover.focus();
+
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("collection-type-filter-popover"),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("1 item selected")).toBeInTheDocument();
+  });
+
+  it.each(["Delete", "Backspace"])(
+    "does not open the trash confirmation with %s while the type filter is open",
+    async (key) => {
+      await setup();
+      await selectTableQuestion();
+      const popover = await openTypeFilter();
+      const filterCheckbox = within(popover).getByRole("checkbox", {
+        name: "Dashboard",
+      });
+      filterCheckbox.focus();
+      expect(filterCheckbox).toHaveFocus();
+
+      await userEvent.keyboard(`{${key}}`);
+
+      expect(
+        screen.queryByTestId("move-to-trash-confirmation"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId("collection-type-filter-popover"),
+      ).toBeInTheDocument();
       expect(screen.getByText("1 item selected")).toBeInTheDocument();
     },
   );

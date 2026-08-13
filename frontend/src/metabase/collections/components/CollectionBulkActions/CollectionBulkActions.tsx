@@ -26,6 +26,15 @@ import { ArchivedBulkActions } from "./ArchivedBulkActions";
 import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
 import { useBulkArchive } from "./use-bulk-archive";
 
+const BLOCKING_OVERLAY_SELECTOR =
+  '[role="dialog"], [data-element-id="mantine-popover"]';
+
+function hasBlockingOverlay() {
+  return Array.from(
+    document.querySelectorAll<HTMLElement>(BLOCKING_OVERLAY_SELECTOR),
+  ).some((element) => element.style.display !== "none");
+}
+
 type CollectionBulkActionsProps = {
   selected: CollectionItem[];
   collection: Collection;
@@ -66,37 +75,21 @@ export const CollectionBulkActions = memo(
 
     const hasBlockingDialog = selectedAction !== null;
 
-    const canRunSelectionShortcut = useCallback(
-      (event?: KeyboardEvent) => {
-        if (selected.length === 0 || hasBlockingDialog) {
-          return false;
-        }
+    const canRunSelectionShortcut = useCallback(() => {
+      return selected.length > 0 && !hasBlockingDialog && !hasBlockingOverlay();
+    }, [hasBlockingDialog, selected.length]);
 
-        return !(
-          event?.target instanceof Element &&
-          event.target.closest('[role="dialog"], [role="menu"]') !== null
-        );
-      },
-      [hasBlockingDialog, selected.length],
-    );
+    const handleTrashShortcut = useCallback(() => {
+      if (canRunSelectionShortcut() && canArchive) {
+        openTrashConfirm();
+      }
+    }, [canArchive, canRunSelectionShortcut, openTrashConfirm]);
 
-    const handleTrashShortcut = useCallback(
-      (event?: KeyboardEvent) => {
-        if (canRunSelectionShortcut(event) && canArchive) {
-          openTrashConfirm();
-        }
-      },
-      [canArchive, canRunSelectionShortcut, openTrashConfirm],
-    );
-
-    const handleClearSelectionShortcut = useCallback(
-      (event?: KeyboardEvent) => {
-        if (canRunSelectionShortcut(event)) {
-          clearSelected();
-        }
-      },
-      [canRunSelectionShortcut, clearSelected],
-    );
+    const handleClearSelectionShortcut = useCallback(() => {
+      if (canRunSelectionShortcut()) {
+        clearSelected();
+      }
+    }, [canRunSelectionShortcut, clearSelected]);
 
     useBulkActionsShortcuts(
       handleTrashShortcut,
@@ -269,37 +262,29 @@ export const CollectionBulkActions = memo(
 );
 
 function useBulkActionsShortcuts(
-  handleTrashShortcut: (event?: KeyboardEvent) => void,
-  handleClearSelectionShortcut: (event?: KeyboardEvent) => void,
+  handleTrashShortcut: () => void,
+  handleClearSelectionShortcut: () => void,
   isTrashed: boolean,
 ) {
-  const trashShortcuts: RegisterShortcutProps[] = [
-    {
-      id: "collection-trash-selected-items",
-      perform: (_action, event) => handleTrashShortcut(event),
-    },
-    {
-      id: "collection-trash-selected-items-backspace",
-      perform: (_action, event) => handleTrashShortcut(event),
-    },
-    {
-      id: "collection-send-items-to-trash",
-      perform: (_action, event) => handleTrashShortcut(event),
-    },
-  ];
-
-  useRegisterShortcut(
-    [
+  const shortcutsToRegister: RegisterShortcutProps[] = useMemo(() => {
+    const shortcuts: RegisterShortcutProps[] = [
       {
         id: "collection-clear-selection",
-        perform: (_action, event) => {
-          handleClearSelectionShortcut(event);
-        },
+        perform: handleClearSelectionShortcut,
       },
-      ...(isTrashed ? [] : trashShortcuts),
-    ],
-    [handleClearSelectionShortcut, handleTrashShortcut, isTrashed],
-  );
+    ];
+
+    if (!isTrashed) {
+      shortcuts.push({
+        id: "collection-send-items-to-trash",
+        perform: handleTrashShortcut,
+      });
+    }
+
+    return shortcuts;
+  }, [handleClearSelectionShortcut, handleTrashShortcut, isTrashed]);
+
+  useRegisterShortcut(shortcutsToRegister, [shortcutsToRegister]);
 }
 
 CollectionBulkActions.displayName = "CollectionBulkActions";
