@@ -47,6 +47,16 @@ To number the rows of a table, click on the **gear** icon in bottom left to brin
 
 To change the width of a column, you can click and drag the edges of the column's header.
 
+## Stripe rows
+
+To make wide tables easier to read across, you can shade every other row.
+
+1. Click the **gear** icon in the bottom left to open visualization settings.
+2. Switch to the **Display** tab.
+3. Toggle on **Striped rows**.
+
+Striped rows also apply when the table is sent in a [dashboard subscription or alert](../../dashboards/subscriptions.md). Any [conditional formatting](#conditional-table-formatting) colors take precedence over the stripe.
+
 ## Freeze columns or rows
 
 You can freeze a number of columns and/or rows, so that they'd stay on the screen while you scroll. Sticky columns are especially useful when viewing wide tables, as you can keep the column that identifies the row (like `account_name`) on the screen as you scroll across the columns.

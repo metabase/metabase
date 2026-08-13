@@ -82,6 +82,15 @@ export const TABLE_DEFINITION = {
       widget: "toggle",
       getDefault: () => false,
     },
+    "table.striped": {
+      getSection: () => t`Display`,
+      get title() {
+        return t`Striped rows`;
+      },
+      inline: true,
+      widget: "toggle",
+      getDefault: () => false,
+    },
     "table.freeze_columns": {
       getSection: () => t`Display`,
       get title() {
