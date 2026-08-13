@@ -557,9 +557,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["graph.show_values", "stackable.stack_type"],
   },
   "graph.stack_value_format": {
-    get section() {
-      return t`Display`;
-    },
+    getSection: () => t`Display`,
     get title() {
       return t`Stack value format`;
     },
@@ -591,7 +589,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
       // Hide for non-stacked charts
       return true;
     },
-    props: {
+    getProps: () => ({
       options: [
         {
           get name() {
@@ -606,7 +604,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
           value: "percentage",
         },
       ],
-    },
+    }),
     getDefault: () => "value",
     readDependencies: [
       "graph.show_values",
@@ -761,7 +759,8 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       "graph.x_axis._is_histogram",
     ],
     isValid: isXAxisScaleValid,
-    getDefault: (series, vizSettings) => getDefaultXAxisScale(vizSettings),
+    getDefault: (series, vizSettings) =>
+      getDefaultXAxisScale(vizSettings, series[0]?.card?.display),
     getProps: (series, vizSettings) => ({
       options: getAvailableXAxisScales(series, vizSettings),
     }),

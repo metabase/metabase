@@ -8,7 +8,6 @@ import type {
 import _ from "underscore";
 
 import { getTextColorForBackground } from "metabase/ui/colors/palette";
-import { getObjectValues } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
 import {
