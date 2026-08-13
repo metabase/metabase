@@ -37,7 +37,7 @@ import {
   isTime,
   isTitle,
   isURL,
-} from "./isa";
+} from "metabase-lib/v1/types/utils/isa";
 
 export const customVizColumnTypes: ColumnTypes = {
   hasLatitudeAndLongitudeColumns,
