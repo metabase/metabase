@@ -97,8 +97,14 @@
         :when (some #{config-path} (list-dir dir))]
     (try
       (if-let [content (read-file config-path)]
-        (let [{:keys [slug display_name path allowed_hosts]} (data-app.config/parse-app-config (->bytes content) dir)]
-          {:slug slug, :display_name display_name, :bundle (str dir "/" path), :allowed_hosts allowed_hosts})
+        (let [{:keys [slug display_name path allowed_hosts resource_collection_entity_id permission_group_entity_id]}
+              (data-app.config/parse-app-config (->bytes content) dir)]
+          {:slug                          slug
+           :display_name                  display_name
+           :bundle                        (str dir "/" path)
+           :allowed_hosts                 allowed_hosts
+           :resource_collection_entity_id resource_collection_entity_id
+           :permission_group_entity_id    permission_group_entity_id})
         {:slug (data-app.config/dir-slug dir), :config-error (tru "Could not read {0}." config-path)})
       (catch Throwable e
         {:slug (data-app.config/dir-slug dir), :config-error (ex-message e)}))))
@@ -178,9 +184,11 @@
 (defn- ensure-app-resources!
   "Ensure one app's permission resources after its import transaction commits.
    Returns whether the recorded sync state changed."
-  [slug]
+  [{:keys [slug resource_collection_entity_id permission_group_entity_id]}]
   (try
     (-> (data-app/select-one-non-blob :name slug)
+        (assoc :resource_collection_entity_id resource_collection_entity_id
+               :permission_group_entity_id permission_group_entity_id)
         data-app.resources/ensure-resources!)
     false
     (catch Throwable e
@@ -244,7 +252,7 @@
                                       :draft false)
                           (t2/delete! :model/DataApp :draft false))]
             {:changed changed, :removed removed}))
-        resource-changed (count (filter true? (map (comp ensure-app-resources! :slug) good)))]
+        resource-changed (count (filter true? (map ensure-app-resources! good)))]
     (log/infof "[data-app] synced sha=%s apps=%d changed=%d removed=%d errors=%d"
                sha (count good) (+ changed resource-changed) removed (count errors))
     {:synced (count good), :changed (+ changed resource-changed), :removed removed, :sha sha, :config-errors errors}))

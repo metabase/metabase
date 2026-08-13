@@ -79,6 +79,20 @@
           (is (not (t2/exists? :model/Collection :id resource_collection_id)))
           (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))))))))
 
+(deftest sync-materializes-resources-with-manifest-entity-ids-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [files {"data_apps/sales/data_app.yaml"
+                 "name: Sales\npath: index.js\nresource_collection_entity_id: resourcecollectionid1\npermission_group_entity_id: permissiongroupid0001\n"
+                 "data_apps/sales/index.js" "V1"}]
+      (data-app.sync/import-from-snapshot! (snapshot files))
+      (let [app (t2/select-one :model/DataApp :name "sales")]
+        (is (= "resourcecollectionid1"
+               (t2/select-one-fn :entity_id :model/Collection :id (:resource_collection_id app))))
+        (is (= "permissiongroupid0001"
+               (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:permission_group_id app)))))
+      (is (=? {:changed 0}
+              (data-app.sync/import-from-snapshot! (snapshot files)))))))
+
 (deftest sync-restores-deleted-collection-and-permission-group-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]

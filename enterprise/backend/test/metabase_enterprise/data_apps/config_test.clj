@@ -15,9 +15,29 @@
   ([s dir] (data-app.config/parse-app-config (->bytes s) dir)))
 
 (deftest parse-valid-config-test
-  (is (= {:slug "sales" :display_name "Sales dashboard" :path "dist/index.js" :allowed_hosts []}
+  (is (= {:slug                          "sales"
+          :display_name                  "Sales dashboard"
+          :path                          "dist/index.js"
+          :allowed_hosts                 []
+          :resource_collection_entity_id nil
+          :permission_group_entity_id    nil}
          (parse "name: Sales dashboard
 path: ./dist/index.js"))))
+
+(deftest parse-resource-entity-ids-test
+  (is (= {:resource_collection_entity_id "resourcecollectionid1"
+          :permission_group_entity_id    "permissiongroupid0001"}
+         (select-keys (parse "name: Sales
+path: dist/index.js
+resource_collection_entity_id: resourcecollectionid1
+permission_group_entity_id: permissiongroupid0001")
+                      [:resource_collection_entity_id :permission_group_entity_id])))
+  (testing "blank values are rejected"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource_collection_entity_id.*21-character"
+                          (parse "name: Sales\npath: dist/index.js\nresource_collection_entity_id: '  '"))))
+  (testing "entity IDs must have the standard length"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission_group_entity_id.*21-character"
+                          (parse "name: Sales\npath: dist/index.js\npermission_group_entity_id: short")))))
 
 (deftest slug-comes-from-the-directory-test
   (testing "the app's slug is the name of the directory it lives in"
@@ -50,7 +70,12 @@ path: ./dist/index.js"))))
 
 (deftest unknown-fields-are-ignored-test
   (testing "unknown keys don't fail the parse — including a stray `slug`, which the directory name overrides"
-    (is (= {:slug "sales" :display_name "X" :path "dist/index.js" :allowed_hosts []}
+    (is (= {:slug                          "sales"
+            :display_name                  "X"
+            :path                          "dist/index.js"
+            :allowed_hosts                 []
+            :resource_collection_entity_id nil
+            :permission_group_entity_id    nil}
            (parse "name: X\nslug: elsewhere\nfuture_option: 1\npath: dist/index.js")))))
 
 (deftest parse-errors-test

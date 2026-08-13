@@ -11,12 +11,17 @@
 
 (defn- create-permission-group! [app]
   (let [group (t2/insert-returning-instance! :model/PermissionsGroup
-                                             :name (resource-name app))]
-    (t2/update! :model/DataApp :id (:id app) {:permission_group_id (:id group)})
+                                             (cond-> {:name (resource-name app)}
+                                               (:permission_group_entity_id app)
+                                               (assoc :entity_id (:permission_group_entity_id app))))]
+    (t2/update! :model/DataApp :id (:id app)
+                {:permission_group_id (:id group)})
     group))
 
 (defn- permission-group! [app]
-  (or (some->> (:permission_group_id app)
+  (or (some->> (:permission_group_entity_id app)
+               (t2/select-one :model/PermissionsGroup :entity_id))
+      (some->> (:permission_group_id app)
                (t2/select-one :model/PermissionsGroup :id))
       (create-permission-group! app)))
 
@@ -33,16 +38,21 @@
 
 (defn- create-resource-collection! [app]
   (let [collection (t2/insert-returning-instance! :model/Collection
-                                                  :name (resource-name app)
-                                                  :location "/")]
-    (t2/update! :model/DataApp :id (:id app) {:resource_collection_id (:id collection)})
+                                                  (cond-> {:name     (resource-name app)
+                                                           :location "/"}
+                                                    (:resource_collection_entity_id app)
+                                                    (assoc :entity_id (:resource_collection_entity_id app))))]
+    (t2/update! :model/DataApp :id (:id app)
+                {:resource_collection_id (:id collection)})
     (doseq [group (t2/select :model/PermissionsGroup)
             :when (not= (:id group) (:id (perms/admin-group)))]
       (perms/revoke-collection-permissions! group collection))
     collection))
 
 (defn- resource-collection! [app]
-  (or (some->> (:resource_collection_id app)
+  (or (some->> (:resource_collection_entity_id app)
+               (t2/select-one :model/Collection :entity_id))
+      (some->> (:resource_collection_id app)
                (t2/select-one :model/Collection :id))
       (create-resource-collection! app)))
 
