@@ -155,7 +155,8 @@
     ;; 63+
     :model/McpFeedback
     ;; 64+
-    ;; Administrator-authored state, not a derived usage-metadata snapshot. Copy it after its Table and User references.
+    ;; Administrator-authored state, not a derived usage-metadata snapshot. Copy it after its Table reference
+    ;; (there's deliberately no FK to User, so the dismissal survives the dismissing admin being deleted).
     :model/UsageMetadataCandidateDismissal
     ;; Not in dependency order, and cannot be: `transform.target_table_id` and `metabase_table.transform_id`
     ;; point at each other. Order does not matter -- `copy!` defers or disables FK checks for the whole load.
