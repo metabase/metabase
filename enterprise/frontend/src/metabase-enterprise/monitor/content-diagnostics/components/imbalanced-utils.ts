@@ -1,5 +1,5 @@
 import { P, match } from "ts-pattern";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import type * as Urls from "metabase/urls";
 import type { Sorting } from "metabase/utils/sorting";
@@ -7,6 +7,7 @@ import type {
   ContentDiagnosticsFilterType,
   ContentDiagnosticsImbalancedFindingType,
   ContentDiagnosticsImbalancedSortColumn,
+  ContentDiagnosticsImbalancedUnit,
 } from "metabase-types/api";
 
 import { DEFAULT_INCLUDE_PERSONAL_COLLECTIONS } from "./constants";
@@ -113,4 +114,23 @@ export function getImbalancedEmptyStateLabel(
     .with("sparse", () => t`No sparse content found`)
     .with("crowded", () => t`No crowded content found`)
     .exhaustive();
+}
+
+export function getContentCountLabel(
+  count: number,
+  unit: ContentDiagnosticsImbalancedUnit,
+): string {
+  return match(unit)
+    .with("items", () =>
+      ngettext(msgid`${count} item`, `${count} items`, count),
+    )
+    .with("dashcards", () =>
+      ngettext(msgid`${count} dashcard`, `${count} dashcards`, count),
+    )
+    .with("rows", () => ngettext(msgid`${count} row`, `${count} rows`, count))
+    .with("cards", () =>
+      ngettext(msgid`${count} card`, `${count} cards`, count),
+    )
+    .with("tabs", () => ngettext(msgid`${count} tab`, `${count} tabs`, count))
+    .otherwise(() => `${count} ${unit}`);
 }

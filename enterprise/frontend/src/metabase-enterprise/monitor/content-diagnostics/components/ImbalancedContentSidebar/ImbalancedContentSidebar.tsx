@@ -4,6 +4,7 @@ import { Box } from "metabase/ui";
 import type { ContentDiagnosticsImbalancedFinding } from "metabase-types/api";
 
 import { DiagnosticsSidebar } from "../DiagnosticsSidebar";
+import { getContentCountLabel } from "../imbalanced-utils";
 
 type ImbalancedContentSidebarProps = {
   finding: ContentDiagnosticsImbalancedFinding;
@@ -22,7 +23,9 @@ export function ImbalancedContentSidebar({
       onClose={onClose}
       extraInfo={{
         label: t`Content count`,
-        children: <Box>{`${content_count} ${details.unit}`}</Box>,
+        children: (
+          <Box>{getContentCountLabel(content_count, details.unit)}</Box>
+        ),
       }}
     />
   );

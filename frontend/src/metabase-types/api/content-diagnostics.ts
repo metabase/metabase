@@ -98,6 +98,16 @@ export const CONTENT_DIAGNOSTICS_IMBALANCED_SORT_COLUMNS = [
 export type ContentDiagnosticsImbalancedSortColumn =
   (typeof CONTENT_DIAGNOSTICS_IMBALANCED_SORT_COLUMNS)[number];
 
+export const CONTENT_DIAGNOSTICS_IMBALANCED_UNITS = [
+  "items",
+  "dashcards",
+  "rows",
+  "cards",
+  "tabs",
+] as const;
+export type ContentDiagnosticsImbalancedUnit =
+  (typeof CONTENT_DIAGNOSTICS_IMBALANCED_UNITS)[number];
+
 export type ContentDiagnosticsStaleUserParams = {
   entity_types?: ContentDiagnosticsNonCollectionFilterType[];
   include_personal_collections?: boolean;
@@ -285,7 +295,7 @@ export type ContentDiagnosticsImbalancedUserParams = {
 export type ContentDiagnosticsImbalancedFindingDetails =
   ContentDiagnosticsBaseFindingDetails & {
     threshold: number;
-    unit: string;
+    unit: ContentDiagnosticsImbalancedUnit;
     as_of?: string;
   };
 
