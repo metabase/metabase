@@ -175,9 +175,11 @@ export const MetabotChat = ({
                 onRetryMessage={
                   config.preventRetryMessage ? undefined : metabot.retryMessage
                 }
-                onContinueMessage={() =>
+                onContinueMessage={(finishReason) =>
                   metabot.submitInput(
-                    t`Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote.`,
+                    finishReason === "tool-calls"
+                      ? t`Continue working on my last request.`
+                      : t`Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote.`,
                   )
                 }
                 onRefreshConversation={() => {

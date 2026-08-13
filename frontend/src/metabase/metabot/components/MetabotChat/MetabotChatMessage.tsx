@@ -193,7 +193,9 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   readonly: boolean;
   conversationId: string;
   onRetry?: (messageId: string) => void;
-  onContinue?: () => void;
+  onContinue?: (
+    finishReason: MetabotAgentTurnIncompleteMessage["finishReason"],
+  ) => void;
   onRefreshConversation?: () => void;
   getCopyText: () => string;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
@@ -493,7 +495,9 @@ const IncompleteTurnAlert = ({
   onContinue,
 }: {
   finishReason: MetabotAgentTurnIncompleteMessage["finishReason"];
-  onContinue?: () => void;
+  onContinue?: (
+    finishReason: MetabotAgentTurnIncompleteMessage["finishReason"],
+  ) => void;
 }) => {
   const metabotName = useSetting("metabot-name");
   const { message, continuable } = match(finishReason)
@@ -505,7 +509,11 @@ const IncompleteTurnAlert = ({
       message: t`Response from ${metabotName} was stopped by a content filter. Try rephrasing your question.`,
       continuable: false,
     }))
-    .with("tool-calls", "other", () => ({
+    .with("tool-calls", () => ({
+      message: t`${metabotName} paused after reaching its step limit for this response`,
+      continuable: true,
+    }))
+    .with("other", () => ({
       message: t`Response from ${metabotName} stopped before it finished`,
       continuable: false,
     }))
@@ -521,7 +529,7 @@ const IncompleteTurnAlert = ({
             variant="default"
             size="compact-xs"
             fz="xs"
-            onClick={onContinue}
+            onClick={() => onContinue?.(finishReason)}
             data-testid="metabot-chat-message-continue"
           >
             {t`Continue`}
@@ -578,7 +586,9 @@ export const Messages = ({
 }: {
   messages: MetabotChatMessage[];
   onRetryMessage?: (messageId: string) => void;
-  onContinueMessage?: () => void;
+  onContinueMessage?: (
+    finishReason: MetabotAgentTurnIncompleteMessage["finishReason"],
+  ) => void;
   onRefreshConversation?: () => void;
   isDoingScience: boolean;
   supportsReasoning?: boolean;

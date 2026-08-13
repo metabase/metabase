@@ -179,6 +179,59 @@ describe("metabot > finish reason", () => {
     });
   });
 
+  describe("tool-calls", () => {
+    const stepLimitedResponse: SSEEvent[] = [
+      { type: "start", messageId: "msg_step_limited" },
+      { type: "text-start", id: "t1" },
+      { type: "text-delta", id: "t1", delta: "Let me look into that." },
+      { type: "text-end", id: "t1" },
+      { type: "finish", finishReason: "tool-calls" },
+    ];
+
+    it("should explain the paused response and offer to continue", async () => {
+      setup();
+      mockAgentEndpoint({ events: stepLimitedResponse });
+
+      await enterChatMessage("Do a big multi-step task");
+
+      await assertConversation([
+        ["user", "Do a big multi-step task"],
+        ["agent", "Let me look into that."],
+        ["agent", /paused after reaching its step limit/],
+      ]);
+      expect(await continueResponseButton()).toBeInTheDocument();
+    });
+
+    it("should send a resume user turn when continue is clicked", async () => {
+      setup();
+      mockAgentEndpoint({ events: stepLimitedResponse });
+      await enterChatMessage("Do a big multi-step task");
+
+      const continuationSpy = mockAgentEndpoint({
+        events: [
+          { type: "start", messageId: "msg_resumed" },
+          { type: "text-start", id: "t2" },
+          { type: "text-delta", id: "t2", delta: "All done now." },
+          { type: "text-end", id: "t2" },
+          { type: "finish", finishReason: "stop" },
+        ],
+      });
+
+      await userEvent.click(await continueResponseButton());
+
+      await assertConversation([
+        ["user", "Do a big multi-step task"],
+        ["agent", "Let me look into that."],
+        ["agent", /paused after reaching its step limit/],
+        ["user", /Continue working on my last request/],
+        ["agent", "All done now."],
+      ]);
+      expect((await lastReqBody(continuationSpy))?.message).toMatch(
+        /Continue working on my last request/,
+      );
+    });
+  });
+
   describe("content-filter", () => {
     it("should explain a content-filtered response", async () => {
       setup();

@@ -524,7 +524,7 @@
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools context memory-atom tracking-opts]} agent
-          max-iter           (:max-iterations profile 10)
+          max-iter           (:max-iterations profile 15)
           terminal-tools     (set (:terminal-tools profile))
           tracking-opts      (assoc tracking-opts :iteration iteration)
           memory             @memory-atom
@@ -708,8 +708,9 @@
                                             :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
                             ;; A :reduced stop (client disconnect / cancellation) has already terminated
                             ;; the reducing fn — stepping it again would violate the transducer contract.
-                            ;; Append trailing parts only on a normal finish: the debug log, and the
-                            ;; eval-session pointer that lets the harness locate the per-session
+                            ;; Append trailing parts only on a normal finish: the debug log, the
+                            ;; loop's finish reason, and the eval-session pointer that lets the
+                            ;; harness locate the per-session
                             ;; `<session-id>.jsonl` (it reads that file, not the stream, so a skipped
                             ;; pointer on disconnect costs nothing). Gate the pointer on a non-nil
                             ;; `*session-id*` too: the in-process `capture-reducible`/`capturing` path is
@@ -717,9 +718,11 @@
                             ;; so emitting a pointer there would name a `<nil>.jsonl` that never exists.
                             (if (= :reduced finish-reason)
                               result
-                              (cond-> result
-                                (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
-                                (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*))))))]
+                              (-> result
+                                  (cond->
+                                   (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
+                                   (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*)))
+                                  (rf {:type :finish :finish-reason finish-reason})))))]
                     turn-result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)

@@ -376,7 +376,18 @@ describe("AgentMessage", () => {
         screen.getByText(/was cut off because it hit the maximum length/),
       ).toBeInTheDocument();
       await userEvent.click(await continueResponseButton());
-      expect(onContinue).toHaveBeenCalled();
+      expect(onContinue).toHaveBeenCalledWith("length");
+    });
+
+    it("offers to continue a step-limited response", async () => {
+      const onContinue = jest.fn();
+      setup(incompleteMessage("tool-calls"), { onContinue });
+
+      expect(
+        screen.getByText(/paused after reaching its step limit/),
+      ).toBeInTheDocument();
+      await userEvent.click(await continueResponseButton());
+      expect(onContinue).toHaveBeenCalledWith("tool-calls");
     });
 
     it("explains a content-filtered response without offering to continue", () => {
