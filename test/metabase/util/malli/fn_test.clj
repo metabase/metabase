@@ -91,40 +91,40 @@
                           (walk/macroexpand-all (mu.fn/instrumented-fn-form {} (mu.fn/parse-fn-tail form))))
     '([x :- :int y])
     '(let* [&f (fn* ([x y]))]
-       (fn* ([a b]
-             (try
-               (metabase.util.malli.fn/validate-input {} :int a)
-               (&f a b)
-               (catch java.lang.Exception error
-                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+       (fn* mufn ([a b]
+                  (try
+                    (metabase.util.malli.fn/validate-input {} :int a)
+                    (&f a b)
+                    (catch java.lang.Exception error
+                      (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '(:- :int [x :- :int y])
     '(let* [&f (fn* ([x y]))]
-       (fn* ([a b]
-             (try
-               (metabase.util.malli.fn/validate-input {} :int a)
-               (metabase.util.malli.fn/validate-output {} :int (&f a b))
-               (catch java.lang.Exception error
-                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+       (fn* mufn ([a b]
+                  (try
+                    (metabase.util.malli.fn/validate-input {} :int a)
+                    (metabase.util.malli.fn/validate-output {} :int (&f a b))
+                    (catch java.lang.Exception error
+                      (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '(:- :int [x :- :int y] (+ x y))
     '(let* [&f (fn* ([x y] (+ x y)))]
-       (fn* ([a b]
-             (try
-               (metabase.util.malli.fn/validate-input {} :int a)
-               (metabase.util.malli.fn/validate-output {} :int (&f a b))
-               (catch java.lang.Exception error
-                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+       (fn* mufn ([a b]
+                  (try
+                    (metabase.util.malli.fn/validate-input {} :int a)
+                    (metabase.util.malli.fn/validate-output {} :int (&f a b))
+                    (catch java.lang.Exception error
+                      (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '([x :- :int y] {:pre [(int? x)]})
     '(let* [&f (fn* ([x y]
                      {:pre [(int? x)]}))]
-       (fn* ([a b]
-             (try
-               (metabase.util.malli.fn/validate-input {} :int a)
-               (&f a b)
-               (catch java.lang.Exception error
-                 (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+       (fn* mufn ([a b]
+                  (try
+                    (metabase.util.malli.fn/validate-input {} :int a)
+                    (&f a b)
+                    (catch java.lang.Exception error
+                      (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
 
     '(:- :int
          ([x] (inc x))
@@ -134,6 +134,7 @@
                  ([x y]
                   (+ x y)))]
        (fn*
+         mufn
          ([a]
           (try
             (metabase.util.malli.fn/validate-output {} :int (&f a))
@@ -185,6 +186,7 @@
                         [path opts & {:keys [token-check?], :or {token-check? true}}]
                         (merge {:path path, :token-check? token-check?} opts))]
               (clojure.core/fn
+                mufn
                 ([a b & {:as kvs}]
                  (try
                    (metabase.util.malli.fn/validate-input {:fn-name 'my-fn} :map b)
@@ -218,6 +220,7 @@
                           (reduce + (list* x y more)))
                      &input-schema-0-a [:* :int]]
                 (clojure.core/fn
+                  mufn
                   ([a b & more]
                    (try
                      (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
@@ -257,6 +260,7 @@
                           {:options options, :output (+ x y)})
                      &input-schema-0-a [:map [:integer? :boolean]]]
                 (clojure.core/fn
+                  mufn
                   ([a b & {:as kvs}]
                    (try
                      (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)

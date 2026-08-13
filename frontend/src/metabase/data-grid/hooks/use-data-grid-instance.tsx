@@ -1,4 +1,5 @@
 import {
+  type ColumnMeta,
   type ColumnSizingState,
   type PaginationState,
   getCoreRowModel,
@@ -6,7 +7,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import type React from "react";
 import {
   useCallback,
   useEffect,
@@ -31,9 +31,13 @@ import { useVirtualGrid } from "metabase/data-grid/hooks/use-virtual-grid";
 import type {
   DataGridInstance,
   DataGridOptions,
+  ExpandColumnHandler,
   ExpandedColumnsState,
 } from "metabase/data-grid/types";
-import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
+import {
+  getDataColumn,
+  getIsColumnTruncated,
+} from "metabase/data-grid/utils/columns/data-column";
 import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { isNotNull } from "metabase/lib/types";
@@ -128,19 +132,19 @@ export const useDataGridInstance = <TData, TValue>({
   );
 
   // Handler for expand button click - expands column and adjusts width
-  const handleExpandButtonClick = useCallback(
-    (columnName: string, content: React.ReactNode) => {
+  const handleExpandButtonClick = useCallback<ExpandColumnHandler>(
+    (columnId, formattedValue) => {
       const newColumnWidth = Math.max(
-        measureBodyCellDimensions(content).width,
-        measuredColumnSizingMap[columnName],
+        measureBodyCellDimensions(formattedValue).width,
+        measuredColumnSizingMap[columnId],
       );
       const newColumnSizing = {
         ...columnSizingMap,
-        [columnName]: newColumnWidth,
+        [columnId]: newColumnWidth,
       };
 
       setColumnSizingMap(newColumnSizing);
-      handleUpdateColumnExpanded(columnName);
+      handleUpdateColumnExpanded(columnId);
     },
     [
       columnSizingMap,
@@ -150,37 +154,54 @@ export const useDataGridInstance = <TData, TValue>({
     ],
   );
 
-  // Generate table columns configuration from options
+  // Memoized dataColumns without column width dependent values, so that this
+  // doesn't change when resizing a column. Needed to not re-create the `header`
+  // and `cell` components on each drag frame, which remounts every cell and
+  // may crash the grid in react 19(metabase#78557).
+  const unsizedDataColumns = useMemo(
+    () =>
+      columnsOptions.map((options) => getDataColumn<TData, TValue>(options)),
+    [columnsOptions],
+  );
+
+  // Everything that changes while resizing goes through meta, which does not
+  // affect `header` and `cell` component identity
+  const dataColumns = useMemo(
+    () =>
+      unsizedDataColumns.map((column) => ({
+        ...column,
+        meta: {
+          ...column.meta,
+          isTruncated: getIsColumnTruncated({
+            columnId: column.id,
+            columnSizing: columnSizingMap,
+            measuredColumnSizing: measuredColumnSizingMap,
+            expandedColumns: expandedColumnsMap,
+            truncateWidth: truncateLongCellWidth,
+          }),
+          onExpand: handleExpandButtonClick,
+        } satisfies ColumnMeta<TData, TValue>,
+      })),
+    [
+      unsizedDataColumns,
+      columnSizingMap,
+      measuredColumnSizingMap,
+      expandedColumnsMap,
+      truncateLongCellWidth,
+      handleExpandButtonClick,
+    ],
+  );
+
   const columns = useMemo(() => {
     const rowIdColumnDefinition =
       rowId != null ? getRowIdColumn<TData, TValue>(rowId) : null;
-
-    const dataColumns = columnsOptions.map((options) =>
-      getDataColumn<TData, TValue>(
-        options,
-        columnSizingMap,
-        measuredColumnSizingMap,
-        expandedColumnsMap,
-        truncateLongCellWidth,
-        handleExpandButtonClick,
-      ),
-    );
 
     return [
       columnRowSelectOptions,
       rowIdColumnDefinition,
       ...dataColumns,
     ].filter(isNotNull);
-  }, [
-    rowId,
-    columnsOptions,
-    columnRowSelectOptions,
-    columnSizingMap,
-    measuredColumnSizingMap,
-    expandedColumnsMap,
-    truncateLongCellWidth,
-    handleExpandButtonClick,
-  ]);
+  }, [rowId, columnRowSelectOptions, dataColumns]);
 
   // IDs of columns with fixed width that shouldn't be auto-resized
   const fixedWidthColumnIds = useMemo(() => {
