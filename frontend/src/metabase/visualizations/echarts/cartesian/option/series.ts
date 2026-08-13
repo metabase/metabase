@@ -9,6 +9,7 @@ import _ from "underscore";
 
 import { getTextColorForBackground } from "metabase/ui/colors/palette";
 import { isNotNull } from "metabase/utils/types";
+import { formatValue } from "metabase/value-formatting";
 import {
   INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -31,6 +32,7 @@ import type {
   NumericAxisScaleTransforms,
   NumericXAxisModel,
   SeriesModel,
+  StackModel,
   StackTotalDataKey,
   TimeSeriesXAxisModel,
   XAxisModel,
@@ -380,10 +382,15 @@ export const buildEChartsStackLabelOptions = (
   formatter: LabelFormatter | undefined,
   originalDataset: ChartDataset,
   renderingContext: RenderingContext,
+  settings: ComputedVisualizationSettings,
+  stackModel: StackModel | undefined,
 ): SeriesLabelOption | undefined => {
   if (!formatter) {
     return;
   }
+
+  const showPercentages =
+    settings["graph.stack_value_format"] === "percentage" && stackModel != null;
 
   return {
     silent: true,
@@ -407,6 +414,37 @@ export const buildEChartsStackLabelOptions = (
       if (typeof value !== "number") {
         return "";
       }
+
+      if (showPercentages) {
+        // Calculate stack total (sum of absolute values of all series in the stack)
+        let stackTotal = 0;
+        for (const stackDataKey of stackModel.seriesKeys) {
+          const seriesValue = datum[stackDataKey];
+          if (typeof seriesValue === "number") {
+            stackTotal += Math.abs(seriesValue);
+          }
+        }
+
+        if (stackTotal === 0) {
+          return "";
+        }
+
+        const percentage = Math.abs(value) / stackTotal;
+
+        // Format as percentage
+        const getColumnSettings = settings.column;
+        const columnSettings = getColumnSettings?.(seriesModel.column);
+
+        return String(
+          formatValue(percentage, {
+            column: seriesModel.column,
+            number_separators: columnSettings?.number_separators,
+            number_style: "percent",
+            decimals: 0,
+          }),
+        );
+      }
+
       return formatter(value);
     },
   };
@@ -483,6 +521,7 @@ const buildEChartsBarSeries = (
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
+  stackModel: StackModel | undefined,
   xAxisIndex?: number,
 ): BarSeriesOption | BarSeriesOption[] => {
   const stack = stackName ?? `bar_${seriesModel.dataKey}`;
@@ -527,6 +566,8 @@ const buildEChartsBarSeries = (
           labelFormatter,
           originalDataset,
           renderingContext,
+          settings,
+          stackModel,
         )
       : buildEChartsLabelOptions(
           seriesModel,
@@ -990,7 +1031,13 @@ export const buildEChartsSeries = (
             renderingContext,
             panelIndex,
           );
-        case "bar":
+        case "bar": {
+          const stackModel =
+            chartModel.stackModels == null
+              ? undefined
+              : chartModel.stackModels.find((stackModel) =>
+                  stackModel.seriesKeys.includes(seriesModel.dataKey),
+                );
           return buildEChartsBarSeries(
             chartModel.transformedDataset,
             chartModel.dataset,
@@ -1007,8 +1054,10 @@ export const buildEChartsSeries = (
             chartWidth,
             chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
+            stackModel,
             panelIndex,
           );
+        }
       }
     })
     .flat()
