@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [some])
   (:require
    [clojure.string :as str]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-nippy]
@@ -430,6 +431,24 @@
   [driver [_ _opts field pred]]
   [:sum [:case (sql.qp/->honeysql driver pred) (sql.qp/->honeysql driver field)
          :else 0]])
+
+(defn- format-rows-between-unbounded
+  [_clause _args]
+  ["ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING"])
+
+(sql/register-clause! ::rows-between-unbounded #'format-rows-between-unbounded nil)
+
+(defmethod sql.qp/->honeysql [:clickhouse :offset]
+  [driver [_offset _opts expr n]]
+  (sql.qp/window-aggregation-over-rows
+   driver
+   (let [[f n] (if (pos? n)
+                 [:'leadInFrame n]
+                 [:'lagInFrame (- n)])
+         expr-hsql (sql.qp/->honeysql driver expr)]
+     (-> [f [:'toNullable expr-hsql] [:inline n]]
+         (h2x/with-database-type-info (h2x/database-type expr-hsql))))
+   {::rows-between-unbounded []}))
 
 (defmethod sql.qp/add-interval-honeysql-form :clickhouse
   [_ dt amount unit]
