@@ -969,6 +969,27 @@
    :model-imports #{:model/Card :model/Dashboard}
    :model-exports #{:model/EmbeddingTheme}}
 
+  embedding-hub
+  {:team "Embedding"
+   :api  #{metabase.embedding-hub.api}
+   :uses #{api
+           appearance
+           audit-app
+           embedding
+           metabot
+           permissions
+           premium-features}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/ConnectionImpersonation
+                    :model/Dashboard
+                    :model/Database
+                    :model/DatabaseRouter
+                    :model/EmbeddingTheme
+                    :model/Sandbox
+                    :model/Table
+                    :model/Tenant}}
+
   embedding-rest
   {:team "Embedding"
    :api  #{metabase.embedding-rest.api}
@@ -3331,25 +3352,8 @@
 
   enterprise/embedding-hub
   {:team "Embedding"
-   :api  #{metabase-enterprise.embedding-hub.api}
-   :uses #{api
-           appearance
-           audit-app
-           embedding
-           metabot
-           permissions
-           premium-features
-           enterprise/sso}
-   :model-imports #{:model/Card
-                    :model/Collection
-                    :model/ConnectionImpersonation
-                    :model/Dashboard
-                    :model/Database
-                    :model/DatabaseRouter
-                    :model/EmbeddingTheme
-                    :model/Sandbox
-                    :model/Table
-                    :model/Tenant}}
+   :api  #{}
+   :uses #{premium-features enterprise/sso}}
 
   enterprise/embeddings
   {:team "Metabot"

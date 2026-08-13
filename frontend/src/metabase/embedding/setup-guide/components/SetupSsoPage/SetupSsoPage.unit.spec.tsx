@@ -45,7 +45,7 @@ const setup = ({
   setupPropertiesEndpoints(settings);
   setupUpdateSettingsEndpoint();
 
-  fetchMock.get("path:/api/ee/embedding-hub/checklist", {
+  fetchMock.get("path:/api/embedding-hub/checklist", {
     checklist: { ...defaultChecklist, ...checklist },
     "data-isolation-strategy": null,
   });

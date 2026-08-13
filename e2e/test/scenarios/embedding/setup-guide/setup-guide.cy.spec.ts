@@ -75,7 +75,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("Uploading CSVs to sample database should mark the 'Add Data' step as done", () => {
-      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
+      cy.intercept("GET", "/api/embedding-hub/checklist").as("getChecklist");
 
       cy.log("Enable CSV uploads");
       cy.request("PUT", "/api/setting/uploads-settings", {
@@ -1634,7 +1634,7 @@ describe("scenarios - setup guide", () => {
       cy.intercept("PUT", "/api/permissions/graph").as(
         "updatePermissionsGraph",
       );
-      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
+      cy.intercept("GET", "/api/embedding-hub/checklist").as("getChecklist");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
