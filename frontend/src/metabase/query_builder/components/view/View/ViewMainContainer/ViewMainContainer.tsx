@@ -106,12 +106,13 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
 
-  // Re-wrap the query mode per click so drills always see the clicked
-  // question, matching the wrapping Visualization used to do itself.
-  const clickActionMode = useMemo(() => {
-    const queryMode = mode?.queryMode();
-    return queryMode ? queryModeToClickActionMode(queryMode) : undefined;
-  }, [mode]);
+  // The query mode is stable across Mode instances,
+  // so keying on it keeps the mode prop identity stable through metadata refreshes.
+  const queryMode = mode?.queryMode();
+  const clickActionMode = useMemo(
+    () => (queryMode ? queryModeToClickActionMode(queryMode) : undefined),
+    [queryMode],
+  );
 
   if (queryBuilderMode === "notebook") {
     // we need to render main only in view mode
