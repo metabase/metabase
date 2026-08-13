@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
+import type {
+  ActionContextProviderProps,
+  ActionContextType,
+  EditorBodyProps,
+} from "metabase/actions/containers/ActionCreator/ActionContext";
+import { ActionContext } from "metabase/actions/containers/ActionCreator/ActionContext";
 import type { CreateQueryActionParams } from "metabase/actions/types";
+import { getDefaultFormSettings } from "metabase/actions/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -16,12 +23,7 @@ import type {
   WritebackQueryAction,
 } from "metabase-types/api";
 
-import { getDefaultFormSettings } from "../../../../utils";
-import type { ActionContextType } from "../ActionContext";
-import { ActionContext } from "../ActionContext";
-import type { ActionContextProviderProps, EditorBodyProps } from "../types";
-
-import QueryActionEditor from "./QueryActionEditor";
+import { QueryActionEditor } from "./QueryActionEditor";
 import {
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
@@ -132,7 +134,7 @@ function resolveQuestion(
     : newQuestion(metadata, databaseId);
 }
 
-function QueryActionContextProvider({
+export function QueryActionContextProvider({
   initialAction,
   metadata,
   databaseId,
@@ -254,6 +256,3 @@ function QueryActionContextProvider({
     <ActionContext.Provider value={value}>{children}</ActionContext.Provider>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QueryActionContextProvider;

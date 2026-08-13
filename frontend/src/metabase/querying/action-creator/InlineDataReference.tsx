@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { DataReference } from "metabase/querying/components/DataReference/DataReference";
-import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+
+import { DataReference } from "../components/DataReference/DataReference";
+import type { DataReferenceItem } from "../components/DataReference/types";
 
 export const DataReferenceInline = ({
   onClose,

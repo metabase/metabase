@@ -1,8 +1,9 @@
-import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
-function QueryActionEditor({
+import { NativeQueryEditor } from "../../components/NativeQueryEditor";
+
+export function QueryActionEditor({
   query,
   question,
   isEditable,
@@ -27,6 +28,3 @@ function QueryActionEditor({
     </NativeQueryEditor>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QueryActionEditor;

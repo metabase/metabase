@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/actions/containers/ActionPicker/ActionPicker.styled";
 import type { GlossaryItem } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Table as CommonTable } from "metabase/common/components/Table/Table";
@@ -19,6 +18,8 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type { SortDirection } from "metabase-types/api";
+
+import { EmptyState } from "../EmptyState";
 
 import S from "./Glossary.module.css";
 import { GlossaryRowEditor } from "./GlossaryRowEditor";
@@ -125,10 +126,12 @@ export function GlossaryTable({
         }
         emptyBody={
           <Center>
-            <EmptyState
-              message={t`No terms yet`}
-              illustrationElement={<NoObjectError mb="-1.5rem" />}
-            />
+            <Box mb="md">
+              <EmptyState
+                message={t`No terms yet`}
+                illustrationElement={<NoObjectError mb="-1.5rem" />}
+              />
+            </Box>
           </Center>
         }
         sortColumnName={sortColumnName}
