@@ -45,7 +45,7 @@ const SETUP_GUIDE_URLS = {
 };
 
 /**
- * The hub's own step definition. It carries the action as well as the copy: the
+ * The embedding hub's own step definition. It carries the action as well as the copy: the
  * shared checklist drives the home-page stepper, whose wording and wiring are
  * its own. Only completion is shared, keyed by `SetupGuideStepId`.
  */
@@ -78,7 +78,7 @@ export function EmbeddingHubGetStartedPage() {
     [dispatch],
   );
 
-  // The hub is the only host that renders the setup guide without
+  // The embedding hub is the only host that renders the setup guide without
   // `embedding_simple`: the home-page stepper checks it, and the admin guide's
   // nav item is behind it too. So this is the one place that has to reckon with
   // an unlicensed instance, and each Fine-tune step is locked by the feature it
@@ -335,7 +335,7 @@ function CustomThemeCard({
       icon="palette"
       title={t`Create a custom theme`}
       description={t`Fine-tune the appearance of your embedded content with colors and fonts.`}
-      // Points at the admin theme listing until the hub grows its own Appearance
+      // Points at the admin theme listing until the embedding hub grows its own Appearance
       // tab in EMB-1532; `/embedding/appearance` has no route yet, so linking
       // there would 404.
       to="/admin/embedding/themes"
@@ -394,7 +394,7 @@ function UsefulLinksSection() {
     utm_content: content,
   });
 
-  // The hub is admin-only, so these always show. The rule is already off for
+  // The embedding hub is admin-only, so these always show. The rule is already off for
   // this directory in eslint.config.mjs, same as for admin/**.
   const { url: introductionUrl } = useDocsUrl("embedding/introduction", {
     utm: docsUtm("get-started-embedding-methods"),

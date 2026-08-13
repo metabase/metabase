@@ -97,7 +97,7 @@ function isUnder(pathname: string, base: string) {
 
 /**
  * Pinned to the bottom of the nav, per the design. It dispatches into the same
- * `id: "embed"` modal the admin button uses, which is why the hub's routes
+ * `id: "embed"` modal the admin button uses, which is why the embedding hub's routes
  * mount inside AppComponent -- NewModals lives there.
  */
 function NewEmbedNavButton({ showLabel }: { showLabel: boolean }) {
