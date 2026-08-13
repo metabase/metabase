@@ -788,6 +788,18 @@
                                 (get-in % [:aggregation :type]))
                     candidates)))))
 
+(deftest candidate-measures-include-ineligible-keeps-one-off-popular-conditions-test
+  (mt/with-temp [:model/Card {card-id :id} {:name "candidate mining one-off condition"
+                                            :type :question
+                                            :dataset_query (orders-conditional-measure-query)
+                                            :view_count 1000000}]
+    (let [candidates (candidates-from-card
+                      card-id
+                      (measure-observations {:min-view-count 10, :include-ineligible? true}))]
+      (is (some #(contains? #{:count-where :distinct-where :sum-where}
+                            (get-in % [:aggregation :type]))
+                candidates)))))
+
 (deftest candidate-measures-and-segments-resolve-transparent-model-lineage-test
   (let [mp         (lib-be/application-database-metadata-provider (mt/id))
         product-id (lib.metadata/field mp (mt/id :orders :product_id))
