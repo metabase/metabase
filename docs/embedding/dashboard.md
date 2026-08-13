@@ -21,19 +21,10 @@ To embed a single chart instead, check out [Embed a chart](./chart.md). To let p
 
 A view-only (a.k.a. "static") dashboard displays results without letting people explore the data. Nobody can drill through the charts or change the questions behind them. You can, however, add editable filters that people can change to update the results.
 
-View-only isn't tied to one kind of embed. You can make a dashboard view-only in any embedding type:
+- [Web components](#web-component-view-only-dashboard)
+- [React SDK](#react-sdk-view-only-dashboard-example)
 
-- **[Guest embeds](./introduction.md#guest-embedding)**: always view-only. Nobody logs in to a guest embed, so Metabase has no account to check permissions against, and no way to tell whether a new query is one that person should be allowed to run. The published dashboard is the only thing Metabase can safely run, which is why there's no drill-through or ad-hoc querying to turn off.
-- **[SSO embeds](./introduction.md#sso-embeds)**: interactive out of the box. With a web component, make one view-only by turning off drill-through with `drills="false"`. The SDK has no `drills` prop, so use the view-only `StaticDashboard` component instead of `InteractiveDashboard`. You can also manage what people can do through [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
-
-So pick your authentication based on what your app needs---plans, permissions, whether Metabase should know who's viewing---not on whether you want a view-only dashboard. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds).
-
-This section covers setting up a view-only dashboard with guest authentication.
-
-- [Web components](#view-only-dashboards-with-guest-authentication-using-a-web-component)
-- [React SDK](#view-only-dashboards-using-the-react-sdk)
-
-### View-only dashboards with guest authentication using a web component
+### Web component view-only dashboard
 
 You can use the in-app wizard to set up a view-only dashboard using web components.
 
@@ -41,7 +32,7 @@ You can use the in-app wizard to set up a view-only dashboard using web componen
 
 Before you start, an admin needs to [turn on guest embedding](./guest-embedding.md#turning-on-guest-embedding-in-metabase).
 
-Three things need to happen: you publish the embed in Metabase, you paste the dashboard code into your app, and your server signs a JWT. The wizard writes most of the code for you, so the list below is longer than the work.
+Three things need to happen: you publish the dashboard embed in Metabase, you paste the dashboard code into your app, and your server signs a JWT.
 
 1. Visit the dashboard in your Metabase.
 2. Click the **Share** icon in the upper right.
@@ -57,7 +48,7 @@ Three things need to happen: you publish the embed in Metabase, you paste the da
 
 To keep an embed alive after its token expires, configure a token endpoint with [`guestEmbedProviderUri`](./guest-embedding.md#refreshing-or-initializing-the-jwt-from-your-server).
 
-#### View-only dashboard example with web components
+#### Web components view-only dashboard example
 
 Say you have a sales dashboard with a **Customer** filter, and you want to put it on each customer's account page in your app, showing only that customer's numbers. Here's the frontend code.
 
@@ -127,7 +118,7 @@ For all modular embeds, you can also set a `locale` in your page-level configura
 
 For the full list of attributes, see [web component attributes](./dashboard-reference.md#metabase-dashboard-web-component-attributes).
 
-### View-only dashboards using the React SDK
+### React SDK view-only dashboard example
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
@@ -147,10 +138,10 @@ An interactive dashboard lets people explore their data: they can drill through 
 
 Interactive dashboards require SSO, which you can set up with either web components or the React SDK.
 
-- [Web components](#interactive-dashboards-using-a-web-component)
-- [React SDK](#interactive-dashboards-using-the-react-sdk)
+- [Web components](#web-component-interactive-dashboards)
+- [React SDK](#react-sdk-interactive-dashboards)
 
-### Interactive dashboards using a web component
+### Web component interactive dashboards
 
 Reference an existing dashboard by ID. [Drill-through](../questions/visualizations/drill-through.md) is on by default:
 
@@ -158,9 +149,9 @@ Reference an existing dashboard by ID. [Drill-through](../questions/visualizatio
 <metabase-dashboard dashboard-id="Xk3YzAbCdEfGhIjKlMnOp"></metabase-dashboard>
 ```
 
-You can pass a sequential ID like `1`, but an [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) is the better bet: entity IDs stay the same when you move content between instances, like from staging to production.
+You can pass a sequential ID like `1`, but prefer an [entity ID](../installation-and-operation/serialization.md#entity-ids-work-with-embedding).
 
-To control what people can do with the dashboard, check out [web component attributes](./dashboard-reference.md#metabase-dashboard-web-component-attributes). For example, you can show or hide download buttons, the dashboard's title, or its filter widgets.
+To control what people can do with the dashboard, check out [web component attributes](./dashboard-reference.md#metabase-dashboard-web-component-attributes).
 
 #### Let people follow links to other dashboards and questions
 
@@ -176,7 +167,7 @@ By default, an embedded dashboard is a dead end: clicking a link to another dash
 
 Entity navigation needs `drills` set to `true`. In the SDK, the equivalent prop is `enableEntityNavigation`, which is also off by default. People can still only open content they have [collection permissions](../permissions/collections.md) for.
 
-### Interactive dashboards using the React SDK
+### React SDK interactive dashboards
 
 Use `InteractiveDashboard` when you want people to explore their data.
 
