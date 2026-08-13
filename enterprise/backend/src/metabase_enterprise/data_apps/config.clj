@@ -88,11 +88,10 @@
            vec))))
 
 (defn- parse-entity-id
-  "Validate one optional, portable entity ID from a data app manifest."
+  "Validate one required portable entity ID from a data app manifest."
   [parsed key ^String dir]
   (let [value (some-> (get parsed key) str str/trim not-empty)]
-    (when (and (some? (get parsed key))
-               (not (and value (= 21 (count value)))))
+    (when-not (and value (re-matches #"[-_0-9A-Za-z]{21}" value))
       (throw (ex-info (tru "{0}/{1}: \"{2}\" must be a 21-character entity ID."
                            dir config-file-name (name key))
                       {:status-code 400})))
@@ -128,7 +127,7 @@
   "Parse the bytes of one `data_app.yaml` from the app directory `dir` (e.g.
    `data_apps/sales`) into app metadata. The slug is the directory's name; `path`
    is relative to the directory; `:allowed_hosts` is a (possibly empty) vector of
-   origins the sandboxed bundle may reach; optional resource entity IDs identify
+   origins the sandboxed bundle may reach; the required resource entity IDs identify
    the collection and permissions group owned by the app. Throws an `ex-info`
    with `:status-code` 400 on malformed or incomplete content — including a
    directory whose name isn't a usable slug, since that app has no URL to be

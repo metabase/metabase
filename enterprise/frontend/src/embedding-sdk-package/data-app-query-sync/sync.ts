@@ -3,6 +3,7 @@ import path from "node:path";
 import { discoverQueries } from "./discover";
 import { isPositiveInteger } from "./guards";
 import { readQueryLockfile } from "./lockfile";
+import { addResourceEntityIdsToManifest } from "./manifest";
 import { MetabaseClient } from "./metabase-client";
 import { reconcileQueries } from "./reconcile";
 
@@ -65,6 +66,10 @@ export async function syncQueries({
   if (!isPositiveInteger(app.resource_collection_id)) {
     throw new Error(`Data app ${slug} does not have a resource collection.`);
   }
+  addResourceEntityIdsToManifest(appRoot, {
+    resourceCollectionEntityId: app.resource_collection_entity_id,
+    permissionGroupEntityId: app.permission_group_entity_id,
+  });
 
   const databaseIds = await reconcileQueries({
     appRoot,
