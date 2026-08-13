@@ -74,7 +74,6 @@ export function TableSelector({
           onClick={open}
           disabled={disabled}
           classNames={{
-            root: S.tableSelectorButton,
             inner: S.tableSelectorButtonInner,
             label: S.tableSelectorButtonLabel,
           }}
@@ -82,7 +81,7 @@ export function TableSelector({
           py="lg"
           variant="subtle"
         >
-          <Stack w="100%" miw={0} gap="xs" justify="center">
+          <Stack gap="xs">
             {table ? (
               <>
                 <Ellipsified fz="sm" c="text-secondary" fw="normal" ta="left">
@@ -104,7 +103,6 @@ export function TableSelector({
           <Tooltip label={t`Remove this table`}>
             <ActionIcon
               onClick={onRemove}
-              flex="0 0 auto"
               mr="sm"
               aria-label={t`Remove this table`}
             >

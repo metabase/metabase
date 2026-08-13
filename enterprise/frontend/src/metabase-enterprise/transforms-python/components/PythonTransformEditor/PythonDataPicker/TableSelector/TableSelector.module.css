@@ -2,7 +2,6 @@
   border: 1px solid var(--border-color);
 }
 
-.tableSelectorButton,
 .tableSelectorButtonInner,
 .tableSelectorButtonLabel {
   min-width: 0;
