@@ -223,6 +223,36 @@
         (is (= #{"Synced A" "Synced B"}
                (into #{} (map (comp :name :collection)) (get-in (ex-data ex) [:errors :collections]))))))))
 
+(deftest bulk-set-remote-sync-dependent-failure-is-structured-test
+  (testing "disabling a collection something still depends on fails with a structured payload, not a bare message"
+    (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced true}
+                   :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced true}
+                   :model/Card {source-card-id :id} {:name "Source Card"
+                                                     :collection_id coll1-id
+                                                     :database_id (mt/id)
+                                                     :dataset_query (mt/mbql-query venues)}
+                   :model/Card {dependent-card-id :id} {:name "Dependent Card"
+                                                        :collection_id coll2-id
+                                                        :database_id (mt/id)
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+      (let [ex (is (thrown? clojure.lang.ExceptionInfo
+                            (core/bulk-set-remote-sync {coll1-id false})))]
+        (is (=? {:status-code 400
+                 :error_code  "remote-synced-dependents"
+                 :errors      {:collections [{:collection {:id coll1-id :name "Collection 1"}}]}}
+                (ex-data ex)))
+        (testing "the dependents are named, and nested models resolve to something an admin can open"
+          (is (contains? (into #{}
+                               (get-in (ex-data ex) [:errors :collections 0 :dependents]))
+                         {:model "card" :id dependent-card-id :name "Dependent Card"})))))))
+
+(deftest dependency-item-model-never-nil-test
+  (testing "a model with no collections-API name degrades to its lowercased Toucan name, never nil"
+    (is (= "dashboard" (#'core/dependency-item-model "Dashboard")))
+    (is (= "snippet" (#'core/dependency-item-model "NativeQuerySnippet")))
+    (is (= "pulse" (#'core/dependency-item-model "Pulse")))
+    (is (= "exploration" (#'core/dependency-item-model "Exploration")))))
+
 (deftest bulk-set-remote-sync-throws-on-remote-synced-dependents-test
   (testing "bulk-set-remote-sync throws when disabling a collection that has remote-synced dependents"
     (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced true}

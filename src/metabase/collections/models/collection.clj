@@ -1372,29 +1372,27 @@
 
   Returns a vector of maps, one per ineligible dependency:
 
-    {:model \"Card\", :id 412, :instance <row>, :referrers [{\"Card\" 419} ...]}
+    {:model \"Card\", :id 412, :instance <row>}
 
-  `:instance` carries whatever [[select-for-eligibility-check]] loaded for it, notably `:collection_id`;
-  `:referrers` are the entities that pointed at it. Both fall out of the traversal that
-  [[non-remote-synced-dependencies]] already runs, so reporting them costs no extra queries."
+  `:instance` carries whatever [[select-for-eligibility-check]] loaded for it, notably `:collection_id`.
+  It falls out of the traversal that [[non-remote-synced-dependencies]] already runs, so reporting it
+  costs no extra queries."
   [{:keys [id] :as model}]
-  (if (t2/select-one :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
-    (let [graph       (traverse-descendants [(name (t2/model model)) id] true)
-          descendants (u/group-by first second (keys graph))]
+  (if (t2/exists? :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
+    (let [descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id] true)))]
       (into []
             (for [m (collectable-models)
-                  :let [key (name m)
-                        descendant-ids (set (get descendants key))]
+                  :let [model-name (name m)
+                        descendant-ids (set (get descendants model-name))]
                   :when (seq descendant-ids)
                   :let [instances (select-for-eligibility-check m descendant-ids)
                         by-id (into {} (map (juxt :id identity)) instances)
                         eligibility-map (remote-sync/batch-model-eligible? m instances)]
                   [inst-id eligible?] eligibility-map
                   :when (not eligible?)]
-              {:model     key
-               :id        inst-id
-               :instance  (get by-id inst-id)
-               :referrers (get graph [key inst-id])})))
+              {:model    model-name
+               :id       inst-id
+               :instance (get by-id inst-id)})))
     []))
 
 (defn non-remote-synced-dependencies

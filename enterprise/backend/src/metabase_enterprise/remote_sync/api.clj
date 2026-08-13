@@ -291,12 +291,10 @@
       (try
         (remote-sync.core/bulk-set-remote-sync collections)
         (catch Exception e
-          ;; Carrying `:errors` through makes the exception middleware return the ex-data verbatim
-          ;; instead of a stacktrace dump, so the client keeps the structured failure.
           (throw (ex-info (or (ex-message e) "Invalid collection settings")
-                          (merge {:error       (ex-message e)
-                                  :status-code 400}
-                                 (select-keys (ex-data e) [:errors :error_code]))
+                          (assoc (ex-data e)
+                                 :error       (ex-message e)
+                                 :status-code 400)
                           e)))))
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}

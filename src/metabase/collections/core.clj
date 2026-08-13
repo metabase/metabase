@@ -33,6 +33,7 @@
   non-remote-synced-dependencies
   remote-synced-collection
   remote-synced-collection?
+  remote-synced-dependents
   shared-tenant-collection?
   transforms-ns]
  [metabase.collections.util

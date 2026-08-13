@@ -11,7 +11,10 @@ import type {
   LibraryCollection,
   RemoteSyncConfigurationSettings,
 } from "metabase-types/api";
-import { isRemoteSyncDependencyError } from "metabase-types/guards";
+import {
+  hasRemoteSyncErrorsPayload,
+  isRemoteSyncDependencyError,
+} from "metabase-types/guards";
 
 import {
   trackBranchSwitched,
@@ -140,10 +143,10 @@ export const useRemoteSyncSubmit = ({
             message: getErrorMessage(error, t`Settings could not be saved`),
             icon: "warning",
           });
-          // The dependency payload rides under `data.errors`, which the form layer would otherwise
-          // adopt as field-level validation errors and leave submit disabled until an unrelated
-          // edit revalidates. The modal reads the payload from RTK's error state instead.
-          throw isRemoteSyncDependencyError(error)
+          // Structured failures ride under `data.errors`, which the form layer would otherwise adopt
+          // as field-level validation errors and leave submit disabled until an unrelated edit
+          // revalidates. The modal reads the payload from RTK's error state instead.
+          throw hasRemoteSyncErrorsPayload(error)
             ? { ...error, data: { ...error.data, errors: undefined } }
             : error;
         }
