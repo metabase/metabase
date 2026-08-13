@@ -27,10 +27,6 @@
     (api/check-400 (<= limit max-limit) "limit must not exceed 200")
     {:limit limit, :offset (or (request/offset) 0)}))
 
-(defn- conflict!
-  [message reason & [data]]
-  (throw (ex-info message (merge {:status-code 409, :reason reason} data))))
-
 (defn- current-candidate!
   [id]
   (api/check-404 (service/current-candidate id)))
@@ -117,9 +113,9 @@
     (-> (response/response {:run_id (:id run)})
         (response/status 202))
     (let [run (candidate-refresh/active-run)]
-      (conflict! "A usage-metadata candidate refresh is already running"
-                 :refresh-already-active
-                 {:run-id (:id run)}))))
+      (service/conflict! "A usage-metadata candidate refresh is already running"
+                         :refresh-already-active
+                         {:run-id (:id run)}))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-studio/usage-metadata` routes."
