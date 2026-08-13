@@ -1,11 +1,12 @@
 ---
-title: Monitoring your Metabase
+title: Profiling your Metabase
 redirect_from:
   - /docs/latest/operations-guide/jmx-monitoring
   - /docs/latest/operations-guide/enable-jmx
+  - /docs/latest/installation-and-operation/monitoring-metabase
 ---
 
-# Monitoring Your Metabase
+# Profiling your Metabase
 
 Diagnosing performance-related issues can be a challenge. Luckily, the JVM ships with tools that can help diagnose many common issues. Enabling JMX and using a tool like VisualVM can help diagnose issues related to running out of memory, a stalled Metabase, or slow response times.
 
@@ -88,5 +89,5 @@ Another useful picture of a running Metabase system is a Thread Dump. In cases w
 
 ## Further reading
 
-- [Running Metabase](../troubleshooting-guide/running.md)
-- [Observability with Prometheus](./observability-with-prometheus.md)
+- [Running Metabase](./running.md)
+- [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md)

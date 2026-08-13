@@ -48,7 +48,6 @@ Metabase's reference documentation.
 - [Configuring the Metabase application database](./installation-and-operation/configuring-application-database.md)
 - [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
-- [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
 - [Development instances](./installation-and-operation/development-instance.md)
 - [Serialization](./installation-and-operation/serialization.md)
 - [Remote sync](./installation-and-operation/remote-sync.md)
@@ -238,7 +237,6 @@ Metabase's reference documentation.
 - [Webhooks](./configuring-metabase/webhooks.md)
 - [Environment variables](./configuring-metabase/environment-variables.md)
 - [Configuration file](./configuring-metabase/config-file.md)
-- [Metabase log configuration](./configuring-metabase/log-configuration.md)
 - [Timezones](./configuring-metabase/timezones.md)
 - [Languages and localization](./configuring-metabase/localization.md)
 - [Appearance](./configuring-metabase/appearance.md)
@@ -246,11 +244,22 @@ Metabase's reference documentation.
 - [Custom maps](./configuring-metabase/custom-maps.md)
 - [Customizing the Metabase Jetty webserver](./configuring-metabase/customizing-jetty-webserver.md)
 
+### Monitor
+
+- [Monitor overview](./monitor/start.md)
+- [Dependency diagnostics](./monitor/dependency-diagnostics.md)
+- [Erroring questions](./monitor/erroring-questions.md)
+- [Alerts management](./monitor/alerts-management.md)
+- [Background tasks](./monitor/background-tasks.md)
+- [Scheduled jobs](./monitor/scheduled-jobs.md)
+- [Application logs](./monitor/application-logs.md)
+- [Model persistence log](./monitor/model-persistence-log.md)
+- [CLI analytics](./monitor/cli-analytics.md)
+
 ### Tools
 
 - [Tools overview](./usage-and-performance-tools/start.md)
 - [Usage analytics](./usage-and-performance-tools/usage-analytics.md)
-- [Admin tools](./usage-and-performance-tools/tools.md)
 
 ### Metabase Cloud
 
@@ -275,7 +284,7 @@ Metabase's reference documentation.
 
 - [Troubleshooting guides](troubleshooting-guide/index.md)
 - [Metabase forum](https://discourse.metabase.com/)
-- [Configuring logging](./configuring-metabase/log-configuration.md)
+- [Application logs](./monitor/application-logs.md)
 
 ### Tutorials and guides
 
