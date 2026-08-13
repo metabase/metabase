@@ -4,6 +4,7 @@
    [clojure.math.combinatorics :as math.combo]
    [metabase.models.interface :as mi]
    [metabase.usage-metadata.candidate-definitions :as definitions]
+   [metabase.usage-metadata.candidate-suggestions :as candidate-suggestions]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.string :as u.str]
@@ -91,7 +92,7 @@
           :measure (when-let [base-name (get-in candidate [:semantic_details :base-name])]
                      (trs "{0} where {1}" base-name condition-name))))
       (:suggested_name candidate))
-     254)))
+     candidate-suggestions/candidate-name-max-length)))
 
 (defn- ordered-atom-details
   [candidate atom-order]

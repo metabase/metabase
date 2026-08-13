@@ -86,6 +86,10 @@
   [:model/Card :id :collection_id :view_count])
 
 (def ^:private candidate-query-batch-size 200)
+(def ^:private max-composite-predicate-atoms
+  "Upper bound on how many atomic predicates a mined composite Segment predicate may combine.
+  Keeps segment-subsets's exhaustive subset enumeration small."
+  5)
 
 (defn- mapcat-id-batches
   [f ids]
@@ -545,7 +549,8 @@
   (canonical-signature predicate))
 
 (defn- segment-subsets
-  "Return all atom subsets of size 2..n. Callers bound n to five, so exhaustive enumeration is small."
+  "Return all atom subsets of size 2..n. Callers bound n to max-composite-predicate-atoms, so
+  exhaustive enumeration is small."
   [atoms]
   (mapcat #(math.combo/combinations atoms %) (range 2 (inc (count atoms)))))
 
@@ -555,7 +560,7 @@
   (let [atoms           (sort-by canonical-atom-sort-key atoms)
         atom-candidates (mapv #(assoc % :predicates [(:predicate %)]) atoms)
         composite-candidates
-        (when (<= 2 (count atoms) 5)
+        (when (<= 2 (count atoms) max-composite-predicate-atoms)
           (for [subset (segment-subsets atoms)]
             {:predicate  (lib/simplify-compound-filter
                           (apply lib/and (map :predicate subset)))
