@@ -1,7 +1,6 @@
+import { Api } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import type { SlackAppInfo, SlackSettings } from "metabase-types/api";
-
-import { Api } from "./api";
-import { listTag } from "./tags";
 
 export const slackApi = Api.injectEndpoints({
   endpoints: (builder) => ({

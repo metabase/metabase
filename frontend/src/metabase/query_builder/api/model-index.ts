@@ -1,12 +1,15 @@
+import { Api } from "metabase/api";
+import {
+  invalidateTags,
+  listTag,
+  provideModelIndexListTags,
+} from "metabase/api/tags";
 import type {
   ModelIndex,
   ModelIndexCreateQuery,
   ModelIndexDeleteQuery,
   ModelIndexesListQuery,
 } from "metabase-types/api";
-
-import { Api } from "./api";
-import { invalidateTags, listTag, provideModelIndexListTags } from "./tags";
 
 export const modelIndexApi = Api.injectEndpoints({
   endpoints: (builder) => ({

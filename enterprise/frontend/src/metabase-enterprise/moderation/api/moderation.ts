@@ -1,9 +1,8 @@
+import { invalidateTags, provideModeratedItemTags } from "metabase/api/tags";
+import { EnterpriseApi } from "metabase-enterprise/api/api";
 import type { VerifyItemRequest } from "metabase-types/api";
 
-import { Api } from "./api";
-import { invalidateTags, provideModeratedItemTags } from "./tags";
-
-export const contentVerificationApi = Api.injectEndpoints({
+export const contentVerificationApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     editItemVerification: builder.mutation<void, VerifyItemRequest>({
       query: (req) => ({

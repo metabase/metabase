@@ -1,10 +1,9 @@
+import { Api } from "metabase/api";
+import { provideOAuthAuthorizationListTags } from "metabase/api/tags";
 import type {
   ListOAuthAuthorizationsRequest,
   ListOAuthAuthorizationsResponse,
 } from "metabase-types/api";
-
-import { Api } from "./api";
-import { provideOAuthAuthorizationListTags } from "./tags";
 
 export const oauthApi = Api.injectEndpoints({
   endpoints: (builder) => ({
