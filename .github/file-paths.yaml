@@ -106,13 +106,6 @@ backend_ci: &backend_ci
   - ".github/workflows/backend.yml"
   - ".github/workflows/drivers.yml"
 
-backend_presto_kerberos:
-  - "**/presto_jdbc/**"
-  - "**/presto-jdbc/**" # the driver module has a hyphen. underscores are classpaths
-  - "**/presto_jdbc.clj"
-  - "**/presto_jdbc_test.clj"
-  - ".github/workflows/presto-kerberos-integration-test.yml"
-
 backend_sources: &backend_sources
   - *shared_sources
   - "**deps.edn"
@@ -183,7 +176,7 @@ embedding_sdk_host_sample_apps:
   - "e2e/test-host-app/**/*.cy.*.{js,ts}"
 
 snowplow: &snowplow
-  - ".github/workflows/snowplow.yml"
+  - ".github/workflows/lint.yml"
   - "snowplow/**"
   - "bin/lint-snowplow-schemas.bb"
   - "bin/lint-snowplow-schemas-test.bb"
@@ -212,7 +205,7 @@ yaml:
   - "**/*.yaml"
 
 codeql:
-  - ".github/workflows/codeql.yml"
+  - ".github/workflows/lint.yml"
   - "frontend/src/**"
   - "enterprise/frontend/src/**"
 
@@ -220,13 +213,8 @@ i18n:
   - *default
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
-  - ".github/workflows/i18n.yml"
+  - ".github/workflows/lint.yml"
   - *sources
-
-visualizations:
-  - "frontend/src/metabase/visualizations/**"
-  - "frontend/src/metabase/static-viz/**"
-  - "src/metabase/pulse/**"
 
 cljs:
   - *shared_sources
@@ -239,7 +227,7 @@ serialization_baseline:
   - "test_resources/serialization_baseline/**"
 
 openapi:
-  - ".github/workflows/openapi.yml"
+  - ".github/workflows/lint.yml"
   - "src/metabase/api/**"
   - "src/metabase/api_routes/**"
   - "src/metabase/*_rest/api.clj"

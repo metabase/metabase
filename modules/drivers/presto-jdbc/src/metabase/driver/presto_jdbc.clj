@@ -49,6 +49,14 @@
 
 (driver/register! :presto-jdbc, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
+(defmethod driver/host-carrying-parameters :presto-jdbc
+  [_driver]
+  ["httpProxy" "socksProxy"])
+
+(defmethod driver/non-host-parameters :presto-jdbc
+  [_driver]
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
+
 (doseq [[feature supported?] {:basic-aggregations               true
                               :binning                          true
                               :database-routing                 true

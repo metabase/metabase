@@ -237,6 +237,7 @@
   :skills?         false
   :tools           [#'tools/search-tool
                     #'tools/read-resource-tool
+                    #'tools/list-research-metrics-tool
                     #'tools/get-research-candidates-tool
                     #'tools/add-research-groups-tool
                     #'tools/remove-from-research-plan-tool

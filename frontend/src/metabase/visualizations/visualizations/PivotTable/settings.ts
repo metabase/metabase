@@ -2,9 +2,7 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { displayNameForColumn } from "metabase/utils/formatting";
-import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
-import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+import { displayNameForColumn } from "metabase/value-formatting";
 import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_FORMATTING_SETTING,
@@ -188,7 +186,7 @@ export const settings = {
   "pivot_table.column_widths": {},
   [COLUMN_FORMATTING_SETTING]: {
     getSection: () => t`Conditional Formatting`,
-    widget: ChartSettingsTableFormatting,
+    widget: "tableFormatting",
     getDefault: (
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
@@ -254,7 +252,7 @@ export const _columnSettings = {
     get title() {
       return t`Sort order`;
     },
-    widget: ChartSettingIconRadio,
+    widget: "iconRadio",
     inline: true,
     getWrapperStyle: () => ({
       paddingBottom: "1rem",

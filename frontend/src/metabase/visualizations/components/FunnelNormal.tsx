@@ -5,9 +5,13 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified } from "metabase/ui";
 import { color } from "metabase/ui/colors";
-import { formatChangeWithSign, formatNumber } from "metabase/utils/formatting";
-import { formatNullable } from "metabase/utils/formatting/nullable";
+import {
+  formatChangeWithSign,
+  formatNullable,
+  formatNumber,
+} from "metabase/utils/formatting";
 import { isNotNull } from "metabase/utils/types";
+import { formatValue } from "metabase/value-formatting";
 import {
   FunnelNormalRoot,
   FunnelStart,
@@ -17,7 +21,6 @@ import {
   Subtitle,
   Title,
 } from "metabase/visualizations/components/FunnelNormal.styled";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import {
   calculateFunnelSteps,
   calculateStepOpacity,

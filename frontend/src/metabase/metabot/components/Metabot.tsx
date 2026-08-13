@@ -4,10 +4,9 @@ import { t } from "ttag";
 
 import MetabotFailure from "assets/img/metabot-failure.svg?component";
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { metabotApi } from "metabase/api";
 import { idTag } from "metabase/api/tags";
 import {
-  useIsAskPage,
+  useIsFullPageMetabot,
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
@@ -26,6 +25,7 @@ import {
 } from "metabase/ui";
 
 import { trackMetabotChatOpened } from "../analytics";
+import { metabotApi } from "../api";
 import { isHistoryEnabledProfile } from "../constants";
 import type { MetabotAgentId } from "../state";
 
@@ -124,7 +124,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
   const agentId = config?.agentId ?? "omnibot";
   const { visible, setVisible } = useMetabotAgent(agentId);
   const [errorBoundaryKey, setErrorBoundaryKey] = useState(0);
-  const isAskPage = useIsAskPage();
+  const isFullPageMetabot = useIsFullPageMetabot();
 
   const handleRetry = () => setErrorBoundaryKey((prev) => prev + 1);
 
@@ -132,7 +132,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
     return tinykeys(window, {
       "$mod+e": (e) => {
         e.preventDefault(); // prevent FF from opening bookmark menu
-        if (isAskPage) {
+        if (isFullPageMetabot) {
           return;
         }
         if (!visible) {
@@ -141,7 +141,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
         setVisible(!visible);
       },
     });
-  }, [visible, setVisible, isAskPage]);
+  }, [visible, setVisible, isFullPageMetabot]);
 
   useEffect(
     function closeViaPropChange() {
