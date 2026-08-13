@@ -72,14 +72,14 @@
     (try
       (seed-composite-row! fact 3)
       (let [results (insights/suggested-segments-for-owner opts)]
-        (testing "candidate is returned when no saved Segment matches"
-          (is (seq results)))
-        (testing "top candidate is a valid :and MBQL clause attributed to the right source"
-          (let [{:keys [clause itemset-size source]} (first results)]
-            (is (lib/clause-of-type? clause :and))
-            (is (= (:atom-count fact) itemset-size))
-            (is (= :table (:type source)))
-            (is (= (mt/id :orders) (:id source))))))
+        (testing "one composite basket surfaces exactly one candidate with its support and source"
+          (is (=? [{:itemset-size (:atom-count fact)
+                    :support 3
+                    :support-ratio 1.0
+                    :source {:type :table, :id (mt/id :orders)}}]
+                  results)))
+        (testing "the candidate's clause is a valid :and MBQL clause"
+          (is (lib/clause-of-type? (:clause (first results)) :and))))
       (finally
         (cleanup-composite-rows!)
         (clear-existing-segment-cache!)))))
@@ -98,11 +98,7 @@
                                           :definition (composite-orders-query)}]
         (let [results (insights/suggested-segments-for-owner opts)]
           (testing "candidate is filtered out when a saved Segment has the same atom-set"
-            (is (not-any? (fn [{:keys [source itemset-size]}]
-                            (and (= :table (:type source))
-                                 (= (mt/id :orders) (:id source))
-                                 (= (:atom-count fact) itemset-size)))
-                          results)))))
+            (is (= [] results)))))
       (finally
         (cleanup-composite-rows!)
         (clear-existing-segment-cache!)))))
