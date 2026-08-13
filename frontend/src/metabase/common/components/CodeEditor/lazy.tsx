@@ -7,14 +7,11 @@ import S from "./CodeEditorFallback.module.css";
 // CodeMirror and its language modes are among the largest dependencies in the
 // app bundle. Loading the editor lazily keeps all of them out of the initial
 // page load, since no route renders a code editor on first paint.
-const importCodeEditor = () =>
+const LazyCodeEditor = lazy(() =>
   import(
     /* webpackChunkName: "code-editor" */
     "./CodeEditor"
-  );
-
-const LazyCodeEditor = lazy(() =>
-  importCodeEditor().then(({ CodeEditor }) => ({ default: CodeEditor })),
+  ).then(({ CodeEditor }) => ({ default: CodeEditor })),
 );
 
 export function CodeEditor(props: CodeEditorProps) {
