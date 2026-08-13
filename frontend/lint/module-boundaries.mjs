@@ -71,30 +71,6 @@ const elements = [
 
   // shared
   createElement({ type: "feature", name: "account" }),
-  // Must precede shared/actions: first matching element wins.
-  ...[
-    "frontend/src/metabase/actions/hooks/**",
-    "frontend/src/metabase/actions/components/ActionForm/**",
-    "frontend/src/metabase/actions/components/ActionFormFieldWidget/**",
-    "frontend/src/metabase/actions/components/DeleteObjectModal/**",
-    "frontend/src/metabase/actions/containers/ActionExecuteModal/**",
-    "frontend/src/metabase/actions/containers/ActionParametersInputForm/**",
-  ].map((pattern) =>
-    createElement({ type: "shared", name: "actions-execution", pattern }),
-  ),
-  ...[
-    "frontend/src/metabase/actions/actions.ts",
-    "frontend/src/metabase/actions/types.ts",
-    "frontend/src/metabase/actions/utils.ts",
-    "frontend/src/metabase/actions/utils.unit.spec.ts",
-  ].map((pattern) =>
-    createElement({
-      type: "shared",
-      name: "actions-execution",
-      pattern,
-      mode: "full",
-    }),
-  ),
   createElement({ type: "shared", name: "actions" }),
   createElement({ type: "shared", name: "api", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "archive" }),
