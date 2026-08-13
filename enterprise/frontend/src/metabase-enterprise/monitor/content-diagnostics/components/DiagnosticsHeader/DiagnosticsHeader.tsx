@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import {
   type MonitorHeaderTab,
@@ -12,32 +12,35 @@ import * as Urls from "metabase/urls";
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   const tabs: MonitorHeaderTab[] = [
     {
-      label: t`Stale`,
+      label: c("Navigation tab for content that hasn't been used recently")
+        .t`Stale`,
       to: Urls.staleContent(),
       icon: "clock",
     },
     {
-      label: t`Duplicated`,
+      label: c("Navigation tab for duplicated content").t`Duplicated`,
       to: Urls.duplicatedContent(),
       icon: "copy",
     },
     {
-      label: t`Slow`,
+      label: c("Navigation tab for slow-loading content").t`Slow`,
       to: Urls.slowContent(),
       icon: "gauge",
     },
     {
-      label: t`Empty`,
+      label: c(
+        "Navigation tab for empty content, e.g. a collection with no items",
+      ).t`Empty`,
       to: Urls.imbalancedContent("empty"),
       icon: "unreferenced",
     },
     {
-      label: t`Sparse`,
+      label: c("Navigation tab for content with very few items").t`Sparse`,
       to: Urls.imbalancedContent("sparse"),
       icon: "layout_grid",
     },
     {
-      label: t`Crowded`,
+      label: c("Navigation tab for content with too many items").t`Crowded`,
       to: Urls.imbalancedContent("crowded"),
       icon: "grid_bordered",
     },
