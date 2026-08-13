@@ -134,14 +134,14 @@ Curated dimensions don't affect the [query builder](../questions/query-builder/e
 
 ### Curate a metric's dimensions
 
-To curate a metric's dimensions:
+From the metric's **Dimensions** tab, you can:
 
-1. Visit the metric and open the **Dimensions** tab.
-2. Click **Available dimensions**. Metabase lists the fields from the metric's source table, plus fields from joined tables and tables related by foreign keys.
-3. Select the fields to add as dimensions.
-4. Click **Done**.
-5. To remove dimensions, select the checkbox next to each dimension, then click the trash icon. Removing a dimension disconnects any dashboard filters that use it.
-6. To reorder dimensions, drag each dimension by its handle. Metabase lists dimensions in this order everywhere the metric appears.
+- **Add dimensions**: Click **Available dimensions** and select fields from the source table, joined tables, or [related tables](#dimensions-from-related-tables).
+- **Remove dimensions**: Select the checkbox next to each dimension, then click the trash icon. Dashboard filters can't use a dimension you remove.
+- **Reorder dimensions**: Drag a dimension by its handle. Metabase lists dimensions in this order everywhere the metric appears.
+- **Rename a dimension**: Click the dimension and enter a new name in the **Display name** field. Renaming doesn't affect the underlying field or other metrics that use the field.
+- **Set a default dimension**: Click the dimension, then click **Set as default**. Metabase uses the default to display the metric. Without a default, the metric displays as a single number. To undo, click **Remove default**.
+- **Set a time grouping**: Click a time dimension and select a default grouping from the dropdown.
 
 ### Dimensions from related tables
 
@@ -150,39 +150,6 @@ If the metric's source table has foreign keys, the **Available dimensions** list
 Metabase groups these fields under the name of the foreign key column, not the name of the related table. For example, if an `Orders` table has a `User ID` column pointing to a `People` table, the `People` fields appear in a group named **User**.
 
 If a table links to the same related table through two different columns, Metabase creates groups named after each column. For example, if both a `Reporter ID` and an `Assignee ID` column point to a `Users` table, the `Users` fields appear under two groups: **Reporter** and **Assignee**.
-
-### Rename a dimension
-
-To rename a dimension:
-
-1. On the **Dimensions** tab, click the dimension.
-2. In the **Display name** field, enter a new name.
-
-Dimension names are display names specific to the metric. Renaming a dimension doesn't affect the underlying field or other metrics that use the same field.
-
-Dimensions from related tables get a default name that combines the [group name](#dimensions-from-related-tables) and the field name, like `Product - Category`.
-
-### Set a default dimension
-
-To set a default dimension:
-
-1. On the **Dimensions** tab, click the dimension.
-2. Click **Set as default**.
-
-You can choose any curated dimension as the default. If you don't choose a default dimension, the metric displays as a single number.
-
-To remove the default, click the dimension, then click **Remove default**.
-
-The default dimension only affects display. It doesn't change how the metric is computed, and people can break out the metric by any other curated dimension.
-
-### Set a time grouping
-
-To set a default time grouping for a time dimension:
-
-1. On the **Dimensions** tab, click the time dimension.
-2. Click **Select a time grouping** and choose a grouping from the dropdown.
-
-Metabase uses the default time grouping whenever the metric is broken out by that time dimension.
 
 ## See all metrics
 
