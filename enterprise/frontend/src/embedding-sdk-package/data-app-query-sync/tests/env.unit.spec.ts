@@ -1,16 +1,15 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 
 import { getQuerySyncCredentials } from "../env";
 
-import { makeApp } from "./setup";
+import { makeApp, setupQuerySyncTests } from "./setup";
 
 describe("query sync credentials", () => {
-  afterEach(() => jest.restoreAllMocks());
+  setupQuerySyncTests();
 
   it("loads credentials from the repository .env.local", () => {
-    const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), "query-sync-env-"));
+    const repoRoot = makeApp();
     const appRoot = path.join(repoRoot, "data_apps/orders");
     fs.mkdirSync(appRoot, { recursive: true });
     fs.writeFileSync(

@@ -323,6 +323,7 @@ function QueryComparison({
   cardQuery: MetabaseQueryOptions<undefined>;
   dynamic?: MetabaseDynamicQuery;
   totalTestId?: string;
+  totalValue?: (data: { rawRows: unknown[][] } | null) => string;
 }) {
   const fromTable = useMetabaseQuery(tableQuery, dynamic);
   const fromCard = useMetabaseQuery(cardQuery, dynamic);
@@ -344,7 +345,8 @@ function QueryComparison({
       <div data-testid={testId}>{status}</div>
       {totalTestId && (
         <div data-testid={totalTestId}>
-          {String(fromCard.data?.rawRows?.[0]?.[0] ?? "")}
+          {totalValue?.(fromCard.data) ??
+            String(fromCard.data?.rawRows?.[0]?.[0] ?? "")}
         </div>
       )}
     </div>
@@ -422,6 +424,7 @@ function PublishedSource() {
         }}
         dynamic={{ filters: [filter(countColumn, ">", minCount)] }}
         totalTestId="published-source-aggregated-rows"
+        totalValue={(data) => String(data?.rawRows.length ?? "")}
       />
     </div>
   );

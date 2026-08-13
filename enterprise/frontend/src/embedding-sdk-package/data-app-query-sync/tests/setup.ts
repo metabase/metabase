@@ -3,15 +3,24 @@ import os from "node:os";
 import path from "node:path";
 
 export function setupQuerySyncTests(): void {
+  const appRoots: string[] = [];
   afterEach(() => {
     jest.restoreAllMocks();
+    appRoots.forEach((appRoot) =>
+      fs.rmSync(appRoot, { recursive: true, force: true }),
+    );
   });
+
+  trackedAppRoots = appRoots;
 }
+
+let trackedAppRoots: string[] | undefined;
 
 export function makeApp() {
   const appRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), "data-app-query-sync-"),
   );
+  trackedAppRoots?.push(appRoot);
 
   fs.mkdirSync(path.join(appRoot, "queries"));
 
