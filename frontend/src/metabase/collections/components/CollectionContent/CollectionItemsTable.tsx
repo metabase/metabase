@@ -214,12 +214,10 @@ export const CollectionItemsTable = ({
         },
   );
   const availableModels = itemsMetadata?.available_models ?? [];
-  const itemsTotal = itemsMetadata?.total;
+  const itemsTotal = itemsMetadata?.total ?? 0;
 
   const showToolbar =
-    (showFilterBar ?? false) &&
-    itemsTotal != null &&
-    itemsTotal > FILTERS_VISIBILITY_THRESHOLD;
+    Boolean(showFilterBar) && itemsTotal > FILTERS_VISIBILITY_THRESHOLD;
   // The toolbar can disappear while a search or type filter is active, e.g. after
   // archiving items; ignore the leftover selection rather than filtering a bare list.
   const appliedSearchText = showToolbar ? trimmedSearchText : "";

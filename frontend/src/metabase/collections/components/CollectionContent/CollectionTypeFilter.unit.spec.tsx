@@ -35,7 +35,7 @@ describe("CollectionTypeFilter", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows only available options in display order, unchecked by default", async () => {
+  it("shows every type in display order, disabling those without items", async () => {
     setup({
       availableModels: [
         "metric",
@@ -61,15 +61,38 @@ describe("CollectionTypeFilter", () => {
       "Model",
       "Question",
       "Metric",
+      "Document",
       "Research",
+      "Table",
     ];
-    expect(checkboxes).toHaveLength(6);
+    expect(checkboxes).toHaveLength(8);
     expect(checkboxes).toEqual(
       labels.map((label) => screen.getByLabelText(label)),
     );
     for (const label of labels) {
       expect(screen.getByLabelText(label)).not.toBeChecked();
     }
+    for (const label of ["Collection", "Dashboard", "Metric", "Research"]) {
+      expect(screen.getByLabelText(label)).toBeEnabled();
+    }
+    expect(screen.getByLabelText("Document")).toBeDisabled();
+    expect(screen.getByLabelText("Table")).toBeDisabled();
+  });
+
+  it("keeps a checked type enabled after its last item is gone", async () => {
+    const { onSelectedFiltersChange } = setup({
+      availableModels: ["card"],
+      selectedFilters: ["dashboard"],
+    });
+
+    await userEvent.click(screen.getByTestId("collection-type-filter-button"));
+    const dashboard = screen.getByLabelText("Dashboard");
+    expect(dashboard).toBeChecked();
+    expect(dashboard).toBeEnabled();
+
+    await userEvent.click(dashboard);
+
+    expect(onSelectedFiltersChange).toHaveBeenCalledWith(null);
   });
 
   it("applies a single type with one click", async () => {

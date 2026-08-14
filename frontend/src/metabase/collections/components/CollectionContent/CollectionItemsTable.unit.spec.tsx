@@ -620,11 +620,13 @@ describe("CollectionItemsTable", () => {
     );
     const popover = screen.getByTestId("collection-type-filter-popover");
 
-    expect(within(popover).getAllByRole("checkbox")).toHaveLength(3);
-    expect(within(popover).getByLabelText("Dashboard")).not.toBeChecked();
-    expect(within(popover).getByLabelText("Model")).not.toBeChecked();
-    expect(within(popover).getByLabelText("Question")).not.toBeChecked();
-    expect(within(popover).queryByLabelText("Metric")).not.toBeInTheDocument();
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(8);
+    for (const label of ["Dashboard", "Model", "Question"]) {
+      expect(within(popover).getByLabelText(label)).not.toBeChecked();
+      expect(within(popover).getByLabelText(label)).toBeEnabled();
+    }
+    expect(within(popover).getByLabelText("Metric")).toBeDisabled();
+    expect(within(popover).getByLabelText("Document")).toBeDisabled();
   });
 
   it("offers a type filter for a type that only exists as a pinned item", async () => {
@@ -647,9 +649,10 @@ describe("CollectionItemsTable", () => {
     );
     const popover = screen.getByTestId("collection-type-filter-popover");
 
-    expect(within(popover).getAllByRole("checkbox")).toHaveLength(2);
+    expect(within(popover).getByLabelText("Dashboard")).toBeEnabled();
     expect(within(popover).getByLabelText("Dashboard")).not.toBeChecked();
-    expect(within(popover).getByLabelText("Question")).not.toBeChecked();
+    expect(within(popover).getByLabelText("Question")).toBeEnabled();
+    expect(within(popover).getByLabelText("Model")).toBeDisabled();
   });
 
   it("refreshes the available type options when collection content changes", async () => {
@@ -704,7 +707,7 @@ describe("CollectionItemsTable", () => {
     expect(getMetadataCalls()).toHaveLength(1);
     await user.click(screen.getByTestId("collection-type-filter-button"));
     const popover = screen.getByTestId("collection-type-filter-popover");
-    expect(within(popover).getAllByRole("checkbox")).toHaveLength(3);
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(8);
     expect(within(popover).getByLabelText("Dashboard")).not.toBeChecked();
     expect(within(popover).getByLabelText("Model")).toBeChecked();
     expect(within(popover).getByLabelText("Question")).toBeChecked();
@@ -764,7 +767,7 @@ describe("CollectionItemsTable", () => {
       await screen.findByTestId("collection-type-filter-button"),
     );
     let popover = screen.getByTestId("collection-type-filter-popover");
-    expect(within(popover).getAllByRole("checkbox")).toHaveLength(3);
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(8);
     within(popover).getByLabelText("Dashboard").focus();
     await user.keyboard("{Escape}");
     await waitFor(() => {
@@ -784,10 +787,10 @@ describe("CollectionItemsTable", () => {
 
     await user.click(screen.getByTestId("collection-type-filter-button"));
     popover = screen.getByTestId("collection-type-filter-popover");
-    expect(within(popover).getAllByRole("checkbox")).toHaveLength(3);
-    expect(within(popover).getByLabelText("Dashboard")).toBeInTheDocument();
-    expect(within(popover).getByLabelText("Model")).toBeInTheDocument();
-    expect(within(popover).getByLabelText("Question")).toBeInTheDocument();
+    expect(within(popover).getAllByRole("checkbox")).toHaveLength(8);
+    expect(within(popover).getByLabelText("Dashboard")).toBeEnabled();
+    expect(within(popover).getByLabelText("Model")).toBeEnabled();
+    expect(within(popover).getByLabelText("Question")).toBeEnabled();
   });
 
   it("resets search and type filters before requesting a new collection", async () => {
@@ -853,8 +856,9 @@ describe("CollectionItemsTable", () => {
     expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
     await user.click(screen.getByTestId("collection-type-filter-button"));
     const popover = screen.getByTestId("collection-type-filter-popover");
-    expect(within(popover).getAllByRole("checkbox")).toHaveLength(1);
     expect(within(popover).getByLabelText("Dashboard")).not.toBeChecked();
+    expect(within(popover).getByLabelText("Dashboard")).toBeEnabled();
+    expect(within(popover).getByLabelText("Question")).toBeDisabled();
 
     advanceSearchDebounce();
     expect(getSearchCalls(nextCollection.id)).toHaveLength(0);
