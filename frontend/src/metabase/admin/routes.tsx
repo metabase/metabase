@@ -138,18 +138,18 @@ const setupGuide = () =>
   }));
 
 const setupPermissions = () =>
-  import(
-    /* webpackChunkName: "admin" */ "metabase/embedding/setup-guide"
-  ).then(({ SetupPermissionsAndTenantsPage }) => ({
-    Component: SetupPermissionsAndTenantsPage,
-  }));
+  import(/* webpackChunkName: "admin" */ "metabase/embedding/setup-guide").then(
+    ({ SetupPermissionsAndTenantsPage }) => ({
+      Component: SetupPermissionsAndTenantsPage,
+    }),
+  );
 
 const setupSso = () =>
-  import(
-    /* webpackChunkName: "admin" */ "metabase/embedding/setup-guide"
-  ).then(({ SetupSsoPage }) => ({
-    Component: SetupSsoPage,
-  }));
+  import(/* webpackChunkName: "admin" */ "metabase/embedding/setup-guide").then(
+    ({ SetupSsoPage }) => ({
+      Component: SetupSsoPage,
+    }),
+  );
 
 const themeListing = () =>
   import(
