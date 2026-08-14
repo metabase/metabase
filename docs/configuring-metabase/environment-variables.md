@@ -2739,6 +2739,19 @@ Cron schedule (in UTC) for usage metadata batch processing.
 
 Note: Sandboxed users will never see suggestions.
 
+### `MB_WAREHOUSE_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+
+Controls which networks Metabase may connect to for warehouse connections.
+Options:
+- external-only (only globally routable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
+Also covers the SSH tunnel host and the database auth-provider URLs.
+
 ## Other environment variables
 
 The following environment variables can only be set via the environment. They cannot be set by the configuration file.
