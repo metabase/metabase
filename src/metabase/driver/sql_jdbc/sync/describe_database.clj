@@ -146,8 +146,6 @@
           :type        ttype})))))
 
 (defmethod sql-jdbc.sync.interface/db-tables :sql-jdbc
-  ;; Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
-  ;; schema. Returns a reducible sequence of results.
   [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   ;; seems like some JDBC drivers like Snowflake are dumb and still narrow the search results by the current session
   ;; schema if you pass in `nil` for `schema-or-nil`, which means not to narrow results at all... For Snowflake, I fixed

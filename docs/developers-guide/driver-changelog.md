@@ -58,6 +58,9 @@ title: Driver interface changelog
   - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
     the DDL statement(s) that create it.
 
+  - `metabase.driver.sql-jdbc.sync.interface/db-tables` is now a multimethod for retrieving JDBC metadata
+    tables. SQL JDBC drivers can override this method to customize which database objects are discovered during sync.
+
 ## Metabase 0.63.0
 
 - `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]` -- refreshes table
@@ -172,9 +175,6 @@ title: Driver interface changelog
 
 - `driver/field-reference-mlv2`, deprecated in 0.57.0, has now been removed.
 
-- `metabase.driver.sql-jdbc.sync.interface/db-tables` is now a multimethod for retrieving JDBC metadata
-  tables. SQL JDBC drivers can override this method to customize which database objects are discovered during sync.
-  
 - `metabase.driver.sql/set-role-statement` has been deprecated in favor of
   `metabase.driver.sql-jdbc/set-role-statement`, which takes an additional `java.sql.Connection` parameter, so you use
   the connection to call `quote_ident()` or similar for identifier quoting/escaping purposes.
