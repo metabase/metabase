@@ -1,15 +1,22 @@
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { getIcon, render, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
+import { checkNotNull } from "metabase/utils/types";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { UnconnectedDataSelector as DataSelector } from "../DataSelector";
+import { TableTrigger } from "../../TriggerComponents";
+import { UnconnectedDataSelector } from "../DataSelector";
+
+type DataSelectorProps = ComponentProps<typeof UnconnectedDataSelector>;
+type TestProps = Partial<DataSelectorProps> & Pick<DataSelectorProps, "steps">;
 
 const MULTI_SCHEMA_DB_ID = 2;
 const MULTI_SCHEMA_TABLE1_ID = 100;
@@ -68,11 +75,45 @@ describe("DataSelector", () => {
   const metadata = createMockMetadata({ databases });
   const emptyMetadata = createMockMetadata({});
 
-  const SAMPLE_DATABASE = metadata.database(SAMPLE_DB_ID);
-  const ANOTHER_DATABASE = metadata.database(EMPTY_DB_ID);
-  const MULTI_SCHEMA_DATABASE = metadata.database(MULTI_SCHEMA_DB_ID);
-  const OTHER_MULTI_SCHEMA_DATABASE = metadata.database(
-    OTHER_MULTI_SCHEMA_DB_ID,
+  const SAMPLE_DATABASE = checkNotNull(metadata.database(SAMPLE_DB_ID));
+  const ANOTHER_DATABASE = checkNotNull(metadata.database(EMPTY_DB_ID));
+  const MULTI_SCHEMA_DATABASE = checkNotNull(
+    metadata.database(MULTI_SCHEMA_DB_ID),
+  );
+  const OTHER_MULTI_SCHEMA_DATABASE = checkNotNull(
+    metadata.database(OTHER_MULTI_SCHEMA_DB_ID),
+  );
+
+  // Required props the connected wrappers normally inject. The falsy values
+  // stand in for the `undefined`s these tests relied on before the conversion;
+  // the `canSelect*` flags are unread here, since no `steps` array below
+  // includes the bucket step.
+  const DEFAULT_PROPS: Omit<DataSelectorProps, "steps"> = {
+    triggerContentComponent: TableTrigger,
+    canSelectModel: true,
+    canSelectTable: true,
+    canSelectQuestion: true,
+    metadata: emptyMetadata,
+    databases: [],
+    availableModels: [],
+    hasLoadedDatabasesWithTablesSaved: false,
+    hasLoadedDatabasesWithSaved: false,
+    hasLoadedDatabasesWithTables: false,
+    hasDataAccess: false,
+    hasNestedQueriesEnabled: false,
+    selectedQuestion: null,
+    loading: false,
+    loaded: false,
+    allLoading: false,
+    fetchDatabases: () => Promise.resolve(),
+    fetchFields: () => Promise.resolve(),
+    fetchQuestion: () => Promise.resolve(),
+    fetchSchemas: () => Promise.resolve(),
+    fetchSchemaTables: () => Promise.resolve(),
+  };
+
+  const DataSelector = (props: TestProps) => (
+    <UnconnectedDataSelector {...DEFAULT_PROPS} {...props} />
   );
 
   it("should allow selecting db, schema, and table", async () => {
@@ -128,7 +169,7 @@ describe("DataSelector", () => {
     const fetchSchemas = jest.fn();
     const fetchSchemaTables = jest.fn();
 
-    const props = {
+    const props: TestProps = {
       steps: ["DATABASE", "SCHEMA", "TABLE"],
       combineDatabaseSchemaSteps: true,
       triggerElement: <div />,
@@ -143,7 +184,7 @@ describe("DataSelector", () => {
     const { rerender } = render(<DataSelector {...props} />);
 
     // we call rerenderWith to add more data after a fetch function was called
-    const rerenderWith = (nextMetadata) => {
+    const rerenderWith = (nextMetadata: Metadata) => {
       rerender(
         <DataSelector
           {...props}
