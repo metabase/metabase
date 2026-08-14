@@ -215,7 +215,7 @@
     (.generatePrivate (KeyFactory/getInstance "RSA") encoded)))
 
 (defn- encrypt-pkcs8-pem
-  [private-key passphrase]
+  [private-key ^String passphrase]
   (let [encryptor (-> (JceOpenSSLPKCS8EncryptorBuilder. PKCS8Generator/AES_256_CBC)
                       (.setPassword (.toCharArray passphrase))
                       (.build))
