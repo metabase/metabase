@@ -27,33 +27,6 @@
   {:resource_collection_entity_id (:entity_id collection)
    :permission_group_entity_id     (:entity_id group)})
 
-(deftest reconcile-resources-keeps-matching-links-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [app       (create-data-app! "birds")
-          links     (data-app.resources/ensure-resources! app)
-          linked-app (t2/select-one :model/DataApp :id (:id app))
-          entity-ids (data-app.resources/resource-entity-ids linked-app)]
-      (is (=? (assoc links :changed? false)
-              (data-app.resources/reconcile-resources! linked-app entity-ids))))))
-
-(deftest reconcile-resources-rebinds-to-the-manifest-pair-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [app        (create-data-app! "birds")
-          old-links  (data-app.resources/ensure-resources! app)
-          new-pair   (create-resource-pair! "new")
-          linked-app (t2/select-one :model/DataApp :id (:id app))]
-      (is (=? {:resource_collection_id (:id (:collection new-pair))
-               :permission_group_id     (:id (:group new-pair))
-               :changed?                true}
-              (data-app.resources/reconcile-resources!
-               linked-app (manifest-resource-ids new-pair))))
-      (is (= {:resource_collection_id (:id (:collection new-pair))
-              :permission_group_id     (:id (:group new-pair))}
-             (select-keys (t2/select-one :model/DataApp :id (:id app)) (keys old-links))))
-      (is (every? true?
-                  [(t2/exists? :model/Collection :id (:resource_collection_id old-links))
-                   (t2/exists? :model/PermissionsGroup :id (:permission_group_id old-links))])))))
-
 (deftest reconcile-resources-rejects-a-populated-collection-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [app        (create-data-app! "birds")

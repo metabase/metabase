@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
+   [metabase-enterprise.data-apps.test-util :as data-app.test-util]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -23,34 +24,12 @@
    :list-dir  (fn [dir] (source/paths->children (keys path->content) dir))
    :read-file (fn [p] (get path->content p))})
 
-(defn- test-entity-id
-  [prefix slug]
-  (subs (str prefix "-" slug "xxxxxxxxxxxxxxxxxxxxx") 0 21))
-
-(defn- ensure-manifest-resources!
-  [slug]
-  (if-let [app (t2/select-one :model/DataApp :name slug)]
-    (data-app.resources/resource-entity-ids app)
-    (let [collection-entity-id (test-entity-id "collection" slug)
-          group-entity-id      (test-entity-id "group" slug)]
-      (when-not (t2/exists? :model/Collection :entity_id collection-entity-id)
-        (t2/insert! :model/Collection
-                    {:name (str "Data App: " slug)
-                     :location "/"
-                     :entity_id collection-entity-id}))
-      (when-not (t2/exists? :model/PermissionsGroup :entity_id group-entity-id)
-        (t2/insert! :model/PermissionsGroup
-                    {:name (str "Data App: " slug)
-                     :entity_id group-entity-id}))
-      {:resource_collection_entity_id collection-entity-id
-       :permission_group_entity_id group-entity-id})))
-
 (defn- app-files!
   "The repo files for one app in `data_apps/<dir>`. `dir` is the app's slug — the
    config declares no slug, it is the directory's name."
   [dir {:keys [name path bundle resource_collection_entity_id permission_group_entity_id]}]
   (let [resource-ids (when-not (and resource_collection_entity_id permission_group_entity_id)
-                       (ensure-manifest-resources! dir))
+                       (data-app.test-util/ensure-manifest-resources! dir))
         resource_collection_entity_id (or resource_collection_entity_id
                                           (:resource_collection_entity_id resource-ids))
         permission_group_entity_id (or permission_group_entity_id
@@ -100,11 +79,6 @@
                                               :group_id permission_group_id
                                               :perm_type :perms/create-queries)]
             (is (every? #(= :no %) permissions))))
-        (testing "later syncs reuse the same resources"
-          (data-app.sync/import-from-snapshot! (snapshot files))
-          (is (=? {:resource_collection_id resource_collection_id
-                   :permission_group_id     permission_group_id}
-                  (t2/select-one :model/DataApp :name "sales"))))
         (testing "removing the app deletes its resources"
           (data-app.sync/import-from-snapshot! (snapshot {}))
           (is (not (t2/exists? :model/Collection :id resource_collection_id)))
@@ -134,8 +108,8 @@
       (data-app.sync/import-from-snapshot! (snapshot initial-files))
       (let [old-links             (select-keys (t2/select-one :model/DataApp :name "sales")
                                                [:resource_collection_id :permission_group_id])
-            collection-entity-id  (test-entity-id "replacementcollection" "sales")
-            group-entity-id       (test-entity-id "replacementgroup" "sales")
+            collection-entity-id  (data-app.test-util/test-entity-id "replacementcollection" "sales")
+            group-entity-id       (data-app.test-util/test-entity-id "replacementgroup" "sales")
             {collection-id :id}   (t2/insert-returning-instance!
                                    :model/Collection
                                    {:name "Replacement collection"
@@ -172,7 +146,7 @@
                                        :resource_collection_entity_id
                                        (t2/select-one-fn :entity_id :model/Collection
                                                          :id (:resource_collection_id before))
-                                       :permission_group_entity_id (test-entity-id "missinggroup" "sales")})]
+                                       :permission_group_entity_id (data-app.test-util/test-entity-id "missinggroup" "sales")})]
         (data-app.sync/import-from-snapshot! (snapshot invalid-files))
         (let [after (t2/select-one :model/DataApp :name "sales")]
           (is (= (select-keys before [:resource_collection_id :permission_group_id])

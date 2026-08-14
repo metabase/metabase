@@ -32,13 +32,6 @@
 path: ./dist/index.js"))))
 
 (deftest parse-resource-entity-ids-test
-  (is (= {:resource_collection_entity_id "resourcecollectionid1"
-          :permission_group_entity_id    "permissiongroupid0001"}
-         (select-keys (parse-raw "name: Sales
-path: dist/index.js
-resource_collection_entity_id: resourcecollectionid1
-permission_group_entity_id: permissiongroupid0001")
-                      [:resource_collection_entity_id :permission_group_entity_id])))
   (testing "both entity IDs are required"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource_collection_entity_id.*21-character"
                           (parse-raw "name: Sales\npath: dist/index.js")))

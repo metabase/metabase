@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
+   [metabase-enterprise.data-apps.test-util :as data-app.test-util]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -30,28 +31,6 @@
 
 (def ^:private fake-sha "0123456789abcdef0123456789abcdef01234567")
 
-(defn- test-entity-id
-  [prefix slug]
-  (subs (str prefix "-" slug "xxxxxxxxxxxxxxxxxxxxx") 0 21))
-
-(defn- ensure-manifest-resources!
-  [slug]
-  (if-let [app (t2/select-one :model/DataApp :name slug)]
-    (data-app.resources/resource-entity-ids app)
-    (let [collection-entity-id (test-entity-id "collection" slug)
-          group-entity-id      (test-entity-id "group" slug)]
-      (when-not (t2/exists? :model/Collection :entity_id collection-entity-id)
-        (t2/insert! :model/Collection
-                    {:name (str "Data App: " slug)
-                     :location "/"
-                     :entity_id collection-entity-id}))
-      (when-not (t2/exists? :model/PermissionsGroup :entity_id group-entity-id)
-        (t2/insert! :model/PermissionsGroup
-                    {:name (str "Data App: " slug)
-                     :entity_id group-entity-id}))
-      {:resource_collection_entity_id collection-entity-id
-       :permission_group_entity_id group-entity-id})))
-
 (defn- snapshot
   "Build a snapshot (as the remote-sync import passes one) from a path->content
    map. `read-file` returns file text (a string) or nil; `list-dir` reuses the
@@ -66,7 +45,7 @@
    app's slug is the name of the directory the config sits in."
   [slug {:keys [name path allowed_hosts]}]
   (let [{:keys [resource_collection_entity_id permission_group_entity_id]}
-        (ensure-manifest-resources! slug)]
+        (data-app.test-util/ensure-manifest-resources! slug)]
     (str (format (str "name: %s\npath: %s\n"
                       "resource_collection_entity_id: %s\n"
                       "permission_group_entity_id: %s\n")

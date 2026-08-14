@@ -74,6 +74,7 @@
    [:updated_at      :any]])
 
 (def ^:private DraftDataAppResponse
+  "Draft returns resource entity ids to populate in data_app.yaml."
   (into DataAppResponse
         [[:resource_collection_entity_id ms/NonBlankString]
          [:permission_group_entity_id ms/NonBlankString]]))
