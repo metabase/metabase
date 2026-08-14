@@ -70,7 +70,7 @@ Reference a field on a related table directly — when the source has exactly on
 - If the FK column lives on a previous stage's output, write `{"source-field-name": "<col>"}` (not auto-filled).
 - If multiple explicit joins all expose the target FK, `:ambiguous-fk-via-join` lists them — set `{"source-field-join-alias": "<alias>"}` to pick one.
 
-**Tip:** discover FKs with `read_resource metabase://table/<id>/fields`. FK columns are tagged `fk_target_fully_qualified_name="schema.table.field"` — always look for one before assuming a column lives on the current table.
+**Tip:** where `read_resource` is available, discover FKs with `read_resource metabase://table/<id>/fields` — FK columns are tagged `fk_target_fully_qualified_name="schema.table.field"`, so always look for one before assuming a column lives on the current table. Without `read_resource`, rely on the FK/field metadata already surfaced by `search` results.
 
 ## Multi-stage queries
 
@@ -139,7 +139,7 @@ Instead of `source-table`, use `source-card` to query an existing question or mo
 
 1. Get the `portable_entity_id` from a tool response. `search` and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
 2. Copy it **verbatim** into `source-card`. The id is opaque — never guess, construct, or abbreviate.
-3. Reference the card's columns by output **name** (string in slot 3), not portable FK. If you don't know the names, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`).
+3. Reference the card's columns by output **name** (string in slot 3), not portable FK. If you don't know the names and `read_resource` is available, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`); otherwise use the column names already surfaced by `search`.
 
 ```json
 {"lib/type": "mbql.stage/mbql",
