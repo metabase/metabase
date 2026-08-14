@@ -659,9 +659,8 @@
 (defn- present-non-question-dashcard
   "Dashcards not rendered as a saved question — virtual cards (headings, text, links, ...) and
    action buttons (which may reference a backing model via `card_id` but render as a button).
-   They carry their `dashcard_id` — the handle `update_dashboard` remove/move/update_text
-   mutations take. The card's text (or a link card's target) renders as the item body via
-   `:description`."
+   They carry their `dashcard_id`. The card's text (or a link card's target) renders as the item
+   body via `:description`."
   [{:keys [id action_id visualization_settings]}]
   (let [display (some-> (get-in visualization_settings [:virtual_card :display]) name)]
     ;; action_id wins over the virtual display: frontend-created action buttons carry BOTH an
@@ -680,13 +679,12 @@
                       (get-in visualization_settings [:link :url]))}))
 
 (defn- fetch-dashboard-items
-  "One item per dashcard in row/col (layout) order, each carrying the `dashcard_id` that
-   `update_dashboard` remove/move/update_text mutations take. On a tabbed dashboard the items come
-   grouped by tab (nil-tab dashcards belong to the first tab, where the frontend renders them),
-   each carries its `tab_id`, and the response's `:tabs` lists every tab — empty ones included —
-   in display order. Card-backed dashcards keep the card fields; virtual dashcards (headings,
-   text, links, ...) render their text; action buttons keep a `uri` to their backing model when
-   it's readable. Dashcards whose card is archived or unreadable are omitted."
+  "One item per dashcard in row/col (layout) order, each carrying its `dashcard_id`. On a tabbed
+   dashboard the items come grouped by tab (nil-tab dashcards belong to the first tab, where the
+   frontend renders them), each carries its `tab_id`, and the response's `:tabs` lists every tab —
+   empty ones included — in display order. Card-backed dashcards keep the card fields; virtual
+   dashcards (headings, text, links, ...) render their text; action buttons keep a `uri` to their
+   backing model when it's readable. Dashcards whose card is archived or unreadable are omitted."
   [id-str query-params]
   (let [dashboard-id (parse-long id-str)
         _            (api/read-check :model/Dashboard dashboard-id)
