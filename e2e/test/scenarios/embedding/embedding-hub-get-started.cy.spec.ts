@@ -1,4 +1,9 @@
+import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
+import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
+
 const { H } = cy;
+
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 /**
  * The embedding hub's Get started tab at `/embedding/get-started`.
@@ -8,10 +13,9 @@ const { H } = cy;
  * browser or a real backend -- routing, the two step orderings, and completion
  * coming back from the checklist endpoint.
  *
- * Both blocks are `@EE`. The unlicensed case is an EE build with no token
- * activated, not an OSS build: the checklist is served from `/api/ee/...`, so on
- * an OSS build the route would not exist at all and every step would read as
- * incomplete for a reason this page is not responsible for.
+ * Both blocks are `@EE`, because the steps themselves are: tenants, SSO and data
+ * segregation only exist on an enterprise build. The unlicensed case is that same
+ * build with no token activated, which is what the locked states are about.
  */
 
 const CARD = "embedding-hub-checklist-card";
@@ -95,6 +99,56 @@ describe("scenarios > embedding > embedding hub > get started", () => {
       cy.findByRole("link", { name: /Back to the setup guide/ }).click();
 
       cy.location("pathname").should("eq", "/embedding/get-started");
+    });
+
+    it("finishes the permissions wizard and lands back on Get started", () => {
+      cy.log("seed every step the wizard checks, so Summary is the one left");
+      H.updateSetting("use-tenants", true);
+      cy.request("POST", "/api/collection", {
+        name: "Shared collection",
+        namespace: "shared-tenant-collection",
+      }).then(({ body: sharedCollection }) => {
+        H.createDashboard({
+          name: "Tenant dashboard",
+          collection_id: sharedCollection.id,
+        });
+      });
+
+      cy.request("POST", "/api/ee/tenant", {
+        name: "Test Tenant",
+        slug: "test-tenant",
+      });
+
+      cy.request("POST", "/api/permissions/group", { name: "Test Group" }).then(
+        ({ body: group }) => {
+          cy.sandboxTable({ table_id: STATIC_ORDERS_ID, group_id: group.id });
+        },
+      );
+
+      cy.visit("/embedding/get-started/permissions-setup");
+
+      cy.log("the Summary step closes the wizard out");
+      cy.findByRole("button", { name: "Done" }).click();
+
+      cy.location("pathname").should("eq", "/embedding/get-started");
+      cy.findByTestId("embedding-hub-main").should("be.visible");
+    });
+
+    it("finishes the SSO wizard and lands back on Get started", () => {
+      cy.log("JWT configured is what unlocks the two steps after it");
+      enableJwtAuth();
+
+      cy.visit("/embedding/get-started/sso-setup");
+
+      cy.findByRole("button", { name: "Next" }).click();
+
+      cy.log("confirming the manual login test is what closes the wizard out");
+      // A link, not a button: it is a `Button component={Link}`, so the step's
+      // own navigation is what returns to the hub.
+      cy.findByRole("link", { name: "Log in works, I'm done" }).click();
+
+      cy.location("pathname").should("eq", "/embedding/get-started");
+      cy.findByTestId("embedding-hub-main").should("be.visible");
     });
   });
 
