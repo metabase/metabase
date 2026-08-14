@@ -304,7 +304,10 @@
                                :charts  {"chart-1" {:chart_id "chart-1"
                                                     :query_id "q-1"
                                                     :queries  [query]
-                                                    :visualization_settings {:chart_type "line"}}}}})]
+                                                    :visualization_settings {:chart_type "line"}}
+                                         "chart-2" {:chart_id "chart-2"
+                                                    :queries  [nil]
+                                                    :visualization_settings {:chart_type "bar"}}}}})]
         (testing "resolves a conversation chart to its chart type and exported query"
           (let [result (read-resource/read-resource {:uris ["metabase://chart/chart-1"]})]
             (is (=? {:resources [{:content {:structured-output map?}}]}
@@ -312,6 +315,11 @@
             (is (str/includes? (:output result) "conversation-chart"))
             (is (str/includes? (:output result) "Chart type: line"))
             (is (str/includes? (:output result) "ORDERS"))))
+        (testing "a chart with no query says so instead of claiming a permission denial"
+          (let [result (read-resource/read-resource {:uris ["metabase://chart/chart-2"]})]
+            (is (str/includes? (:output result) "Chart type: bar"))
+            (is (str/includes? (:output result) "No query is attached to this chart."))
+            (is (not (str/includes? (:output result) "withheld")))))
         (testing "falls back to the queries state when the id is a query id"
           (let [result (read-resource/read-resource {:uris ["metabase://chart/q-1"]})]
             (is (str/includes? (:output result) "conversation-query"))))

@@ -763,7 +763,8 @@
       (entity-result
        {:type        "conversation-query"
         :id          query-id
-        :description (llm-shape/export-query-for-llm query)}))
+        :description (or (llm-shape/export-query-for-llm query)
+                         "Query withheld: insufficient permissions to view it.")}))
     {:status-code 404
      :output (str "No chart or query with id '" query-id "' exists in this conversation. "
                   "It may belong to another conversation; ask the user to paste or recreate it here.")}))
@@ -783,8 +784,11 @@
         :description (str "Chart type: "
                           (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
                               "table")
-                          "\nQuery:\n"
-                          (llm-shape/export-query-for-llm query))}))
+                          (if (nil? query)
+                            "\nNo query is attached to this chart."
+                            (if-let [query-text (llm-shape/export-query-for-llm query)]
+                              (str "\nQuery:\n" query-text)
+                              "\nQuery withheld: insufficient permissions to view it.")))}))
     (fetch-conversation-query chart-id)))
 
 ;; ----- Dispatch -----
