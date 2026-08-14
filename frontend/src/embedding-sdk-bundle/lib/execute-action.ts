@@ -64,7 +64,7 @@ function toExecutableActionId(input: SdkActionInput): SdkActionId {
     return input.action.id;
   }
 
-  if (input.copiedActionId == null) {
+  if (input.copiedActionId === null || input.copiedActionId === undefined) {
     throw new Error(
       "This action has not been synchronized. Run `npm run sync-resources` and rebuild.",
     );
