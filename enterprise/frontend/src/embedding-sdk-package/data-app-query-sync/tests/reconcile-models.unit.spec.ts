@@ -7,8 +7,8 @@ import {
   FAKE_HASH,
   called,
   createFakeInstance,
+  jsonResponse,
   makeApp,
-  readLockfile,
   serveFakeInstance,
   setupResourceSyncTests,
   writeAction,
@@ -120,39 +120,8 @@ function start(
   return fake;
 }
 
-/** The common starting point: one declared action on an un-copied source model. */
-function singleActionApp() {
-  const appRoot = makeApp();
-  declareActions(appRoot, [{ id: 51 }]);
-  const fake = start(appRoot, {
-    cards: [sourceModel()],
-    actions: [sourceAction(51, "Create")],
-  });
-  return { appRoot, fake };
-}
-
 describe("model reconciliation", () => {
   setupResourceSyncTests();
-
-  it("recreates a copied model only after a confirmed 404", async () => {
-    const appRoot = makeApp();
-    const filePath = declareActions(appRoot, [{ id: 51, copiedId: 91 }]);
-    seedLockfile(appRoot, [[51, 91]]);
-    start(appRoot, {
-      cards: [sourceModel()],
-      actions: [sourceAction(51, "Create")],
-    });
-
-    await sync(appRoot);
-
-    const { models } = readLockfile(appRoot);
-    expect(models).toHaveLength(1);
-    expect(models[0].copiedModelId).not.toBe(COPIED_MODEL_ID);
-    expect(models[0].actions).toHaveLength(1);
-    expect(fs.readFileSync(filePath, "utf8")).toContain(
-      `copiedActionId: ${models[0].actions[0].copiedActionId}`,
-    );
-  });
 
   it("makes a query action's own database viewable, not just its model's", async () => {
     const appRoot = makeApp();
@@ -182,93 +151,34 @@ describe("model reconciliation", () => {
     expect(permissions?.body).toEqual({ database_ids: [1, 7] });
   });
 
-  it("explains how to recover a copied model that left the collection", async () => {
+  /**
+   * A live instance cannot be made to fail this way on demand, so this stays a
+   * unit test: only a confirmed 404 proves a copy is gone. Recreating on any
+   * other failure would duplicate content the app already owns.
+   */
+  it("does not recreate a copied model when reading it fails", async () => {
     const appRoot = makeApp();
-    seedLockfile(appRoot, [[51, 91]]);
-    const fake = start(appRoot, {
-      cards: [copiedModel({ collection_id: 99 })],
-    });
-
-    await expect(sync(appRoot)).rejects.toThrow(
-      `Move card ${COPIED_MODEL_ID} back to data app collection ${COLLECTION_ID} or delete it manually, then run sync-resources again.`,
-    );
-    expect(fake.cards.has(COPIED_MODEL_ID)).toBe(true);
-  });
-
-  it("restores a missing generated ID from the lockfile", async () => {
-    const appRoot = makeApp();
-    const filePath = declareActions(appRoot, [{ id: 51 }]);
+    declareActions(appRoot, [{ id: 51, copiedId: 91 }]);
     seedLockfile(appRoot, [[51, 91]]);
     const fake = start(appRoot, {
       cards: [sourceModel(), copiedModel()],
       actions: [sourceAction(51, "Create"), copiedAction(91, 51, "Create")],
     });
 
-    await sync(appRoot);
+    const served = global.fetch;
+    jest
+      .spyOn(global, "fetch")
+      .mockImplementation(async (input, init) =>
+        String(input).endsWith(`/api/card/${COPIED_MODEL_ID}`)
+          ? jsonResponse({ message: "Server error" }, 500)
+          : served(input, init),
+      );
 
-    expect(fs.readFileSync(filePath, "utf8")).toContain("copiedActionId: 91");
-    expect(called(fake, "POST", "/api/action")).toBe(false);
+    await expect(sync(appRoot)).rejects.toThrow();
     expect(called(fake, "POST", "/api/card")).toBe(false);
-  });
-
-  it("recreates only the copied action when it is deleted in Metabase", async () => {
-    const { appRoot, fake } = singleActionApp();
-    // Sync once so the lockfile holds real fingerprints and both copies exist.
-    await sync(appRoot);
-    const [before] = readLockfile(appRoot).models;
-    fake.requests.length = 0;
-
-    fake.actions.delete(before.actions[0].copiedActionId);
-    await sync(appRoot);
-
-    // The model survives; only its action is replaced.
-    expect(called(fake, "POST", "/api/card")).toBe(false);
-    const [model] = readLockfile(appRoot).models;
-    expect(model.copiedModelId).toBe(before.copiedModelId);
-    expect(model.actions[0].copiedActionId).not.toBe(
-      before.actions[0].copiedActionId,
-    );
-    expect(fake.actions.get(model.actions[0].copiedActionId)?.model_id).toBe(
-      before.copiedModelId,
-    );
   });
 
   describe("refusals", () => {
-    it("refuses to delete a copied action repointed at another model", async () => {
-      const appRoot = makeApp();
-      declareActions(appRoot, [{ id: 51, copiedId: 91 }]);
-      seedLockfile(appRoot, [
-        [51, 91],
-        [52, 92],
-      ]);
-      const fake = start(appRoot, {
-        cards: [sourceModel(), copiedModel()],
-        actions: [
-          sourceAction(51, "Create"),
-          copiedAction(91, 51, "Create"),
-          // Action 92's declaration is gone, but it now hangs off a model we
-          // do not own, so deleting it would destroy someone else's action.
-          { ...copiedAction(92, 52, "Update"), model_id: 999 },
-        ],
-      });
-
-      await expect(sync(appRoot)).rejects.toThrow(
-        `no longer hangs off copied model ${COPIED_MODEL_ID}`,
-      );
-      expect(fake.actions.has(92)).toBe(true);
-    });
-
-    it("refuses to touch a copy that is no longer a model", async () => {
-      const appRoot = makeApp();
-      seedLockfile(appRoot, [[51, 91]]);
-      const fake = start(appRoot, {
-        cards: [copiedModel({ type: "question" })],
-      });
-
-      await expect(sync(appRoot)).rejects.toThrow("is no longer a model");
-      expect(fake.cards.has(COPIED_MODEL_ID)).toBe(true);
-    });
-
     it("rejects an action whose parent card is not a model", async () => {
       const appRoot = makeApp();
       declareActions(appRoot, [{ id: 51 }]);

@@ -6,8 +6,10 @@ import { readResourceLockfile } from "../lockfile";
 
 export function setupResourceSyncTests(): void {
   const appRoots: string[] = [];
+
   afterEach(() => {
     jest.restoreAllMocks();
+
     appRoots.forEach((appRoot) =>
       fs.rmSync(appRoot, { recursive: true, force: true }),
     );
@@ -22,6 +24,7 @@ export function makeApp() {
   const appRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), "data-app-query-sync-"),
   );
+
   trackedAppRoots?.push(appRoot);
 
   fs.mkdirSync(path.join(appRoot, "queries"));

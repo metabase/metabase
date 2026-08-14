@@ -155,38 +155,35 @@ export function moveDataAppModelToCollection({
     });
 }
 
-export const dataAppSyncFixtureRoot = () =>
-  `${Cypress.config("projectRoot")}/e2e/tmp/sync-resources-app`;
+/**
+ * The dev host app is a real vite data app with the published SDK installed, so
+ * synchronizing it exercises the package an author actually consumes rather than
+ * the stub the scratch fixture provides.
+ */
+export const dataAppHostAppRoot = () =>
+  `${Cypress.config("projectRoot")}/${DATA_APP_DEV_HOST_APP_DIR}`;
 
-const syncFixtureActionsFile = () =>
-  `${dataAppSyncFixtureRoot()}/actions/orders.action.ts`;
+const actionsFileIn = (appRoot: string) =>
+  `${appRoot}/actions/orders.action.ts`;
 
-export function createDataAppSyncFixture() {
-  const appRoot = dataAppSyncFixtureRoot();
-  const packageRoot = `${appRoot}/node_modules/@metabase/embedding-sdk-react`;
-
-  cy.exec(`rm -rf ${appRoot}`);
-  cy.writeFile(
-    `${packageRoot}/package.json`,
-    JSON.stringify({
-      name: "@metabase/embedding-sdk-react",
-      exports: { "./data-app": "./data-app.js" },
-    }),
+/**
+ * Clears everything synchronization generates in the host app. Both sync specs
+ * drive the same checked-in directory, so each has to start from a clean tree —
+ * a stray `actions/` would otherwise be discovered by the query spec's sync.
+ */
+export function resetDataAppHostAppSources() {
+  const appRoot = dataAppHostAppRoot();
+  return cy.exec(
+    `rm -rf "${appRoot}/queries" "${appRoot}/actions" "${appRoot}/resources_metadata.json"`,
   );
-  cy.writeFile(
-    `${packageRoot}/data-app.js`,
-    [
-      "exports.defineQuery = (query) => query;",
-      "exports.defineAction = (definition) => definition;",
-    ].join("\n"),
-  );
-
-  return appRoot;
 }
 
-export function declareDataAppActions(sourceActionIds: number[]) {
+export function declareDataAppActions(
+  appRoot: string,
+  sourceActionIds: number[],
+) {
   return cy.writeFile(
-    syncFixtureActionsFile(),
+    actionsFileIn(appRoot),
     [
       'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
       ...sourceActionIds.map(
@@ -197,31 +194,61 @@ export function declareDataAppActions(sourceActionIds: number[]) {
   );
 }
 
-export function removeDataAppActionDeclaration(sourceActionId: number) {
-  const filePath = syncFixtureActionsFile();
+const queriesFileIn = (appRoot: string) => `${appRoot}/queries/orders.query.ts`;
 
+/** Declares one `defineQuery` per entry, as an app author would. */
+export function declareDataAppQueries(
+  appRoot: string,
+  declarations: Array<{ name: string; tableId: number; limit?: number }>,
+) {
+  return cy.writeFile(
+    queriesFileIn(appRoot),
+    [
+      'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
+      ...declarations.map(({ name, tableId, limit }) => {
+        const clauses = limit === undefined ? "" : `, limit: ${limit}`;
+        return `export const ${name} = defineQuery({ source: { type: "table", id: ${tableId} }${clauses} });`;
+      }),
+    ].join("\n"),
+  );
+}
+
+/**
+ * Deletes one declaration in place, so the rest keep the generated IDs
+ * synchronization injected — which is what an author removing one does.
+ * Splits on the declaration keyword rather than on lines, because an injected
+ * ID lands on its own line and makes a declaration span several.
+ */
+function removeDeclaration(filePath: string, exportName: string) {
   return cy.readFile(filePath).then((contents: string) => {
-    // Split on the declaration keyword rather than on lines: synchronization
-    // injects `copiedActionId` on its own line, so a declaration spans several.
     const [imports, ...declarations] = contents.split("export const ");
 
     cy.writeFile(
       filePath,
       imports +
         declarations
-          .filter(
-            (declaration) =>
-              !declaration.startsWith(`Action${sourceActionId} `),
-          )
+          .filter((declaration) => !declaration.startsWith(`${exportName} `))
           .map((declaration) => `export const ${declaration}`)
           .join(""),
     );
   });
 }
 
-export function syncDataAppResources(apiKey: string) {
+export function removeDataAppQueryDeclaration(appRoot: string, name: string) {
+  return removeDeclaration(queriesFileIn(appRoot), name);
+}
+
+export function removeDataAppActionDeclaration(
+  appRoot: string,
+  sourceActionId: number,
+) {
+  return removeDeclaration(actionsFileIn(appRoot), `Action${sourceActionId}`);
+}
+
+/** Runs the real `sync-resources` CLI against the instance under test. */
+export function syncDataAppResources(apiKey: string, appRoot: string) {
   return cy.task<{ ok: boolean; error: string | null }>("syncDataApp", {
-    appRoot: dataAppSyncFixtureRoot(),
+    appRoot,
     metabaseUrl: Cypress.config("baseUrl"),
     apiKey,
   });
