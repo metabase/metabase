@@ -420,8 +420,11 @@ jobs:
         uses: ./.github/actions/prepare-cypress
 
       # The data-app suite synchronizes real actions, and Metabase only permits
-      # those against a writable warehouse. The other host apps read the sample
-      # database, so they skip the container pull.
+      # those against a writable warehouse, which comes from the `qa-db`
+      # snapshot below. That snapshot creator builds every QA database in one
+      # pass — Mongo and MySQL included — so all three have to be up even though
+      # only `postgres-writable` is restored. The other host apps read the sample
+      # database, so they skip the pull entirely.
       - name: Prepare Docker containers
         if: ${{ matrix.test_suite == 'vite-6-data-app-host-app-e2e' }}
         uses: ./.github/actions/e2e-prepare-containers
@@ -429,6 +432,8 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           postgres: true
+          mysql: true
+          mongo: true
 
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
