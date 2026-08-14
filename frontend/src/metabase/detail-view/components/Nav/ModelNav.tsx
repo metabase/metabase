@@ -5,12 +5,12 @@ import {
   useGetCardQuery,
   useGetCollectionQuery,
 } from "metabase/api";
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { Group, type GroupProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { Table } from "metabase-types/api";
 
-import { Breadcrumb } from "./Breadcrumb";
 import { CollectionBreadcrumb } from "./CollectionBreadcrumb";
 import { Separator } from "./Separator";
 import { getCollectionList } from "./utils";
@@ -46,7 +46,12 @@ export const ModelNav = ({ rowName, table, ...props }: Props) => {
 
       {collection && (
         <>
-          <Breadcrumb href={Urls.collection(collection)} icon="folder">
+          <Breadcrumb
+            color="text-secondary"
+            icon="folder"
+            to={Urls.collection(collection)}
+            showTooltip
+          >
             {collection.name}
           </Breadcrumb>
 
@@ -56,7 +61,12 @@ export const ModelNav = ({ rowName, table, ...props }: Props) => {
 
       {card && (
         <>
-          <Breadcrumb href={Urls.card(card)} icon="model">
+          <Breadcrumb
+            color="text-secondary"
+            icon="model"
+            to={Urls.card(card)}
+            showTooltip
+          >
             {card.name}
           </Breadcrumb>
 
@@ -64,7 +74,11 @@ export const ModelNav = ({ rowName, table, ...props }: Props) => {
         </>
       )}
 
-      {rowName && <Breadcrumb>{rowName}</Breadcrumb>}
+      {rowName && (
+        <Breadcrumb color="text-secondary" showTooltip>
+          {rowName}
+        </Breadcrumb>
+      )}
     </Group>
   );
 };

@@ -16,6 +16,7 @@ interface Props {
   icon?: IconName;
   iconColor?: ColorName;
   iconSize?: number;
+  showTooltip?: boolean;
   to?: string;
   onClick?: () => void;
 }
@@ -27,6 +28,7 @@ export const Breadcrumb = ({
   icon,
   iconColor,
   iconSize,
+  showTooltip = false,
   to,
   onClick,
 }: Props) => {
@@ -60,7 +62,7 @@ export const Breadcrumb = ({
         className={S.text}
         fw="bold"
         lh="normal"
-        showTooltip={false}
+        showTooltip={showTooltip}
       >
         {children}
       </Ellipsified>
