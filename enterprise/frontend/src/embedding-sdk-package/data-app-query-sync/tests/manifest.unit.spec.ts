@@ -59,6 +59,19 @@ describe("data app manifest resource IDs", () => {
     );
   });
 
+  it("requires a manifest path", () => {
+    const appRoot = makeApp();
+    const manifestPath = path.join(appRoot, "data_app.yaml");
+    fs.writeFileSync(manifestPath, "name: Test data app\n");
+
+    expect(() =>
+      addResourceEntityIdsToManifest(appRoot, {
+        resourceCollectionEntityId: "resourcecollectionid1",
+        permissionGroupEntityId: "permissiongroupid0001",
+      }),
+    ).toThrow("data_app.yaml must define a path.");
+  });
+
   it("rejects an invalid server-issued entity ID", () => {
     const appRoot = makeApp();
 

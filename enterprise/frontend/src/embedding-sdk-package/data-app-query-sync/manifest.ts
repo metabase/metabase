@@ -30,22 +30,18 @@ function addTopLevelValuesAfterPath(
   const lineEnding = content.includes("\r\n") ? "\r\n" : "\n";
 
   const block = missingValues
-    .map(([name, value]) => `${name}: ${value}${lineEnding}`)
-    .join("");
+    .map(([name, value]) => `${name}: ${value}`)
+    .join(lineEnding);
 
-  const pathLine = /^path\s*:.*(?:\r?\n|$)/m.exec(content);
+  const pathLine = /^path\s*:[^\r\n]*/m.exec(content);
 
-  if (pathLine?.index !== undefined) {
-    const insertAt = pathLine.index + pathLine[0].length;
-    const separator = pathLine[0].endsWith("\n") ? "" : lineEnding;
-
-    return `${content.slice(0, insertAt)}${separator}${block}${content.slice(insertAt)}`;
+  if (pathLine?.index === undefined) {
+    throw new Error("data_app.yaml must define a path.");
   }
 
-  const separator =
-    content.endsWith("\n") || content.length === 0 ? "" : lineEnding;
+  const insertAt = pathLine.index + pathLine[0].length;
 
-  return `${content}${separator}${block}`;
+  return `${content.slice(0, insertAt)}${lineEnding}${block}${content.slice(insertAt)}`;
 }
 
 export function addResourceEntityIdsToManifest(
