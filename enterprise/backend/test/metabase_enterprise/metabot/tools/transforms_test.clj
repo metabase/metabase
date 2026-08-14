@@ -3,8 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot.tools.transforms :as ee-transforms]
-   [metabase-enterprise.metabot.tools.transforms.write :as transforms-write]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (def ^:private python-source "df[(df.a < 10) & (df.b > 2)]")
 
@@ -37,19 +37,18 @@
              (formatted-library-output {:path "common.py" :source source}))))))
 
 (deftest ^:parallel format-python-library-too-large-test
-  (testing "an oversized library is reported, not sent to the model"
+  (testing "an oversized library is truncated, not dropped"
     (let [source (str/join (repeat 100001 "x"))
           output (formatted-library-output {:path "common.py" :source source})]
-      (is (str/includes? output "Library too large to include: 100001 characters (limit 100000)."))
-      (is (not (str/includes? output source))))))
+      (is (str/includes? output (subs source 0 100000)))
+      (is (not (str/includes? output source)))
+      (is (str/includes? output "Truncated: showing the first 100000 of 100001 characters.")))))
 
-(deftest ^:parallel get-transform-python-library-details-tool-test
+(deftest get-transform-python-library-details-tool-test
   (testing "the tool renders the :source key the transforms-python API actually returns"
     (mt/with-premium-features #{:transforms-python}
-      (mt/with-dynamic-fn-redefs [transforms-write/get-transform-python-library-details
-                                  (constantly {:structured_output {:path "common.py"
-                                                                   :source python-source
-                                                                   :created_at "2026-01-01T00:00:00Z"
-                                                                   :updated_at "2026-01-01T00:00:00Z"}})]
-        (is (= rendered-library
-               (:output (ee-transforms/get-transform-python-library-details-tool {:path "common.py"}))))))))
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [lib-id (t2/select-one-pk :model/PythonLibrary :path "common.py")]
+          (mt/with-temp-vals-in-db :model/PythonLibrary lib-id {:source python-source}
+            (is (= rendered-library
+                   (:output (ee-transforms/get-transform-python-library-details-tool {:path "common.py"}))))))))))
