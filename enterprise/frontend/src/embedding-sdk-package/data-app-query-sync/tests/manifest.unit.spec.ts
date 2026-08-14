@@ -13,7 +13,12 @@ describe("data app manifest resource IDs", () => {
     const manifestPath = path.join(appRoot, "data_app.yaml");
     fs.writeFileSync(
       manifestPath,
-      "# Keep this comment\nname: Test data app\npath: dist/index.js\n",
+      "# Keep this comment\n" +
+        "name: Test data app\n" +
+        "path: dist/index.js\n" +
+        "\n" +
+        "# Keep resource IDs above this configuration comment\n" +
+        "# allowed_hosts:\n",
     );
 
     addResourceEntityIdsToManifest(appRoot, {
@@ -26,7 +31,10 @@ describe("data app manifest resource IDs", () => {
         "name: Test data app\n" +
         "path: dist/index.js\n" +
         "resource_collection_entity_id: resourcecollectionid1\n" +
-        "permission_group_entity_id: permissiongroupid0001\n",
+        "permission_group_entity_id: permissiongroupid0001\n" +
+        "\n" +
+        "# Keep resource IDs above this configuration comment\n" +
+        "# allowed_hosts:\n",
     );
   });
 

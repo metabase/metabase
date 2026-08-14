@@ -15,17 +15,37 @@ function validateEntityId(name: string, value: string): void {
   }
 }
 
-function addTopLevelValue(
+function addTopLevelValuesAfterPath(
   content: string,
-  name: string,
-  value: string,
+  values: Array<[name: string, value: string]>,
 ): string {
-  if (new RegExp(`^${name}\\s*:`, "m").test(content)) {
+  const missingValues = values.filter(
+    ([name]) => !new RegExp(`^${name}\\s*:`, "m").test(content),
+  );
+
+  if (missingValues.length === 0) {
     return content;
   }
 
-  const newline = content.endsWith("\n") || content.length === 0 ? "" : "\n";
-  return `${content}${newline}${name}: ${value}\n`;
+  const lineEnding = content.includes("\r\n") ? "\r\n" : "\n";
+
+  const block = missingValues
+    .map(([name, value]) => `${name}: ${value}${lineEnding}`)
+    .join("");
+
+  const pathLine = /^path\s*:.*(?:\r?\n|$)/m.exec(content);
+
+  if (pathLine?.index !== undefined) {
+    const insertAt = pathLine.index + pathLine[0].length;
+    const separator = pathLine[0].endsWith("\n") ? "" : lineEnding;
+
+    return `${content.slice(0, insertAt)}${separator}${block}${content.slice(insertAt)}`;
+  }
+
+  const separator =
+    content.endsWith("\n") || content.length === 0 ? "" : lineEnding;
+
+  return `${content}${separator}${block}`;
 }
 
 export function addResourceEntityIdsToManifest(
@@ -41,15 +61,10 @@ export function addResourceEntityIdsToManifest(
   }
 
   const content = fs.readFileSync(manifestPath, "utf8");
-  const nextContent = addTopLevelValue(
-    addTopLevelValue(
-      content,
-      "resource_collection_entity_id",
-      resourceCollectionEntityId,
-    ),
-    "permission_group_entity_id",
-    permissionGroupEntityId,
-  );
+  const nextContent = addTopLevelValuesAfterPath(content, [
+    ["resource_collection_entity_id", resourceCollectionEntityId],
+    ["permission_group_entity_id", permissionGroupEntityId],
+  ]);
 
   if (nextContent !== content) {
     fs.writeFileSync(manifestPath, nextContent);
