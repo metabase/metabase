@@ -48,7 +48,21 @@ export const userApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/user/current",
       }),
-      providesTags: (user) => (user ? [idTag("current-user", user.id)] : []),
+      providesTags: (user) =>
+        user
+          ? [
+              idTag("current-user", user.id),
+              // api/dashboard.ts invalidates this tag when the homepage dashboard is archived.
+              ...(user.custom_homepage
+                ? [
+                    idTag(
+                      "user-homepage-dashboard",
+                      user.custom_homepage.dashboard_id,
+                    ),
+                  ]
+                : []),
+            ]
+          : [],
       // Don't garbage-collect the current user from the cache
       // since it's used in many places and we don't want to refetch it unnecessarily.
       keepUnusedDataFor: Infinity,
