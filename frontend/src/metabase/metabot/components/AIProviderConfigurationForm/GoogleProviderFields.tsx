@@ -35,7 +35,11 @@ const GOOGLE_MODEL_LOCATIONS_URL =
 // The models Metabot is known to work well with. Which of them a project can actually reach depends
 // on its location, thus the input still accepts any model ID and only warns about the rest.
 // The first entry in this list is used as the placeholder for the model form input below.
-const RECOMMENDED_MODELS = ["gemini-3.5-flash", "gemini-3.6-flash"] as const;
+const RECOMMENDED_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-3.6-flash",
+  "gemini-3.7-flash",
+] as const;
 
 type GoogleSettingDetails = SettingDefinitionMap<
   (typeof GOOGLE_SETTING_KEYS)[number]

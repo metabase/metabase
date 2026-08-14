@@ -2446,9 +2446,9 @@ describe("AIProviderSettingsSection", () => {
     };
 
     const MODEL_WARNING =
-      "Metabot works best with these models: gemini-3.5-flash, gemini-3.6-flash. Other models may not work as expected.";
+      "Metabot works best with these models: gemini-3.5-flash, gemini-3.6-flash, gemini-3.7-flash. Other models may not work as expected.";
 
-    it.each(["gemini-3.5-flash", "gemini-3.6-flash"])(
+    it.each(["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.7-flash"])(
       "shows no advisory warning for %s",
       async (model) => {
         await typeModel(model);
