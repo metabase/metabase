@@ -94,16 +94,12 @@ async function resolveActions(
     actions.map(async (action) => {
       let source: MetabaseAction;
       try {
+        // `GET /api/action/:id` filters archived actions out, so an archived
+        // source surfaces here as a 404 rather than a readable payload.
         source = await client.getAction(action.sourceActionId);
       } catch (error) {
         throw new Error(
           `Could not read action ${action.sourceActionId} for ${definitionLocation(appRoot, action)}: ${errorMessage(error)}`,
-        );
-      }
-
-      if (source.archived) {
-        throw new Error(
-          `${definitionLocation(appRoot, action)} references archived action ${action.sourceActionId}.`,
         );
       }
 

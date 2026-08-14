@@ -12,27 +12,12 @@ import type {
 import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
 
-/**
- * The e2e data-app fixture that `mockDataApp` builds and serves — its directory
- * name and its `/apps/<slug>` URL segment. One bundle with a page per surface it
- * exercises (questions, query hooks, actions, clipboard, sandbox, isolation), so
- * the specs share a single build.
- */
 export const DATA_APP_NAME = "kitchen-sink";
 export const DATA_APP_DISPLAY_NAME = "Kitchen Sink";
 
-/**
- * Visit a nested route inside the fixture data app. `openDataApp` encodes the
- * slug, so it can't carry a sub-path — deep-links go through a raw `cy.visit`.
- */
 export const visitDataAppRoute = (route: string) =>
   cy.visit(`/apps/${DATA_APP_NAME}/${route}`);
 
-/**
- * A minimal `DataApp`-shaped row. Admin-list state tests use it directly (they
- * only assert how the management UI renders the list, no real bundle needed);
- * `mockDataApp` uses it for the intercepted metadata of the built fixture.
- */
 export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
   id: 1,
   name: DATA_APP_NAME,
@@ -71,9 +56,6 @@ type MockDataAppOptions<TestEnv> = {
   bundleDelay?: number;
 };
 
-/**
- * Set up a data app for the current test
- */
 export const mockDataApp = <TestEnv = DataAppTestEnv>(
   appName: string,
   options: MockDataAppOptions<TestEnv> = {},
@@ -173,23 +155,98 @@ export function moveDataAppModelToCollection({
     });
 }
 
+export const dataAppSyncFixtureRoot = () =>
+  `${Cypress.config("projectRoot")}/e2e/tmp/sync-resources-app`;
+
+const syncFixtureActionsFile = () =>
+  `${dataAppSyncFixtureRoot()}/actions/orders.action.ts`;
+
+export function createDataAppSyncFixture() {
+  const appRoot = dataAppSyncFixtureRoot();
+  const packageRoot = `${appRoot}/node_modules/@metabase/embedding-sdk-react`;
+
+  cy.exec(`rm -rf ${appRoot}`);
+  cy.writeFile(
+    `${packageRoot}/package.json`,
+    JSON.stringify({
+      name: "@metabase/embedding-sdk-react",
+      exports: { "./data-app": "./data-app.js" },
+    }),
+  );
+  cy.writeFile(
+    `${packageRoot}/data-app.js`,
+    [
+      "exports.defineQuery = (query) => query;",
+      "exports.defineAction = (definition) => definition;",
+    ].join("\n"),
+  );
+
+  return appRoot;
+}
+
+export function declareDataAppActions(sourceActionIds: number[]) {
+  return cy.writeFile(
+    syncFixtureActionsFile(),
+    [
+      'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
+      ...sourceActionIds.map(
+        (id) =>
+          `export const Action${id} = defineAction({ action: { id: ${id}, parameters: [] } });`,
+      ),
+    ].join("\n"),
+  );
+}
+
+export function removeDataAppActionDeclaration(sourceActionId: number) {
+  const filePath = syncFixtureActionsFile();
+
+  return cy.readFile(filePath).then((contents: string) => {
+    // Split on the declaration keyword rather than on lines: synchronization
+    // injects `copiedActionId` on its own line, so a declaration spans several.
+    const [imports, ...declarations] = contents.split("export const ");
+
+    cy.writeFile(
+      filePath,
+      imports +
+        declarations
+          .filter(
+            (declaration) =>
+              !declaration.startsWith(`Action${sourceActionId} `),
+          )
+          .map((declaration) => `export const ${declaration}`)
+          .join(""),
+    );
+  });
+}
+
+export function syncDataAppResources(apiKey: string) {
+  return cy.task<{ ok: boolean; error: string | null }>("syncDataApp", {
+    appRoot: dataAppSyncFixtureRoot(),
+    metabaseUrl: Cypress.config("baseUrl"),
+    apiKey,
+  });
+}
+
+export function createDataAppApiKey() {
+  return cy
+    .request<{ unmasked_key: string }>("POST", "/api/api-key", {
+      name: `data-app-sync-e2e-${Date.now()}`,
+      group_id: USER_GROUPS.ADMIN_GROUP,
+    })
+    .then(({ body }) => body.unmasked_key);
+}
+
 const DATA_APP_DEV_HOST_APP_DIR =
   "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app";
 
 const DATA_APP_DEV_ENV_PATH = `${DATA_APP_DEV_HOST_APP_DIR}/.env.local`;
 
-/** The dev host app's manifest — the live manifest-validation suite edits it. */
 export const DATA_APP_DEV_MANIFEST_PATH = `${DATA_APP_DEV_HOST_APP_DIR}/data_app.yaml`;
 
-/** The dev host app's source entry — the soft-reload suite edits it. */
 export const DATA_APP_DEV_APP_SRC_PATH = `${DATA_APP_DEV_HOST_APP_DIR}/src/App.tsx`;
 
 const DATA_APP_DEV_CONTENT_TIMEOUT_MS = 40000;
 
-/**
- * Visit the dev host app and wait for the sandboxed bundle to render — the
- * point at which the dev entry has booted (toolbar mounted, probes fired).
- */
 export function visitDataAppDevApp(clientHost: string) {
   cy.visit(clientHost);
   cy.findByTestId("dev-app-content", {
@@ -197,11 +254,6 @@ export function visitDataAppDevApp(clientHost: string) {
   }).should("exist");
 }
 
-/**
- * Provision auth for the data-app dev-server host app: create an API key and
- * write the `.env.local` the SDK dev entry reads at startup, then wait for Vite
- * to restart onto it. `clientHost` is the dev server origin.
- */
 export function setUpDataAppDevServer(clientHost: string) {
   const mbUrl = Cypress.config("baseUrl");
   if (!mbUrl) {
