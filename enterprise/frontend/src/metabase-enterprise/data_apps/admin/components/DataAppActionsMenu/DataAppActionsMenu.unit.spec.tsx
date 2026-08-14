@@ -11,12 +11,14 @@ const setup = ({
   enabled = true,
   canRemove = false,
   resourceCollectionId = 9,
+  permissionGroupId = 9,
 } = {}) => {
   const app = createMockDataApp({
     name: "sales",
     display_name: "Sales",
     enabled,
     resource_collection_id: resourceCollectionId,
+    permission_group_id: permissionGroupId,
   });
   renderWithProviders(
     <>
@@ -39,17 +41,19 @@ const confirmRemove = async () =>
   );
 
 describe("DataAppActionsMenu", () => {
-  it("links to the app's collection above the enable action", async () => {
+  it("links to the app's resources and group above the enable action", async () => {
     setup();
 
     await openMenu();
 
     const menuItems = await screen.findAllByRole("menuitem");
 
-    expect(menuItems).toHaveLength(2);
+    expect(menuItems).toHaveLength(3);
     expect(menuItems[0]).toHaveTextContent("View resources");
     expect(menuItems[0]).toHaveAttribute("href", "/collection/9");
-    expect(menuItems[1]).toHaveTextContent("Disable");
+    expect(menuItems[1]).toHaveTextContent("Manage users");
+    expect(menuItems[1]).toHaveAttribute("href", "/admin/people/groups/9");
+    expect(menuItems[2]).toHaveTextContent("Disable");
   });
 
   it("does not show the collection link before an app has a collection", async () => {
@@ -59,6 +63,16 @@ describe("DataAppActionsMenu", () => {
 
     expect(
       screen.queryByRole("menuitem", { name: "View resources" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not show the group link before an app has a permission group", async () => {
+    setup({ permissionGroupId: null });
+
+    await openMenu();
+
+    expect(
+      screen.queryByRole("menuitem", { name: "Manage users" }),
     ).not.toBeInTheDocument();
   });
 
