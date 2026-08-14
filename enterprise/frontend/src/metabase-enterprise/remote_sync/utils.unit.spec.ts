@@ -8,13 +8,10 @@ import {
   buildCollectionMap,
   canSyncRequiredCollections,
   getBlockedReason,
-  getCollectionIdsBlockedByPersonalContent,
   getCollectionPathSegments,
   getRequiredCollectionRows,
   getRequiredCollections,
   isTableChildModel,
-  requiresContentMove,
-  requiresLibrarySync,
 } from "./utils";
 
 describe("remote_sync utils", () => {
@@ -328,62 +325,6 @@ describe("remote_sync utils", () => {
       });
     });
 
-    describe("getCollectionIdsBlockedByPersonalContent", () => {
-      it("is empty when no remedy is a personal collection", () => {
-        expect(getCollectionIdsBlockedByPersonalContent(FAILURES).size).toBe(0);
-      });
-
-      it("flags the blocked collection, not the personal one", () => {
-        const failures: RemoteSyncDependencyFailure[] = [
-          {
-            collection: { id: 14, name: "Marketing" },
-            dependencies: [
-              {
-                model: "card",
-                id: 1,
-                name: "Draft",
-                // Lives in a sub-collection, but the remedy resolves to the personal root.
-                collection: { id: 88, name: "Drafts" },
-                remedy: {
-                  type: "collection",
-                  collection: { id: 5, name: "Nick's stuff", personal: true },
-                },
-              },
-            ],
-          },
-          {
-            collection: { id: 22, name: "Ops" },
-            dependencies: [
-              {
-                model: "card",
-                id: 2,
-                name: "Shared",
-                collection: { id: 7, name: "Finance" },
-                remedy: {
-                  type: "collection",
-                  collection: { id: 7, name: "Finance", personal: false },
-                },
-              },
-            ],
-          },
-        ];
-
-        expect(getCollectionIdsBlockedByPersonalContent(failures)).toEqual(
-          new Set([14]),
-        );
-      });
-    });
-
-    describe("requiresLibrarySync", () => {
-      it("is true when any dependency asks for the Library", () => {
-        expect(requiresLibrarySync(FAILURES)).toBe(true);
-      });
-
-      it("is false when no dependency asks for the Library", () => {
-        expect(requiresLibrarySync([FAILURES[1]])).toBe(false);
-      });
-    });
-
     const SYNCABLE_DEPENDENCY: RemoteSyncIneligibleDependency = {
       model: "card",
       id: 1,
@@ -430,20 +371,6 @@ describe("remote_sync utils", () => {
     ): RemoteSyncDependencyFailure[] => [
       { collection: { id: 31, name: "Drafts" }, dependencies },
     ];
-
-    describe("requiresContentMove", () => {
-      it("is true when a dependency has no remedy to offer", () => {
-        expect(requiresContentMove(failureWith(ROOT_DEPENDENCY))).toBe(true);
-      });
-
-      it("is false when every dependency names something syncable", () => {
-        expect(
-          requiresContentMove(
-            failureWith(SYNCABLE_DEPENDENCY, SNIPPET_DEPENDENCY),
-          ),
-        ).toBe(false);
-      });
-    });
 
     describe("getBlockedReason", () => {
       it("is linked-collections when every remedy is a collection the admin can sync", () => {

@@ -14,7 +14,7 @@ import {
   getRequiredCollections,
 } from "../../utils";
 
-import S from "./RemoteSyncDependecyModal.module.css";
+import S from "./RemoteSyncDependencyModal.module.css";
 
 interface RemoteSyncDependencyModalProps {
   /** Why the last save was refused, one entry per collection. */

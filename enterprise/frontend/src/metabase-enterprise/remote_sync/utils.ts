@@ -187,41 +187,6 @@ export const getRequiredCollections = (
   return [...byId.values()];
 };
 
-// `personal` sits on the remedy — the top-level ancestor — not the collection the dependency is in.
-export const getCollectionIdsBlockedByPersonalContent = (
-  failures: RemoteSyncDependencyFailure[],
-): Set<number> =>
-  new Set(
-    failures
-      .filter((failure) =>
-        failure.dependencies.some(
-          (dependency) =>
-            dependency.remedy.type === "collection" &&
-            dependency.remedy.collection.personal,
-        ),
-      )
-      .map((failure) => failure.collection.id),
-  );
-
-export const requiresLibrarySync = (
-  failures: RemoteSyncDependencyFailure[],
-): boolean =>
-  failures.some((failure) =>
-    failure.dependencies.some(
-      (dependency) => dependency.remedy.type === "library",
-    ),
-  );
-
-// A `none` remedy leaves nothing to switch on, so the content has to move instead.
-export const requiresContentMove = (
-  failures: RemoteSyncDependencyFailure[],
-): boolean =>
-  failures.some((failure) =>
-    failure.dependencies.some(
-      (dependency) => dependency.remedy.type === "none",
-    ),
-  );
-
 export const ROOT_COLLECTION_ROW_ID = "root";
 
 export type RequiredCollectionRow = {
@@ -294,7 +259,7 @@ export type BlockedReason =
 export const getBlockedReason = (
   failures: RemoteSyncDependencyFailure[],
 ): BlockedReason => {
-  if (getCollectionIdsBlockedByPersonalContent(failures).size > 0) {
+  if (isBlockedByPersonalContent(failures)) {
     return "personal-content";
   }
   if (requiresContentMove(failures)) {
@@ -305,6 +270,37 @@ export const getBlockedReason = (
   }
   return "linked-collections";
 };
+
+// `personal` sits on the remedy — the top-level ancestor — not the collection the dependency is in.
+const isBlockedByPersonalContent = (
+  failures: RemoteSyncDependencyFailure[],
+): boolean =>
+  failures.some((failure) =>
+    failure.dependencies.some(
+      (dependency) =>
+        dependency.remedy.type === "collection" &&
+        dependency.remedy.collection.personal,
+    ),
+  );
+
+const requiresLibrarySync = (
+  failures: RemoteSyncDependencyFailure[],
+): boolean =>
+  failures.some((failure) =>
+    failure.dependencies.some(
+      (dependency) => dependency.remedy.type === "library",
+    ),
+  );
+
+// A `none` remedy leaves nothing to switch on, so the content has to move instead.
+const requiresContentMove = (
+  failures: RemoteSyncDependencyFailure[],
+): boolean =>
+  failures.some((failure) =>
+    failure.dependencies.some(
+      (dependency) => dependency.remedy.type === "none",
+    ),
+  );
 
 export const getBlockedMessage = (
   failures: RemoteSyncDependencyFailure[],
