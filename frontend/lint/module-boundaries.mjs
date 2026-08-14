@@ -242,14 +242,16 @@ const elements = [
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
-  // The theme editor preview renders the live embed via the app-tier EAJS
-  // runtime; the edge is whitelisted via the allow rules below.
+  // The theme editor previews the live embed through the app-tier EAJS
+  // runtime, so the whole editor is an app-tier module. It still lives under
+  // the admin folder, and the admin routes mount it via the whitelisted allow
+  // rule below; the pattern must come before feature/admin (first match wins).
+  // TODO(embedding-modules): move the folder out of admin and mount the route
+  // from the app tier, then drop the whitelist entry.
   createElement({
-    type: "feature",
-    name: "admin-theme-preview",
-    pattern:
-      "frontend/src/metabase/admin/embedding/components/ThemeEditor/ResourcePreview.tsx",
-    mode: "full",
+    type: "app",
+    name: "theme-editor",
+    pattern: "frontend/src/metabase/admin/embedding/components/ThemeEditor/**",
   }),
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
@@ -451,15 +453,11 @@ const baseRules = [
     allow: ["app/embedding-sdk-bundle"],
     importKind: "type",
   },
-  // Admin theme preview drives the live embed through the EAJS runtime.
-  // Remove once the preview is lifted out of admin.
-  {
-    from: ["feature/admin-theme-preview"],
-    allow: ["feature/admin", "app/embedding-iframe-sdk"],
-  },
+  // The admin routes lazy-mount the app-tier theme editor. Remove once the
+  // route is registered from the app tier instead.
   {
     from: ["feature/admin"],
-    allow: ["feature/admin-theme-preview"],
+    allow: ["app/theme-editor"],
   },
 ];
 
