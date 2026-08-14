@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { JSX, ReactElement } from "react";
 
 import { setupSdkPlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
@@ -8,7 +8,6 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import { formatValue } from "metabase/value-formatting";
-import { isElementOfType } from "metabase/value-formatting/test-utils";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { ColumnSettings } from "metabase-types/api";
 import {
@@ -17,6 +16,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import { registerJsxFormatting } from "./register-jsx-formatting";
+import { isElementOfType } from "./test-utils";
 
 // These are integration tests for the JSX renderers this module registers into
 // value-formatting. The pure engine behaviour (string outputs, non-jsx paths)
@@ -35,7 +35,7 @@ describe("registered JSX email formatting", () => {
       expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
 
       // Unjustified type cast. FIXME
-      render(result as ReactElement);
+      render(result as ReactElement<Record<string, unknown>>);
 
       expect(screen.getByRole("link")).toHaveAttribute(
         "href",
@@ -55,7 +55,7 @@ describe("registered JSX email formatting", () => {
       expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
 
       // Unjustified type cast. FIXME
-      render(result as ReactElement);
+      render(result as ReactElement<Record<string, unknown>>);
 
       expect(screen.getByRole("link")).toHaveAttribute(
         "href",
@@ -110,7 +110,7 @@ describe("registered JSX email formatting", () => {
       expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
 
       // Unjustified type cast. FIXME
-      render(result as ReactElement);
+      render(result as ReactElement<Record<string, unknown>>);
 
       expect(screen.getByRole("link")).toHaveAttribute(
         "href",
@@ -154,7 +154,7 @@ describe("registered JSX email formatting", () => {
       expect(isElementOfType(result as JSX.Element, ExternalLink)).toBe(true);
 
       // Unjustified type cast. FIXME
-      render(result as ReactElement);
+      render(result as ReactElement<Record<string, unknown>>);
 
       expect(screen.getByRole("link")).toHaveTextContent("Custom Label");
     });
@@ -199,7 +199,7 @@ describe("registered JSX url formatting", () => {
       jsx: true,
       rich: true,
       view_as: "link",
-    }) as ReactElement;
+    }) as ReactElement<Record<string, unknown>>;
     render(node);
 
     const link = screen.getByRole("link");
@@ -227,7 +227,7 @@ describe("registered JSX url formatting", () => {
       jsx: true,
       rich: true,
       view_as: "link",
-    }) as ReactElement;
+    }) as ReactElement<Record<string, unknown>>;
     render(node);
 
     const link = screen.getByRole("link");
@@ -247,7 +247,7 @@ describe("registered JSX url formatting", () => {
         formatValue("http://metabase.com/", {
           jsx: true,
           rich: true,
-        }) as ReactElement,
+        }) as ReactElement<Record<string, unknown>>,
         ExternalLink,
       ),
     ).toEqual(true);
@@ -257,7 +257,7 @@ describe("registered JSX url formatting", () => {
         formatValue("https://metabase.com/", {
           jsx: true,
           rich: true,
-        }) as ReactElement,
+        }) as ReactElement<Record<string, unknown>>,
         ExternalLink,
       ),
     ).toEqual(true);
@@ -267,7 +267,7 @@ describe("registered JSX url formatting", () => {
         formatValue("mailto:tom@metabase.test", {
           jsx: true,
           rich: true,
-        }) as ReactElement,
+        }) as ReactElement<Record<string, unknown>>,
         ExternalLink,
       ),
     ).toEqual(true);
@@ -281,7 +281,7 @@ describe("registered JSX url formatting", () => {
           jsx: true,
           rich: true,
           column: { semantic_type: TYPE.URL },
-        }) as ReactElement,
+        }) as ReactElement<Record<string, unknown>>,
         ExternalLink,
       ),
     ).toEqual(true);
@@ -294,7 +294,7 @@ describe("registered JSX url formatting", () => {
         jsx: true,
         rich: true,
         column: { semantic_type: TYPE.URL },
-      }) as ReactElement,
+      }) as ReactElement<Record<string, unknown>>,
     ).toEqual("invalid-blah-blah-blah");
   });
 
@@ -304,7 +304,7 @@ describe("registered JSX url formatting", () => {
       formatValue("myproto:some-custom-thing", {
         jsx: true,
         rich: true,
-      }) as ReactElement,
+      }) as ReactElement<Record<string, unknown>>,
     ).toEqual("myproto:some-custom-thing");
   });
 
@@ -312,7 +312,9 @@ describe("registered JSX url formatting", () => {
     expect(
       isElementOfType(
         // Unjustified type cast. FIXME
-        formatValue("metabase.com", { jsx: true, rich: true }) as ReactElement,
+        formatValue("metabase.com", { jsx: true, rich: true }) as ReactElement<
+          Record<string, unknown>
+        >,
         ExternalLink,
       ),
     ).toEqual(false);
@@ -324,14 +326,14 @@ describe("registered JSX url formatting", () => {
       formatValue("javascript:alert('pwnd')", {
         jsx: true,
         rich: true,
-      }) as ReactElement,
+      }) as ReactElement<Record<string, unknown>>,
     ).toEqual("javascript:alert('pwnd')");
     expect(
       // Unjustified type cast. FIXME
       formatValue("data:text/plain;charset=utf-8,hello%20world", {
         jsx: true,
         rich: true,
-      }) as ReactElement,
+      }) as ReactElement<Record<string, unknown>>,
     ).toEqual("data:text/plain;charset=utf-8,hello%20world");
   });
 
@@ -343,7 +345,7 @@ describe("registered JSX url formatting", () => {
         rich: true,
         column: { semantic_type: TYPE.URL },
         view_as: "link",
-      }) as ReactElement;
+      }) as ReactElement<Record<string, unknown>>;
       expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
     });
 
@@ -356,7 +358,7 @@ describe("registered JSX url formatting", () => {
         link_url: "http://metabase.com",
         view_as: "link",
         clicked: {},
-      }) as ReactElement;
+      }) as ReactElement<Record<string, unknown>>;
 
       expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
       expect(formatted.props.children).toEqual("metabase link");
@@ -372,7 +374,7 @@ describe("registered JSX url formatting", () => {
         link_url: "",
         view_as: "link",
         clicked: {},
-      }) as ReactElement;
+      }) as ReactElement<Record<string, unknown>>;
 
       expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
       expect(formatted.props.children).toEqual("metabase link");
@@ -388,7 +390,7 @@ describe("registered JSX url formatting", () => {
         link_url: "http://metabase.com",
         view_as: "link",
         clicked: {},
-      }) as ReactElement;
+      }) as ReactElement<Record<string, unknown>>;
 
       expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
       expect(formatted.props.children).toEqual("metabase link");
@@ -426,7 +428,7 @@ describe("registered JSX url formatting", () => {
             },
           },
         },
-      }) as ReactElement;
+      }) as ReactElement<Record<string, unknown>>;
 
       expect(isElementOfType(formatted, ExternalLink)).toBe(true);
       expect(formatted.props.children).toBe("35660212261");
@@ -462,7 +464,7 @@ describe("registered JSX url formatting", () => {
             },
           },
         },
-      }) as ReactElement;
+      }) as ReactElement<Record<string, unknown>>;
 
       expect(isElementOfType(formatted, ExternalLink)).toBe(true);
       expect(formatted.props.children).toBe("1.234.567,89");
@@ -504,7 +506,7 @@ describe("registered JSX url formatting", () => {
             },
           },
         },
-      }) as ReactElement;
+      }) as ReactElement<Record<string, unknown>>;
 
       expect(isElementOfType(formatted, ExternalLink)).toBe(true);
       expect(formatted.props.children).toBe("Buy for $1,234,567.89");
@@ -525,7 +527,7 @@ describe("registered JSX url formatting", () => {
         link_url: "http://metabase.com",
         view_as: "link",
         clicked: {},
-      }) as ReactElement;
+      }) as ReactElement<Record<string, unknown>>;
 
       // it is not a link set on the question level
       expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
@@ -776,7 +778,7 @@ describe("registered JSX value formatting", () => {
         formatValue("http://metabase.com/", {
           jsx: true,
           rich: true,
-        }) as ReactElement,
+        }) as ReactElement<Record<string, unknown>>,
         ExternalLink,
       ),
     ).toEqual(true);
@@ -787,7 +789,9 @@ describe("registered JSX value formatting", () => {
     expect(
       isElementOfType(
         // Unjustified type cast. FIXME
-        formatValue(SITE_URL, { jsx: true, rich: true }) as ReactElement,
+        formatValue(SITE_URL, { jsx: true, rich: true }) as ReactElement<
+          Record<string, unknown>
+        >,
         Link,
       ),
     ).toBe(true);
@@ -813,7 +817,7 @@ describe("registered JSX value formatting", () => {
             column: column,
             data: [{ value: "question/12", col: column }],
           },
-        }) as ReactElement,
+        }) as ReactElement<Record<string, unknown>>,
         Link,
       ),
     ).toEqual(true);
@@ -831,7 +835,7 @@ describe("registered JSX value formatting", () => {
         type: "link",
       },
       clicked: {},
-    }) as ReactElement;
+    }) as ReactElement<Record<string, unknown>>;
     // it's not actually a link
     expect(isElementOfType(formatted, ExternalLink)).toEqual(false);
     // expect the text to be in a div (which has link formatting) rather than ExternalLink
@@ -845,7 +849,7 @@ describe("registered JSX value formatting", () => {
       rich: true,
       view_as: "image",
       column: { semantic_type: "type/ImageURL" },
-    }) as ReactElement;
+    }) as ReactElement<Record<string, unknown>>;
     expect(formatted.type).toEqual("img");
     expect(formatted.props.src).toEqual("http://metabase.com/logo.png");
   });
@@ -862,7 +866,7 @@ describe("registered JSX value formatting", () => {
         type: "link",
       },
       clicked: {},
-    }) as ReactElement;
+    }) as ReactElement<Record<string, unknown>>;
     expect(formatted.type).toEqual("img");
     expect(formatted.props.src).toEqual("http://metabase.com/logo.png");
   });
@@ -874,7 +878,7 @@ describe("registered JSX value formatting", () => {
         formatValue("tom@metabase.test", {
           jsx: true,
           rich: true,
-        }) as ReactElement,
+        }) as ReactElement<Record<string, unknown>>,
         ExternalLink,
       ),
     ).toEqual(true);
