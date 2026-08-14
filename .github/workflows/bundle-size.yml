@@ -26,7 +26,6 @@ jobs:
         id: compare
         with:
           edition: ee
-          base-ref-commit: ${{ github.event.pull_request.base.sha }}
           threshold-percent: ${{ env.BUNDLE_SIZE_THRESHOLD_PERCENT }}
 
       - name: Comment on PR if app bundle size has increased
