@@ -11,7 +11,10 @@ export const BulkActionButton = forwardRef<HTMLButtonElement, ButtonProps>(
       <Button
         {...props}
         ref={ref}
-        className={cx(S.BulkActionButton, className)}
+        classNames={{
+          root: cx(S.BulkActionButton, className),
+          label: S.BulkActionButtonLabel,
+        }}
       />
     );
   },
@@ -24,8 +27,5 @@ export const BulkActionDangerButton = ({
   <Button
     {...props}
     className={cx(S.BulkActionButton, S.BulkActionDangerButton, className)}
-    classNames={{
-      label: S.BulkActionButtonLabel,
-    }}
   />
 );
