@@ -48,7 +48,7 @@ jobs:
             };
 
             for (const [db, versions] of Object.entries(versions)) {
-              const selected = allVersions ? versions : versions.filter((version) => version.latest);
+              const selected = runAll ? versions : versions.filter((version) => version.latest);
               core.info(`${db}: ${selected.map((version) => version.name).join(', ')}`);
               core.setOutput(db, JSON.stringify(selected));
             }
