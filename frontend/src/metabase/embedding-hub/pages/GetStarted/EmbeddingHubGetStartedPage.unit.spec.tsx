@@ -246,7 +246,7 @@ describe("EmbeddingHubGetStartedPage", () => {
   });
 
   describe("the AI card's done state", () => {
-    // Which settings make it done is the backend's business now -- it reports
+    // Which settings make it done is the backend's business -- it reports
     // `configure-ai`, and the card just renders what the checklist says.
     it("is not done while the checklist says it is not", async () => {
       setup({ checklist: { "configure-ai": false } });
@@ -316,7 +316,7 @@ describe("EmbeddingHubGetStartedPage", () => {
   });
 
   describe("useful links", () => {
-    it("tags all three with the embedding hub's docs campaign", async () => {
+    it("tags all three with the embedding hub's campaign and page", async () => {
       setup();
 
       const links = ["Embedding methods", "Demo", "Documentation"];
@@ -325,28 +325,13 @@ describe("EmbeddingHubGetStartedPage", () => {
         const link = await screen.findByRole("link", {
           name: new RegExp(label),
         });
-        expect(link).toHaveAttribute(
-          "href",
-          expect.stringContaining("utm_campaign=embedding_hub"),
+        const { searchParams } = new URL(link.getAttribute("href") ?? "");
+
+        expect(searchParams.get("utm_campaign")).toBe("embedding-hub");
+        expect(searchParams.get("utm_content")).toBe(
+          "embedding-hub-get-started-page",
         );
       }
-    });
-
-    it("gives each link its own utm_content so clicks are attributable", async () => {
-      setup();
-
-      const contents = await Promise.all(
-        ["Embedding methods", "Demo", "Documentation"].map(async (label) => {
-          const link = await screen.findByRole("link", {
-            name: new RegExp(label),
-          });
-          return new URL(link.getAttribute("href") ?? "").searchParams.get(
-            "utm_content",
-          );
-        }),
-      );
-
-      expect(new Set(contents).size).toBe(contents.length);
     });
   });
 

@@ -61,8 +61,8 @@ type HubStep = {
 
 type NumberedCard = (step: number) => ReactNode;
 
-const UPSELL_CAMPAIGN = "embedding-hub";
-const UPSELL_LOCATION = "embedding-hub-get-started";
+const UTM_CAMPAIGN = "embedding-hub";
+const UTM_CONTENT = "embedding-hub-get-started-page";
 
 export function EmbeddingHubGetStartedPage() {
   const dispatch = useDispatch();
@@ -86,13 +86,13 @@ export function EmbeddingHubGetStartedPage() {
 
   const upgradeUrl = useSelector((state) =>
     getUpgradeUrl(state, {
-      utm_campaign: UPSELL_CAMPAIGN,
-      utm_content: UPSELL_LOCATION,
+      utm_campaign: UTM_CAMPAIGN,
+      utm_content: UTM_CONTENT,
     }),
   );
   const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
-    campaign: UPSELL_CAMPAIGN,
-    location: UPSELL_LOCATION,
+    campaign: UTM_CAMPAIGN,
+    location: UTM_CONTENT,
   });
 
   // A locked step carries a reason only when the prerequisite is actionable.
@@ -215,8 +215,8 @@ export function EmbeddingHubGetStartedPage() {
             <Box mt="md">
               <UpsellBanner
                 title={t`Upgrade to Metabase Pro to configure advanced options.`}
-                campaign={UPSELL_CAMPAIGN}
-                location={UPSELL_LOCATION}
+                campaign={UTM_CAMPAIGN}
+                location={UTM_CONTENT}
                 buttonText={t`Try Metabase Pro`}
                 buttonLink={upgradeUrl}
                 onClick={triggerUpsellFlow}
@@ -374,20 +374,18 @@ function AiCard({
 }
 
 function UsefulLinksSection() {
-  const campaign = "embedding_hub";
-
-  const docsUtm = (content: string) => ({
+  const docsUtm = {
     utm_source: "product",
     utm_medium: "docs",
-    utm_campaign: campaign,
-    utm_content: content,
-  });
+    utm_campaign: UTM_CAMPAIGN,
+    utm_content: UTM_CONTENT,
+  };
 
   const { url: introductionUrl } = useDocsUrl("embedding/introduction", {
-    utm: docsUtm("get-started-embedding-methods"),
+    utm: docsUtm,
   });
   const { url: documentationUrl } = useDocsUrl("embedding/start", {
-    utm: docsUtm("get-started-documentation"),
+    utm: docsUtm,
   });
 
   const demoUrl = useSelector((state) =>
@@ -395,8 +393,8 @@ function UsefulLinksSection() {
       url: MARKETING_DEMO_URL,
       utm_source: "product",
       utm_medium: "demo",
-      utm_campaign: campaign,
-      utm_content: "get-started-demo",
+      utm_campaign: UTM_CAMPAIGN,
+      utm_content: UTM_CONTENT,
     }),
   );
 

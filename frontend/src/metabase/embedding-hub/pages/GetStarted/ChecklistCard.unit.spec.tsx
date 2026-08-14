@@ -19,8 +19,8 @@ describe("ChecklistCard", () => {
 
     await userEvent.hover(screen.getByText("Embed in production with SSO"));
 
-    // The stepper said "Complete the other steps to unlock", which named
-    // nothing. Only one step actually gates this one.
+    // The tooltip names the actual prerequisite, not a generic "complete the
+    // other steps".
     expect(await screen.findByText(/Set up SSO to unlock/)).toBeInTheDocument();
   });
 

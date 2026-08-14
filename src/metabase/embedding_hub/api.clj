@@ -15,8 +15,8 @@
    [toucan2.core :as t2]))
 
 (defn- has-user-added-database? []
-  ;; `boolean`, because the trailing `when-let` yields nil rather than false on an
-  ;; instance with no sample database -- and the response schema requires a boolean.
+  ;; `boolean`, because the trailing `when-let` yields nil on an instance with no sample database,
+  ;; and the response schema requires a boolean.
   (boolean
    (or (t2/exists? :model/Database {:where [:and
                                             [:= :is_sample false]
@@ -86,10 +86,8 @@
                                           [:= :archived false]]})))
 
 (defn- has-configured-data-segregation-strategy? []
-  ;; Check if any of the 3 data segregation strategies are enabled:
-  ;; 1. Row and Column Level Security (Sandboxing)
-  ;; 2. Connection Impersonation
-  ;; 3. Database Routing
+  ;; Any data segregation strategy: row and column level security (sandboxing), connection
+  ;; impersonation, or database routing.
   (or (has-configured-sandboxes?)
       (and config/ee-available? (t2/exists? :model/ConnectionImpersonation))
       (and config/ee-available? (t2/exists? :model/DatabaseRouter))))
@@ -108,9 +106,8 @@
 
 (defn- has-created-custom-theme? []
   ;; `is_default` marks the Light/Dark themes Metabase seeds; anything else is
-  ;; the admin's own. Existing instances have no marked rows, so their seeded
-  ;; themes read as custom -- accepted rather than backfilled, since nothing
-  ;; can identify them retroactively.
+  ;; the admin's own. Themes seeded before the flag existed are unmarked, so they read as custom --
+  ;; accepted rather than backfilled, since nothing can identify them retroactively.
   (t2/exists? :model/EmbeddingTheme :is_default false))
 
 (defn- has-configured-ai? []
@@ -179,10 +176,8 @@
 (api.macros/defendpoint :get "/checklist" :- SetupGuideChecklistResponse
   "Get the setup guide checklist status, indicating which setup steps have been completed."
   []
-  ;; The checklist reports instance setup state, so it is admin-only. This was
-  ;; previously implicit: the route sat behind a premium gate that also kept
-  ;; non-admins out. The gate is gone -- the guide has to work unlicensed -- so
-  ;; the check is stated here instead.
+  ;; The checklist reports instance setup state, so it is admin-only. Stated here because no premium
+  ;; gate stands in front of the route -- the guide has to work unlicensed.
   (api/check-superuser)
   (setup-guide-checklist))
 

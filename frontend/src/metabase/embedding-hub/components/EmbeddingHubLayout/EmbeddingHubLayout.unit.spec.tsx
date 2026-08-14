@@ -23,7 +23,6 @@ jest.mock("metabase/nav/components/AppSwitcher", () => ({
   AppSwitcher: () => null,
 }));
 
-// One tab today; each later issue adds its own and extends this list.
 const TAB_LABELS = ["Get started"];
 
 type SetupOptions = {

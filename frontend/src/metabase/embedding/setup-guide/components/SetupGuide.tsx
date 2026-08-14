@@ -69,7 +69,7 @@ export const SetupGuide = ({ returnTo }: { returnTo?: string } = {}) => {
             type: "docs" as const,
             docsPath,
             anchor,
-            utm: { utm_campaign: "embedding_hub", utm_content: stepId },
+            utm: { utm_campaign: "setup-guide", utm_content: stepId },
           }))
           .with({ modal: P.nonNullable }, ({ modal }) => ({
             type: "click" as const,
