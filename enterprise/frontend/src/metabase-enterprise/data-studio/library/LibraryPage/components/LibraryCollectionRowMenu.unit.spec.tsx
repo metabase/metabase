@@ -55,7 +55,6 @@ function setup({
             remote_sync: true,
           }),
         }),
-        entities: createMockEntitiesState({ collections: [parentCollection] }),
       }),
     },
   );
