@@ -17,6 +17,15 @@ jobs:
             .github
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
+      - name: Tailscale
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4.1.2
+        with:
+          oauth-client-id: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_SECRET }}
+          tags: tag:ci
+          version: 1.50.1
+          sha256sum: d9fe6b480fb5078f0aa57dace686898dda7e2a768884271159faa74846bfb576
+
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
 
