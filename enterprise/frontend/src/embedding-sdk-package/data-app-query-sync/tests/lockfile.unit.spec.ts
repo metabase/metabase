@@ -65,82 +65,71 @@ describe("resource lockfile", () => {
     });
   });
 
-  describe("rejects a lockfile it cannot trust", () => {
-    it.each([
-      ["unparseable JSON", "{ not json", "Could not read"],
-      // A bare array is the shape no version writes; accepting it would let a
-      // hand-edited file silently drop every model entry.
-      ["a bare array", [query(40)], "contains an invalid entry"],
-      ["a non-object", 42, "contains an invalid entry"],
-      [
-        "a malformed hash",
-        { queries: [{ ...query(40), hash: "nope" }] },
-        "contains an invalid entry",
-      ],
-      [
-        "a non-integer saved question ID",
-        { queries: [{ ...query(40), savedQuestionSourceId: 1.5 }] },
-        "contains an invalid entry",
-      ],
-      [
-        "a model entry missing its actions",
-        { queries: [], models: [{ sourceModelId: 5, copiedModelId: 80 }] },
-        "contains an invalid model entry",
-      ],
-      [
-        "a malformed action mapping",
-        {
-          queries: [],
-          models: [{ ...model(5, 80), actions: [{ sourceActionId: 51 }] }],
-        },
-        "contains an invalid model entry",
-      ],
-    ])("rejects %s", (_name, value, message) => {
-      const appRoot = makeApp();
-      write(appRoot, value);
+  // A lockfile is an ownership record: every rejection below is a file that
+  // would otherwise let synchronization mutate content it cannot prove it owns.
+  it.each([
+    ["unparseable JSON", "{ not json", "Could not read"],
+    // A bare array is the shape no version writes; accepting it would let a
+    // hand-edited file silently drop every model entry.
+    ["a bare array", [query(40)], "contains an invalid entry"],
+    [
+      "a malformed hash",
+      { queries: [{ ...query(40), hash: "nope" }] },
+      "contains an invalid entry",
+    ],
+    [
+      "a non-integer saved question ID",
+      { queries: [{ ...query(40), savedQuestionSourceId: 1.5 }] },
+      "contains an invalid entry",
+    ],
+    [
+      "a model entry missing its actions",
+      { queries: [], models: [{ sourceModelId: 5, copiedModelId: 80 }] },
+      "contains an invalid model entry",
+    ],
+    [
+      "a malformed action mapping",
+      {
+        queries: [],
+        models: [{ ...model(5, 80), actions: [{ sourceActionId: 51 }] }],
+      },
+      "contains an invalid model entry",
+    ],
+    [
+      "a duplicate saved question ID",
+      { queries: [query(40), query(40)] },
+      "duplicate saved question ID",
+    ],
+    [
+      "a duplicate source model ID",
+      { queries: [], models: [model(5, 80), model(5, 81)] },
+      "duplicate source model ID",
+    ],
+    [
+      "a duplicate copied model ID",
+      { queries: [], models: [model(5, 80), model(6, 80)] },
+      "duplicate copied model ID",
+    ],
+    [
+      "a source action ID claimed by two models",
+      {
+        queries: [],
+        models: [model(5, 80, [[51, 91]]), model(6, 81, [[51, 92]])],
+      },
+      "duplicate source action ID",
+    ],
+    [
+      "a copied action ID claimed by two models",
+      {
+        queries: [],
+        models: [model(5, 80, [[51, 91]]), model(6, 81, [[52, 91]])],
+      },
+      "duplicate copied action ID",
+    ],
+  ])("rejects %s", (_name, value, message) => {
+    const appRoot = makeApp();
+    write(appRoot, value);
 
-      expect(() => readResourceLockfile(appRoot)).toThrow(message);
-    });
-  });
-
-  describe("rejects duplicate ownership claims", () => {
-    it.each([
-      [
-        "saved question ID",
-        { queries: [query(40), query(40)] },
-        "duplicate saved question ID",
-      ],
-      [
-        "source model ID",
-        { queries: [], models: [model(5, 80), model(5, 81)] },
-        "duplicate source model ID",
-      ],
-      [
-        "copied model ID",
-        { queries: [], models: [model(5, 80), model(6, 80)] },
-        "duplicate copied model ID",
-      ],
-      [
-        "source action ID across models",
-        {
-          queries: [],
-          models: [model(5, 80, [[51, 91]]), model(6, 81, [[51, 92]])],
-        },
-        "duplicate source action ID",
-      ],
-      [
-        "copied action ID across models",
-        {
-          queries: [],
-          models: [model(5, 80, [[51, 91]]), model(6, 81, [[52, 91]])],
-        },
-        "duplicate copied action ID",
-      ],
-    ])("rejects a duplicate %s", (_name, value, message) => {
-      const appRoot = makeApp();
-      write(appRoot, value);
-
-      expect(() => readResourceLockfile(appRoot)).toThrow(message);
-    });
+    expect(() => readResourceLockfile(appRoot)).toThrow(message);
   });
 });

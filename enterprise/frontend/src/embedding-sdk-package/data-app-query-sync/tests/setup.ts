@@ -127,7 +127,7 @@ export function isResourcePermissionsRequest(
 /** The fields the fake reads; everything else is passed through untouched. */
 type Row = { id: number; model_id?: number } & Record<string, unknown>;
 
-export interface FakeMetabase {
+export interface FakeInstance {
   cards: Map<number, Row>;
   actions: Map<number, Row>;
   requests: Array<{
@@ -138,10 +138,10 @@ export interface FakeMetabase {
   nextId: number;
 }
 
-export function createFakeMetabase(seed: {
+export function createFakeInstance(seed: {
   cards?: Row[];
   actions?: Row[];
-}): FakeMetabase {
+}): FakeInstance {
   return {
     cards: new Map((seed.cards ?? []).map((card) => [card.id, card])),
     actions: new Map((seed.actions ?? []).map((action) => [action.id, action])),
@@ -150,18 +150,18 @@ export function createFakeMetabase(seed: {
   };
 }
 
-export function called(fake: FakeMetabase, method: string, pathname: string) {
+export function called(fake: FakeInstance, method: string, pathname: string) {
   return fake.requests.some(
     (request) => request.method === method && request.pathname === pathname,
   );
 }
 
 /**
- * Serves the endpoints query synchronization uses, including the app DB's
+ * Serves the endpoints resource synchronization uses, including the app DB's
  * `ON DELETE CASCADE` from a model card to the actions hanging off it.
  */
-export function mockMetabase(
-  fake: FakeMetabase,
+export function serveFakeInstance(
+  fake: FakeInstance,
   { slug, collectionId }: { slug: string; collectionId: number },
 ) {
   const appMetadata = { name: slug, resource_collection_id: collectionId };
