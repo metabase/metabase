@@ -54,14 +54,12 @@
 
 .content {
   min-width: 0;
-  /* 12px root padding + 16px chevron + 11px here = Select's 40px right section. */
   margin-right: 0.6875rem;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-/* A clear button too, so 12px + 16px chevron + 8px + 16px clear + 7px here = 60px. */
 .contentClearable {
   margin-right: 0.4375rem;
 }
