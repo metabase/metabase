@@ -586,78 +586,78 @@ msgstr "Herstellen naar standaardwaarden"
 msgid "Remove"
 msgstr "Verwijderen"
 
-#: enterprise/frontend/src/embedding/data-picker/DataSelector/DataSelector.jsx:825
+#: enterprise/frontend/src/embedding/data-picker/DataSelector/DataSelector.tsx:989
 #: enterprise/frontend/src/embedding/data-picker/SimpleDataPicker/SimpleDataPickerView.tsx:43
-#: frontend/src/metabase/querying/common/components/DataSelector/DataSelector.jsx:1044
+#: frontend/src/metabase/querying/common/components/DataSelector/DataSelector.tsx:1213
 msgid "To pick some data, you'll need to add some first"
 msgstr "Om data te kunnen kiezen, moet je eerst wat toevoegen"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:58
+#: frontend/src/metabase-lib/v1/operators/constants.ts:91
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/CenterControls/components/ControlsContent/DimensionFilterButton/utils.ts:48
 #: frontend/src/metabase/parameters/components/FormattedParameterValue/FormattedParameterValue.tsx:123
 #: frontend/src/metabase/querying/common/components/BooleanPicker/BooleanPicker.tsx:68
 msgid "True"
 msgstr "Waar"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:59
+#: frontend/src/metabase-lib/v1/operators/constants.ts:92
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/CenterControls/components/ControlsContent/DimensionFilterButton/utils.ts:48
 #: frontend/src/metabase/parameters/components/FormattedParameterValue/FormattedParameterValue.tsx:123
 #: frontend/src/metabase/querying/common/components/BooleanPicker/BooleanPicker.tsx:69
 msgid "False"
 msgstr "Onwaar"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:152
+#: frontend/src/metabase-lib/v1/operators/constants.ts:189
 msgid "Select longitude field"
 msgstr "Selecteer lengtegraadveld"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:154
+#: frontend/src/metabase-lib/v1/operators/constants.ts:191
 msgid "Enter upper latitude"
 msgstr "Voer bovenste breedtegraad in"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:156
+#: frontend/src/metabase-lib/v1/operators/constants.ts:193
 msgid "Enter left longitude"
 msgstr "Voer linker lengtegraad in"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:158
+#: frontend/src/metabase-lib/v1/operators/constants.ts:195
 msgid "Enter lower latitude"
 msgstr "Voer onderste breedtegraad in"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:160
+#: frontend/src/metabase-lib/v1/operators/constants.ts:197
 msgid "Enter right longitude"
 msgstr "Voer rechter lengtegraad in"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:203
-#: frontend/src/metabase-lib/v1/operators/constants.js:230
-#: frontend/src/metabase-lib/v1/operators/constants.js:345
-#: frontend/src/metabase-lib/v1/operators/constants.js:407
-#: frontend/src/metabase-lib/v1/operators/constants.js:451
-#: frontend/src/metabase-lib/v1/operators/constants.js:489
-#: frontend/src/metabase-lib/v1/operators/constants.js:539
-#: frontend/src/metabase-lib/v1/operators/constants.js:589
+#: frontend/src/metabase-lib/v1/operators/constants.ts:242
+#: frontend/src/metabase-lib/v1/operators/constants.ts:269
+#: frontend/src/metabase-lib/v1/operators/constants.ts:384
+#: frontend/src/metabase-lib/v1/operators/constants.ts:446
+#: frontend/src/metabase-lib/v1/operators/constants.ts:490
+#: frontend/src/metabase-lib/v1/operators/constants.ts:528
+#: frontend/src/metabase-lib/v1/operators/constants.ts:578
+#: frontend/src/metabase-lib/v1/operators/constants.ts:628
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:49
 #: metabase/lib/filter.cljc:600
 msgid "Is"
 msgstr "Is"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:209
-#: frontend/src/metabase-lib/v1/operators/constants.js:236
-#: frontend/src/metabase-lib/v1/operators/constants.js:351
-#: frontend/src/metabase-lib/v1/operators/constants.js:413
-#: frontend/src/metabase-lib/v1/operators/constants.js:495
-#: frontend/src/metabase-lib/v1/operators/constants.js:545
+#: frontend/src/metabase-lib/v1/operators/constants.ts:248
+#: frontend/src/metabase-lib/v1/operators/constants.ts:275
+#: frontend/src/metabase-lib/v1/operators/constants.ts:390
+#: frontend/src/metabase-lib/v1/operators/constants.ts:452
+#: frontend/src/metabase-lib/v1/operators/constants.ts:534
+#: frontend/src/metabase-lib/v1/operators/constants.ts:584
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:59
 #: metabase/lib/filter.cljc:603
 msgid "Is not"
 msgstr "Is niet"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:215
-#: frontend/src/metabase-lib/v1/operators/constants.js:272
-#: frontend/src/metabase-lib/v1/operators/constants.js:331
-#: frontend/src/metabase-lib/v1/operators/constants.js:381
-#: frontend/src/metabase-lib/v1/operators/constants.js:431
-#: frontend/src/metabase-lib/v1/operators/constants.js:475
-#: frontend/src/metabase-lib/v1/operators/constants.js:501
-#: frontend/src/metabase-lib/v1/operators/constants.js:596
+#: frontend/src/metabase-lib/v1/operators/constants.ts:254
+#: frontend/src/metabase-lib/v1/operators/constants.ts:311
+#: frontend/src/metabase-lib/v1/operators/constants.ts:370
+#: frontend/src/metabase-lib/v1/operators/constants.ts:420
+#: frontend/src/metabase-lib/v1/operators/constants.ts:470
+#: frontend/src/metabase-lib/v1/operators/constants.ts:514
+#: frontend/src/metabase-lib/v1/operators/constants.ts:540
+#: frontend/src/metabase-lib/v1/operators/constants.ts:635
 #: frontend/src/metabase/common/metrics/components/FilterPicker/TimeFilterPicker/utils.ts:98
 #: frontend/src/metabase/querying/common/utils/dates.ts:78
 #: frontend/src/metabase/querying/drills/utils/quick-filter-drill.tsx:67
@@ -665,13 +665,13 @@ msgstr "Is niet"
 msgid "Is empty"
 msgstr "Is leeg"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:221
-#: frontend/src/metabase-lib/v1/operators/constants.js:278
-#: frontend/src/metabase-lib/v1/operators/constants.js:337
-#: frontend/src/metabase-lib/v1/operators/constants.js:387
-#: frontend/src/metabase-lib/v1/operators/constants.js:437
-#: frontend/src/metabase-lib/v1/operators/constants.js:507
-#: frontend/src/metabase-lib/v1/operators/constants.js:602
+#: frontend/src/metabase-lib/v1/operators/constants.ts:260
+#: frontend/src/metabase-lib/v1/operators/constants.ts:317
+#: frontend/src/metabase-lib/v1/operators/constants.ts:376
+#: frontend/src/metabase-lib/v1/operators/constants.ts:426
+#: frontend/src/metabase-lib/v1/operators/constants.ts:476
+#: frontend/src/metabase-lib/v1/operators/constants.ts:546
+#: frontend/src/metabase-lib/v1/operators/constants.ts:641
 #: frontend/src/metabase/common/metrics/components/FilterPicker/TimeFilterPicker/utils.ts:100
 #: frontend/src/metabase/querying/common/components/BooleanPicker/BooleanPicker.tsx:71
 #: frontend/src/metabase/querying/common/utils/dates.ts:81
@@ -680,24 +680,24 @@ msgstr "Is leeg"
 msgid "Not empty"
 msgstr "Niet leeg"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:242
-#: frontend/src/metabase-lib/v1/operators/constants.js:301
-#: frontend/src/metabase-lib/v1/operators/constants.js:557
+#: frontend/src/metabase-lib/v1/operators/constants.ts:281
+#: frontend/src/metabase-lib/v1/operators/constants.ts:340
+#: frontend/src/metabase-lib/v1/operators/constants.ts:596
 #: metabase/lib/filter.cljc:612
 msgid "Greater than"
 msgstr "Groter dan"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:248
-#: frontend/src/metabase-lib/v1/operators/constants.js:307
-#: frontend/src/metabase-lib/v1/operators/constants.js:563
+#: frontend/src/metabase-lib/v1/operators/constants.ts:287
+#: frontend/src/metabase-lib/v1/operators/constants.ts:346
+#: frontend/src/metabase-lib/v1/operators/constants.ts:602
 #: metabase/lib/filter.cljc:615
 msgid "Less than"
 msgstr "Kleiner dan"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:254
-#: frontend/src/metabase-lib/v1/operators/constants.js:313
-#: frontend/src/metabase-lib/v1/operators/constants.js:469
-#: frontend/src/metabase-lib/v1/operators/constants.js:569
+#: frontend/src/metabase-lib/v1/operators/constants.ts:293
+#: frontend/src/metabase-lib/v1/operators/constants.ts:352
+#: frontend/src/metabase-lib/v1/operators/constants.ts:508
+#: frontend/src/metabase-lib/v1/operators/constants.ts:608
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:26
 #: frontend/src/metabase/common/metrics/components/FilterPicker/TimeFilterPicker/utils.ts:96
 #: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts:57
@@ -706,77 +706,77 @@ msgstr "Kleiner dan"
 msgid "Between"
 msgstr "Tussen"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:260
-#: frontend/src/metabase-lib/v1/operators/constants.js:319
-#: frontend/src/metabase-lib/v1/operators/constants.js:575
+#: frontend/src/metabase-lib/v1/operators/constants.ts:299
+#: frontend/src/metabase-lib/v1/operators/constants.ts:358
+#: frontend/src/metabase-lib/v1/operators/constants.ts:614
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:33
 #: metabase/lib/filter.cljc:617
 msgid "Greater than or equal to"
 msgstr "Groter dan of gelijk aan"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:266
-#: frontend/src/metabase-lib/v1/operators/constants.js:325
-#: frontend/src/metabase-lib/v1/operators/constants.js:581
+#: frontend/src/metabase-lib/v1/operators/constants.ts:305
+#: frontend/src/metabase-lib/v1/operators/constants.ts:364
+#: frontend/src/metabase-lib/v1/operators/constants.ts:620
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:40
 #: metabase/lib/filter.cljc:618
 msgid "Less than or equal to"
 msgstr "Kleiner dan of gelijk aan"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:289
+#: frontend/src/metabase-lib/v1/operators/constants.ts:328
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:12
 #: metabase/lib/filter.cljc:599
 msgid "Equal to"
 msgstr "Gelijk aan"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:295
+#: frontend/src/metabase-lib/v1/operators/constants.ts:334
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:19
 #: metabase/lib/filter.cljc:602
 msgid "Not equal to"
 msgstr "Niet gelijk aan"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:357
-#: frontend/src/metabase-lib/v1/operators/constants.js:513
+#: frontend/src/metabase-lib/v1/operators/constants.ts:396
+#: frontend/src/metabase-lib/v1/operators/constants.ts:552
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:69
 #: metabase/lib/filter.cljc:604
 msgid "Contains"
 msgstr "Bevat"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:363
-#: frontend/src/metabase-lib/v1/operators/constants.js:519
+#: frontend/src/metabase-lib/v1/operators/constants.ts:402
+#: frontend/src/metabase-lib/v1/operators/constants.ts:558
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:79
 #: metabase/lib/filter.cljc:605
 msgid "Does not contain"
 msgstr "Bevat niet"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:369
-#: frontend/src/metabase-lib/v1/operators/constants.js:419
+#: frontend/src/metabase-lib/v1/operators/constants.ts:408
+#: frontend/src/metabase-lib/v1/operators/constants.ts:458
 msgid "Is null"
 msgstr "Is null"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:375
-#: frontend/src/metabase-lib/v1/operators/constants.js:425
+#: frontend/src/metabase-lib/v1/operators/constants.ts:414
+#: frontend/src/metabase-lib/v1/operators/constants.ts:464
 msgid "Not null"
 msgstr "Niet null"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:393
-#: frontend/src/metabase-lib/v1/operators/constants.js:525
+#: frontend/src/metabase-lib/v1/operators/constants.ts:432
+#: frontend/src/metabase-lib/v1/operators/constants.ts:564
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:89
 #: metabase/lib/filter.cljc:606
 msgid "Starts with"
 msgstr "Begint met"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:399
-#: frontend/src/metabase-lib/v1/operators/constants.js:531
+#: frontend/src/metabase-lib/v1/operators/constants.ts:438
+#: frontend/src/metabase-lib/v1/operators/constants.ts:570
 #: frontend/src/metabase-lib/v1/parameters/constants.ts:99
 #: metabase/lib/filter.cljc:607
 msgid "Ends with"
 msgstr "Eindigt met"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:445
+#: frontend/src/metabase-lib/v1/operators/constants.ts:484
 msgid "Excludes"
 msgstr "Sluit uit"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:457
+#: frontend/src/metabase-lib/v1/operators/constants.ts:496
 #: frontend/src/metabase/common/metrics/components/FilterPicker/TimeFilterPicker/utils.ts:92
 #: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts:36
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/constants.ts:14
@@ -785,7 +785,7 @@ msgstr "Sluit uit"
 msgid "Before"
 msgstr "Vóór"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:463
+#: frontend/src/metabase-lib/v1/operators/constants.ts:502
 #: frontend/src/metabase/common/metrics/components/FilterPicker/TimeFilterPicker/utils.ts:94
 #: frontend/src/metabase/querying/common/components/DatePicker/DateOperatorPicker/constants.ts:43
 #: frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/constants.ts:26
@@ -794,11 +794,11 @@ msgstr "Vóór"
 msgid "After"
 msgstr "Na"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:481
+#: frontend/src/metabase-lib/v1/operators/constants.ts:520
 msgid "Is not empty"
 msgstr "Is niet leeg"
 
-#: frontend/src/metabase-lib/v1/operators/constants.js:551
+#: frontend/src/metabase-lib/v1/operators/constants.ts:590
 #: metabase/lib/filter.cljc:621
 msgid "Inside"
 msgstr "Binnen"
@@ -2741,7 +2741,7 @@ msgstr "Vragen"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsTabs.tsx:30
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.tsx:140
-#: frontend/src/metabase/common/collections/getExpandedCollectionsById.js:39
+#: frontend/src/metabase/common/collections/getExpandedCollectionsById.ts:54
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/utils.ts:77
 #: frontend/src/metabase/common/components/Pickers/MiniPicker/components/MiniPickerItemList.tsx:154
 #: frontend/src/metabase/common/components/Pickers/MiniPicker/components/MiniPickerItemList.tsx:162
@@ -5117,44 +5117,44 @@ msgstr "String"
 msgid "Boolean"
 msgstr "Boolean"
 
-#: enterprise/frontend/src/metabase-enterprise/advanced_permissions/index.js:33
+#: enterprise/frontend/src/metabase-enterprise/advanced_permissions/index.tsx:31
 msgid "Impersonated"
 msgstr "Geïmpersoneerd"
 
-#: enterprise/frontend/src/metabase-enterprise/advanced_permissions/index.js:41
+#: enterprise/frontend/src/metabase-enterprise/advanced_permissions/index.tsx:39
 msgid "Blocked"
 msgstr "Geblokkeerd"
 
-#: enterprise/frontend/src/metabase-enterprise/advanced_permissions/index.js:149
+#: enterprise/frontend/src/metabase-enterprise/advanced_permissions/index.tsx:138
 msgid "Edit Impersonated"
 msgstr "Bewerk geïmpersoneerd"
 
-#: enterprise/frontend/src/metabase-enterprise/application_permissions/reducer.js:70
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/reducer.ts:97
 msgid "Error saving permissions"
 msgstr "Fout bij het opslaan van rechten"
 
-#: enterprise/frontend/src/metabase-enterprise/audit_app/index.js:43
+#: enterprise/frontend/src/metabase-enterprise/audit_app/index.tsx:34
 msgid "Unsubscribe from all subscriptions / alerts"
 msgstr "Alle abonnementen / meldingen opzeggen"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/index.js:32
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/index.tsx:39
 msgid "Row and column security"
 msgstr "Rij- en kolombeveiliging"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/index.js:82
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/index.tsx:99
 msgid "Edit row and column security"
 msgstr "Rij- en kolombeveiliging bewerken"
 
-#: enterprise/frontend/src/metabase-enterprise/snippets/index.js:32
+#: enterprise/frontend/src/metabase-enterprise/snippets/index.tsx:32
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewCollectionDialog/NewCollectionDialog.tsx:111
 msgid "New folder"
 msgstr "Nieuwe map"
 
-#: frontend/src/metabase/visualizations/components/ColumnSettings.jsx:94
+#: frontend/src/metabase/visualizations/components/ColumnSettings.tsx:126
 msgid "No formatting settings"
 msgstr "Geen opmaakinstellingen"
 
-#: frontend/src/metabase/visualizations/components/LegendVertical.jsx:162
+#: frontend/src/metabase/visualizations/components/LegendVertical.tsx:150
 msgid "more"
 msgstr "meer"
 
@@ -5162,20 +5162,20 @@ msgstr "meer"
 msgid "Pin Map"
 msgstr "Pinnenkaart"
 
-#: frontend/src/metabase/visualizations/components/PinMap.jsx:148
+#: frontend/src/metabase/visualizations/components/PinMap.tsx:98
 #, javascript-format
 msgid "We filtered out {0} row(s) containing null values."
 msgstr "We hebben {0} rij(en) met null-waarden weggefilterd."
 
-#: frontend/src/metabase/visualizations/components/PinMap.jsx:269
+#: frontend/src/metabase/visualizations/components/PinMap.tsx:311
 msgid "Set as default view"
 msgstr "Instellen als standaardweergave"
 
-#: frontend/src/metabase/visualizations/components/PinMap.jsx:301
+#: frontend/src/metabase/visualizations/components/PinMap.tsx:334
 msgid "Draw box to filter"
 msgstr "Teken een vak om te filteren"
 
-#: frontend/src/metabase/visualizations/components/PinMap.jsx:302
+#: frontend/src/metabase/visualizations/components/PinMap.tsx:334
 msgid "Cancel filter"
 msgstr "Filter annuleren"
 
@@ -8897,7 +8897,7 @@ msgstr "Zoeken…"
 msgid "No users found"
 msgstr "Geen gebruikers gevonden"
 
-#: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditTableVisualization/AuditTableVisualization.jsx:115
+#: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditTableVisualization/AuditTableVisualization.tsx:87
 #: frontend/src/metabase/common/components/errors/NoDataError.tsx:13
 #: frontend/src/metabase/common/components/errors/NoObjectError.tsx:13
 #: frontend/src/metabase/metrics-viewer/components/MetricsViewerVisualization/MetricsViewerVisualization.tsx:102
@@ -10131,7 +10131,7 @@ msgstr "Toon alle commentaren"
 #: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx:400
 #: frontend/src/metabase/querying/common/components/BooleanPicker/BooleanPicker.tsx:55
 #: frontend/src/metabase/querying/common/components/BooleanPicker/BooleanPicker.tsx:59
-#: frontend/src/metabase/visualizations/components/settings/ChartNestedSettingSeriesMultiple.jsx:94
+#: frontend/src/metabase/visualizations/components/settings/ChartNestedSettingSeriesMultiple.tsx:100
 msgid "More options"
 msgstr "Meer opties"
 
@@ -14174,7 +14174,7 @@ msgstr "Totaalkleur"
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/PreviewModeSelector.tsx:29
 #: frontend/src/metabase/metadata/components/FieldSection/FieldSection.tsx:131
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStep.tsx:134
-#: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.jsx:47
+#: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.tsx:60
 #: frontend/src/metabase/querying/segments/components/SegmentEditor/PreviewStep/PreviewStep.tsx:58
 #: frontend/src/metabase/visualizations/visualizations/List/components/ListView/ListViewConfiguration.tsx:450
 #: frontend/src/metabase/visualizer/components/TabularPreviewModal/TabularPreviewModal.tsx:27
@@ -14228,11 +14228,11 @@ msgstr "Opnieuw"
 msgid "Add to dashboard"
 msgstr "Toevoegen aan Dashboard"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartNestedSettingSeriesMultiple.jsx:94
+#: frontend/src/metabase/visualizations/components/settings/ChartNestedSettingSeriesMultiple.tsx:100
 msgid "Hide options"
 msgstr "Opties verbergen"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx:142
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPicker.tsx:183
 msgid "error"
 msgstr "fout"
 
@@ -21930,7 +21930,7 @@ msgstr "Antwoord ophalen"
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx:429
 #: frontend/src/metabase/monitor/tools/components/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:94
 #: frontend/src/metabase/querying/components/QueryVisualization/RunButton.tsx:70
-#: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.jsx:73
+#: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.tsx:86
 msgid "Refresh"
 msgstr "Vernieuwen"
 
@@ -24623,7 +24623,7 @@ msgstr "Kies eerst een dataset"
 msgid "No compatible results"
 msgstr "Geen compatibele resultaten"
 
-#: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.jsx:93
+#: frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.tsx:115
 msgid "Could not fetch preview"
 msgstr "Kon voorbeeld niet ophalen"
 
