@@ -44,15 +44,17 @@
   it, else nil. Identifier casing correction reads table/field metadata through it, which makes
   that metadata observable (a user can probe table/column existence and casing by watching what
   gets corrected); it is gated on the same native-query permission the SQL action itself requires,
-  not on database read access, which is satisfied by weaker access levels. Without a provider
-  validation runs uncorrected."
+  not on database read access, which is satisfied by weaker access levels. With no bound
+  `api/*current-user-id*` (internal callers; the HTTP and Slack entry points always bind one) the
+  provider is returned ungated. Without a provider validation runs uncorrected."
   [database-id]
-  (when (or (not api/*current-user-id*)
-            (= (perms/full-database-permission-for-user
-                api/*current-user-id* :perms/create-queries database-id)
-               :query-builder-and-native))
+  (when database-id
     (try
-      (lib-be/application-database-metadata-provider database-id)
+      (when (or (not api/*current-user-id*)
+                (= (perms/full-database-permission-for-user
+                    api/*current-user-id* :perms/create-queries database-id)
+                   :query-builder-and-native))
+        (lib-be/application-database-metadata-provider database-id))
       (catch Exception _ nil))))
 
 (defn- maybe-normalize-query

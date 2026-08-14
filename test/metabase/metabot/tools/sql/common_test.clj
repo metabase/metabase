@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.sql.common-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.metabot.tools.sql.common :as sql-common]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -48,3 +49,15 @@
       (perms/set-database-permission! (perms/all-users-group) (u/the-id db) :perms/create-queries :no)
       (mt/with-test-user :crowberto
         (is (some? (sql-common/metadata-provider-when-native-permitted (u/the-id db))))))))
+
+(deftest metadata-provider-when-native-permitted-no-current-user-test
+  (testing "with no current user bound, internal callers still get a provider"
+    (mt/with-temp [:model/Database db {}]
+      (perms/set-database-permission! (perms/all-users-group) (u/the-id db) :perms/create-queries :no)
+      (binding [api/*current-user-id* nil]
+        (is (some? (sql-common/metadata-provider-when-native-permitted (u/the-id db))))))))
+
+(deftest metadata-provider-when-native-permitted-nil-database-test
+  (testing "a nil database id disables correction instead of throwing"
+    (mt/with-test-user :rasta
+      (is (nil? (sql-common/metadata-provider-when-native-permitted nil))))))

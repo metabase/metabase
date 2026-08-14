@@ -705,7 +705,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     return transformed.sql(dialect=dialect)
 
 
-def correct_identifier_casing(sql: str, tables_json: str, dialect: str = None) -> str:
+def correct_identifier_casing(sql: str, tables_json: str, dialect: str | None = None) -> str:
     """
     Scope-aware, best-effort correction of identifier casing against synced metadata.
 
@@ -727,19 +727,14 @@ def correct_identifier_casing(sql: str, tables_json: str, dialect: str = None) -
     """
     from sqlglot.optimizer.scope import build_scope, Scope
 
-    # The dialects this runs for quote unquoted identifiers exactly as written
-    # (CASE_SENSITIVE_DIALECTS), but the database itself still folds an unquoted
-    # identifier to one canonical case before resolving it. A metadata match is
-    # only trustworthy when its name is exactly that fold of the written spelling:
-    # any other casing is unprovable against a (possibly incomplete, filtered-by-
-    # visibility) synced inventory, since the database would fold to a name the
-    # inventory might not even contain.
-    unquoted_fold = {"postgres": str.lower, "redshift": str.lower,
-                      "snowflake": str.upper, "oracle": str.upper}.get(dialect)
+    unquoted_fold = UNQUOTED_IDENTIFIER_FOLD.get(dialect)
     if unquoted_fold is None:
         return sql
 
     def fold_matches(name, target):
+        """Whether `target` is what the database resolves `name` to when written unquoted.
+        A looser case-insensitive match is unprovable: the synced inventory can be filtered
+        by visibility, so the name the database would really fold to may not be in it."""
         return unquoted_fold(name) == target
 
     try:
@@ -825,6 +820,7 @@ def correct_identifier_casing(sql: str, tables_json: str, dialect: str = None) -
                     if spelling.lower() == lower and (not exact or spelling == folded)}
 
         handled = set()
+        REJECTED = object()
 
         for scope in root.traverse():
             if isinstance(scope.expression, exp.SetOperation):
@@ -847,8 +843,14 @@ def correct_identifier_casing(sql: str, tables_json: str, dialect: str = None) -
                             set_ident(col, "this", target)
                 continue
 
-            if not scope.sources:
+            # scope.sources also lists every visible outer CTE; only what FROM/JOIN
+            # actually selects may bind references in this scope
+            selected = {name: source
+                        for name, (_node, source) in scope.selected_sources.items()}
+            if not selected:
                 continue
+
+            cte_names_lower = {name.lower() for name in scope.cte_sources}
 
             physical_entries = {}
             # source name -> [(spelling, exact-fold-required)], or None when the
@@ -858,10 +860,25 @@ def correct_identifier_casing(sql: str, tables_json: str, dialect: str = None) -
             # transpile quotes everything: the alias / source name as written, or the
             # corrected table name
             qualifiers = {}
-            for name, source in scope.sources.items():
+            # sources whose alias / name was written quoted: an unquoted reference
+            # only binds one when the spelling is exactly the reference's fold
+            quoted_sources = set()
+            for name, (node, source) in scope.selected_sources.items():
                 qualifiers[name] = name
                 source_inventory[name] = None
+                alias = node.args.get("alias")
+                name_ident = alias.this if alias and isinstance(alias.this, exp.Identifier) else \
+                    (node.this if isinstance(node, exp.Table) else None)
+                if isinstance(name_ident, exp.Identifier) and name_ident.quoted:
+                    quoted_sources.add(name)
                 if isinstance(source, exp.Table):
+                    # sqlglot binds a FROM reference to a CTE only on an exact name
+                    # match while the database folds both, so a fold-equivalent
+                    # spelling of a visible CTE name reads the CTE, not the physical
+                    # table it shadows
+                    if (not source.db and not source.this.quoted
+                            and source.name.lower() in cte_names_lower):
+                        continue
                     entry = match_table(source)
                     if entry is None:
                         continue
@@ -875,7 +892,6 @@ def correct_identifier_casing(sql: str, tables_json: str, dialect: str = None) -
                         set_ident(source, "db", entry["schema"])
                     if not source.alias:
                         qualifiers[name] = entry["name"]
-                    alias = source.args.get("alias")
                     alias_columns = alias.args.get("columns") if alias else None
                     if alias_columns:
                         # an explicit column-alias list (`AS o(a, b)`) redefines the
@@ -891,21 +907,32 @@ def correct_identifier_casing(sql: str, tables_json: str, dialect: str = None) -
                         source_inventory[name] = [(i.name, bool(i.quoted)) for i in idents]
 
             sources_by_lower = {}
-            for name in scope.sources:
+            for name in selected:
                 sources_by_lower.setdefault(name.lower(), []).append(name)
 
-            def resolve_source(ident):
-                """The scope source a qualifier names: exact when quoted, case-folded when not."""
+            def resolve_source(ident, sources=selected, by_lower=sources_by_lower,
+                               quoted=quoted_sources):
+                """The scope source a qualifier names: exact when quoted, case-folded when
+                not. None means nothing here matches (the reference may be correlated);
+                REJECTED means a match exists that the reference cannot legally bind, so
+                no scope may rewrite it."""
                 if ident.quoted:
-                    return ident.name if ident.name in scope.sources else None
-                candidates = sources_by_lower.get(ident.name.lower(), [])
-                return candidates[0] if len(candidates) == 1 else None
+                    return ident.name if ident.name in sources else None
+                candidates = by_lower.get(ident.name.lower(), [])
+                if not candidates:
+                    return None
+                if len(candidates) > 1:
+                    return REJECTED
+                name = candidates[0]
+                if name in quoted and name != unquoted_fold(ident.name):
+                    return REJECTED
+                return name
 
             all_known = all(inv is not None for inv in source_inventory.values())
 
-            def scope_bindable(ref_name):
+            def scope_bindable(ref_name, inventories=source_inventory):
                 targets = set()
-                for inv in source_inventory.values():
+                for inv in inventories.values():
                     if inv:
                         targets |= bindable(inv, ref_name)
                 return targets
@@ -921,6 +948,10 @@ def correct_identifier_casing(sql: str, tables_json: str, dialect: str = None) -
             correlated_columns = [c for c in scope.columns
                                   if id(c) not in raw_ids and id(c) not in handled]
 
+            # top-level ORDER BY / DISTINCT ON references resolve to an output name or
+            # a source column; they go to the combined pass below and never correlate
+            deferred = set()
+
             for col in owned_columns + star_columns + correlated_columns:
                 table_ident = col.args.get("table")
                 if isinstance(table_ident, exp.Identifier):
@@ -928,6 +959,8 @@ def correct_identifier_casing(sql: str, tables_json: str, dialect: str = None) -
                     if source_name is None:
                         continue
                     handled.add(id(col))
+                    if source_name is REJECTED:
+                        continue
                     qualifier = qualifiers[source_name]
                     if not table_ident.quoted and table_ident.name != qualifier:
                         set_ident(col, "table", qualifier)
@@ -949,6 +982,11 @@ def correct_identifier_casing(sql: str, tables_json: str, dialect: str = None) -
                             set_ident(col, "this", target)
                     continue
                 if not isinstance(col.this, exp.Identifier) or col.this.quoted:
+                    continue
+                ancestor = col.find_ancestor(exp.Order, exp.Distinct, exp.Select)
+                if (isinstance(ancestor, (exp.Order, exp.Distinct))
+                        and ancestor.parent is scope.expression):
+                    deferred.add(id(col))
                     continue
                 if not all_known:
                     handled.add(id(col))
@@ -984,6 +1022,7 @@ def correct_identifier_casing(sql: str, tables_json: str, dialect: str = None) -
                     target = next(iter(candidates))
                     if target != col.name:
                         set_ident(col, "this", target)
+            handled.update(deferred)
 
             # JOIN ... USING (id) holds bare identifiers that name a column in every joined
             # source, so they are only rewritten when all sources are known and agree
@@ -1960,6 +1999,14 @@ CASE_SENSITIVE_DIALECTS: set[str] = {
     "redshift",  # PostgreSQL-based, folds to lowercase
     "postgres",  # Folds unquoted to lowercase
 }
+
+UNQUOTED_IDENTIFIER_FOLD = {
+    "postgres": str.lower,
+    "redshift": str.lower,
+    "snowflake": str.upper,
+    "oracle": str.upper,
+}
+assert set(UNQUOTED_IDENTIFIER_FOLD) == CASE_SENSITIVE_DIALECTS
 
 def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     """Transpile sql string from one dialect to another.

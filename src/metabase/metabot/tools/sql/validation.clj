@@ -83,8 +83,8 @@
 (defn- referenced-synced-tables
   "The synced tables the query's table references name, matched case-insensitively (and by schema
   when qualified). Catalog-qualified references and names matching several tables are dropped.
-  Only the referenced names are resolved and fetched, never the database's whole catalog
-  (GHY-4251)."
+  Only the referenced names are resolved and fetched, never the database's whole catalog, so
+  the cost scales with the query rather than with the size of the warehouse."
   [mp mapped-dialect sql]
   (let [refs           (into []
                              (comp (remove (fn [[catalog _ _]] catalog))

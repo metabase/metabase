@@ -144,7 +144,8 @@
    {:database {:id 1 :name "Sample"}
     :tables   [{:id 10 :name "orders" :schema "public" :db-id 1}]
     :fields   [{:id 100 :name "id"       :table-id 10 :base-type :type/Integer}
-               {:id 101 :name "subtotal" :table-id 10 :base-type :type/Float}]}))
+               {:id 101 :name "subtotal" :table-id 10 :base-type :type/Float}
+               {:id 102 :name "total"    :table-id 10 :base-type :type/Float}]}))
 
 (def ^:private pg-filtered-table-mp
   "Stands in for a filtered metadata view that hides the real lowercase `orders` table and shows
@@ -208,7 +209,7 @@
   (:transpiled-sql (validated dialect sql mp)))
 
 (deftest ^:parallel corrects-lowercase-identifiers-test
-  (testing "the Slack report: LLM-written lowercase column and table become the synced uppercase names"
+  (testing "a lowercase column and table become the synced uppercase names"
     (is (= "SELECT\n  \"SUBTOTAL\"\nFROM \"ORDERS\""
            (transpiled "snowflake" "select subtotal from orders" orders-mp)))))
 
@@ -227,7 +228,7 @@
            (transpiled "snowflake" "select id from public.orders" orders-mp)))))
 
 (deftest ^:parallel corrects-table-qualified-columns-test
-  (testing "a table-name qualifier follows the table rename, keeping the query consistent"
+  (testing "a table-name qualifier follows the table's corrected casing"
     (is (= "SELECT\n  \"ORDERS\".\"SUBTOTAL\"\nFROM \"ORDERS\""
            (transpiled "snowflake" "select orders.subtotal from orders" orders-mp)))))
 
@@ -280,13 +281,13 @@
          (transpiled "snowflake" "select SUBTOTAL from PUBLIC.ORDERS" orders-mp))))
 
 (deftest ^:parallel no-metadata-provider-skips-correction-test
-  (testing "the 2-arity call behaves exactly as before this feature"
+  (testing "without a metadata provider the SQL transpiles with its casing left as written"
     (is (= "SELECT\n  \"subtotal\"\nFROM \"orders\""
            (:transpiled-sql (metabot.tools.sql.validation/validate-sql
                              "snowflake" "select subtotal from orders"))))))
 
 (deftest ^:parallel multi-statement-still-rejected-test
-  (testing "correction must not swallow statements; multi-statement input is rejected as before"
+  (testing "multi-statement input is rejected, not quietly collapsed into one statement"
     (is (=? {:valid? false
              :error-message "Multiple SQL statements are not supported. Please provide a single query."}
             (validated "snowflake" "select subtotal from orders; select 1" orders-mp)))))
@@ -370,6 +371,36 @@
                 "SELECT\n  \"X\".\"SUBTOTAL\"\nFROM \"X\"")
            (transpiled "snowflake" "with X as (select subtotal from orders) select x.subtotal from X" orders-mp)))))
 
+(deftest ^:parallel cte-shadowed-table-untouched-test
+  (testing "a fold-equivalent spelling of a CTE name reads the CTE, so the physical table it
+           shadows must not capture the reference"
+    (is (= "WITH \"Orders\" AS (\n  SELECT\n    1 AS \"id\"\n)\nSELECT\n  \"id\"\nFROM \"ORDERS\""
+           (transpiled "postgres" "WITH Orders AS (SELECT 1 AS id) SELECT id FROM ORDERS" pg-orders-mp)))))
+
+(deftest ^:parallel order-by-alias-column-collision-untouched-test
+  (testing "an ORDER BY reference that could name both a select alias and a physical column
+           stays as written instead of being pinned to either"
+    (is (= "SELECT\n  \"subtotal\" AS \"Total\"\nFROM \"orders\"\nORDER BY\n  \"TOTAL\""
+           (transpiled "postgres" "select subtotal as Total from orders order by TOTAL" pg-orders-mp)))))
+
+(deftest ^:parallel outer-cte-does-not-leak-into-sibling-test
+  (testing "an outer CTE's output names are not visible inside a sibling CTE, so they neither
+           block nor hijack a physical-column correction there"
+    (is (= (str "WITH \"a\" AS (\n  SELECT\n    1 AS \"SubTotal\"\n), \"b\" AS (\n  SELECT\n"
+                "    \"subtotal\"\n  FROM \"orders\"\n)\nSELECT\n  *\nFROM \"b\"")
+           (transpiled "postgres"
+                       "with a as (select 1 as SubTotal), b as (select SUBTOTAL from orders) select * from b"
+                       pg-orders-mp)))))
+
+(deftest ^:parallel quoted-alias-fold-mismatch-untouched-test
+  (testing "an unquoted qualifier never binds a quoted alias whose spelling is not its fold,
+           and no outer scope may rewrite it into a capturing spelling either"
+    (is (= (str "SELECT\n  (\n    SELECT\n      \"O\".\"ID\"\n    FROM \"CUSTOMERS\" AS \"o\"\n  )\n"
+                "FROM \"ORDERS\" AS \"o\"")
+           (transpiled "snowflake"
+                       "select (select O.ID from customers as \"o\") from orders as o"
+                       orders-mp)))))
+
 (deftest ^:parallel postgres-output-identity-test
   (testing "the lowercase fold direction: an uppercase spelling becomes the canonical lowercase
            output name end to end, not a pinned uppercase alias"
@@ -396,7 +427,7 @@
       (is (not (str/includes? (pr-str msgs) "synthetic-secret"))))))
 
 (deftest ^:parallel case-insensitive-dialects-skip-correction-test
-  (testing "dialects that don't quote with identify=True don't pay for correction"
+  (testing "a dialect that doesn't quote identifiers transpiles without a correction pass"
     (is (= "SELECT\n  SubTotal\nFROM Orders"
            (transpiled "mysql" "select SubTotal from Orders" orders-mp)))))
 
@@ -443,9 +474,7 @@
            (transpiled "snowflake" "select subtotal as Total from orders order by total" orders-mp)))))
 
 (deftest casing-correction-fetches-only-named-tables-test
-  (testing "GHY-4251: casing correction looks up only the Tables the SQL names, never the Database's
-           whole catalog. Fetching the catalog per validation made the cost scale with warehouse
-           size instead of query size, OOM-killing instances with ~20k synced tables."
+  (testing "casing correction looks up only the tables the SQL names, never the whole catalog"
     (let [catalog-fetches (atom 0)
           all-tables      lib.metadata/tables]
       (with-redefs [lib.metadata/tables (fn [mp] (swap! catalog-fetches inc) (all-tables mp))]
@@ -453,5 +482,5 @@
           (is (= "SELECT\n  \"SUBTOTAL\"\nFROM \"ORDERS\""
                  (:transpiled-sql (metabot.tools.sql.validation/validate-sql
                                    "snowflake" "select subtotal from orders" (mt/metadata-provider))))))
-        (testing "and it did so without fetching the catalog"
+        (testing "without fetching the catalog"
           (is (zero? @catalog-fetches)))))))
