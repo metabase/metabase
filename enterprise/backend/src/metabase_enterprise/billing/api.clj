@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.store-api.core :as store-api]
    [metabase.util :as u]
@@ -63,8 +64,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,
-   using the embedding token and signed in user's email to fetch the billing information."
+   using the embedding token and signed in user's email to fetch the billing information. You must be a superuser or
+   have `setting` permission to do this."
   []
+  (perms/check-has-application-permission :setting)
   (let [token    (premium-features/premium-embedding-token)
         email    (t2/select-one-fn :email :model/User :id api/*current-user-id*)
         language (i18n/user-locale-string)]
