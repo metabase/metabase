@@ -62,7 +62,9 @@
 (defn- exec
   "Run `args` inside `c`, returning its `ExecResult`."
   ^Container$ExecResult [^GenericContainer c args]
-  (.execInContainer c ^String/1 (into-array String args)))
+  ;; not the `^String/1` Clojure 1.12 added: Eastwood reads this file with a tools.reader that predates it, and
+  ;; fails to read the file at all
+  (.execInContainer c ^"[Ljava.lang.String;" (into-array String args)))
 
 (defn- exec!
   "Run `args` inside `c`, returning its stdout. Throws with the command and stderr if it exits non-zero."
@@ -98,7 +100,7 @@
         (or (flavor->server flavor)
             (throw (ex-info "No pinned server for this flavor" {:flavor flavor, :known (keys flavor->server)})))
         c (GenericContainer. (DockerImageName/parse image))]
-    (.withExposedPorts c ^Integer/1 (into-array Integer [(int port)]))
+    (.withExposedPorts c ^"[Ljava.lang.Integer;" (into-array Integer [(int port)]))
     (doseq [[k v] env]
       (.withEnv c ^String k ^String v))
     (try
