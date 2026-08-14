@@ -90,30 +90,6 @@
   right: 0.25rem;
 }
 
-/* An action, not a tab: it carries its own fill at rest so it reads as the one
-   thing to press, rather than lighting up only on hover the way a tab does. */
-.navButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  background-color: var(--mb-color-background_surface-brand-subtle);
-  color: var(--mb-color-text-brand);
-  transition: opacity 400ms ease;
-
-  .icon {
-    color: var(--mb-color-icon-brand);
-  }
-
-  &:hover {
-    background-color: var(--mb-color-background_surface-brand-subtle-hover);
-  }
-
-  &:active {
-    background-color: var(--mb-color-background_surface-brand-subtle-pressed);
-  }
-}
-
 .upperGroup {
   overflow-y: auto;
 
