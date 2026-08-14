@@ -25,9 +25,6 @@ import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
 import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
 import { useBulkArchive } from "./use-bulk-archive";
-import { useBulkBookmark } from "./use-bulk-bookmark";
-import { useBulkDuplicate } from "./use-bulk-duplicate";
-import { useBulkPin } from "./use-bulk-pin";
 
 const BLOCKING_OVERLAY_SELECTOR =
   '[role="dialog"], [data-element-id="mantine-popover"]';
@@ -64,22 +61,6 @@ export const CollectionBulkActions = memo(
       useState<Destination | null>(null);
     const setCollection = useSetCollection();
     const { canArchive, archiveSelected } = useBulkArchive(
-      selected,
-      collection,
-    );
-    const {
-      hasPinned,
-      hasUnpinned,
-      canPinAll,
-      canUnpinAll,
-      pinSelected,
-      unpinSelected,
-    } = useBulkPin(selected, collection);
-    const { canBookmark, bookmarkSelected } = useBulkBookmark(
-      selected,
-      bookmarks ?? [],
-    );
-    const { canDuplicate, duplicateSelected } = useBulkDuplicate(
       selected,
       collection,
     );
@@ -126,22 +107,6 @@ export const CollectionBulkActions = memo(
         clearSelected();
       }
     };
-
-    const handlePinAll = useCallback(() => {
-      pinSelected().finally(clearSelected);
-    }, [pinSelected, clearSelected]);
-
-    const handleUnpinAll = useCallback(() => {
-      unpinSelected().finally(clearSelected);
-    }, [unpinSelected, clearSelected]);
-
-    const handleBookmark = useCallback(() => {
-      bookmarkSelected().finally(clearSelected);
-    }, [bookmarkSelected, clearSelected]);
-
-    const handleDuplicate = useCallback(() => {
-      duplicateSelected().finally(clearSelected);
-    }, [duplicateSelected, clearSelected]);
 
     const isVisible = selected.length > 0 && selectedAction !== "confirm-move";
 
@@ -247,15 +212,12 @@ export const CollectionBulkActions = memo(
             />
           ) : (
             <UnarchivedBulkActions
-              hasPinned={hasPinned}
-              hasUnpinned={hasUnpinned}
+              selected={selected}
+              collection={collection}
+              bookmarks={bookmarks ?? []}
+              clearSelected={clearSelected}
               onRequestMove={canMove ? handleBulkMoveStart : undefined}
               onRequestTrash={canArchive ? openTrashConfirm : undefined}
-              onPinAll={canPinAll ? handlePinAll : undefined}
-              onUnpinAll={canUnpinAll ? handleUnpinAll : undefined}
-              onBookmark={canBookmark ? handleBookmark : undefined}
-              onDuplicate={canDuplicate ? handleDuplicate : undefined}
-              onDeselectAll={clearSelected}
             />
           )}
         </BulkActionBar>

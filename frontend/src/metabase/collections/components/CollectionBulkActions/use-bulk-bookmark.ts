@@ -25,12 +25,14 @@ export const useBulkBookmark = (
       Promise.all(
         selected
           .filter((item) => !isItemBookmarked(item, bookmarks))
-          .map((item) => {
-            trackCollectionItemBookmarked(item);
-            return createBookmark({
+          .map(async (item) => {
+            const result = await createBookmark({
               id: item.id,
               type: getItemBookmarkType(item),
             });
+            if (!("error" in result)) {
+              trackCollectionItemBookmarked(item);
+            }
           }),
       ),
     [selected, bookmarks, createBookmark],

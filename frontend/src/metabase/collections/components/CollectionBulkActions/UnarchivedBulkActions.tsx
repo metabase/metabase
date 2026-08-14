@@ -2,30 +2,62 @@ import { c, t } from "ttag";
 
 import { BulkActionButton } from "metabase/common/components/BulkActionBar";
 import { Icon, Menu } from "metabase/ui";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+
+import { useBulkBookmark } from "./use-bulk-bookmark";
+import { useBulkDuplicate } from "./use-bulk-duplicate";
+import { useBulkPin } from "./use-bulk-pin";
 
 type UnarchivedBulkActionsProps = {
-  hasPinned: boolean;
-  hasUnpinned: boolean;
+  selected: CollectionItem[];
+  collection: Collection;
+  bookmarks: Bookmark[];
+  clearSelected: () => void;
   onRequestMove?: () => void;
   onRequestTrash?: () => void;
-  onPinAll?: () => void;
-  onUnpinAll?: () => void;
-  onBookmark?: () => void;
-  onDuplicate?: () => void;
-  onDeselectAll: () => void;
 };
 
 export const UnarchivedBulkActions = ({
-  hasPinned,
-  hasUnpinned,
+  selected,
+  collection,
+  bookmarks,
+  clearSelected,
   onRequestMove,
   onRequestTrash,
-  onPinAll,
-  onUnpinAll,
-  onBookmark,
-  onDuplicate,
-  onDeselectAll,
 }: UnarchivedBulkActionsProps) => {
+  const {
+    hasPinned,
+    hasUnpinned,
+    canPinAll,
+    canUnpinAll,
+    pinSelected,
+    unpinSelected,
+  } = useBulkPin(selected, collection);
+  const { canBookmark, bookmarkSelected } = useBulkBookmark(
+    selected,
+    bookmarks,
+  );
+  const { canDuplicate, duplicateSelected } = useBulkDuplicate(
+    selected,
+    collection,
+  );
+
+  const handlePinAll = () => {
+    pinSelected().finally(clearSelected);
+  };
+
+  const handleUnpinAll = () => {
+    unpinSelected().finally(clearSelected);
+  };
+
+  const handleBookmark = () => {
+    bookmarkSelected().finally(clearSelected);
+  };
+
+  const handleDuplicate = () => {
+    duplicateSelected().finally(clearSelected);
+  };
+
   const isPinnedOnly = hasPinned && !hasUnpinned;
   const isMixed = hasPinned && hasUnpinned;
 
@@ -33,8 +65,8 @@ export const UnarchivedBulkActions = ({
     <>
       {isPinnedOnly ? (
         <BulkActionButton
-          disabled={onUnpinAll == null}
-          onClick={onUnpinAll}
+          disabled={!canUnpinAll}
+          onClick={handleUnpinAll}
         >{t`Unpin all`}</BulkActionButton>
       ) : (
         <BulkActionButton
@@ -61,8 +93,8 @@ export const UnarchivedBulkActions = ({
           {hasUnpinned && (
             <Menu.Item
               leftSection={<Icon name="pin" aria-hidden />}
-              disabled={onPinAll == null}
-              onClick={onPinAll}
+              disabled={!canPinAll}
+              onClick={handlePinAll}
             >
               {t`Pin all`}
             </Menu.Item>
@@ -70,29 +102,29 @@ export const UnarchivedBulkActions = ({
           {isMixed && (
             <Menu.Item
               leftSection={<Icon name="unpin" aria-hidden />}
-              disabled={onUnpinAll == null}
-              onClick={onUnpinAll}
+              disabled={!canUnpinAll}
+              onClick={handleUnpinAll}
             >
               {t`Unpin all`}
             </Menu.Item>
           )}
           <Menu.Item
             leftSection={<Icon name="bookmark" aria-hidden />}
-            disabled={onBookmark == null}
-            onClick={onBookmark}
+            disabled={!canBookmark}
+            onClick={handleBookmark}
           >
             {c("Verb").t`Bookmark`}
           </Menu.Item>
           <Menu.Item
             leftSection={<Icon name="clone" aria-hidden />}
-            disabled={onDuplicate == null}
-            onClick={onDuplicate}
+            disabled={!canDuplicate}
+            onClick={handleDuplicate}
           >
             {c("Verb").t`Duplicate`}
           </Menu.Item>
           <Menu.Item
             leftSection={<Icon name="close" aria-hidden />}
-            onClick={onDeselectAll}
+            onClick={clearSelected}
           >
             {t`Deselect all`}
           </Menu.Item>
