@@ -129,6 +129,21 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed hourly");
       });
 
+      it("should still send a one-off email after the frequency change clears the time", () => {
+        assignRecipient();
+
+        cy.findByTestId("select-frequency").click();
+        H.popover().findByText("weekly").click();
+
+        H.sidebar().button("Done").should("be.disabled");
+        H.sidebar().button("Send email now").should("be.enabled");
+
+        H.sendEmailAndAssert((email) => {
+          expect(email.subject).to.equal("Orders in a dashboard");
+          expect(email.html).to.include("Orders in a dashboard");
+        });
+      });
+
       it("should not add a recipient when Escape is pressed (metabase#24629)", () => {
         openDashboardSubscriptions(ORDERS_DASHBOARD_ID);
 

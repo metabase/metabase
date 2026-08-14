@@ -346,6 +346,37 @@ describe("DashboardSubscriptionsSidebar", () => {
       expect(payload.cards[0].id).toEqual(dashcard.id);
     });
 
+    it("should keep 'Send email now' enabled when the frequency change clears the time", async () => {
+      setup();
+
+      await userEvent.click(await screen.findByText("Email it"));
+      await userEvent.click(
+        await screen.findByPlaceholderText(
+          "Enter user names or email addresses",
+        ),
+      );
+      await userEvent.click(
+        await screen.findByText(`${user.first_name} ${user.last_name}`),
+      );
+
+      await userEvent.click(screen.getByTestId("select-frequency"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("weekly"),
+      );
+
+      const sendNowButton = screen.getByRole("button", {
+        name: "Send email now",
+      });
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+      expect(sendNowButton).toBeEnabled();
+
+      await userEvent.click(sendNowButton);
+
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const payload = await lastCall?.request?.json();
+      expect(payload.channels).toHaveLength(1);
+    });
+
     it("should persist the include_pdf channel detail when the PDF switch is toggled on", async () => {
       setup();
 

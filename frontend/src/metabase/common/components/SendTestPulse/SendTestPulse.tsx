@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { ActionButton } from "metabase/common/components/ActionButton";
-import { cleanPulse } from "metabase/pulse";
+import { channelTargetIsValid, cleanPulse } from "metabase/pulse";
 import type { DashboardSubscriptionData } from "metabase/redux/store";
 import type { Channel, ChannelSpecs } from "metabase-types/api";
 
@@ -27,7 +27,11 @@ export function SendTestPulse<T extends DashboardSubscriptionData>({
 }: SendTestPulseProps<T>): JSX.Element {
   const onTestPulseChannel = useCallback(() => {
     const channelPulse = { ...pulse, channels: [channel] };
-    const cleanedPulse = cleanPulse(channelPulse, channelSpecs);
+    const cleanedPulse = cleanPulse(
+      channelPulse,
+      channelSpecs,
+      channelTargetIsValid,
+    );
 
     return testPulse(cleanedPulse);
   }, [pulse, channel, channelSpecs, testPulse]);

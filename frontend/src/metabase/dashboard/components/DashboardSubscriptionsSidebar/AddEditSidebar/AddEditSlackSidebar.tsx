@@ -16,7 +16,7 @@ import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import { dashboardPulseIsValid } from "metabase/pulse";
+import { channelTargetIsValid, dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -78,6 +78,7 @@ export const AddEditSlackSidebar = ({
   setPulseParameters,
 }: AddEditSlackSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+  const hasValidTarget = channelTargetIsValid(channel, channelSpec);
   const applicationName = useSelector(getApplicationName);
   const timezone = useSelector((state) =>
     getSetting(state, "report-timezone-short"),
@@ -157,7 +158,7 @@ export const AddEditSlackSidebar = ({
             testPulse={testPulse}
             normalText={t`Send to Slack now`}
             successText={t`Slack sent`}
-            disabled={!isValid}
+            disabled={!hasValidTarget}
           />
         </div>
 

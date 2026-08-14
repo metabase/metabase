@@ -18,7 +18,7 @@ import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import { dashboardPulseIsValid } from "metabase/pulse";
+import { channelTargetIsValid, dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
@@ -88,6 +88,7 @@ export const AddEditEmailSidebar = ({
   setPulseParameters,
 }: AddEditEmailSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+  const hasValidTarget = channelTargetIsValid(channel, channelSpec);
   const userCanAccessSettings = useSelector(canAccessSettings);
   const currentUser = useSelector(getUser);
   const applicationName = useSelector(getApplicationName);
@@ -176,7 +177,7 @@ export const AddEditEmailSidebar = ({
             testPulse={testPulse}
             normalText={t`Send email now`}
             successText={t`Email sent`}
-            disabled={!isValid}
+            disabled={!hasValidTarget}
           />
         </div>
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
