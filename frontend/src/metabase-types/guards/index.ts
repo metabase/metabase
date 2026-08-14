@@ -4,6 +4,5 @@ export * from "./common";
 export * from "./dom";
 export * from "./parameters";
 export * from "./remote-sync";
-export * from "./revision";
 export * from "./settings";
 export * from "./visualization";

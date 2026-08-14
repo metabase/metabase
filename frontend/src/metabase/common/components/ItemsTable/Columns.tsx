@@ -13,6 +13,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Checkbox, Ellipsified, type IconProps, Tooltip } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isTouchDevice } from "metabase/utils/browser";
+import { isPlainKey } from "metabase/utils/keyboard";
 import { getUserName } from "metabase/utils/user";
 import type {
   CollectionItem,
@@ -84,6 +85,16 @@ export const Columns = {
             checked={!!selectedItems?.length}
             indeterminate={!!selectedItems?.length && !!hasUnselected}
             onChange={hasUnselected ? onSelectAll : onSelectNone}
+            onKeyDown={(event) => {
+              if (
+                // Blurs the checkbox when these keys are pressed so that shortcuts can work
+                isPlainKey(event, "Escape") ||
+                isPlainKey(event, "Delete") ||
+                isPlainKey(event, "Backspace")
+              ) {
+                event.currentTarget.blur();
+              }
+            }}
             aria-label={t`Select all items`}
           />
         </BulkSelectWrapper>
