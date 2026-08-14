@@ -7,6 +7,10 @@ redirect_from:
 
 # Embed a dashboard
 
+![Embedded dashboard from Shoppy, our SDK demo](./images/embedded-dashboard.png)
+
+_Embedded dashboard from our SDK demo site, [Shoppy](https://embedded-analytics-sdk-demo.metabase.com)_
+
 There are three ways you can embed a dashboard:
 
 - [View-only dashboard](#embed-a-view-only-dashboard): people see the results, filter them, and that's it.
