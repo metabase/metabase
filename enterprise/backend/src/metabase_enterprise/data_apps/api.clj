@@ -157,6 +157,14 @@
     app
     (select-keys app [:name :display_name])))
 
+(defn- read-check-data-app
+  "Check whether the current user can access a data app and its resource collection."
+  [app]
+  (api/read-check app)
+  (when-let [collection-id (:resource_collection_id app)]
+    (api/read-check :model/Collection collection-id))
+  app)
+
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]
   "List the data apps provided by the connected repository. Pass `available=true`
    to return only enabled apps without sync errors."
@@ -231,7 +239,7 @@
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
-  (data-app-response (api/read-check (data-apps.db/enabled-non-blob-data-app-by-slug slug))))
+  (data-app-response (read-check-data-app (data-apps.db/enabled-non-blob-data-app-by-slug slug))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
@@ -243,7 +251,7 @@
    respond
    raise]
   (try
-    (let [row  (api/read-check (data-apps.db/enabled-non-blob-data-app-by-slug slug))
+    (let [row  (read-check-data-app (data-apps.db/enabled-non-blob-data-app-by-slug slug))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond
