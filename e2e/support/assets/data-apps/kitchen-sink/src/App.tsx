@@ -317,6 +317,7 @@ function QueryComparison({
   cardQuery,
   dynamic,
   totalTestId,
+  totalValue,
 }: {
   testId: string;
   tableQuery: MetabaseQueryOptions<undefined>;
