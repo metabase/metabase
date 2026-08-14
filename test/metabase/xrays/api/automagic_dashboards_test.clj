@@ -219,6 +219,18 @@
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query/rule/example/indepth"
       (is (some? (api-call! "adhoc/%s/cell/%s/rule/example/indepth" [query cell-query]))))))
 
+(deftest adhoc-query-xray-url-safe-base64-test
+  (testing "GET /api/automagic-dashboards/adhoc/:query with the URL-safe base64 alphabet"
+    ;; the "???" literal is three 0x3F bytes, so at any byte alignment one of them emits a
+    ;; base64 `/` -- guaranteeing the translated payload contains a URL-safe character
+    (let [query (-> (mt/mbql-query venues {:filter [:and [:> $price 10] [:contains $name "???"]]
+                                           :limit  100})
+                    magic.util/encode-base64-json
+                    (str/replace "%2B" "-")
+                    (str/replace "%2F" "_"))]
+      (is (str/includes? query "_"))
+      (is (some? (api-call! "adhoc/%s" [query]))))))
+
 ;;; ------------------- Comparisons -------------------
 
 (def ^:private segment
