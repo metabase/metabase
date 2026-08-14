@@ -1,6 +1,6 @@
 .day {
-  width: 40px;
-  height: 40px;
+  width: 2.25rem;
+  height: 2.25rem;
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
   line-height: 24px;
@@ -53,7 +53,7 @@
 }
 
 .weekday {
-  width: 2.5rem;
+  width: 2.25rem;
   height: 2rem;
   color: var(--mb-color-text-disabled);
   font-size: var(--mantine-font-size-sm);
