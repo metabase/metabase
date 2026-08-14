@@ -193,23 +193,23 @@ function handleCollectionItemsResponse({
   const limit = Number(url.searchParams.get("limit")) || searchedItems.length;
   const offset = Number(url.searchParams.get("offset")) || 0;
 
-  const response = {
+  return {
     data: searchedItems.slice(offset, offset + limit),
     total: searchedItems.length,
     models,
     limit,
     offset,
   };
+}
 
-  if (url.searchParams.get("include_available_models") !== "true") {
-    return response;
-  }
-
+// Mirrors GET /api/collection/:id/items/metadata: available models and the item
+// count, independent of any model or search filters.
+function collectionItemsMetadata(collectionItems: CollectionItem[]) {
   return {
-    ...response,
     available_models: Array.from(
       new Set(collectionItems.map((item) => item.model)),
     ),
+    total: collectionItems.length,
   };
 }
 
@@ -232,6 +232,11 @@ export function setupCollectionItemsEndpoint({
       });
     },
     { name: `collection-${collection.id}-items` },
+  );
+  fetchMock.get(
+    `path:/api/collection/${collection.id}/items/metadata`,
+    () => collectionItemsMetadata(collectionItems),
+    { name: `collection-${collection.id}-items-metadata` },
   );
 }
 

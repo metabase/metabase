@@ -35,8 +35,8 @@ export function CollectionTypeFilter({
     value: model,
     label: getTranslatedEntityName(model) ?? model,
   }));
-  const optionValues = options.map(({ value }) => value);
-  const checkedFilters = selectedFilters ?? optionValues;
+  // Nothing checked means no filter is applied and every type is listed.
+  const checkedFilters = selectedFilters ?? [];
   const isFiltering = selectedFilters != null;
 
   if (options.length === 0) {
@@ -47,10 +47,7 @@ export function CollectionTypeFilter({
     const nextFilters = checkedFilters.includes(filter)
       ? checkedFilters.filter((checkedFilter) => checkedFilter !== filter)
       : [...checkedFilters, filter];
-    const coversAllOptions = options.every((option) =>
-      nextFilters.includes(option.value),
-    );
-    onSelectedFiltersChange(coversAllOptions ? null : nextFilters);
+    onSelectedFiltersChange(nextFilters.length > 0 ? nextFilters : null);
   };
 
   return (

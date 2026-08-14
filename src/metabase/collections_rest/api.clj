@@ -1292,6 +1292,21 @@
               sort
               vec)}))))
 
+(mr/def ::ItemsMetadata
+  [:map
+   [:available_models [:sequential :string]]
+   [:total ms/IntGreaterThanOrEqualToZero]])
+
+(mu/defn- collection-items-metadata :- ::ItemsMetadata
+  "Metadata about the items list of `collection`, all of it independent of the model and search filters that the
+  items endpoints accept: the models with at least one visible item and the total number of items, pinned included."
+  [collection restrict-models options]
+  (let [count-options (cond-> (dissoc options :models :search-text)
+                        (seq restrict-models) (assoc :models restrict-models))]
+    (assoc (collection-filter-metadata collection restrict-models options)
+           :total (request/with-limit-and-offset 0 0
+                    (:total (collection-children collection count-options))))))
+
 (mu/defn- collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
   Works for either a normal Collection or the Root Collection."
@@ -1534,6 +1549,26 @@
     (cond-> (collection-children root-collection options)
       include_available_models
       (merge (collection-filter-metadata root-collection restrict-models options)))))
+
+(api.macros/defendpoint :get "/root/items/metadata" :- ::ItemsMetadata
+  "Metadata about the Root Collection's items list: the models with at least one visible item plus the unfiltered
+  item count. Unlike `GET /api/collection/root/items`, the result does not depend on model or search filters."
+  [_route-params
+   {:keys [namespace show_dashboard_questions include_library]} :- [:map
+                                                                    [:namespace                {:optional true} [:maybe ms/NonBlankString]]
+                                                                    [:show_dashboard_questions {:default false} [:maybe ms/BooleanValue]]
+                                                                    [:include_library          {:default false} [:maybe ms/BooleanValue]]]]
+  (let [root-collection (assoc collection/root-collection :namespace namespace)
+        restrict-models (when (or (not (contains? namespaces-holding-non-collection-types namespace))
+                                  (not (mi/can-read? root-collection)))
+                          #{:collection})]
+    (collection-items-metadata root-collection restrict-models
+                               {:archived?                 false
+                                :show-dashboard-questions? (boolean show_dashboard_questions)
+                                :include-library?          include_library
+                                :sort-info                 {:sort-column                 :name
+                                                            :sort-direction              :asc
+                                                            :official-collections-first? false}})))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
@@ -1841,3 +1876,20 @@
                       (merge (collection-filter-metadata collection nil options)))]
     (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*})
     children))
+
+(api.macros/defendpoint :get "/:id/items/metadata" :- ::ItemsMetadata
+  "Metadata about the collection's items list: the models with at least one visible item plus the unfiltered item
+  count. Unlike `GET /api/collection/:id/items`, the result does not depend on model or search filters."
+  [{:keys [id]} :- [:map
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+   {:keys [show_dashboard_questions]} :- [:map
+                                          [:show_dashboard_questions {:default false} [:maybe ms/BooleanValue]]]]
+  (let [resolved-id (eid-translation/->id-or-404 :collection id)
+        collection  (api/read-check :model/Collection resolved-id)]
+    (collection-items-metadata collection nil
+                               {:archived?                 (or (:archived collection) (collection/is-trash? collection))
+                                :show-dashboard-questions? show_dashboard_questions
+                                :include-library?          true
+                                :sort-info                 {:sort-column                 :name
+                                                            :sort-direction              :asc
+                                                            :official-collections-first? false}})))

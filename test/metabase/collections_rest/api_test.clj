@@ -1048,6 +1048,48 @@
                                              :include_available_models true)]
           (is (= ["card" "exploration"] (:available_models response))))))))
 
+(deftest collection-items-metadata-test
+  (testing "GET /api/collection/:id/items/metadata"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       _          {:name "Question" :collection_id (u/the-id collection)}
+                   :model/Dashboard  _          {:name "Dashboard" :collection_id (u/the-id collection)}
+                   :model/Card       _          {:name                "Metric"
+                                                 :type                :metric
+                                                 :collection_id       (u/the-id collection)
+                                                 :collection_position 1}
+                   :model/Collection _          {:name     "Child collection"
+                                                 :location (collection/children-location collection)}]
+      (let [url (str "collection/" (u/the-id collection) "/items/metadata")]
+        (testing "returns every visible model and the item count, pinned included"
+          (is (= {:available_models ["card" "collection" "dashboard" "metric"]
+                  :total            4}
+                 (mt/user-http-request :crowberto :get 200 url))))
+        (testing "ignores model and search query params"
+          (is (= {:available_models ["card" "collection" "dashboard" "metric"]
+                  :total            4}
+                 (mt/user-http-request :crowberto :get 200 url :models "card" :q "zzz"))))))
+    (testing "requires read access to the collection"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection {}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403
+                                       (str "collection/" (u/the-id collection) "/items/metadata")))))))))
+
+(deftest root-collection-items-metadata-test
+  (testing "GET /api/collection/root/items/metadata"
+    (testing "returns the metadata shape for the root collection"
+      (let [{:keys [available_models] :as response}
+            (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata")]
+        (is (=? {:available_models sequential?
+                 :total            nat-int?}
+                response))
+        (is (every? string? available_models))))
+    (testing "restricts other namespaces to collections"
+      (let [response (mt/user-http-request :crowberto :get 200
+                                           "collection/root/items/metadata"
+                                           :namespace "snippets")]
+        (is (every? #{"collection"} (:available_models response)))))))
+
 (deftest collection-items-available-models-library-test
   (testing "GET /api/collection/:id/items"
     (mt/with-temp [:model/Collection collection {:type "library-data"}

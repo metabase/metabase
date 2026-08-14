@@ -189,6 +189,18 @@ export type ListCollectionItemsResponse = {
   available_models?: string[];
 } & PaginationResponse;
 
+export type GetCollectionItemsMetadataRequest = {
+  id: CollectionId;
+  show_dashboard_questions?: boolean;
+  namespace?: CollectionNamespace;
+  include_library?: boolean;
+};
+
+export type CollectionItemsMetadata = {
+  available_models: string[];
+  total: number;
+};
+
 export interface UpdateCollectionRequest {
   id: RegularCollectionId;
   name?: string;

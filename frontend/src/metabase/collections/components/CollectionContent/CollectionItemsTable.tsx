@@ -9,12 +9,17 @@ import {
 import { t } from "ttag";
 
 import NoResultsImg from "assets/img/no_results.svg";
-import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCollectionItemsMetadataQuery,
+  useListCollectionItemsQuery,
+} from "metabase/api";
 import {
   ALL_MODELS,
   COLLECTION_PAGE_SIZE,
   type CollectionContentTableColumn,
   DEFAULT_VISIBLE_COLUMNS_LIST,
+  FILTERS_VISIBILITY_THRESHOLD,
 } from "metabase/collections/components/CollectionContent/constants";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import type {
@@ -64,19 +69,6 @@ const getDefaultSortingOptions = (
         sort_column: "name",
         sort_direction: "asc",
       };
-};
-
-const getQueryFilters = (
-  models: CollectionItemModel[],
-  selectedFilters: CollectionItemModel[] | null,
-): Pick<ListCollectionItemsRequest, "models"> => {
-  if (selectedFilters == null) {
-    return { models };
-  }
-
-  return {
-    models: selectedFilters.length > 0 ? selectedFilters : ["no_models"],
-  };
 };
 
 export type CollectionItemsTableProps = {
@@ -213,6 +205,26 @@ export const CollectionItemsTable = ({
     (isEmbeddingSdk() || isRootTrashCollection(collection)) &&
     showDashboardQuestions;
 
+  const { data: itemsMetadata } = useGetCollectionItemsMetadataQuery(
+    collectionId === undefined || !showFilterBar
+      ? skipToken
+      : {
+          id: collectionId,
+          show_dashboard_questions: showDashboardQuestionsInList,
+        },
+  );
+  const availableModels = itemsMetadata?.available_models ?? [];
+  const itemsTotal = itemsMetadata?.total;
+
+  const showToolbar =
+    (showFilterBar ?? false) &&
+    itemsTotal != null &&
+    itemsTotal > FILTERS_VISIBILITY_THRESHOLD;
+  // The toolbar can disappear while a search or type filter is active, e.g. after
+  // archiving items; ignore the leftover selection rather than filtering a bare list.
+  const appliedSearchText = showToolbar ? trimmedSearchText : "";
+  const appliedFilters = showToolbar ? selectedFilters : null;
+
   return (
     <CollectionItemsTableContent
       bookmarks={bookmarks}
@@ -228,11 +240,11 @@ export const CollectionItemsTable = ({
       handleMove={handleMove}
       page={page}
       pageSize={pageSize}
-      searchText={searchText}
-      selectedFilters={selectedFilters}
+      searchText={showToolbar ? searchText : ""}
+      selectedFilters={appliedFilters}
       selected={selected}
       selectOnlyTheseItems={selectOnlyTheseItems}
-      showFilterBar={showFilterBar}
+      showToolbar={showToolbar}
       toggleItem={toggleItem}
       itemsSorting={itemsSorting}
       itemsQuery={
@@ -240,15 +252,15 @@ export const CollectionItemsTable = ({
           ? skipToken
           : {
               id: collectionId,
-              ...getQueryFilters(models, selectedFilters),
-              ...(showFilterBar ? { include_available_models: true } : {}),
+              models: appliedFilters ?? models,
               limit: pageSize,
               offset: pageSize * page,
               show_dashboard_questions: showDashboardQuestionsInList,
               ...itemsSorting,
-              ...(trimmedSearchText.length > 0 ? { q: trimmedSearchText } : {}),
+              ...(appliedSearchText.length > 0 ? { q: appliedSearchText } : {}),
             }
       }
+      availableModels={availableModels}
       visibleColumns={visibleColumns}
       onClick={onClick}
       onNextPage={handleNextPage}
@@ -264,6 +276,8 @@ type CollectionItemsTableContentProps = CollectionItemsTableProps & {
   page: number;
   searchText: string;
   selectedFilters: CollectionItemModel[] | null;
+  showToolbar: boolean;
+  availableModels: string[];
   itemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
   itemsQuery: ListCollectionItemsRequest | typeof skipToken;
   onNextPage: () => void;
@@ -293,7 +307,8 @@ const CollectionItemsTableContent = ({
   selectedFilters,
   selected,
   selectOnlyTheseItems,
-  showFilterBar,
+  showToolbar,
+  availableModels,
   toggleItem,
   itemsSorting,
   itemsQuery,
@@ -305,11 +320,9 @@ const CollectionItemsTableContent = ({
   onSelectedFiltersChange,
   onItemsSortingChange,
 }: CollectionItemsTableContentProps) => {
-  const { data, isFetching: fetchingItems } =
-    useListCollectionItemsQuery(itemsQuery);
+  const { data, isFetching } = useListCollectionItemsQuery(itemsQuery);
 
   const items = data?.data ?? [];
-  const availableModels = data?.available_models ?? [];
   const total = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
@@ -331,20 +344,19 @@ const CollectionItemsTableContent = ({
     itemsQuery !== skipToken && Boolean(itemsQuery.q?.trim());
   const hasSearchText = searchText.trim().length > 0 || hasSearchQuery;
   const hasActiveFilters = hasSearchText || selectedFilters != null;
-  const isSearching = fetchingItems && hasSearchQuery;
-  const isEmpty = !fetchingItems && items.length === 0 && !hasActiveFilters;
+  const isSearching = isFetching && hasSearchQuery;
+  const isEmpty = !isFetching && items.length === 0 && !hasActiveFilters;
 
   if (isEmpty) {
     return <EmptyContentComponent collection={collection} />;
   }
 
-  const showNoResults =
-    !fetchingItems && hasActiveFilters && items.length === 0;
+  const showNoResults = !isFetching && hasActiveFilters && items.length === 0;
   const showTable = !showNoResults;
 
   return (
     <>
-      {showFilterBar && (
+      {showToolbar && (
         <CollectionItemsToolbar
           searchText={searchText}
           availableModels={availableModels}
