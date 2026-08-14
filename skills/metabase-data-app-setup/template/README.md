@@ -31,9 +31,9 @@ npm run build                         # adds resource entity IDs and produces di
 ```
 
 The build adds missing server-issued resource entity IDs to `data_app.yaml`.
-It preserves IDs already in the manifest. Commit the manifest, `dist/index.js`,
-and your source. The app appears at `/apps/<slug>` after Metabase's next
-remote-sync import.
+It preserves IDs already in the manifest. Commit the manifest, `dist/index.js`
+(the `path` declared in `data_app.yaml`), and your source. The app appears at
+`/apps/<slug>` after Metabase's next remote-sync import.
 
 ## What's in the box
 
