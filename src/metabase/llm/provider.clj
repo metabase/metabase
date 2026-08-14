@@ -137,7 +137,8 @@
     ;; here, and connecting validates the credentials against the model chosen in the connection form with a free
     ;; `countTokens` probe. Which of them a project can actually reach depends on its location.
     :models        [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                    {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}]
+                    {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
+                    {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]
     ;; A service account key authenticates on its own (it can carry the project); an OAuth token needs the project
     ;; named beside it.
     :required-any  [[:service-account-key] [:oauth-access-token :project-id]]

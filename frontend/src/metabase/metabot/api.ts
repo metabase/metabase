@@ -1,4 +1,5 @@
-import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
+import { Api } from "metabase/api";
+import { idTag, invalidateTags, listTag } from "metabase/api/tags";
 import type {
   Card,
   DeleteSuggestedMetabotPromptRequest,
@@ -20,8 +21,7 @@ import type {
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
 
-import { Api } from "./api";
-import { idTag, invalidateTags, listTag } from "./tags";
+import type { MetabotConversationDetail } from "./utils/normalize-fetched-chat-messages";
 
 export const metabotApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -46,6 +46,22 @@ export const metabotApi = Api.injectEndpoints({
       }),
       providesTags: () => [listTag("metabot-conversations")],
     }),
+    getMetabotConversation: builder.query<MetabotConversationDetail, string>({
+      query: (conversationId) => ({
+        method: "GET",
+        url: `/api/metabot/conversations/${conversationId}`,
+      }),
+    }),
+    forkMetabotConversation: builder.mutation<
+      MetabotConversationDetail,
+      ForkMetabotConversationRequest
+    >({
+      query: ({ conversation_id, ...body }) => ({
+        method: "POST",
+        url: `/api/metabot/conversations/${conversation_id}/fork`,
+        body,
+      }),
+    }),
     getMetabotConversationTitle: builder.query<
       MetabotConversationTitleResponse,
       string
@@ -53,12 +69,6 @@ export const metabotApi = Api.injectEndpoints({
       query: (conversationId) => ({
         method: "GET",
         url: `/api/metabot/conversations/${conversationId}/title`,
-      }),
-    }),
-    getMetabotConversation: builder.query<MetabotConversationDetail, string>({
-      query: (conversationId) => ({
-        method: "GET",
-        url: `/api/metabot/conversations/${conversationId}`,
       }),
     }),
     updateMetabot: builder.mutation<
@@ -136,16 +146,6 @@ export const metabotApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),
-    forkMetabotConversation: builder.mutation<
-      MetabotConversationDetail,
-      ForkMetabotConversationRequest
-    >({
-      query: ({ conversation_id, ...body }) => ({
-        method: "POST",
-        url: `/api/metabot/conversations/${conversation_id}/fork`,
-        body,
-      }),
-    }),
     submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
       query: (params) => ({
         method: "POST",
@@ -186,6 +186,7 @@ export const metabotApi = Api.injectEndpoints({
 
 export const {
   useGetMetabotConversationQuery,
+  useForkMetabotConversationMutation,
   useListMetabotConversationsQuery,
   useListMetabotsQuery,
   useUpdateMetabotMutation,
@@ -194,7 +195,6 @@ export const {
   useRegenerateSuggestedMetabotPromptsMutation,
   useLazyMetabotGenerateContentQuery,
   useSaveMetabotEntityMutation,
-  useForkMetabotConversationMutation,
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,

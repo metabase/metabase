@@ -108,7 +108,8 @@
         (is (= "google/gemini-3.5-flash" (:default_model google)))
         (testing "and the catalog rides along so the connection form can offer the model to validate against"
           (is (= [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                  {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}]
+                  {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
+                  {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]
                  (:models google)))))
       (testing "the alternative credential groups ride along so the form knows when the config is complete"
         (is (= [["service-account-key"] ["oauth-access-token" "project-id"]]
@@ -698,7 +699,8 @@
                    :name   "gemini-catalog"
                    :type   "google"
                    :models [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                            {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}]}]
+                            {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
+                            {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}]}]
                  (mt/user-http-request :crowberto :get 200 "llm/models")))
           (is (= "google/gemini-3.5-flash" @probed)))))))
 

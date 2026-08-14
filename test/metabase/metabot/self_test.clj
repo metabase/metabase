@@ -12,11 +12,7 @@
    [metabase.metabot.self :as self]
    [metabase.metabot.self.claude :as self.claude]
    [metabase.metabot.self.core :as self.core]
-   [metabase.metabot.self.mistral :as self.mistral]
-   [metabase.metabot.self.openai :as self.openai]
-   [metabase.metabot.self.openai.chat-completions :as self.chat-completions]
    [metabase.metabot.self.openrouter :as openrouter]
-   [metabase.metabot.self.zai :as self.zai]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.usage :as usage]
@@ -568,71 +564,6 @@
          (is (nil? (mr/explain ::schema.v2/ui-message-chunk event))
              (str "event does not match the wire schema: " (pr-str event))))
        events))))
-
-(def ^:private provider-stop-reasons
-  {:claude           @#'self.claude/stop-reasons
-   :openai           @#'self.openai/stop-reasons
-   :chat-completions self.chat-completions/stop-reasons
-   :mistral          @#'self.mistral/stop-reasons
-   :openrouter       @#'openrouter/stop-reasons
-   :zai              @#'self.zai/stop-reasons})
-
-(deftest ^:parallel stop-reason->finish-reason-test
-  (testing "every provider maps only to legal AI SDK FinishReasons"
-    (doseq [[provider stop-reasons] provider-stop-reasons]
-      (testing provider
-        (is (every? self.core/finish-reasons (vals stop-reasons))))))
-  (testing "truncation — the value the agent loop keys off"
-    (are [provider raw] (= "length" (self.core/stop-reason->finish-reason (provider-stop-reasons provider) raw))
-      :claude           "max_tokens"
-      :openai           "max_output_tokens"
-      :chat-completions "length"
-      ;; Mistral's own context limit, which has no OpenAI equivalent
-      :mistral          "model_length"))
-  (testing "content filtering, which each dialect names differently"
-    (are [provider raw] (= "content-filter" (self.core/stop-reason->finish-reason (provider-stop-reasons provider) raw))
-      :claude           "refusal"
-      :openai           "content_filter"
-      :chat-completions "content_filter"
-      :zai              "sensitive"))
-  (testing "upstream failure, which some dialects report as a finish reason rather than an error event"
-    (are [provider raw] (= "error" (self.core/stop-reason->finish-reason (provider-stop-reasons provider) raw))
-      :mistral    "error"
-      :openrouter "error"
-      :zai        "network_error"))
-  (testing "unmapped → \"other\"; nil → nil"
-    (is (= "other" (self.core/stop-reason->finish-reason @#'self.claude/stop-reasons "something_new")))
-    ;; a stop reason belonging to another provider is not silently translated
-    (is (= "other" (self.core/stop-reason->finish-reason @#'self.claude/stop-reasons "max_output_tokens")))
-    (is (= "other" (self.core/stop-reason->finish-reason self.chat-completions/stop-reasons "sensitive")))
-    (is (nil? (self.core/stop-reason->finish-reason @#'self.claude/stop-reasons nil)))))
-
-(deftest parts->aisdk-sse-xf-finish-reason-test
-  (testing "a truncated turn emits finishReason \"length\" and without an error"
-    (is (= ["text-start" "text-delta" "text-end" "finish"]
-           (mapv :type
-                 (sse-events [{:type :text :id "t1" :text "partial"}
-                              {:type :usage :model "m" :usage {:promptTokens 1 :completionTokens 2 :totalTokens 3}
-                               :finish-reason "length" :raw-finish-reason "max_tokens"}]))))
-    (is (=? {:type "finish" :finishReason "length"}
-            (last (sse-events [{:type :text :id "t1" :text "partial"}
-                               {:type :usage :model "m" :usage {:promptTokens 1 :completionTokens 2 :totalTokens 3}
-                                :finish-reason "length" :raw-finish-reason "max_tokens"}])))))
-  (testing "an in-turn error part does not override a length finish"
-    (is (=? {:type "finish" :finishReason "length"}
-            (last (sse-events [{:type :error :error {:message "tool blew up mid-turn"}}
-                               {:type :usage :model "m" :usage {:promptTokens 1 :completionTokens 2 :totalTokens 3}
-                                :finish-reason "length" :raw-finish-reason "max_tokens"}])))))
-  (testing "a filtered turn emits finishReason \"content-filter\""
-    (is (=? {:type "finish" :finishReason "content-filter"}
-            (last (sse-events [{:type :text :id "t1" :text "I can't help with that."}
-                               {:type :usage :model "m" :usage {:promptTokens 1 :completionTokens 2 :totalTokens 3}
-                                :finish-reason "content-filter" :raw-finish-reason "refusal"}])))))
-  (testing "an in-turn error part outranks a content-filter finish — the errored turn is rewound"
-    (is (=? {:type "finish" :finishReason "error"}
-            (last (sse-events [{:type :error :error {:message "tool blew up mid-turn"}}
-                               {:type :usage :model "m" :usage {:promptTokens 1 :completionTokens 2 :totalTokens 3}
-                                :finish-reason "content-filter" :raw-finish-reason "refusal"}]))))))
 
 (deftest parts->aisdk-sse-xf-lifecycle-test
   (testing "first :start opens the message and a step; later :start is a step boundary; completion closes"

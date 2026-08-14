@@ -1,4 +1,5 @@
 export { useIsAskPage } from "./use-is-ask-page";
+export { useIsFullPageMetabot } from "./use-is-full-page-metabot";
 export { useLlmConnectionModels } from "./use-llm-connection-models";
 export { useMetabotEnabledEmbeddingAware } from "./use-metabot-embedding-aware-enabled";
 export { useBranchableMessages } from "./use-branchable-messages";
