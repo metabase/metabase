@@ -9,13 +9,23 @@ Reference material for embedding a chart or a query editor: the attributes you c
 
 For how to set all this up, check out [Embed a chart](./chart.md) and [Embed the query builder](./query-builder.md).
 
-## `metabase-question` web component attributes
+## Web component `metabase-question` attributes
 
-These attributes apply to the `<metabase-question>` web component. For the SDK, see [`StaticQuestion` props](#staticquestion-props) and [`InteractiveQuestion` props](#interactivequestion-props).
+These attributes apply to the `<metabase-question>` web component. For the SDK, see [`StaticQuestion` props](#react-sdk-staticquestion-props) and [`InteractiveQuestion` props](#react-sdk-interactivequestion-props).
 
 {% include_file "{{ dirname }}/eajs/snippets/MetabaseQuestionAttributes.md" snippet="properties" %}
 
-## `StaticQuestion` props
+Depending on the framework you're using, you may need to stringify attributes before passing them to the component. And if you surround an attribute's value with double quotes, use single quotes inside it:
+
+```html
+<metabase-question
+  question-id="42"
+  initial-sql-parameters="{ 'productId': '42' }"
+  hidden-parameters="['productId']"
+></metabase-question>
+```
+
+## React SDK `StaticQuestion` props
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
@@ -26,7 +36,7 @@ These attributes apply to the `<metabase-question>` web component. For the SDK, 
 
 {% include_file "{{ dirname }}/sdk/api/snippets/StaticQuestionProps.md" snippet="properties" %}
 
-## `InteractiveQuestion` props
+## React SDK `InteractiveQuestion` props
 
 {% include plans-blockquote.html feature="Interactive charts" convert_pro_link_to_embedding=true is_plural=true %}
 
@@ -51,7 +61,7 @@ To build your own layout, use namespaced components inside `InteractiveQuestion`
 {% include_file "{{ dirname }}/sdk/snippets/questions/customize-interactive-question.tsx" snippet="example-customized-interactive-question" %}
 ```
 
-## `InteractiveQuestion` components
+## React SDK `InteractiveQuestion` components
 
 These components are available via the `InteractiveQuestion` namespace (like `<InteractiveQuestion.Filter />`). Use them to [customize the layout](#customize-the-layout-of-an-interactive-chart) of an interactive question.
 

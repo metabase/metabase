@@ -26,6 +26,8 @@ This page covers what you can embed. For theming your embeds, see [Appearance](.
 
 ## Browser
 
+{% include plans-blockquote.html feature="Browser component" convert_pro_link_to_embedding=true%}
+
 - [Embed a collection browser](./browser.md)
 - [Browser component reference](./browser-reference.md), for `<metabase-browser>` attributes and SDK props
 

@@ -18,6 +18,16 @@ These attributes apply to the `<metabase-browser>` web component.
 
 {% include_file "{{ dirname }}/eajs/snippets/MetabaseBrowserAttributes.md" snippet="properties" %}
 
+Depending on the framework you're using, you may need to stringify attributes before passing them to the component. And if you surround an attribute's value with double quotes, use single quotes inside it:
+
+```html
+<metabase-browser
+  initial-collection="14"
+  collection-entity-types="['collection', 'dashboard']"
+  data-picker-entity-types="['model']"
+></metabase-browser>
+```
+
 ## React SDK `CollectionBrowser` props
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}

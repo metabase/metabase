@@ -11,7 +11,7 @@ For how to set all this up, check out [Embed a dashboard](./dashboard.md).
 
 ## Web component `metabase-dashboard` attributes
 
-These attributes apply to the `<metabase-dashboard>` web component. For the SDK, see [`StaticDashboard` props](#staticdashboard-props), [`InteractiveDashboard` props](#interactivedashboard-props), and [`EditableDashboard` props](#editabledashboard-props).
+These attributes apply to the `<metabase-dashboard>` web component. For the SDK, see [`StaticDashboard` props](#react-sdk-staticdashboard-props), [`InteractiveDashboard` props](#react-sdk-interactivedashboard-props), and [`EditableDashboard` props](#react-sdk-editabledashboard-props).
 
 {% include_file "{{ dirname }}/eajs/snippets/MetabaseDashboardAttributes.md" snippet="properties" %}
 
@@ -21,19 +21,13 @@ Depending on the framework you're using, you may need to stringify attributes be
 <metabase-dashboard
   dashboard-id="1"
   initial-parameters="{ 'productId': '42' }"
-></metabase-dashboard>
-```
-
-```html
-<metabase-dashboard
-  dashboard-id="1"
   hidden-parameters="['productId']"
 ></metabase-dashboard>
 ```
 
 For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md), including content from translation dictionaries.
 
-## `StaticDashboard` props
+## React SDK `StaticDashboard` props
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
@@ -44,7 +38,7 @@ For all modular embeds, you can also set a `locale` in your page-level configura
 
 {% include_file "{{ dirname }}/sdk/api/snippets/StaticDashboardProps.md" snippet="properties" %}
 
-## `InteractiveDashboard` props
+## React SDK `InteractiveDashboard` props
 
 {% include plans-blockquote.html feature="Interactive dashboards" convert_pro_link_to_embedding=true is_plural=true %}
 
@@ -55,18 +49,18 @@ For all modular embeds, you can also set a `locale` in your page-level configura
 
 {% include_file "{{ dirname }}/sdk/api/snippets/InteractiveDashboardProps.md" snippet="properties" %}
 
-## `EditableDashboard` props
+## React SDK `EditableDashboard` props
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
-`EditableDashboard` does everything `InteractiveDashboard` does, and also lets people [edit the dashboard](./dashboard.md#let-people-edit-dashboards): add and update questions, layout, and content.
+`EditableDashboard` does everything `InteractiveDashboard` does, and also lets people [edit the dashboard](./dashboard.md#react-sdk-editable-dashboard): add and update questions, layout, and content.
 
 - [Component](./sdk/api/EditableDashboard.html)
 - [Props](./sdk/api/EditableDashboardProps.html)
 
 {% include_file "{{ dirname }}/sdk/api/snippets/EditableDashboardProps.md" snippet="properties" %}
 
-## `CreateDashboardModal` props
+## React SDK `CreateDashboardModal` props
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
@@ -77,7 +71,7 @@ For all modular embeds, you can also set a `locale` in your page-level configura
 
 {% include_file "{{ dirname }}/sdk/api/snippets/CreateDashboardModalProps.md" snippet="properties" %}
 
-## `useCreateDashboardApi` options
+## React SDK `useCreateDashboardApi` options
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
@@ -88,7 +82,7 @@ For all modular embeds, you can also set a `locale` in your page-level configura
 
 {% include_file "{{ dirname }}/sdk/api/snippets/CreateDashboardValues.md" snippet="properties" %}
 
-## `dashboardCardMenu` plugin
+## React SDK `dashboardCardMenu` plugin
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 

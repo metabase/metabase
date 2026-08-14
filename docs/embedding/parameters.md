@@ -178,3 +178,12 @@ Delivered to `onSqlParametersChange` (SDK) and as `event.detail` for the `sql-pa
 - `initial-state` - first applied state, fired once per question load.
 - `manual-change` - user edited parameters in UI.
 - `auto-change` - in the case of auto-updates, e.g. to pass normalized values back to parent.
+
+## Hide a dashboard filter
+
+To hide a filter from the dashboard's UI, use the [`hidden-parameters`](./dashboard-reference.md#web-component-metabase-dashboard-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both are meant for SSO embeds on a Pro or Enterprise plan.
+
+Hiding a filter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser.
+
+To control a value that people can't see or change, use a [locked parameter](./guest-embedding.md#locked-parameters) on a guest embed, or [data permissions](../permissions/embedding.md) on an SSO embed.
+

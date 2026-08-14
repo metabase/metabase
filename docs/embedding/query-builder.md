@@ -80,7 +80,7 @@ For the `isSaveEnabled`, `onBeforeSave`, and `onSave` props, check out [Let peop
 
 ## Customize the query builder's layout
 
-With the SDK, you can build your own layout out of the namespaced components inside `InteractiveQuestion`, like `<InteractiveQuestion.Editor />`. See [InteractiveQuestion components](./question-reference.md#interactivequestion-components).
+With the SDK, you can build your own layout out of the namespaced components inside `InteractiveQuestion`, like `<InteractiveQuestion.Editor />`. See [InteractiveQuestion components](./question-reference.md#react-sdk-interactivequestion-components).
 
 ## Further reading
 
