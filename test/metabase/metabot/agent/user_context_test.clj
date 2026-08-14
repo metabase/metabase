@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -501,6 +502,25 @@
             (let [out (user-context/format-viewing-context (viewing db-id))]
               (is (str/includes? out "notebook editor"))
               (is (not (str/includes? out "source-table"))))))))))
+
+(deftest adhoc-viewing-context-denied-source-card-is-loud-test
+  (testing "a denied client-supplied :source-card goes through the loud read-check, and the query is withheld"
+    (mt/with-temp [:model/Card {card-id :id} {:database_id   (mt/id)
+                                              :dataset_query (mt/mbql-query venues)}]
+      (let [calls (atom 0)]
+        (mt/with-dynamic-fn-redefs [api/read-check (fn [& _]
+                                                     (swap! calls inc)
+                                                     (throw (ex-info "Forbidden" {:status-code 403})))]
+          (mt/with-test-user :rasta
+            (let [out (user-context/format-viewing-context
+                       {:user_is_viewing [{:type  "adhoc"
+                                           :query {:lib/type :mbql/query
+                                                   :database (mt/id)
+                                                   :stages   [{:lib/type    :mbql.stage/mbql
+                                                               :source-card card-id}]}}]})]
+              (is (pos? @calls))
+              (is (str/includes? out "notebook editor"))
+              (is (not (str/includes? out "Query"))))))))))
 
 (deftest ^:parallel enrich-context-omits-research-plan-test
   (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not

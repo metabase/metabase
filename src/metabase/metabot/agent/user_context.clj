@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
    [metabase.models.interface :as mi]
@@ -242,7 +243,9 @@
     (te/lines "The user is currently in the notebook editor viewing a query."
               (te/field "Query ID" (:id item))
               (te/field "Database ID" (get-in item [:query :database]))
-              (te/field "Query" (some-> (:query item) query-if-database-readable llm-shape/export-query-for-llm))
+              (te/field "Query" (some-> (:query item)
+                                        query-if-database-readable
+                                        (llm-shape/export-query-for-llm shared.content-store/loud-store)))
               (when-let [config-ids (format-chart-config-ids item)]
                 (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
               (te/field "Tables used" (some->> (:used_tables item)
@@ -251,9 +254,10 @@
 
 (defn- transform-query-source-text
   "Format a transform's `:query` source for the LLM; the rendering and fallback contract
-  lives in [[llm-shape/export-query-for-llm]]."
+  lives in [[llm-shape/export-query-for-llm]]. The source arrives inline in the viewing
+  context, so it gets the loud client-supplied store."
   [source]
-  (llm-shape/export-query-for-llm (:query source)))
+  (llm-shape/export-query-for-llm (:query source) shared.content-store/loud-store))
 
 (defn- transform-source-type
   [source]

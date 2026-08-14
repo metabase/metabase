@@ -256,7 +256,8 @@
               ;; for multi-stage definitions too (a stage whose join fails to export drops, closed).
               portable-by-alias (into {}
                                       (map (juxt #(get % "alias") strip-lib-uuids))
-                                      (-> (repr.resolve/try-export-query metadata-provider defq)
+                                      (-> (repr.resolve/try-export-query metadata-provider defq
+                                                                         shared.content-store/default-store)
                                           (get "stages") last (get "joins")))]
           (not-empty
            (into []

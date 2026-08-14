@@ -565,7 +565,7 @@
                                "breakout"     [["field" {"temporal-unit" "month"}
                                                 ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]]}]}
           q        (repr.resolve/resolve-query mp parsed)
-          exported (repr.resolve/try-export-query mp q)]
+          exported (repr.resolve/try-export-query mp q resolve.mp/unchecked-app-db-content-store)]
       (is (map? exported))
       (is (= "mbql/query" (get exported "lib/type")))
       (is (= "Sample" (get exported "database")))
@@ -577,9 +577,10 @@
 
 (deftest try-export-query-nil-and-error-fallback-test
   (testing "nil / blank input returns nil so the caller can omit the field"
-    (is (nil? (repr.resolve/try-export-query mp nil)))
-    (is (nil? (repr.resolve/try-export-query mp {})))
-    (is (nil? (repr.resolve/try-export-query nil {:lib/type :mbql/query :database 1 :stages []}))))
+    (is (nil? (repr.resolve/try-export-query mp nil resolve.mp/unchecked-app-db-content-store)))
+    (is (nil? (repr.resolve/try-export-query mp {} resolve.mp/unchecked-app-db-content-store)))
+    (is (nil? (repr.resolve/try-export-query nil {:lib/type :mbql/query :database 1 :stages []}
+                                             resolve.mp/unchecked-app-db-content-store))))
   (testing "export errors are swallowed and surface as nil (the caller falls back gracefully)"
     ;; A query map with a numeric field id that doesn't exist in the metadata-provider
     ;; will throw inside `export-mbql`; we want the helper to return nil rather than
@@ -588,7 +589,7 @@
                  :database 1
                  :stages   [{:lib/type     :mbql.stage/mbql
                              :source-table 99999}]}]
-      (is (nil? (repr.resolve/try-export-query mp bogus))))))
+      (is (nil? (repr.resolve/try-export-query mp bogus resolve.mp/unchecked-app-db-content-store))))))
 
 (def ^:private source-card-export-query
   {:lib/type :mbql/query
