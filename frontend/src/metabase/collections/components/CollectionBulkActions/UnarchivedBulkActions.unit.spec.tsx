@@ -122,22 +122,27 @@ function getMenuItem(name: string) {
   return screen.getByRole("menuitem", { name });
 }
 
-function queryMenuItem(name: string) {
-  return screen.queryByRole("menuitem", { name });
-}
-
 describe("UnarchivedBulkActions", () => {
   describe("selection composition", () => {
-    it("shows the flat Move and Move to trash bar for an unpinned-only selection", () => {
+    it("keeps Move primary and offers Pin all for an unpinned-only selection", async () => {
       setup({ selected: [tableQuestion, tableDashboard] });
 
       expect(screen.getByRole("button", { name: "Move" })).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "Move to trash" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "More actions" }),
+        screen.queryByRole("button", { name: "Move to trash" }),
       ).not.toBeInTheDocument();
+
+      const menu = await openOverflowMenu();
+      const itemLabels = within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent);
+      expect(itemLabels).toEqual([
+        "Pin all",
+        "Bookmark",
+        "Duplicate",
+        "Deselect all",
+        "Move to trash",
+      ]);
     });
 
     it("makes Unpin all the primary action for a pinned-only selection", async () => {
@@ -393,13 +398,12 @@ describe("UnarchivedBulkActions", () => {
   });
 
   describe("moving to trash", () => {
-    it("moves an unpinned-only selection to trash with the flat bar button", async () => {
+    it("moves an unpinned-only selection to trash from the overflow menu", async () => {
       fetchMock.put("path:/api/card/3", {});
       const { clearSelected } = setup({ selected: [tableQuestion] });
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Move to trash" }),
-      );
+      await openOverflowMenu();
+      await userEvent.click(getMenuItem("Move to trash"));
 
       await waitFor(() => {
         expect(getRequests("path:/api/card/3")).toHaveLength(1);
@@ -430,20 +434,6 @@ describe("UnarchivedBulkActions", () => {
       await waitFor(() => {
         expect(clearSelected).toHaveBeenCalled();
       });
-    });
-
-    it("disables the flat Move to trash button in a read-only collection", () => {
-      setup({
-        selected: [tableQuestion],
-        collection: createMockCollection({
-          ...writableCollection,
-          can_write: false,
-        }),
-      });
-
-      expect(
-        screen.getByRole("button", { name: "Move to trash" }),
-      ).toBeDisabled();
     });
 
     it("disables the overflow actions in a read-only collection", async () => {
@@ -486,15 +476,6 @@ describe("UnarchivedBulkActions", () => {
 
       expect(setSelectedItems).toHaveBeenCalledWith(selected);
       expect(setSelectedAction).toHaveBeenCalledWith("move");
-    });
-  });
-
-  describe("menu absence", () => {
-    it("does not render the overflow menu markup for an unpinned-only selection", () => {
-      setup({ selected: [tableQuestion] });
-
-      expect(queryMenuItem("Pin all")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("bulk-actions-menu")).not.toBeInTheDocument();
     });
   });
 });

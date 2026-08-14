@@ -342,11 +342,16 @@ describe("CollectionContent selection", () => {
     await userEvent.click(getRowSelectionButton(tableQuestion.name));
     expect(await screen.findByText("1 item selected")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Move to trash" }),
+      screen.queryByRole("button", { name: "Move to trash" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Pin all" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "More actions" }),
+      screen.queryByRole("menuitem", { name: "Unpin all" }),
     ).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
 
     await userEvent.click(getPinnedCard(pinnedDashboard.name));
     expect(screen.getByRole("button", { name: "Move" })).toBeInTheDocument();

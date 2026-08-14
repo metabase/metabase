@@ -211,37 +211,21 @@ export const UnarchivedBulkActions = ({
 
   const hasPinned = pinnedItems.length > 0;
   const hasUnpinned = unpinnedItems.length > 0;
+  const isPinnedOnly = hasPinned && !hasUnpinned;
   const isMixed = hasPinned && hasUnpinned;
-
-  // Per the redesign spec, only selections containing pinned items get the
-  // overflow bar; an all-unpinned selection keeps the flat bar it has today.
-  if (!hasPinned) {
-    return (
-      <>
-        <BulkActionButton
-          disabled={!canMove}
-          onClick={handleBulkMoveStart}
-        >{t`Move`}</BulkActionButton>
-        <BulkActionButton
-          disabled={!canArchive}
-          onClick={handleBulkArchive}
-        >{t`Move to trash`}</BulkActionButton>
-      </>
-    );
-  }
 
   return (
     <>
-      {isMixed ? (
-        <BulkActionButton
-          disabled={!canMove}
-          onClick={handleBulkMoveStart}
-        >{t`Move`}</BulkActionButton>
-      ) : (
+      {isPinnedOnly ? (
         <BulkActionButton
           disabled={!canUnpinAll}
           onClick={handleBulkUnpin}
         >{t`Unpin all`}</BulkActionButton>
+      ) : (
+        <BulkActionButton
+          disabled={!canMove}
+          onClick={handleBulkMoveStart}
+        >{t`Move`}</BulkActionButton>
       )}
       <Menu position="top-end">
         <Menu.Target>
@@ -250,30 +234,31 @@ export const UnarchivedBulkActions = ({
           </BulkActionButton>
         </Menu.Target>
         <Menu.Dropdown data-testid="bulk-actions-menu">
-          {isMixed ? (
-            <>
-              <Menu.Item
-                leftSection={<Icon name="pin" aria-hidden />}
-                disabled={!canPinAll}
-                onClick={handleBulkPin}
-              >
-                {t`Pin all`}
-              </Menu.Item>
-              <Menu.Item
-                leftSection={<Icon name="unpin" aria-hidden />}
-                disabled={!canUnpinAll}
-                onClick={handleBulkUnpin}
-              >
-                {t`Unpin all`}
-              </Menu.Item>
-            </>
-          ) : (
+          {isPinnedOnly && (
             <Menu.Item
               leftSection={<Icon name="move" aria-hidden />}
               disabled={!canMove}
               onClick={handleBulkMoveStart}
             >
               {t`Move`}
+            </Menu.Item>
+          )}
+          {hasUnpinned && (
+            <Menu.Item
+              leftSection={<Icon name="pin" aria-hidden />}
+              disabled={!canPinAll}
+              onClick={handleBulkPin}
+            >
+              {t`Pin all`}
+            </Menu.Item>
+          )}
+          {isMixed && (
+            <Menu.Item
+              leftSection={<Icon name="unpin" aria-hidden />}
+              disabled={!canUnpinAll}
+              onClick={handleBulkUnpin}
+            >
+              {t`Unpin all`}
             </Menu.Item>
           )}
           <Menu.Item
