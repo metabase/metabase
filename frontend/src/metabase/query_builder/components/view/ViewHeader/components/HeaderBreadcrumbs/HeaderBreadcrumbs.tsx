@@ -14,8 +14,16 @@ import type { DataSourcePart } from "../QuestionDataSource/utils";
 
 import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
 
-const HeaderBreadcrumb = (props: ComponentProps<typeof Breadcrumb>) => (
-  <Breadcrumb className={HeaderBreadcrumbsS.HeaderBreadcrumb} {...props} />
+const HeaderBreadcrumb = ({
+  className,
+  iconClassName,
+  ...props
+}: ComponentProps<typeof Breadcrumb>) => (
+  <Breadcrumb
+    {...props}
+    className={cx(HeaderBreadcrumbsS.HeaderBreadcrumb, className)}
+    iconClassName={cx(HeaderBreadcrumbsS.HeaderBreadcrumbIcon, iconClassName)}
+  />
 );
 
 function getBadgeInactiveColor({
@@ -42,6 +50,7 @@ export function HeadBreadcrumbs({
   parts,
   divider,
   inactiveColor,
+  className,
   ...props
 }: HeadBreadcrumbsProps) {
   const { isObjectDetail, ...rest } = props;
@@ -50,10 +59,12 @@ export function HeadBreadcrumbs({
       align="center"
       wrap="wrap"
       data-testid="head-crumbs-container"
-      className={cx(HeaderBreadcrumbsS.Container, {
-        [HeaderBreadcrumbsS.headVariant]: variant === "head",
-      })}
       {...rest}
+      className={cx(
+        HeaderBreadcrumbsS.Container,
+        { [HeaderBreadcrumbsS.headVariant]: variant === "head" },
+        className,
+      )}
     >
       {parts.map((part, index) => {
         const isLast = index === parts.length - 1;

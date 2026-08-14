@@ -14,6 +14,7 @@ interface Props {
   className?: string;
   color?: ColorName;
   icon?: IconName;
+  iconClassName?: string;
   iconColor?: ColorName;
   iconSize?: number;
   to?: string;
@@ -25,6 +26,7 @@ export const Breadcrumb = ({
   className,
   color,
   icon,
+  iconClassName,
   iconColor,
   iconSize,
   to,
@@ -48,7 +50,7 @@ export const Breadcrumb = ({
       {icon && (
         <Icon
           c={iconColor}
-          className={S.icon}
+          className={cx(S.icon, iconClassName)}
           flex="0 0 auto"
           name={icon}
           size={iconSize}
