@@ -7,6 +7,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2])
   (:import (java.util.concurrent CountDownLatch TimeUnit)))
 
@@ -105,10 +106,12 @@
                      :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
-        (mt/with-dynamic-fn-redefs [sync/sync-table! (fn [table]
-                                                       (swap! tables conj table)
-                                                       (.countDown latch)
-                                                       nil)]
+        ;; `submit-task!` is stubbed so the syncs don't queue behind other tasks on the 1-thread executor.
+        (mt/with-dynamic-fn-redefs [quick-task/submit-task! future-call
+                                    sync/sync-table!        (fn [table]
+                                                              (swap! tables conj table)
+                                                              (.countDown latch)
+                                                              nil)]
           (mt/user-http-request :crowberto :post 204 "data-studio/table/sync-schema" {:database_ids [d1],
                                                                                       :schema_ids   [(format "%d:FOO" d2)]
                                                                                       :table_ids    [t4]})
@@ -133,7 +136,9 @@
                      :model/Table    {_  :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
                      :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
-        (mt/with-dynamic-fn-redefs [sync/update-field-values-for-table! (fn [table]
+        ;; `submit-task!` is stubbed so the rescans don't queue behind other tasks on the 1-thread executor.
+        (mt/with-dynamic-fn-redefs [quick-task/submit-task!              future-call
+                                    sync/update-field-values-for-table! (fn [table]
                                                                           (swap! tables conj table)
                                                                           (.countDown latch)
                                                                           nil)]
