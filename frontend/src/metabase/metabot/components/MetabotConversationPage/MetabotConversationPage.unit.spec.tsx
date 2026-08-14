@@ -193,7 +193,7 @@ describe("MetabotConversationPage", () => {
   it("shows an error when the conversation cannot be loaded", async () => {
     mockConversationDetail(404);
 
-    const { history } = setup({
+    const { router } = setup({
       metabotInitialState: createAskState(),
     });
 
@@ -202,7 +202,7 @@ describe("MetabotConversationPage", () => {
         timeout: ASYNC_TIMEOUT,
       }),
     ).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(
+    expect(router?.location.pathname).toBe(
       Urls.metabotConversation(CONVERSATION_ID),
     );
   });
@@ -215,9 +215,7 @@ describe("MetabotConversationPage", () => {
     });
 
     expect(await screen.findByText("Loaded question")).toBeInTheDocument();
-    expect(
-      await screen.findByTestId("metabot-response-loader"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Thinking")).toBeInTheDocument();
     expect(screen.getByTestId("metabot-stop-response")).toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-send-message"),
@@ -237,18 +235,14 @@ describe("MetabotConversationPage", () => {
       metabotInitialState: createAskState(),
     });
 
-    expect(
-      await screen.findByTestId("metabot-response-loader"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Thinking")).toBeInTheDocument();
 
     act(() => {
       jest.advanceTimersByTime(IN_PROGRESS_POLL_MS + 100);
     });
 
     expect(await screen.findByText("Here is the answer")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("metabot-response-loader"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Thinking")).not.toBeInTheDocument();
     expect(screen.getByTestId("metabot-send-message")).toBeInTheDocument();
   });
 });

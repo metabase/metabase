@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       chunks:
-        required: true
+        required: false
         type: number
         default: 30
       specs:

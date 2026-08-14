@@ -51,7 +51,7 @@ You can also go to **Admin > Embedding > Modular embedding** and click **New emb
 
 {% include plans-blockquote.html feature="Authenticated modular embedding" convert_pro_link_to_embedding=true %}
 
-With SSO, Metabase can know who is viewing the embed, and it can unlock all of its bells and whistles (see this [comparison between SSO and guest embeds](./introduction.md#comparison-of-embedding-types)).
+With SSO, Metabase can know who is viewing the embed, and it can unlock all of its bells and whistles (see this [comparison between SSO and guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds)).
 
 This page covers the [SSO setup for your Metabase](./authentication.md). If you don't need to set up SSO, check out the [guest embed docs](./guest-embedding.md).
 
@@ -195,6 +195,8 @@ To define the configuration that applies to every embed on the page, use the `de
 - `fetchRequestToken: () => Promise<{ jwt: string }>` (optional) - you can customize how the SDK fetches the refresh token for JWT authentication by specifying the `fetchRequestToken` function. See [customizing JWT authentication](./authentication.md#customizing-jwt-authentication).
 
 - `pluginsConfig` : plugins to customize the behavior of embedded components. Use the `handleLink` function to customize what happens when people click a link in your embedded questions and dashboards. For details on the `handleLink` API, including code examples, see [`handleLink` plugin](./sdk/plugins.md#handlelink).
+
+- `allowedCustomVisualizations: ["custom:Calendar Heatmap"]` (optional): the [custom visualizations](./custom-visualizations.md) that the components on the page are allowed to load. Not available in guest embeds.
 
 ## Authentication
 

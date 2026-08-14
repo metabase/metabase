@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
 
+import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
@@ -20,10 +22,16 @@ export function DataSourceCrumbs({
   isObjectDetail,
   ...props
 }: Props) {
+  const databaseId = Lib.databaseID(question.query());
+  const { data: schemas = [] } = useListDatabaseSchemasQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
+
   const parts = getDataSourceParts({
     question,
     subHead: variant === "subhead",
     isObjectDetail,
+    hasMultipleSchemas: schemas.length > 1,
   });
 
   return <HeadBreadcrumbs parts={parts} variant={variant} {...props} />;

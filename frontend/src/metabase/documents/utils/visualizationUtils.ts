@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 
 import { isNotNull } from "metabase/utils/types";
-import visualizations, {
+import {
   getIconForVisualizationType,
+  visualizations,
 } from "metabase/visualizations";
 import { getSensibleVisualizations } from "metabase/visualizations/lib/sensibility";
 import type {

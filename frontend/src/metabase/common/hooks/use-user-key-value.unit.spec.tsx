@@ -23,7 +23,7 @@ function setup({
 }: {
   hookArgs: UseUserKeyValueParams<UserKeyValue>;
 }) {
-  const store = getStore(reducers, undefined, createMockState());
+  const store = getStore(reducers, createMockState());
 
   function Wrapper({ children }: any) {
     return (

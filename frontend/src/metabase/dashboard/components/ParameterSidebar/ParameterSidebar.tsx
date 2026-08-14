@@ -9,7 +9,7 @@ import { hasMapping } from "metabase/parameters/utils/dashboards";
 import { canUseLinkedFilters } from "metabase/parameters/utils/linked-filters";
 import { useSelector } from "metabase/redux";
 import { Tabs } from "metabase/ui";
-import { slugify } from "metabase/visualizations/lib/formatting";
+import { slugify } from "metabase/utils/formatting";
 import { isFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -222,12 +222,10 @@ export const ParameterSidebar = (): JSX.Element | null => {
     }
   };
 
-  const handleTabChange = (newTab: string | null) => {
-    if (!newTab || (newTab !== "settings" && newTab !== "filters")) {
-      return;
+  const handleTabChange = (newTab: "filters" | "settings" | null) => {
+    if (newTab) {
+      setTab(newTab);
     }
-
-    return setTab(newTab);
   };
 
   if (!dashboard || !editingParameter || !parameter) {

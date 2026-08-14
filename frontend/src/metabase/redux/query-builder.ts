@@ -1,8 +1,18 @@
+/**
+ * The query builder's action types, and the action creators light enough to sit
+ * next to them.
+ *
+ * The types live here rather than beside their thunks so that
+ * `query_builder/reducers.ts` can name them without importing
+ * `query_builder/actions`. The store imports that reducer on every page, and
+ * anything it reaches is in the initial bundle.
+ */
 import { createAction } from "redux-actions";
 
 import { userApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
+import { getUser } from "metabase/selectors/user";
 import { checkNotNull } from "metabase/utils/types";
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
@@ -143,12 +153,41 @@ export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
 export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
 
+export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
+export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
+  "metabase/qb/CLEAR_OBJECT_DETAIL_FK_REFERENCES";
+export const DESELECT_TIMELINE_EVENTS = "metabase/qb/DESELECT_TIMELINE_EVENTS";
+export const HIDE_TIMELINE_EVENTS = "metabase/qb/HIDE_TIMELINE_EVENTS";
+export const LOAD_OBJECT_DETAIL_FK_REFERENCES =
+  "metabase/qb/LOAD_OBJECT_DETAIL_FK_REFERENCES";
+export const OPEN_DATA_REFERENCE_AT_QUESTION =
+  "metabase/qb/OPEN_DATA_REFERENCE_AT_QUESTION";
+export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
+export const SELECT_TIMELINE_EVENTS = "metabase/qb/SELECT_TIMELINE_EVENTS";
+export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
+export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
+export const SET_DATA_REFERENCE_STACK = "metabase/qb/SET_DATA_REFERENCE_STACK";
+export const SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR =
+  "metabase/qb/SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR";
+export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
+export const SET_MODAL_SNIPPET = "metabase/qb/SET_MODAL_SNIPPET";
+export const SET_NATIVE_EDITOR_SELECTED_RANGE =
+  "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";
+export const SET_SNIPPET_COLLECTION_ID =
+  "metabase/qb/SET_SNIPPET_COLLECTION_ID";
+export const SHOW_TIMELINE_EVENTS = "metabase/qb/SHOW_TIMELINE_EVENTS";
+export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
+export const TOGGLE_SNIPPET_SIDEBAR = "metabase/qb/TOGGLE_SNIPPET_SIDEBAR";
+export const TOGGLE_TEMPLATE_TAGS_EDITOR =
+  "metabase/qb/TOGGLE_TEMPLATE_TAGS_EDITOR";
+export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
+
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
   return async (dispatch, getState) => {
-    const { currentUser } = getState();
+    const user = checkNotNull(getUser(getState()));
     await runRtkEndpoint(
-      checkNotNull(currentUser).id,
+      user.id,
       dispatch,
       userApi.endpoints.updateUserModalQbnewb,
     );

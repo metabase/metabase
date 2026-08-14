@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.openai :as openai]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -25,24 +27,22 @@
   :export?    true)
 
 (defsetting metabot-name
-  (deferred-tru "The display name for Metabot.")
+  (deferred-tru "The display name for Metabot, shown throughout the Metabase UI.")
   :type       :string
   :default    "Metabot"
   :visibility :public
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-icon
-  (deferred-tru "The icon for Metabot.")
+  (deferred-tru "The icon for Metabot. Set to `metabot` for the default icon, or a data URI for a custom uploaded image (up to 1MB).")
   :type       :string
   :default    "metabot"
   :visibility :public
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-show-illustrations
   (deferred-tru "Whether to show Metabot illustrations in the UI.")
@@ -51,38 +51,34 @@
   :visibility :public
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-chat-system-prompt
-  (deferred-tru "Custom system prompt for the Metabot chat (sidebar AI chat) experience.")
+  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar and embedded Metabot).")
   :type       :string
   :default    ""
   :visibility :admin
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-nlq-system-prompt
-  (deferred-tru "Custom system prompt for the natural language query (AI exploration) experience.")
+  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience.")
   :type       :string
   :default    ""
   :visibility :admin
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting metabot-sql-system-prompt
-  (deferred-tru "Custom system prompt for the SQL generation experience.")
+  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the SQL generation experience.")
   :type       :string
   :default    ""
   :visibility :admin
   :encryption :no
   :export?    true
-  :feature    :ai-controls
-  :doc        false)
+  :feature    :ai-controls)
 
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
@@ -104,7 +100,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "azure" "bedrock" "openai" "openrouter"})
+  #{"anthropic" "azure" "bedrock" "mistral" "moonshot" "openai" "openrouter" "zai"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -113,6 +109,14 @@
 (def ^:private default-bedrock-llm-metabot-model
   "Default Bedrock model used for Metabot when no explicit model is selected."
   "anthropic.claude-opus-4-8")
+
+(def ^:private default-mistral-llm-metabot-model
+  "Default Mistral model used for Metabot when no explicit model is selected."
+  "mistral-medium-3-5")
+
+(def ^:private default-moonshot-llm-metabot-model
+  "Default Moonshot model used for Metabot when no explicit model is selected."
+  "kimi-k3")
 
 (def ^:private default-openai-llm-metabot-model
   "Default OpenAI model used for Metabot when no explicit model is selected."
@@ -123,6 +127,10 @@
   Note that OpenRouter model IDs use dots in version numbers (`claude-sonnet-4.6`),
   unlike the Anthropic API's hyphenated IDs (`claude-sonnet-4-6`)."
   "anthropic/claude-sonnet-4.6")
+
+(def ^:private default-zai-llm-metabot-model
+  "Default Z.AI model used for Metabot when no explicit model is selected."
+  "glm-5.2")
 
 (def default-llm-metabot-provider
   "Default provider/model used for Metabot when no explicit model is selected."
@@ -135,8 +143,11 @@
   managed `metabase` provider uses the proxied `provider/model` form."
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
+   "mistral"                              default-mistral-llm-metabot-model
+   "moonshot"                             default-moonshot-llm-metabot-model
    "openai"                               default-openai-llm-metabot-model
    "openrouter"                           default-openrouter-llm-metabot-model
+   "zai"                                  default-zai-llm-metabot-model
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
@@ -255,7 +266,7 @@
     (validate-direct-provider! value)))
 
 (defsetting llm-metabot-provider
-  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`.")
+  (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `moonshot/kimi-k3`, `openrouter/anthropic/claude-haiku-4.5`.")
   :type             :string
   :encryption       :no
   :default          default-llm-metabot-provider
@@ -298,8 +309,11 @@
                     :secret-access-key (non-blank (llm.settings/llm-bedrock-secret-access-key))
                     :session-token     (non-blank (llm.settings/llm-bedrock-session-token))
                     :region            (non-blank (llm.settings/llm-bedrock-region))})
+    "mistral"    (configured-api-key-credentials (llm.settings/llm-mistral-api-key))
+    "moonshot"   (configured-api-key-credentials (llm.settings/llm-moonshot-api-key))
     "openai"     (configured-api-key-credentials (llm.settings/llm-openai-api-key))
     "openrouter" (configured-api-key-credentials (llm.settings/llm-openrouter-api-key))
+    "zai"        (configured-api-key-credentials (llm.settings/llm-zai-api-key))
     nil))
 
 (defn provider-credentials-complete?
@@ -334,6 +348,24 @@
   :setter     :none
   :export?    false
   :getter     #(llm-provider-configured? (llm-metabot-provider))
+  :doc        false)
+
+(defn- llm-provider-streams-reasoning?
+  "Whether a provider-and-model string names a model that streams its reasoning back to us."
+  [provider-and-model]
+  (let [model (provider-util/provider-and-model->model provider-and-model)]
+    (case (provider-util/provider-and-model->provider provider-and-model)
+      "anthropic" (claude/reasoning-model? model)
+      "openai"    (openai/reasoning-model? model)
+      false)))
+
+(defsetting llm-metabot-supports-reasoning?
+  "Whether the selected Metabot model streams its reasoning."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #(llm-provider-streams-reasoning? (llm-metabot-provider))
   :doc        false)
 
 (def ^:private metabot-llm-setting-keys
@@ -399,6 +431,7 @@
 - `ai_usage_log`
 - `metabot_conversation`
 - `metabot_message`
+- `agent_api_call_log`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
-If set to 0, Metabase will keep all rows.")
+If set to 0, Metabase will keep all rows. If you don't set this variable, Metabase keeps rows for 180 days.")

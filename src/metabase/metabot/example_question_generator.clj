@@ -113,10 +113,11 @@
    questions-json-schema
    temperature
    max-tokens
-   {:request-id (str (random-uuid))
+   {:request-id          (str (random-uuid))
     ;; example_question_generation_batch was the name of the old ai-service api endpoint
-    :source     "example_question_generation_batch"
-    :tag        "example-question-generation"}))
+    :source              "example_question_generation_batch"
+    :tag                 "example-question-generation"
+    :required-permission :permission/metabot-other-tools}))
 
 ;;; Per-item generation (mirrors Python generate_table_example_questions / generate_metric_example_questions)
 
@@ -166,7 +167,7 @@
                                 {:ok (generate-fn item)}
                                 (catch Throwable e
                                   (when-not (= :api-key-missing (:error-code (ex-data e)))
-                                    (log/warn e "Example question generation failed for one item"))
+                                    (log/warnf "Example question generation failed for one item: %s" (ex-message e)))
                                   {:error e}))))
                           batch)]
         (mapv deref futures)))

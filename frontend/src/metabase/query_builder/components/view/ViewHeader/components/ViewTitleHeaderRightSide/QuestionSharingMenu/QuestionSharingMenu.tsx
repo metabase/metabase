@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
-import { useSetting } from "metabase/common/hooks";
 import { CopyLinkButton } from "metabase/embedding/components/SharingMenu/ActionButtons/CopyLinkButton";
 import { EmbedButton } from "metabase/embedding/components/SharingMenu/ActionButtons/EmbedButton";
 import { InviteToViewModal } from "metabase/embedding/components/SharingMenu/InviteToViewModal";
@@ -26,6 +25,7 @@ import { MODAL_TYPES } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { Box, CopyButton, Flex } from "metabase/ui";
 import {
   publicQuestion as getPublicQuestionUrl,

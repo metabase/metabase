@@ -38,7 +38,7 @@ These policies determine how long cached results will remain valid.
 
 {% include plans-blockquote.html feature="Duration caching policy" %}
 
-Invalidate and clear the cache after a certain number of hours. When someone runs a query, Metabase will first check whether it has cached the results, and whether those results are still valid. If not, Metabase runs the query against the database and caches the results. These cached results will remain valid for the duration you've set.
+Invalidate and clear the cache after a certain amount of time (seconds, minutes, hours, or days). When someone runs a query, Metabase will first check whether it has cached the results, and whether those results are still valid. If not, Metabase runs the query against the database and caches the results. These cached results will remain valid for the duration you've set.
 
 ### Schedule caching policy
 

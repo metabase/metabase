@@ -1,8 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Modal, type ModalProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionId, Dashboard } from "metabase-types/api";
@@ -24,17 +23,17 @@ export const CreateDashboardModal = ({
   onCreate,
   onClose,
 }: CreateDashboardModalProps & Omit<ModalProps, "onClose">) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const handleCreate = useCallback(
     (dashboard: Dashboard) => {
       if (typeof onCreate === "function") {
         onCreate(dashboard);
       } else {
         onClose?.();
-        dispatch(push(Urls.dashboard(dashboard, { editMode: true })));
+        navigate(Urls.dashboard(dashboard, { editMode: true }));
       }
     },
-    [onCreate, onClose, dispatch],
+    [onCreate, onClose, navigate],
   );
 
   return (

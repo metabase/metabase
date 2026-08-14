@@ -17,13 +17,16 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias like-escape-char-built-in]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv some empty? not-empty]]
@@ -65,8 +68,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :bigquery-cloud-sdk, :parent #{:sql-mbql5
-                                                 ::like-escape-char-built-in/like-escape-char-built-in})
+(driver/register! :bigquery-cloud-sdk, :parent #{:sql ::like-escape-char-built-in/like-escape-char-built-in})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Client                                                     |
@@ -81,8 +83,33 @@
   '("https://www.googleapis.com/auth/bigquery"
     "https://www.googleapis.com/auth/drive"))
 
+(def ^:private default-api-host
+  "Where `BigQueryOptions` sends API calls when no alternate `:host` is configured."
+  "bigquery.googleapis.com")
+
+(def ^:private default-token-uri
+  "Where `ServiceAccountCredentials` exchanges the signed JWT when the credentials JSON names no `token_uri`."
+  "https://oauth2.googleapis.com/token")
+
+(defn- service-account-token-uri
+  "The URI [[bigquery.common/service-account-json->service-account-credential]] will POST a signed assertion to.
+  `ServiceAccountCredentials/fromStream` honors a `token_uri` out of the credentials JSON, so this is a destination
+  chosen by whoever supplied the credentials rather than a fixed Google endpoint."
+  [service-account-json]
+  (or (when-not (str/blank? service-account-json)
+        (not-empty (get (json/decode service-account-json) "token_uri")))
+      default-token-uri))
+
+(defmethod driver/connection-hosts :bigquery-cloud-sdk
+  [_driver {:keys [host service-account-json]}]
+  (driver/hosts-from-details
+   {:api-host   (if (str/blank? host) default-api-host host)
+    :token-host (service-account-token-uri service-account-json)}
+   [:api-host :token-host]))
+
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
+  (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
   (let [base-creds   (bigquery.common/database-details->service-account-credential details)
         creds        (.createScoped base-creds bigquery-scopes)
         mb-version   (:tag driver-api/mb-version-info)
@@ -138,7 +165,7 @@
   ;; check whether we can connect by seeing whether listing datasets succeeds
   (let [[success? datasets] (try [true (list-datasets details)]
                                  (catch Exception e
-                                   (log/error e "Exception caught in :bigquery-cloud-sdk can-connect?")
+                                   (log/errorf "Exception caught in :bigquery-cloud-sdk can-connect?: %s" (ex-message e))
                                    [false nil]))]
     (cond
       (not success?)
@@ -474,7 +501,7 @@
                                 :where     [:in :c.table_name table-names]
                                 :order-by  [:c.table_name]})
                (catch Throwable e
-                 (log/warnf e "error in describe-fields for dataset: %s" dataset-id)))]
+                 (log/warnf "error in describe-fields for dataset %s: %s" dataset-id (ex-message e))))]
     (eduction
      (partition-by :table_name)
      (mapcat #(describe-dataset-table dataset-id %))
@@ -494,7 +521,7 @@
                                :from [[(information-schema-table project-id dataset-id "TABLES") :t]]
                                :order-by [:table_name]}))
     (catch Throwable e
-      (log/warnf e "error in list-table-names for dataset: %s" dataset-id))))
+      (log/warnf "error in list-table-names for dataset %s: %s" dataset-id (ex-message e)))))
 
 (defmethod driver/describe-fields :bigquery-cloud-sdk
   [driver database & {:keys [schema-names table-names]}]
@@ -723,6 +750,30 @@
   page, then adaptive sizing) by default, but override for testing."
   nil)
 
+(def ^:private max-sql-query-length-chars
+  "BigQuery's maximum standard SQL query length, in characters — counting comments and whitespace exactly as
+  BigQuery does. BigQuery rejects jobs above this with a raw 400 `INVALID_ARGUMENT` ('The query is too large ...').
+  See
+  https://cloud.google.com/bigquery/quotas#query_limits ('Maximum query length: 1 MB')."
+  (* 1024 1024))
+
+(defn- validate-query-length!
+  "Throw a localized `invalid-query` error if `sql` exceeds [[max-sql-query-length-chars]], before the request
+  reaches BigQuery. `sql` is the final payload — Metabase's `-- remark` comment, appended in
+  [[driver/execute-reducible-query]], is already included — so it is counted exactly as BigQuery will count it. The
+  raw 400 from BigQuery remains a fallback if this limit ever drifts from BigQuery's own."
+  [^String sql parameters]
+  (let [len (count sql)]
+    (when (> len max-sql-query-length-chars)
+      (throw
+       (ex-info
+        (tru (str "This query is too large for BigQuery ({0} characters; the maximum is {1}). "
+                  "Try reducing the number of selected fields, filter values, or rewriting the query to make it shorter.")
+             len max-sql-query-length-chars)
+        {:type       driver-api/qp.error-type.invalid-query
+         :sql        sql
+         :parameters parameters})))))
+
 (defn- throw-invalid-query [e sql parameters]
   (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                   {:type driver-api/qp.error-type.invalid-query, :sql sql, :parameters parameters}
@@ -834,7 +885,7 @@
              (let [acc' (try
                           (rf acc (.next it))
                           (catch Throwable e
-                            (log/errorf e "error in reducible-bigquery-results! %d rows" n)
+                            (log/errorf "error in reducible-bigquery-results! %d rows: %s" n (ex-message e))
                             (throw e)))]
                (recur page it acc' (inc n)))
 
@@ -862,7 +913,7 @@
                                  (.cancel client job-id)
                                  (catch Throwable e
                                    ;; Just log exception if it can't be cancelled.
-                                   (log/debugf e "Could not cancel job-id: %s" job-id)))
+                                   (log/debugf "Could not cancel job-id %s: %s" job-id (ex-message e))))
         ^Schema schema (some-> page .getSchema)
         parsers (some-> schema get-field-parsers)
         columns (for [column (some-> schema .getFields fields->metabase-field-info)]
@@ -879,6 +930,7 @@
 (defn- execute-bigquery
   [respond database-details ^String sql parameters cancel-chan]
   {:pre [(not (str/blank? sql))]}
+  (validate-query-length! sql parameters)
   ;; Kicking off two async jobs:
   ;; - Waiting for the cancel-chan to get either a cancel message or to be closed.
   ;; - Running the BigQuery execution in another thread, since it's blocking.
@@ -920,7 +972,7 @@
         :cancel (try
                   (.cancel client job-id)
                   (catch Throwable t
-                    (log/warnf t "Couldn't cancel job %s" job-id))
+                    (log/warnf "Couldn't cancel job %s: %s" job-id (ex-message t)))
                   (finally
                     (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result job client respond cancel-chan)))))
@@ -981,6 +1033,7 @@
                               :index/inline-create              true
                               :metadata/key-constraints         false
                               :metadata/table-existence-check   true
+                              :native-pivot-tables              true
                               :nested-fields                    true
                               :now                              true
                               :percentile-aggregations          true
@@ -1017,6 +1070,12 @@
 (defmethod driver.sql/db-slot-value :bigquery-cloud-sdk
   [_driver database]
   (:project-id (:details database)))
+
+;; BigQuery's `GROUPING()` is single-arg only and has no `GROUPING_ID()`. Synthesise the bitmask by
+;; summing `GROUPING(col) * 2^n` terms.
+(defmethod sql.pivot/pivot-grouping-hsql :bigquery-cloud-sdk
+  [_driver exprs]
+  (sql.pivot/synthesise-grouping-bitmask exprs))
 
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery-cloud-sdk [_ _]
@@ -1264,7 +1323,7 @@
       (doall
        (for [query queries]
          (let [[sql params] (if (string? query) [query] query)
-               _ (log/debugf "Executing BigQuery DDL: %s" sql)
+               _ (log/debug "Executing BigQuery DDL")
                job-config (-> (QueryJobConfiguration/newBuilder sql)
                               (bigquery.params/set-parameters! params)
                               (.setUseLegacySql false)
@@ -1273,7 +1332,7 @@
            {:rows-affected (or (and table-result (.getTotalRows table-result))
                                0)})))
       (catch Exception e
-        (log/error e "Error executing BigQuery DDL")
+        (log/errorf "Error executing BigQuery DDL: %s" (ex-message e))
         (throw e)))))
 
 (defmethod driver/drop-transform-target! [:bigquery-cloud-sdk :table]

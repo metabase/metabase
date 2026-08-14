@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { useDispatch } from "metabase/redux";
-import { replace } from "metabase/router";
+import { getIsNavigationPending, useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import type { RouteParams } from "../../pages/DataModel/types";
 
 import { TablePicker } from "./components";
-import type { TreePath } from "./types";
+import type { ChangeOptions, TreePath } from "./types";
 
 type Props = TreePath & {
   params: RouteParams;
@@ -19,7 +18,7 @@ export function RouterTablePicker({
   setOnUpdateCallback,
   ...props
 }: Props) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [value, setValue] = useState(props);
   const {
     databaseId: propDatabaseId,
@@ -28,11 +27,22 @@ export function RouterTablePicker({
   } = props;
 
   const onChange = useCallback(
-    (value: TreePath) => {
+    (value: TreePath, options?: ChangeOptions) => {
       setValue(value);
-      dispatch(replace(Urls.dataStudioData(value)));
+
+      // The tree selects a lone database, and then its lone schema, once its
+      // data arrives. That mirrors into the URL long after the page opened, so
+      // it can land while the user is already on their way to another page. A
+      // `route.lazy` destination keeps this page mounted until its chunk
+      // resolves, and this replace would take that pending navigation's place.
+      // A pick the user made is theirs and still navigates.
+      if (options?.isAutomatic && getIsNavigationPending()) {
+        return;
+      }
+
+      navigate(Urls.dataStudioData(value), { replace: true });
     },
-    [dispatch],
+    [navigate],
   );
 
   useEffect(() => {

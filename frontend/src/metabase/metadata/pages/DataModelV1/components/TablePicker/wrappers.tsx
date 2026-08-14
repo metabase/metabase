@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { useDispatch, useSelector } from "metabase/redux";
-import { push, replace } from "metabase/router";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation, useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { TablePicker } from "./components";
 import type { ChangeOptions, TreePath } from "./types";
 
 export function RouterTablePicker(props: TreePath) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [value, setValue] = useState(props);
-  const location = useSelector(getLocation);
+  const location = useLocation();
   const isSegments = location.pathname?.startsWith("/admin/datamodel/segment");
 
   const onChange = useCallback(
@@ -26,14 +24,14 @@ export function RouterTablePicker(props: TreePath) {
         if (options?.isAutomatic) {
           // prevent auto-navigation from table-picker when Segments tab is open
           if (!isSegments) {
-            dispatch(replace(Urls.dataModel(value)));
+            navigate(Urls.dataModel(value), { replace: true });
           }
         } else {
-          dispatch(push(Urls.dataModel(value)));
+          navigate(Urls.dataModel(value));
         }
       }
     },
-    [dispatch, isSegments, props],
+    [isSegments, props, navigate],
   );
 
   useEffect(() => {

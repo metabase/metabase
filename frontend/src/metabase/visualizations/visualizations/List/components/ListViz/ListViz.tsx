@@ -4,8 +4,7 @@ import { t } from "ttag";
 
 import { Box } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import { displayNameForColumn } from "metabase/utils/formatting";
-import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
+import { displayNameForColumn } from "metabase/value-formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,
@@ -13,6 +12,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ColumnSettingDefinition,
+  FormattableColumn,
   VisualizationDefinition,
   VisualizationPassThroughProps,
   VisualizationProps,
@@ -105,7 +105,7 @@ const vizDefinition: VisualizationDefinition = {
   },
 
   // TODO Unify with the same code in Table viz
-  columnSettings: (column: DatasetColumn) => {
+  columnSettings: (column: FormattableColumn) => {
     const settings: Record<
       string,
       ColumnSettingDefinition<unknown, unknown>
@@ -196,7 +196,7 @@ const vizDefinition: VisualizationDefinition = {
 
     settings["link_text"] = {
       title: t`Link text`,
-      widget: ChartSettingLinkUrlInput,
+      widget: "linkUrlInput",
       hint: linkFieldsHint,
       getDefault: () => null,
       getHidden: (_, settings) =>
@@ -223,7 +223,7 @@ const vizDefinition: VisualizationDefinition = {
 
     settings["link_url"] = {
       title: t`Link URL`,
-      widget: ChartSettingLinkUrlInput,
+      widget: "linkUrlInput",
       hint: linkFieldsHint,
       getDefault: () => null,
       getHidden: (_, settings) => settings["view_as"] !== "link",

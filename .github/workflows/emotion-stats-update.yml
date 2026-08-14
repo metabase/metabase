@@ -40,9 +40,9 @@ jobs:
               | wc -l || true
           )
 
-          echo "$(($oss+$ee)) files importing @emotion/*"
+          echo "$((oss + ee)) files importing @emotion/*"
 
-          echo "EMOTION_FILES=$(($oss+$ee))" >> $GITHUB_OUTPUT
+          echo "EMOTION_FILES=$((oss + ee))" >> "$GITHUB_OUTPUT"
       - name: Upload count to Stats
         uses: actions/github-script@v9
         env:

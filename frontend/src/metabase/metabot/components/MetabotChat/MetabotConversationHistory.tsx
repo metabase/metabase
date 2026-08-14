@@ -2,7 +2,6 @@ import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { useListMetabotConversationsQuery } from "metabase/api";
 import {
   ActionIcon,
   Box,
@@ -18,6 +17,7 @@ import {
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { MetabotConversation } from "metabase-types/api";
 
+import { useListMetabotConversationsQuery } from "../../api";
 import {
   type MetabotProfileId,
   resolveMetabotProfileId,
@@ -120,22 +120,28 @@ const HistoryItem = ({
   conversation: MetabotConversation;
   isActive: boolean;
   onSelect: (conversationId: string) => void;
-}) => (
-  <Menu.Item
-    aria-current={isActive || undefined}
-    className={isActive ? S.activeItem : undefined}
-    onClick={() => onSelect(conversation.conversation_id)}
-    leftSection={<Icon c="text-secondary" name="message_circle" size={16} />}
-  >
-    <Flex align="center" gap="sm" wrap="nowrap">
-      <Text truncate fw="bold" fz="sm" c="text-primary" flex={1}>
-        {conversation.title || t`Untitled`}
-      </Text>
-      <Text c="text-secondary" fz="xs" style={{ flexShrink: 0 }}>
-        {getRelativeTime(
-          conversation.last_message_at ?? conversation.created_at,
-        )}
-      </Text>
-    </Flex>
-  </Menu.Item>
-);
+}) => {
+  const fallbackTitle = conversation.forked_from_conversation_id
+    ? t`Forked conversation`
+    : t`Untitled`;
+
+  return (
+    <Menu.Item
+      aria-current={isActive || undefined}
+      className={isActive ? S.activeItem : undefined}
+      onClick={() => onSelect(conversation.conversation_id)}
+      leftSection={<Icon c="text-secondary" name="message_circle" size={16} />}
+    >
+      <Flex align="center" gap="sm" wrap="nowrap">
+        <Text truncate fw="bold" fz="sm" c="text-primary" flex={1}>
+          {conversation.title || fallbackTitle}
+        </Text>
+        <Text c="text-secondary" fz="xs" style={{ flexShrink: 0 }}>
+          {getRelativeTime(
+            conversation.last_message_at ?? conversation.created_at,
+          )}
+        </Text>
+      </Flex>
+    </Menu.Item>
+  );
+};

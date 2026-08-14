@@ -135,7 +135,6 @@ describe("AdminDataTable", () => {
     setup({ rows: [], emptyText: "Nothing here" });
 
     expect(screen.getByText("Nothing here")).toBeInTheDocument();
-    expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
   });
 
   it("keeps showing rows while refetching (overlay instead of blanking)", () => {

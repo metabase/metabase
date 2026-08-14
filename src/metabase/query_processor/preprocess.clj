@@ -81,6 +81,9 @@
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
    #'qp.middleware.enterprise/apply-impersonation
    #'qp.middleware.enterprise/attach-destination-db-middleware
+   ;; run before `apply-sandboxing` so its `::original-metadata` snapshot sees the outer stage's `:fields`
+   ;; and picks up model-level column overrides (display_name, semantic_type). #79060
+   #'qp.add-implicit-clauses/add-implicit-clauses
    #'qp.middleware.enterprise/apply-sandboxing
    #'qp.persistence/substitute-persisted-query
    #'qp.add-implicit-clauses/add-implicit-clauses ; #61398
@@ -127,7 +130,6 @@
      identity
      (fn
        ([preprocessed]
-        (log/debugf "Preprocessed query:\n\n%s" (u/pprint-to-str preprocessed))
         preprocessed)
        ([query middleware-fn]
         (try

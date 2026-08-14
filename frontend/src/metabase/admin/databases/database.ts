@@ -6,7 +6,7 @@ import { combineReducers } from "metabase/redux";
 import { createDatabase } from "metabase/redux/databases";
 import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 import { DatabaseSchema } from "metabase/schema";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
@@ -53,7 +53,7 @@ export const deleteDatabase = function (databaseId: DatabaseId) {
         dispatch,
         databaseApi.endpoints.deleteDatabase,
       );
-      dispatch(push("/admin/databases/"));
+      navigate("/admin/databases/");
 
       dispatch(DELETE_DATABASE({ databaseId }));
     } catch (error) {

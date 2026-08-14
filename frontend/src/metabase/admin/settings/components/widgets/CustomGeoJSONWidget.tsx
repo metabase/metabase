@@ -10,13 +10,13 @@ import {
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { useLazyLoadGeoJSONQuery } from "metabase/api/geojson";
-import { useAdminSetting } from "metabase/api/utils";
+import { useLazyLoadGeoJSONQuery } from "metabase/admin/settings/api/geojson";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
+import { useAdminSetting } from "metabase/settings";
 import {
   Box,
   Button,

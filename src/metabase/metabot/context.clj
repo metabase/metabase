@@ -1,15 +1,13 @@
 (ns metabase.metabot.context
   (:require
    [clojure.java.io :as io]
-   [malli.core]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
-   ^{:clj-kondo/ignore [:discouraged-namespace :metabase/modules]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.settings :as metabot.settings]
@@ -19,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
@@ -70,34 +69,38 @@
   "Schema for the `:type` key of `:user_is_viewing` item."
   (into [:enum] item-types))
 
+(def ^:private ItemQuerySchema
+  "Schema for the `:query` of a viewing context item: whatever query the client currently has open, in any MBQL
+  version.
+
+  Open ([[ms/Map]]) rather than `[:or ::lib.schema/query ::mbql.s/Query]`. Request decoding strips keys a map schema
+  doesn't declare, and both of those schemas would have gutted the query on its way in — a legacy query arrived as
+  `{:database 1}`, which then failed validation and 400'd the request. The real shape is checked downstream anyway:
+  every consumer routes the query through `lib-be/normalize-query` / `lib/query`, which normalize and validate it."
+  ms/Map)
+
 (def DefaultItemSchema
   "Default schema of viewing context item."
   [:map
+   ;; `::mc/default` because the rest of the item is forwarded to the model as the client sent it -- the FE grows
+   ;; these fields (`:id`, `:name`, `:source`, `:sql_engine`, ...) faster than this schema could name them, and
+   ;; dropping one degrades Metabot silently rather than erroring.
+   [::mc/default :any]
    [:type item-type-schema]
-   [:query
-    {:optional true}
-    [:or
-     ::lib.schema/query
-     ::mbql.s/Query]]])
+   [:query {:optional true} ItemQuerySchema]])
 
 (def QcItemSchema
   "Schema viewing context item with query and charts."
   [:map
+   [::mc/default :any]
    [:type (into [:enum] item-types-qc)]
-   [:query
-    {:optional true}
-    [:or
-     ::lib.schema/query
-     ::mbql.s/Query]]
+   [:query {:optional true} ItemQuerySchema]
    [:chart_configs
     {:optional true}
     [:vector
      [:map
-      [:query
-       {:optional true}
-       [:or
-        ::lib.schema/query
-        ::mbql.s/Query]]]]]])
+      [::mc/default :any]
+      [:query {:optional true} ItemQuerySchema]]]]])
 
 (def ViewingItemSchema
   "Schema of user is viewing item."
@@ -107,6 +110,7 @@
   [:and
    [:map-of :keyword :any]
    [:map
+    [::mc/default :any]
     [:user_is_viewing {:optional true} [:vector ViewingItemSchema]]]])
 
 (defn- query-for-sql-parsing
@@ -149,7 +153,7 @@
             (table-utils/used-tables query))
       [])
     (catch Exception e
-      (log/error e "Error getting database tables for context")
+      (log/errorf "Error getting database tables for context: %s" (ex-message e))
       [])))
 
 (defn- python-transform-db-and-table-ids
@@ -169,7 +173,7 @@
     (when (and database-id (seq table-ids))
       (not-empty (mapv table-stub (table-utils/used-tables-from-ids database-id table-ids))))
     (catch Exception e
-      (log/error e "Error getting Python transform tables for context")
+      (log/errorf "Error getting Python transform tables for context: %s" (ex-message e))
       [])))
 
 (defn- mbql-source-table-ids
@@ -207,7 +211,7 @@
                   (map table-stub))
             raw-tables))
     (catch Exception e
-      (log/error e "Error getting MBQL source tables for context")
+      (log/errorf "Error getting MBQL source tables for context: %s" (ex-message e))
       nil)))
 
 (defn- enhance-context-with-schema
@@ -249,7 +253,7 @@
                                :source_type (transforms-base.u/transform-source-type (:source transform))))
                       item)
                     (catch Exception e
-                      (log/error e "Error annotating transform source type for metabot context")
+                      (log/errorf "Error annotating transform source type for metabot context: %s" (ex-message e))
                       item)))
                 user-viewing)]
       (assoc context :user_is_viewing annotated-viewing))
@@ -317,7 +321,7 @@
                              (assoc :type item-type))))
                      (take 5 recents)))))
     (catch Exception e
-      (log/error e "Error adding recent views to metabot context")
+      (log/errorf "Error adding recent views to metabot context: %s" (ex-message e))
       context)))
 
 (defn- set-user-time

@@ -1,4 +1,3 @@
-import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal/ActionCreatorModal";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import { ModelDetailPage } from "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
@@ -7,6 +6,8 @@ import {
   type ModalProps,
   PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
 } from "metabase/ui";
+
+import ActionCreatorModal from "./containers/ActionCreatorModal/ActionCreatorModal";
 
 export const getRoutes = () => {
   const modalProps: Partial<ModalProps> = {
@@ -21,9 +22,9 @@ export const getRoutes = () => {
       </Route>
       <Route path=":rowId" element={<ModelDetailPage />} />
       <Route index element={redirect("actions")} />
-      <Route path="usage" element={redirect("actions")} />
-      <Route path="schema" element={redirect("actions")} />
-      <Route path="*" element={redirect("actions")} />
+      <Route path="usage" element={redirect("../actions")} />
+      <Route path="schema" element={redirect("../actions")} />
+      <Route path="*" element={redirect("../actions")} />
     </Route>
   );
 };

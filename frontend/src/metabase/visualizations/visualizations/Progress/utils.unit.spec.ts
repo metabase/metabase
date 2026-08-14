@@ -73,7 +73,7 @@ describe("getValue", () => {
 
   it("should return 0 for a malformed row that is not an array", () => {
     // rows[0] is a scalar, so rows[0][0] is undefined
-    // Unjustified type cast. FIXME
+    // Intentionally invalid input, cast to exercise the runtime guard.
     expect(getValue([3] as any)).toBe(0);
   });
 });
@@ -108,9 +108,9 @@ describe("getGoalValue", () => {
   });
 
   it("should return 0 for invalid goal types", () => {
-    // Unjustified type cast. FIXME
+    // Intentionally invalid input, cast to exercise the runtime guard.
     expect(getGoalValue(null as any, mockColumns, rows)).toBe(0);
-    // Unjustified type cast. FIXME
+    // Intentionally invalid input, cast to exercise the runtime guard.
     expect(getGoalValue(undefined as any, mockColumns, rows)).toBe(0);
   });
 });
@@ -269,17 +269,17 @@ describe("calculateProgressMetrics", () => {
   });
 
   it("should handle null and undefined values", () => {
-    // Unjustified type cast. FIXME
+    // Intentionally invalid input, cast to exercise the runtime guard.
     expect(calculateProgressMetrics(null as any, 100).hasValidValue).toBe(
       false,
     );
-    // Unjustified type cast. FIXME
+    // Intentionally invalid input, cast to exercise the runtime guard.
     expect(calculateProgressMetrics(undefined as any, 100).hasValidValue).toBe(
       false,
     );
-    // Unjustified type cast. FIXME
+    // Intentionally invalid input, cast to exercise the runtime guard.
     expect(calculateProgressMetrics(50, null as any).hasValidGoal).toBe(false);
-    // Unjustified type cast. FIXME
+    // Intentionally invalid input, cast to exercise the runtime guard.
     expect(calculateProgressMetrics(50, undefined as any).hasValidGoal).toBe(
       false,
     );

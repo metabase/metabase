@@ -1,5 +1,6 @@
 .root {
   --alert-control-size: 24px;
+  --alert-line-height: 20px;
 
   padding: var(--mantine-spacing-lg) var(--mantine-spacing-md)
     var(--mantine-spacing-lg) var(--mantine-spacing-lg);
@@ -40,7 +41,7 @@
 
 .message {
   font-size: var(--mantine-font-size-md);
-  line-height: 20px;
+  line-height: var(--alert-line-height);
   color: var(--mb-color-text-secondary);
 }
 
@@ -54,7 +55,21 @@
   color: var(--mb-color-text-primary);
 }
 
+.root:not(:has(.title)) {
+  & .icon {
+    height: var(--alert-line-height);
+  }
+
+  & .closeButton {
+    margin-block: calc(
+      (var(--alert-line-height) - var(--alert-control-size)) / 2
+    );
+  }
+}
+
 .root[data-size="compact"] {
+  --alert-line-height: 16px;
+
   padding: var(--mantine-spacing-md) 12px var(--mantine-spacing-md)
     var(--mantine-spacing-md);
 
@@ -70,7 +85,6 @@
 
   & .message {
     font-size: var(--mantine-font-size-sm);
-    line-height: 16px;
   }
 }
 

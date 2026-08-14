@@ -2,10 +2,13 @@
   "Settings for LLM integration (provider credentials, model defaults, provider configuration)."
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]])
   (:import
+   (java.net MalformedURLException URL)
    (software.amazon.awssdk.regions Region)))
 
 (set! *warn-on-reflection* true)
@@ -25,12 +28,50 @@
   [setting-key new-value]
   (setting/set-value-of-type! :string setting-key (trimmed-string new-value)))
 
+(def ^:private loopback-hosts
+  "Hostnames that resolve to the local machine. `URL.getHost` returns IPv6 hosts
+  wrapped in brackets, e.g. `[::1]`."
+  #{"localhost" "127.0.0.1" "[::1]" "::1"})
+
+(defn assert-llm-host-allowed!
+  "Safeguard for Cypress e2e tests: refuse to send an LLM request to any host
+  other than localhost. e2e tests are expected to point the LLM URL at a local
+  mock server (see `startMockLlmServer`), so throwing here keeps a misconfigured
+  test run from sending traffic to a real provider. No-op outside of e2e mode and
+  for blank URLs (so the normal not-configured handling still runs)."
+  [url]
+  (when (and config/is-e2e? (not (str/blank? url)))
+    (let [host (try
+                 (u/lower-case-en (.getHost (URL. ^String url)))
+                 ;; A malformed URL can't be verified as localhost — treat it as
+                 ;; not allowed (fail closed) rather than throwing raw.
+                 (catch MalformedURLException _ nil))]
+      (when-not (and host (contains? loopback-hosts host))
+        (throw (ex-info (tru "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server." (or host url))
+                        {:status-code 400
+                         :llm-url     url}))))))
+
 (defn- set-prefixed-api-key!
   [setting-key prefix deferred-message new-value]
   (let [trimmed (trimmed-string new-value)]
     (when (and trimmed (not (str/starts-with? trimmed prefix)))
       (throw (ex-info (str deferred-message) {:status-code 400})))
     (setting/set-value-of-type! :string setting-key trimmed)))
+
+(defn normalize-llm-base-url
+  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
+  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
+  [value]
+  (some-> (trimmed-string value)
+          (str/replace #"/+$" "")
+          not-empty))
+
+(defn- set-normalized-base-url!
+  "Set a base-URL setting to `new-value` with trailing slashes trimmed; blank values are stored as nil.
+  Adapters build request URLs as `(str base-url path)`, so a pasted trailing slash would otherwise
+  produce `//models`."
+  [setting-key new-value]
+  (setting/set-value-of-type! :string setting-key (normalize-llm-base-url new-value)))
 
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
 
@@ -127,6 +168,59 @@
                              "sk-or-v1-"
                              (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''.")))
 
+;;; --------------------------------------------------- Z.AI ----------------------------------------------------
+
+(defsetting llm-zai-api-base-url
+  (deferred-tru "The Z.AI API base URL used for Chat Completions.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.z.ai/api/paas/v4"
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-zai-api-base-url))
+
+(defsetting llm-zai-api-key
+  (deferred-tru "The Z.AI API Key.")
+  ;; Z.AI keys are `{id}.{secret}` pairs with no documented prefix, so unlike the other
+  ;; direct-provider keys there is no format validation.
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-zai-api-key))
+
+;;; -------------------------------------------------- Mistral ---------------------------------------------------
+
+(defsetting llm-mistral-api-base-url
+  (deferred-tru "The Mistral API base URL used for Chat Completions.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.mistral.ai/v1"
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-mistral-api-base-url))
+
+(defsetting llm-mistral-api-key
+  (deferred-tru "The Mistral API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-mistral-api-key))
+
+;;; ------------------------------------------------- Moonshot --------------------------------------------------
+
+(defsetting llm-moonshot-api-base-url
+  (deferred-tru "The Moonshot AI API base URL used for Chat Completions. Repoint this to use the `.cn` platform; keys are not interchangeable between the two.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.moonshot.ai/v1"
+  :export?    false
+  :setter     (partial set-normalized-base-url! :llm-moonshot-api-base-url))
+
+(defsetting llm-moonshot-api-key
+  (deferred-tru "The Moonshot AI API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :setter     (partial set-trimmed-string! :llm-moonshot-api-key))
+
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
 (defsetting llm-bedrock-access-key-id
@@ -185,21 +279,12 @@
   :export?     false
   :setter      (partial set-trimmed-string! :llm-azure-api-key))
 
-(defn normalize-llm-base-url
-  "Trim whitespace and trailing slashes from an admin-entered LLM base URL; blank values become nil.
-  The URL is otherwise persisted exactly as entered — admin-entered URLs are not silently rewritten."
-  [value]
-  (some-> (trimmed-string value)
-          (str/replace #"/+$" "")
-          not-empty))
-
 (defsetting llm-azure-api-base-url
   (deferred-tru "The base URL of the Azure resource''s OpenAI- or Anthropic-compatible surface, e.g. `https://<resource>.services.ai.azure.com/openai`.")
   :encryption  :no
   :visibility  :settings-manager
   :export?     false
-  :setter      (fn [new-value]
-                 (setting/set-value-of-type! :string :llm-azure-api-base-url (normalize-llm-base-url new-value))))
+  :setter      (partial set-normalized-base-url! :llm-azure-api-base-url))
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
@@ -250,16 +335,25 @@
   :export? false)
 
 (defsetting llm-request-timeout-ms
-  (deferred-tru "Socket timeout in milliseconds for LLM API requests.")
+  (deferred-tru
+   (str "Socket (inter-byte read) timeout in milliseconds for LLM API requests. "
+        "For streaming responses this bounds the gap between successive chunks, "
+        "NOT the total response time. Picked generously: extended thinking can "
+        "pause for tens of seconds between chunks. Without it, a hung read inside "
+        "the stream blocks the worker indefinitely — observed in production when "
+        "an upstream proxy held the connection open without sending data."))
   :type :integer
-  :default 60000
+  :default 120000
   :visibility :settings-manager
   :export? false)
 
 (defsetting llm-connection-timeout-ms
-  (deferred-tru "Connection timeout in milliseconds for LLM API requests.")
+  (deferred-tru
+   (str "TCP connection timeout in milliseconds for LLM API requests. A provider "
+        "that is down or unreachable should fail fast instead of holding a worker "
+        "thread forever."))
   :type :integer
-  :default 5000
+  :default 10000
   :visibility :settings-manager
   :export? false)
 

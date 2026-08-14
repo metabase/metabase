@@ -7,7 +7,7 @@ import { pick } from "underscore";
 
 import * as sdkExports from "embedding-sdk-package";
 import * as dataAppExports from "embedding-sdk-package/data-app";
-import { getSubpathSafeUrl } from "metabase/urls";
+import { DATA_APP_REALM_HOST_URL, getSubpathSafeUrl } from "metabase/urls";
 import { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox/sandbox";
 import {
   DATA_APP_PROVIDER_PROP_KEYS,
@@ -107,16 +107,17 @@ export const fetchDataAppBundleCode = async (
  * the iframe's own `window` — same realm as the React tree rendering the
  * factory's component, so no cross-document mounting.
  */
-export const instantiateDataAppBundle = (
+export const instantiateDataAppBundle = async (
   code: string,
   label: string,
   targetWindow: Window & typeof globalThis,
   allowedHosts: string[] = [],
-): LoadedDataApp => {
-  const sandbox = createDataAppSandbox({
+): Promise<LoadedDataApp> => {
+  const sandbox = await createDataAppSandbox({
     label,
     targetWindow,
     allowedHosts,
+    realmHostUrl: getSubpathSafeUrl(DATA_APP_REALM_HOST_URL),
     endowments: {
       React,
       reactDom: ReactDOM,
