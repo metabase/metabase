@@ -141,10 +141,9 @@ describe("EmbeddingHubGetStartedPage", () => {
       });
     });
 
-    it("unlocks only the steps whose own feature is licensed", async () => {
-      // An instance can license SSO without modular embedding -- an ordinary
-      // Starter-plus-SSO shape -- and its SSO steps must not read as
-      // unavailable.
+    it("keys each step off its own feature, not one blanket check", async () => {
+      // Licensing a single feature is how the per-step gating is shown, not a
+      // shape to expect: Pro carries everything bar the cloud-only features.
       setup({ hasSsoJwt: true });
 
       expect(await screen.findByText(SSO_CARD)).toBeInTheDocument();
@@ -187,9 +186,8 @@ describe("EmbeddingHubGetStartedPage", () => {
     });
 
     it("names no prerequisite when SSO is not licensed at all", async () => {
-      // Promising a step is one action away, to someone who cannot reach it,
-      // is worse than saying nothing -- the banner above already names the
-      // price.
+      // Without the feature the step is locked anyway, so a prerequisite would
+      // name something that unlocks nothing.
       setup({ hasSsoJwt: false });
 
       expect(await screen.findByText(PRODUCTION_CARD)).toBeInTheDocument();
@@ -253,7 +251,11 @@ describe("EmbeddingHubGetStartedPage", () => {
 
       await userEvent.click(await screen.findByText(AI_CARD));
 
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("dialog", {
+          name: "Connect to an AI provider",
+        }),
+      ).toBeInTheDocument();
     });
   });
 
