@@ -60,8 +60,8 @@ describe("AnalyticsExportStatus", () => {
     expect(
       await screen.findByText("Analytics content exported"),
     ).toBeInTheDocument();
-    // The response body is a whatwg-fetch polyfill Blob in jest, so match on
-    // the parsed filename only.
+    // The response body is a whatwg-fetch polyfill Blob in jest,
+    // so match on the parsed filename only.
     expect(openSaveDialog).toHaveBeenCalledWith(
       "analytics.tar.gz",
       expect.anything(),
