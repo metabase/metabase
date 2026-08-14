@@ -300,8 +300,6 @@ If a locked parameter is linked to a dashboard filter that's in turn linked to a
 
 For example, if you have a dashboard filter called "Breakfast" with the values "Hash browns", "Muffin", and "Waffles", and the filter is linked to _any_ SQL question on the dashboard, you can only pass one of those options as the locked parameter value.
 
-For the rest of the ways to filter an embedded dashboard, see [Control dashboard filters from your app](./dashboard.md#control-dashboard-filters-from-your-app).
-
 ## Using locked parameters to power custom widgets in your app
 
 Because Metabase doesn't render locked parameters as filter widgets, you can use them to power custom filter widgets that you build yourself. You may want to build your own filter widget(s) to:
