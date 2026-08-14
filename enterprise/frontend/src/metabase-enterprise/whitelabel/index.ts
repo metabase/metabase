@@ -5,10 +5,10 @@ import {
   PLUGIN_HOMEPAGE_SETTING,
   PLUGIN_LANDING_PAGE,
   PLUGIN_LOGO_ICON_COMPONENTS,
-  PLUGIN_SELECTORS,
   PLUGIN_WHITELABEL,
 } from "metabase/plugins";
 import MetabaseSettings from "metabase/utils/settings";
+import { PLUGIN_SELECTORS } from "metabase/whitelabel";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   getApplicationName,

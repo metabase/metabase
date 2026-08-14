@@ -1,8 +1,6 @@
 import type { Action, Middleware, ThunkDispatch } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
-import { t } from "ttag";
 
-import noResultsSource from "assets/img/no_results.svg";
 import type {
   AdminPathKey,
   DraftDashboardSubscription,
@@ -17,12 +15,6 @@ import type {
   SnippetSidebarRowRenderers,
 } from "./snippets";
 
-// Types
-export type IllustrationValue = {
-  src: string;
-  isDefault: boolean;
-} | null;
-
 interface PluginDashboardSubscriptionParametersSectionOverride {
   Component?: ComponentType<{
     className?: string;
@@ -33,19 +25,6 @@ interface PluginDashboardSubscriptionParametersSectionOverride {
     setPulseParameters: (parameters: UiParameter[]) => void;
   }>;
 }
-
-const defaultLandingPageIllustration = {
-  src: "app/img/bridge.svg",
-  isDefault: true,
-};
-
-const defaultLoginPageIllustration = {
-  src: "app/img/bridge.svg",
-  isDefault: true,
-};
-
-const getLoadingMessage = (isSlow: boolean | undefined = false) =>
-  isSlow ? t`Waiting for results...` : t`Doing science...`;
 
 const getDefaultAppInitFunctions = (): (() => void)[] => [];
 
@@ -86,29 +65,6 @@ const getDefaultAdminAllowedPathGetters = (): ((
 
 export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS =
   getDefaultAdminAllowedPathGetters();
-
-const getDefaultSelectors = () => ({
-  canWhitelabel: (_state: State) => false,
-  getLoadingMessageFactory: (_state: State) => getLoadingMessage,
-  getIsWhiteLabeling: (_state: State) => false,
-  // eslint-disable-next-line metabase/no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
-  getApplicationName: (_state: State) => "Metabase",
-  getShowMetabaseLinks: (_state: State) => true,
-  getLoginPageIllustration: (_state: State): IllustrationValue => {
-    return defaultLoginPageIllustration;
-  },
-  getLandingPageIllustration: (_state: State): IllustrationValue => {
-    return defaultLandingPageIllustration;
-  },
-  getNoDataIllustration: (_state: State): string | null => {
-    return noResultsSource;
-  },
-  getNoObjectIllustration: (_state: State): string | null => {
-    return noResultsSource;
-  },
-});
-
-export const PLUGIN_SELECTORS = getDefaultSelectors();
 
 const getDefaultFormWidgets = (): Record<string, ComponentType<any>> => ({});
 
@@ -186,7 +142,6 @@ export function reinitialize() {
     ...getDefaultAdminAllowedPathGetters(),
   );
 
-  Object.assign(PLUGIN_SELECTORS, getDefaultSelectors());
   Object.assign(PLUGIN_FORM_WIDGETS, getDefaultFormWidgets());
 
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.length = 0;

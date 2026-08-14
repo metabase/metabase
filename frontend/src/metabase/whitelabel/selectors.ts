@@ -2,9 +2,10 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getSettings } from "metabase/settings";
+
+import { PLUGIN_SELECTORS } from "./plugin";
 
 export function getWhiteLabeledLoadingMessageFactory(state: State) {
   return PLUGIN_SELECTORS.getLoadingMessageFactory(state);

@@ -1,4 +1,4 @@
-import { PLUGIN_SELECTORS } from "metabase/plugins";
+import { PLUGIN_SELECTORS } from "metabase/whitelabel";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { initializePlugin, resetInitialization } from "./sdk-overrides";

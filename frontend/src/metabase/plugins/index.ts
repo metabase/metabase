@@ -55,7 +55,6 @@ export {
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_LOGO_ICON_COMPONENTS,
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
-  PLUGIN_SELECTORS,
   PLUGIN_FORM_WIDGETS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
@@ -63,7 +62,6 @@ export {
   PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE,
   PLUGIN_REDUCERS,
   PLUGIN_IS_EE_BUILD,
-  type IllustrationValue,
 } from "./oss/core";
 export {
   PLUGIN_DB_ROUTING,
@@ -229,12 +227,23 @@ import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
 import { reinitialize as reinitializeWritableConnection } from "./oss/writable-connection";
+
+// Modules above the registry own their plugin slots (whitelabel owns PLUGIN_SELECTORS).
+// They register their reset here because the registry cannot import upward to reach their defaults.
+const registeredReinitializers: (() => void)[] = [];
+
+export function onReinitialize(reinitializer: () => void) {
+  registeredReinitializers.push(reinitializer);
+}
+
 /**
  * Mostly for test purposes, reinitialize all plugins.
  * You don't reinitialize plugins individually because some plugins depend on others,
  * so reinitializing them all ensures that dependencies are correctly set up.
  */
 export function reinitialize() {
+  registeredReinitializers.forEach((reinitializer) => reinitializer());
+
   reinitializeNotificationsSdk();
 
   reinitializeAiControls();

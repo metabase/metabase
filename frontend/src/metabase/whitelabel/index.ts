@@ -5,6 +5,7 @@
 // The module's public interface.
 // Names absent here are module-private on purpose — add them only when a real consumer needs them.
 
+export { PLUGIN_SELECTORS, type IllustrationValue } from "./plugin";
 export {
   getApplicationName,
   getCanWhitelabel,
