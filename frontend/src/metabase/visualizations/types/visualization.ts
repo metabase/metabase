@@ -264,6 +264,12 @@ export type VisualizationPassThroughProps = {
   totalNumGridCols?: number;
   onTogglePreviewing?: () => void;
 
+  /**
+   * Maps a click object to the one click actions should be computed for,
+   * supplied for visualizer cards whose rendered columns are remapped from the underlying questions.
+   */
+  transformClickObject?: (clicked: ClickObject) => ClickObject;
+
   showAllLegendItems?: boolean;
 
   onHeaderColumnReorder?: (columnIndex: number) => void;

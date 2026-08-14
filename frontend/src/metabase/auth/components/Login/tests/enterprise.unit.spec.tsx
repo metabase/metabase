@@ -1,4 +1,4 @@
-import "metabase/plugins/builtin";
+import "metabase/auth/plugins";
 import { screen } from "__support__/ui";
 
 import { setup } from "./setup";

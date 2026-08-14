@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
@@ -180,5 +180,22 @@ describe("PinnedItemsGrid", () => {
     await screen.findByTestId("pinned-items");
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(screen.getAllByRole("link")).toHaveLength(defaultItems.length);
+  });
+
+  it("should preview selection while Shift is held", async () => {
+    setup({ selected: [], onToggleSelected: jest.fn() });
+    await screen.findByTestId("pinned-items");
+    const card = screen.getByRole("link", { name: /Metric Bar/ });
+
+    fireEvent.keyDown(window, { key: "Shift", shiftKey: true });
+    await userEvent.hover(card);
+
+    expect(card).toBeInTheDocument();
+    expect(screen.getByTestId("pinned-item-checkbox")).not.toBeChecked();
+
+    fireEvent.keyUp(window, { key: "Shift", shiftKey: false });
+    expect(
+      screen.queryByTestId("pinned-item-checkbox"),
+    ).not.toBeInTheDocument();
   });
 });

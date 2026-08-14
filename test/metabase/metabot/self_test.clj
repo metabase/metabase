@@ -47,7 +47,9 @@
     (is (=? {:provider "mistral" :model "mistral-medium-3-5" :ai-proxy? false}
             (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
     (is (=? {:provider "moonshot" :model "kimi-k2.6" :ai-proxy? false}
-            (#'self/parse-provider-model "moonshot/kimi-k2.6"))))
+            (#'self/parse-provider-model "moonshot/kimi-k2.6")))
+    (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
+            (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
   (testing "parses metabase/ prefix (AI proxy)"
     (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
             (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
@@ -67,7 +69,8 @@
     (is (fn? (#'self/resolve-adapter "openrouter")))
     (is (fn? (#'self/resolve-adapter "zai")))
     (is (fn? (#'self/resolve-adapter "mistral")))
-    (is (fn? (#'self/resolve-adapter "moonshot"))))
+    (is (fn? (#'self/resolve-adapter "moonshot")))
+    (is (fn? (#'self/resolve-adapter "google"))))
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))
@@ -177,16 +180,19 @@
                                                    (when (:body opts)
                                                      (reset! captured (json/decode+kw (:body opts))))
                                                    (throw (ex-info "stop" {::skip true :api-error true})))]
-          (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
-                                             llm-proxy-base-url     "http://proxy.example"
-                                             llm-openrouter-api-key "sk-or-v1-test-key"
-                                             llm-openai-api-key     "sk-test-key"
-                                             llm-zai-api-key        "zai-key.test"]
+          (mt/with-temporary-setting-values [llm-anthropic-api-key         "sk-ant-test-key"
+                                             llm-proxy-base-url            "http://proxy.example"
+                                             llm-openrouter-api-key        "sk-or-v1-test-key"
+                                             llm-openai-api-key            "sk-test-key"
+                                             llm-zai-api-key               "zai-key.test"
+                                             llm-google-oauth-access-token "ya29.test-token"
+                                             llm-google-project-id         "my-project"]
             (doseq [model ["anthropic/test-model"
                            "metabase/anthropic/claude-sonnet-4-6"
                            "openrouter/test-model"
                            "openai/test-model"
-                           "zai/glm-5.2"]]
+                           "zai/glm-5.2"
+                           "google/google/gemini-3.5-flash"]]
               (testing model
                 (reset! captured nil)
                 (try

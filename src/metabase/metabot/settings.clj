@@ -100,7 +100,7 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "azure" "bedrock" "mistral" "moonshot" "openai" "openrouter" "zai"})
+  #{"anthropic" "azure" "bedrock" "google" "mistral" "moonshot" "openai" "openrouter" "zai"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
@@ -109,6 +109,11 @@
 (def ^:private default-bedrock-llm-metabot-model
   "Default Bedrock model used for Metabot when no explicit model is selected."
   "anthropic.claude-opus-4-8")
+
+(def ^:private default-google-llm-metabot-model
+  "Default Google model used for Metabot when no explicit model is selected.
+  Note that Google model IDs include their `{publisher}/{model}` qualifier."
+  "google/gemini-3.5-flash")
 
 (def ^:private default-mistral-llm-metabot-model
   "Default Mistral model used for Metabot when no explicit model is selected."
@@ -139,10 +144,12 @@
 (def default-llm-metabot-model-by-provider
   "Default model payload keyed by provider for `PUT /api/metabot/settings`.
 
-  Values match the shape expected in the request body for each provider: direct providers use a bare model ID, while the
-  managed `metabase` provider uses the proxied `provider/model` form."
+  Values match the shape expected in the request body for each provider: direct providers use a bare model ID (except
+  OpenRouter and Google, whose IDs are publisher-qualified), while the managed `metabase` provider uses the proxied
+  `provider/model` form."
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
+   "google"                               default-google-llm-metabot-model
    "mistral"                              default-mistral-llm-metabot-model
    "moonshot"                             default-moonshot-llm-metabot-model
    "openai"                               default-openai-llm-metabot-model
@@ -290,36 +297,8 @@
   (when-let [k (non-blank api-key)]
     {:api-key k}))
 
-(defn configured-provider-credentials
-  "Returns the configured credentials map for the given provider, or nil if unrecognized or unconfigured.
-
-  The shape of the map varies by provider: API-key providers return `{:api-key ...}`, Azure returns `:api-key` and
-  `:base-url` from the `llm-azure-*` settings, and Bedrock returns `:access-key-id`, `:secret-access-key`,
-  `:session-token`, and `:region` from the `llm-bedrock-*` settings. Azure counts as configured only when both the
-  API key and base URL are set; Bedrock only when both the access key ID and secret access key are set."
-  [provider]
-  (case provider
-    "anthropic"  (configured-api-key-credentials (llm.settings/llm-anthropic-api-key))
-    "azure"      (let [api-key  (non-blank (llm.settings/llm-azure-api-key))
-                       base-url (non-blank (llm.settings/llm-azure-api-base-url))]
-                   (when (and api-key base-url)
-                     {:api-key api-key :base-url base-url}))
-    "bedrock"    (when (llm.settings/llm-bedrock-configured?)
-                   {:access-key-id     (non-blank (llm.settings/llm-bedrock-access-key-id))
-                    :secret-access-key (non-blank (llm.settings/llm-bedrock-secret-access-key))
-                    :session-token     (non-blank (llm.settings/llm-bedrock-session-token))
-                    :region            (non-blank (llm.settings/llm-bedrock-region))})
-    "mistral"    (configured-api-key-credentials (llm.settings/llm-mistral-api-key))
-    "moonshot"   (configured-api-key-credentials (llm.settings/llm-moonshot-api-key))
-    "openai"     (configured-api-key-credentials (llm.settings/llm-openai-api-key))
-    "openrouter" (configured-api-key-credentials (llm.settings/llm-openrouter-api-key))
-    "zai"        (configured-api-key-credentials (llm.settings/llm-zai-api-key))
-    nil))
-
 (defn provider-credentials-complete?
-  "Whether a credentials map carries everything `provider` needs to make requests: both the AWS access key ID and
-  secret access key for Bedrock, both the API key and base URL for Azure, an `:api-key` for the other direct
-  providers."
+  "Whether a credentials map carries everything `provider` needs."
   [provider credentials]
   (boolean
    (case provider
@@ -327,7 +306,38 @@
                     (non-blank (:secret-access-key credentials)))
      "azure"   (and (non-blank (:api-key credentials))
                     (non-blank (:base-url credentials)))
+     "google"  (or (non-blank (:service-account-key credentials))
+                   (and (non-blank (:oauth-access-token credentials))
+                        (non-blank (:project-id credentials))))
      (non-blank (:api-key credentials)))))
+
+(defn configured-provider-credentials
+  "Returns the configured credentials map for the given provider, or nil if unrecognized or unconfigured."
+  [provider]
+  (case provider
+    "anthropic"  (configured-api-key-credentials (llm.settings/llm-anthropic-api-key))
+    "azure"      (let [creds {:api-key  (non-blank (llm.settings/llm-azure-api-key))
+                              :base-url (non-blank (llm.settings/llm-azure-api-base-url))}]
+                   (when (provider-credentials-complete? "azure" creds)
+                     creds))
+    "bedrock"    (let [creds {:access-key-id     (non-blank (llm.settings/llm-bedrock-access-key-id))
+                              :secret-access-key (non-blank (llm.settings/llm-bedrock-secret-access-key))
+                              :session-token     (non-blank (llm.settings/llm-bedrock-session-token))
+                              :region            (non-blank (llm.settings/llm-bedrock-region))}]
+                   (when (provider-credentials-complete? "bedrock" creds)
+                     creds))
+    "google"     (let [creds {:service-account-key (non-blank (llm.settings/llm-google-service-account-key))
+                              :oauth-access-token  (non-blank (llm.settings/llm-google-oauth-access-token))
+                              :project-id          (non-blank (llm.settings/llm-google-project-id))
+                              :location            (non-blank (llm.settings/llm-google-location))}]
+                   (when (provider-credentials-complete? "google" creds)
+                     creds))
+    "mistral"    (configured-api-key-credentials (llm.settings/llm-mistral-api-key))
+    "moonshot"   (configured-api-key-credentials (llm.settings/llm-moonshot-api-key))
+    "openai"     (configured-api-key-credentials (llm.settings/llm-openai-api-key))
+    "openrouter" (configured-api-key-credentials (llm.settings/llm-openrouter-api-key))
+    "zai"        (configured-api-key-credentials (llm.settings/llm-zai-api-key))
+    nil))
 
 (defn- llm-provider-configured?
   "Check if a provider-and-model string has the necessary configuration.
@@ -431,6 +441,7 @@
 - `ai_usage_log`
 - `metabot_conversation`
 - `metabot_message`
+- `agent_api_call_log`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
-If set to 0, Metabase will keep all rows.")
+If set to 0, Metabase will keep all rows. If you don't set this variable, Metabase keeps rows for 180 days.")

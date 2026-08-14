@@ -12,7 +12,12 @@ import {
   createMockQueryBuilderUIControlsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { type NavigateOptions, type To, navigate } from "metabase/router";
+import {
+  type NavigateOptions,
+  type To,
+  getIsNavigationPending,
+  navigate,
+} from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
@@ -34,6 +39,7 @@ registerVisualizations();
 jest.mock("metabase/router", () => ({
   ...jest.requireActual("metabase/router"),
   navigate: jest.fn(),
+  getIsNavigationPending: jest.fn(() => false),
 }));
 
 type UpdateUrlOptions = Parameters<typeof updateUrl>[1];
@@ -117,6 +123,9 @@ async function setup({
 describe("QB Actions > updateUrl (navigation producer contract)", () => {
   beforeEach(() => {
     jest.mocked(navigate).mockClear();
+    // Reset here rather than at the end of the test that sets it, so a failing
+    // expectation cannot leak the pending state into the tests that follow.
+    jest.mocked(getIsNavigationPending).mockReturnValue(false);
     jest.spyOn(console, "warn").mockImplementation(() => {});
     window.history.replaceState({}, "", "/");
   });
@@ -257,6 +266,22 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
         "preserveNavbarState",
       );
     });
+  });
+
+  // Saving a card finishes asynchronously. A `route.lazy` destination keeps the
+  // query builder mounted while its chunk loads, so this can run after the user
+  // has been sent elsewhere, and a navigation here would replace that pending
+  // one. See dashboard-questions.cy.spec.js, which caught it.
+  it("does not navigate while the router has a navigation pending", async () => {
+    jest.mocked(getIsNavigationPending).mockReturnValue(true);
+
+    const card = createSavedStructuredCard();
+    await setup({
+      question: buildSavedQuestion(card),
+      options: { dirty: true },
+    });
+
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("flows objectId through onto location.state", async () => {

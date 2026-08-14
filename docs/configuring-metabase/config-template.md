@@ -240,9 +240,19 @@ config:
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
+    metabot-advanced-permissions: false
+    metabot-chat-system-prompt: ''
     metabot-enabled: true
+    metabot-icon: metabot
+    metabot-limit-reset-rate: monthly
+    metabot-limit-unit: tokens
+    metabot-name: Metabot
+    metabot-nlq-system-prompt: ''
+    metabot-quota-reached-message: You have reached your AI usage limit for the current period. Please contact your administrator.
     metabot-recent-views-enabled: true
+    metabot-show-illustrations: true
     metabot-slack-signing-secret: null
+    metabot-sql-system-prompt: ''
     mfa-challenge-signing-key: null
     mfa-enforcement: 'off'
     native-query-autocomplete-match-style: substring

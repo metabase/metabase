@@ -11,7 +11,7 @@ import {
   setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
@@ -278,5 +278,76 @@ describe("CollectionContent selection", () => {
     expect(screen.getByText(tableQuestion.name)).toBeInTheDocument();
     expect(getPinnedSection().getAllByRole("link")).toHaveLength(2);
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("should toggle a table row with shift+click without navigating", async () => {
+    const events = userEvent.setup();
+    await setup();
+
+    await events.keyboard("{Shift>}");
+    await events.click(screen.getByRole("link", { name: tableQuestion.name }));
+    await events.keyboard("{/Shift}");
+
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    expect(getPinnedCard(pinnedDashboard.name)).toBeInTheDocument();
+
+    await events.keyboard("{Shift>}");
+    await events.click(screen.getByRole("link", { name: tableQuestion.name }));
+    await events.keyboard("{/Shift}");
+
+    expect(screen.queryByText(/items? selected/)).not.toBeInTheDocument();
+  });
+
+  it("should select a pinned card from an empty selection with shift+click", async () => {
+    const events = userEvent.setup();
+    await setup();
+    const pinnedCard = getPinnedLink(pinnedDashboard.name);
+
+    await events.keyboard("{Shift>}");
+    await events.click(pinnedCard);
+    await events.keyboard("{/Shift}");
+
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    expect(getPinnedCard(pinnedDashboard.name)).toBeChecked();
+  });
+
+  it("should select a pinned card from its overflow menu", async () => {
+    await setup();
+    const pinnedCard = getPinnedLink(pinnedDashboard.name);
+
+    await userEvent.click(
+      within(pinnedCard).getByRole("button", { name: "Actions" }),
+    );
+    await userEvent.click(await screen.findByText("Select"));
+
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+    expect(getPinnedCard(pinnedDashboard.name)).toBeChecked();
+  });
+
+  it("should select a table row from its overflow menu", async () => {
+    await setup();
+    const row = screen.getByRole("row", {
+      name: new RegExp(tableQuestion.name),
+    });
+
+    await userEvent.click(within(row).getByRole("button", { name: "Actions" }));
+    await userEvent.click(await screen.findByText("Select"));
+
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
+  });
+
+  it("should open a row menu without selecting on shift+click", async () => {
+    await setup();
+    const row = screen.getByRole("row", {
+      name: new RegExp(tableQuestion.name),
+    });
+    const actions = within(row).getByRole("button", { name: "Actions" });
+
+    fireEvent.click(within(actions).getByLabelText("ellipsis icon"), {
+      shiftKey: true,
+    });
+
+    expect(await screen.findByText("Select")).toBeInTheDocument();
+    expect(screen.queryByText(/items? selected/)).not.toBeInTheDocument();
   });
 });
