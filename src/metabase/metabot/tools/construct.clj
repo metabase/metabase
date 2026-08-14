@@ -180,7 +180,7 @@
 (def ^:private permission-aware-content-store
   "ContentStore for agent query construction. Alias for
   [[shared.content-store/default-store]], which permission-checks every lookup whenever
-  `api/*current-user-id*` is bound; see that namespace for the loud/quiet split between the
+  `api/*current-user-id*` is bound; see that namespace for the audited/unaudited split between the
   two lookup directions. The unchecked underlying store rejects non-NanoID entity-id values."
   shared.content-store/default-store)
 

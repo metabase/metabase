@@ -5,6 +5,7 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.metadata-perms :as metabot.perms]
@@ -234,14 +235,23 @@
 
 (defn- query-if-database-readable
   "The client-supplied adhoc query, only when the current user can read its database.
-  Exporting resolves table/field ids to names through an unfiltered metadata provider,
-  so gate it like the metabase://chart|query resources do. Queries with no :database
-  only ever pprint (no name resolution), so they pass through."
+  Exporting resolves table/field ids to names through an unfiltered metadata provider.
+  The check is audited for the same reason the query's card ids get the audited store: the
+  database id is client-supplied, so a refusal is a real access attempt. Queries with
+  no :database only ever pprint (no name resolution), so they pass through, as does a
+  nonexistent id: there is no metadata behind it to leak."
   [query]
   (let [database-id (and (map? query) (:database query))]
-    (when (or (not database-id)
-              (mi/can-read? :model/Database database-id))
-      query)))
+    (if-not database-id
+      query
+      (try
+        (api/read-check :model/Database database-id)
+        query
+        (catch clojure.lang.ExceptionInfo e
+          (case (:status-code (ex-data e))
+            403 nil
+            404 query
+            (throw e)))))))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
@@ -253,7 +263,7 @@
               (te/field "Database ID" (get-in item [:query :database]))
               (te/field "Query" (some-> (:query item)
                                         query-if-database-readable
-                                        (llm-shape/export-query-for-llm shared.content-store/loud-store)))
+                                        (llm-shape/export-query-for-llm shared.content-store/audited-store)))
               (when-let [config-ids (format-chart-config-ids item)]
                 (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
               (te/field "Tables used" (some->> (:used_tables item)
@@ -341,12 +351,12 @@
 (defn- transform-query-source-text
   "Format a transform's `:query` source for the LLM; the rendering and fallback contract
   lives in [[llm-shape/export-query-for-llm]]. The source arrives inline in the viewing
-  context, so it gets the loud client-supplied store."
+  context, so it gets the audited client-supplied store."
   [source]
   (let [query (:query source)]
     (when (or (not (and (map? query) (:database query)))
               (queryable-normalized-query query))
-      (llm-shape/export-query-for-llm query shared.content-store/loud-store))))
+      (llm-shape/export-query-for-llm query shared.content-store/audited-store))))
 
 (defn- transform-source-type
   [source]

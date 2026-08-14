@@ -319,7 +319,7 @@
           (let [result (read-resource/read-resource {:uris ["metabase://chart/chart-2"]})]
             (is (str/includes? (:output result) "Chart type: bar"))
             (is (str/includes? (:output result) "No query is attached to this chart."))
-            (is (not (str/includes? (:output result) "withheld")))))
+            (is (not (str/includes? (:output result) "cannot read its database")))))
         (testing "falls back to the queries state when the id is a query id"
           (let [result (read-resource/read-resource {:uris ["metabase://chart/q-1"]})]
             (is (str/includes? (:output result) "conversation-query"))))

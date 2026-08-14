@@ -503,10 +503,12 @@
               (is (str/includes? out "notebook editor"))
               (is (not (str/includes? out "source-table"))))))))))
 
-(deftest adhoc-viewing-context-denied-source-card-is-loud-test
-  (testing "a denied client-supplied :source-card goes through the loud read-check, and the query is withheld"
-    (mt/with-temp [:model/Card {card-id :id} {:database_id   (mt/id)
-                                              :dataset_query (mt/mbql-query venues)}]
+(deftest adhoc-viewing-context-denied-source-card-is-audited-test
+  (testing "a denied client-supplied :source-card goes through the audited read-check, and the query is left out"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:database_id   (mt/id)
+                    :dataset_query (lib/query (mt/metadata-provider)
+                                              (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
       (let [calls (atom 0)]
         (mt/with-dynamic-fn-redefs [api/read-check (fn [& _]
                                                      (swap! calls inc)
