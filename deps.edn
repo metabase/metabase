@@ -298,6 +298,7 @@
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
+                 "-Dmb.warehouse.allowed.networks=allow-all"
                  "-Dmacaw.run.mode=dev"
                  "-Duser.timezone=UTC"
                  "-Dfile.encoding=UTF-8"
@@ -339,6 +340,7 @@
   ;; clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev
   :dev-start {:main-opts ["-m" "user"]
               :jvm-opts ["-Dmb.run.mode=dev"
+                         "-Dmb.warehouse.allowed.networks=allow-all"
                          "-Dmacaw.run.mode=dev"
                          "-Djava.awt.headless=true"]}
 
@@ -348,6 +350,7 @@
    :exec-fn     metabase.test-runner/find-and-run-tests-cli
    :exec-args   {}
    :jvm-opts    ["-Dmb.run.mode=test"
+                 "-Dmb.warehouse.allowed.networks=allow-all"
                  "-Dmacaw.run.mode=test"
                  "-Dmb.db.in.memory=true"
                  "-Dmb.jetty.join=false"
@@ -367,6 +370,7 @@
   :run
   {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=dev"
+               "-Dmb.warehouse.allowed.networks=allow-all"
                "-Dmacaw.run.mode=dev"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
@@ -378,6 +382,7 @@
   ;; clojure -M:dev:drivers:(oss|ee):run:e2e
   :e2e
   {:jvm-opts  ["-Dmb.run.mode=e2e"
+               "-Dmb.warehouse.allowed.networks=allow-all"
                "-Dmetastore.dev.server.url=https://token-check.staging.metabase.com"
                ;; prevent Java icon from randomly popping up in macOS dock
                "-Djava.awt.headless=true"
@@ -422,6 +427,7 @@
   :doc
   {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"
+               "-Dmb.warehouse.allowed.networks=allow-all"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
   ;; alias for CI-specific options.
@@ -478,7 +484,8 @@
 
   :cljs
   {:extra-paths ["test"]
-   :jvm-opts    ["-Dmb.run.mode=dev"]
+   :jvm-opts    ["-Dmb.run.mode=dev"
+                 "-Dmb.warehouse.allowed.networks=allow-all"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
     cider/cider-nrepl                  {:mvn/version "0.58.0"}
