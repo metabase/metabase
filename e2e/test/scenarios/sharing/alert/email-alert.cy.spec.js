@@ -47,7 +47,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     });
   });
 
-  it("should not claim a schedule when sending a one-off alert (metabase#79623)", () => {
+  it("should not claim a schedule when sending a one-off alert", () => {
     createQuestionAndOpenAlert("One-off alert");
 
     H.sendAlertAndVisitIt();

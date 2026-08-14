@@ -140,8 +140,11 @@ export function dashboardPulseIsValid(
 export function cleanPulse<T extends DashboardSubscriptionData>(
   pulse: T,
   channelSpecs: Partial<ChannelSpecs>,
-  shouldKeepChannel = channelIsValid,
+  includingSubscription: boolean = true,
 ): T {
+  const shouldKeepChannel = includingSubscription
+    ? channelIsValid
+    : channelTargetIsValid;
   return {
     ...pulse,
     channels: pulse.channels.filter((channel) =>
