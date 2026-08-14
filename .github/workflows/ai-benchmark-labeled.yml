@@ -1,0 +1,93 @@
+name: Ai Benchmark labeled
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+
+  # Check whether workflow can be started even.
+  supported:
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.label.name == 'evals/smoke'
+      && github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - run: |
+          echo "::error::evals/smoke only runs on same-repo PRs; this PR's head is on a fork"
+          exit 1
+
+  # Write a comment into the PR that was labeled.
+  announce:
+    needs: supported
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      comment_id: ${{ steps.post.outputs.comment_id }}
+    steps:
+      - name: Comment (building)
+        id: post
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `🤖 **Evals smoke** — ⏳ building the image… ([logs](${runUrl}))`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            // Drop earlier verdicts first: they describe shas that are no longer head, and a stale
+            // green one reads as this PR passing. The prefix survives eval-run's rewrites.
+            const existing = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            for (const c of existing.filter(c => c.body.startsWith('🤖 **Evals'))) {
+              await github.rest.issues.deleteComment({ owner, repo, comment_id: c.id }).catch(() => {});
+            }
+            const { data } = await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            core.setOutput('comment_id', String(data.id));
+
+  # Dispatch the evals.
+  ai-benchmark:
+    needs: announce
+    uses: ./.github/workflows/ai-benchmark.yml
+    with:
+      scope: smoke
+      sample: 5
+      evals_branch: main
+      comment_id: ${{ needs.announce.outputs.comment_id }}
+
+  # If the ai-benchmark dispatch fails or is cancelled update the PR comment accordingly.
+  finalize:
+    needs: [announce, ai-benchmark]
+    if: always() && needs.announce.result == 'success' && needs.ai-benchmark.result != 'success'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    env:
+      COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
+      DISPATCH_RESULT: ${{ needs.smoke.result }}
+    steps:
+      - name: Comment (build/dispatch failed)
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            // A concurrency-cancelled retrigger lands here too; don't stamp it as an infra failure.
+            const cancelled = [process.env.DISPATCH_RESULT].includes('cancelled');
+            const body = cancelled
+              ? `🤖 **Evals smoke** — ⚪ cancelled before evals started ([logs](${runUrl}))`
+              : `🤖 **Evals smoke** — ❌ build or dispatch failed before evals started ([logs](${runUrl}))`;
+            // The replacement run deletes this comment on its way in, so a concurrency cancel can
+            // land here with nothing to patch. Losing the stamp is fine; failing the job isn't.
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              comment_id: Number(process.env.COMMENT_ID), body })
+              .catch(e => core.warning(`could not update comment (deleted?): ${e.message}`));
+            // eval-run only consumes the label once it has taken the run over, so anything failing
+            // before the dispatch leaves it applied — and `labeled` only fires on a transition, which
+            // makes re-applying it to retry a no-op. Hand it back.
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              name: 'evals/smoke',
+            }).catch(() => {});
