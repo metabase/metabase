@@ -19,11 +19,23 @@ import type { QuestionPickerValueItem } from "metabase/common/components/Pickers
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
+import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
+import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
+import {
+  cleanupFlexContainerNodes,
+  findNodeParentAndPos,
+} from "metabase/rich_text_editing/tiptap/extensions/HandleEditorDrop/utils";
+import {
+  createIdAttribute,
+  createProseMirrorPlugin,
+} from "metabase/rich_text_editing/tiptap/extensions/NodeIds";
+import CS from "metabase/rich_text_editing/tiptap/extensions/extensions.module.css";
 import {
   EDITOR_STYLE_BOUNDARY_CLASS,
   MAX_GROUP_SIZE,
 } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
+import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
 import { useNavigate } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -43,23 +55,13 @@ import { getDatasetError } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
 
-import { CommentsButton } from "../../components/CommentsButton";
-import {
-  cleanupFlexContainerNodes,
-  findNodeParentAndPos,
-} from "../HandleEditorDrop/utils";
-import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
-import CS from "../extensions.module.css";
-import { NativeQueryModal } from "../shared/NativeQueryModal";
-import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
-
-import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
 import { DocumentMode } from "./DocumentMode";
 import { useExternalCardData } from "./ExternalCardDataContext";
 import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
+import { NativeQueryModal } from "./modals/NativeQueryModal";
 import { useUpdateCardOperations } from "./use-update-card-operations";
 import { getEmbedIndex } from "./utils";
 

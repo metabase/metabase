@@ -42,8 +42,13 @@ import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 import type { CommandProps } from "./CommandExtension";
 import CommandS from "./CommandSuggestion.module.css";
 import { NewQuestionTypeMenuView } from "./NewQuestionTypeMenuView";
-import type { CommandOption, CommandSection } from "./types";
-import { useCreateQuestionsMenuItems } from "./use-create-questions-menu-items";
+import type {
+  CommandOption,
+  CommandSection,
+  NewQuestionMenuItem,
+  NewQuestionModals,
+  NewQuestionOption,
+} from "./types";
 import { type MetabotCommandConfig, getAllCommandSections } from "./utils";
 
 export interface CommandSuggestionProps {
@@ -53,6 +58,8 @@ export interface CommandSuggestionProps {
   range: Range;
   query: string;
   metabotCommand?: MetabotCommandConfig | null;
+  newQuestionOptions: NewQuestionOption[];
+  newQuestionModals: NewQuestionModals;
 }
 
 export interface CommandSuggestionRef {
@@ -101,7 +108,14 @@ export const CommandSuggestion = forwardRef<
   CommandSuggestionRef,
   CommandSuggestionProps
 >(function CommandSuggestionComponent(
-  { command, editor, query, metabotCommand },
+  {
+    command,
+    editor,
+    query,
+    metabotCommand,
+    newQuestionOptions,
+    newQuestionModals,
+  },
   ref,
 ) {
   const host = useEditorHost();
@@ -146,9 +160,14 @@ export const CommandSuggestion = forwardRef<
     );
   }, [viewMode, query, allowedCommandOptions]);
 
-  const createQuestionsMenuItems = useCreateQuestionsMenuItems({
-    onSelectItem: setNewQuestionType,
-  });
+  const createQuestionsMenuItems: NewQuestionMenuItem[] = useMemo(
+    () =>
+      newQuestionOptions.map((option) => ({
+        ...option,
+        action: () => setNewQuestionType(option.value),
+      })),
+    [newQuestionOptions],
+  );
 
   const areChartsAllowed = !editor.isActive("supportingText");
   const canBrowseAll = areChartsAllowed || viewMode === "linkTo";
@@ -399,6 +418,7 @@ export const CommandSuggestion = forwardRef<
 
       {viewMode === "newQuestionType" && (
         <NewQuestionTypeMenuView
+          modals={newQuestionModals}
           menuItems={createQuestionsMenuItems}
           selectedIndex={selectedIndex}
           setSelectedIndex={setSelectedIndex}

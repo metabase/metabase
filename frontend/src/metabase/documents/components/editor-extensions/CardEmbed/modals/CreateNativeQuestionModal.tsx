@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import Question from "metabase-lib/v1/Question";
 
-import { NativeQueryModal } from "../shared/NativeQueryModal";
+import { NativeQueryModal } from "./NativeQueryModal";
 
 interface CreateQuestionModalProps {
   onSave: (id: number, name: string) => void;
