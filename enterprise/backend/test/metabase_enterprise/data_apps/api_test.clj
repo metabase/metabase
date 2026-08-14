@@ -57,7 +57,7 @@
 
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
 
-(deftest non-superuser-can-view-and-list-but-not-manage-test
+(deftest data-app-access-requires-read-access-to-its-resource-collection-test
   ;; global mode so the `:data-apps-preview` premium feature is visible to the real-HTTP
   ;; `user-real-request` calls below (which run on Jetty threads that don't inherit
   ;; a thread-local `binding`).
@@ -65,15 +65,23 @@
     (mt/with-premium-features #{:data-apps-preview}
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
-        (testing "a non-superuser can view (open) a data app"
-          (is (= [{:name "demo" :display_name "Demo"}]
-                 (mt/user-http-request :rasta :get 200 "apps")))
-          (is (= {:name "demo" :display_name "Demo"}
-                 (mt/user-http-request :rasta :get 200 "apps/demo")))
-          (is (str/includes?
-               (str (mt/user-real-request :rasta :get 200 "apps/demo/bundle"))
-               "BUNDLE")))
-        (testing "but is still forbidden from managing data apps"
+        (let [app (t2/select-one :model/DataApp :name "demo")
+              {:keys [permission_group_id]} (data-app.resources/ensure-resources! app)]
+          (testing "a non-member cannot open a data app or load its bundle"
+            (is (= [{:name "demo" :display_name "Demo"}]
+                   (mt/user-http-request :rasta :get 200 "apps")))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "apps/demo")))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 "apps/demo/bundle"))))
+          (testing "a member can open a data app"
+            (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id)
+            (is (= {:name "demo" :display_name "Demo"}
+                   (mt/user-http-request :rasta :get 200 "apps/demo")))
+            (is (str/includes?
+                 (str (mt/user-real-request :rasta :get 200 "apps/demo/bundle"))
+                 "BUNDLE"))))
+        (testing "a non-superuser is still forbidden from managing data apps"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "apps/repo-status")))
           (is (= "You don't have permissions to do that."

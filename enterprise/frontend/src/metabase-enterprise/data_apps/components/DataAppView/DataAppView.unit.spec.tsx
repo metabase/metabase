@@ -72,6 +72,24 @@ describe("DataAppView", () => {
     expect(screen.getByText("Couldn’t load this data app")).toBeInTheDocument();
   });
 
+  it("shows a permission error when the user cannot access the data app", () => {
+    setup({ error: { status: 403 } });
+
+    expect(
+      screen.getByText("You don’t have access to this data app"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Ask an administrator for access to this data app."),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByText("Show error details")).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByText("Gather diagnostic information"),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders the app inside an iframe once metadata resolves", () => {
     setup({ data: createMockDataApp({ display_name: "Sales" }) });
 
