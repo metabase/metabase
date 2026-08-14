@@ -38,11 +38,18 @@
 
 (deftest ^:parallel format-python-library-too-large-test
   (testing "an oversized library is truncated, not dropped"
-    (let [source (str/join (repeat 100001 "x"))
+    (let [source (str/join (repeat 200000 "x"))
           output (formatted-library-output {:path "common.py" :source source})]
-      (is (str/includes? output (subs source 0 100000)))
+      (is (<= (count output) 100200))
       (is (not (str/includes? output source)))
-      (is (str/includes? output "Truncated: showing the first 100000 of 100001 characters.")))))
+      (is (str/includes? output "of 200000 characters.")))))
+
+(deftest ^:parallel format-python-library-backtick-flood-test
+  (testing "an all-backtick source cannot grow the fences past the cap"
+    (let [source (str/join (repeat 200000 "`"))
+          output (formatted-library-output {:path "common.py" :source source})]
+      (is (<= (count output) 100200))
+      (is (str/includes? output "of 200000 characters.")))))
 
 (deftest get-transform-python-library-details-tool-test
   (testing "the tool renders the :source key the transforms-python API actually returns"
