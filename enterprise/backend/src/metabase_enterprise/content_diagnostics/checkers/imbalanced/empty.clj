@@ -1,12 +1,12 @@
 (ns metabase-enterprise.content-diagnostics.checkers.imbalanced.empty
   "The `empty` imbalanced checker: content with nothing in it, across collections, cards, dashboards,
   documents, and transforms. Runs independently of `sparse`/`crowded`, so an entity can be flagged by
-  more than one (a collection whose items are all empty is both `empty` and `crowded`).
+  more than one (a many-tab dashboard with 0 dashcards is both `crowded` and `empty`).
 
   What counts as empty:
-  - Collection: no non-empty items, checked recursively - a collection holding only empty dashboards is
-    empty too. Items are exactly the covered kinds: child collections, cards, dashboards, documents,
-    transforms.
+  - Collection: no direct items, the same count `sparse`/`crowded` use. Items are exactly the covered
+    kinds: child collections, cards, dashboards, documents, transforms; empty items still count (a
+    folder of only-empty dashboards is not `empty` - the dashboards are).
   - Card: its latest clean run (no parameters, sandbox, cache, or error) returned 0 rows; a card never
     run cleanly is left alone. `as_of` is that run's start.
   - Dashboard: no dashcards.
@@ -20,7 +20,6 @@
    [clojure.string :as str]
    [metabase-enterprise.content-diagnostics.checkers.imbalanced.common :as shared]
    [metabase-enterprise.content-diagnostics.common :as common]
-   [metabase.collections.models.collection :as collection]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -91,61 +90,31 @@
                                   [:= :mt.estimated_row_count 0]
                                   [:= :mt.active true]]})))
 
-(defn- non-empty-leaf-coll-ids
-  "Collection ids of `rows` whose id is not in the `empty-ids` verdict set."
-  [empty-ids rows]
-  (keep #(when-not (empty-ids (:id %)) (:collection_id %)) rows))
-
-(defn- non-empty-collection-ids
-  "Cascade the leaf emptiness verdicts up the tree: a collection is non-empty if any collection in its
-  subtree (itself included) directly holds a non-empty item. Marks each leaf-holding collection and its
-  ancestors (from `location`); a leaf in an ineligible collection (e.g. audit content) is dropped, so it
-  can't mark ancestors."
-  [collections leaf-coll-ids]
-  (let [id->location (u/index-by :id :location collections)]
-    (into #{}
-          (mapcat (fn [id]
-                    (when-let [location (get id->location id)]
-                      (cons id (collection/location-path->ids location)))))
-          leaf-coll-ids)))
-
 (defn checker
-  "Instance-wide `empty` findings across collections, cards, dashboards, documents, and transforms. The
-  leaf verdicts (the card probe, empty dashboards, empty documents, empty transforms) feed the collection
-  cascade computed in the same pass."
+  "Instance-wide `empty` findings across collections, cards, dashboards, documents, and transforms.
+  Collections are flagged on their direct-item count alone - the per-item verdicts never roll up."
   []
   (let [empty-card-as-of      (empty-card-id->as-of)
-        cards                 (shared/collection-item-cards)
         dashboards            (shared/active-dashboards)
         dashcard-totals       (shared/dashboard-dashcard-totals)
         documents             (shared/active-documents)
-        transforms            (shared/transform-items)
         collections           (shared/eligible-collections)
-        empty-cards           (set (keys empty-card-as-of))
+        item-counts           (shared/direct-item-counts collections)
         empty-transform-as-of (empty-transform-id->as-of)
-        empty-transforms      (set (keys empty-transform-as-of))
         empty-dashboards      (into #{}
                                     (keep #(when (zero? (long (get dashcard-totals (:id %) 0))) (:id %)))
                                     dashboards)
         ;; only a parseable (prose-mirror) document can be judged empty - any other content type is
-        ;; unknown, so it counts as a non-empty leaf below
+        ;; unknown, so it is never flagged
         empty-documents       (into #{}
                                     (keep #(when (and (= (:content_type %) prose-mirror/prose-mirror-content-type)
                                                       (document-empty? %))
                                              (:id %)))
-                                    documents)
-        ;; an item counts as a non-empty leaf unless this same pass flagged it empty (a card with no
-        ;; run signal counts as non-empty, as does a never-run transform)
-        leaf-coll-ids         (into #{}
-                                    (concat (non-empty-leaf-coll-ids empty-cards cards)
-                                            (non-empty-leaf-coll-ids empty-dashboards dashboards)
-                                            (non-empty-leaf-coll-ids empty-documents documents)
-                                            (non-empty-leaf-coll-ids empty-transforms transforms)))
-        non-empty-colls       (non-empty-collection-ids collections leaf-coll-ids)]
+                                    documents)]
     (common/attach-entity-attrs
      (concat
       (for [{:keys [id]} collections
-            :when (not (contains? non-empty-colls id))]
+            :when (zero? (long (get item-counts id 0)))]
         (shared/finding :collection id :empty 0 {:threshold 0 :unit "items"}))
       (for [[card-id as-of] empty-card-as-of]
         (shared/finding :card card-id :empty 0 {:threshold 0 :unit "rows" :as_of as-of}))

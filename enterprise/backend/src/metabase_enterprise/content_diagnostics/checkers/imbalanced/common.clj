@@ -88,15 +88,15 @@
                          :group-by [:dashboard_id]})))
 
 (defn eligible-collections
-  "The collections the imbalanced checkers scan (and the substrate for the recursion): the shared
-  collection-subject set (`common/eligible-collection-where`)."
+  "The collections the imbalanced checkers scan: the shared collection-subject set
+  (`common/eligible-collection-where`)."
   []
   (t2/select [:model/Collection :id :location] {:where common/eligible-collection-where}))
 
 (defn direct-item-counts
   "`{collection-id -> raw direct item count}` over `collections`: child collections plus the
-  card/dashboard/document/transform items. Empty items still count - only the `empty` cascade looks
-  deeper."
+  card/dashboard/document/transform items. Empty items still count; all three checkers read this
+  same count."
   [collections]
   (merge-with +
               (frequencies (keep (comp collection/location-path->parent-id :location) collections))

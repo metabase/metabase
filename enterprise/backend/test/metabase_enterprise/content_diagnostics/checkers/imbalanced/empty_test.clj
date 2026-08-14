@@ -1,5 +1,5 @@
 (ns metabase-enterprise.content-diagnostics.checkers.imbalanced.empty-test
-  "The `empty` imbalanced checker: content with nothing in it, across collection (recursive cascade),
+  "The `empty` imbalanced checker: content with nothing in it, across collection (0 direct items),
   card (last clean-run signal), dashboard (0 dashcards), document (no content, fail-closed), and
   transform (0-row synced estimate). Asserts only `:empty` findings; the cross-type co-occurrence that
   independent checkers now allow is covered in the imbalanced integration suite."
@@ -23,7 +23,7 @@
 ;;; ---------------------------------------------------- collections ----------------------------------------
 
 (deftest empty-collection-test
-  (testing "a collection with no non-empty items is empty; archived members never count; a collection with a real item is not"
+  (testing "a collection with no direct items is empty; archived members never count; a collection with an item is not"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
@@ -31,7 +31,7 @@
            ;; only an archived card - archived members don't count, so it IS empty
            :model/Collection {arch-coll :id} {}
            :model/Card _ {:collection_id arch-coll :archived true}
-           ;; a real (never-run, so non-empty) card - not empty
+           ;; one direct item - not empty
            :model/Collection {full-coll :id} {}
            :model/Card _ {:collection_id full-coll}]
           (let [by-entity (empty-by-entity!)]
@@ -45,36 +45,37 @@
             (testing "a collection holding a real item is not empty"
               (is (nil? (by-entity [:collection full-coll]))))))))))
 
-(deftest empty-collection-cascade-test
-  (testing "collection emptiness is recursive over the same pass's leaf verdicts"
+(deftest empty-collection-direct-count-test
+  (testing "collection emptiness is the direct-item count alone - item verdicts and depth never cascade"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
-          [;; a chain whose only leaf is an empty dashboard - every ancestor is empty
+          [;; a chain whose only leaf is an empty dashboard - every level holds one direct item
+           ;; (the child collection, or the dashboard), so no level is empty
            :model/Collection {gp :id} {}
            :model/Collection {p :id}  {:location (collection/location-path gp)}
            :model/Collection {c :id}  {:location (collection/location-path gp p)}
            :model/Dashboard  {empty-dash :id} {:collection_id c}
-           ;; the same chain shape with one deep non-empty leaf - no ancestor is empty
+           ;; the same chain shape ending in a card - likewise no level is empty
            :model/Collection {gp2 :id} {}
            :model/Collection {p2 :id}  {:location (collection/location-path gp2)}
            :model/Collection {c2 :id}  {:location (collection/location-path gp2 p2)}
            :model/Card _ {:collection_id c2}
-           ;; 3 empty dashboards + 1 never-run card = non-empty (the card is a non-empty leaf)
+           ;; 3 empty dashboards + 1 never-run card = 4 direct items - not empty
            :model/Collection {mixed :id} {}
            :model/Dashboard _ {:collection_id mixed}
            :model/Dashboard _ {:collection_id mixed}
            :model/Dashboard _ {:collection_id mixed}
            :model/Card _ {:collection_id mixed}]
           (let [by-entity (empty-by-entity!)]
-            (testing "the empty-dashboard leaf makes the whole chain empty - the dashboard's own emptiness cascades"
+            (testing "the empty dashboard is flagged, but no ancestor is - its emptiness never cascades"
               (is (some? (by-entity [:dashboard empty-dash])))
               (doseq [coll-id [gp p c]]
-                (is (some? (by-entity [:collection coll-id])) (str "collection " coll-id))))
-            (testing "one deep non-empty leaf keeps the whole chain non-empty"
+                (is (nil? (by-entity [:collection coll-id])) (str "collection " coll-id))))
+            (testing "the card-ended chain is likewise empty-free at every level"
               (doseq [coll-id [gp2 p2 c2]]
                 (is (nil? (by-entity [:collection coll-id])) (str "collection " coll-id))))
-            (testing "a collection with any non-empty leaf is not empty, even amid empty items"
+            (testing "empty items still count as direct items"
               (is (nil? (by-entity [:collection mixed]))))))))))
 
 (deftest empty-excluded-collection-subjects-test
@@ -171,7 +172,8 @@
              :model/Card {archived-card :id} {:collection_id coll :archived true}
              :model/QueryExecution _ {:card_id archived-card :started_at (ago 5)
                                       :parameterized false :cache_hit false :result_rows 0}
-             ;; the cascade: a collection holding only a flagged-empty card is itself empty
+             ;; a collection holding only a flagged-empty card: one direct item, so the collection is
+             ;; not empty - the card's own finding is the signal
              :model/Collection {only-empty-card-coll :id} {}
              :model/Card {c0 :id} {:collection_id only-empty-card-coll}
              :model/QueryExecution _ {:card_id c0 :started_at (ago 5)
@@ -198,8 +200,9 @@
                 (is (nil? (by-entity [:card only-sandboxed]))))
               (testing "archived card excluded even with a 0-row latest run"
                 (is (nil? (by-entity [:card archived-card]))))
-              (testing "a collection holding only a flagged-empty card is empty"
-                (is (some? (by-entity [:collection only-empty-card-coll])))))))))))
+              (testing "a collection holding only a flagged-empty card is not empty - the card carries the finding"
+                (is (some? (by-entity [:card c0])))
+                (is (nil? (by-entity [:collection only-empty-card-coll])))))))))))
 
 ;;; ----------------------------------------------------- dashboards -----------------------------------------
 
@@ -270,15 +273,15 @@
 
 ;;; ----------------------------------------------------- transforms -----------------------------------------
 
-(deftest empty-transform-folder-cascade-test
-  (testing "transform folders count their transforms - only an all-empty one reads empty"
+(deftest empty-transform-folder-test
+  (testing "transform folders count their transforms as direct items - only an item-less one reads empty"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp
-          [;; a folder whose only transform has never run (nil estimate) - non-empty, like a never-run card
+          [;; a folder whose only transform has never run (nil estimate) - one item, not empty
            :model/Collection {live-folder :id} {:namespace "transforms"}
            :model/Transform _ {:collection_id live-folder}
-           ;; a folder holding only an estimate-0 transform - empty via the cascade
+           ;; a folder holding only an estimate-0 transform - still one direct item, so not empty
            :model/Collection {dead-folder :id} {:namespace "transforms"}
            :model/Table {zero-table :id} {:estimated_row_count 0}
            :model/Transform {dead-transform :id} {:collection_id dead-folder
@@ -294,8 +297,8 @@
           (let [by-entity (empty-by-entity!)]
             (testing "a folder holding a never-run transform is not empty"
               (is (nil? (by-entity [:collection live-folder]))))
-            (testing "a folder of only empty transforms is empty, and the transform leaf is flagged too"
-              (is (some? (by-entity [:collection dead-folder])))
+            (testing "a folder of only empty transforms is not empty - the transform carries the finding"
+              (is (nil? (by-entity [:collection dead-folder])))
               (is (some? (by-entity [:transform dead-transform]))))
             (testing "an item-less transforms folder is empty"
               (is (some? (by-entity [:collection bare-folder]))))
