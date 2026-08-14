@@ -5,8 +5,7 @@ import type {
   RevisionDiffKey,
   SegmentRevisionDiff,
 } from "metabase-types/api";
-
-import { isObject } from "./common";
+import { isObject } from "metabase-types/guards";
 
 export function isFieldDiff(value: unknown): value is FieldDiff {
   return isObject(value);
