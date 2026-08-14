@@ -4,7 +4,13 @@ import fetchMock from "fetch-mock";
 import { screen, within } from "__support__/ui";
 import type { DashboardSubscription } from "metabase-types/api";
 
-import { dashcard, hasBasicFilterOptions, setup, user } from "./setup";
+import {
+  dashcard,
+  hasBasicFilterOptions,
+  selectScheduleTime,
+  setup,
+  user,
+} from "./setup";
 
 describe("DashboardSubscriptionsSidebar", () => {
   it("should forward non-admin to email form - when slack is not setup", async () => {
@@ -264,6 +270,8 @@ describe("DashboardSubscriptionsSidebar", () => {
         within(await screen.findByRole("listbox")).getByText("daily"),
       );
 
+      await selectScheduleTime();
+
       expect(
         await screen.findByText(
           "Slack messages will be sent at 8:00 AM UTC, your Metabase timezone.",
@@ -316,6 +324,8 @@ describe("DashboardSubscriptionsSidebar", () => {
       await userEvent.click(
         within(await screen.findByRole("listbox")).getByText("daily"),
       );
+
+      await selectScheduleTime();
 
       expect(
         await screen.findByText(
