@@ -976,6 +976,7 @@
    :uses #{api
            appearance
            audit-app
+           config
            embedding
            metabot
            permissions
