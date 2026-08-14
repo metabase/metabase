@@ -5,8 +5,7 @@ export interface ExportAnalyticsResponse {
   filename: string;
 }
 
-// Shared between the trigger button and the status widget so both read the
-// same mutation lifecycle.
+// Shared between the trigger button and the status widget so both read the same mutation lifecycle.
 export const ANALYTICS_EXPORT_CACHE_KEY = "analytics-export";
 
 export const analyticsExportApi = EnterpriseApi.injectEndpoints({
