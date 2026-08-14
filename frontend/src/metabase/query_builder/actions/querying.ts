@@ -2,6 +2,7 @@ import { createAction } from "redux-actions";
 import { t } from "ttag";
 
 import { isAbortError } from "metabase/api/client";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/querying/run-query";
 import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { createThunkAction } from "metabase/redux";
@@ -198,6 +199,14 @@ const loadStartUIControls = createThunkAction(
 
 export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
   return async (dispatch: Dispatch, getState: GetState) => {
+    // A `custom:*` display counts as sensible only once its plugin is in the
+    // visualizations registry, so register it before deciding whether to
+    // reset the display (metabase#76065).
+    const display = question.display();
+    if (PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(display)) {
+      await PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay(dispatch, display);
+    }
+
     const [{ data, error }] = queryResults;
     const prevCard = getCard(getState());
     const { data: prevData, error: prevError } =

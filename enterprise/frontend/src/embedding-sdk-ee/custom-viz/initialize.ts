@@ -12,7 +12,6 @@ import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   CustomVizPluginId,
@@ -25,6 +24,7 @@ import { CustomVizSettingWidget } from "../../metabase-enterprise/custom_viz/com
 import type { LoadCustomVizPluginOptions } from "../../metabase-enterprise/custom_viz/custom-viz-plugins";
 import {
   loadCustomVizPlugin as eeLoadCustomVizPlugin,
+  loadCustomVizPluginForDisplay as eeLoadCustomVizPluginForDisplay,
   useAutoLoadCustomVizPlugin as eeUseAutoLoadCustomVizPlugin,
   useCustomVizPlugins as eeUseCustomVizPlugins,
   unregisterCustomVizDisplay,
@@ -161,26 +161,10 @@ export function initializeSdkCustomVizPlugin() {
       if (!isCustomVizAllowed(display, getAllowlist())) {
         return null;
       }
-      const identifier = display.slice("custom:".length);
-      const action = dispatch(
-        customVizPluginApi.endpoints.listCustomVizPlugins.initiate(undefined),
-      );
-      try {
-        const plugins = await action.unwrap();
-        const plugin = plugins.find((p) => p.identifier === identifier);
-        if (!plugin) {
-          warnUnknownCustomViz(display);
-          return null;
-        }
-        return await eeLoadCustomVizPlugin(plugin, {
-          sandboxMode: getSdkSandboxMode(),
-          onMessage: logUnavailableCustomVizMessage,
-        });
-      } catch {
-        return null;
-      } finally {
-        action.unsubscribe();
-      }
+      return eeLoadCustomVizPluginForDisplay(dispatch, display, {
+        sandboxMode: getSdkSandboxMode(),
+        onMessage: logUnavailableCustomVizMessage,
+      });
     },
 
     useAutoLoadCustomVizPlugin: (display: string | undefined) => {

@@ -15,6 +15,7 @@ import { type ToastArgs, useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import type { DispatchFn } from "metabase/redux/hooks";
 import { getSubpathSafeUrl } from "metabase/urls";
 import { measureText } from "metabase/utils/measure-text";
 import { retry } from "metabase/utils/retry";
@@ -26,6 +27,7 @@ import {
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
+import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
 import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,
@@ -454,6 +456,49 @@ export async function loadCustomVizPlugin(
     }
     failedPluginHashes.set(plugin.id, currentHash);
     return null;
+  }
+}
+
+/**
+ * Imperatively load (and register) the plugin backing a `custom:*` display,
+ * if it is installed and enabled. Resolves to the registered display
+ * identifier, or null when the display is not a custom viz or its plugin is
+ * unavailable. Never rejects.
+ */
+export async function loadCustomVizPluginForDisplay(
+  dispatch: DispatchFn,
+  display: string,
+  options: {
+    sandboxMode?: SandboxMode;
+    onMessage?: (toast: ToastArgs) => void;
+  } = {},
+): Promise<string | null> {
+  if (!isCustomVizDisplay(display)) {
+    return null;
+  }
+
+  const action = dispatch(
+    customVizPluginApi.endpoints.listCustomVizPlugins.initiate(undefined),
+  );
+
+  try {
+    const plugins = await action.unwrap();
+    const plugin = plugins.find(
+      (plugin) => getCustomPluginIdentifier(plugin) === display,
+    );
+
+    if (!plugin) {
+      return null;
+    }
+
+    return await loadCustomVizPlugin(plugin, {
+      onMessage: options.onMessage,
+      sandboxMode: options.sandboxMode,
+    });
+  } catch {
+    return null;
+  } finally {
+    action.unsubscribe();
   }
 }
 
