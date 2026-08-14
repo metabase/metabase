@@ -45,6 +45,31 @@
    :url_private "https://files.slack.com/files/data.csv"
    :size        100})
 
+(def slack-section-text-limit
+  "Slack rejects a `section` block whose `text.text` exceeds this many characters."
+  3000)
+
+(defn oversized-section-index
+  "Index of the first `section` block whose text exceeds [[slack-section-text-limit]], or nil
+   when every block is within Slack's limits. Lets tests validate blocks the way Slack does,
+   since the mocked client otherwise accepts anything."
+  [blocks]
+  (first (keep-indexed (fn [idx block]
+                         (when (and (= "section" (:type block))
+                                    (> (count (get-in block [:text :text] "")) slack-section-text-limit))
+                           idx))
+                       blocks)))
+
+(defn invalid-blocks-response
+  "The `chat.postMessage` response Slack returns when the section block at `idx` is too long."
+  [idx]
+  {:ok    false
+   :error "invalid_blocks"
+   :response_metadata
+   {:messages [(format "[ERROR] failed to match all allowed schemas [json-pointer:/blocks/%d/text]" idx)
+               (format "[ERROR] must be less than %d characters [json-pointer:/blocks/%d/text/text]"
+                       (inc slack-section-text-limit) idx)]}})
+
 (defmacro with-ensure-encryption
   "Use the existing encryption key if one is configured, otherwise set a test key.
    Avoids conflicts with encrypted settings in the DB that were written with the real key."

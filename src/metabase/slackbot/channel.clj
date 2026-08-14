@@ -3,8 +3,10 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.slackbot.blocks :as slackbot.blocks]
    [metabase.slackbot.client :as slackbot.client]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.string :as u.str]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,14 +22,27 @@
   [prompt]
   (str prompt channel-response-style-suffix))
 
-(defn- final-text-blocks
-  "Build the leading text block(s) for a finalized non-streaming Slack message."
-  [text]
-  (if (str/blank? text)
-    []
-    [{:type "section"
-      :text {:type "mrkdwn"
-             :text text}}]))
+(def ^:private message-text-limit
+  "Slack rejects a `chat.postMessage` whose `text` exceeds 40000 characters."
+  40000)
+
+(def ^:private fallback-prefix
+  "I could not render the formatted response, so here it is as plain text:\n\n")
+
+(defn- post-render-fallback!
+  "Post the answer as plain text after Slack refused to render the block message. The DM path drops
+   the text here (`streaming.clj`), but it has already delivered it via `chat.appendStream` -- the
+   channel path has sent nothing yet, so dropping it would lose the whole answer."
+  [client message-ctx text feedback-blocks]
+  (let [body (if (str/blank? text)
+               "I generated a response, but Slack could not render it. Please try again."
+               (str fallback-prefix
+                    (u.str/elide text (- message-text-limit (count fallback-prefix)))))
+        res  (slackbot.client/post-thread-reply client message-ctx body
+                                                :blocks (not-empty feedback-blocks))]
+    (when-not (:ok res)
+      (log/errorf "[slackbot] channel fallback post-message failed: %s" (:error res)))
+    res))
 
 (defn- make-channel-callbacks
   "Create callback functions for channel replies.
@@ -37,12 +52,22 @@
   (let [current-text (atom "")]
     (letfn [(set-status! [status]
               (try
-                (slackbot.client/set-status client {:status "is doing science..."
-                                                    :channel-id channel
-                                                    :thread-ts  thread-ts
-                                                    :loading-messages [(or status "")]})
+                (slackbot.client/set-status
+                 client (if status
+                          {:status           "is doing science..."
+                           :channel-id       channel
+                           :thread-ts        thread-ts
+                           :loading-messages [status]}
+                          ;; An empty `status` is how assistant.threads.setStatus clears the
+                          ;; indicator. `loading-messages` is left out: `client/set-status` only
+                          ;; sends the key when it is truthy.
+                          {:status     ""
+                           :channel-id channel
+                           :thread-ts  thread-ts}))
                 (catch Exception e
                   (log/warnf "[slackbot] set-status failed (channel=%s thread-ts=%s): %s" channel thread-ts (ex-message e)))))]
+      ;; Every text part from every round of the agent loop lands here, so the accumulated
+      ;; answer routinely exceeds Slack's section limit -- see `final-text-blocks`.
       {:on-text       (bound-fn* (fn [text]
                                    (when (seq text)
                                      (swap! current-text str text))))
@@ -90,18 +115,26 @@
               final-text              (if (or (seq answer-text) (seq blocks))
                                         answer-text
                                         "I wasn't able to generate a response. Please try again.")
-              final-blocks            (into (into (final-text-blocks final-text) blocks)
-                                            (feedback-blocks conversation-id message-external-id))
-              res                     (slackbot.client/post-thread-reply client {:channel channel :thread_ts thread-ts}
-                                                                         final-text :blocks final-blocks)]
-          (when-let [res-ts (:ts res)]
-            (metabot.persistence/set-response-slack-msg-id! assistant-msg-id res-ts))
-          (when-not (:ok res)
+              feedback                (feedback-blocks conversation-id message-external-id)
+              final-blocks            (slackbot.blocks/cap-blocks
+                                       (slackbot.blocks/final-text-blocks final-text) blocks feedback)
+              posted                  (slackbot.client/post-thread-reply client {:channel channel :thread_ts thread-ts}
+                                                                         (u.str/elide final-text message-text-limit)
+                                                                         :blocks final-blocks)]
+          (when-not (:ok posted)
             (log/errorf "[slackbot] channel post-message failed: %s (block_count=%d block_types=%s response_messages=%s)"
-                        (:error res)
+                        (:error posted)
                         (count final-blocks)
                         (pr-str (mapv :type final-blocks))
-                        (pr-str (get-in res [:response_metadata :messages]))))
+                        (pr-str (get-in posted [:response_metadata :messages]))))
+          ;; Slack returns `{:ok false}` rather than throwing, so without a fallback the thread just
+          ;; goes silent. Plain text can't be rejected the way the blocks were.
+          (let [res (if (:ok posted)
+                      posted
+                      (do (set-status! nil)
+                          (post-render-fallback! client message-ctx final-text feedback)))]
+            (when-let [res-ts (:ts res)]
+              (metabot.persistence/set-response-slack-msg-id! assistant-msg-id res-ts)))
           (doseq [e errors]
             (post-viz-error! client channel thread-ts e))))
       (catch Exception e
