@@ -47,6 +47,19 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     });
   });
 
+  it("should not claim a schedule when sending a one-off alert (metabase#79880)", () => {
+    createQuestionAndOpenAlert("One-off alert");
+
+    H.sendAlertAndVisitIt();
+
+    cy.get("table.header")
+      .first()
+      .within(() => {
+        cy.findByText("One-off alert").should("be.visible");
+        cy.findByText(/Run daily at/).should("not.exist");
+      });
+  });
+
   it("should respect email alerts toggled off (metabase#12349)", () => {
     H.updateSetting("report-timezone", "America/New_York");
 
@@ -233,7 +246,7 @@ function saveAlert() {
   H.modal().button("Done").click();
 }
 
-function sendTestAlertForQuestion(name) {
+function createQuestionAndOpenAlert(name) {
   H.createNativeQuestion(
     {
       name,
@@ -244,6 +257,10 @@ function sendTestAlertForQuestion(name) {
 
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Create an alert").click();
+}
+
+function sendTestAlertForQuestion(name) {
+  createQuestionAndOpenAlert(name);
   H.selectScheduleTime();
   H.sendAlertAndVisitIt();
   cy.findAllByRole("link").filter(`:contains(${name})`).should("be.visible");

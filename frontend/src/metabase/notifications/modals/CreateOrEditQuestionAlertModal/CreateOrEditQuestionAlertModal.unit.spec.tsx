@@ -164,23 +164,6 @@ describe("CreateOrEditQuestionAlertModal", () => {
     ).toBeChecked();
 
     expect(screen.getByRole("button", { name: /done/i })).toBeDisabled();
-  });
-
-  it("should not allow sending now until a time is picked", async () => {
-    setup({
-      isAdmin: true,
-      isEmailSetup: true,
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("New alert")).toBeInTheDocument();
-    });
-
-    expect(screen.getByRole("button", { name: /send now/i })).toBeDisabled();
-
-    await userEvent.click(screen.getByTestId("select-time"));
-    await userEvent.click(screen.getByRole("option", { name: /8:00/i }));
-
     expect(screen.getByRole("button", { name: /send now/i })).toBeEnabled();
   });
 

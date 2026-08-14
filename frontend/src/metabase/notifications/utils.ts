@@ -385,7 +385,11 @@ export const formatNotificationCheckSchedule = (
 
   if (isScheduleCronValue(value)) {
     const explanation = getScheduleExplanation(cronSchedule);
-    return explanation ? t`Check ${explanation}` : null;
+    return explanation
+      ? c(
+          "{0} is a human-readable schedule description, e.g. 'every day at 8:00 AM'",
+        ).t`Check ${explanation}`
+      : null;
   }
 
   const {
