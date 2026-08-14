@@ -1,38 +1,37 @@
-import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
-import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { Box, FixedSizeIcon, Flex, Text, Tooltip } from "metabase/ui";
+import {
+  Box,
+  FixedSizeIcon,
+  Flex,
+  Text,
+  Tooltip,
+  UnstyledButton,
+} from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./AreaLayout.module.css";
 import { TOOLTIP_OPEN_DELAY } from "./constants";
 
-type AreaTabProps = {
+type AreaNavButtonProps = {
   label: string;
   icon: IconName;
-  to: string;
-  isSelected?: boolean;
   showLabel: boolean;
+  onClick: () => void;
   rightSection?: ReactNode;
-  isGated?: boolean;
-  onClick?: () => void;
 };
 
-export function AreaTab({
+/**
+ * An action in the nav, styled like an [[AreaTab]] but not one: it goes
+ * nowhere, so it is a button and never reads as the current page.
+ */
+export function AreaNavButton({
   label,
   icon,
-  to,
-  isSelected,
   showLabel,
-  rightSection,
-  isGated,
   onClick,
-}: AreaTabProps) {
-  const upsellGem = isGated ? <UpsellGem.New size={14} /> : null;
-  const effectiveRightSection = rightSection ?? upsellGem;
-
+  rightSection,
+}: AreaNavButtonProps) {
   return (
     <Tooltip
       label={label}
@@ -41,25 +40,23 @@ export function AreaTab({
       disabled={showLabel}
     >
       <Flex
-        className={cx(S.tab, { [S.selected]: isSelected })}
-        component={ForwardRefLink}
-        to={to}
+        className={S.tab}
+        component={UnstyledButton}
         onClick={onClick}
         p="sm"
         gap="sm"
         bdrs="md"
         aria-label={label}
-        aria-current={isSelected ? "page" : undefined}
         justify={showLabel ? "start" : "center"}
       >
         <FixedSizeIcon name={icon} display="block" className={S.icon} />
         {showLabel && <Text lh="sm">{label}</Text>}
-        {effectiveRightSection && (
+        {rightSection && (
           <Box
             className={showLabel ? undefined : S.badgeOverlay}
             ml={showLabel ? "auto" : undefined}
           >
-            {effectiveRightSection}
+            {rightSection}
           </Box>
         )}
       </Flex>
