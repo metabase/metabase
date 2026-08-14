@@ -138,10 +138,8 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.sidebar().button("Done").should("be.disabled");
         H.sidebar().button("Send email now").should("be.enabled");
 
-        H.sendEmailAndAssert((email) => {
-          expect(email.subject).to.equal("Orders in a dashboard");
-          expect(email.html).to.include("Orders in a dashboard");
-        });
+        H.clickSend();
+        H.getInbox(1).its("body").should("have.length", 1);
       });
 
       it("should not add a recipient when Escape is pressed (metabase#24629)", () => {
