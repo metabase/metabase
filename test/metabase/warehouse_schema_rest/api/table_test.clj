@@ -1297,7 +1297,9 @@
             (mt/with-no-data-perms-for-all-users!
               ;; Grant only manage-table-metadata permission for this table
               (data-perms/set-table-permission! (perms-group/all-users) (:id table) :perms/manage-table-metadata :yes)
-              (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
+              ;; `submit-task!` is stubbed so the sync doesn't queue behind other tasks on the 1-thread executor.
+              (mt/with-dynamic-fn-redefs [quick-task/submit-task! future-call
+                                          sync/sync-table!        (deliver-when-tbl sync-called? table)]
                 (mt/user-http-request :rasta :post 200 (format "table/%d/sync_schema" (u/the-id table)))
                 (testing "sync called?"
                   (is (true?
