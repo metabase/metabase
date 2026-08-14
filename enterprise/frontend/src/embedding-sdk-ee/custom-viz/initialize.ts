@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { logUnavailableCustomVizMessage } from "embedding-sdk-bundle/lib/log-unavailable-custom-viz";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { api } from "metabase/api/client";
@@ -173,6 +174,7 @@ export function initializeSdkCustomVizPlugin() {
         }
         return await eeLoadCustomVizPlugin(plugin, {
           sandboxMode: getSdkSandboxMode(),
+          onMessage: logUnavailableCustomVizMessage,
         });
       } catch {
         return null;
@@ -195,6 +197,7 @@ export function initializeSdkCustomVizPlugin() {
 
       return eeUseAutoLoadCustomVizPlugin(allowed ? display : undefined, {
         sandboxMode: getSdkSandboxMode(),
+        onMessage: logUnavailableCustomVizMessage,
       });
     },
 

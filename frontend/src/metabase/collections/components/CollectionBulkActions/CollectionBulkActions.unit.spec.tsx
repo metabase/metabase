@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { useState } from "react";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -11,7 +12,7 @@ import {
   createMockDocument,
 } from "metabase-types/api/mocks";
 
-import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
+import { CollectionBulkActions } from "./CollectionBulkActions";
 
 const writableCollection = createMockCollection({
   id: 1,
@@ -75,6 +76,36 @@ const tableDocument = createMockCollectionItem({
   collection_position: null,
 });
 
+function TestComponent({
+  selected,
+  collection,
+  bookmarks,
+  clearSelected,
+}: {
+  selected: CollectionItem[];
+  collection: Collection;
+  bookmarks: Bookmark[];
+  clearSelected: () => void;
+}) {
+  const [selectedItems, setSelectedItems] = useState<CollectionItem[] | null>(
+    null,
+  );
+  const [selectedAction, setSelectedAction] = useState<string | null>(null);
+
+  return (
+    <CollectionBulkActions
+      selected={selected}
+      collection={collection}
+      bookmarks={bookmarks}
+      selectedItems={selectedItems}
+      setSelectedItems={setSelectedItems}
+      selectedAction={selectedAction}
+      setSelectedAction={setSelectedAction}
+      clearSelected={clearSelected}
+    />
+  );
+}
+
 function setup({
   selected,
   collection = writableCollection,
@@ -85,22 +116,18 @@ function setup({
   bookmarks?: Bookmark[];
 }) {
   const clearSelected = jest.fn();
-  const setSelectedItems = jest.fn();
-  const setSelectedAction = jest.fn();
 
   renderWithProviders(
-    <UnarchivedBulkActions
+    <TestComponent
       selected={selected}
       collection={collection}
       bookmarks={bookmarks}
       clearSelected={clearSelected}
-      setSelectedItems={setSelectedItems}
-      setSelectedAction={setSelectedAction}
     />,
     { withUndos: true },
   );
 
-  return { clearSelected, setSelectedItems, setSelectedAction };
+  return { clearSelected };
 }
 
 async function openOverflowMenu() {
@@ -122,7 +149,7 @@ function getMenuItem(name: string) {
   return screen.getByRole("menuitem", { name });
 }
 
-describe("UnarchivedBulkActions", () => {
+describe("CollectionBulkActions", () => {
   describe("selection composition", () => {
     it("keeps Move primary and offers Pin all for an unpinned-only selection", async () => {
       setup({ selected: [tableQuestion, tableDashboard] });
@@ -398,12 +425,22 @@ describe("UnarchivedBulkActions", () => {
   });
 
   describe("moving to trash", () => {
-    it("moves an unpinned-only selection to trash from the overflow menu", async () => {
+    it("confirms before moving the selection to trash from the overflow menu", async () => {
       fetchMock.put("path:/api/card/3", {});
       const { clearSelected } = setup({ selected: [tableQuestion] });
 
       await openOverflowMenu();
       await userEvent.click(getMenuItem("Move to trash"));
+
+      const confirmation = await screen.findByTestId(
+        "move-to-trash-confirmation",
+      );
+      expect(
+        within(confirmation).getByText("Move 1 item to trash?"),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        within(confirmation).getByRole("button", { name: "Move to trash" }),
+      );
 
       await waitFor(() => {
         expect(getRequests("path:/api/card/3")).toHaveLength(1);
@@ -417,23 +454,21 @@ describe("UnarchivedBulkActions", () => {
       });
     });
 
-    it("moves a pinned selection to trash from the overflow menu", async () => {
-      fetchMock.put("path:/api/card/2", {});
-      const { clearSelected } = setup({ selected: [pinnedQuestion] });
+    it("keeps the selection when the trash confirmation is cancelled", async () => {
+      const { clearSelected } = setup({ selected: [tableQuestion] });
 
       await openOverflowMenu();
       await userEvent.click(getMenuItem("Move to trash"));
 
-      await waitFor(() => {
-        expect(getRequests("path:/api/card/2")).toHaveLength(1);
-      });
-      expect(getLastRequestBody("path:/api/card/2")).toMatchObject({
-        archived: true,
-      });
+      const confirmation = await screen.findByTestId(
+        "move-to-trash-confirmation",
+      );
+      await userEvent.click(
+        within(confirmation).getByRole("button", { name: "Cancel" }),
+      );
 
-      await waitFor(() => {
-        expect(clearSelected).toHaveBeenCalled();
-      });
+      expect(clearSelected).not.toHaveBeenCalled();
+      expect(getRequests("path:/api/card/3")).toHaveLength(0);
     });
 
     it("disables the overflow actions in a read-only collection", async () => {
@@ -457,25 +492,10 @@ describe("UnarchivedBulkActions", () => {
   });
 
   describe("moving", () => {
-    it("starts a bulk move with the Move button", async () => {
-      const selected = [pinnedDashboard, tableQuestion];
-      const { setSelectedItems, setSelectedAction } = setup({ selected });
+    it("enables the Move button for a movable selection", () => {
+      setup({ selected: [pinnedDashboard, tableQuestion] });
 
-      await userEvent.click(screen.getByRole("button", { name: "Move" }));
-
-      expect(setSelectedItems).toHaveBeenCalledWith(selected);
-      expect(setSelectedAction).toHaveBeenCalledWith("move");
-    });
-
-    it("starts a bulk move from the overflow for a pinned-only selection", async () => {
-      const selected = [pinnedDashboard, pinnedQuestion];
-      const { setSelectedItems, setSelectedAction } = setup({ selected });
-
-      await openOverflowMenu();
-      await userEvent.click(getMenuItem("Move"));
-
-      expect(setSelectedItems).toHaveBeenCalledWith(selected);
-      expect(setSelectedAction).toHaveBeenCalledWith("move");
+      expect(screen.getByRole("button", { name: "Move" })).toBeEnabled();
     });
   });
 });

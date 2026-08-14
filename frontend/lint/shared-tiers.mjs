@@ -40,6 +40,7 @@ const SHARED_UTILS_LEVELS = [
     "shared/route-guards",
     "shared/redux-store",
     "shared/search-ui",
+    "shared/rich_text_editing",
   ],
 ];
 
@@ -64,7 +65,6 @@ const SHARED_DOMAIN = [
   "shared/nav",
   "shared/notifications",
   "shared/palette",
-  "shared/rich_text_editing",
   "shared/static-viz",
   "shared/status",
   "shared/timelines",
@@ -118,10 +118,6 @@ const sharedRules = [
   ...TIERED_SHARED.map((type) => ({ from: [type], allow: [type] })),
   // Transitional clusters: these domain modules still import each other, so both ways are allowed.
   // Delete each entry once the imports are one-directional.
-  {
-    from: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
-    allow: ["shared/metabot", "shared/rich_text_editing", "shared/comments"],
-  },
   {
     from: ["shared/nav", "shared/palette"],
     allow: ["shared/nav", "shared/palette"],

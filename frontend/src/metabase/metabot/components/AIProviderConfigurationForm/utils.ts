@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { MetabotProvider, SettingDefinition } from "metabase-types/api";
 
-type ApiKeylessProviders = "metabase";
+type ApiKeylessProviders = "metabase" | "google";
 type ApiKeyProviders = Exclude<MetabotProvider, ApiKeylessProviders>;
 
 type MetabotApiKeylessProviderOption = {
@@ -25,7 +25,8 @@ export type MetabotProviderOption =
 
 export function getProviderOptions(
   hasMetabaseProviderAccess: boolean,
-): Partial<Record<ApiKeylessProviders, MetabotApiKeylessProviderOption>> &
+): Partial<Record<"metabase", MetabotApiKeylessProviderOption>> &
+  Record<"google", MetabotApiKeylessProviderOption> &
   Record<ApiKeyProviders, MetabotApiKeyProviderOption> {
   return {
     ...(hasMetabaseProviderAccess && {
@@ -60,6 +61,10 @@ export function getProviderOptions(
         addKeyUrl:
           "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html",
       },
+    },
+    google: {
+      value: "google",
+      label: "Gemini Enterprise Agent Platform",
     },
     mistral: {
       value: "mistral",
@@ -108,7 +113,7 @@ export function getProviderOptions(
 
 export type MetabotApiKeyProvider = Exclude<
   MetabotProvider,
-  "metabase" | "azure" | "bedrock"
+  "metabase" | "azure" | "bedrock" | "google"
 >;
 
 export function isMetabotProvider(
@@ -122,6 +127,7 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
     provider === "anthropic" ||
     provider === "azure" ||
     provider === "bedrock" ||
+    provider === "google" ||
     provider === "metabase" ||
     provider === "mistral" ||
     provider === "moonshot" ||
