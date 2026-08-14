@@ -128,15 +128,34 @@ function queryMenuItem(name: string) {
 
 describe("UnarchivedBulkActions", () => {
   describe("selection composition", () => {
-    it("offers Pin all but not Unpin all for an unpinned-only selection", async () => {
+    it("shows the flat Move and Move to trash bar for an unpinned-only selection", () => {
       setup({ selected: [tableQuestion, tableDashboard] });
-      const menu = await openOverflowMenu();
 
+      expect(screen.getByRole("button", { name: "Move" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Move to trash" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "More actions" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("makes Unpin all the primary action for a pinned-only selection", async () => {
+      setup({ selected: [pinnedDashboard, pinnedQuestion] });
+
+      expect(
+        screen.getByRole("button", { name: "Unpin all" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Move" }),
+      ).not.toBeInTheDocument();
+
+      const menu = await openOverflowMenu();
       const itemLabels = within(menu)
         .getAllByRole("menuitem")
         .map((item) => item.textContent);
       expect(itemLabels).toEqual([
-        "Pin all",
+        "Move",
         "Bookmark",
         "Duplicate",
         "Deselect all",
@@ -144,18 +163,15 @@ describe("UnarchivedBulkActions", () => {
       ]);
     });
 
-    it("offers Unpin all but not Pin all for a pinned-only selection", async () => {
-      setup({ selected: [pinnedDashboard, pinnedQuestion] });
-      await openOverflowMenu();
-
-      expect(getMenuItem("Unpin all")).toBeInTheDocument();
-      expect(queryMenuItem("Pin all")).not.toBeInTheDocument();
-    });
-
-    it("offers both Pin all and Unpin all for a mixed selection", async () => {
+    it("keeps Move primary and offers both pin actions for a mixed selection", async () => {
       setup({ selected: [pinnedDashboard, tableQuestion] });
-      const menu = await openOverflowMenu();
 
+      expect(screen.getByRole("button", { name: "Move" })).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Unpin all" }),
+      ).not.toBeInTheDocument();
+
+      const menu = await openOverflowMenu();
       const itemLabels = within(menu)
         .getAllByRole("menuitem")
         .map((item) => item.textContent);
@@ -221,14 +237,29 @@ describe("UnarchivedBulkActions", () => {
       });
     });
 
-    it("disables Pin all when the selection has an item that cannot be pinned", async () => {
-      setup({ selected: [childCollection, tableQuestion] });
-      await openOverflowMenu();
+    it("unpins a pinned-only selection with the primary Unpin all button", async () => {
+      fetchMock.put("path:/api/dashboard/1", {});
+      fetchMock.put("path:/api/card/2", {});
+      const { clearSelected } = setup({
+        selected: [pinnedDashboard, pinnedQuestion],
+      });
 
-      expect(getMenuItem("Pin all")).toHaveAttribute("data-disabled", "true");
+      await userEvent.click(screen.getByRole("button", { name: "Unpin all" }));
+
+      await waitFor(() => {
+        expect(getRequests("path:/api/dashboard/1")).toHaveLength(1);
+      });
+      expect(getRequests("path:/api/card/2")).toHaveLength(1);
+      expect(getLastRequestBody("path:/api/card/2")).toEqual({
+        collection_position: null,
+      });
+
+      await waitFor(() => {
+        expect(clearSelected).toHaveBeenCalled();
+      });
     });
 
-    it("keeps Unpin all enabled when an unpinnable item is among the unpinned", async () => {
+    it("disables Pin all but not Unpin all when an unpinnable item is among the unpinned", async () => {
       setup({ selected: [pinnedDashboard, childCollection] });
       await openOverflowMenu();
 
@@ -242,20 +273,20 @@ describe("UnarchivedBulkActions", () => {
 
   describe("bookmarking", () => {
     it("bookmarks the selected items", async () => {
+      fetchMock.post("path:/api/bookmark/dashboard/1", {});
       fetchMock.post("path:/api/bookmark/card/3", {});
-      fetchMock.post("path:/api/bookmark/dashboard/4", {});
       fetchMock.post("path:/api/bookmark/card/7", {});
       const { clearSelected } = setup({
-        selected: [tableQuestion, tableDashboard, tableModel],
+        selected: [pinnedDashboard, tableQuestion, tableModel],
       });
 
       await openOverflowMenu();
       await userEvent.click(getMenuItem("Bookmark"));
 
       await waitFor(() => {
-        expect(getRequests("path:/api/bookmark/card/3")).toHaveLength(1);
+        expect(getRequests("path:/api/bookmark/dashboard/1")).toHaveLength(1);
       });
-      expect(getRequests("path:/api/bookmark/dashboard/4")).toHaveLength(1);
+      expect(getRequests("path:/api/bookmark/card/3")).toHaveLength(1);
       expect(getRequests("path:/api/bookmark/card/7")).toHaveLength(1);
 
       await waitFor(() => {
@@ -264,9 +295,9 @@ describe("UnarchivedBulkActions", () => {
     });
 
     it("skips items that are already bookmarked", async () => {
-      fetchMock.post("path:/api/bookmark/dashboard/4", {});
+      fetchMock.post("path:/api/bookmark/dashboard/1", {});
       setup({
-        selected: [tableQuestion, tableDashboard],
+        selected: [pinnedDashboard, tableQuestion],
         bookmarks: [createMockBookmark({ type: "card", item_id: 3 })],
       });
 
@@ -274,13 +305,13 @@ describe("UnarchivedBulkActions", () => {
       await userEvent.click(getMenuItem("Bookmark"));
 
       await waitFor(() => {
-        expect(getRequests("path:/api/bookmark/dashboard/4")).toHaveLength(1);
+        expect(getRequests("path:/api/bookmark/dashboard/1")).toHaveLength(1);
       });
       expect(getRequests("path:/api/bookmark/card/3")).toHaveLength(0);
     });
 
     it("disables Bookmark when the selection has an item that cannot be bookmarked", async () => {
-      setup({ selected: [tableQuestion, physicalTable] });
+      setup({ selected: [pinnedDashboard, physicalTable] });
       await openOverflowMenu();
 
       expect(getMenuItem("Bookmark")).toHaveAttribute("data-disabled", "true");
@@ -314,13 +345,13 @@ describe("UnarchivedBulkActions", () => {
     });
 
     it("duplicates documents through the document copy endpoint", async () => {
-      fetchMock.post("path:/api/dashboard/4/copy", createMockDashboard());
+      fetchMock.post("path:/api/dashboard/1/copy", createMockDashboard());
       fetchMock.post(
         "path:/api/document/9/copy",
         createMockDocument({ id: 9 }),
       );
       const { clearSelected } = setup({
-        selected: [tableDashboard, tableDocument],
+        selected: [pinnedDashboard, tableDocument],
       });
 
       await openOverflowMenu();
@@ -329,7 +360,7 @@ describe("UnarchivedBulkActions", () => {
       await waitFor(() => {
         expect(getRequests("path:/api/document/9/copy")).toHaveLength(1);
       });
-      expect(getRequests("path:/api/dashboard/4/copy")).toHaveLength(1);
+      expect(getRequests("path:/api/dashboard/1/copy")).toHaveLength(1);
       expect(getLastRequestBody("path:/api/document/9/copy")).toEqual({
         name: "Table document - Duplicate",
         collection_id: 1,
@@ -341,7 +372,7 @@ describe("UnarchivedBulkActions", () => {
     });
 
     it("disables Duplicate when the selection has an item that cannot be duplicated", async () => {
-      setup({ selected: [tableQuestion, tableDashboard] });
+      setup({ selected: [pinnedDashboard, tableQuestion] });
       await openOverflowMenu();
 
       expect(getMenuItem("Duplicate")).toHaveAttribute("data-disabled", "true");
@@ -362,12 +393,13 @@ describe("UnarchivedBulkActions", () => {
   });
 
   describe("moving to trash", () => {
-    it("moves the selection to trash from the overflow menu", async () => {
+    it("moves an unpinned-only selection to trash with the flat bar button", async () => {
       fetchMock.put("path:/api/card/3", {});
       const { clearSelected } = setup({ selected: [tableQuestion] });
 
-      await openOverflowMenu();
-      await userEvent.click(getMenuItem("Move to trash"));
+      await userEvent.click(
+        screen.getByRole("button", { name: "Move to trash" }),
+      );
 
       await waitFor(() => {
         expect(getRequests("path:/api/card/3")).toHaveLength(1);
@@ -381,7 +413,26 @@ describe("UnarchivedBulkActions", () => {
       });
     });
 
-    it("disables Move to trash in a read-only collection", async () => {
+    it("moves a pinned selection to trash from the overflow menu", async () => {
+      fetchMock.put("path:/api/card/2", {});
+      const { clearSelected } = setup({ selected: [pinnedQuestion] });
+
+      await openOverflowMenu();
+      await userEvent.click(getMenuItem("Move to trash"));
+
+      await waitFor(() => {
+        expect(getRequests("path:/api/card/2")).toHaveLength(1);
+      });
+      expect(getLastRequestBody("path:/api/card/2")).toMatchObject({
+        archived: true,
+      });
+
+      await waitFor(() => {
+        expect(clearSelected).toHaveBeenCalled();
+      });
+    });
+
+    it("disables the flat Move to trash button in a read-only collection", () => {
       setup({
         selected: [tableQuestion],
         collection: createMockCollection({
@@ -389,12 +440,29 @@ describe("UnarchivedBulkActions", () => {
           can_write: false,
         }),
       });
-      await openOverflowMenu();
 
+      expect(
+        screen.getByRole("button", { name: "Move to trash" }),
+      ).toBeDisabled();
+    });
+
+    it("disables the overflow actions in a read-only collection", async () => {
+      setup({
+        selected: [pinnedQuestion],
+        collection: createMockCollection({
+          ...writableCollection,
+          can_write: false,
+        }),
+      });
+
+      expect(screen.getByRole("button", { name: "Unpin all" })).toBeDisabled();
+
+      await openOverflowMenu();
       expect(getMenuItem("Move to trash")).toHaveAttribute(
         "data-disabled",
         "true",
       );
+      expect(getMenuItem("Move")).toHaveAttribute("data-disabled", "true");
     });
   });
 
@@ -407,6 +475,26 @@ describe("UnarchivedBulkActions", () => {
 
       expect(setSelectedItems).toHaveBeenCalledWith(selected);
       expect(setSelectedAction).toHaveBeenCalledWith("move");
+    });
+
+    it("starts a bulk move from the overflow for a pinned-only selection", async () => {
+      const selected = [pinnedDashboard, pinnedQuestion];
+      const { setSelectedItems, setSelectedAction } = setup({ selected });
+
+      await openOverflowMenu();
+      await userEvent.click(getMenuItem("Move"));
+
+      expect(setSelectedItems).toHaveBeenCalledWith(selected);
+      expect(setSelectedAction).toHaveBeenCalledWith("move");
+    });
+  });
+
+  describe("menu absence", () => {
+    it("does not render the overflow menu markup for an unpinned-only selection", () => {
+      setup({ selected: [tableQuestion] });
+
+      expect(queryMenuItem("Pin all")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("bulk-actions-menu")).not.toBeInTheDocument();
     });
   });
 });

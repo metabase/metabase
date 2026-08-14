@@ -336,21 +336,23 @@ describe("CollectionContent selection", () => {
     expect(await screen.findByText("1 item selected")).toBeInTheDocument();
   });
 
-  it("should adapt the bulk action bar overflow to the selection composition", async () => {
+  it("should adapt the bulk action bar to the selection composition", async () => {
     await setup();
 
     await userEvent.click(getRowSelectionButton(tableQuestion.name));
-    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(await screen.findByText("1 item selected")).toBeInTheDocument();
     expect(
-      await screen.findByRole("menuitem", { name: "Pin all" }),
+      screen.getByRole("button", { name: "Move to trash" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("menuitem", { name: "Unpin all" }),
+      screen.queryByRole("button", { name: "More actions" }),
     ).not.toBeInTheDocument();
-    await userEvent.keyboard("{Escape}");
 
     await userEvent.click(getPinnedCard(pinnedDashboard.name));
-    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(screen.getByRole("button", { name: "Move" })).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "More actions" }),
+    );
     expect(
       await screen.findByRole("menuitem", { name: "Pin all" }),
     ).toBeInTheDocument();
@@ -360,9 +362,12 @@ describe("CollectionContent selection", () => {
     await userEvent.keyboard("{Escape}");
 
     await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    expect(
+      await screen.findByRole("button", { name: "Unpin all" }),
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "More actions" }));
     expect(
-      await screen.findByRole("menuitem", { name: "Unpin all" }),
+      await screen.findByRole("menuitem", { name: "Move" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("menuitem", { name: "Pin all" }),
