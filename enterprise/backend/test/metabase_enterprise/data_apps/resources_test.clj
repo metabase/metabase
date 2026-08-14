@@ -54,6 +54,38 @@
                   [(t2/exists? :model/Collection :id (:resource_collection_id old-links))
                    (t2/exists? :model/PermissionsGroup :id (:permission_group_id old-links))])))))
 
+(deftest reconcile-resources-rejects-a-populated-collection-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [app        (create-data-app! "birds")
+          old-links  (data-app.resources/ensure-resources! app)
+          target     (create-resource-pair! "target")
+          linked-app (t2/select-one :model/DataApp :id (:id app))]
+      (mt/with-temp [:model/Card _ {:collection_id (:id (:collection target))}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"resource_collection_entity_id.*must be empty"
+             (data-app.resources/reconcile-resources!
+              linked-app (manifest-resource-ids target)))))
+      (is (= old-links
+             (select-keys (t2/select-one :model/DataApp :id (:id app)) (keys old-links)))))))
+
+(deftest reconcile-resources-rejects-a-populated-permission-group-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [app        (create-data-app! "birds")
+          old-links  (data-app.resources/ensure-resources! app)
+          target     (create-resource-pair! "target")
+          linked-app (t2/select-one :model/DataApp :id (:id app))]
+      (mt/with-temp [:model/User user {}
+                     :model/PermissionsGroupMembership _ {:user_id (:id user)
+                                                          :group_id (:id (:group target))}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"permission_group_entity_id.*must be empty"
+             (data-app.resources/reconcile-resources!
+              linked-app (manifest-resource-ids target)))))
+      (is (= old-links
+             (select-keys (t2/select-one :model/DataApp :id (:id app)) (keys old-links)))))))
+
 (deftest reconcile-resources-rejects-a-missing-resource-without-changing-links-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (let [app        (create-data-app! "birds")

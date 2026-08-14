@@ -3167,6 +3167,7 @@
            metabase-enterprise.data-apps.init
            metabase-enterprise.data-apps.sync}
    :uses #{api
+           collections
            lib
            lib-be
            models
@@ -3176,7 +3177,9 @@
            util}
    :model-imports #{:model/Collection
                     :model/Database
+                    :model/Permissions
                     :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
                     :model/Table}}
 
   enterprise/data-complexity-score

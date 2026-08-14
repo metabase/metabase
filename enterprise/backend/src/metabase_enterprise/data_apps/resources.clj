@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-apps.resources
   "Lifecycle for the permission group and resource collection owned by a data app."
   (:require
+   [metabase.collections.core :as collection]
    [metabase.permissions.core :as perms]
    [toucan2.core :as t2]))
 
@@ -115,6 +116,21 @@
                      :field field
                      :entity-id (:entity_id resource)}))))
 
+(defn- permission-group-empty?
+  [{:keys [id]}]
+  (not (or (t2/exists? :model/PermissionsGroupMembership :group_id id)
+           (t2/exists? :model/Permissions :group_id id))))
+
+(defn- validate-empty-rebind!
+  [app foreign-key field resource empty?]
+  (when (and (not= (foreign-key app) (:id resource))
+             (not (empty? resource)))
+    (throw (ex-info (format "%s '%s' must be empty before a data app can use it."
+                            (name field) (:entity_id resource))
+                    {:data-app (:name app)
+                     :field field
+                     :entity-id (:entity_id resource)}))))
+
 (defn reconcile-resources!
   "Resolve the manifest resource entity IDs, validate their ownership, and update `app`.
 
@@ -134,6 +150,10 @@
              changed?   (not= links (select-keys app (keys links)))]
          (validate-unclaimed! app :permission_group_id :permission_group_entity_id group)
          (validate-unclaimed! app :resource_collection_id :resource_collection_entity_id collection)
+         (validate-empty-rebind! app :permission_group_id :permission_group_entity_id group
+                                 permission-group-empty?)
+         (validate-empty-rebind! app :resource_collection_id :resource_collection_entity_id collection
+                                 collection/collection-empty?)
          (when (or changed? (seq app-changes))
            (t2/update! :model/DataApp :id (:id app) (merge app-changes links)))
          (apply-resource-permissions! group collection)
