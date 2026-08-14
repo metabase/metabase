@@ -143,8 +143,16 @@ jobs:
 
   smoke:
     needs: [announce, image]
+    # `!cancelled()` is load-bearing, not decoration: on the label path `resolve` is skipped by
+    # design, and `image` only runs at all because it opts back in with its own `!cancelled()`.
+    # GitHub propagates that skip *transitively*, so a plain boolean `if` here — carrying the
+    # implicit `success()` — skips smoke even though image succeeded and the image is in ECR.
+    # Opting out of the implicit check means the needs' results have to be asserted by hand.
     if: >-
-      github.event_name == 'pull_request'
+      !cancelled()
+      && needs.announce.result == 'success'
+      && needs.image.result == 'success'
+      && github.event_name == 'pull_request'
       && github.event.label.name == 'evals/smoke'
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
