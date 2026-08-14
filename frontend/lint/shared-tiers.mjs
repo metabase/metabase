@@ -49,18 +49,22 @@ const SHARED_PLATFORM_LEVELS = [
   ["shared/data-grid", "shared/actions"],
   // P1 — independent peers: chart rendering and database metadata/forms.
   ["shared/visualizations", "shared/databases"],
-  // P2 — query editing and subscription editing compose visualizations.
-  // Querying and pulse have no edges between them.
-  ["shared/querying", "shared/pulse"],
+  // P2 — independent peers with no edges between them.
+  // Querying and detail-view compose visualizations, and metadata consumes detail-view from P3.
+  // detail-view's one upward edge (DetailViewPage.tsx imports the nav layout constants)
+  // is #79119's subject, so its enforceSharedTiers flag stays off.
+  ["shared/querying", "shared/pulse", "shared/detail-view"],
   // P3 — building blocks over querying, mutually independent.
   ["shared/metadata", "shared/parameters", "shared/questions"],
+  // P4 — the metabot agent, kept whole rather than split, which transforms and nav compose.
+  // Its one upward edge (Metabot.tsx imports MainNavbar.styled) and the three querying
+  // imports of metabot are scheduled A3/A4 inversions, so its enforceSharedTiers flag stays off.
+  ["shared/metabot"],
 ];
 
 const SHARED_DOMAIN = [
   "shared/comments",
   "shared/custom-viz",
-  "shared/detail-view",
-  "shared/metabot",
   "shared/metrics-ui",
   "shared/nav",
   "shared/notifications",
