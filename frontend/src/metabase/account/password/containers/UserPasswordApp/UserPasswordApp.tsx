@@ -1,11 +1,9 @@
-import { t } from "ttag";
-
 import { getIsSsoUser } from "metabase/account/selectors";
 import { useValidatePassword } from "metabase/common/hooks";
 import { PLUGIN_MULTI_FACTOR_AUTH } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
-import { Box, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
 
 import { UserPasswordForm } from "../../components/UserPasswordForm";
@@ -19,7 +17,6 @@ const UserPasswordApp = () => {
     <Stack gap="xl">
       {!isSsoUser && (
         <Stack gap="md">
-          <Box fw="bold" lh="1.25rem">{t`Password`}</Box>
           <UserPasswordForm user={user} onValidatePassword={validatePassword} />
         </Stack>
       )}

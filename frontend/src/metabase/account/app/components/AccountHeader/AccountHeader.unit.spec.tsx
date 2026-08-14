@@ -1,6 +1,3 @@
-// registers the real predicates that decide who can change a password
-import "metabase/plugins/builtin";
-
 import { mockSettings } from "__support__/settings";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";

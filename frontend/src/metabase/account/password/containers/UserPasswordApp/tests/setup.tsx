@@ -1,6 +1,3 @@
-// the auth plugins register the predicates that decide who can change a password
-import "metabase/plugins/builtin";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupMfaStatusEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";

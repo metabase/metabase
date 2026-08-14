@@ -7,7 +7,6 @@ describe("UserPasswordApp (OSS)", () => {
   it("should show the password form", () => {
     setup();
 
-    expect(screen.getByText("Password")).toBeInTheDocument();
     expect(screen.getByLabelText("Current password")).toBeInTheDocument();
     expect(screen.getByLabelText("Create a password")).toBeInTheDocument();
     expect(screen.getByLabelText("Confirm your password")).toBeInTheDocument();

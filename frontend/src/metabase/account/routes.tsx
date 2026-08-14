@@ -38,9 +38,11 @@ export const getAccountRoutes = (
       <Route lazy={accountApp}>
         <Route index element={redirect("profile")} />
         <Route path="profile" lazy={userProfileApp} />
-        <Route path="password" lazy={userPasswordApp} />
-        <Route path="security" element={redirect("/account/password")} />
+        <Route path="authentication" lazy={userPasswordApp} />
         <Route path="login-history" lazy={loginHistoryApp} />
+        {/* Legacy path redirects */}
+        <Route path="security" element={redirect("/account/authentication")} />
+        <Route path="password" element={redirect("/account/authentication")} />
         {getNotificationRoutes()}
       </Route>
     </Route>
