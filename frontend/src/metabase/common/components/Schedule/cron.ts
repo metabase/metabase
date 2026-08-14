@@ -6,9 +6,10 @@ import type {
   ScheduleSettings,
 } from "metabase-types/api";
 
-import { AM, PM } from "./constants";
+import { PM } from "./constants";
 import { Cron, getScheduleStrings } from "./strings";
 import type {
+  AmPm,
   CronString,
   ScheduleBuilderType,
   ScheduleBuilderValue,
@@ -197,14 +198,9 @@ export const toScheduleBuilderValue = (
     ? (cronToBuilderValue(value.cron) ?? defaultSchedule)
     : value;
 
-const isValidAmPm = (amPm: number) => amPm === AM || amPm === PM;
-
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
 
-export const hourTo24HourFormat = (hour: number, amPm: number): number => {
-  if (!isValidAmPm(amPm)) {
-    amPm = AM;
-  }
+export const hourTo24HourFormat = (hour: number, amPm: AmPm): number => {
   const hour24 = amPm === PM ? (hour % 12) + 12 : hour % 12;
   return hour24 === 24 ? 0 : hour24;
 };

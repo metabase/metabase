@@ -1,9 +1,13 @@
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
+import type { AM, PM } from "./constants";
+
 type ScheduleProperty = keyof ScheduleSettings;
 export type ScheduleChangeProp = { name: ScheduleProperty; value: unknown };
 
 export type CronString = string;
+
+export type AmPm = typeof AM | typeof PM;
 
 export type ScheduleValueType = ScheduleType | "every_n_minutes" | "cron";
 export type ScheduleBuilderType = Exclude<ScheduleValueType, "cron">;

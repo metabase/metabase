@@ -14,7 +14,7 @@ import type {
 } from "metabase-types/api";
 
 import { AutoWidthSelect } from "./AutoWidthSelect";
-import { AM } from "./constants";
+import { AM, PM } from "./constants";
 import { hourTo24HourFormat, hourToTwelveHourFormat } from "./cron";
 import {
   type Weekday,
@@ -23,7 +23,7 @@ import {
   getScheduleStrings,
   minutes,
 } from "./strings";
-import type { ScheduleValueType, UpdateSchedule } from "./types";
+import type { AmPm, ScheduleValueType, UpdateSchedule } from "./types";
 
 export type SelectFrameProps = {
   schedule_frame: ScheduleSettings["schedule_frame"];
@@ -96,14 +96,14 @@ export const SelectTime = ({
 }) => {
   const { amAndPM } = getScheduleStrings();
   const isClock12Hour = !has24HourModeSetting();
-  const [pendingAmPm, setPendingAmPm] = useState(AM);
+  const [pendingAmPm, setPendingAmPm] = useState<AmPm>(AM);
   const hour24 =
     isNotNull(schedule_hour) && !isNaN(schedule_hour) ? schedule_hour : null;
   const hour =
     hour24 !== null && isClock12Hour ? hourToTwelveHourFormat(hour24) : hour24;
   const isHourSet = hour !== null;
   const value = isHourSet ? hour.toString() : null;
-  const amPm = hour24 === null ? pendingAmPm : Number(hour24 >= 12);
+  const amPm = hour24 === null ? pendingAmPm : hour24 >= 12 ? PM : AM;
   const timeSelectLabel = useMemo(() => getScheduleComponentLabel("time"), []);
   const amPmControlLabel = useMemo(() => getScheduleComponentLabel("amPm"), []);
   const applicationName = useSelector(getApplicationName);
@@ -132,17 +132,16 @@ export const SelectTime = ({
       {/* Choose between AM and PM */}
       <Group gap="sm">
         {isClock12Hour && (
-          <SegmentedControl
+          <SegmentedControl<AmPm>
             lh="1rem"
             radius="sm"
-            value={amPm.toString()}
+            value={amPm}
             onChange={(value) => {
-              const nextAmPm = parseInt(value);
-              setPendingAmPm(nextAmPm);
+              setPendingAmPm(value);
               if (isHourSet) {
                 updateSchedule(
                   "schedule_hour",
-                  hourTo24HourFormat(hour, nextAmPm),
+                  hourTo24HourFormat(hour, value),
                 );
               }
             }}

@@ -1,5 +1,5 @@
-export const AM = 0;
-export const PM = 1;
+export const AM = "am";
+export const PM = "pm";
 
 export const defaultDay = "mon";
 export const defaultHour = 8;
