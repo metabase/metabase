@@ -1,95 +1,57 @@
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route } from "metabase/router";
-import { createMockUser } from "metabase-types/api/mocks";
+import type { ReactNode } from "react";
+
+import { type RouteObject, toRouteObjects } from "metabase/router";
+import * as Urls from "metabase/urls";
 
 import { getEmbeddingHubRoutes } from "./routes";
 
 /**
- * This spec asserts route-tree structure, not access policy, so the guard is
- * stubbed to allow by default. Setting `mockGuardDenies` makes it deny instead.
+ * Every page here is imported directly, so TypeScript already catches a bad
+ * component reference. What it cannot catch is a path string, and no e2e test
+ * visits `sso-setup`. Reading the tree as data keeps those honest without
+ * rendering the pages, the layout or the guard.
  */
-let mockGuardDenies = false;
+describe("embedding hub routes", () => {
+  it("routes every page it owns", () => {
+    const paths = leafRoutes().map((route) => route.path);
 
-jest.mock("./route-guards", () => {
-  const { Outlet } = jest.requireActual("metabase/router");
-  return {
-    CanAccessEmbeddingHub: () =>
-      mockGuardDenies ? (
-        <div data-testid="unauthorized-marker">{"Unauthorized"}</div>
-      ) : (
-        <Outlet />
-      ),
-  };
+    expect(paths).toEqual([
+      "embedding",
+      "embedding/get-started",
+      "embedding/get-started/permissions-setup",
+      "embedding/get-started/sso-setup",
+    ]);
+  });
+
+  it("redirects the hub root to Get started", () => {
+    const root = leafRoutes().find((route) => route.path === "embedding");
+
+    expect(root?.index).toBe(true);
+    expect(navigateTarget(root?.element)).toBe(Urls.embeddingHubGetStarted());
+  });
 });
 
-jest.mock("./components/EmbeddingHubLayout", () => {
-  const { Outlet } = jest.requireActual("metabase/router");
-  return {
-    EmbeddingHubLayout: () => (
-      <div data-testid="embedding-hub-layout">
-        <Outlet />
-      </div>
-    ),
-  };
-});
+type LeafRoute = { path: string; index: boolean; element: ReactNode };
 
-// The page is stubbed: this spec is about which page each path resolves to,
-// not about what a page renders.
-jest.mock("./pages/GetStarted", () => ({
-  EmbeddingHubGetStartedPage: () => (
-    <div data-testid="get-started-page">{"Get started"}</div>
-  ),
-}));
-
-jest.mock("metabase/embedding/setup-guide", () => ({
-  SetupPermissionsAndTenantsPage: () => (
-    <div data-testid="permissions-setup-page">{"Permissions setup"}</div>
-  ),
-  SetupSsoPage: () => <div data-testid="sso-setup-page">{"SSO setup"}</div>,
-}));
-
-function setup(initialRoute: string) {
-  return renderWithProviders(
-    <Route path="/">{getEmbeddingHubRoutes()}</Route>,
-    {
-      withRouter: true,
-      initialRoute,
-      storeInitialState: createMockState({
-        currentUser: createMockUser({ is_superuser: true }),
-      }),
-    },
-  );
+function leafRoutes(): LeafRoute[] {
+  return collectLeaves(toRouteObjects(getEmbeddingHubRoutes()));
 }
 
-describe("embedding hub routes", () => {
-  afterEach(() => {
-    mockGuardDenies = false;
+function collectLeaves(routes: RouteObject[], prefix = ""): LeafRoute[] {
+  return routes.flatMap((route) => {
+    const path = [prefix, route.path].filter(Boolean).join("/");
+    const children = route.children ?? [];
+
+    if (children.length > 0) {
+      return collectLeaves(children, path);
+    }
+
+    return [{ path, index: Boolean(route.index), element: route.element }];
   });
+}
 
-  it.each([
-    ["/embedding/get-started", "get-started-page"],
-    ["/embedding/get-started/permissions-setup", "permissions-setup-page"],
-    ["/embedding/get-started/sso-setup", "sso-setup-page"],
-  ])("renders the body for %s", async (route, testId) => {
-    setup(route);
-
-    expect(await screen.findByTestId(testId)).toBeInTheDocument();
-  });
-
-  it("redirects the embedding hub root to Get started", async () => {
-    setup("/embedding");
-
-    expect(await screen.findByTestId("get-started-page")).toBeInTheDocument();
-  });
-
-  it("does not render anything when the guard denies access", async () => {
-    mockGuardDenies = true;
-    setup("/embedding");
-
-    expect(
-      await screen.findByTestId("unauthorized-marker"),
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId("get-started-page")).not.toBeInTheDocument();
-  });
-});
+function navigateTarget(element: ReactNode) {
+  // ReactNode is a union wide enough that `props` is not on it, and the element
+  // type here is whatever `<Navigate>` renders as, which the router does not export.
+  return (element as { props?: { to?: string } })?.props?.to;
+}

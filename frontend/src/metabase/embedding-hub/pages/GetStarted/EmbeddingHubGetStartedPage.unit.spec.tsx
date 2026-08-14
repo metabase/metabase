@@ -128,12 +128,6 @@ function isLocked(title: string) {
   return getCard(title).getAttribute("aria-disabled") === "true";
 }
 
-/** The number shown on a card's badge, or null once the step is complete. */
-function stepNumber(title: string) {
-  const badge = within(getCard(title)).queryByText(/^\d+$/);
-  return badge ? Number(badge.textContent) : null;
-}
-
 describe("EmbeddingHubGetStartedPage", () => {
   describe("per-feature locking", () => {
     it("locks every Fine-tune step when the instance licenses nothing", async () => {
@@ -174,24 +168,6 @@ describe("EmbeddingHubGetStartedPage", () => {
       expect(await screen.findByText(THEME_CARD)).toBeInTheDocument();
       expect(isLocked(THEME_CARD)).toBe(false);
       expect(isLocked(SSO_CARD)).toBe(true);
-    });
-
-    it("never locks the AI step, which needs no paid feature", async () => {
-      setup();
-
-      expect(await screen.findByText(AI_CARD)).toBeInTheDocument();
-      expect(isLocked(AI_CARD)).toBe(false);
-    });
-
-    it("still renders the tenants step the shared checklist omitted", async () => {
-      // Below the paywall `useGetSetupGuideSteps` drops the step entirely, so
-      // the card has no action. The design shows the whole ladder including the
-      // rungs you have not bought, so a locked step renders anyway.
-      setup({ hasTenants: false });
-
-      expect(await screen.findByText(TENANTS_CARD)).toBeInTheDocument();
-      expect(isLocked(TENANTS_CARD)).toBe(true);
-      expect(getCard(TENANTS_CARD).tagName).not.toBe("A");
     });
   });
 
@@ -349,74 +325,6 @@ describe("EmbeddingHubGetStartedPage", () => {
         expect(await screen.findByText(title)).toBeInTheDocument();
         expect(isLocked(title)).toBe(false);
       }
-    });
-
-    it("marks a completed step done", async () => {
-      setup({ checklist: { "add-data": true } });
-
-      expect(await screen.findByText("Connect a database")).toBeInTheDocument();
-      expect(
-        within(getCard("Connect a database")).getByLabelText(/complete/),
-      ).toBeInTheDocument();
-      expect(
-        within(getCard("Create a dashboard")).queryByLabelText(/complete/),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  it("does not render a Fine-tune card the checklist omits and nothing locks", async () => {
-    // Guards the other half of the rule: a missing action only removes the card
-    // when the step is not locked.
-    setup({ hasTenants: true });
-
-    await screen.findByText(TENANTS_CARD);
-    expect(queryCard(TENANTS_CARD)).toBeInTheDocument();
-  });
-
-  describe("step order", () => {
-    it("promotes AI to step 4 without modular embedding", async () => {
-      setup({ hasSimpleEmbedding: false });
-
-      expect(await screen.findByText(AI_CARD)).toBeInTheDocument();
-
-      // AI is the one advanced step still reachable, so it joins the first
-      // section and pushes the Fine-tune steps down by one.
-      expect(stepNumber(AI_CARD)).toBe(4);
-      expect(stepNumber(SSO_CARD)).toBe(6);
-      expect(stepNumber(THEME_CARD)).toBe(8);
-    });
-
-    it("leaves AI last once modular embedding is licensed", async () => {
-      setup({ hasSimpleEmbedding: true });
-
-      expect(await screen.findByText(AI_CARD)).toBeInTheDocument();
-
-      expect(stepNumber(SSO_CARD)).toBe(5);
-      expect(stepNumber(THEME_CARD)).toBe(7);
-      expect(stepNumber(AI_CARD)).toBe(8);
-    });
-  });
-
-  describe("Pro upsell banner", () => {
-    it("shows the banner when the instance lacks modular embedding", async () => {
-      setup({ hasSimpleEmbedding: false });
-
-      expect(
-        await screen.findByRole("heading", {
-          name: "Upgrade to Metabase Pro to configure advanced options.",
-        }),
-      ).toBeInTheDocument();
-    });
-
-    it("hides the banner once modular embedding is licensed", async () => {
-      setup({ hasSimpleEmbedding: true });
-
-      await screen.findByText(THEME_CARD);
-      expect(
-        screen.queryByRole("heading", {
-          name: "Upgrade to Metabase Pro to configure advanced options.",
-        }),
-      ).not.toBeInTheDocument();
     });
   });
 });

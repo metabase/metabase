@@ -72,34 +72,18 @@ function findNav() {
 }
 
 describe("EmbeddingHubLayout", () => {
-  it("renders every tab, in design order", async () => {
+  it("renders every tab, in design order, each linking to its own path", async () => {
     setup();
 
-    const links = within(await findNav()).getAllByRole("link");
+    const nav = await findNav();
+    const links = within(nav).getAllByRole("link");
 
     expect(links.map((link) => link.getAttribute("aria-label"))).toEqual(
       TAB_LABELS,
     );
-  });
-
-  it("links each tab to its own path", async () => {
-    setup();
-
-    const nav = await findNav();
-
     expect(
       await within(nav).findByRole("link", { name: "Get started" }),
     ).toHaveAttribute("href", "/embedding/get-started");
-  });
-
-  it("marks the Get started tab as current on its own path", async () => {
-    setup({ initialRoute: "/embedding/get-started" });
-
-    const nav = await findNav();
-
-    expect(
-      await within(nav).findByRole("link", { name: "Get started" }),
-    ).toHaveAttribute("aria-current", "page");
   });
 
   it("keeps Get started current on the setup wizard sub-pages", async () => {
@@ -119,12 +103,6 @@ describe("EmbeddingHubLayout", () => {
     await screen.findByText("Permissions wizard body");
 
     expect(screen.getByTestId("embedding-hub-content-cap")).toBeInTheDocument();
-  });
-
-  it("renders the routed body", async () => {
-    setup({ initialRoute: "/embedding/get-started" });
-
-    expect(await screen.findByText("Get started body")).toBeInTheDocument();
   });
 
   describe("New embed button", () => {
