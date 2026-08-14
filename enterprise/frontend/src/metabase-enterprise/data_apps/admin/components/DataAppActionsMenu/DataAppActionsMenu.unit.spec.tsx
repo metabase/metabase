@@ -7,11 +7,16 @@ import { createMockDataApp } from "metabase-types/api/mocks";
 
 import { DataAppActionsMenu } from "./DataAppActionsMenu";
 
-const setup = ({ enabled = true, canRemove = false } = {}) => {
+const setup = ({
+  enabled = true,
+  canRemove = false,
+  resourceCollectionId = 9,
+} = {}) => {
   const app = createMockDataApp({
     name: "sales",
     display_name: "Sales",
     enabled,
+    resource_collection_id: resourceCollectionId,
   });
   renderWithProviders(
     <>
@@ -19,6 +24,7 @@ const setup = ({ enabled = true, canRemove = false } = {}) => {
       {/* Mounts the toaster so failure toasts are assertable in the DOM. */}
       <UndoListing />
     </>,
+    { withRouter: true },
   );
 };
 
@@ -33,6 +39,29 @@ const confirmRemove = async () =>
   );
 
 describe("DataAppActionsMenu", () => {
+  it("links to the app's collection above the enable action", async () => {
+    setup();
+
+    await openMenu();
+
+    const menuItems = await screen.findAllByRole("menuitem");
+
+    expect(menuItems).toHaveLength(2);
+    expect(menuItems[0]).toHaveTextContent("View resources");
+    expect(menuItems[0]).toHaveAttribute("href", "/collection/9");
+    expect(menuItems[1]).toHaveTextContent("Disable");
+  });
+
+  it("does not show the collection link before an app has a collection", async () => {
+    setup({ resourceCollectionId: null });
+
+    await openMenu();
+
+    expect(
+      screen.queryByRole("menuitem", { name: "View resources" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("should show a toast when toggling enabled fails", async () => {
     fetchMock.put("path:/api/apps/sales", 500);
     setup({ enabled: true });
