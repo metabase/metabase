@@ -7,6 +7,7 @@ export const createMockDataApp = (opts?: Partial<DataApp>): DataApp => ({
   description: null,
   bundle_path: "data_apps/sales/dist/index.js",
   enabled: true,
+  resource_collection_id: 1,
   allowed_hosts: [],
   bundle_hash: "abc123",
   last_synced_sha: "0123456789abcdef",
