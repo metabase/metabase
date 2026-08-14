@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isStorybookActive } from "metabase/env";
+import { retry } from "metabase/utils/retry";
 import type {
   IconName,
   RawSeries,
@@ -146,7 +147,19 @@ export function getVisualizationComponent(
   }
 
   const component = lazy(() =>
-    loadComponent().then((Chart) => ({ default: Chart })),
+    retry(loadComponent, {
+      maxRetries: 2,
+      shouldRetry: () => true,
+      delayMs: (attempt) => 300 * 2 ** attempt,
+    })
+      .then((Chart) => ({ default: Chart }))
+      .catch((error) => {
+        // React keeps a rejected lazy rejected for the life of the object, so
+        // reusing this one would fail every later render until a reload. Drop
+        // it and the next render builds one that downloads again.
+        lazyComponents.delete(identifier);
+        throw error;
+      }),
   );
   lazyComponents.set(identifier, component);
   return component;
@@ -163,7 +176,11 @@ export function prefetchVisualizationComponent(
   const visualization = getVisualization(display);
 
   if (visualization != null && !isVisualizationComponent(visualization)) {
-    void componentLoaders.get(visualization.identifier)?.();
+    // A prefetch failure is not worth surfacing: the render path downloads the
+    // chunk again and reports the error there if it still fails.
+    componentLoaders
+      .get(visualization.identifier)?.()
+      .catch(() => undefined);
   }
 }
 
@@ -179,7 +196,12 @@ export async function loadVisualizationComponents(): Promise<void> {
       if (isVisualizationComponent(visualizations.get(identifier))) {
         return;
       }
-      registerVisualization(await loadComponent());
+      try {
+        registerVisualization(await loadComponent());
+      } catch {
+        // One chart that fails to load should not stop the rest. It stays
+        // lazy, and the render path reports the failure.
+      }
     }),
   );
 }

@@ -1,9 +1,29 @@
+import { render, screen } from "@testing-library/react";
+import React, { Component, Suspense } from "react";
+
+import type { VisualizationDisplay } from "metabase-types/api";
+
 import {
   getVisualizationComponent,
   loadVisualizationComponents,
   registerVisualization,
-} from "metabase/visualizations";
-import type { VisualizationDisplay } from "metabase-types/api";
+} from "./registry";
+
+class ChunkErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { message: string | null }
+> {
+  // The cast gives the initial null a nullable type rather than `null`.
+  state = { message: null as string | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { message: error.message };
+  }
+
+  render() {
+    return this.state.message ?? this.props.children;
+  }
+}
 
 const createDefinition = (identifier: VisualizationDisplay) => ({
   getUiName: () => identifier,
@@ -29,6 +49,44 @@ describe("registerVisualization", () => {
     ).toThrow(/already registered/);
 
     expect(getVisualizationComponent(display)).toBeDefined();
+  });
+});
+
+describe("a chunk that fails to download", () => {
+  it("retries, and does not keep handing back the failed component", async () => {
+    // A cast is needed because the registry is keyed by the known display types.
+    const display = "download-fails" as VisualizationDisplay;
+    const definition = createDefinition(display);
+
+    let attempts = 0;
+    registerVisualization(definition, () => {
+      attempts += 1;
+      return Promise.reject(new Error("chunk load failed"));
+    });
+
+    const failing = getVisualizationComponent(display);
+    render(
+      <ChunkErrorBoundary>
+        <Suspense fallback={<div>loading</div>}>
+          {failing ? React.createElement(failing) : null}
+        </Suspense>
+      </ChunkErrorBoundary>,
+    );
+
+    // The retry backoff runs longer than the default findBy timeout.
+    expect(
+      await screen.findByText("chunk load failed", undefined, {
+        timeout: 5000,
+      }),
+    ).toBeInTheDocument();
+    // The initial attempt plus two retries.
+    expect(attempts).toBe(3);
+
+    // A new object, so the next render downloads again rather than reusing a
+    // lazy React has permanently marked as rejected.
+    const retried = getVisualizationComponent(display);
+    expect(retried).toBeDefined();
+    expect(retried).not.toBe(failing);
   });
 });
 
