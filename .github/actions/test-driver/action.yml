@@ -25,30 +25,19 @@ inputs:
   runner-index:
     required: false
     description: >-
-      0-based position of THIS runner among the runners sharing one partitioned suite.
-      Setting it turns on partitioning; leaving it unset runs `test-args` as-is. Set
-      `runner-count` with it.
-
-      Sharding a driver over N runners is therefore a matrix of exactly one dimension —
-      the count is not written anywhere else:
-
-        strategy:
-          matrix:
-            runner-index: [0, 1, 2]
-        ...
-          runner-index: ${{ matrix.runner-index }}
-          runner-count: ${{ strategy.job-total }}
-
-      Keep anything unpartitioned (a separately-tagged suite, a leg needing extra
-      infrastructure) in its own job, or `strategy.job-total` stops being the runner count.
+      0-based position of THIS runner among the runners sharing one partitioned suite,
+      normally the value of a one-dimensional `runner-index` matrix. Setting it turns on
+      partitioning; leaving it unset runs `test-args` as-is. Set `runner-count` with it.
+      See `be-tests-bigquery-cloud-sdk-ee` in `.github/workflows/drivers.yml` for the shape.
   runner-count:
     required: false
     description: >-
-      How many runners share the suite. Pass `${{ strategy.job-total }}` rather than a
-      literal whenever the matrix is one-entry-per-runner: a literal that drifts ABOVE the
-      real runner count silently drops whole partitions and still reports green, and no
+      How many runners share the suite. Whenever the matrix is one-entry-per-runner, pass
+      the `strategy.job-total` expression rather than a literal: a literal that drifts ABOVE
+      the real runner count silently drops whole partitions and still reports green, and no
       amount of validation inside one runner can see that. (A literal that drifts below is
-      caught — the run fails with an explicit out-of-range error.)
+      caught — the run fails with an explicit out-of-range error.) That also means the
+      matrix must hold nothing but runners; anything unpartitioned belongs in its own job.
 
       Together with `jvms-per-runner` this is the whole partition plan;
       `.github/scripts/run-backend-test-jvms.sh` derives `:partition/total` and this
