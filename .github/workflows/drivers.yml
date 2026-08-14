@@ -118,31 +118,31 @@ jobs:
     timeout-minutes: 70
     strategy:
       fail-fast: false
-      # 6 partitions over 3 runners, TWO CONCURRENT TEST JVMs PER RUNNER. BigQuery tests
-      # wait on the warehouse rather than on the runner, and hawk runs namespaces strictly
-      # one at a time (`:multithread? :vars`), so a single JVM leaves most of a 4-vCPU
-      # runner idle — this run scored 762 of 1795 tests single-threaded and took 53 min.
-      # `.github/scripts/run-backend-test-legs.sh` documents why the extra concurrency has
+      # 3 runners x 2 concurrent JVMs = 6 partitions. BigQuery tests wait on the warehouse
+      # rather than on the runner, and hawk runs namespaces strictly one at a time
+      # (`:multithread? :vars`), so a single JVM leaves most of a 4-vCPU runner idle — the
+      # run that motivated this scored 762 of 1795 tests single-threaded and took 53 min.
+      # `.github/scripts/run-backend-test-jvms.sh` explains why the extra concurrency has
       # to come from processes rather than threads, and what it isolates between them.
       #
-      # Indexes are interleaved, not contiguous: hawk partitions in namespace order, so
-      # `0 1` would put two correlated (and, today, the two slowest) slices on one runner.
+      # Only the runner's own index appears here; the script derives `:partition/total` and
+      # this runner's partition indexes from runner-count x jvms-per-runner below.
       matrix:
         job:
           - name: Driver Tests Part 1
-            partition-indexes: '0 3'
+            runner-index: 0
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
           - name: Driver Tests Part 2
-            partition-indexes: '1 4'
+            runner-index: 1
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
           - name: Driver Tests Part 3
-            partition-indexes: '2 5'
+            runner-index: 2
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
@@ -175,14 +175,15 @@ jobs:
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
         test-args: ${{ matrix.job.test-args }}
-        partition-total: '6'
-        # Empty for the Transforms Python leg, which runs unpartitioned in one JVM.
-        partition-indexes: ${{ matrix.job.partition-indexes }}
-        # 16G runner, 2 JVMs. Non-heap is not small here — metaspace for a fully-loaded
-        # Metabase plus the Truffle/GraalJS runtime the static-viz path pulls in — so budget
-        # ~2G of it per JVM and ~1G for the OS, which leaves ~4G of heap each. Sized to fail
-        # loudly (OOM) rather than quietly (swap thrash) if it turns out to be too mean.
-        heap-per-leg: '4g'
+        # Empty for the Transforms Python entry, which runs unpartitioned in one JVM.
+        runner-index: ${{ matrix.job.runner-index }}
+        # Must match the number of matrix entries above that carry a runner-index; the
+        # script errors out if it doesn't.
+        runner-count: '3'
+        jvms-per-runner: '2'
+        # 16G runner, 2 JVMs. Sized to fail loudly (OOM) rather than quietly (swap thrash)
+        # if it turns out to be too mean.
+        heap-per-jvm: '4g'
         artifact-suffix: ${{ matrix.job.name }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Cleanup python-runner

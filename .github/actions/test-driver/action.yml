@@ -22,33 +22,39 @@ inputs:
     description: Edition to test (oss or ee)
   quarantine-engine:
     required: false
-  partition-total:
+  runner-index:
     required: false
     description: >-
-      Total number of hawk partitions this driver's tests are split into, counting every
-      runner in the job's matrix. Set together with `partition-indexes`; ignored without
-      it. Drivers that partition by writing `:partition/total`/`:partition/index` straight
-      into `test-args` (one JVM per runner) don't need either.
-  partition-indexes:
+      0-based position of THIS runner among the runners sharing one partitioned suite —
+      normally straight from the matrix entry. Setting it turns on partitioning; leaving it
+      unset runs `test-args` as-is. Set `runner-count` with it.
+  runner-count:
     required: false
     description: >-
-      Space-separated `:partition/index` values THIS runner runs, one test JVM per index.
-      Naming more than one runs them concurrently on the one runner — see
-      `.github/scripts/run-backend-test-legs.sh` for why that is worth doing and what it
-      isolates. Interleave the indexes across the matrix (runner 1 takes `0 3`, runner 2
-      `1 4`, ...) rather than handing each runner a contiguous block: hawk partitions in
-      namespace order, so adjacent partitions have correlated runtimes and a contiguous
-      block concentrates the slow ones on one runner.
-  heap-per-leg:
+      How many runners share the suite, i.e. how many matrix entries carry a `runner-index`.
+      Together with `jvms-per-runner` this is the whole partition plan —
+      `.github/scripts/run-backend-test-jvms.sh` derives `:partition/total` and this
+      runner's `:partition/index` values from it, so no workflow writes a partition number
+      by hand. Raise this without adding a matrix entry (or the reverse) and the run fails
+      with an explicit error rather than silently skipping a slice.
+  jvms-per-runner:
+    required: false
+    default: "1"
+    description: >-
+      Concurrent test JVMs on each runner. More than one is worth it for a driver whose
+      tests wait on the warehouse rather than on the runner — see the script for why the
+      extra concurrency has to come from processes rather than threads, and what it
+      isolates. Partition indexes are strided across runners automatically, so raising this
+      needs no other change.
+  heap-per-jvm:
     required: false
     default: "4g"
     description: >-
-      `-Xmx` for each concurrent JVM, used only when `partition-indexes` names more than
-      one. The `:ci` alias asks for `-Xmx12g -Xms12g`, which no longer fits once a runner
-      hosts several JVMs, so the script overrides it. Budget from the runner: reserve
-      ~1.5G for the OS and ~1.5G of non-heap (metaspace, code cache, direct buffers) per
-      JVM, then divide what's left. On a 16G `ubuntu-latest`, that is ~5G for two legs and
-      ~3G for three.
+      `-Xmx` per JVM, applied only when `jvms-per-runner` is more than 1 (a lone JVM keeps
+      the `:ci` alias's `-Xmx12g`, which no longer fits once a runner hosts several).
+      Budget from the runner: reserve ~1G for the OS and ~2G of non-heap per JVM — metaspace
+      for a fully-loaded Metabase plus the Truffle/GraalJS runtime is not small — then
+      divide what's left. On a 16G `ubuntu-latest` that is ~4G each for two JVMs.
   granular-rerun:
     required: false
     default: "true"
@@ -127,39 +133,39 @@ runs:
       #    those vars via hawk `:only` (a var-level selector bypasses `:only-tags`, which
       #    is fine — every listed var already passed that filter on the first attempt).
       #    Quote the file so the whole `[ns/var ...]` vector reaches clojure -X as a
-      #    single argument. Deliberately ahead of the partitioned path: the narrowed set
-      #    is small enough that one JVM is faster than several, and partitioning it would
-      #    only split a handful of tests.
-      # 2. Several concurrent JVMs, when `partition-indexes` names more than one — see
-      #    `.github/scripts/run-backend-test-legs.sh`.
-      # 3. One JVM, exactly as before. Appends the partition flags when
-      #    `partition-indexes` names a single index; when it names none, `test-args`
-      #    carries whatever partitioning the driver wants (or none).
+      #    single argument. Deliberately ahead of the partitioned path: the narrowed set is
+      #    small enough that one JVM beats several, and partitioning it would only split a
+      #    handful of tests.
+      # 2. Partitioned, when `runner-index` is set. The script owns the arithmetic and
+      #    decides between one in-place JVM and several concurrent ones.
+      # 3. Unpartitioned, exactly as before — `test-args` carries whatever the driver wants
+      #    (including hand-written `:partition/*` flags, which several drivers still use).
       #
-      # `$TEST_ARGS` is unquoted on purpose in both single-JVM branches (as
-      # `${{ inputs.test-args }}` was before it): it is a list of hawk arguments that has
-      # to word-split into separate argv entries.
+      # `test-args` is interpolated into the script text, NOT passed through an env var,
+      # and is deliberately unquoted. Workflows write shell quoting inside it that has to
+      # be parsed by this shell — `:only '["test" ".clj-kondo/test"]'` is one argv entry
+      # containing a space, and `:exclude-tags '[ :a :b ]'` is another. Expanding a
+      # variable instead would leave those quotes in place as literal characters and split
+      # on every space, which hawk reads as a namespace named `'`. For the same reason the
+      # partitioned path passes them to the script POSITIONALLY: split once, here, then
+      # carried as a proper argv array.
       run: |
-        BASE="clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test"
-        read -r -a INDEXES <<< "$PARTITION_INDEXES"
+        ALIASES="dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test"
         if [ "${{ inputs.granular-rerun }}" = "true" ] && [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
           echo "Granular rerun of previously-failed tests: $(cat target/failed-tests)"
-          $BASE :only "$(cat target/failed-tests)"
-        elif [ "${#INDEXES[@]}" -gt 1 ]; then
-          CLOJURE_ALIASES="dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test" \
-            ./.github/scripts/run-backend-test-legs.sh
-        elif [ "${#INDEXES[@]}" -eq 1 ]; then
-          $BASE $TEST_ARGS :partition/total "$PARTITION_TOTAL" :partition/index "${INDEXES[0]}"
+          clojure -X:"$ALIASES" :only "$(cat target/failed-tests)"
+        elif [ -n "$TEST_RUNNER_INDEX" ]; then
+          CLOJURE_ALIASES="$ALIASES" ./.github/scripts/run-backend-test-jvms.sh ${{ inputs.test-args }}
         else
-          $BASE $TEST_ARGS
+          clojure -X:"$ALIASES" ${{ inputs.test-args }}
         fi
       shell: bash
       id: run-test
       env:
-        TEST_ARGS: ${{ inputs.test-args }}
-        PARTITION_TOTAL: ${{ inputs.partition-total }}
-        PARTITION_INDEXES: ${{ inputs.partition-indexes }}
-        HEAP_PER_LEG: ${{ inputs.heap-per-leg }}
+        TEST_RUNNER_INDEX: ${{ inputs.runner-index }}
+        TEST_RUNNER_COUNT: ${{ inputs.runner-count }}
+        TEST_JVMS_PER_RUNNER: ${{ inputs.jvms-per-runner }}
+        TEST_HEAP_PER_JVM: ${{ inputs.heap-per-jvm }}
       # Keep this step continue-on-error because the quarantine gate below controls whether it
       # ultimately fails.
       continue-on-error: true
