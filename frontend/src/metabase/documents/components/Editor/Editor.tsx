@@ -22,7 +22,6 @@ import type { State } from "metabase/redux/store";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
 import type { EditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
-import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandExtension";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
@@ -39,6 +38,8 @@ import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/sh
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/settings";
 import { Box, Center, Loader } from "metabase/ui";
+
+import { CardEmbed } from "../editor-extensions/CardEmbed/CardEmbedNode";
 
 import { DocumentBlockShell } from "./DocumentBlockShell";
 import { DocumentCommandSuggestion } from "./DocumentCommandSuggestion";

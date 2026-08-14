@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import { useGetMetabotConversationQuery } from "metabase/api/metabot";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { MetabotAsk } from "metabase/metabot/components/MetabotAsk";
 import {
@@ -19,6 +18,8 @@ import { Navigate, useParams } from "metabase/router";
 import { getSettingsLoading } from "metabase/settings";
 import { Center, Loader } from "metabase/ui";
 import * as Urls from "metabase/urls";
+
+import { useGetMetabotConversationQuery } from "../../api";
 
 export const IN_PROGRESS_POLL_MS = 2500;
 

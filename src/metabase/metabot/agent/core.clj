@@ -194,17 +194,27 @@
                     (contains? success-ids (:id p))))
              parts)))))
 
+(defn- truncated?
+  "Whether the provider cut this iteration off at its output-token limit. A truncated
+  turn may contain a half-streamed tool call, so it must not continue the loop."
+  [parts]
+  (some #(and (= (:type %) :usage)
+              (= (:finish-reason %) "length"))
+        parts))
+
 (defn- should-continue?
   "Determine if agent should continue iterating."
   [iteration max-iterations terminal-tools parts]
   (and (< iteration max-iterations)
        (has-tool-calls? parts)
-       (not (terminal-tool-call? terminal-tools parts))))
+       (not (terminal-tool-call? terminal-tools parts))
+       (not (truncated? parts))))
 
 (defn- finish-reason
   "Determine why the agent loop stopped."
   [iteration max-iterations terminal-tools parts]
   (cond
+    (truncated? parts)                         :length
     (>= iteration max-iterations)              :max-iterations
     (terminal-tool-call? terminal-tools parts) :terminal-tool
     :else                                      :stop))
@@ -565,7 +575,9 @@
 
             :else
             (let [reason (finish-reason iteration max-iter terminal-tools parts)]
-              (log/info "Agent loop complete" {:iterations iteration :reason reason})
+              (if (= reason :length)
+                (log/warn "Agent loop complete" {:iterations iteration :reason reason})
+                (log/info "Agent loop complete" {:iterations iteration :reason reason}))
               (assoc loop-state
                      :status :done
                      ;; surfaced so run-agent-loop can record it on the turn span
