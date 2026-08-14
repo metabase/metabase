@@ -1,4 +1,5 @@
 import { updateIn } from "icepick";
+import _ from "underscore";
 
 import { CARD_CREATED, CARD_UPDATED } from "metabase/redux/cards";
 import {
@@ -113,11 +114,17 @@ export function tablesReducer(
       if (matchingIndex < 0) {
         continue;
       }
-      const nextOriginalFields = [...table.original_fields];
-      nextOriginalFields[matchingIndex] = {
-        ...nextOriginalFields[matchingIndex],
+      const mergedField = {
+        ...table.original_fields[matchingIndex],
         ...updated,
       };
+      // Keep the table reference when the refetched field brought no change,
+      // so `getMetadata` can stay memoized. See `mergeEntities` in ./index.
+      if (_.isEqual(mergedField, table.original_fields[matchingIndex])) {
+        continue;
+      }
+      const nextOriginalFields = [...table.original_fields];
+      nextOriginalFields[matchingIndex] = mergedField;
       nextState = {
         ...nextState,
         [tableId]: { ...table, original_fields: nextOriginalFields },

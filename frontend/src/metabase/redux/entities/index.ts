@@ -1,9 +1,11 @@
 import { type Reducer, combineReducers } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
+import _ from "underscore";
 
 import { tablesReducer } from "./tables-reducer";
 
-type SliceState = Record<string, unknown>;
+type Entity = Record<string, unknown>;
+type SliceState = Record<string, Entity>;
 type SliceAction = { type: string; payload?: any };
 type SliceReducer = Reducer<SliceState>;
 
@@ -34,25 +36,40 @@ const ACTION_PATTERN = /^metabase\/entities\//;
  * Merges newEntities into entities, deleting keys whose value is nullish.
  * Existing entries are shallow-merged so partial entities don't overwrite
  * full ones.
+ *
+ * The merge is gated on content. An entity keeps its previous reference when
+ * the merged result is deeply equal to it, and the slice keeps its own
+ * reference when no entity changed. `getMetadata` rebuilds the whole
+ * metabase-lib graph when a slice reference changes, and the graph identity is
+ * the cache key for the MLv2 metadata provider. Without the gate, a refetch
+ * that returns identical data still throws that cache away.
  */
 function mergeEntities(
   entities: SliceState,
-  newEntities: Record<string, unknown>,
+  newEntities: Record<string, Entity | null>,
 ): SliceState {
-  const result = { ...entities };
+  let result: SliceState | undefined;
+  const writable = () => (result ??= { ...entities });
+
   for (const id of Object.keys(newEntities)) {
     const entry = newEntities[id];
+
     if (entry == null) {
-      delete result[id];
-    } else {
-      result[id] = {
-        ...(result[id] ?? {}),
-        // Unjustified type cast. FIXME
-        ...(entry as Record<string, unknown>),
-      };
+      if (id in entities) {
+        delete writable()[id];
+      }
+      continue;
+    }
+
+    const previous = entities[id];
+    const merged = { ...(previous ?? {}), ...entry };
+
+    if (!_.isEqual(previous, merged)) {
+      writable()[id] = merged;
     }
   }
-  return result;
+
+  return result ?? entities;
 }
 
 /**
@@ -66,14 +83,25 @@ function makeSliceReducer(
 ): SliceReducer {
   return (state = {}, action: SliceAction) => {
     let nextState = state;
-    // Unjustified type cast. FIXME
+    // `action.payload` is the untyped output of normalizr, so the shape of the
+    // slice it carries is only known by convention.
     const entities = getIn(action, ["payload", "entities", sliceName]) as
-      | Record<string, unknown>
+      | Record<string, Entity | null>
       | undefined;
     if (ACTION_PATTERN.test(action.type) && entities) {
       nextState = mergeEntities(nextState, entities);
     }
-    return customReducer ? customReducer(nextState, action) : nextState;
+    if (customReducer) {
+      // `mergeEntities` gates each entity, but a custom reducer can still
+      // write an entity back to the content it already had. The tables
+      // reducer does exactly that: `mergeEntities` takes the plain table from
+      // the payload, then the reducer re-adds the `original_fields` the
+      // previous table already carried. Compare once more so an unchanged
+      // slice keeps its reference.
+      const customState = customReducer(nextState, action);
+      nextState = _.isEqual(customState, state) ? state : customState;
+    }
+    return nextState;
   };
 }
 

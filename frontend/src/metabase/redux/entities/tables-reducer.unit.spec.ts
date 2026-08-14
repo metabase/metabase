@@ -231,6 +231,26 @@ describe("tablesReducer", () => {
       expect(nextState).toBe(state);
     });
 
+    it("leaves state untouched when the updated field repeats the current content", () => {
+      const state = {
+        1: {
+          id: 1,
+          original_fields: [
+            { id: 10, table_id: 1, display_name: "Old", fingerprint: null },
+          ],
+        },
+      };
+
+      const nextState = tablesReducer(
+        state,
+        getEntitiesUpdateAction({
+          10: { id: 10, table_id: 1, display_name: "Old", fingerprint: null },
+        }),
+      );
+
+      expect(nextState).toBe(state);
+    });
+
     it("ignores UPDATE actions flagged with error", () => {
       const state = {
         1: {
