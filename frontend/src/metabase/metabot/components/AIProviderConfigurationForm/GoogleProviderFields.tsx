@@ -2,7 +2,6 @@ import { type FormikHelpers, useFormikContext } from "formik";
 import { useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
-import { useUpdateMetabotSettingsMutation } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import {
@@ -17,6 +16,8 @@ import type {
   GoogleCredentials,
   SettingDefinitionMap,
 } from "metabase-types/api";
+
+import { useUpdateMetabotSettingsMutation } from "../../api";
 
 import { useAIProviderConfigurationContext } from "./AIProviderConfigurationContext";
 import { hasConfiguredSettingValue } from "./utils";
