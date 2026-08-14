@@ -1,13 +1,6 @@
-import {
-  FixedSizeIcon,
-  Flex,
-  Text,
-  Tooltip,
-  UnstyledButton,
-} from "metabase/ui";
+import { Button, FixedSizeIcon, Tooltip } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import S from "./AreaLayout.module.css";
 import { TOOLTIP_OPEN_DELAY } from "./constants";
 
 type AreaNavButtonProps = {
@@ -34,23 +27,16 @@ export function AreaNavButton({
       openDelay={TOOLTIP_OPEN_DELAY}
       disabled={showLabel}
     >
-      <Flex
-        className={S.navButton}
-        component={UnstyledButton}
+      <Button
+        variant="light"
+        size="md"
+        fullWidth
+        leftSection={<FixedSizeIcon name={icon} display="block" />}
         onClick={onClick}
-        p="sm"
-        gap="sm"
-        bdrs="md"
         aria-label={label}
-        justify="center"
       >
-        <FixedSizeIcon name={icon} display="block" className={S.icon} />
-        {showLabel && (
-          <Text lh="sm" fw="bold" c="inherit">
-            {label}
-          </Text>
-        )}
-      </Flex>
+        {showLabel && label}
+      </Button>
     </Tooltip>
   );
 }
