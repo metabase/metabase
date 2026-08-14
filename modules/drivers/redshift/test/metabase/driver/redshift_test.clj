@@ -9,8 +9,13 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
@@ -374,6 +379,66 @@
               (mt/with-native-query-testing-context query
                 (is (= [1 "2022-01-20T18:49:10.656Z"]
                        (mt/first-row (qp/process-query query))))))))))))
+
+;;; TEMPORARY: diagnostic probe for the flaky `unix-timestamp-test`. Asserts against a sentinel so it always fails and
+;;; CI prints the payload. Delete once the cause is known.
+(deftest diagnose-unix-timestamp-coercion-test
+  (mt/test-driver :redshift
+    (mt/dataset unix-timestamps
+      (let [field-id   (mt/id :timestamps :timestamp)
+            table-id   (mt/id :timestamps)
+            table      (t2/select-one [:model/Table :schema :name] table-id)
+            schema-nm  (:schema table)
+            table-nm   (:name table)
+            spec       (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            probe      (fn [thunk]
+                         (try
+                           (thunk)
+                           (catch Throwable e
+                             (str "ERROR: " (ex-message e)))))
+            provider   (fn [extra-field-props]
+                         (lib.tu/merged-mock-metadata-provider
+                          (mt/metadata-provider)
+                          {:fields [(merge {:id                field-id
+                                            :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
+                                            :effective-type    :type/Instant}
+                                           extra-field-props)]}))
+            compiled   (fn [mp]
+                         (let [query (lib/query mp (lib.metadata/table mp table-id))]
+                           (qp.store/with-metadata-provider mp
+                             (:query (qp.compile/compile query)))))]
+        (is (= ::diagnostics
+               {:host            (first (str/split (:host @redshift.tx/db-connection-details) #"\."))
+                :server-version  (probe #(:version (first (jdbc/query spec "select version()"))))
+                ;; what sync reads the column type from
+                :svv-columns     (probe #(jdbc/query spec [(str "select column_name, data_type from svv_columns"
+                                                                " where table_schema = ? and table_name = ?"
+                                                                " order by ordinal_position")
+                                                           schema-nm table-nm]))
+                :info-schema     (probe #(jdbc/query spec [(str "select column_name, data_type, udt_name,"
+                                                                " numeric_precision, numeric_scale"
+                                                                " from information_schema.columns"
+                                                                " where table_schema = ? and table_name = ?"
+                                                                " order by ordinal_position")
+                                                           schema-nm table-nm]))
+                :describe-fields (probe #(into [] (driver/describe-fields :redshift (mt/db)
+                                                                          {:schema-names #{schema-nm}
+                                                                           :table-names  #{table-nm}})))
+                :app-db-field    (probe #(t2/select-one [:model/Field :name :base_type :effective_type
+                                                         :coercion_strategy :database_type :active]
+                                                        field-id))
+                :lib-field       (probe #(select-keys (lib.metadata/field (mt/metadata-provider) field-id)
+                                                      [:name :base-type :effective-type :coercion-strategy
+                                                       :database-type]))
+                ;; is the global state the cast depends on actually loaded in this JVM?
+                :env             {:coercion-isa?    (isa? :Coercion/UNIXMilliSeconds->DateTime
+                                                          :Coercion/UNIXTime->Temporal)
+                                  :decimal-is-number? (isa? :type/Decimal :type/Number)
+                                  :redshift-unix-method? (some? (get-method sql.qp/unix-timestamp->honeysql
+                                                                            [:redshift :seconds]))}
+                ;; does the cast survive compilation, and does pinning the base type rescue it?
+                :compiled        (probe #(compiled (provider nil)))
+                :compiled-pinned (probe #(compiled (provider {:base-type :type/Decimal})))}))))))
 
 (deftest interval-test
   (mt/test-drivers #{:postgres :redshift}
