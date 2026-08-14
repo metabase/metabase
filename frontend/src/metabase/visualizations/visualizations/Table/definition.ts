@@ -176,6 +176,9 @@ export const TABLE_DEFINITION = {
 
         return getDefaultPivotColumn(series) != null;
       },
+      isValid: ([{ data }]: Series, settings: ComputedVisualizationSettings) =>
+        !(settings["table.pivot"] && data.cols.length !== 3),
+      persistDefault: true,
     },
 
     "table.pivot_column": {
