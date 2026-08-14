@@ -24,10 +24,24 @@
       padding-right: var(--input-right-section-width);
     }
   }
+
+  &[data-size="md"]:has([data-combined-clear-section]) {
+    .SelectInput {
+      padding-right: 3.75rem;
+    }
+  }
+
+  &[data-size="xs"]:has([data-combined-clear-section]) {
+    .SelectInput {
+      padding-right: 2.5625rem;
+    }
+  }
 }
 
 .SelectInput {
+  overflow: hidden;
   color: var(--mb-color-text-primary);
+  text-overflow: ellipsis;
   background-color: var(--mb-color-background_page-primary);
 
   &[data-disabled] {
@@ -70,7 +84,6 @@
   [data-disabled] & {
     opacity: 1;
     color: var(--mb-color-text-disabled);
-    background-color: var(--mb-color-background_page-tertiary);
 
     &::placeholder {
       color: var(--mb-color-text-disabled);
