@@ -319,11 +319,15 @@
   no `:status`: this isn't a credentials problem, and `metabase.metabot.api`'s `provider-client-error?`
   renders any 4xx under the admin API-key field, which would attach the wrong message to the wrong input.
 
-  A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes."
-  [provider-name res]
-  (let [data (get-in res [:body :data])]
-    (when-not (sequential? data)
-      (throw (ex-info (tru "{0} returned an unexpected model list response" provider-name)
-                      {:api-error  true
-                       :error-code :malformed-model-catalog})))
-    data))
+  A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes.
+
+  `:detail` is a sentence appended to the message, for a provider that has something more specific to say."
+  ([provider-name res] (models-catalog provider-name res nil))
+  ([provider-name res {:keys [detail]}]
+   (let [data (get-in res [:body :data])]
+     (when-not (sequential? data)
+       (throw (ex-info (cond-> (tru "{0} returned an unexpected model list response" provider-name)
+                         detail (str ". " detail))
+                       {:api-error  true
+                        :error-code :malformed-model-catalog})))
+     data)))

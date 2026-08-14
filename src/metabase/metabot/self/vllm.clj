@@ -101,7 +101,11 @@
 
 (defn- list-all-models
   "Fetch the served model catalog, which doubles as the credential round-trip behind the admin
-  Connect button."
+  Connect button.
+
+  A 2xx whose body is not a recognizable catalog fails closed via
+  [[chat-completions/models-catalog]], naming the base URL — the likeliest cause for the one provider
+  whose base URL the admin types."
   [auth]
   (try
     (let [res (core/request auth (merge {:method  :get
@@ -109,7 +113,11 @@
                                          :as      :json
                                          :headers {"Content-Type" "application/json"}}
                                         (control-timeouts)))]
-      (get-in res [:body :data]))
+      ;; The URL off `auth`, not the setting: a connect verifies request credentials before saving them.
+      (chat-completions/models-catalog
+       "vLLM" res
+       {:detail (tru "Check that {0} is a vLLM server''s OpenAI-compatible API — the base URL should end in /v1."
+                     (str (:url auth)))}))
     (catch Exception e
       (core/rethrow-api-error! "vllm" vllm-error-msg e))))
 
@@ -220,6 +228,18 @@
       (and truncated? (not (str/blank? reasoning)))
       (throw (preflight-ex
               (tru "{0} spent the entire {1} token connection-test budget reasoning without calling a tool. A model that thinks this long about a trivial prompt is too slow to drive Metabot."
+                   (str model) (str probe-max-tokens))))
+
+      ;; A tool call cut off at the ceiling reaches here, not the `(seq tool-calls)` branch above: the
+      ;; parsers extract from complete output, so a call missing its closing sentinel yields no
+      ;; `tool_calls` at all and leaves the raw text in `content`. That is indistinguishable from
+      ;; prose except by `finish_reason`, and naming the flags — which are working, or the sentinel
+      ;; would not be there — sends the admin to fix something that is not broken. A verbose model
+      ;; whose flags really are missing lands here too, and gets the flags message on the retry after
+      ;; raising the ceiling; truncation is the problem to fix first either way.
+      truncated?
+      (throw (preflight-ex
+              (tru "{0} reached the {1} token connection-test ceiling before completing a tool call. A model that generates this much before calling a tool is too slow to drive Metabot."
                    (str model) (str probe-max-tokens))))
 
       :else

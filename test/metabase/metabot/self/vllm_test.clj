@@ -268,6 +268,131 @@
           (is (empty? (filter #(= :reasoning (:type %)) parts)))
           (is (= ["Four."] (map :text (filter #(= :text (:type %)) parts)))))))))
 
+;;; Recorded verbatim from vLLM 0.26.0 serving vllm-test with
+;;; `--served-model-name vllm-test --max-model-len 32768 --enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3`.
+;;; Inert envelope fields (created, logprobs, object, prompt_text, prompt_token_ids, service_tier, system_fingerprint, token_ids) dropped for size;
+;;; the full capture is under `logs/ai/requests/`.
+;;; 155 chunks captured, 22 kept: each run of reasoning deltas is truncated
+;;; to its first 2 (133 reasoning dropped). Nothing structural is removed.
+(def ^:private recorded-parallel-tool-call-stream
+  [{:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices [{:index 0, :delta {:role "assistant", :content ""}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices [{:index 0, :delta {:reasoning "\n"}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices [{:index 0, :delta {:reasoning "Okay"}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices [{:index 0, :delta {:content "\n\n"}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0,
+      :delta
+      {:content nil,
+       :tool_calls
+       [{:id "chatcmpl-tool-96102e0493e264b7", :type "function", :index 0, :function {:name "record_table_name"}}]},
+      :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 0, :function {:arguments "{\""}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 0, :function {:arguments "table"}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 0, :function {:arguments "_name"}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 0, :function {:arguments "\":"}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 0, :function {:arguments " \""}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 0, :function {:arguments "orders"}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 0, :function {:arguments "\"}"}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0,
+      :delta
+      {:content nil,
+       :tool_calls
+       [{:id "chatcmpl-tool-b34f3b547d2105f2", :type "function", :index 1, :function {:name "record_column_name"}}]},
+      :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 1, :function {:arguments "{\""}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 1, :function {:arguments "column"}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 1, :function {:arguments "_name"}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 1, :function {:arguments "\":"}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 1, :function {:arguments " \""}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 1, :function {:arguments "total"}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices
+    [{:index 0, :delta {:content nil, :tool_calls [{:index 1, :function {:arguments "\"}"}}]}, :finish_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices [{:index 0, :delta {}, :finish_reason "tool_calls", :stop_reason nil}]}
+   {:id "chatcmpl-8ad4c404bbb917ae",
+    :model "vllm-test",
+    :choices [],
+    :usage {:prompt_tokens 244, :total_tokens 426, :completion_tokens 182}}])
+
+(deftest ^:parallel recorded-parallel-tool-calls-become-separate-parts-test
+  (testing "two tool calls in one assistant message accumulate into two parts, each with its own arguments"
+    (let [calls (->> recorded-parallel-tool-call-stream
+                     (into [] (comp (vllm/vllm->aisdk-chunks-xf) (self.core/aisdk-xf)))
+                     (filter #(= :tool-input (:type %))))]
+      (is (= [{:id "chatcmpl-tool-96102e0493e264b7" :function "record_table_name"
+               :arguments {:table_name "orders"}}
+              {:id "chatcmpl-tool-b34f3b547d2105f2" :function "record_column_name"
+               :arguments {:column_name "total"}}]
+             (mapv #(select-keys % [:id :function :arguments]) calls))))))
+
+(deftest ^:parallel recorded-parallel-tool-calls-do-not-interleave-test
+  (testing "the xf keys transitions on the tool-call id and never reads index, which is safe only because
+           hermes emits each call's deltas as one contiguous run"
+    (let [deltas (for [chunk  recorded-parallel-tool-call-stream
+                       choice (:choices chunk)
+                       tc     (get-in choice [:delta :tool_calls])]
+                   tc)]
+      (testing "index arrives in contiguous runs, not interleaved"
+        (is (= [0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1] (mapv :index deltas))))
+      (testing "id arrives on each call's opening delta only — a provider repeating it would lose the
+                arguments, since neither the start branch nor the argument-delta branch would fire"
+        (is (= [0 1] (keep #(when (:id %) (:index %)) deltas)))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Auth
 ;;; ──────────────────────────────────────────────────────────────────
@@ -415,8 +540,21 @@
 ;;; list-models
 ;;; ──────────────────────────────────────────────────────────────────
 
+;;; Recorded from vLLM 0.26.0 serving mlx-community/Qwen3-14B-4bit with
+;;; `--served-model-name vllm-test vllm-test-alias qwen3-14b` (BOT-1930 L-10). Aliases are the cheapest
+;;; multi-entry catalog: several ids over one loaded model. Note the key set — there is no `name`, so
+;;; `display_name` always falls back to the served id on vLLM, and `parent` is present-and-nil rather
+;;; than absent. `:permission` is dropped here; nothing reads it.
+(def ^:private recorded-multi-model-catalog
+  [{:id "vllm-test"       :object "model" :created 1786676106 :owned_by "vllm"
+    :root "mlx-community/Qwen3-14B-4bit" :parent nil :max_model_len 32768}
+   {:id "vllm-test-alias" :object "model" :created 1786676106 :owned_by "vllm"
+    :root "mlx-community/Qwen3-14B-4bit" :parent nil :max_model_len 32768}
+   {:id "qwen3-14b"       :object "model" :created 1786676106 :owned_by "vllm"
+    :root "mlx-community/Qwen3-14B-4bit" :parent nil :max_model_len 32768}])
+
 (deftest list-models-passes-the-catalog-through-test
-  (testing "every served model is offered — there is no whitelist — and display_name falls back to the served id"
+  (testing "every served model is offered — there is no whitelist — in the order the server lists them"
     (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url
                                        llm.settings/llm-vllm-api-key      "local-dev-key"]
       (mt/with-dynamic-fn-redefs [http/request (fn [req]
@@ -424,11 +562,35 @@
                                                           :url     "http://vllm.internal:8000/v1/models"
                                                           :headers {"Authorization" "Bearer local-dev-key"}}
                                                          req))
+                                                 {:status 200 :body {:data recorded-multi-model-catalog}})]
+        (is (= {:models [{:id "vllm-test"       :display_name "vllm-test"}
+                         {:id "vllm-test-alias" :display_name "vllm-test-alias"}
+                         {:id "qwen3-14b"       :display_name "qwen3-14b"}]}
+               (vllm/list-models)))))))
+
+;;; Recorded from the same server started **without** `--served-model-name` (BOT-1930 L-10), which is
+;;; how an operator who does not rename their deployment sees it: the catalog id is the Hugging Face
+;;; repo id, slashes and all, and `root` equals `id` rather than sitting behind an alias.
+(def ^:private recorded-no-alias-catalog
+  [{:id "mlx-community/Qwen3-14B-4bit" :object "model" :created 1786676633 :owned_by "vllm"
+    :root "mlx-community/Qwen3-14B-4bit" :parent nil :max_model_len 32768}])
+
+(deftest list-models-keeps-slashes-in-a-served-model-id-test
+  (testing "a Hugging Face repo id survives the listing intact — `llm-metabot-provider` stores it as
+           `vllm/{id}`, so the model segment is the only one allowed to keep its slashes"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:data recorded-no-alias-catalog}})]
+        (is (= {:models [{:id "mlx-community/Qwen3-14B-4bit" :display_name "mlx-community/Qwen3-14B-4bit"}]}
+               (vllm/list-models)))))))
+
+(deftest list-models-display-name-falls-back-to-the-served-id-test
+  (testing "a `name` is honoured when present, though no vLLM build emits one — the tolerance is for the
+           other OpenAI-compatible servers the same UI copy invites"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_]
                                                  {:status 200
-                                                  :body   {:data [{:id "mlx-community/Qwen3-14B-4bit" :max_model_len 32768}
-                                                                  {:id "some-finetune" :name "Some Finetune"}]}})]
-        (is (= {:models [{:id "mlx-community/Qwen3-14B-4bit" :display_name "mlx-community/Qwen3-14B-4bit"}
-                         {:id "some-finetune" :display_name "Some Finetune"}]}
+                                                  :body   {:data [{:id "some-finetune" :name "Some Finetune"}]}})]
+        (is (= {:models [{:id "some-finetune" :display_name "Some Finetune"}]}
                (vllm/list-models)))))))
 
 (deftest list-models-credentials-override-the-settings-test
@@ -443,6 +605,39 @@
         (is (= {:models []}
                (vllm/list-models {:credentials {:base-url "http://explicit:8000/v1"
                                                 :api-key  "explicit-key"}})))))))
+
+(deftest list-models-fails-closed-on-a-body-that-is-not-a-catalog-test
+  (testing "a 2xx whose body carries no model list throws, naming the base URL"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (doseq [body [{:status "ok" :service "some-other-thing"} {:object "list"} "<html>404</html>"]]
+        (testing (str "body " (pr-str body))
+          (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body body})]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"vLLM returned an unexpected model list response.*http://vllm\.internal:8000/v1"
+                 (vllm/list-models))))))))
+  (testing "a well-formed but empty catalog lists nothing and gets its own distinct message"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list" :data []}})]
+        (is (= {:models []} (vllm/list-models)))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"reachable but is not serving any models"
+             (vllm/list-models {:probe? true})))))))
+
+(deftest list-models-fails-closed-before-probing-test
+  (testing "a malformed catalog throws without issuing a probe request"
+    (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
+      (let [chat-requests (atom 0)]
+        (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url]}]
+                                                   (when-not (re-find #"/models$" (str url))
+                                                     (swap! chat-requests inc))
+                                                   {:status 200 :body {:status "ok"}})]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"vLLM returned an unexpected model list response"
+               (vllm/list-models {:probe? true})))
+          (is (zero? @chat-requests)))))))
 
 (deftest list-models-401-maps-to-invalid-key-message-test
   (testing "a 401 surfaces as the canonical message naming --api-key"
@@ -516,10 +711,12 @@
 (deftest preflight-reports-the-model-it-probed-test
   (testing "the probed model is named in the result rather than left to be re-derived from the listing —
            the connect path must adopt the model the contract checks actually ran against"
-    (is (= "first"
-           (:probed-model (probe! [{:id "first" :max_model_len 32768}
-                                   {:id "second" :max_model_len 32768}]
-                                  tool-calling-message)))))
+    (testing "the first catalog entry, in the order the server lists it"
+      (is (= "vllm-test"
+             (:probed-model (probe! recorded-multi-model-catalog tool-calling-message)))))
+    (testing "including a slash-bearing repo id, which the connect path stores as `vllm/{id}`"
+      (is (= "mlx-community/Qwen3-14B-4bit"
+             (:probed-model (probe! recorded-no-alias-catalog tool-calling-message))))))
   (testing "and a listing that did not probe reports nothing"
     (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
       (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:data [{:id "vllm-test"}]}})]
@@ -646,15 +843,32 @@
       (is (not (re-find #"--enable-auto-tool-choice" (ex-message e)))
           "the flags this server needs are already set, so naming them would send the admin the wrong way"))))
 
-(deftest preflight-reports-truncated-prose-as-a-tool-choice-failure-test
-  (testing "a truncated answer carrying prose rather than reasoning still points at the tool-calling flags"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"--enable-auto-tool-choice"
-         (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
-                        {:message       {:content "Sure! To record the table name I would first need to"
-                                         :tool_calls []}
-                         :finish_reason "length"})))))
+;;; The `content` below is the shape a live vLLM 0.26.0 returns for a tool call cut off at
+;;; `max_tokens`, serving mlx-community/Qwen3-14B-4bit with `--enable-auto-tool-choice
+;;; --tool-call-parser hermes` and `chat_template_kwargs {enable_thinking false}` (BOT-1930 L-7).
+;;; The parser extracts from complete output, so without its closing `</tool_call>` the call yields no
+;;; `tool_calls` entry at all and the raw text stays in `content`.
+(deftest preflight-reports-a-truncated-tool-call-as-a-ceiling-overrun-test
+  (testing "a generation cut off at the ceiling names the ceiling rather than the tool-calling flags,
+           which the unterminated sentinel in the content shows are working"
+    (let [e (try (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
+                                {:message       {:content    "<tool_call>\n{\"name\": \"record_table_name\", \"arguments\": {\""
+                                                 :tool_calls []}
+                                 :finish_reason "length"})
+                 (catch clojure.lang.ExceptionInfo e e))]
+      (is (re-find #"before completing a tool call" (ex-message e)))
+      (is (re-find #"2048 token" (ex-message e)))
+      (is (not (re-find #"--enable-auto-tool-choice" (ex-message e)))))))
+
+(deftest preflight-reports-truncated-prose-as-a-ceiling-overrun-test
+  (testing "prose truncated at the ceiling gets the same verdict — finish_reason is the only signal
+           separating it from a truncated tool call"
+    (let [e (try (probe-choice! [{:id "vllm-test" :max_model_len 32768}]
+                                {:message       {:content    "Sure! To record the table name I would first need to"
+                                                 :tool_calls []}
+                                 :finish_reason "length"})
+                 (catch clojure.lang.ExceptionInfo e e))]
+      (is (re-find #"before completing a tool call" (ex-message e))))))
 
 (deftest preflight-probe-timeout-is-capped-test
   (testing "a probe runs on its own budget, capped below the inference timeout"

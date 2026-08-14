@@ -308,6 +308,19 @@
              #"Mistral returned an unexpected model list response"
              (chat-completions/models-catalog "Mistral" {:status 200 :body body})))))))
 
+(deftest ^:parallel models-catalog-appends-a-caller-supplied-detail-test
+  (testing "a supplied detail is appended to the message"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"vLLM returned an unexpected model list response\. Check http://vllm\.internal:8000/v1\."
+         (chat-completions/models-catalog "vLLM" {:status 200 :body {:object "list"}}
+                                          {:detail "Check http://vllm.internal:8000/v1."}))))
+  (testing "and a caller that supplies none gets the bare message"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Mistral returned an unexpected model list response$"
+         (chat-completions/models-catalog "Mistral" {:status 200 :body {:object "list"}} nil)))))
+
 (deftest ^:parallel models-catalog-error-is-tagged-api-error-without-status-test
   (testing "the thrown error is tagged :api-error so rethrow-api-error! passes it through, and carries no status"
     ;; `metabase.metabot.api/provider-client-error?` renders any 4xx :api-error under the admin API-key
