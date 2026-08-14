@@ -6,7 +6,7 @@ import { cardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import TableQuestions from "metabase/reference/databases/TableQuestions";
@@ -27,7 +27,7 @@ import TableSidebar from "./TableSidebar";
 const mapDispatchToProps = {
   fetchQuestions: () => (dispatch: Dispatch) =>
     runRtkEndpoint({}, dispatch, cardApi.endpoints.listCards),
-  ...metadataActions,
+  fetchDatabaseMetadata,
   ...actions,
 };
 
