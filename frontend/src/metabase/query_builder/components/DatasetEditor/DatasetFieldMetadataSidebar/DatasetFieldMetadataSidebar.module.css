@@ -17,3 +17,8 @@
     }
   }
 }
+
+/* Crazy magic number to match chart settings 0.88em size */
+.IndexSwitchLabel {
+  font-size: 12.32px;
+}

@@ -22,10 +22,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import type { FieldWithMaybeIndex } from "metabase/query_builder/model-indexes/actions";
-import {
-  canIndexField,
-  fieldHasIndex,
-} from "metabase/query_builder/model-indexes/utils";
+import { canIndexField } from "metabase/query_builder/model-indexes/utils";
 import { Box, Radio, Stack, Tabs } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import {
@@ -53,6 +50,7 @@ import { DatasetFieldMetadataFkTargetPicker } from "./DatasetFieldMetadataFkTarg
 import { DatasetFieldMetadataSemanticTypePicker } from "./DatasetFieldMetadataSemanticTypePicker";
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
 import { MappedFieldPicker } from "./MappedFieldPicker";
+import { useShouldIndex } from "./use-should-index";
 
 type VisibilityType = (typeof FIELD_VISIBILITY_TYPES)[number];
 
@@ -138,9 +136,10 @@ function DatasetFieldMetadataSidebarInner({
 
   const canIndex = dataset.isSaved() && canIndexField(field, dataset);
   const { isNative } = Lib.queryDisplayInfo(dataset.query());
-  const shouldIndex =
-    field.should_index ??
-    fieldHasIndex(modelIndexes, { field_ref: field.field_ref });
+  const { shouldIndex, setShouldIndex } = useShouldIndex({
+    field,
+    modelIndexes,
+  });
 
   const initialValues = useMemo(() => {
     const values: FieldMetadataFormValues = {
@@ -264,11 +263,12 @@ function DatasetFieldMetadataSidebarInner({
 
   const handleShouldIndexChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
+      setShouldIndex(e.target.checked);
       onFieldMetadataChange({
         should_index: e.target.checked,
       });
     },
-    [onFieldMetadataChange],
+    [onFieldMetadataChange, setShouldIndex],
   );
 
   return (
@@ -368,7 +368,7 @@ function DatasetFieldMetadataSidebarInner({
                 ) : (
                   <Box className={DatasetFieldMetadataSidebarS.Divider} />
                 )}
-                <Tabs.Panel value={TAB.SETTINGS} p="1.5rem">
+                <Tabs.Panel value={TAB.SETTINGS} px="1.5rem" pt="1.5rem">
                   <Box mb="1.5rem">
                     <FormRadioGroup
                       name="visibility_type"
@@ -403,7 +403,7 @@ function DatasetFieldMetadataSidebarInner({
                     />
                   </Box>
                 </Tabs.Panel>
-                <Tabs.Panel value={TAB.FORMATTING} p="1.5rem">
+                <Tabs.Panel value={TAB.FORMATTING} px="1.5rem" pt="1.5rem">
                   <ColumnSettings
                     {...columnSettingsProps}
                     denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
@@ -415,9 +415,15 @@ function DatasetFieldMetadataSidebarInner({
                 <FormSwitch
                   name="should_index"
                   label={t`Surface individual records in search by matching against this column`}
-                  px="1.5rem"
+                  mx="1.5rem"
                   size="sm"
+                  fw="bold"
+                  maw="300px"
                   onChange={handleShouldIndexChange}
+                  labelPosition="left"
+                  classNames={{
+                    label: DatasetFieldMetadataSidebarS.IndexSwitchLabel,
+                  }}
                 />
               )}
             </Form>
