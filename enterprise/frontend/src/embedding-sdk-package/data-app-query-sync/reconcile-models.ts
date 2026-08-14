@@ -42,10 +42,7 @@ function pickDefined(source: Record<string, unknown>) {
   );
 }
 
-/**
- * The fields copied from a source model onto its data app copy. Also the
- * fingerprint input, so drift is measured over exactly what is copied.
- */
+/** Also the fingerprint input, so drift is measured over exactly what is copied. */
 function modelCopyInput(source: MetabaseCard) {
   return {
     name: source.name,
@@ -57,8 +54,7 @@ function modelCopyInput(source: MetabaseCard) {
 }
 
 /**
- * The fields copied from a source action onto the copied model. Implicit
- * actions omit `parameters` and `parameter_mappings` because Metabase derives
+ * Implicit actions omit `parameters` and `parameter_mappings`: Metabase derives
  * those from the model's fields on every read.
  */
 function actionCopyFields(source: MetabaseAction) {
@@ -145,10 +141,6 @@ async function fetchSourceModels(
   return new Map(models);
 }
 
-/**
- * Refuses to touch a card the lockfile claims to own but that no longer looks
- * like a copy this app created.
- */
 function assertOwnedCopy(card: MetabaseCard, collectionId: number) {
   if (card.type !== "model") {
     throw new Error(
@@ -181,8 +173,6 @@ async function reconcileModelActions(
       ? await orNullOn404(client.getAction(mapping.copiedActionId))
       : null;
 
-    // A copy that vanished, or that no longer hangs off this model, cannot be
-    // updated in place — drop the mapping and make a fresh copy.
     if (mapping && copiedAction?.model_id !== entry.copiedModelId) {
       entry.actions.splice(entry.actions.indexOf(mapping), 1);
       mapping = undefined;
@@ -286,7 +276,6 @@ async function reconcileModel(
     return;
   }
 
-  // The copy is gone, so its actions cascaded away with it.
   if (previous) {
     lockfile.models.splice(index, 1);
   }

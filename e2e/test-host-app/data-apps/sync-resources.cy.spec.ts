@@ -21,11 +21,8 @@ const QUERIES_FILE = () => `${APP_ROOT()}/queries/orders.query.ts`;
  * The query half of `sync-resources`, run against the dev host app: a real vite
  * data app with the published SDK installed, so `defineQuery` resolves through
  * the package an author actually consumes rather than a stub.
- *
- * The action half stays in the main suite because implicit actions need a
- * writable database, and this job runs no warehouse containers.
  */
-describe("Embedding SDK: data-app sync-resources", () => {
+describe("Embedding SDK: data-app sync-resources (queries)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -77,7 +74,7 @@ describe("Embedding SDK: data-app sync-resources", () => {
     return savedQuestions().then(([card]) => cy.wrap(card, { log: false }));
   };
 
-  it("creates a saved question, injects its ID, and is unchanged on re-sync", () => {
+  it("creates the saved question, writes its ID back, and re-syncs without changes", () => {
     declareDataAppQueries(APP_ROOT(), [
       { name: "Orders", tableId: ORDERS_ID, limit: 5 },
     ]);
@@ -96,7 +93,6 @@ describe("Embedding SDK: data-app sync-resources", () => {
         expect(lockfile.queries[0].savedQuestionSourceId).to.eq(cards[0].id);
       });
 
-      // Re-running creates nothing further: the authored query already matches.
       sync();
       savedQuestions().then((after) => {
         expect(after).to.have.length(1);
@@ -105,7 +101,7 @@ describe("Embedding SDK: data-app sync-resources", () => {
     });
   });
 
-  it("deletes the saved question when its declaration goes", () => {
+  it("deletes the saved question when its declaration is removed", () => {
     syncOneQuery().then(() => {
       removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
       sync();
@@ -117,9 +113,8 @@ describe("Embedding SDK: data-app sync-resources", () => {
     });
   });
 
-  it("restores the card's authoritative properties without replacing it", () => {
+  it("restores a hand-edited card's name instead of replacing the card", () => {
     syncOneQuery().then((card) => {
-      // Someone edits the generated question by hand in Metabase.
       cy.request("PUT", `/api/card/${card.id}`, { name: "Renamed by hand" });
 
       sync();
@@ -132,7 +127,7 @@ describe("Embedding SDK: data-app sync-resources", () => {
     });
   });
 
-  it("recreates the saved question when it is deleted in Metabase", () => {
+  it("recreates the saved question after it is deleted in Metabase", () => {
     syncOneQuery().then((card) => {
       cy.request("DELETE", `/api/card/${card.id}`);
 
@@ -146,7 +141,7 @@ describe("Embedding SDK: data-app sync-resources", () => {
     });
   });
 
-  it("restores a missing inline ID from the lockfile", () => {
+  it("restores savedQuestionSourceId from the lockfile when the source loses it", () => {
     syncOneQuery().then((card) => {
       // Rewriting the declaration drops the injected ID, as a bad merge would.
       declareDataAppQueries(APP_ROOT(), [
@@ -166,14 +161,13 @@ describe("Embedding SDK: data-app sync-resources", () => {
     });
   });
 
-  it("repairs the lockfile from an owned inline ID", () => {
+  it("rebuilds a missing lockfile entry from the ID left in the source", () => {
     syncOneQuery().then((card) => {
       cy.writeFile(LOCKFILE(), { queries: [], models: [] });
 
       sync();
 
-      // The inline ID proves ownership, so the entry is rebuilt rather than the
-      // card being abandoned and a second one created.
+      // The inline ID proves ownership, so the entry is rebuilt.
       savedQuestions().then((cards) => {
         expect(cards).to.have.length(1);
         expect(cards[0].id).to.eq(card.id);
@@ -185,7 +179,7 @@ describe("Embedding SDK: data-app sync-resources", () => {
     });
   });
 
-  it("refuses to remove a card that left the app collection", () => {
+  it("refuses to delete a card that was moved out of the app collection", () => {
     syncOneQuery().then((card) => {
       cy.request("POST", "/api/collection", { name: "Elsewhere" }).then(
         ({ body: collection }) => {

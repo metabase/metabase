@@ -123,7 +123,7 @@ function start(
 describe("model reconciliation", () => {
   setupResourceSyncTests();
 
-  it("makes a query action's own database viewable, not just its model's", async () => {
+  it("grants view-data on a query action's own database, not just its model's", async () => {
     const appRoot = makeApp();
     declareActions(appRoot, [{ id: 61 }]);
     const fake = start(appRoot, {
@@ -156,7 +156,7 @@ describe("model reconciliation", () => {
    * unit test: only a confirmed 404 proves a copy is gone. Recreating on any
    * other failure would duplicate content the app already owns.
    */
-  it("does not recreate a copied model when reading it fails", async () => {
+  it("does not recreate a copied model when the read fails with anything but a 404", async () => {
     const appRoot = makeApp();
     declareActions(appRoot, [{ id: 51, copiedId: 91 }]);
     seedLockfile(appRoot, [[51, 91]]);

@@ -19,11 +19,9 @@ const APP_SLUG = "vite-6-data-app-host-app";
 const APP_ROOT = () => dataAppHostAppRoot();
 
 /**
- * Drives the real `sync-resources` CLI against a live instance, so the copies it
- * makes are checked against Metabase itself rather than a fake of its API. The
- * unit suite covers the decision logic; this covers the contract — that Metabase
- * accepts the model and action payloads synchronization sends, and that removing
- * a declaration removes exactly the copy it owns.
+ * Drives the real `sync-resources` CLI against a live instance, so the copies are
+ * checked against Metabase rather than a fake of its API. The unit suite covers
+ * the decision logic; this covers the contract.
  */
 describe(
   "Embedding SDK: data-app sync-resources (actions)",
@@ -108,7 +106,7 @@ describe(
         );
       });
 
-    it("copies a model once for its actions, then unwinds as declarations go", () => {
+    it("copies the model once for two actions, then deletes each copy as its declaration is removed", () => {
       cy.get<number>("@modelId").then((modelId) => {
         H.createImplicitAction({ model_id: modelId, kind: "create" }).then(
           ({ body: create }) => {
@@ -118,8 +116,6 @@ describe(
 
                 sync();
 
-                // Both actions belong to one model, so exactly one copy is made
-                // and the second action reuses it.
                 copiedModels().then((models) => {
                   expect(models).to.have.length(1);
                   const copiedModelId = models[0].id;
@@ -130,8 +126,7 @@ describe(
                   });
                 });
 
-                // The generated IDs are written back into the source, which is
-                // what a production build executes.
+                // Injected back into source: the ID a production build runs.
                 cy.readFile(`${APP_ROOT()}/actions/orders.action.ts`).should(
                   "match",
                   /copiedActionId: \d+/,
@@ -144,7 +139,6 @@ describe(
                   },
                 );
 
-                // Re-running with the same declarations changes nothing.
                 sync();
                 copiedModels().then((models) => {
                   expect(models).to.have.length(1);
@@ -153,8 +147,7 @@ describe(
                   });
                 });
 
-                // Dropping one declaration removes only that copy: the model is
-                // still needed by its sibling.
+                // The model survives: its sibling still needs it.
                 removeDataAppActionDeclaration(APP_ROOT(), update.id);
                 sync();
 
@@ -165,7 +158,6 @@ describe(
                   });
                 });
 
-                // Dropping the last one takes the copied model with it.
                 removeDataAppActionDeclaration(APP_ROOT(), create.id);
                 sync();
 
@@ -182,7 +174,7 @@ describe(
       });
     });
 
-    it("updates the existing copies when the source drifts", () => {
+    it("updates the copies in place when the source model or action changes", () => {
       cy.get<number>("@modelId").then((modelId) => {
         H.createImplicitAction({ model_id: modelId, kind: "create" }).then(
           ({ body: action }) => {
@@ -199,8 +191,6 @@ describe(
 
               sync();
 
-              // The copies are updated in place: no second model is made, and
-              // the copied action keeps the ID already injected into the source.
               copiedModels().then((models) => {
                 expect(models).to.have.length(1);
                 expect(models[0].id).to.eq(copy.id);
@@ -218,7 +208,7 @@ describe(
     });
 
     describe("recovery", () => {
-      it("reuses the existing copy when the generated ID is missing", () => {
+      it("reuses the existing copies when copiedActionId is missing from the source", () => {
         syncOneAction().then(({ action, copiedModel, copiedAction }) => {
           // Rewriting the declarations drops the injected ID, as a bad merge would.
           declareDataAppActions(APP_ROOT(), [action.id]);
@@ -237,7 +227,7 @@ describe(
         });
       });
 
-      it("recreates only the copied action when it is deleted in Metabase", () => {
+      it("recreates the copied action but keeps its model when the action is deleted in Metabase", () => {
         syncOneAction().then(({ copiedModel, copiedAction }) => {
           cy.request("DELETE", `/api/action/${copiedAction.id}`);
           sync();
@@ -254,7 +244,7 @@ describe(
         });
       });
 
-      it("recreates the copied model when it is deleted in Metabase", () => {
+      it("recreates the copied model after it is deleted in Metabase", () => {
         syncOneAction().then(({ copiedModel }) => {
           cy.request("DELETE", `/api/card/${copiedModel.id}`);
           sync();
@@ -270,7 +260,7 @@ describe(
     describe("refusals", () => {
       // `GET /api/action/:id` filters archived actions out, so an archived source
       // is unreadable rather than readable-and-flagged.
-      it("copies nothing when a declared action is unreadable", () => {
+      it("copies nothing when a declared action is archived and cannot be read", () => {
         declareOneAction().then(({ action }) => {
           cy.request("PUT", `/api/action/${action.id}`, { archived: true });
 
@@ -279,10 +269,9 @@ describe(
         });
       });
 
-      // The lockfile's own validation is unit-tested exhaustively; what matters
-      // here is that a rejected lockfile stops the CLI before it mutates
-      // anything, rather than being treated as "no copies exist yet".
-      it("refuses to sync against a lockfile it cannot trust", () => {
+      // Validation itself is unit-tested; what matters here is that a rejected
+      // lockfile stops the CLI before it mutates anything.
+      it("refuses to sync when resources_metadata.json is corrupt, leaving the copies alone", () => {
         syncOneAction().then(({ copiedModel, copiedAction }) => {
           cy.writeFile(`${APP_ROOT()}/resources_metadata.json`, "{ not json");
 
@@ -300,7 +289,7 @@ describe(
         });
       });
 
-      it("refuses to touch a copy that left the app collection", () => {
+      it("refuses to sync when a copied model was moved out of the app collection", () => {
         syncOneAction().then(({ copiedModel }) => {
           cy.request("POST", "/api/collection", { name: "Elsewhere" }).then(
             ({ body: collection }) => {
@@ -318,7 +307,7 @@ describe(
         });
       });
 
-      it("refuses to touch a copy that is no longer a model", () => {
+      it("refuses to sync when a copied model was converted to a question", () => {
         syncOneAction().then(({ copiedModel }) => {
           cy.request("PUT", `/api/card/${copiedModel.id}`, {
             type: "question",
@@ -331,7 +320,7 @@ describe(
       // Converting the parent model to a question deletes its implicit actions
       // and archives the rest (see `card.clj`), so the source becomes unreadable
       // rather than readable-with-a-non-model-parent.
-      it("copies nothing once the parent model becomes a question", () => {
+      it("copies nothing when the source model was converted to a question", () => {
         declareOneAction().then(({ modelId, action }) => {
           cy.request("PUT", `/api/card/${modelId}`, { type: "question" });
 
@@ -340,7 +329,7 @@ describe(
         });
       });
 
-      it("refuses to delete a copied action repointed at another model", () => {
+      it("refuses to delete a copied action that now belongs to another model", () => {
         cy.get<number>("@modelId").then((modelId) => {
           H.createImplicitAction({ model_id: modelId, kind: "create" }).then(
             ({ body: create }) => {
