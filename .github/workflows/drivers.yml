@@ -156,10 +156,11 @@ jobs:
       matrix:
         job:
           - name: Driver Tests
+            # TIMING PROBE BRANCH ONLY -- do not merge. Scoped to the timing probes so they actually get reached
+            # inside the 60 minute limit; the full suite timed out before them. `:fail-fast?` is off because both
+            # probes fail by design and fail-fast would stop after the first.
             test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
+              :only [metabase.driver.bigquery-cloud-sdk-timing-test]
 # DS 2025-09-26 temporarily disabled while we diagnose flakes
 #          - name: Transforms Python Tests
 #            test-args: >-
