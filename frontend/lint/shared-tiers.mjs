@@ -50,15 +50,15 @@ const SHARED_PLATFORM_LEVELS = [
   // P1 — independent peers: chart rendering and database metadata/forms.
   ["shared/visualizations", "shared/databases"],
   // P2 — independent peers with no edges between them.
-  // Querying and detail-view compose visualizations, and metadata consumes detail-view from P3.
-  // detail-view's one upward edge (DetailViewPage.tsx imports the nav layout constants)
-  // is #79119's subject, so its enforceSharedTiers flag stays off.
+  // Querying and detail-view compose visualizations. Metadata consumes detail-view from P3.
+  // detail-view keeps its enforceSharedTiers flag for one upward edge,
+  // DetailViewPage.tsx importing the nav layout constants (#79119 moves them).
   ["shared/querying", "shared/pulse", "shared/detail-view"],
   // P3 — building blocks over querying, mutually independent.
   ["shared/metadata", "shared/parameters", "shared/questions"],
-  // P4 — the metabot agent, kept whole rather than split, which transforms and nav compose.
-  // Its one upward edge (Metabot.tsx imports MainNavbar.styled) and the three querying
-  // imports of metabot are scheduled A3/A4 inversions, so its enforceSharedTiers flag stays off.
+  // P4 — the metabot agent, which transforms and nav compose.
+  // metabot keeps its enforceSharedTiers flag for its remaining upward edges:
+  // Metabot.tsx imports MainNavbar.styled, and querying imports metabot in three places.
   ["shared/metabot"],
 ];
 
