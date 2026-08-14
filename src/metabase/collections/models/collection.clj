@@ -1403,7 +1403,7 @@
   Takes model (the model to check dependencies for).
 
   Returns a set of model IDs for dependencies of the given model that are not eligible for remote sync.
-  See [[ineligible-dependencies]] for the same set with the containing collection and referrers attached."
+  See [[ineligible-dependencies]] for the same set with the containing collection attached."
   [model]
   (into #{} (map :id) (ineligible-dependencies model)))
 
