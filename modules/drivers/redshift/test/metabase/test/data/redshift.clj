@@ -260,11 +260,23 @@
     (with-open [stmt (.createStatement conn)]
       (drop-orphan-schemas! stmt orphans))))
 
+(defn- gc-connection-details
+  "Every cluster and database a leaked schema could be sitting in.
+
+  [[db-connection-details]] pins one randomly chosen host for the lifetime of a process, which is what you want when
+  running tests and not what you want when sweeping: `MB_REDSHIFT_TEST_HOSTS` is several independent clusters, so a
+  sweep that visits only the one this process happened to draw leaves every other cluster to accumulate forever."
+  []
+  (for [host (or (seq @hosts) [(tx/db-test-env-var-or-throw :redshift :host)])
+        db   [(tx/db-test-env-var :redshift :db "testdb")
+              (tx/db-test-env-var :redshift :db-routing "dev")]]
+    (assoc @db-connection-details :host host, :db db)))
+
 (defmethod tx/gc-orphans! :redshift
   [driver {:keys [older-than-hours dry-run?]}]
   ;; Redshift schema names carry their own creation time via [[sql.tu.unique-prefix/unique-prefix]], so age comes from
-  ;; the name and there is no catalog timestamp to consult. Sweeps both clusters, the same pair [[tx/before-run]] sets
-  ;; up; a name present on both is reported once per cluster.
+  ;; the name and there is no catalog timestamp to consult. A schema name that exists on more than one cluster is
+  ;; counted once per cluster, since each is a separate object that had to be dropped separately.
   (into []
         (mapcat (fn [details]
                   (sql-jdbc.execute/do-with-connection-with-options
@@ -277,7 +289,7 @@
                          (with-open [stmt (.createStatement conn)]
                            (drop-orphan-schemas! stmt orphans)))
                        (mapcat val orphans))))))
-        [@db-connection-details @db-routing-connection-details]))
+        (gc-connection-details)))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]

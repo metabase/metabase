@@ -115,17 +115,33 @@
       (jdbc/execute! spec [(format "DROP DATABASE \"%s\";" name)]))))
 
 (defn- old-dataset-names
-  "Return a collection of all dataset names that are old
-   -- tracked that haven't been touched in a while or are not tracked and too old"
-  []
-  (let [days-ago -5
-        ;; tracked UNION ALL untracked
-        ;; NB. currently appears that the second half never shows anything; all
-        ;; datasets currently appear to be tracked.
-        query "select name from metabase_test_tracking.PUBLIC.datasets
-                where accessed_at < dateadd(day, ?, current_timestamp())"]
-    (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec)
-                                               [query days-ago]))))
+  "Names of test databases old enough to delete, oldest first, given `:older-than-hours` and `:fixture-hours`.
+
+  Age is `accessed_at` from the tracking table wherever there is a row for the database -- so a fixture that runs are
+  actively reusing stays young -- falling back to the catalog's `created` for databases whose bookkeeping never
+  happened, which is precisely the case the nightly sweep exists for. Snowflake test database names carry no
+  timestamp of their own; [[qualified-db-name]] builds them from a random int or a dataset hash.
+
+  Those two shapes need different thresholds. `isolate_` names are per-run garbage that nothing ever reuses, while
+  `sha_` names are content-addressed and deliberately shared, so collecting those as eagerly would make every run
+  rebuild its datasets and reintroduce the half-created-dataset races hashing exists to prevent. A database matching
+  neither prefix is never returned -- notably `metabase_test_tracking`, which holds the bookkeeping this reads.
+
+  Pure: reads and returns names, drops nothing, so it doubles as the dry-run preview."
+  [{:keys [older-than-hours fixture-hours]}]
+  (into []
+        (keep (fn [{:keys [database_name age_hours]}]
+                (when (and age_hours
+                           (cond
+                             (str/starts-with? database_name "isolate_") (>= age_hours older-than-hours)
+                             (str/starts-with? database_name "sha_")     (>= age_hours fixture-hours)))
+                  database_name)))
+        (jdbc/query (no-db-connection-spec)
+                    ["select d.database_name,
+                             timestampdiff('hour', coalesce(t.accessed_at, d.created), current_timestamp()) as age_hours
+                      from metabase_test_tracking.information_schema.databases d
+                      left join metabase_test_tracking.PUBLIC.datasets t on t.name = d.database_name
+                      order by age_hours desc"])))
 
 ;;; --------------------------------- Destruction ----------------------------------
 ;;;
@@ -167,9 +183,9 @@
               (println "[Snowflake] Error deleting old dataset:" (ex-message e)))))))))
 
 (defn- drop-old-datasets!
-  "Drop test datasets (databases) prefixed by `sha_` that too old."
+  "Drop test datasets (databases) that are too old."
   []
-  (drop-datasets! (old-dataset-names)))
+  (drop-datasets! (old-dataset-names {:older-than-hours (* 5 24), :fixture-hours (* 5 24)})))
 
 (defn- delete-old-test-data!
   "Delete old test data: datasets (databases) prefixed by sha_ that haven't been
@@ -200,34 +216,14 @@
     (delete-old-test-data!)))
 
 ;;; --------------------------------- Orphan GC ----------------------------------
-
-(defn- orphan-databases
-  "Names of test databases old enough for the nightly sweep to collect, oldest first. Pure -- reads the catalog and
-  drops nothing, so it doubles as the dry-run preview.
-
-  The two shapes [[qualified-db-name]] generates need different TTLs: `isolate_` names are per-run garbage nothing
-  reuses, while `sha_` names are content-addressed and deliberately shared, so collecting those eagerly would make
-  every run rebuild its datasets. Databases matching neither, notably `metabase_test_tracking`, are left alone.
-
-  Not a parameterization of [[old-dataset-names]]: that reads `accessed_at` from the tracking table, so it only finds
-  databases some run remembered to track, and these orphans are the ones whose bookkeeping never happened."
-  [{:keys [older-than-hours fixture-hours]}]
-  (into []
-        (keep (fn [{:keys [database_name age_hours]}]
-                (when (and age_hours
-                           (cond
-                             (str/starts-with? database_name "isolate_") (>= age_hours older-than-hours)
-                             (str/starts-with? database_name "sha_")     (>= age_hours fixture-hours)))
-                  database_name)))
-        (jdbc/query (no-db-connection-spec)
-                    ["select database_name,
-                             timestampdiff('hour', created, current_timestamp()) as age_hours
-                      from metabase_test_tracking.information_schema.databases
-                      order by created"])))
+;;;
+;;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`). Same enumeration and dropping as
+;;; [[drop-old-datasets!]], only on a shorter threshold: that in-process caller is disabled today for having run on
+;;; every job, whereas a sweep in its own job can be as aggressive as we like without failing anyone's tests.
 
 (defmethod tx/gc-orphans! :snowflake
   [_driver {:keys [dry-run?] :as options}]
-  (let [found (orphan-databases options)]
+  (let [found (old-dataset-names options)]
     (when-not dry-run?
       (drop-datasets! found))
     found))
@@ -447,7 +443,8 @@
                                         FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
                                         WHERE query_text LIKE 'DROP DATABASE %'
                                         ORDER BY end_time DESC limit 64"])
-  (old-dataset-names)
+  ;; preview what the nightly sweep would collect, at its own thresholds
+  (old-dataset-names {:older-than-hours 2, :fixture-hours 72})
   (drop-old-datasets!)
   (into [] (jdbc/reducible-query (no-db-connection-spec) ["select * from metabase_test_tracking.PUBLIC.datasets"]))
   ;; Tracked databases ordered by age

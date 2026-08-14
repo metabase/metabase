@@ -163,9 +163,18 @@
 
 (defonce ^:private has-done-before-run (atom #{}))
 
+(def ^:dynamic *skip-before-run?*
+  "When true, loading a driver's test extensions does NOT run its [[before-run]] hook.
+
+  Bound by the nightly orphan sweep ([[metabase.test.data.gc]]), which needs test extensions loaded in order to
+  dispatch [[gc-orphans!]] but must not run the hooks that come with them. Redshift's [[before-run]] drops schemas and
+  then creates a fresh session schema, so without this a `:dry-run? true` sweep would still delete things, and the job
+  whose whole purpose is removing leaked schemas would leak a new one on every run."
+  false)
+
 ;; this gets called below by [[load-test-extensions-namespace-if-needed]]
 (defn- do-before-run-if-needed [driver]
-  (when-not (@has-done-before-run driver)
+  (when-not (or *skip-before-run?* (@has-done-before-run driver))
     (locking has-done-before-run
       (when-not (@has-done-before-run driver)
         (when (not= (get-method before-run driver) (get-method before-run ::test-extensions))
