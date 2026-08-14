@@ -19,27 +19,49 @@ env:
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
 
 jobs:
+  app-db-matrix:
+    if: ${{ !inputs.skip }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    name: Determine app DB versions
+    outputs:
+      mariadb: ${{ steps.versions.outputs.mariadb }}
+      mysql: ${{ steps.versions.outputs.mysql }}
+    steps:
+      - name: Select versions to test
+        id: versions
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const runAll = github.ref_name === 'master' || github.ref_name.startsWith('release-x');
+
+            const versions = {
+              mariadb: [
+                { name: 'MariaDB 10.6',   image: 'metabase/mariadb:10.6', junit: '10-6',   latest: false },
+                { name: 'MariaDB Latest', image: 'mariadb:latest',        junit: 'latest', latest: true },
+              ],
+              mysql: [
+                { name: 'MySQL 8.0',    image: 'mysql:8.0',    junit: '8-0',    latest: false },
+                // treating 9.0 as latest until we introduce mysql 26 support
+                { name: 'MySQL Latest', image: 'mysql:9', junit: 'latest', latest: true },
+              ],
+            };
+
+            for (const [db, versions] of Object.entries(versions)) {
+              const selected = allVersions ? versions : versions.filter((version) => version.latest);
+              core.info(`${db}: ${selected.map((version) => version.name).join(', ')}`);
+              core.setOutput(db, JSON.stringify(selected));
+            }
+
   be-tests-mariadb:
-    # master/release branches run all versions; others just run latest
-    if: ${{ !inputs.skip && (matrix.version.image == 'mariadb:latest' ||
-                             github.ref_name == 'master' ||
-                             startsWith(github.ref_name, 'release-x')) }}
+    needs: app-db-matrix
+    if: ${{ !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - name: MariaDB 10.6
-            junit-name: be-tests-mariadb-10-6-ee
-            image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
-            env:
-              enable-ssl-tests: 'false'
-          - name: MariaDB Latest
-            junit-name: be-tests-mariadb-latest-ee
-            image: mariadb:latest
-            env:
-              enable-ssl-tests: 'false'
+        version: ${{ fromJSON(needs.app-db-matrix.outputs.mariadb) }}
         job:
           - name: Enterprise Tests
             build-static-viz: false
@@ -105,7 +127,7 @@ jobs:
       # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
       # that overrides the MB_MYSQL_TEST_* values with them
       # the MYSQL_RDS_SSL_INSTANCE vars are defined as secrets and can be altered
-      MB_MYSQL_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_MYSQL_SSL_TEST_SSL: 'false'
       MB_MYSQL_SSL_TEST_HOST: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_HOST }}
       MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS: 'verifyServerCertificate=true'
       # the contents of the ./resources/certificates/rds-combined-ca-bundle.pem file
@@ -122,7 +144,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
-          junit-name: ${{ matrix.version.junit-name }}
+          junit-name: be-tests-mariadb-${{ matrix.version.junit }}-ee
           artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
@@ -130,37 +152,14 @@ jobs:
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-mysql:
-    # master/release branches run all versions; others just run latest
-    if: ${{ !inputs.skip && (matrix.version.image == 'mariadb:latest' ||
-                             github.ref_name == 'master' ||
-                             startsWith(github.ref_name, 'release-x')) }}
+    needs: app-db-matrix
+    if: ${{ !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - name: MySQL 8.0
-            junit-name: be-tests-mysql-8-0-ee
-            image: mysql:8.0
-            env:
-              enable-ssl-tests: 'false'
-              enable-aws-iam-tests: 'false'
-          - name: MySQL 9
-            junit-name: be-tests-mysql-9-ee
-            image: mysql:9
-            env:
-              enable-ssl-tests: 'true'
-              enable-aws-iam-tests: 'true'
-          # `mysql:latest` now resolves to MySQL 26.x, which fails in a way that floods the log
-          # until the runner cancels the job. A cancelled job can't be soft-failed with
-          # continue-on-error, so the leg is disabled until 26.x is supported.
-          # - name: MySQL Latest
-          #   junit-name: be-tests-mysql-latest-ee
-          #   image: mysql:latest
-          #   env:
-          #     enable-ssl-tests: 'false'
-          #     enable-aws-iam-tests: 'false'
+        version: ${{ fromJSON(needs.app-db-matrix.outputs.mysql) }}
         job:
           - name: Enterprise Tests
             build-static-viz: false
@@ -226,14 +225,14 @@ jobs:
       # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
       # that overrides the MB_MYSQL_TEST_* values with them
       # the MYSQL_RDS_SSL_INSTANCE vars are defined as secrets and can be altered
-      MB_MYSQL_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_MYSQL_SSL_TEST_SSL: ${{ matrix.version.latest }}
       MB_MYSQL_SSL_TEST_HOST: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_HOST }}
       MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS: 'verifyServerCertificate=true'
       # the contents of the ./resources/certificates/rds-combined-ca-bundle.pem file
       MB_MYSQL_SSL_TEST_SSL_CERT: ${{ secrets.MB_MYSQL_SSL_TEST_SSL_CERT }}
       MB_MYSQL_SSL_TEST_USER: metabase
       MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
-      MB_MYSQL_AWS_IAM_TEST: ${{ matrix.version.env.enable-aws-iam-tests }}
+      MB_MYSQL_AWS_IAM_TEST: ${{ matrix.version.latest }}
       MB_MYSQL_AWS_IAM_TEST_HOST: ${{ secrets.MYSQL_AURORA_IAM_INSTANCE_HOST }}
       MB_MYSQL_AWS_IAM_TEST_PORT: 3306
       MB_MYSQL_AWS_IAM_TEST_USER: my_iam_user
@@ -251,7 +250,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
-          junit-name: ${{ matrix.version.junit-name }}
+          junit-name: be-tests-mysql-${{ matrix.version.junit }}-ee
           artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
