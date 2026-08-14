@@ -64,3 +64,45 @@ jobs:
         with:
           sarif_file: trivy-results-${{ matrix.edition }}.sarif
           category: trivy-${{ matrix.edition }}
+
+  notify:
+    needs: [codeql, trivy]
+    if: ${{ failure() && github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            release
+            .github
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
+      - name: Notify Slack of Failed Scans
+        uses: actions/github-script@v9
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const scans = [
+              ['CodeQL', '${{ needs.codeql.result }}'],
+              ['Trivy', '${{ needs.trivy.result }}'],
+            ];
+            const failed = scans.filter(([, result]) => result === 'failure').map(([name]) => name);
+
+            if (failed.length === 0) {
+              console.log('No scan reported a failure. Skipping Slack notification.');
+              return;
+            }
+
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const list = failed.map(name => `\`${name}\``).join(', ');
+
+            await sendSlackMessage({
+              channelName: 'engineering-ci',
+              message: `:rotating_light: Daily security scan failed (${list}) — see <${runUrl}|run logs>`,
+            }).catch(console.error);
