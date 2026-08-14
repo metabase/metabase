@@ -210,7 +210,7 @@ export const CollectionItemsTable = ({
       ? skipToken
       : {
           id: collectionId,
-          show_dashboard_questions: showDashboardQuestionsInList,
+          "show-dashboard-questions": showDashboardQuestionsInList,
         },
   );
   const availableModels = itemsMetadata?.available_models ?? [];

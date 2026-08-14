@@ -191,9 +191,9 @@ export type ListCollectionItemsResponse = {
 
 export type GetCollectionItemsMetadataRequest = {
   id: CollectionId;
-  show_dashboard_questions?: boolean;
+  "show-dashboard-questions"?: boolean;
   namespace?: CollectionNamespace;
-  include_library?: boolean;
+  "include-library"?: boolean;
 };
 
 export type CollectionItemsMetadata = {

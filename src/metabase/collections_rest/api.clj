@@ -1554,18 +1554,18 @@
   "Metadata about the Root Collection's items list: the models with at least one visible item plus the unfiltered
   item count. Unlike `GET /api/collection/root/items`, the result does not depend on model or search filters."
   [_route-params
-   {:keys [namespace show_dashboard_questions include_library]} :- [:map
+   {:keys [namespace show-dashboard-questions include-library]} :- [:map
                                                                     [:namespace                {:optional true} [:maybe ms/NonBlankString]]
-                                                                    [:show_dashboard_questions {:default false} [:maybe ms/BooleanValue]]
-                                                                    [:include_library          {:default false} [:maybe ms/BooleanValue]]]]
+                                                                    [:show-dashboard-questions {:default false} [:maybe ms/BooleanValue]]
+                                                                    [:include-library          {:default false} [:maybe ms/BooleanValue]]]]
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         restrict-models (when (or (not (contains? namespaces-holding-non-collection-types namespace))
                                   (not (mi/can-read? root-collection)))
                           #{:collection})]
     (collection-items-metadata root-collection restrict-models
                                {:archived?                 false
-                                :show-dashboard-questions? (boolean show_dashboard_questions)
-                                :include-library?          include_library
+                                :show-dashboard-questions? (boolean show-dashboard-questions)
+                                :include-library?          include-library
                                 :sort-info                 {:sort-column                 :name
                                                             :sort-direction              :asc
                                                             :official-collections-first? false}})))
@@ -1882,13 +1882,13 @@
   count. Unlike `GET /api/collection/:id/items`, the result does not depend on model or search filters."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {:keys [show_dashboard_questions]} :- [:map
-                                          [:show_dashboard_questions {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [show-dashboard-questions]} :- [:map
+                                          [:show-dashboard-questions {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
         collection  (api/read-check :model/Collection resolved-id)]
     (collection-items-metadata collection nil
                                {:archived?                 (or (:archived collection) (collection/is-trash? collection))
-                                :show-dashboard-questions? show_dashboard_questions
+                                :show-dashboard-questions? show-dashboard-questions
                                 :include-library?          true
                                 :sort-info                 {:sort-column                 :name
                                                             :sort-direction              :asc
