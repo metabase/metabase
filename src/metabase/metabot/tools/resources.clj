@@ -74,6 +74,7 @@
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
@@ -751,20 +752,26 @@
                           (str/join "\n" (map-indexed document-block-line blocks)))
                      "The document is empty.")})))
 
+(defn- query-database-readable?
+  "Whether the current user can read the database a conversation-state query names, checked
+  without the audit side effects: these lookups are routine presentation of state already
+  in the conversation, the same contract as the unaudited card lookups inside the export."
+  [query]
+  (let [database-id (and (map? query) (:database query))]
+    (or (not database-id)
+        (mi/can-read? :model/Database database-id))))
+
 (defn- fetch-conversation-query
   "Present a query stored in this conversation's agent state (created by tools or pasted
-  as a chart mention). Read-checks the query's database before exporting it with resolved
-  table/field names."
+  as a chart mention). An unreadable database withholds the query body."
   [query-id]
   (if-let [query (get (shared/current-queries-state) query-id)]
-    (do
-      (when-let [database-id (and (map? query) (:database query))]
-        (api/read-check :model/Database database-id))
-      (entity-result
-       {:type        "conversation-query"
-        :id          query-id
-        :description (or (llm-shape/export-query-for-llm query)
-                         "Query withheld: insufficient permissions to view it.")}))
+    (entity-result
+     {:type        "conversation-query"
+      :id          query-id
+      :description (or (when (query-database-readable? query)
+                         (llm-shape/export-query-for-llm query shared.content-store/default-store))
+                       "The query is hidden because the user cannot read its database.")})
     {:status-code 404
      :output (str "No chart or query with id '" query-id "' exists in this conversation. "
                   "It may belong to another conversation; ask the user to paste or recreate it here.")}))
@@ -775,20 +782,19 @@
   [chart-id]
   (if-let [chart (get (shared/current-charts-state) chart-id)]
     (let [query (or (first (:queries chart))
-                    (get (shared/current-queries-state) (:query_id chart)))]
-      (when-let [database-id (and (map? query) (:database query))]
-        (api/read-check :model/Database database-id))
+                    (get (shared/current-queries-state) (:query_id chart)))
+          query-text (when (and query (query-database-readable? query))
+                       (llm-shape/export-query-for-llm query shared.content-store/default-store))]
       (entity-result
        {:type        "conversation-chart"
         :id          chart-id
         :description (str "Chart type: "
                           (or (some-> (get-in chart [:visualization_settings :chart_type]) name)
                               "table")
-                          (if (nil? query)
-                            "\nNo query is attached to this chart."
-                            (if-let [query-text (llm-shape/export-query-for-llm query)]
-                              (str "\nQuery:\n" query-text)
-                              "\nQuery withheld: insufficient permissions to view it.")))}))
+                          (cond
+                            (nil? query) "\nNo query is attached to this chart."
+                            query-text   (str "\nQuery:\n" query-text)
+                            :else        "\nThe query is hidden because the user cannot read its database."))}))
     (fetch-conversation-query chart-id)))
 
 ;; ----- Dispatch -----

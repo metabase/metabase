@@ -89,12 +89,10 @@
   sources pass through; a `pprint`'d map is the last-resort fallback. A permission-refused
   export renders nothing at all rather than the fallback.
 
-  `store` gates the Card / Measure / Segment lookups. It defaults to the quiet
-  [[shared.content-store/default-store]] for queries loaded from the app DB; callers
-  exporting a client-supplied query pass [[shared.content-store/loud-store]] so a denied
-  lookup keeps its audit trail."
-  ([query]
-   (export-query-for-llm query shared.content-store/default-store))
+  `store` gates the Card / Measure / Segment lookups and every caller names one: the unaudited
+  [[shared.content-store/default-store]] for queries loaded from the app DB,
+  [[shared.content-store/audited-store]] for client-supplied queries so a denied lookup
+  keeps its audit trail. No defaulting arity, so the choice stays visible at the call site."
   ([query store]
    (cond
      (string? query) query
@@ -120,7 +118,7 @@
   fence remains valid when the result is interpolated inside an XML `<query>` element."
   [query]
   (or (when (map? query) (metabot.u/extract-sql-content query))
-      (when-let [text (export-query-for-llm query)]
+      (when-let [text (export-query-for-llm query shared.content-store/default-store)]
         (if (str/starts-with? text "```json\n")
           (format "\n%s\n" text)
           text))))

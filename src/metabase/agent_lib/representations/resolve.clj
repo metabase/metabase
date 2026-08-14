@@ -250,10 +250,9 @@
   an unusual or partially-broken existing `dataset_query` should gracefully drop out of the
   payload rather than break the whole tool response.
 
-  `content-store` is required (no defaulting arity): every caller of this function is an
-  LLM context-building path, so a silent fall-through to the unchecked app-DB store is a trap,
-  not a convenience. Agent callers pass
-  `metabase.metabot.tools.shared.content-store/default-store` for read-checking."
+  `content-store` is required: every caller is an LLM context-building path, and falling
+  through to the unchecked app-DB store would skip the permission check without saying so.
+  Agent callers pass `metabase.metabot.tools.shared.content-store/default-store`."
   [metadata-provider pmbql-query content-store]
   (when (and metadata-provider (map? pmbql-query) (seq pmbql-query))
     (try
