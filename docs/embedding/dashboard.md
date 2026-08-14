@@ -27,7 +27,7 @@ Something to call out: view-only isn't tied to one kind of embed:
 - **[Guest embeds](./introduction.md#guest-embedding)**: always view-only. Nobody logs in to a guest embed, so Metabase has no account to check permissions against.
 - **[SSO embeds](./introduction.md#sso-embeds)**: interactive out of the box. To make one view-only, turn off drill-through with `drills="false"` (web component), or use `StaticDashboard` instead of `InteractiveDashboard` (SDK).
 
-For view-only items, you'll almost always want to go with guest authentication (so you don't have to pay per user viewing the item). If, however, you also want people to be able to self-serve data (in addition to displaying view-only items), go with SSO. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds)
+For view-only items, you'll almost always want to go with guest authentication (so you don't have to pay per user viewing the item). If, however, you also want people to be able to self-serve data (in addition to displaying view-only items), go with SSO. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds).
 
 ### Web component view-only dashboard
 
@@ -200,8 +200,6 @@ There's no `<metabase-dashboard>` attribute that turns on editing. With web comp
 People get to a dashboard by navigating the collection you point `initial-collection` at, so the browser is the whole embed. There's no attribute that opens the browser on one specific dashboard.
 
 Setting `read-only="false"` also adds a **New dashboard** button, so the same embed lets people create dashboards. Check out [Add new question and new dashboard buttons](./browser.md#add-new-question-and-new-dashboard-buttons).
-
-When someone adds a new question to a dashboard, Metabase opens the query builder with every table, model, and saved question that person can get to. To narrow that list, put the entity types you want in `data-picker-entity-types`.
 
 For the full list of attributes, see [web component attributes](./browser-reference.md#web-component-metabase-browser-attributes).
 

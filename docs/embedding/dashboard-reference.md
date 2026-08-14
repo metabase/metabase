@@ -94,7 +94,7 @@ For all modular embeds, you can also set a `locale` in your page-level configura
 | `withEditLink`  | Shows or hides the link to edit the question.                                                                          |
 | `customItems`   | Your own menu items. Each element is either an item object or a function that receives `{ question }` and returns one. |
 
-For worked examples---turning off the default actions, adding your own, and replacing the menu outright---see [Customize the menu on dashboard cards](./dashboard.md#customize-the-menu-on-dashboard-cards).
+For worked examples---turning off the default actions, adding your own, and replacing the menu outright---see [Customize the menu on dashboard cards](./dashboard.md#customize-the-menu-on-dashboard-cards-react-sdk-only).
 
 ## Further reading
 
