@@ -2,7 +2,11 @@ import { t } from "ttag";
 
 import { useEnsureDefaultEmbeddingThemes } from "metabase/admin/embedding/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
+import {
+  AreaLayout,
+  AreaNavButton,
+  AreaTab,
+} from "metabase/nav/components/AreaLayout";
 import { useDispatch } from "metabase/redux";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Outlet, useLocation } from "metabase/router";
@@ -102,7 +106,7 @@ function NewEmbedNavButton({ showLabel }: { showLabel: boolean }) {
   const dispatch = useDispatch();
 
   return (
-    <AreaTab
+    <AreaNavButton
       label={t`New embed`}
       icon="add"
       showLabel={showLabel}
