@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { t } from "ttag";
 
 import { createSeriesCard } from "metabase/common/utils/series";
 import {
@@ -6,6 +7,7 @@ import {
   HEAT_MAP_SEGMENT_COL_NAME,
   OTHER_BUCKET_LABEL,
   fallbackSegmentName,
+  heatMapSegmentDisplayName,
   isDiscriminatorColumnName,
 } from "metabase/explorations/constants";
 import type { HighlightedCommentState } from "metabase/redux/store/explorations";
@@ -375,7 +377,7 @@ export function getHeatMapSeries({
   const { card, data } = series[0];
   const segmentCol: DatasetColumn = {
     name: HEAT_MAP_SEGMENT_COL_NAME,
-    display_name: HEAT_MAP_SEGMENT_COL_NAME,
+    display_name: heatMapSegmentDisplayName(),
     source: "breakout",
   };
   const cols = [...data.cols, segmentCol];
@@ -910,13 +912,13 @@ export function composeChartsForGroup(
   if (display === "map" && group.series.length > 1) {
     return group.series.map((s, i) => ({
       queryIds: [queryIds[i]],
-      label: s.card.name ?? "Chart",
+      label: s.card.name ?? t`Chart`,
       display: s.card.display,
       visualization_settings: s.card.visualization_settings ?? {},
     }));
   }
 
-  const label = firstSeries.card.name ?? "Chart";
+  const label = firstSeries.card.name ?? t`Chart`;
   let visualization_settings: VisualizationSettings =
     firstSeries.card.visualization_settings ?? {};
 

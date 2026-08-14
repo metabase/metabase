@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
@@ -13,11 +12,11 @@ import { EmbedTimelineSidebar } from "metabase/documents/components/EmbedTimelin
 import { DOCUMENT_TITLE_MAX_LENGTH } from "metabase/documents/constants";
 import {
   closeSidebar,
-  openCommentsSidebar,
   openHistorySidebar,
   setChildTargetId,
 } from "metabase/documents/documents.slice";
 import { useDocumentEditor } from "metabase/documents/hooks/use-document-editor";
+import { useSyncCommentsSidebar } from "metabase/documents/hooks/use-sync-comments-sidebar";
 import {
   getSelectedEmbedIndex,
   getSelectedQuestionId,
@@ -94,38 +93,10 @@ export function ExplorationSummary({
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
   const sidebarMode = useSelector(getSidebarMode);
 
-  const isCommentsSidebarOpen = commentsChildTargetId != null;
-  // ExplorationPage has its own `wasCommentsSidebarOpen`, but we can't use it here
-  // because a Redux state change doesn't trigger ExplorationPage to rerender, making it stale
-  const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
-
-  useEffect(() => {
-    // comments opened in URL - sync to Redux sidebar state
-    if (!wasCommentsSidebarOpen && isCommentsSidebarOpen) {
-      dispatch(openCommentsSidebar());
-      return;
-    }
-
-    // comments closed in URL - sync to Redux sidebar state
-    if (
-      wasCommentsSidebarOpen &&
-      !isCommentsSidebarOpen &&
-      sidebarMode === "comments"
-    ) {
-      dispatch(closeSidebar());
-      return;
-    }
-    // a different sidebar opened - sync to URL
-    if (isCommentsSidebarOpen && sidebarMode !== "comments") {
-      onCloseCommentsSidebar();
-    }
-  }, [
-    wasCommentsSidebarOpen,
-    isCommentsSidebarOpen,
-    dispatch,
-    sidebarMode,
-    onCloseCommentsSidebar,
-  ]);
+  useSyncCommentsSidebar({
+    areCommentsOpen: commentsChildTargetId != null,
+    onCloseComments: onCloseCommentsSidebar,
+  });
 
   const handleShowHistory = useCallback(() => {
     dispatch(openHistorySidebar());
@@ -168,8 +139,6 @@ export function ExplorationSummary({
                   fw="bold"
                   fz="h3"
                   lh="h3"
-                  // don't allow editing the title
-                  // if we want to allow editing the title, use `!canWrite || isSaving`
                   isDisabled={true}
                   p={0}
                   flex={1}

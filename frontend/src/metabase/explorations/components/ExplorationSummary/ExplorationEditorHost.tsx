@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 
 import { useUnresolvedCommentsCount } from "metabase/comments/hooks/use-unresolved-comments-count";
-import { documentEditorHost } from "metabase/documents/components/Editor/DocumentEditorHost";
+import {
+  type DocumentEditorHost,
+  documentEditorHost,
+} from "metabase/documents/components/Editor/DocumentEditorHost";
 import { useExplorationClickActionsMode } from "metabase/explorations/hooks/useExplorationClickActionsMode";
 import { useExplorationCommentUrl } from "metabase/explorations/hooks/useExplorationCommentUrl";
 import {
@@ -14,7 +17,6 @@ import { useSelector } from "metabase/redux";
 import type {
   CardEmbedSlotContext,
   CardEmbedSlots,
-  EditorHost,
 } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { navigate } from "metabase/router";
 import { Box } from "metabase/ui";
@@ -148,7 +150,7 @@ function useExplorationVisualizationMode({
  * against `target_type: "exploration"` so cardEmbeds (keyed by page id) and
  * prose blocks (keyed by `_id` uuid) share the exploration comment stream.
  */
-export const explorationEditorHost: EditorHost = {
+export const explorationEditorHost: DocumentEditorHost = {
   ...documentEditorHost,
   capabilities: {
     canEmbedCharts: false,

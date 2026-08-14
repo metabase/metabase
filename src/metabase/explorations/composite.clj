@@ -25,16 +25,15 @@
   (:require
    [metabase.util.i18n :refer [tru]]))
 
-(def ^:private heat-map-segment-col-name "Segment")
-(def ^:private cartesian-series-col-name "Series")
-
 (defn- discriminator-col
   "Build the synthetic column we append to the right of the original
-  cols. `:source :breakout` mirrors the FE's `getHeatMapSeries` shape so
-  downstream column-resolution code treats it like a real breakout."
-  [col-name]
+  cols. `:name` is the untranslated protocol key; `:display_name` is
+  localized. `:source :breakout` mirrors the FE's `getHeatMapSeries`
+  shape so downstream column-resolution code treats it like a real
+  breakout."
+  [col-name display-name]
   {:name         col-name
-   :display_name col-name
+   :display_name display-name
    :source       :breakout})
 
 (defn- combine-rows
@@ -54,18 +53,18 @@
   All source qp-results share the same column shape upstream (they come
   from the same parent card with different filters/breakouts), so the
   first eq-result's cols are representative."
-  [eq-results col-name]
+  [eq-results col-name display-name]
   (let [first-cols (get-in (first eq-results) [:qp-result :data :cols])]
-    (conj (vec first-cols) (discriminator-col col-name))))
+    (conj (vec first-cols) (discriminator-col col-name display-name))))
 
 (defn- combine-with-discriminator
   "Build a composite qp-result by appending a discriminator column to
   every row. The first eq-result supplies the structural scaffolding
   (`:status`, etc.); we replace `:data` with the merged cols + rows and
   refresh `:row_count` so downstream consumers see the new size."
-  [eq-results col-name]
+  [eq-results col-name display-name]
   (let [first-qp (:qp-result (first eq-results))
-        cols     (combine-cols eq-results col-name)
+        cols     (combine-cols eq-results col-name display-name)
         rows     (combine-rows eq-results)]
     (-> first-qp
         (assoc-in [:data :cols] cols)
@@ -80,5 +79,5 @@
   [eq-results vs]
   (cond
     (= 1 (count eq-results)) (:qp-result (first eq-results))
-    (:table.pivot vs)        (combine-with-discriminator eq-results heat-map-segment-col-name)
-    :else                    (combine-with-discriminator eq-results cartesian-series-col-name)))
+    (:table.pivot vs)        (combine-with-discriminator eq-results "Segment" (tru "Segment"))
+    :else                    (combine-with-discriminator eq-results "Series" (tru "Series"))))

@@ -31,10 +31,14 @@ const DISCRIMINATOR_COL_NAMES = new Set([
   CARTESIAN_SERIES_COL_NAME,
 ]);
 
-export function fallbackSegmentName(): string {
-  return t`(All)`;
+export function heatMapSegmentDisplayName(): string {
+  return t`Segment`;
 }
 
 export function isDiscriminatorColumnName(columnName: string): boolean {
   return DISCRIMINATOR_COL_NAMES.has(columnName);
+}
+
+export function fallbackSegmentName(): string {
+  return t`(All)`;
 }

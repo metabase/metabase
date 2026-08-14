@@ -23,10 +23,13 @@ jest.mock("@tiptap/react", () => {
 // Sidecar CSS / module imports the real CardEmbedNode triggers — stub
 // what `Node.create` needs but don't render anything.
 jest.mock("./CardEmbedNode.module.css", () => ({}), { virtual: true });
-jest.mock("./CardEmbedLoadingState", () => ({
-  __esModule: true,
-  CardEmbedLoadingState: () => null,
-}));
+jest.mock(
+  "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState",
+  () => ({
+    __esModule: true,
+    CardEmbedLoadingState: () => null,
+  }),
+);
 jest.mock("./CardEmbedMenuDropdown", () => ({
   __esModule: true,
   CardEmbedMenuDropdown: () => null,

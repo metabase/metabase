@@ -14,7 +14,6 @@ import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
   useListBookmarksQuery,
-  useListTimelinesQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -47,7 +46,6 @@ import { PrintContext } from "../contexts/PrintContext";
 import { ScrollContainerProvider } from "../contexts/ScrollContainerContext";
 import {
   closeSidebar,
-  openCommentsSidebar,
   openHistorySidebar,
   resetDocuments,
   setChildTargetId,
@@ -55,6 +53,7 @@ import {
 } from "../documents.slice";
 import { useDocumentEditor } from "../hooks/use-document-editor";
 import { usePrintContextValue } from "../hooks/use-print-context-value";
+import { useSyncCommentsSidebar } from "../hooks/use-sync-comments-sidebar";
 import {
   getSelectedEmbedIndex,
   getSelectedQuestionId,
@@ -151,7 +150,6 @@ export const DocumentPage = () => {
   const { data: bookmarks = [] } = useListBookmarksQuery(undefined, {
     skip: isNewDocument,
   });
-  useListTimelinesQuery({ include: "events" }); // warm the cache for the timeline sidebar
   const [createBookmark] = useCreateBookmarkMutation();
   const [deleteBookmark] = useDeleteBookmarkMutation();
 
@@ -181,37 +179,14 @@ export const DocumentPage = () => {
     dispatch(setChildTargetId(paramsChildTargetId));
   }, [dispatch, paramsChildTargetId]);
 
-  const isCommentsRouteOpen = paramsChildTargetId != null;
-  const wasCommentsRouteOpen = usePrevious(isCommentsRouteOpen);
+  const handleCloseComments = useCallback(() => {
+    navigate(".", { relative: "route" }); // remove the "/comments" path
+  }, [navigate]);
 
-  useEffect(() => {
-    // comments opened in URL - sync to Redux sidebar state
-    if (!wasCommentsRouteOpen && isCommentsRouteOpen) {
-      dispatch(openCommentsSidebar());
-      return;
-    }
-
-    // comments closed in URL - sync to Redux sidebar state
-    if (
-      wasCommentsRouteOpen &&
-      !isCommentsRouteOpen &&
-      sidebarMode === "comments"
-    ) {
-      dispatch(closeSidebar());
-      return;
-    }
-
-    // a different sidebar opened - sync to URL by removing the "/comments" path
-    if (isCommentsRouteOpen && sidebarMode !== "comments") {
-      navigate(".", { relative: "route" });
-    }
-  }, [
-    wasCommentsRouteOpen,
-    isCommentsRouteOpen,
-    dispatch,
-    sidebarMode,
-    navigate,
-  ]);
+  useSyncCommentsSidebar({
+    areCommentsOpen: paramsChildTargetId != null,
+    onCloseComments: handleCloseComments,
+  });
 
   const handleDuplicate = useCallback(() => {
     if (hasUnsavedChanges()) {

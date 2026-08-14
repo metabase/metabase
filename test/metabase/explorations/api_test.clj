@@ -1912,6 +1912,24 @@
           (is (true? (:archived d)))
           (is (true? (:archived_directly d))))))))
 
+(deftest exploration-get-hydrates-summary-when-trashed-test
+  (testing "GET /:id still hydrates the Summary after the exploration is trashed, so Trash view keeps the document."
+    (mt/with-temp [:model/Collection c {}
+                   :model/Exploration e {:name          "trashed"
+                                         :creator_id    (mt/user->id :crowberto)
+                                         :collection_id (:id c)}
+                   :model/Document d {:name "Summary"
+                                      :document {:type "doc" :content []}
+                                      :content_type "application/json+vnd.prose-mirror"
+                                      :creator_id (mt/user->id :crowberto)
+                                      :collection_id (:id c)
+                                      :exploration_id (:id e)}]
+      (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
+                            {:archived true})
+      (let [resp (mt/user-http-request :crowberto :get 200 (format "exploration/%d" (:id e)))]
+        (is (= (:id d) (get-in resp [:document :id])))
+        (is (true? (get-in resp [:document :archived])))))))
+
 (deftest exploration-put-unarchive-cascades-to-documents-test
   (testing "Unarchiving restores cascade-archived docs but leaves user-archived docs archived."
     (mt/with-temp [:model/Collection c {}

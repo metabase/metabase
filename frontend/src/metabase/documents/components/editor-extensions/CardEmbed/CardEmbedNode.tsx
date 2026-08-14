@@ -19,7 +19,6 @@ import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { useDispatch, useSelector } from "metabase/redux";
-import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
 import {
@@ -65,6 +64,8 @@ import type {
   StoredResultSort,
   TimelineEvent,
 } from "metabase-types/api";
+
+import { useDocumentEditorHost } from "../../Editor/DocumentEditorHost";
 
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
@@ -244,7 +245,7 @@ export const CardEmbedComponent = memo(
     const staticSort = isStaticCardSort(node.attrs.sort)
       ? node.attrs.sort
       : undefined;
-    const host = useEditorHost();
+    const host = useDocumentEditorHost();
     const {
       ref: viewportRef,
       isInViewport,

@@ -50,7 +50,7 @@
    {:default []}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :document]
-  "Hydrate the Summary document attached to each exploration (at most one, non-archived)."
+  "Hydrate the Summary document attached to each exploration (at most one)."
   [_model k explorations]
   (mi/instances-with-hydrated-data
    explorations k
@@ -61,7 +61,6 @@
                                 :id :name :exploration_id :creator_id :content_type
                                 :created_at :updated_at :archived :is_placeholder]
                                :exploration_id [:in (map :id explorations)]
-                               :archived false
                                {:order-by [[:created_at :asc] [:id :asc]]})))
    :id
    {:default nil}))
@@ -82,11 +81,11 @@
            :creator-id :creator_id
            :created-at :created_at
            :updated-at :updated_at
+           :exploration-id false
            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
    :search-terms [:name :description]
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:exploration-name :name
-                  :exploration-id :id
                   :collection-authority_level :collection.authority_level
                   :collection-location        :collection.location
                   :collection-name            :collection.name

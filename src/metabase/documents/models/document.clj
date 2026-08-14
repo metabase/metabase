@@ -283,8 +283,7 @@
                :collection_id (serdes/fk :model/Collection)
                :creator_id (serdes/fk :model/User)}
    :defaults {:archived          false
-              :archived_directly false
-              :is_placeholder    false}})
+              :archived_directly false}})
 
 (defn- document-deps
   [{:keys [content_type] :as document}]

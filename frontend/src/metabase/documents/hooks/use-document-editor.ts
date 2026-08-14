@@ -142,6 +142,7 @@ export function useDocumentEditor({
     setDocumentTitle,
     documentContent,
     setDocumentContent,
+    documentNeedsMigration,
     updateCardEmbeds,
   } = useDocumentState(documentData);
 
@@ -170,8 +171,10 @@ export function useDocumentEditor({
 
   // Track the "settled" editor content as the baseline for dirty checking.
   // When TipTap processes loaded content it applies default attributes (height,
-  // minHeight, _id) and schema corrections (trailing paragraph). We capture the
+  // minHeight) and schema corrections (trailing paragraph). We capture the
   // editor's output after it settles and compare against that, not the raw API JSON.
+  // Missing `_id`s are not absorbed: they must be persisted so comments can
+  // target nodes, so `documentNeedsMigration` forces dirty even after settling.
   const settledContentRef = useRef<JSONContent | null>(null);
 
   // while the title doesn't have the same problem as content,
@@ -198,9 +201,19 @@ export function useDocumentEditor({
           settledContentRef.current = content;
         }
       }, 0);
-      dispatch(setHasUnsavedChanges(false));
+      if (documentNeedsMigration) {
+        dispatch(setHasUnsavedChanges(true));
+      } else {
+        dispatch(setHasUnsavedChanges(false));
+      }
     }
-  }, [dispatch, documentContent, isNewDocument, editorInstance]);
+  }, [
+    dispatch,
+    documentContent,
+    isNewDocument,
+    editorInstance,
+    documentNeedsMigration,
+  ]);
 
   // Scroll to anchor block when navigating with URL hash
   const blockId = location.hash ? location.hash.slice(1) : null;
@@ -260,12 +273,17 @@ export function useDocumentEditor({
         return;
       }
 
+      if (documentNeedsMigration) {
+        dispatch(setHasUnsavedChanges(true));
+        return;
+      }
+
       const baseline = settledContentRef.current;
       if (baseline) {
         dispatch(setHasUnsavedChanges(!_.isEqual(content, baseline)));
       }
     },
-    [dispatch, editorInstance, isNewDocument],
+    [dispatch, editorInstance, isNewDocument, documentNeedsMigration],
   );
 
   const handleSave = useCallback(
@@ -330,8 +348,6 @@ export function useDocumentEditor({
             message: documentData?.id ? t`Document saved` : t`Document created`,
           });
           dispatch(clearDraftCards());
-          // Mark document as clean; re-settle baseline against post-save editor JSON
-          settledContentRef.current = editorInstance.getJSON();
           dispatch(setHasUnsavedChanges(false));
           return {
             document: result.data,

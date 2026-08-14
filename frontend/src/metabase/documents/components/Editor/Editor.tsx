@@ -20,7 +20,6 @@ import { MetabotMentionSuggestion } from "metabase/metabot/components/editor-ext
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
-import type { EditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
 import { CommandExtension } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandExtension";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
@@ -43,7 +42,10 @@ import { CardEmbed } from "../editor-extensions/CardEmbed/CardEmbedNode";
 
 import { DocumentBlockShell } from "./DocumentBlockShell";
 import { DocumentCommandSuggestion } from "./DocumentCommandSuggestion";
-import { DocumentEditorHostProvider } from "./DocumentEditorHost";
+import {
+  type DocumentEditorHost,
+  DocumentEditorHostProvider,
+} from "./DocumentEditorHost";
 import DropCursorS from "./DropCursor.module.css";
 import S from "./Editor.module.css";
 import { createChartPasteExtension } from "./chart-paste-extension";
@@ -99,7 +101,7 @@ export interface EditorProps {
   isLoading?: boolean;
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
   editorContainerRef?: React.RefObject<HTMLDivElement>;
-  hostOverride?: Partial<EditorHost>;
+  hostOverride?: Partial<DocumentEditorHost>;
   placeholder?: string;
 }
 
