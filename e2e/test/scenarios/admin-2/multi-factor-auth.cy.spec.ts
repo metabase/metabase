@@ -46,7 +46,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
     cy.log("The old security URL lands on the combined Authentication tab");
     cy.visit("/account/security");
-    cy.url().should("contain", "/account/password");
+    cy.url().should("contain", "/account/authentication");
     cy.findByTestId("account-header")
       .findByRole("tab", { name: "Authentication" })
       .should("be.visible");
@@ -245,7 +245,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
       cy.findByTestId("greeting-message").should("be.visible");
 
       cy.log("Managing the existing enrollment still works without a license");
-      cy.visit("/account/password");
+      cy.visit("/account/authentication");
       cy.findByRole("button", { name: "Disable" }).click();
       H.modal().within(() => {
         cy.findByLabelText(
@@ -255,7 +255,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
       });
 
       cy.log("Without the feature there is no way back into setup");
-      cy.url().should("contain", "/account/password");
+      cy.url().should("contain", "/account/authentication");
       cy.findByRole("button", {
         name: "Set up two-factor authentication",
       }).should("be.disabled");
