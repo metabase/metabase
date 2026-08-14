@@ -137,6 +137,10 @@ function DatasetFieldMetadataSidebarInner({
   const displayNameInputRef = useRef<HTMLInputElement>(null);
 
   const canIndex = dataset.isSaved() && canIndexField(field, dataset);
+  const { isNative } = Lib.queryDisplayInfo(dataset.query());
+  const shouldIndex =
+    field.should_index ??
+    fieldHasIndex(modelIndexes, { field_ref: field.field_ref });
 
   const initialValues = useMemo(() => {
     const values: FieldMetadataFormValues = {
@@ -145,16 +149,25 @@ function DatasetFieldMetadataSidebarInner({
       semantic_type: field.semantic_type,
       fk_target_field_id: field.fk_target_field_id || null,
       visibility_type: field.visibility_type || "normal",
-      should_index: field.should_index ?? fieldHasIndex(modelIndexes, field),
+      should_index: shouldIndex,
       settings: field.settings,
     };
-    const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
     if (isNative) {
       values.id = field.id;
     }
     return values;
-  }, [field, dataset, modelIndexes]);
+  }, [
+    field.display_name,
+    field.description,
+    field.semantic_type,
+    field.fk_target_field_id,
+    field.visibility_type,
+    field.settings,
+    field.id,
+    isNative,
+    shouldIndex,
+  ]);
 
   const [tab, setTab] = useState<DatasetFieldTab>(TAB.SETTINGS);
 
@@ -250,14 +263,13 @@ function DatasetFieldMetadataSidebarInner({
   );
 
   const handleShouldIndexChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) =>
+    (e: ChangeEvent<HTMLInputElement>) => {
       onFieldMetadataChange({
         should_index: e.target.checked,
-      }),
+      });
+    },
     [onFieldMetadataChange],
   );
-
-  const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
   return (
     <SidebarContent>
@@ -361,8 +373,10 @@ function DatasetFieldMetadataSidebarInner({
                     <FormRadioGroup
                       name="visibility_type"
                       label={t`This column should appear in…`}
+                      // These are pulled from the form-field variant in ChartSettingsWidget.tsx
                       labelProps={{
-                        mb: "0.5rem",
+                        fz: "0.88em",
+                        lh: "0.875rem",
                       }}
                       onChange={handleVisibilityTypeChange}
                     >
@@ -402,6 +416,7 @@ function DatasetFieldMetadataSidebarInner({
                   name="should_index"
                   label={t`Surface individual records in search by matching against this column`}
                   px="1.5rem"
+                  size="sm"
                   onChange={handleShouldIndexChange}
                 />
               )}
