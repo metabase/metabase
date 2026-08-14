@@ -27,6 +27,7 @@ jobs:
     outputs:
       mariadb: ${{ steps.versions.outputs.mariadb }}
       mysql: ${{ steps.versions.outputs.mysql }}
+      postgres: ${{ steps.versions.outputs.postgres }}
     steps:
       - name: Select versions to test
         id: versions
@@ -37,18 +38,58 @@ jobs:
 
             const versions = {
               mariadb: [
-                { name: 'MariaDB 10.6',   image: 'metabase/mariadb:10.6', junit: '10-6',   latest: false },
-                { name: 'MariaDB Latest', image: 'mariadb:latest',        junit: 'latest', latest: true },
+                {
+                  name: 'MariaDB 10.6',
+                  image: 'metabase/mariadb:10.6',
+                  'junit-name': '10-6',
+                  env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
+                  latest: false
+                },
+                {
+                  name: 'MariaDB Latest',
+                  image: 'mariadb:latest',
+                  'junit-name': 'latest',
+                  env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
+                  latest: true
+                },
               ],
               mysql: [
-                { name: 'MySQL 8.0',    image: 'mysql:8.0',    junit: '8-0',    latest: false },
+                {
+                  name: 'MySQL 8.0',
+                  image: 'mysql:8.0',
+                  'junit-name': '8-0',
+                  env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
+                  latest: false
+                },
                 // treating 9.0 as latest until we introduce mysql 26 support
-                { name: 'MySQL Latest', image: 'mysql:9', junit: 'latest', latest: true },
+                {
+                  name: 'MySQL Latest',
+                  image: 'mysql:9',
+                  'junit-name': 'latest',
+                  env: { 'enable-ssl-tests': 'true', 'enable-aws-iam-tests': 'true' },
+                  latest: true
+                },
+              ],
+              postgres: [
+                {
+                  name: 'Postgres 14.x',
+                  'junit-name': 'postgres-ee',
+                  image: 'postgres:14-alpine',
+                  env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
+                  latest: false,
+                },
+                {
+                  name: 'Postgres Latest',
+                  'junit-name': 'postgres-latest-ee',
+                  image: 'postgres:latest',
+                  env: { 'enable-ssl-tests': 'true', 'enable-aws-iam-tests': 'true' },
+                  latest: true,
+                },
               ],
             };
 
-            for (const [db, versions] of Object.entries(versions)) {
-              const selected = runAll ? versions : versions.filter((version) => version.latest);
+            for (const [db, dbVersions] of Object.entries(versions)) {
+              const selected = runAll ? dbVersions : dbVersions.filter((version) => version.latest);
               core.info(`${db}: ${selected.map((version) => version.name).join(', ')}`);
               core.setOutput(db, JSON.stringify(selected));
             }
@@ -258,25 +299,14 @@ jobs:
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-postgres:
+    needs: app-db-matrix
     if: ${{ !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - name: Postgres 14.x
-            junit-name: postgres-ee
-            docker-image: postgres:14-alpine
-            env:
-              enable-ssl-tests: 'false'
-              enable-aws-iam-tests: 'false'
-          - name: Postgres Latest
-            junit-name: postgres-latest-ee
-            docker-image: postgres:latest
-            env:
-              enable-ssl-tests: 'true'
-              enable-aws-iam-tests: 'true'
+        version: ${{ fromJSON(needs.app-db-matrix.outputs.postgres) }}
         job:
           - name: Enterprise Tests
             build-static-viz: false
@@ -337,7 +367,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
     services:
       postgres:
-        image: ${{ matrix.version.docker-image }}
+        image: ${{ matrix.version.image }}
         ports:
           - "5432:5432"
         env:
