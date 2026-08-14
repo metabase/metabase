@@ -34,9 +34,7 @@ export function EmbeddingHubLayout() {
 
   useEnsureDefaultEmbeddingThemes();
 
-  // Order comes from the design. One tab today; each of the remaining six
-  // arrives with its own issue and adds its entry here, gated on the feature
-  // it needs.
+  // Order comes from the design.
   const tabs: EmbeddingHubTab[] = [
     { label: t`Get started`, icon: "list", to: Urls.embeddingHubGetStarted() },
   ];

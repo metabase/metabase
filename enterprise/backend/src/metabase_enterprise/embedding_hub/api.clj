@@ -8,8 +8,8 @@
 
 (defenterprise has-configured-sso?
   "Whether JWT or SAML is licensed, enabled and configured."
-  ;; :none rather than a feature, because the token checks below already gate this the way they
-  ;; always did -- an instance can license SSO without modular embedding
+  ;; :none rather than a feature, because the token checks below already gate this -- an instance
+  ;; can license SSO without modular embedding
   :feature :none
   []
   (or (and (premium-features/has-feature? :sso-jwt) (sso-settings/jwt-enabled-and-configured))

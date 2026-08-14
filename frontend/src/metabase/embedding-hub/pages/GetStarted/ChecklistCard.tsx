@@ -22,9 +22,9 @@ export type ChecklistCardProps = {
   title: string;
   description: string;
   isDone?: boolean;
-  /** Rendered muted and inert — the step's prerequisite is not met yet. */
+  /** Either disabled on OSS, or waiting on another step to be completed. */
   isLocked?: boolean;
-  /** Names the prerequisite, shown on hover while locked. */
+  /** Why it is locked, shown on hover. */
   lockedReason?: string;
   to?: string;
   onClick?: () => void;
