@@ -34,7 +34,7 @@
         (let [run     (if (= (.charAt ^String source i) \`) (inc run) 0)
               longest (max longest run)]
           (if (> (+ (inc i) (* 2 (fence-size longest))) max-library-source-chars)
-            (subs source 0 i)
+            (subs source 0 (cond-> i (Character/isHighSurrogate (.charAt ^String source (dec i))) dec))
             (recur (inc i) run longest)))))))
 
 (defn- fenced-python

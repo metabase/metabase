@@ -44,6 +44,13 @@
       (is (str/includes? output (str "```python\n" (subs source 0 99994) "\n```")))
       (is (str/includes? output "Truncated: showing the first 99994 of 200000 characters.")))))
 
+(deftest ^:parallel format-python-library-surrogate-boundary-test
+  (testing "the cut backs off rather than split an astral char's surrogate pair"
+    (let [source (str (str/join (repeat 99993 "x")) "😀")
+          output (formatted-library-output {:path "common.py" :source source})]
+      (is (str/includes? output (str "```python\n" (subs source 0 99993) "\n```")))
+      (is (str/includes? output "Truncated: showing the first 99993 of 99995 characters.")))))
+
 (deftest ^:parallel format-python-library-backtick-flood-test
   (testing "an all-backtick source shrinks until it and its two run+1-sized fences fit the cap"
     (let [source (str/join (repeat 200000 "`"))
