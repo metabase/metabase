@@ -32,24 +32,27 @@ jobs:
       - name: Select versions to test
         id: versions
         uses: actions/github-script@v9
+        env:
+          REF_NAME: ${{ github.ref_name }}
         with:
           script: | # js
-            const runAll = github.ref_name === 'master' || github.ref_name.startsWith('release-x');
+            const refName = process.env.REF_NAME;
+            const runAll = refName === 'master' || refName.startsWith('release-x');
 
             const versions = {
               mariadb: [
                 {
                   name: 'MariaDB 10.6',
                   image: 'metabase/mariadb:10.6',
-                  'junit-name': '10-6',
-                  env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
+                  'junit-name': 'be-tests-mariadb-10-6-ee',
+                  env: { 'enable-ssl-tests': 'false' },
                   latest: false
                 },
                 {
                   name: 'MariaDB Latest',
                   image: 'mariadb:latest',
-                  'junit-name': 'latest',
-                  env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
+                  'junit-name': 'be-tests-mariadb-latest-ee',
+                  env: { 'enable-ssl-tests': 'false' },
                   latest: true
                 },
               ],
@@ -57,36 +60,37 @@ jobs:
                 {
                   name: 'MySQL 8.0',
                   image: 'mysql:8.0',
-                  'junit-name': '8-0',
+                  'junit-name': 'be-tests-mysql-8-0-ee',
                   env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
                   latest: false
                 },
-                // treating 9.0 as latest until we introduce mysql 26 support
                 {
-                  name: 'MySQL Latest',
+                  name: 'MySQL 9',
                   image: 'mysql:9',
-                  'junit-name': 'latest',
+                  'junit-name': 'be-tests-mysql-9-ee',
                   env: { 'enable-ssl-tests': 'true', 'enable-aws-iam-tests': 'true' },
+                  // treating 9.0 as latest until we introduce mysql 26+ support
                   latest: true
                 },
               ],
               postgres: [
                 {
                   name: 'Postgres 14.x',
-                  'junit-name': 'postgres-ee',
+                  'junit-name': 'be-tests-postgres-ee',
                   image: 'postgres:14-alpine',
                   env: { 'enable-ssl-tests': 'false', 'enable-aws-iam-tests': 'false' },
                   latest: false,
                 },
                 {
                   name: 'Postgres Latest',
-                  'junit-name': 'postgres-latest-ee',
+                  'junit-name': 'be-tests-postgres-latest-ee',
                   image: 'postgres:latest',
                   env: { 'enable-ssl-tests': 'true', 'enable-aws-iam-tests': 'true' },
                   latest: true,
                 },
               ],
             };
+
 
             for (const [db, dbVersions] of Object.entries(versions)) {
               const selected = runAll ? dbVersions : dbVersions.filter((version) => version.latest);
@@ -168,7 +172,7 @@ jobs:
       # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
       # that overrides the MB_MYSQL_TEST_* values with them
       # the MYSQL_RDS_SSL_INSTANCE vars are defined as secrets and can be altered
-      MB_MYSQL_SSL_TEST_SSL: 'false'
+      MB_MYSQL_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
       MB_MYSQL_SSL_TEST_HOST: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_HOST }}
       MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS: 'verifyServerCertificate=true'
       # the contents of the ./resources/certificates/rds-combined-ca-bundle.pem file
@@ -185,7 +189,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
-          junit-name: be-tests-mariadb-${{ matrix.version.junit }}-ee
+          junit-name: ${{ matrix.version.junit-name }}
           artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
@@ -266,14 +270,14 @@ jobs:
       # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
       # that overrides the MB_MYSQL_TEST_* values with them
       # the MYSQL_RDS_SSL_INSTANCE vars are defined as secrets and can be altered
-      MB_MYSQL_SSL_TEST_SSL: ${{ matrix.version.latest }}
+      MB_MYSQL_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
       MB_MYSQL_SSL_TEST_HOST: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_HOST }}
       MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS: 'verifyServerCertificate=true'
       # the contents of the ./resources/certificates/rds-combined-ca-bundle.pem file
       MB_MYSQL_SSL_TEST_SSL_CERT: ${{ secrets.MB_MYSQL_SSL_TEST_SSL_CERT }}
       MB_MYSQL_SSL_TEST_USER: metabase
       MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
-      MB_MYSQL_AWS_IAM_TEST: ${{ matrix.version.latest }}
+      MB_MYSQL_AWS_IAM_TEST: ${{ matrix.version.env.enable-aws-iam-tests }}
       MB_MYSQL_AWS_IAM_TEST_HOST: ${{ secrets.MYSQL_AURORA_IAM_INSTANCE_HOST }}
       MB_MYSQL_AWS_IAM_TEST_PORT: 3306
       MB_MYSQL_AWS_IAM_TEST_USER: my_iam_user
@@ -291,7 +295,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
-          junit-name: be-tests-mysql-${{ matrix.version.junit }}-ee
+          junit-name: ${{ matrix.version.junit-name }}
           artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
@@ -381,7 +385,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
-          junit-name: 'be-tests-${{ matrix.version.junit-name }}'
+          junit-name: ${{ matrix.version.junit-name }}
           artifact-suffix: ${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
@@ -390,6 +394,7 @@ jobs:
 
   app-db-tests-result:
     needs:
+      - app-db-matrix
       - be-tests-mariadb
       - be-tests-mysql
       - be-tests-postgres
