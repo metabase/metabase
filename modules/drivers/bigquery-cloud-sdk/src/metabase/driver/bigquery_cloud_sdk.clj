@@ -143,22 +143,55 @@
 ;;; |                                                      Sync                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private exact-dataset-id-re
+  "Matches an inclusion-filter segment that names one dataset outright.
+
+  [[metabase.driver.sync/schema-pattern->re-pattern]] compiles a segment into a regex, expanding an unescaped `*`
+  into `.*` and passing every other character through as regex source. A segment of only `\\w` characters therefore
+  contains no wildcard and no regex syntax, so it matches itself and nothing else -- and `\\w` is also exactly the
+  character set BigQuery permits in a dataset ID. Both halves have to hold for a name lookup to select the same
+  datasets a scan would; [[metabase.driver.bigquery-cloud-sdk-test/exactly-named-datasets-agrees-with-scan-test]]
+  pins that agreement."
+  #"\w+")
+
+(defn- exactly-named-datasets
+  "The dataset IDs an inclusion filter names outright, or `nil` when evaluating the filter requires a scan.
+
+  Blank patterns mean \"include everything\", so they fall through to the scan."
+  [{:keys [dataset-filters-type dataset-filters-patterns]}]
+  (when (= "inclusion" dataset-filters-type)
+    (let [segments (map str/trim (str/split (str dataset-filters-patterns) #","))]
+      (when (every? #(re-matches exact-dataset-id-re %) segments)
+        segments))))
+
+(defn- dataset-exists?
+  [^BigQuery client project-id dataset-id]
+  (some? (.getDataset client (DatasetId/of project-id dataset-id) (u/varargs BigQuery$DatasetOption))))
+
 (defn- list-datasets
-  "Fetch all datasets given database `details`, applying dataset filters if specified."
+  "Fetch all datasets given database `details`, applying dataset filters if specified.
+
+  When the filter names its datasets outright they are fetched by name. Listing is paginated over every dataset in
+  the project, which is unrelated to how many the filter keeps -- 3400 datasets took ~18s, past the
+  [[metabase.driver.settings/db-connection-timeout-ms]] budget that `can-connect?` runs under."
   [{:keys [dataset-filters-type dataset-filters-patterns] :as details} & {:keys [logging-schema-exclusions?]}]
   (let [client (database-details->client details)
-        project-id (bigquery.common/get-project-id details)
-        datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
-        inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
-        exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
-    (for [^Dataset dataset (.iterateAll datasets)
-          :let [dataset-id (.. dataset getDatasetId getDataset)]
-          :when ((if logging-schema-exclusions?
-                   sql-jdbc.describe-database/include-schema-logging-exclusion
-                   driver.s/include-schema?) inclusion-patterns
-                                             exclusion-patterns
-                                             dataset-id)]
-      dataset-id)))
+        project-id (bigquery.common/get-project-id details)]
+    (if-let [named (exactly-named-datasets details)]
+      ;; `logging-schema-exclusions?` has nothing to report on this path: it logs datasets the filter rejected, and
+      ;; here every dataset looked at was named by the filter. Stays lazy so `can-connect?` stops at the first hit.
+      (filter #(dataset-exists? client project-id %) named)
+      (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
+            inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
+            exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
+        (for [^Dataset dataset (.iterateAll datasets)
+              :let [dataset-id (.. dataset getDatasetId getDataset)]
+              :when ((if logging-schema-exclusions?
+                       sql-jdbc.describe-database/include-schema-logging-exclusion
+                       driver.s/include-schema?) inclusion-patterns
+                                                 exclusion-patterns
+                                                 dataset-id)]
+          dataset-id)))))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details]
