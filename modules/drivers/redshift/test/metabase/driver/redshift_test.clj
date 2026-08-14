@@ -354,8 +354,10 @@
                   (is (contains? table-names mview-nm)))))))))))
 
 (mt/defdataset unix-timestamps
+  ;; `:effective-type` is what fake sync uses for `base_type` when `:base-type` is a native type; without it the Field
+  ;; row gets `:type/*` and the UNIX coercion below silently compiles to no cast at all.
   [["timestamps"
-    [{:field-name "timestamp", :base-type {:native "numeric"}}]
+    [{:field-name "timestamp", :base-type {:native "numeric"}, :effective-type :type/Decimal}]
     [[1642704550656]]]])
 
 (deftest unix-timestamp-test
