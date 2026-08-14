@@ -22,9 +22,9 @@ import type {
 export type RegisteredVisualization = Visualization | VisualizationDefinition;
 
 // A definition can be registered together with a loader for its component, so
-// the chart itself stays out of the initial bundle.
-export type VisualizationComponentLoader =
-  () => Promise<VisualizationComponent>;
+// the chart itself stays out of the initial bundle. The loaded module carries
+// its definition statics, the same as an eagerly registered visualization.
+export type VisualizationComponentLoader = () => Promise<Visualization>;
 
 export const visualizations = new Map<
   VisualizationDisplay,
@@ -74,6 +74,12 @@ export function registerVisualization(
         visualization.name,
     );
   }
+  // Record the loader before the checks below, which return early when this
+  // identifier is already registered. Both registries are one module in
+  // Storybook, where static-viz registers the bare definitions first.
+  if (loadComponent) {
+    componentLoaders.set(identifier, loadComponent);
+  }
   if (visualizations.has(identifier)) {
     const registeredVisualization = visualizations.get(identifier);
     const isReplacingDefinitionWithComponent =
@@ -105,9 +111,6 @@ export function registerVisualization(
     }
   }
   visualizations.set(identifier, visualization);
-  if (loadComponent) {
-    componentLoaders.set(identifier, loadComponent);
-  }
   for (const alias of visualization.aliases || []) {
     aliases.set(alias, visualization);
   }
@@ -162,6 +165,23 @@ export function prefetchVisualizationComponent(
   if (visualization != null && !isVisualizationComponent(visualization)) {
     void componentLoaders.get(visualization.identifier)?.();
   }
+}
+
+/**
+ * Load every chart component and register it in place of its definition, so
+ * charts render in one pass. Awaiting the loaders is not enough on its own:
+ * `lazy` suspends on its first render even when the module is already in
+ * memory, which a visual regression test captures as the fallback.
+ */
+export async function loadVisualizationComponents(): Promise<void> {
+  await Promise.all(
+    Array.from(componentLoaders, async ([identifier, loadComponent]) => {
+      if (isVisualizationComponent(visualizations.get(identifier))) {
+        return;
+      }
+      registerVisualization(await loadComponent());
+    }),
+  );
 }
 
 export function registerSettingWidgets(

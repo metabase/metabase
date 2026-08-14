@@ -8,7 +8,10 @@ import { color } from "metabase/ui/colors";
 import { registerVisualization } from "metabase/visualizations";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  Visualization,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import type {
   RawSeries,
   Settings,
@@ -53,28 +56,34 @@ registerVisualization(MockedVisualization);
 // A cast is needed because the registry is keyed by the known display types.
 const LAZY_MOCK_DISPLAY = "lazy-mocked-visualization" as VisualizationDisplay;
 
+const LAZY_MOCK_DEFINITION = {
+  getUiName: () => "Lazy Mocked Visualization",
+  identifier: LAZY_MOCK_DISPLAY,
+  iconName: "unknown" as const,
+  noHeader: true,
+  minSize: { width: 1, height: 1 },
+  defaultSize: { width: 4, height: 4 },
+  settings: {},
+  isSensible: () => false,
+  checkRenderable: () => undefined,
+};
+
 let resolveLazyMockedVisualization: () => void;
 
 // One promise for every call, the way the bundler de-duplicates `import()`.
-const lazyMockedVisualization = new Promise<() => JSX.Element>((resolve) => {
+// It resolves to a component carrying its definition statics, the shape a
+// chart module exports.
+const lazyMockedVisualization = new Promise<Visualization>((resolve) => {
   resolveLazyMockedVisualization = () =>
-    resolve(() => <div>Hello, I am loaded on demand</div>);
+    resolve(
+      Object.assign(
+        () => <div>Hello, I am loaded on demand</div>,
+        LAZY_MOCK_DEFINITION,
+      ),
+    );
 });
 
-registerVisualization(
-  {
-    getUiName: () => "Lazy Mocked Visualization",
-    identifier: LAZY_MOCK_DISPLAY,
-    iconName: "unknown",
-    noHeader: true,
-    minSize: { width: 1, height: 1 },
-    defaultSize: { width: 4, height: 4 },
-    settings: {},
-    isSensible: () => false,
-    checkRenderable: () => undefined,
-  },
-  () => lazyMockedVisualization,
-);
+registerVisualization(LAZY_MOCK_DEFINITION, () => lazyMockedVisualization);
 
 describe("Visualization", () => {
   const renderViz = async (

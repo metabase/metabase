@@ -29,6 +29,7 @@ import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheP
 
 import { Global, css, useTheme } from "@emotion/react";
 
+import { loadVisualizationComponents } from "metabase/visualizations";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 import { initialize, mswLoader } from "msw-storybook-addon";
@@ -54,6 +55,12 @@ if (
 // producing inconsistent behavior in code relying on measuring text (e.g., column
 // autosize in table visualization). Awaiting all loads here makes measurements
 // deterministic across platforms.
+// Chart components are loaded on demand, so a story that renders through the
+// registry would otherwise be captured mid-Suspense, showing the skeleton.
+const visualizationsReady = async () => {
+  await loadVisualizationComponents();
+};
+
 const fontsReady = async () => {
   const loads: Promise<unknown>[] = [];
   document.fonts.forEach((face) => loads.push(face.load()));
@@ -207,7 +214,7 @@ initialize({
 const preview = {
   parameters,
   decorators,
-  loaders: [mswLoader, fontsReady],
+  loaders: [mswLoader, fontsReady, visualizationsReady],
   argTypes,
 };
 

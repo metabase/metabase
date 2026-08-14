@@ -12,6 +12,7 @@ export {
   getVisualizationRaw,
   getVisualizationTransformed,
   isCartesianChart,
+  loadVisualizationComponents,
   prefetchVisualizationComponent,
   registerSettingWidgets,
   registerVisualization,
