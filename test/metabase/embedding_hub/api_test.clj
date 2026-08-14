@@ -99,7 +99,7 @@
         (is (false? (ck))))
       ;; The default provider is anthropic, so its key is what makes
       ;; `llm-metabot-configured?` -- a computed setting -- report true.
-      (testing "true once the provider is configured and embedded Metabot is on"
+      (testing "true once the provider is configured"
         (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
           (is (true? (ck)))))
       (testing "false when embedded Metabot is off, even with credentials"
