@@ -47,9 +47,7 @@ For the full list of attributes, see [web component attributes](./browser-refere
 
 Under the hood, the `read-only` attribute decides which dashboard component people land on: a read-only browser opens dashboards for exploring, while `read-only="false"` opens them for [editing](./dashboard.md#web-component-editable-dashboard).
 
-Saving follows navigation: whatever collection someone is looking at when they save a question is where. There's no attribute for pinning the save target to a fixed collection. Another option: embed a [question](./chart.md#let-people-save-their-changes) or the [query builder](./query-builder.md#let-people-save-questions) with `target-collection` instead of a browser.
-
-What people can save to comes down to [collection permissions](../permissions/collections.md). Everyone can always write to their own personal collection, so that shows up as an option even if you've granted no other [curate access](../permissions/collections.md#curate-access).
+There's no attribute for pinning the save target to a fixed collection. What people can save to comes down to [collection permissions](../permissions/collections.md). Everyone can always write to their own personal collection, so that shows up as an option even if you've not given people [curate access](../permissions/collections.md#curate-access) to any collection.
 
 ### Add new question and new dashboard buttons
 
