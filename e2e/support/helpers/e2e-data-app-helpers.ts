@@ -151,10 +151,6 @@ export function setDataAppCollectionAccess(
     });
 }
 
-/**
- * Puts a data app's model in a fresh collection at the given access level, so a
- * spec can reach it as a user who can or cannot read it. Yields the collection.
- */
 export function moveDataAppModelToCollection({
   modelId,
   name,
