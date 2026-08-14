@@ -218,6 +218,11 @@ config:
     llm-bedrock-secret-access-key: null
     llm-bedrock-session-token: null
     llm-connection-timeout-ms: 10000
+    llm-google-api-base-url: https://aiplatform.googleapis.com
+    llm-google-location: null
+    llm-google-oauth-access-token: null
+    llm-google-project-id: null
+    llm-google-service-account-key: null
     llm-max-tokens: 4096
     llm-metabot-provider: anthropic/claude-sonnet-4-6
     llm-mistral-api-base-url: https://api.mistral.ai/v1
