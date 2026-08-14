@@ -348,36 +348,45 @@
                          (llm/llm-vllm-model-reasoning?) (max reasoning-model-token-floor)))))
 
 (defn- stream-io-ex
-  "The vLLM error for a transport failure while *consuming* a response stream. Carries no `:status`,
-  which is what makes it non-retryable: on a self-hosted server a stalled or severed response means
-  \"too slow\" or \"it died\", not \"transient\", and a retry replays a full cold prefill."
+  "The vLLM error for a transport failure while *consuming* a response stream. Tagged
+  `:retryable? false`: on a self-hosted server a stalled or severed response means \"too slow\" or
+  \"it died\", not \"transient\", and a retry replays a full cold prefill at up to
+  `llm-vllm-request-timeout-ms` (300s) apiece. The tag is required — `retryable-error?` walks the
+  cause chain and would otherwise match the `IOException` below."
   [^IOException e timeout-ms]
   (if (instance? SocketTimeoutException e)
     (ex-info (tru "The vLLM server stopped responding after {0}ms. Raise the vLLM request timeout, or serve a faster model."
                   (str timeout-ms))
              {:api-error  true
-              :error-code :vllm-timeout}
+              :error-code :vllm-timeout
+              :retryable? false}
              e)
     (ex-info (tru "The connection to the vLLM server was interrupted before the response finished.")
              {:api-error  true
-              :error-code :vllm-stream-interrupted}
+              :error-code :vllm-stream-interrupted
+              :retryable? false}
              e)))
 
 (defn- request-io-ex
   "The vLLM error for a transport failure while *establishing* a request. `core/rethrow-api-error!`
   would render these as \"vllm API request failed: Read timed out\", naming neither the server's
-  slowness nor the setting that governs it."
+  slowness nor the setting that governs it.
+
+  Tagged `:retryable? false` for the same reason as [[stream-io-ex]], and more importantly: nothing
+  has been emitted yet, so `call-llm`'s own \"nothing emitted\" predicate would not stop a replay."
   [^IOException e base-url timeout-ms]
   (if (instance? SocketTimeoutException e)
     (ex-info (tru "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout."
                   (str timeout-ms))
              {:api-error  true
-              :error-code :vllm-timeout}
+              :error-code :vllm-timeout
+              :retryable? false}
              e)
     (ex-info (tru "Could not reach the vLLM server at {0}. Check that it is running and that the base URL is correct."
                   (str base-url))
              {:api-error  true
-              :error-code :vllm-unreachable}
+              :error-code :vllm-unreachable
+              :retryable? false}
              e)))
 
 (defn- io-guarded

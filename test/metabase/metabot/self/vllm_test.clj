@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
@@ -355,11 +356,12 @@
         (let [e (try (into [] (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]}))
                      (catch clojure.lang.ExceptionInfo e e))]
           (is (= :vllm-timeout (:error-code (ex-data e))))
-          (is (re-find #"stopped responding" (ex-message e))))))))
+          (is (re-find #"stopped responding" (ex-message e)))
+          (testing "and is not retryable"
+            (is (false? (#'self/retryable-error? e)))))))))
 
 (deftest vllm-stream-connection-failure-is-not-retryable-test
-  (testing "a stream severed mid-body raises a plain IOException, which `retryable-error?` matches on class —
-           left raw it replays a full cold prefill three times over"
+  (testing "a stream severed mid-body surfaces as a tagged vLLM error, not a raw IOException"
     (mt/with-temporary-setting-values [llm.settings/llm-vllm-api-base-url base-url]
       (with-redefs [self.core/sse-reducible (fn [_]
                                               (reify clojure.lang.IReduceInit
@@ -370,7 +372,9 @@
         (let [e (try (into [] (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]}))
                      (catch clojure.lang.ExceptionInfo e e))]
           (is (= :vllm-stream-interrupted (:error-code (ex-data e))))
-          (is (re-find #"interrupted before the response finished" (ex-message e))))))))
+          (is (re-find #"interrupted before the response finished" (ex-message e)))
+          (testing "and is not retryable"
+            (is (false? (#'self/retryable-error? e)))))))))
 
 (deftest vllm-request-timeout-names-vllm-and-its-setting-test
   (testing "a timeout while establishing the request gets the same treatment the preflight already gives it,
@@ -382,7 +386,9 @@
                      (catch clojure.lang.ExceptionInfo e e))]
           (is (= :vllm-timeout (:error-code (ex-data e))))
           (is (re-find #"did not respond within 300000ms" (ex-message e)))
-          (is (re-find #"raise the vLLM request timeout" (ex-message e))))))))
+          (is (re-find #"raise the vLLM request timeout" (ex-message e)))
+          (testing "and is not retryable"
+            (is (false? (#'self/retryable-error? e)))))))))
 
 (deftest vllm-unreachable-server-names-the-base-url-test
   (testing "a refused connection is the base URL being wrong or the server being down — say which URL failed"
@@ -391,7 +397,9 @@
         (let [e (try (vllm/vllm-raw {:model "vllm-test" :input [{:role :user :content "hi"}]})
                      (catch clojure.lang.ExceptionInfo e e))]
           (is (= :vllm-unreachable (:error-code (ex-data e))))
-          (is (re-find #"Could not reach the vLLM server at http://vllm\.internal:8000/v1" (ex-message e))))))))
+          (is (re-find #"Could not reach the vLLM server at http://vllm\.internal:8000/v1" (ex-message e)))
+          (testing "and is not retryable"
+            (is (false? (#'self/retryable-error? e)))))))))
 
 (deftest vllm-http-errors-still-reach-the-status-specific-message-test
   (testing "the IOException catch runs first, so a non-2xx must still be translated by `vllm-error-msg`"

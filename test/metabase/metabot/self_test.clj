@@ -871,7 +871,17 @@
       ;; but other stuff is not
       false (RuntimeException. "oops")
       ;; a wrapped non-transient cause stays non-retryable
-      false (ex-info "boom" {} (IllegalArgumentException. "bad")))))
+      false (ex-info "boom" {} (IllegalArgumentException. "bad"))))
+  (testing ":retryable? false outranks both the status check and the cause walk"
+    (are [x y] (= x (#'self/retryable-error? y))
+      false (ex-info "vLLM stopped responding"
+                     {:api-error true :error-code :vllm-timeout :retryable? false}
+                     (java.net.SocketTimeoutException. "Read timed out"))
+      false (ex-info "vLLM queue full" {:status 429 :retryable? false})))
+  (testing "the tag is an opt-out only — :retryable? true cannot force a retry"
+    (are [x y] (= x (#'self/retryable-error? y))
+      true  (ex-info "rate limited" {:status 429 :retryable? true})
+      false (ex-info "bad request" {:status 400 :retryable? true}))))
 
 (deftest retry-delay-ms-test
   (testing "backoff"
