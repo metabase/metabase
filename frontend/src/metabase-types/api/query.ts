@@ -48,8 +48,7 @@ export interface InternalDatasetQuery {
   offset?: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
-declare const OpaqueDatasetQuerySymbol: unique symbol;
+export declare const OpaqueDatasetQuerySymbol: unique symbol;
 export type OpaqueDatasetQuery = unknown & {
   // TODO (AlexP 10/09/25) -- replace usages of this field with Lib.databaseID and drop it from here
   database: DatabaseId | null;
@@ -114,21 +113,21 @@ export interface ReferenceOptions {
   "source-field"?: number;
 }
 
-type BinningOptions =
+export type BinningOptions =
   | DefaultBinningOptions
   | NumBinsBinningOptions
   | BinWidthBinningOptions;
 
-interface DefaultBinningOptions {
+export interface DefaultBinningOptions {
   strategy: "default";
 }
 
-interface NumBinsBinningOptions {
+export interface NumBinsBinningOptions {
   strategy: "num-bins";
   "num-bins": number;
 }
 
-interface BinWidthBinningOptions {
+export interface BinWidthBinningOptions {
   strategy: "bin-width";
   "bin-width": number;
 }

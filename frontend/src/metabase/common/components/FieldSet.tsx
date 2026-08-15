@@ -11,6 +11,7 @@ interface FieldSetProps {
   children: ReactNode;
 }
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export function FieldSet({
   className = CS.borderBrand,
   legend,

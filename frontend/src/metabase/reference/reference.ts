@@ -304,7 +304,7 @@ export const rUpdateFields = (
   };
 };
 
-interface ReferenceState {
+export interface ReferenceState {
   error: unknown;
   isLoading: boolean;
   isEditing: boolean;

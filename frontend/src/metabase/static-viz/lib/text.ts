@@ -8,7 +8,7 @@ import {
 
 const FONT_WEIGHT_WIDTH_FACTOR = 0.039;
 
-export const { getTextWidth } = init(CHAR_SIZES);
+const { getTextWidth } = init(CHAR_SIZES);
 
 export const measureTextWidth = (
   text: string,

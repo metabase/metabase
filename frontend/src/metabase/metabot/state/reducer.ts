@@ -44,6 +44,7 @@ import type {
 } from "./types";
 import { createMessageId, hasInProgressMessage } from "./utils";
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export const metabot = createSlice({
   name: "metabase/metabot",
   initialState: getMetabotInitialState(),
@@ -522,5 +523,7 @@ export const metabot = createSlice({
   },
 });
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export const metabotReducer = metabot.reducer;
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export const metabotActions = metabot.actions;

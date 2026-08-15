@@ -127,7 +127,7 @@ export type ImplicitActionClickBehavior =
  * for mapping _explicit_ action parameters. We don't actually use the click behavior though.
  * Remove this type and run the type-check to see the errors.
  */
-interface HACK_ExplicitActionClickBehavior {
+export interface HACK_ExplicitActionClickBehavior {
   type: "action";
 }
 

@@ -4,7 +4,7 @@ import type { ComponentPropsWithRef } from "react";
 
 import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-interface SelectButtonRootProps {
+export interface SelectButtonRootProps {
   hasValue: boolean;
   fullWidth: boolean;
   highlighted: boolean;
@@ -56,7 +56,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   }
 `;
 
-interface SelectButtonIconProps {
+export interface SelectButtonIconProps {
   hasValue: boolean;
   highlighted: boolean;
 }

@@ -6,7 +6,7 @@ import { getUrlTarget } from "metabase/visualizations/lib/open-url";
 
 import S from "./ExternalLink.module.css";
 
-interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {
+export interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {
   href?: string;
   target?: string;
   className?: string;

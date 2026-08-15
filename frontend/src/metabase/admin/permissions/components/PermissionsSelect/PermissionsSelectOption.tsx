@@ -15,6 +15,7 @@ interface PermissionsSelectOptionProps extends Omit<PermissionOption, "value"> {
   hint?: string | null;
 }
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export function PermissionsSelectOption({
   label,
   icon,

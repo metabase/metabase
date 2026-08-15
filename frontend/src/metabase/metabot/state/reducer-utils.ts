@@ -232,6 +232,7 @@ export const closeChain = (
   convo.activeChainId = undefined;
 };
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export const getRequestConversation = (
   state: WritableDraft<MetabotState>,
   action: {

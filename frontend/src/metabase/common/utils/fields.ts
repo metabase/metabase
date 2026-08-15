@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Field, IconName } from "metabase-types/api";
 
-interface FieldSemanticType {
+export interface FieldSemanticType {
   id: NonNullable<Field["semantic_type"]>;
   name: string;
   section: string;

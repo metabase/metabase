@@ -28,6 +28,7 @@ interface UseBlockMenusOptions {
  * Shared hook for block-level floating menus (anchor links on left, comments on right).
  * Used by Heading, Paragraph, Blockquote, BulletList, OrderedList, and CodeBlock node views.
  */
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export function useBlockMenus({
   node,
   editor,

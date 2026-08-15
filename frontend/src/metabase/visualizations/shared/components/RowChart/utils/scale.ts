@@ -46,6 +46,7 @@ export const createXScale = (
   }
 };
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export const getChartScales = <TDatum>(
   seriesData: SeriesData<TDatum>[],
   innerHeight: number,

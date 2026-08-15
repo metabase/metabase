@@ -6,6 +6,7 @@ interface Props extends Omit<SidebarLinkProps, "left"> {
   isDragging: boolean;
 }
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 export function DraggableSidebarLink({ isDraggable, ...props }: Props) {
   return (
     <StyledSidebarLink

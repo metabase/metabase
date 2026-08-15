@@ -22,6 +22,7 @@ export const ExplicitSizeRefreshModeContext = createContext<
   RefreshMode | undefined
 >(undefined);
 
+/** @internal -- Prevents a declaration emit error in the SDK build. */
 const REFRESH_MODE = {
   throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
   debounce: (fn: () => void) => debounce(fn, WAIT_TIME),
