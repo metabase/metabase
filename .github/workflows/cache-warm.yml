@@ -1,11 +1,16 @@
 # This workflow is the single source of truth for generating and updating various caches used by our CI pipeline.
-# It sets the fresh cache each Monday but provides a manual trigger to update it on-demand.
 #
-# All other jobs only restore from this cache; *they never update it*!
+# All other jobs only restore from these caches; *they never update them*!
 # They should always use `actions/cache/restore@vX` because `actions/cache@vX` would attempt to save the cache.
 #
-# Our agreed-upon strategy is to use a deterministic cache key based on the week of the year.
-# Jobs can utilize the prior week's cache if the current week's cache is not found.
+# The M2 and node_modules keys are content hashes of the files that define each dependency set (see
+# get-cache-keys), so a push only does work when its dependency set has no entry yet. Pushing to a release
+# line warms that line's own entry. The eslint and Cypress keys are still week-based, which is what the
+# Monday cron refreshes.
+#
+# Cache reads are scoped by ref: a branch reads entries it wrote itself, a pull request also reads its base
+# branch's, and every branch reads master's. So warming on push to a merge target covers the PRs that
+# target it.
 #
 #
 # PRINCIPLES:
@@ -26,15 +31,19 @@
 #     - The final step saves the local cache back to GitHub Actions cache with a deterministic key.
 #     - If a cache entry already exists for that key, it is deleted first to ensure immutability.
 #
-name: Cache Generator
+name: Cache Warm
 
 on:
+  push:
+    branches:
+      - master
+      - "release-x.*.x"
   schedule:
     - cron: "0 3 * * 1" # Mondays at 03:00 UTC
   workflow_dispatch: # manually update the cache
 
 concurrency:
-  group: cache-generator
+  group: cache-warm-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -46,17 +55,31 @@ jobs:
       - name: Get cache keys
         uses: ./.github/actions/get-cache-keys
         id: get-cache-keys
+      # A push whose dependency set is already cached should cost a lookup, not a rebuild. The schedule and
+      # manual triggers rebuild unconditionally so the week-keyed eslint and Cypress caches still refresh.
+      - name: Check whether the M2 cache already exists
+        id: m2-lookup
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/.m2
+          key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
+          lookup-only: true
+      - name: Check whether the node_modules cache already exists
+        id: node-lookup
+        uses: actions/cache/restore@v5
+        with:
+          path: node_modules
+          key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
+          lookup-only: true
     outputs:
       m2-cache-key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
       node-cache-key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
       eslint-cache-key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
       cypress-cache-key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
+      up-to-date: ${{ steps.m2-lookup.outputs.cache-hit == 'true' && steps.node-lookup.outputs.cache-hit == 'true' }}
 
   generate-caches:
-    # Prevent a workflow_dispatch triggered from any branch besides master. This would overwrite the default
-    # cache keys but the cache would be innacessible to other branches since Github prevents cross-branch
-    # cache hits (except for the default branch), breaking the cache entirely.
-    if: ${{ github.ref_name == 'master' }}
+    if: ${{ github.event_name != 'push' || needs.get-cache-keys.outputs.up-to-date != 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     needs: get-cache-keys
@@ -127,6 +150,7 @@ jobs:
             ~/.gitlibs
             ~/.deps.clj
             bin/bb
+            .cpcache
           key: ${{ env.M2_CACHE_KEY }}
 
       # Frontend preparation and caches
