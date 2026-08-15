@@ -67,11 +67,17 @@
             ;; only names that exist can come back from a lookup, so compare within the universe
             (is (= (set (filter #(driver.s/include-schema? patterns nil %) universe))
                    (set (filter (set universe) named)))))))))
+  (testing "a dataset named twice is looked up once, as a scan would yield it once"
+    (is (= ["orders" "public"]
+           (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                               :dataset-filters-patterns "orders,public,orders"}))))
   (testing "filters that a name lookup cannot answer fall through to a scan"
     (doseq [[patterns why] {"orders*"        "wildcard"
                             "*"              "wildcard"
                             "a,b*"           "wildcard in one segment"
                             "crazy\\*schema" "escaped asterisk is not a legal dataset ID"
+                            "_hidden"        "leading underscore means hidden; a scan never lists it"
+                            "orders,_hidden" "one hidden name is enough to need a scan"
                             ""               "blank means include everything"
                             nil              "blank means include everything"}]
       (testing why
