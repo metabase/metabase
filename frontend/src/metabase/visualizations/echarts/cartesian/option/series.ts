@@ -38,6 +38,7 @@ import type {
   XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
+import { getPercent } from "metabase/visualizations/echarts/tooltip/utils";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -377,6 +378,23 @@ export const computeBarWidth = (
   return barWidth;
 };
 
+export const getStackValuePercentage = (
+  datum: Datum,
+  stackSeriesKeys: DataKey[],
+  value: number,
+) => {
+  const isNegativeValue = value < 0;
+  const stackTotal = stackSeriesKeys.reduce((total, dataKey) => {
+    const seriesValue = datum[dataKey];
+    const hasSameSign =
+      typeof seriesValue === "number" && seriesValue < 0 === isNegativeValue;
+
+    return hasSameSign ? total + seriesValue : total;
+  }, 0);
+
+  return stackTotal === 0 ? undefined : getPercent(stackTotal, value);
+};
+
 export const buildEChartsStackLabelOptions = (
   seriesModel: SeriesModel,
   formatter: LabelFormatter | undefined,
@@ -416,22 +434,14 @@ export const buildEChartsStackLabelOptions = (
       }
 
       if (showPercentages) {
-        // Calculate stack total (sum of absolute values of all series in the stack)
-        let stackTotal = 0;
-        for (const stackDataKey of stackModel.seriesKeys) {
-          const seriesValue = datum[stackDataKey];
-          if (typeof seriesValue === "number") {
-            stackTotal += Math.abs(seriesValue);
-          }
-        }
-
-        if (stackTotal === 0) {
+        const percentage = getStackValuePercentage(
+          datum,
+          stackModel.seriesKeys,
+          value,
+        );
+        if (percentage === undefined) {
           return "";
         }
-
-        const percentage = Math.abs(value) / stackTotal;
-
-        // Format as percentage
         const getColumnSettings = settings.column;
         const columnSettings = getColumnSettings?.(seriesModel.column);
 
