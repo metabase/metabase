@@ -144,8 +144,8 @@ jobs:
           :fail-fast? true
         runner-index: ${{ matrix.runner-index }}
         runner-count: ${{ strategy.job-total }}
-        jvms-per-runner: '3'
-        heap-per-jvm: '4g'
+        jvms-per-runner: '5'
+        heap-per-jvm: '2g'
         artifact-suffix: runner-${{ matrix.runner-index }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
