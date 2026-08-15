@@ -17,6 +17,10 @@ import {
 
 import { ActionMenu } from "./ActionMenu";
 
+const { trackSimpleEvent } = jest.requireMock<{
+  trackSimpleEvent: jest.Mock;
+}>("metabase/analytics");
+
 interface SetupOpts {
   item: CollectionItem;
   collection?: Collection;
@@ -69,6 +73,10 @@ const setup = ({
 };
 
 describe("ActionMenu", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   describe("bookmarks", () => {
     it("should bookmark an item with its id and model", async () => {
       const item = createMockCollectionItem({
@@ -84,6 +92,83 @@ describe("ActionMenu", () => {
       await userEvent.click(await screen.findByText("Bookmark"));
 
       expect(createBookmark).toHaveBeenCalledWith({ id: 1, type: "dashboard" });
+    });
+  });
+
+  describe("pinning", () => {
+    it("tracks a successful pin", async () => {
+      const item = createMockCollectionItem({
+        id: 1,
+        name: "Dashboard",
+        model: "dashboard",
+        collection_position: null,
+      });
+      fetchMock.put("path:/api/dashboard/1", {});
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Pin this"));
+
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "collection_item_pinned",
+          event_detail: "dashboard",
+          target_id: item.id,
+          triggered_from: "item_menu",
+          result: "success",
+        });
+      });
+    });
+
+    it("tracks a successful unpin and normalizes questions", async () => {
+      const item = createMockCollectionItem({
+        id: 2,
+        name: "Question",
+        model: "card",
+        collection_position: 1,
+      });
+      fetchMock.put("path:/api/card/2", {});
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Unpin"));
+
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "collection_item_unpinned",
+          event_detail: "question",
+          target_id: item.id,
+          triggered_from: "item_menu",
+          result: "success",
+        });
+      });
+    });
+
+    it("tracks a failed pin", async () => {
+      const item = createMockCollectionItem({
+        id: 3,
+        name: "Dashboard",
+        model: "dashboard",
+        collection_position: null,
+      });
+      fetchMock.put("path:/api/dashboard/3", {
+        status: 500,
+        body: { message: "Something went wrong" },
+      });
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Pin this"));
+
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "collection_item_pinned",
+          event_detail: "dashboard",
+          target_id: item.id,
+          triggered_from: "item_menu",
+          result: "failure",
+        });
+      });
     });
   });
 

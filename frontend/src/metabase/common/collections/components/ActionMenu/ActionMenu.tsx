@@ -10,7 +10,10 @@ import {
   useRestore,
   useSetArchive,
 } from "metabase/archive/hooks";
-import { trackCollectionItemBookmarked } from "metabase/common/collections/analytics";
+import {
+  setCollectionItemPinnedAndTrack,
+  trackCollectionItemBookmarked,
+} from "metabase/common/collections/analytics";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -101,7 +104,13 @@ function ActionMenuInner({
 
   const handlePin = useCallback(() => {
     if (isPinnable(item)) {
-      setPinned(item, !isItemPinned(item));
+      const pinned = !isItemPinned(item);
+      void setCollectionItemPinnedAndTrack({
+        item,
+        pinned,
+        triggeredFrom: "item_menu",
+        setPinned: () => setPinned(item, pinned),
+      });
     }
   }, [item, setPinned]);
 

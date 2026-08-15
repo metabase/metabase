@@ -11,7 +11,13 @@ import {
   setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { Route } from "metabase/router";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
@@ -20,6 +26,10 @@ import {
 } from "metabase-types/api/mocks";
 
 import { CollectionContent } from "./CollectionContent";
+
+const { trackSimpleEvent } = jest.requireMock<{
+  trackSimpleEvent: jest.Mock;
+}>("metabase/analytics");
 
 const defaultCollection = createMockCollection({
   id: 1,
@@ -117,6 +127,37 @@ function getPinnedLink(itemName: string) {
 }
 
 describe("CollectionContent selection", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
+  it("tracks entering selection mode once per selection session", async () => {
+    await setup();
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    await waitFor(() => {
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "collection_select_mode_entered",
+        target_id: defaultCollection.id,
+      });
+    });
+
+    await userEvent.click(getRowSelectionButton(tableDashboard.name));
+    expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+    await userEvent.click(getRowSelectionButton(tableDashboard.name));
+    await userEvent.click(getRowSelectionButton(tableQuestion.name));
+
+    await waitFor(() => {
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(2);
+    });
+    expect(trackSimpleEvent).toHaveBeenLastCalledWith({
+      event: "collection_select_mode_entered",
+      target_id: defaultCollection.id,
+    });
+  });
+
   it("should render pinned cards as links when nothing is selected", async () => {
     await setup();
 

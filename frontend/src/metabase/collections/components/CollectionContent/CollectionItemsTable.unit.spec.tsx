@@ -25,6 +25,10 @@ import {
 
 import { CollectionItemsTable } from "./CollectionItemsTable";
 
+const { trackSimpleEvent } = jest.requireMock<{
+  trackSimpleEvent: jest.Mock;
+}>("metabase/analytics");
+
 const collection = createMockCollection({ id: 1, can_write: false });
 const collectionItems = [
   createMockCollectionItem({
@@ -153,6 +157,10 @@ function CollectionNavigationTest({
 }
 
 describe("CollectionItemsTable", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   afterEach(() => {
     jest.useRealTimers();
   });
@@ -321,6 +329,45 @@ describe("CollectionItemsTable", () => {
       expect(getSearchCalls()).toHaveLength(1);
     });
     expect(new URL(getSearchCalls()[0].url).searchParams.get("q")).toBe("rev");
+  });
+
+  it("tracks each search engagement once", async () => {
+    const user = setupUserWithFakeTimers();
+    setup();
+    const searchInput = await screen.findByPlaceholderText(
+      "Search by name or editor...",
+    );
+
+    await user.type(searchInput, "revenue");
+    advanceSearchDebounce();
+    await waitFor(() => {
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "collection_items_filtered",
+        event_detail: "search",
+        target_id: collection.id,
+      });
+    });
+
+    await user.type(searchInput, " overview");
+    advanceSearchDebounce();
+    await waitFor(() => {
+      expect(getSearchCalls()).toHaveLength(2);
+    });
+    expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Clear search" }),
+    );
+    await user.type(searchInput, "customer");
+    advanceSearchDebounce();
+    await waitFor(() => {
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(2);
+    });
+    expect(trackSimpleEvent).toHaveBeenLastCalledWith({
+      event: "collection_items_filtered",
+      event_detail: "search",
+      target_id: collection.id,
+    });
   });
 
   it("clears the search and restores the unfiltered list", async () => {
@@ -535,6 +582,35 @@ describe("CollectionItemsTable", () => {
     expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
     expect(screen.getByText("Customer 360")).toBeInTheDocument();
     expect(screen.queryByText("Orders model")).not.toBeInTheDocument();
+  });
+
+  it("tracks each type-filter engagement once", async () => {
+    setup();
+
+    await userEvent.click(
+      await screen.findByTestId("collection-type-filter-button"),
+    );
+    await userEvent.click(screen.getByLabelText("Dashboard"));
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "collection_items_filtered",
+      event_detail: "type",
+      target_id: collection.id,
+    });
+
+    await userEvent.click(screen.getByLabelText("Model"));
+    expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(screen.getByLabelText("Dashboard"));
+    await userEvent.click(screen.getByLabelText("Model"));
+    await userEvent.click(screen.getByLabelText("Dashboard"));
+
+    expect(trackSimpleEvent).toHaveBeenCalledTimes(2);
+    expect(trackSimpleEvent).toHaveBeenLastCalledWith({
+      event: "collection_items_filtered",
+      event_detail: "type",
+      target_id: collection.id,
+    });
   });
 
   it("uses no_models and shows no results when every type is unchecked", async () => {

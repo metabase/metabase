@@ -2,6 +2,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
+import { moveCollectionItemAndTrack } from "metabase/common/collections/analytics";
 import {
   type Destination,
   QuestionMoveConfirmModal,
@@ -144,9 +145,17 @@ export const CollectionBulkActions = memo(
     const doMove = async (destination: Destination) => {
       if (selectedItems) {
         await Promise.all(
-          selectedItems
-            .filter(isMovable)
-            .map((item) => setCollection(item, destination)),
+          selectedItems.filter(isMovable).map((item) => {
+            const move = () => setCollection(item, destination);
+            if (destination.model === "collection") {
+              return moveCollectionItemAndTrack({
+                item,
+                move,
+                triggeredFrom: "move_modal",
+              });
+            }
+            return move();
+          }),
         ).finally(clearSelected);
       }
       handleCloseModal();

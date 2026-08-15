@@ -2,10 +2,28 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  setupCardEndpoints,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
+  setupRootCollectionItemsEndpoint,
+} from "__support__/server-mocks";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockBookmark,
+  createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
@@ -14,10 +32,22 @@ import {
 
 import { CollectionBulkActions } from "./CollectionBulkActions";
 
+const { trackSimpleEvent } = jest.requireMock<{
+  trackSimpleEvent: jest.Mock;
+}>("metabase/analytics");
+
 const writableCollection = createMockCollection({
   id: 1,
   name: "Writable collection",
   can_write: true,
+});
+
+const destinationCollectionId = 10;
+const destinationCollection = createMockCollection({
+  id: destinationCollectionId,
+  name: "Destination collection",
+  can_write: true,
+  location: "/",
 });
 
 const pinnedDashboard = createMockCollectionItem({
@@ -149,7 +179,52 @@ function getMenuItem(name: string) {
   return screen.getByRole("menuitem", { name });
 }
 
+function getTrackedEvents(eventName: string) {
+  return trackSimpleEvent.mock.calls
+    .map(([event]) => event)
+    .filter(({ event }) => event === eventName);
+}
+
+function setupMovePickerEndpoints() {
+  mockGetBoundingClientRect();
+  const rootCollection = createMockCollection(ROOT_COLLECTION);
+  setupRecentViewsAndSelectionsEndpoints([], ["views", "selections"]);
+  setupDatabasesEndpoints([]);
+  setupCollectionsEndpoints({
+    collections: [writableCollection, destinationCollection],
+    rootCollection,
+  });
+  setupCollectionByIdEndpoint({
+    collections: [writableCollection, destinationCollection],
+  });
+  setupRootCollectionItemsEndpoint({
+    rootCollectionItems: [
+      createMockCollectionItem({
+        id: destinationCollectionId,
+        model: "collection",
+        name: destinationCollection.name,
+        collection_id: null,
+        can_write: true,
+      }),
+    ],
+  });
+  setupCollectionItemsEndpoint({
+    collection: writableCollection,
+    collectionItems: [],
+  });
+  setupCollectionItemsEndpoint({
+    collection: destinationCollection,
+    collectionItems: [],
+  });
+  fetchMock.get("path:/api/search", { data: [] });
+  fetchMock.get("path:/api/user/recipients", { data: [] });
+}
+
 describe("CollectionBulkActions", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   describe("selection composition", () => {
     it("keeps Move primary and offers Pin all for an unpinned-only selection", async () => {
       setup({ selected: [tableQuestion, tableDashboard] });
@@ -242,6 +317,26 @@ describe("CollectionBulkActions", () => {
       await waitFor(() => {
         expect(clearSelected).toHaveBeenCalled();
       });
+      const pinEvents = getTrackedEvents("collection_item_pinned");
+      expect(pinEvents).toHaveLength(2);
+      expect(pinEvents).toEqual(
+        expect.arrayContaining([
+          {
+            event: "collection_item_pinned",
+            event_detail: "question",
+            target_id: tableQuestion.id,
+            triggered_from: "bulk_action_bar",
+            result: "success",
+          },
+          {
+            event: "collection_item_pinned",
+            event_detail: "dashboard",
+            target_id: tableDashboard.id,
+            triggered_from: "bulk_action_bar",
+            result: "success",
+          },
+        ]),
+      );
     });
 
     it("unpins only the pinned items with Unpin all", async () => {
@@ -267,6 +362,58 @@ describe("CollectionBulkActions", () => {
       await waitFor(() => {
         expect(clearSelected).toHaveBeenCalled();
       });
+      const unpinEvents = getTrackedEvents("collection_item_unpinned");
+      expect(unpinEvents).toHaveLength(2);
+      expect(unpinEvents).toEqual(
+        expect.arrayContaining([
+          {
+            event: "collection_item_unpinned",
+            event_detail: "dashboard",
+            target_id: pinnedDashboard.id,
+            triggered_from: "bulk_action_bar",
+            result: "success",
+          },
+          {
+            event: "collection_item_unpinned",
+            event_detail: "question",
+            target_id: pinnedQuestion.id,
+            triggered_from: "bulk_action_bar",
+            result: "success",
+          },
+        ]),
+      );
+    });
+
+    it("tracks each result when a bulk pin partially fails", async () => {
+      fetchMock.put("path:/api/card/3", {});
+      fetchMock.put("path:/api/dashboard/4", {
+        status: 500,
+        body: { message: "Something went wrong" },
+      });
+      const { clearSelected } = setup({
+        selected: [tableQuestion, tableDashboard],
+      });
+
+      await openOverflowMenu();
+      await userEvent.click(getMenuItem("Pin all"));
+
+      await waitFor(() => {
+        expect(clearSelected).toHaveBeenCalled();
+      });
+      const pinEvents = getTrackedEvents("collection_item_pinned");
+      expect(pinEvents).toHaveLength(2);
+      expect(pinEvents).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            target_id: tableQuestion.id,
+            result: "success",
+          }),
+          expect.objectContaining({
+            target_id: tableDashboard.id,
+            result: "failure",
+          }),
+        ]),
+      );
     });
 
     it("unpins a pinned-only selection with the primary Unpin all button", async () => {
@@ -544,6 +691,40 @@ describe("CollectionBulkActions", () => {
       setup({ selected: [pinnedDashboard, tableQuestion] });
 
       expect(screen.getByRole("button", { name: "Move" })).toBeEnabled();
+    });
+
+    it("tracks items moved to another collection from the move modal", async () => {
+      setupMovePickerEndpoints();
+      setupCardEndpoints(
+        createMockCard({
+          id: tableQuestion.id,
+          name: tableQuestion.name,
+          collection_id: writableCollection.id,
+        }),
+      );
+      setup({ selected: [tableQuestion] });
+
+      await userEvent.click(screen.getByRole("button", { name: "Move" }));
+      await waitForLoaderToBeRemoved();
+      await userEvent.click(await screen.findByText("Our analytics"));
+      await userEvent.click(
+        await screen.findByText(destinationCollection.name),
+      );
+      await userEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Move",
+        }),
+      );
+
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "collection_item_moved",
+          event_detail: "question",
+          target_id: tableQuestion.id,
+          triggered_from: "move_modal",
+          result: "success",
+        });
+      });
     });
   });
 });
