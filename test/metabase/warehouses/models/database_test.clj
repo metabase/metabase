@@ -834,12 +834,14 @@
 (deftest attached-dwh-relaxes-the-network-policy-test
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
     (mt/with-premium-features #{:attached-dwh}
-      (testing "an attached DWH on a private address can be written"
-        (mt/with-temp [:model/Database db {:engine          (u/qualified-name ::host-details-driver)
-                                           :is_attached_dwh true
-                                           :details         {:host "10.224.7.141"}}]
-          (testing "and updated"
-            (is (pos? (t2/update! :model/Database (:id db) {:details {:host "10.224.7.142"}}))))))
+      ;; the exemption requires the :attached-dwh token feature, which an OSS build can never have
+      (when config/ee-available?
+        (testing "an attached DWH on a private address can be written"
+          (mt/with-temp [:model/Database db {:engine          (u/qualified-name ::host-details-driver)
+                                             :is_attached_dwh true
+                                             :details         {:host "10.224.7.141"}}]
+            (testing "and updated"
+              (is (pos? (t2/update! :model/Database (:id db) {:details {:host "10.224.7.142"}})))))))
       (testing "loopback and link-local stay blocked even for the attached DWH"
         (doseq [host ["127.0.0.1" "169.254.169.254"]]
           (is (thrown-with-msg?
