@@ -1957,11 +1957,10 @@
             (case (count candidates)
               0 (let [src-name (display-source-table mp source-table-id)
                       tbl-name (nth fk 2)]
-                  (throw (ex-info (tru "Field {0} is on table {1} but there is no foreign key from the source table {2} to {3}. Either add an explicit joins: entry, or use a field from the source table."
+                  (throw (ex-info (tru "Field {0} is on table {1}, which has no foreign key from the source table {2}, so it cannot be reached implicitly. To group or filter by a column from that table, add an explicit `joins:` entry and reference the field using the join alias. If you are aggregating a metric that relates to that table (metrics can join tables that have no foreign key), read that metric dimensions resource `metabase://metric/<metric_id>/dimensions` which lists the exact join clause to paste into `joins:` and the columns it unlocks. Otherwise use a field from the source table."
                                        (display-portable fk)
                                        (pr-str tbl-name)
-                                       (pr-str src-name)
-                                       (pr-str tbl-name))
+                                       (pr-str src-name))
                                   {:status-code  400
                                    :error        :no-fk-path
                                    :agent-error? true
@@ -2763,22 +2762,27 @@
        disambiguated clause.
     4. auto-wire `source-field` on field clauses that reference a foreign table via a single
        unambiguous FK on the source table (implicit-join resolution);
+    4.5. infer `base-type` / `effective-type` on field references in a stage whose source is
+       a saved question / model (`source-card:`), using the card's resolved returned columns.
+       Must run *before* Pass 5: a `source-card` stage's own bare-name field refs need
+       `base-type` before that stage can be mini-resolved as part of a later stage's prefix.
     5. infer `base-type` / `effective-type` on cross-stage field references
        (`[\"field\" {} \"<column-name>\"]` in a non-first stage), by mini-resolving the
-       prefix of stages and reading the returned columns' metadata.
-    5.5. infer `base-type` / `effective-type` on field references in a stage whose source is
-       a saved question / model (`source-card:`), using the card's resolved returned columns.
+       prefix of stages and reading the returned columns' metadata. When the prefix includes
+       a `source-card` stage, this relies on Pass 4.5 having already typed that stage's own
+       field refs - otherwise the prefix fails to resolve/schema-validate and the mini-resolve
+       silently no-ops (BOT-1604).
     5.7. assert that every string-named cross-stage / source-card field ref resolved to a real
-       column (i.e. Pass 5 / 5.5 stamped its `base-type`). A ref that matched nothing is the
+       column (i.e. Pass 4.5 / 5 stamped its `base-type`). A ref that matched nothing is the
        LLM naming a column that doesn't exist (often a display label); raise an `:agent-error?`
        naming it and listing the valid columns, instead of letting it pass through into a
        schema-invalid, non-runnable query (BOT-1442).
 
-  Pass 4, Pass 5, Pass 5.5, and Pass 5.7 require `mp` (a `MetadataProvider`); they are
+  Pass 4, Pass 4.5, Pass 5, and Pass 5.7 require `mp` (a `MetadataProvider`); they are
   best-effort no-ops when `mp` can't resolve the relevant pieces (so the subsequent
   validate/resolve stages can surface the real error with their own, better messages). Hard FK
   errors from Pass 4 (`:no-fk-path`, `:ambiguous-fk`) are raised as `:agent-error?` ex-info so
-  the tool wrapper can relay them to the LLM. Pass 5 and Pass 5.5 never throw on their own - if
+  the tool wrapper can relay them to the LLM. Pass 4.5 and Pass 5 never throw on their own - if
   a prefix / source-card can't be resolved, they just leave the affected clauses alone; Pass
   5.7 then raises the `:agent-error?` only for refs that survived to the end still unresolved.
 
@@ -2810,8 +2814,8 @@
        split-post-agg-filters*
        (resolve-source-field-join-alias* mp content-store)
        (resolve-implicit-joins* mp content-store)
-       (infer-cross-stage-field-types* mp content-store)
        (infer-source-card-field-types* mp content-store)
+       (infer-cross-stage-field-types* mp content-store)
        (assert-cross-stage-refs-resolved* mp content-store)
        friendly-errors*)))
 

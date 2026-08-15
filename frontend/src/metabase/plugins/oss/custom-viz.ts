@@ -1,6 +1,6 @@
-import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
+import type { ToastArgs } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { Dispatch } from "metabase/redux/store";
@@ -8,6 +8,7 @@ import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
+  WidgetMount,
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
@@ -41,7 +42,7 @@ const getDefaultPluginCustomViz = () => ({
     _plugin: CustomVizPluginRuntime,
     _options?: {
       cacheBustSuffix?: string;
-      onInfo?: (message: string) => void;
+      onMessage?: (toast: ToastArgs) => void;
     },
     // Unjustified type cast. FIXME
   ) => null as string | null,

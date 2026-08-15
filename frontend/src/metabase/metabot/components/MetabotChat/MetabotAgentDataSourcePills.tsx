@@ -8,7 +8,6 @@ import {
   useGetDatabaseQuery,
   useGetFieldTableIdsQuery,
   useGetTableQuery,
-  useSubmitMetabotSourceFeedbackMutation,
 } from "metabase/api";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -43,6 +42,8 @@ import type {
   NativeDatasetQuery,
   TemplateTags,
 } from "metabase-types/api";
+
+import { useSubmitMetabotSourceFeedbackMutation } from "../../api";
 
 import S from "./MetabotAgentDataPartMessage.module.css";
 

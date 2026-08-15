@@ -52,9 +52,10 @@ export const getCollectionIdValueFromReference = createSelector(
  * Returns an "id"/"slug" for `/api/collection/{:id}` — unlike when creating a
  * dashboard, the root collection is `"root"` here rather than null.
  *
- * `undefined` when `"personal"` can't be resolved: `currentUser` hasn't loaded
- * yet, or has no personal collection. Callers must handle that (e.g. with
- * `skipToken`) — `/api/collection/undefined` is a 404.
+ * Nullish when `"personal"` can't be resolved: `undefined` while `currentUser` hasn't loaded,
+ * `null` for a user the backend gives no personal collection — an API-key user, which is how
+ * the data-app dev server authenticates. Callers must handle both (e.g. with `skipToken`);
+ * `/api/collection/undefined` and `/api/collection/null` are each a 404.
  */
 export const getCollectionIdSlugFromReference = createSelector(
   [
@@ -66,7 +67,7 @@ export const getCollectionIdSlugFromReference = createSelector(
     personalCollectionId,
     tenantCollectionId,
     collectionReference,
-  ): CollectionId | undefined => {
+  ): CollectionId | null | undefined => {
     return match(collectionReference)
       .with("personal", () => personalCollectionId)
       .with("tenant", () => {

@@ -3,11 +3,12 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { skipToken, useGetMetabotSettingsQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import {
   AIProviderConfigurationForm,
   getProviderOptions,
   parseProviderAndModel,
+  useGetMetabotSettingsQuery,
 } from "metabase/metabot";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { useAdminSetting, useSetting } from "metabase/settings";

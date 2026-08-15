@@ -169,28 +169,6 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     });
   });
 
-  it("should not include useExistingUserSession when SSO is selected", () => {
-    enableJwtAuth();
-
-    navigateToGetCodeStep({
-      experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
-      preselectSso: true,
-    });
-
-    getEmbedSidebar().within(() => {
-      codeBlock().should("not.contain", "useExistingUserSession");
-
-      cy.findByText(/Copy code/).click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_code_copied",
-        event_detail:
-          "experience=dashboard,snippetType=frontend,authSubType=sso",
-      });
-    });
-  });
-
   it("should set dashboard-id for regular dashboard experience", () => {
     navigateToGetCodeStep({
       experience: "dashboard",

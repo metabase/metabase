@@ -689,6 +689,39 @@ describe("admin > custom visualizations", () => {
           .should("be.visible");
       });
 
+      it("shows a single combined toast when multiple plugin bundles fail to load (metabase#GDGT-3076)", () => {
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_2);
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_3_SECURITY);
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_4_SECURITY_COMPONENT);
+
+        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+          statusCode: 500,
+          body: "boom",
+        }).as("failedBundle");
+
+        H.visitQuestion("@questionId");
+        cy.findByTestId("viz-type-button").click();
+        cy.wait([
+          "@failedBundle",
+          "@failedBundle",
+          "@failedBundle",
+          "@failedBundle",
+        ]);
+
+        H.undoToastList()
+          .should("have.length", 1)
+          .findByText(
+            '4 visualizations are currently unavailable: "demo-viz", "demo-viz-2", "demo-viz-security", "demo-viz-security-component".',
+          )
+          .should("be.visible")
+          // The message must wrap instead of truncating, i.e. be taller than one line
+          .invoke("outerHeight")
+          .should("be.gt", 30);
+
+        // The message must not collapse to min-content
+        H.undoToastList().invoke("outerWidth").should("be.within", 300, 700);
+      });
+
       it("falls back to the default viz when the bundle endpoint fails, then recovers on revisit", () => {
         const bundleMatcher = {
           method: "GET",
@@ -780,6 +813,49 @@ describe("admin > custom visualizations", () => {
       // Drill opens an ad-hoc question showing the underlying Orders rows
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
       H.tableInteractive().findByText("37.65").should("be.visible");
+    });
+
+    it("switches away from a custom viz that cannot render the drilled data, and restores it when navigating back and forth (metabase#GDGT-2218)", () => {
+      H.createQuestion(
+        {
+          name: "Custom Viz Drill Question",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { visitQuestion: true },
+      );
+
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
+      cy.findByTestId("demo-viz-click-target").click();
+      cy.findByTestId("click-actions-view")
+        .findByText(/^Break out by/)
+        .click();
+      H.popover().findByText("Time").click();
+      H.popover().findByText("Created At").click();
+
+      H.echartsContainer().should("be.visible");
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("not.exist");
+
+      cy.go("back");
+
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
+      cy.go("forward");
+
+      H.echartsContainer().should("be.visible");
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("not.exist");
     });
 
     it("calls onHover and renders a tooltip", () => {

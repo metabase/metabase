@@ -3,10 +3,6 @@ import { useMemo } from "react";
 import { jt, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import {
-  useGetSlackManifestQuery,
-  useUpdateSlackSettingsMutation,
-} from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {
   ButtonLink,
@@ -26,6 +22,11 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+
+import {
+  useGetSlackManifestQuery,
+  useUpdateSlackSettingsMutation,
+} from "../api/slack";
 
 import { SlackConfiguration } from "./SlackConfiguration";
 import { SlackSetupForm } from "./SlackSetupForm";

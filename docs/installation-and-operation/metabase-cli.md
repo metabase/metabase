@@ -71,6 +71,7 @@ Pair the CLI with version control to build content with an agent in a developmen
 
 ## Further reading
 
+- [CLI analytics](../monitor/cli-analytics.md)
 - [@metabase/cli on npm](https://www.npmjs.com/package/@metabase/cli)
 - [Agent-driven development](../ai/file-based-development.md)
 - [Agent skills](https://github.com/metabase/agent-skills)
