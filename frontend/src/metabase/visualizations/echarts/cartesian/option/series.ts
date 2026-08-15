@@ -43,7 +43,12 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RowValue, SeriesSettings, XAxisScale } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RowValue,
+  SeriesSettings,
+  XAxisScale,
+} from "metabase-types/api";
 
 import type { ChartLayout, TicksRotation } from "../layout/types";
 import {
@@ -61,6 +66,7 @@ import { getPadding } from "./ticks";
 import { getSeriesYAxisIndex } from "./utils";
 
 const MIN_LABEL_SPACING_PX = 40;
+const STACK_PERCENTAGE_DECIMALS = 2;
 
 const getBlurLabelStyle = (
   settings: ComputedVisualizationSettings,
@@ -395,6 +401,30 @@ export const getStackValuePercentage = (
   return stackTotal === 0 ? undefined : getPercent(stackTotal, value);
 };
 
+export const formatStackValuePercentage = (
+  percentage: number,
+  column: DatasetColumn | undefined,
+  settings: ComputedVisualizationSettings,
+) => {
+  const displayedPercentage = Number(
+    (percentage * 100).toFixed(STACK_PERCENTAGE_DECIMALS),
+  );
+  const minimumFractionDigits = Number.isInteger(displayedPercentage)
+    ? 0
+    : STACK_PERCENTAGE_DECIMALS;
+  const columnSettings = column ? settings.column?.(column) : undefined;
+
+  return String(
+    formatValue(percentage, {
+      column,
+      number_separators: columnSettings?.number_separators,
+      number_style: "percent",
+      minimumFractionDigits,
+      maximumFractionDigits: STACK_PERCENTAGE_DECIMALS,
+    }),
+  );
+};
+
 export const buildEChartsStackLabelOptions = (
   seriesModel: SeriesModel,
   formatter: LabelFormatter | undefined,
@@ -442,16 +472,10 @@ export const buildEChartsStackLabelOptions = (
         if (percentage === undefined) {
           return "";
         }
-        const getColumnSettings = settings.column;
-        const columnSettings = getColumnSettings?.(seriesModel.column);
-
-        return String(
-          formatValue(percentage, {
-            column: seriesModel.column,
-            number_separators: columnSettings?.number_separators,
-            number_style: "percent",
-            decimals: 0,
-          }),
+        return formatStackValuePercentage(
+          percentage,
+          seriesModel.column,
+          settings,
         );
       }
 

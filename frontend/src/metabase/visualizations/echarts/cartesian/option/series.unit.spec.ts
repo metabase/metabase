@@ -1,7 +1,26 @@
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { Datum } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  createMockColumn,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
 
-import { getStackValuePercentage } from "./series";
+import { formatStackValuePercentage, getStackValuePercentage } from "./series";
+
+const column = createMockColumn({
+  name: "count",
+  display_name: "Count",
+  base_type: "type/Integer",
+});
+
+const createSettings = (
+  overrides: Partial<ComputedVisualizationSettings> = {},
+) =>
+  createMockVisualizationSettings({
+    column: () => ({ number_separators: ".," }),
+    ...overrides,
+  });
 
 describe("getStackValuePercentage", () => {
   const datum: Datum = {
@@ -40,5 +59,21 @@ describe("getStackValuePercentage", () => {
         0,
       ),
     ).toBeUndefined();
+  });
+});
+
+describe("formatStackValuePercentage", () => {
+  const settings = createSettings();
+
+  it.each([
+    [0.6, "60%"],
+    [1 / 3, "33.33%"],
+    [0.125, "12.50%"],
+    [-0.75, "-75%"],
+    [-1, "-100%"],
+  ])("formats %s as %s", (percentage, expected) => {
+    expect(formatStackValuePercentage(percentage, column, settings)).toBe(
+      expected,
+    );
   });
 });
