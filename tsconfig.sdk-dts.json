@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.sdk.json",
+  "compilerOptions": {
+    "declarationMap": false,
+    "incremental": false,
+    // Makes the build fail when a file errors. Without it tsgo prints the errors,
+    // skips the broken file, and the entry points emit anyway, so the build is green.
+    "noEmitOnError": true
+  },
+  // The dts bundler walks the import graph from the entry points, so only those
+  // and the ambient declarations need listing here.
+  "include": [
+    "enterprise/frontend/src/embedding-sdk-package/index.ts",
+    "enterprise/frontend/src/embedding-sdk-package/data-app.ts",
+    "enterprise/frontend/src/embedding-sdk-package/data-app-dev.ts",
+    "enterprise/frontend/src/embedding-sdk-package/data-app-dev.config.ts",
+    "frontend/src/types/*.d.ts",
+    "frontend/src/embedding-sdk-shared/types/*.d.ts",
+    // Registers the dayjs plugins whose module augmentations the closure needs.
+    // Nothing imports it: the SDK loads it as a side effect.
+    "frontend/src/metabase/utils/dayjs.ts"
+  ]
+}

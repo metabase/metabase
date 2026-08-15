@@ -46,6 +46,7 @@ frontend_configs: &frontend_configs
   - "rspack.embedding-sdk-package.config.js"
   - "rspack.embedding-sdk-bundle.config.js"
   - "rspack.static-viz.config.js"
+  - "tsdown*.config.ts"
   - ".nvmrc"
 
 frontend_sources: &frontend_sources
