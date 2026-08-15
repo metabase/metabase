@@ -26,7 +26,6 @@ runs:
         path: |
           ~/.m2
           ~/.gitlibs
-          .cpcache
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
         restore-keys: |
           ${{ steps.get-cache-keys.outputs.m2-restore-key }}
