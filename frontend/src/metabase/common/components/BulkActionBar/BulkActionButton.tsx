@@ -5,27 +5,29 @@ import { Button, type ButtonProps } from "metabase/ui";
 
 import S from "./BulkActionBar.module.css";
 
-export const BulkActionButton = forwardRef<HTMLButtonElement, ButtonProps>(
-  function BulkActionButton({ className, ...props }, ref) {
-    return (
-      <Button
-        {...props}
-        ref={ref}
-        classNames={{
-          root: cx(S.BulkActionButton, className),
-          label: S.BulkActionButtonLabel,
-        }}
-      />
-    );
-  },
-);
+type BulkActionButtonProps = Omit<ButtonProps, "variant"> & {
+  danger?: boolean;
+};
 
-export const BulkActionDangerButton = ({
-  className,
-  ...props
-}: ButtonProps) => (
-  <Button
-    {...props}
-    className={cx(S.BulkActionButton, S.BulkActionDangerButton, className)}
-  />
-);
+export const BulkActionButton = forwardRef<
+  HTMLButtonElement,
+  BulkActionButtonProps
+>(function BulkActionButton({ className, danger = false, ...props }, ref) {
+  return (
+    <Button
+      {...props}
+      ref={ref}
+      variant="transparent"
+      classNames={{
+        root: cx(
+          S.BulkActionButton,
+          {
+            [S.BulkActionDangerButton]: danger,
+          },
+          className,
+        ),
+        label: S.BulkActionButtonLabel,
+      }}
+    />
+  );
+});
