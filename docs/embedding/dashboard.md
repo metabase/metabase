@@ -341,9 +341,7 @@ You can let people set up [dashboard subscriptions](../dashboards/subscriptions.
 Or by passing `withSubscriptions` to a dashboard component in the SDK:
 
 ```tsx
-<MetabaseProvider authConfig={authConfig}>
-  <InteractiveDashboard dashboardId={42} withSubscriptions />
-</MetabaseProvider>
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/dashboard-subscriptions.tsx" snippet="example" %}
 ```
 
 Metabase hides the subscriptions button unless all of these are true:
@@ -377,9 +375,7 @@ To rerun a dashboard's cards on a timer, set `auto-refresh-interval` to a number
 To rerun a dashboard's cards on a timer, set `autoRefreshInterval` to a number of seconds:
 
 ```tsx
-<MetabaseProvider authConfig={authConfig}>
-  <InteractiveDashboard dashboardId={42} autoRefreshInterval={60} />
-</MetabaseProvider>
+{% include_file "{{ dirname }}/sdk/snippets/dashboards/dashboard-auto-refresh.tsx" snippet="example" %}
 ```
 
 ## Customize dashboard appearance

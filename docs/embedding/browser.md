@@ -47,13 +47,13 @@ For the full list of attributes, see [web component attributes](./browser-refere
 
 Under the hood, the `read-only` attribute decides which dashboard component people land on: a read-only browser opens dashboards for exploring, while `read-only="false"` opens them for [editing](./dashboard.md#web-component-editable-dashboard).
 
-There's no attribute for pinning the save target to a fixed collection. What people can save to comes down to [collection permissions](../permissions/collections.md). Everyone can always write to their own personal collection, so that shows up as an option even if you've not given people [curate access](../permissions/collections.md#curate-access) to any collection.
+There's no attribute for pinning the save target to a fixed collection. (In the SDK, the question components take a `targetCollection` prop that pre-selects a collection and hides the picker. See [Let people save their changes](./chart.md#let-people-save-their-changes).) What people can save to comes down to [collection permissions](../permissions/collections.md). Everyone can always write to their own personal collection, so that shows up as an option even if you've not given people [curate access](../permissions/collections.md#curate-access) to any collection.
 
 ### Add new question and new dashboard buttons
 
-The web component browser comes with **New question** and **New dashboard** buttons, both on by default. Metabase will show or hide the buttons based on whether the person can write to the collection you named in `initial-collection`.
+The web component browser comes with a **New question** button. Set `read-only="false"` and people also get a **New dashboard** button. Metabase shows or hides either button based on whether the person can write to the collection you named in `initial-collection`.
 
-Turn either one off with `with-new-question` or `with-new-dashboard`. Here, only the new question button shows:
+Both buttons are on by default, so turn either one off with `with-new-question` or `with-new-dashboard`. Here, only the new question button shows:
 
 ```html
 <metabase-browser
@@ -64,8 +64,7 @@ Turn either one off with `with-new-question` or `with-new-dashboard`. Here, only
 ></metabase-browser>
 ```
 
-- **New dashboard** only shows up when `read-only` is `false`.
-- **New question** ignores `read-only` entirely, so on a read-only browser people can still open the query builder and explore, but they won't be able to save a new question, or overwrite an existing question. The new question button also opens the query builder with every table, model, and saved question people have access to. To narrow down the list of entity types people can choose, list the entity types you want in `data-picker-entity-types`. Limiting people to [models](../data-modeling/models.md), for example, means they build on your curated data rather than on raw tables:
+**New question** ignores `read-only` entirely, so on a read-only browser people can still open the query builder and explore, but they won't be able to save a new question, or overwrite an existing question. The new question button also opens the query builder with every table, model, and saved question people have access to. To narrow down the list of entity types people can choose, list the entity types you want in `data-picker-entity-types`. Limiting people to [models](../data-modeling/models.md), for example, means they build on your curated data rather than on raw tables:
 
 ```html
 <metabase-browser
