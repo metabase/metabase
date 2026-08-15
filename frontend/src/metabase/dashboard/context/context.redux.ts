@@ -44,11 +44,11 @@ import {
 import {
   createNewTab,
   deleteTab,
-  duplicateTab,
   moveTab,
   renameTab,
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
+import { duplicateTab } from "metabase/dashboard/actions/tabs-thunks";
 import { connect } from "metabase/redux";
 import {
   initialize,

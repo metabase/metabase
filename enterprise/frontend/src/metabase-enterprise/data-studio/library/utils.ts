@@ -7,7 +7,7 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "metabase/common/components/Pickers/EntityPicker/types";
-import { allCollectionModels } from "metabase/common/components/Pickers/EntityPicker/utils";
+import { allCollectionModels } from "metabase/common/components/Pickers/utils";
 import type {
   GetEntityPickerSyntheticLibraryItemFunction,
   LibrarySubCollectionType,

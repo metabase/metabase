@@ -2,11 +2,14 @@ import { assocIn } from "icepick";
 
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import type {
+  Card,
+  Dataset,
+  DatasetQuery,
   RawSeries,
   Series,
   VisualizationDisplay,
+  VisualizationSettings,
 } from "metabase-types/api";
-import type { Card, VisualizationSettings } from "metabase-types/api/card";
 
 export const updateSeriesColor = (
   settings: VisualizationSettings,
@@ -29,11 +32,24 @@ export const getSeriesWithDisplay = (
     card: { ...series.card, display },
   }));
 
+// The split series of a visualizer card get synthetic negative card ids, so they can't collide with real card ids.
+// The id encodes the series position.
+export function getVisualizerSeriesCardId(seriesIndex: number) {
+  return -(seriesIndex + 1);
+}
+
+export function getVisualizerSeriesCardIndex(cardId?: number) {
+  if (!cardId) {
+    return 0;
+  }
+  return -cardId - 1;
+}
+
 export const createRawSeries = (options: {
   card: Card;
-  queryResult: any;
-  datasetQuery?: any;
-}): Series => {
+  queryResult: Dataset | null;
+  datasetQuery?: DatasetQuery | null;
+}): Series | null => {
   const { card, queryResult, datasetQuery } = options;
 
   // we want to provide the visualization with a card containing the latest
