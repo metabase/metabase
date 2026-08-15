@@ -8,6 +8,8 @@ import {
 } from "react";
 import _ from "underscore";
 
+import { isEditableElement } from "metabase/utils/dom";
+
 import type { CellId, DataGridSelection, ScrollToDestinations } from "../types";
 import { formatCellValueForCopy } from "../utils/formatting";
 
@@ -327,6 +329,12 @@ export const useCellSelection = ({
     }
 
     const handleWindowKeyDown = (e: KeyboardEvent) => {
+      // Don't hijack keys while the user is typing elsewhere (e.g. a filter
+      // value input): let the focused field handle caret movement, copy, etc.
+      if (isEditableElement(e.target)) {
+        return;
+      }
+
       let handled = false;
 
       switch (e.key) {
