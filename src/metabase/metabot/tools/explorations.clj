@@ -1,14 +1,18 @@
 (ns metabase.metabot.tools.explorations
   "Exploration-specific tool wrappers.
 
-  Every tool here returns `{:output <json-string>}`: the exploration chat FE applies plan edits
-  by parsing the tool result it sees on the `tool-output-available` stream event, and only a
-  result's `:output` string makes it onto the wire (see
-  `metabase.metabot.self.core/tool-output->wire-output`) — a bare map would reach the LLM but
-  stream to the client as an empty string, and the plan would silently never update."
+  A tool result's `:output` is the one string that goes to *both* the LLM and the client,
+  so the small plan edits the FE applies by parsing the tool result — `remove_from_research_plan`, `set_research_name`,
+  `select_research_timelines` — return `{:output <json-string>}`; a bare map would reach the LLM
+  but stream to the client as an empty string, and the plan would silently never update.
+
+  `add_research_groups` is the exception: its picker hydration is far too large to spend LLM
+  context on and grows with the metrics a group pulls in, so it rides a `research_plan_update`
+  data part (FE only) while `:output` carries a plain-text summary."
   (:require
    [clojure.string :as str]
    [metabase.explorations.core :as explorations]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.util.json :as json]
@@ -117,6 +121,59 @@
     :else
     {:output (json/encode (explorations/research-candidates {:metric-ids metric_ids :q q}))}))
 
+(defn- research-groups-payload
+  "Validate `groups` and hydrate the FE picker payload for them, in the snake_case shape the
+   client consumes."
+  [groups]
+  (explorations/exploration-data->api (explorations/research-groups {:groups groups})))
+
+(def ^:private summary-max-names
+  "How many member names one summary line spells out before falling back to a count. A
+   dimension-anchored group can pull in every metric sharing the dimension, and the summary is
+   the whole of what the LLM sees of the result."
+  15)
+
+(defn- summarize-names [names]
+  (let [extra (- (count names) summary-max-names)]
+    (if (pos? extra)
+      (str (str/join ", " (take summary-max-names names)) " and " extra " more")
+      (str/join ", " names))))
+
+(defn- format-added-groups
+  "Plain-text summary of the groups `add_research_groups` just applied — the whole of what the
+   LLM sees of the result, since the picker hydration rides a data part instead. Names what the
+   user now has in the plan so the agent can describe it without re-reading the catalog; ids are
+   deliberately absent, as the next turn's plan snapshot carries
+   the `block_id`s needed to edit these groups."
+  [{:keys [metrics dimension_groups groups]}]
+  (let [metric-name (into {} (map (juxt :id :name)) metrics)
+        group-idx   (into {} (for [[i g] (map-indexed vector dimension_groups)
+                                   d     (:dimensions g)]
+                               [(:id d) i]))
+        group-name  (comp (mapv :name dimension_groups) group-idx)
+        sliced-by   (fn [dimension-id]
+                      (let [i (group-idx dimension-id)]
+                        (into [] (comp (filter #(some (fn [d] (= i (group-idx d)))
+                                                      (:dimension_ids %)))
+                                       (map :name))
+                              metrics)))]
+    (te/lines
+     (str "Added " (count groups) " group(s) to the research plan:")
+     (for [g groups]
+       (case (:anchor g)
+         "metric"
+         (let [dims (seq (keep group-name (:dimension_ids g)))]
+           (str "- " (metric-name (:metric_id g))
+                (cond
+                  (and dims (:replace_default_dimensions g)) (str ", by exactly: " (summarize-names dims))
+                  dims (str ", by: " (summarize-names dims) ", plus the automatic selection")
+                  :else ", by the automatically-selected dimensions")))
+         "dimension"
+         (str "- by " (group-name (:dimension_id g)) ": "
+              (summarize-names (if-let [mids (seq (:metric_ids g))]
+                                 (keep metric-name mids)
+                                 (sliced-by (:dimension_id g))))))))))
+
 (def ^:private add-research-groups-schema
   [:map {:closed true}
    [:groups
@@ -145,8 +202,9 @@
      of metrics by one dimension — it reads as one \"by <dimension>\" block rather than several
      loose metrics."
   [{:keys [groups]} :- add-research-groups-schema]
-  {:output (json/encode (explorations/exploration-data->api
-                         (explorations/research-groups {:groups groups})))})
+  (let [payload (research-groups-payload groups)]
+    {:output     (format-added-groups payload)
+     :data-parts [(streaming/research-plan-update-part payload)]}))
 
 (def ^:private remove-from-research-plan-schema
   [:map {:closed true}

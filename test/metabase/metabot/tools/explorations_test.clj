@@ -5,6 +5,7 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.core :as metabot.self]
    [metabase.metabot.tools.explorations :as tools.explorations]
@@ -57,6 +58,48 @@
       (is (str/includes? output "at most 20"))
       (is (str/includes? output "got 21")))))
 
+;;; ------------------------------------ add_research_groups ------------------------------------
+
+(defn- picker-payload
+  "An `add_research_groups` result: `n-metrics` metrics, all sliceable by one dimension group."
+  [n-metrics]
+  {:metrics (vec (for [i (range n-metrics)]
+                   {:id i :name (str "Metric " i) :dimension_ids [(str "d" i)]}))
+   :dimension_groups [{:name "Orders - Region"
+                       :dimensions (vec (for [i (range n-metrics)] {:id (str "d" i)}))}]
+   :groups []})
+
+(deftest add-research-groups-keeps-the-payload-off-the-llm-wire-test
+  (testing "the picker hydration rides a data part the FE consumes; the LLM only sees a summary"
+    (let [payload (assoc (picker-payload 2)
+                         :groups [{:anchor "metric" :metric_id 0 :dimension_ids ["d0"]}
+                                  {:anchor "dimension" :dimension_id "d1"}])]
+      (with-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
+        (let [{:keys [output data-parts]} (tools.explorations/add-research-groups-tool
+                                           {:groups (:groups payload)})]
+          (testing "the payload is on the data part, not in :output"
+            (is (= [{:type :data :data-type "research_plan_update" :data payload}] data-parts)))
+          (testing ":output is prose naming what the user got, not the payload"
+            (is (= (str "Added 2 group(s) to the research plan:\n"
+                        "- Metric 0, by: Orders - Region, plus the automatic selection\n"
+                        "- by Orders - Region: Metric 0, Metric 1")
+                   output))))))))
+
+(deftest add-research-groups-summary-is-bounded-test
+  (testing "a dimension anchor naming no metrics covers every related one, so the summary counts
+            the tail instead of listing it — :output is the agent's context, not a report"
+    (let [summary-for (fn [n-metrics]
+                        (let [payload (assoc (picker-payload n-metrics)
+                                             :groups [{:anchor "dimension" :dimension_id "d0"}])]
+                          (with-redefs [tools.explorations/research-groups-payload (fn [_] payload)]
+                            (:output (tools.explorations/add-research-groups-tool
+                                      {:groups (:groups payload)})))))
+          fifty       (summary-for 50)]
+      (testing "the tail past the first `summary-max-names` members is counted, not listed"
+        (is (str/includes? fifty "and 35 more")))
+      (testing "so a 10x larger group costs only the extra digits in that count"
+        (is (> 5 (- (count (summary-for 500)) (count fifty))))))))
+
 (deftest ^:parallel remove-from-research-plan-tool-test
   (testing "echoes the block ids the agent asked to remove (pure-echo; the FE applies them)"
     (is (= {:block_ids ["metric:42" "dim:7"] :members nil :timeline_ids nil}
@@ -94,10 +137,28 @@
                      events)]
     (some-> (:output event) json/decode+kw)))
 
+(deftest ^:parallel research-plan-update-part-reaches-the-wire-test
+  (testing (str "add_research_groups' picker payload is the plan edit, and it now travels as a "
+                "data part rather than in :output — if it never reached the client the plan would "
+                "silently never update, the same failure the :output tools guard against below")
+    (let [payload {:metrics [{:id 1}] :dimension_groups [] :groups []}
+          events  (into [] (comp streaming/expand-data-parts-xf (metabot.self/parts->aisdk-sse-xf))
+                        [{:type :start :id "s1"}
+                         {:type   :tool-output :id "tc1"
+                          :result {:output     "Added 1 group(s) to the research plan:"
+                                   :data-parts [(streaming/research-plan-update-part payload)]}}])
+          event   (some #(when (str/includes? % "\"data-research_plan_update\"")
+                           (json/decode+kw (str/replace-first % "data: " "")))
+                        events)]
+      (is (some? event) "a data-research_plan_update event is streamed")
+      (is (= [{:id 1}] (get-in event [:data :metrics])))
+      (testing "stamped with the tool call it came from, so the client can attribute it"
+        (is (= "tc1" (get-in event [:data :tool_call_id])))))))
+
 (deftest ^:parallel plan-tool-results-reach-the-wire-test
-  (testing (str "the exploration chat FE applies plan edits by parsing the streamed tool result; "
-                "only a result's :output string makes it onto tool-output-available, so a bare-map "
-                "result would stream as \"\" and the plan would silently never update")
+  (testing (str "the exploration chat FE applies the smaller plan edits by parsing the streamed "
+                "tool result; only a result's :output string makes it onto tool-output-available, "
+                "so a bare-map result would stream as \"\" and the plan would silently never update")
     (testing "set_research_name"
       (is (= {:name "Quarterly revenue"}
              (streamed-tool-output

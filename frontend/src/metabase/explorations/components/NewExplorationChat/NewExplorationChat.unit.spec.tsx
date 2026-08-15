@@ -11,6 +11,7 @@ import {
 import { makeMockSelection } from "metabase/explorations/test-utils";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type {
+  MetabotAgentDataPartMessage,
   MetabotChatMessage,
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
@@ -149,13 +150,14 @@ const addResearchGroupsResponse: AddResearchGroupsResponse = {
   ],
 };
 
-const addResearchGroupsToolCallMessage: MetabotDebugToolCallMessage = {
-  id: "tool-call-2",
+const researchPlanUpdateMessage: MetabotAgentDataPartMessage = {
+  id: "data-part-2",
   role: "agent",
-  type: "tool_call",
-  name: "add_research_groups",
-  status: "ended",
-  result: JSON.stringify(addResearchGroupsResponse),
+  type: "data_part",
+  part: {
+    type: "data-research_plan_update",
+    data: addResearchGroupsResponse,
+  },
 };
 
 const setNameToolCallMessage: MetabotDebugToolCallMessage = {
@@ -303,7 +305,7 @@ describe("NewExplorationChat", () => {
     });
   });
 
-  it("adds metric- and dimension-anchored groups from an add_research_groups tool call response", async () => {
+  it("adds metric- and dimension-anchored groups from a research_plan_update data part", async () => {
     const { selection, rerender } = setup();
 
     rerender({
@@ -311,11 +313,7 @@ describe("NewExplorationChat", () => {
       isDoingScience: true,
     });
     rerender({
-      messages: [
-        userMessage,
-        searchToolCallMessage,
-        addResearchGroupsToolCallMessage,
-      ],
+      messages: [userMessage, searchToolCallMessage, researchPlanUpdateMessage],
       isDoingScience: true,
     });
 
@@ -326,7 +324,7 @@ describe("NewExplorationChat", () => {
       messages: [
         userMessage,
         searchToolCallMessage,
-        addResearchGroupsToolCallMessage,
+        researchPlanUpdateMessage,
         agentMessage,
       ],
       isDoingScience: false,
@@ -375,25 +373,28 @@ describe("NewExplorationChat", () => {
   it("forwards replace_default_dimensions and metric_ids to the selection mutators", async () => {
     const { selection, rerender } = setup();
 
-    const message: MetabotDebugToolCallMessage = {
-      ...addResearchGroupsToolCallMessage,
-      id: "tool-call-replace",
-      result: JSON.stringify({
-        ...addResearchGroupsResponse,
-        groups: [
-          {
-            anchor: "metric",
-            metric_id: metricRevenue.id,
-            dimension_ids: [revenueDateDimension.id],
-            replace_default_dimensions: true,
-          },
-          {
-            anchor: "dimension",
-            dimension_id: customerSegmentDimension.id,
-            metric_ids: [metricRevenue.id],
-          },
-        ],
-      }),
+    const message: MetabotAgentDataPartMessage = {
+      ...researchPlanUpdateMessage,
+      id: "data-part-replace",
+      part: {
+        type: "data-research_plan_update",
+        data: {
+          ...addResearchGroupsResponse,
+          groups: [
+            {
+              anchor: "metric",
+              metric_id: metricRevenue.id,
+              dimension_ids: [revenueDateDimension.id],
+              replace_default_dimensions: true,
+            },
+            {
+              anchor: "dimension",
+              dimension_id: customerSegmentDimension.id,
+              metric_ids: [metricRevenue.id],
+            },
+          ],
+        },
+      },
     };
 
     rerender({ messages: [userMessage, message], isDoingScience: true });

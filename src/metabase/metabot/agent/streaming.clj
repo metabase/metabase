@@ -23,6 +23,7 @@
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 (def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
 (def tool-title-type "AI-SDK data type for a tool call's settled display title." "tool_title")
+(def research-plan-update-type "AI-SDK data type for a Research plan edit's picker hydration." "research_plan_update")
 
 (def ^:private ephemeral-data-types
   "Data types not written to MetabotMessage.data."
@@ -156,6 +157,17 @@
   [value]
   {:type :data
    :data-type search-results-type
+   :data value})
+
+(defn research-plan-update-part
+  "Data part carrying the picker hydration for a Research plan edit — the metrics and
+  dimension groups the FE needs to turn the agent's chosen groups into picker blocks.
+  It rides here rather than in the tool's `:output` because the LLM only needs to know
+  the edit happened, while the payload is large and grows with the metrics a group
+  pulls in."
+  [value]
+  {:type :data
+   :data-type research-plan-update-type
    :data value})
 
 (defn tool-title-part
