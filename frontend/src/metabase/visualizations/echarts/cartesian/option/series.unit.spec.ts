@@ -6,7 +6,11 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { formatStackValuePercentage, getStackValuePercentage } from "./series";
+import {
+  formatStackTotalLabel,
+  formatStackValuePercentage,
+  getStackValuePercentage,
+} from "./series";
 
 const column = createMockColumn({
   name: "count",
@@ -76,4 +80,59 @@ describe("formatStackValuePercentage", () => {
       expected,
     );
   });
+});
+
+describe("formatStackTotalLabel", () => {
+  const rawValueFormatter = (value: unknown) => `raw:${value}`;
+
+  it.each([
+    [100, "100%"],
+    [-40, "-100%"],
+  ])(
+    "formats a %s stack total as a signed percentage when showing both",
+    (stackValue, expected) => {
+      const settings = createSettings({
+        "graph.show_stack_values": "all",
+        "graph.stack_value_format": "percentage",
+      });
+
+      expect(
+        formatStackTotalLabel(
+          stackValue,
+          stackValue,
+          column,
+          rawValueFormatter,
+          settings,
+        ),
+      ).toBe(expected);
+    },
+  );
+
+  it("does not display a percentage for a zero total", () => {
+    const settings = createSettings({
+      "graph.show_stack_values": "all",
+      "graph.stack_value_format": "percentage",
+    });
+
+    expect(
+      formatStackTotalLabel(0, 0, column, rawValueFormatter, settings),
+    ).toBe("");
+  });
+
+  it.each([
+    ["all", "value"],
+    ["total", "percentage"],
+  ] as const)(
+    "keeps the raw total for show_stack_values=%s and stack_value_format=%s",
+    (showStackValues, stackValueFormat) => {
+      const settings = createSettings({
+        "graph.show_stack_values": showStackValues,
+        "graph.stack_value_format": stackValueFormat,
+      });
+
+      expect(
+        formatStackTotalLabel(100, 42, column, rawValueFormatter, settings),
+      ).toBe("raw:42");
+    },
+  );
 });

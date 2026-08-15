@@ -425,6 +425,31 @@ export const formatStackValuePercentage = (
   );
 };
 
+export const formatStackTotalLabel = (
+  stackValue: number,
+  transformedStackValue: number,
+  column: DatasetColumn | undefined,
+  formatter: LabelFormatter,
+  settings: ComputedVisualizationSettings,
+) => {
+  const showPercentages =
+    settings["graph.show_stack_values"] === "all" &&
+    settings["graph.stack_value_format"] === "percentage";
+
+  if (!showPercentages) {
+    return formatter(transformedStackValue);
+  }
+
+  if (stackValue === 0) {
+    return "";
+  }
+
+  const percentage = getPercent(stackValue, stackValue);
+  return percentage === undefined
+    ? ""
+    : formatStackValuePercentage(percentage, column, settings);
+};
+
 export const buildEChartsStackLabelOptions = (
   seriesModel: SeriesModel,
   formatter: LabelFormatter | undefined,
@@ -813,6 +838,7 @@ function getStackedDataLabelFormatter(
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   signKey: StackTotalDataKey,
   stackDataKeys: DataKey[],
+  stackColumn: DatasetColumn | undefined,
   stackName: string | undefined,
   formatter: LabelFormatter,
   chartDataDensity: ComboChartDataDensity,
@@ -842,7 +868,13 @@ function getStackedDataLabelFormatter(
       return "";
     }
 
-    return formatter(yAxisScaleTransforms.fromEChartsAxisValue(stackValue));
+    return formatStackTotalLabel(
+      stackValue,
+      yAxisScaleTransforms.fromEChartsAxisValue(stackValue),
+      stackColumn,
+      formatter,
+      settings,
+    );
   };
 }
 
@@ -938,6 +970,7 @@ export const getStackTotalsSeries = (
       .map((s) => s.id)
       .filter(isNotNull) as string[];
     const firstSeriesInStack = seriesOptions[0];
+    const stackColumn = chartModel.columnByDataKey[stackDataKeys[0]];
 
     const labelFormatter = firstSeriesInStack.stack
       ? chartModel.stackedLabelsFormatters?.[
@@ -960,6 +993,7 @@ export const getStackTotalsSeries = (
             yAxisScaleTransforms,
             POSITIVE_STACK_TOTAL_DATA_KEY,
             stackDataKeys,
+            stackColumn,
             firstSeriesInStack.stack,
             labelFormatter,
             chartModel.dataDensity,
@@ -978,6 +1012,7 @@ export const getStackTotalsSeries = (
             yAxisScaleTransforms,
             NEGATIVE_STACK_TOTAL_DATA_KEY,
             stackDataKeys,
+            stackColumn,
             firstSeriesInStack.stack,
             labelFormatter,
             chartModel.dataDensity,
