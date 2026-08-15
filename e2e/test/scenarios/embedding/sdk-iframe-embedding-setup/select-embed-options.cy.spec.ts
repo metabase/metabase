@@ -703,7 +703,7 @@ describe(suiteTitle, () => {
       cy.findByTestId("behavior-docs-link").should("be.visible");
       cy.findByTestId("behavior-docs-link")
         .should("have.attr", "href")
-        .and("include", "embedding/components.html#question");
+        .and("include", "embedding/question-reference");
 
       cy.findByText("Back").click();
 

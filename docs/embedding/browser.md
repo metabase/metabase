@@ -11,7 +11,7 @@ redirect_from:
 
 ![Collection browser embedded with the metabase-browser web component](./images/embedded-collection-browser.png)
 
-The collection browser allows people to navigate through collections they have permission to view.
+The collection browser lets people navigate through collections they have permission to view.
 
 There are two ways to embed a collection browser:
 

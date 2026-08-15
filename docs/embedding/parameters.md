@@ -186,4 +186,3 @@ To hide a filter from the dashboard's UI, use the [`hidden-parameters`](./dashbo
 Hiding a filter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser.
 
 To control a value that people can't see or change, use a [locked parameter](./guest-embedding.md#locked-parameters) on a guest embed, or [data permissions](../permissions/embedding.md) on an SSO embed.
-

@@ -26,7 +26,7 @@ A view-only (a.k.a. "static") dashboard displays results without letting people 
 - [Web component](#web-component-view-only-dashboard)
 - [React SDK](#react-sdk-view-only-dashboard)
 
-Something to call out: view-only isn't tied to one kind of embed:
+View-only isn't tied to one kind of embed:
 
 - **[Guest embeds](./introduction.md#guest-embedding)**: always view-only. Nobody logs in to a guest embed, so Metabase has no account to check permissions against.
 - **[SSO embeds](./introduction.md#sso-embeds)**: interactive out of the box. To make one view-only, turn off drill-through with `drills="false"` (web component), or use `StaticDashboard` instead of `InteractiveDashboard` (SDK).
@@ -187,7 +187,7 @@ Editing requires SSO. Nobody logs in to a guest embed, so Metabase has no accoun
 
 Whoever's editing needs [curate access](../permissions/collections.md#curate-access) to the collection the dashboard lives in. Dashboards in the [usage analytics](../usage-and-performance-tools/usage-analytics.md) collection are the exception: they're always read-only, whatever the permissions say.
 
-[Tenant](./tenants.md) users can only be granted **View** access to the shared collections you publish to every tenant, so they can never edit those dashboards. They can edit dashboards in their own tenant collection.
+People in a [tenant](./tenants.md) can only be granted **View** access to the shared collections you publish to every tenant, so they can never edit those dashboards. They can edit dashboards in their own tenant collection.
 
 If the dashboard renders but the edit pencil doesn't appear, the person viewing it lacks write access to that dashboard---check the `can_write` field on `GET /api/dashboard/:id` as that user.
 
@@ -227,11 +227,11 @@ For the full list of props, see [`EditableDashboard` props](./dashboard-referenc
 
 ## Let people create dashboards
 
-### Web components
+### Create dashboards with web components
 
 There's no attribute that creates a dashboard on its own. Set `read-only="false"` on the [collection browser](./browser.md#add-new-question-and-new-dashboard-buttons), and people get a **New dashboard** button. Metabase suggests whichever collection the person is browsing as the place to save it, and the new dashboard opens ready to edit.
 
-### React SDK
+### Create dashboards with the React SDK
 
 You can let people create new dashboards from your app with either the `useCreateDashboardApi` hook or the `CreateDashboardModal` component. Both create an empty dashboard, which you'd typically hand to `EditableDashboard` so people can fill it in.
 
@@ -361,7 +361,7 @@ Subscriptions sent from an embedded dashboard exclude links to Metabase items.
 
 Each refresh re-queries your database, so pick an interval your database can keep up with.
 
-### Web components
+### Refresh with web components
 
 To rerun a dashboard's cards on a timer, set `auto-refresh-interval` to a number of seconds:
 
@@ -372,7 +372,7 @@ To rerun a dashboard's cards on a timer, set `auto-refresh-interval` to a number
 ></metabase-dashboard>
 ```
 
-### React SDK
+### Refresh with the React SDK
 
 To rerun a dashboard's cards on a timer, set `autoRefreshInterval` to a number of seconds:
 
