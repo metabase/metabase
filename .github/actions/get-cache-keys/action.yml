@@ -1,7 +1,10 @@
 name: Get cache keys
 description: |
   Get deterministic cache keys for Maven and Node.js caches based on the centrally controlled cache prefix,
-  and the suffix based on the runner OS and the current week of the year.
+  the runner OS, and a hash of the files that define the dependency set.
+
+  Two branches with the same dependency files share one cache entry; when their dependencies diverge they
+  get separate entries. No branch or release line is named anywhere.
 
 outputs:
   m2-cache-key:
@@ -29,16 +32,23 @@ runs:
     - name: Generate and output cache keys
       id: keys-factory
       run: |
-        M2_CACHE_PREFIX='M2'
-        NODE_CACHE_PREFIX='node-modules'
+        M2_CACHE_PREFIX='M2-${{ runner.os }}'
+        NODE_CACHE_PREFIX='node-modules-${{ runner.os }}'
         ESLINT_CACHE_PREFIX='eslint'
         CYPRESS_CACHE_PREFIX='cypress'
+        DEPS_HASH='${{ hashFiles('deps.edn', 'modules/drivers/*/deps.edn') }}'
+        NODE_HASH='${{ hashFiles('bun.lock') }}'
         WEEK_OF_YEAR=$(/bin/date "+%G-%V")
         CACHE_SUFFIX="${{ runner.os }}-$WEEK_OF_YEAR"
 
-        echo "m2-cache-key=$M2_CACHE_PREFIX-$CACHE_SUFFIX" >> "$GITHUB_OUTPUT"
+        if [ -z "$DEPS_HASH" ] || [ -z "$NODE_HASH" ]; then
+          echo "::error::hashFiles matched no dependency files; refusing to emit a key that would collide across dependency sets"
+          exit 1
+        fi
+
+        echo "m2-cache-key=$M2_CACHE_PREFIX-$DEPS_HASH" >> "$GITHUB_OUTPUT"
         echo "m2-restore-key=$M2_CACHE_PREFIX-" >> "$GITHUB_OUTPUT"
-        echo "node-cache-key=$NODE_CACHE_PREFIX-$CACHE_SUFFIX" >> "$GITHUB_OUTPUT"
+        echo "node-cache-key=$NODE_CACHE_PREFIX-$NODE_HASH" >> "$GITHUB_OUTPUT"
         echo "node-restore-key=$NODE_CACHE_PREFIX-" >> "$GITHUB_OUTPUT"
         echo "eslint-cache-key=$ESLINT_CACHE_PREFIX-$CACHE_SUFFIX" >> "$GITHUB_OUTPUT"
         echo "cypress-cache-key=$CYPRESS_CACHE_PREFIX-$CACHE_SUFFIX" >> "$GITHUB_OUTPUT"

@@ -4,6 +4,9 @@ description: |
   If a cache entry already exists for the given key, it is first removed.
   This ensures immutability of cache entries, and prevents runtime errors.
 
+  The delete is scoped to the current ref. Without `ref`, the API deletes every entry matching the key
+  across all refs, so a run on one branch would evict another branch's cache.
+
 inputs:
   path:
     description: "The path(s) to cache, separated by newlines."
@@ -30,7 +33,7 @@ runs:
           --method DELETE \
           -H "Accept: application/vnd.github+json" \
           -H "X-GitHub-Api-Version: 2022-11-28" \
-          /repos/${{ github.repository }}/actions/caches?key=${{ inputs.key }}
+          "/repos/${{ github.repository }}/actions/caches?key=${{ inputs.key }}&ref=${{ github.ref }}"
       env:
         GH_TOKEN: ${{ github.token }}
       shell: bash
