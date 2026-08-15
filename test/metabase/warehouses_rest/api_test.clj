@@ -1785,24 +1785,28 @@
 (deftest can-rescan-fieldvalues-for-a-db
   (testing "Can we RESCAN all the FieldValues for a DB?"
     (mt/with-premium-features #{:audit-app}
-      (let [update-field-values-called? (promise)]
-        (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
-          ;; Rescan synchronously so it doesn't queue behind other tasks on the 1-thread executor.
-          (with-redefs [api.database/*rescan-values-async* false]
-            (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [synced-db]
-                                                                                 (when (= (u/the-id synced-db) (u/the-id db))
-                                                                                   (deliver update-field-values-called? :sync-called)))]
-              (snowplow-test/with-fake-snowplow-collector
-                (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
-                (is (= :sync-called
-                       (deref update-field-values-called? long-timeout :sync-never-called)))
-                (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
-                (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
-                                    :details :id)))
-                (testing "triggers snowplow event"
-                  (is (=?
-                       {"event" "database_manual_scan", "target_id" (u/the-id db)}
-                       (:data (last (snowplow-test/pop-event-data-and-user-id!))))))))))))))
+      (let [update-field-values-called? (promise)
+            ;; Isolated pool, for the same reasons as in `sync-schema-executes-when-executor-busy-test`.
+            pool                        (Executors/newSingleThreadExecutor)]
+        (try
+          (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
+            (with-redefs [quick-task/executor (delay pool)]
+              (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [synced-db]
+                                                                                   (when (= (u/the-id synced-db) (u/the-id db))
+                                                                                     (deliver update-field-values-called? :sync-called)))]
+                (snowplow-test/with-fake-snowplow-collector
+                  (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
+                  (is (= :sync-called
+                         (deref update-field-values-called? long-timeout :sync-never-called)))
+                  (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
+                  (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
+                                      :details :id)))
+                  (testing "triggers snowplow event"
+                    (is (=?
+                         {"event" "database_manual_scan", "target_id" (u/the-id db)}
+                         (:data (last (snowplow-test/pop-event-data-and-user-id!))))))))))
+          (finally
+            (.shutdownNow pool)))))))
 
 (deftest ^:parallel nonadmins-cant-trigger-rescan-test
   (testing "Non-admins should not be allowed to trigger re-scan"
