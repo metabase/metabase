@@ -47,18 +47,17 @@
 (defn- modules-config-zipper
   "Return a zipper pointing to the modules config map node (the value of the `:metabase/modules` key)."
   []
-  (with-open [r (clojure.lang.LineNumberingPushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
-    (let [node               (r.parser/parse-all r)
-          forms-zloc         (z/of-node node)
-          top-level-map-zloc (z/find forms-zloc (fn [zloc]
-                                                  (= (z/tag zloc) :map)))
-          modules-key-zloc   (-> (z/down top-level-map-zloc)
-                                 (z/find (fn [zloc]
-                                           (and (n/keyword-node? (z/node zloc))
-                                                (= (z/sexpr zloc) :metabase/modules)))))
-          config-zloc       (z/find-next modules-key-zloc (fn [zloc]
-                                                            (= (z/tag zloc) :map)))]
-      config-zloc)))
+  (let [node               (r.parser/parse-file-all ".clj-kondo/config/modules/config.edn")
+        forms-zloc         (z/of-node node)
+        top-level-map-zloc (z/find forms-zloc (fn [zloc]
+                                                (= (z/tag zloc) :map)))
+        modules-key-zloc   (-> (z/down top-level-map-zloc)
+                               (z/find (fn [zloc]
+                                         (and (n/keyword-node? (z/node zloc))
+                                              (= (z/sexpr zloc) :metabase/modules)))))
+        config-zloc       (z/find-next modules-key-zloc (fn [zloc]
+                                                          (= (z/tag zloc) :map)))]
+    config-zloc))
 
 (defn- module-names-in-file-order
   "Get the list of modules names as they appear in the config file."
@@ -195,7 +194,7 @@
     (let [ownership    (dev.deps-graph/model-ownership)
           known-models (set (keys ownership))
           config       (modules-config)
-          violations   (dev.deps-graph/model-boundary-violations (dev.deps-graph/kondo-config))]
+          violations   (dev.deps-graph/model-boundary-violations (dev.deps-graph/kondo-config) ownership)]
       (testing "No model boundary violations"
         (doseq [{:keys [file module model defining-module violation-type]} violations]
           (testing (format "\n%s (module %s) references %s (defined in %s) — %s violation"
