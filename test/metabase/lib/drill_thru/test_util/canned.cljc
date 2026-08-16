@@ -1,6 +1,7 @@
 (ns metabase.lib.drill-thru.test-util.canned
   (:require
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   #?@(:clj [[metabase.test.util :as tu]]
+       :cljs [[metabase.test-runner.assert-exprs.approximately-equal]])
    [clojure.test :refer [is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -416,10 +417,11 @@
    (doseq [[tc context click-details] clicks
            :let [exp? (pred tc context click-details)]
            :when (not= exp? ::skip)]
-     (testing (str "Should " (when-not exp? "not ") "return " drill " when:"
-                   "\nTest case = \n" (u/pprint-to-str tc)
-                   "\nContext = \n"   (u/pprint-to-str context)
-                   "\nClick = \n"     (u/pprint-to-str click))
+     (testing (#?(:clj tu/deferred-str :cljs do)
+               (str "Should " (when-not exp? "not ") "return " drill " when:"
+                    "\nTest case = \n" (u/pprint-to-str tc)
+                    "\nContext = \n"   (u/pprint-to-str context)
+                    "\nClick = \n"     (u/pprint-to-str click)))
        (is (=? (when exp?
                  {:type drill})
                (returned tc context drill)))))))
