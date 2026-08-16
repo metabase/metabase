@@ -1,8 +1,26 @@
 import type { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import type {
-  LegacyStaticEmbeddingModalProps,
-  SdkIframeEmbedSetupModalInitialState,
-} from "metabase/plugins/oss/embedding-iframe-sdk-setup";
+import type { DashboardId } from "metabase-types/api";
+
+export type SdkIframeEmbedSetupModalInitialState = {
+  resourceType?: string | null;
+  resourceId?: string | number | null;
+  isGuest?: boolean;
+  useExistingUserSession?: boolean;
+};
+
+export type SdkIframeEmbedSetupExperience =
+  | "dashboard"
+  | "chart"
+  | "exploration"
+  | "browser"
+  | "metabot";
+
+export type LegacyStaticEmbeddingModalProps = {
+  experience: SdkIframeEmbedSetupExperience;
+  dashboardId?: DashboardId | null;
+  questionId?: string | number | null;
+  parentInitialState: SdkIframeEmbedSetupModalInitialState;
+};
 
 export type ModalName =
   | null

@@ -14,7 +14,7 @@ import type {
 
 export type { SdkIframeEmbedSetupTheme } from "metabase-types/api";
 
-export type { SdkIframeEmbedSetupExperience } from "metabase/plugins/oss/embedding-iframe-sdk-setup";
+export type { SdkIframeEmbedSetupExperience } from "metabase/redux/store/modal";
 
 export type SdkIframeEmbedSetupStep =
   | "select-embed-experience"

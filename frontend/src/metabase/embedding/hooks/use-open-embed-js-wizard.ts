@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/redux/store/modal";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 
 export const useOpenEmbedJsWizard = ({

@@ -12,9 +12,14 @@ import { createAction } from "redux-actions";
 import { userApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { checkNotNull } from "metabase/utils/types";
-import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
+import type {
+  ParameterId,
+  ParameterValueOrArray,
+  User,
+} from "metabase-types/api";
+
+import type { State } from "./store";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
 export const setUIControls = createAction(SET_UI_CONTROLS);
@@ -182,10 +187,13 @@ export const TOGGLE_TEMPLATE_TAGS_EDITOR =
   "metabase/qb/TOGGLE_TEMPLATE_TAGS_EDITOR";
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
 
+const selectCurrentUser: (state: State) => { data?: User } =
+  userApi.endpoints.getCurrentUser.select();
+
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
   return async (dispatch, getState) => {
-    const user = checkNotNull(getUser(getState()));
+    const user = checkNotNull(selectCurrentUser(getState()).data);
     await runRtkEndpoint(
       user.id,
       dispatch,

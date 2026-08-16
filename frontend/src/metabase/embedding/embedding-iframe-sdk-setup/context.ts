@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react";
 
 import type { EmbeddingParametersValues } from "metabase/embedding/types";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/redux/store/modal";
 import type {
   Card,
   Dashboard,
