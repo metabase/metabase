@@ -75,6 +75,7 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare-node-bun
       - name: Upload affected tests stats
         # On push (merge to master) there is no PR context, so fall back to the
         # commit SHAs and a 0 PR number.
@@ -84,8 +85,9 @@ jobs:
           PR_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || 0 }}
           HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-          API_KEY: ${{ secrets.STATS_API_KEY }}
-        run: node .github/scripts/upload-affected-tests-stats.js
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+        run: bun .github/scripts/upload-affected-tests-stats.ts
 
   uberjar:
     needs: [create-test-plan]
