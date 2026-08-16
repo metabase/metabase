@@ -15,7 +15,7 @@ async function main() {
     },
   ];
 
-  await importStats({ table: "emotion_files", rows });
+  await importStats({ table: "emotion_stats", rows });
   console.log("Data uploaded successfully");
 }
 
