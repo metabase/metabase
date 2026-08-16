@@ -20,6 +20,12 @@ export type {
 export { useHover, useElementSize } from "@mantine/hooks";
 
 export * from "./components";
+export {
+  ADMIN_NAVBAR_HEIGHT,
+  APP_BAR_HEIGHT,
+  APP_SUBHEADER_HEIGHT,
+  NAV_SIDEBAR_WIDTH,
+} from "./constants/layout";
 export type {
   MetabaseComponentTheme,
   ChartColor,

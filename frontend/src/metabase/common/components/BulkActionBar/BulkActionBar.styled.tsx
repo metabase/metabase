@@ -1,8 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
-import { Card } from "metabase/ui";
+import { Card, NAV_SIDEBAR_WIDTH } from "metabase/ui";
 
 export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
   position: fixed;
