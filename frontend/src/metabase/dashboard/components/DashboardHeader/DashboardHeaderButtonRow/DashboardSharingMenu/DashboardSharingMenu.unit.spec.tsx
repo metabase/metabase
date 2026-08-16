@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { screen, waitFor } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
 import {
+  createMockDashboardCard,
   createMockDashboardTab,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -82,6 +83,46 @@ describe("DashboardSharingMenu", () => {
       expect(screen.getByTestId("dashboard-export-pdf-button")).not.toHaveStyle(
         { cursor: "wait" },
       );
+    });
+
+    it("should not be shown if the dashboard is empty", async () => {
+      setupDashboardSharingMenu({ dashboard: { dashcards: [] } });
+      await openMenu();
+      expect(
+        screen.queryByTestId("dashboard-export-pdf-button"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not be shown if the selected tab is empty", async () => {
+      setupDashboardSharingMenu({
+        dashboard: {
+          tabs: [
+            createMockDashboardTab({ id: 1 }),
+            createMockDashboardTab({ id: 2 }),
+          ],
+          dashcards: [createMockDashboardCard({ id: 1, dashboard_tab_id: 2 })],
+        },
+        dashboardState: { selectedTabId: 1 },
+      });
+      await openMenu();
+      expect(
+        screen.queryByTestId("dashboard-export-pdf-button"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should be enabled if the selected tab has cards", async () => {
+      setupDashboardSharingMenu({
+        dashboard: {
+          tabs: [
+            createMockDashboardTab({ id: 1 }),
+            createMockDashboardTab({ id: 2 }),
+          ],
+          dashcards: [createMockDashboardCard({ id: 1, dashboard_tab_id: 2 })],
+        },
+        dashboardState: { selectedTabId: 2 },
+      });
+      await openMenu();
+      expect(screen.getByTestId("dashboard-export-pdf-button")).toBeEnabled();
     });
   });
 

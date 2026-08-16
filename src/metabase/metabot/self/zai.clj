@@ -127,10 +127,17 @@
         (catch Exception e
           (core/rethrow-api-error! "zai" zai-error-msg e))))))
 
+(def ^:private stop-reasons
+  "Z.AI signals a filtered response with `sensitive` rather than OpenAI's `content_filter`, and reports an upstream
+  failure as a finish reason instead of an error event."
+  (assoc chat-completions/stop-reasons
+         "sensitive"     "content-filter"
+         "network_error" "error"))
+
 (defn zai->aisdk-chunks-xf
   "Translates Z.AI Chat Completions streaming chunks into AI SDK v5 protocol chunks."
   []
-  (chat-completions/chat-completions->aisdk-chunks-xf))
+  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons))
 
 (defn zai
   "Call the Z.AI Chat Completions API, return AISDK stream."

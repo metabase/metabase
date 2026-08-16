@@ -168,4 +168,4 @@ Metrics exported by Metabase include:
 ## Further reading
 
 - [Running Metabase](../troubleshooting-guide/running.md)
-- [Monitoring Metabase](./monitoring-metabase.md)
+- [Profiling your Metabase](../troubleshooting-guide/profiling-metabase.md)

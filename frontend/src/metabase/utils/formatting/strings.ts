@@ -34,18 +34,25 @@ export function humanize(str: string, lowFirstLetter?: boolean) {
   return inflection.humanize(str, lowFirstLetter);
 }
 
-export function conjunct(list: string[], conjunction: string) {
+export function conjunct(
+  list: (string | number | boolean)[],
+  conjunction: string,
+) {
   return (
     list.slice(0, -1).join(`, `) +
     (list.length > 2 ? `,` : ``) +
     (list.length > 1 ? ` ${conjunction} ` : ``) +
-    (list[list.length - 1] || ``)
+    (list[list.length - 1] ?? ``)
   );
 }
 
 // Removes trailing "id" from field names
 export function stripId(name: string) {
   return name?.replace(/ id$/i, "").trim();
+}
+
+export function slugify(name: string) {
+  return name && encodeURIComponent(name.toLowerCase().replace(/\s/g, "_"));
 }
 
 export function removeNewLines<T>(value: T) {

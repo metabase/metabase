@@ -186,6 +186,13 @@
            clojure.lang.ExceptionInfo #"Unsupported provider \"moonshot\" for metabase managed AI"
            (metabot.settings/llm-metabot-provider! "metabase/moonshot/kimi-k2.6"))))))
 
+(deftest validate-metabot-provider-rejects-direct-only-provider-as-managed-google-test
+  (testing "rejects google under metabase/ prefix (not in the managed allow-list)"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Unsupported provider \"google\" for metabase managed AI"
+           (metabot.settings/llm-metabot-provider! "metabase/google/google/gemini-3.5-flash"))))))
+
 (deftest validate-metabot-provider-rejects-unsupported-metabase-managed-model-test
   (testing "rejects unsupported model for an allowed metabase managed provider"
     (mt/with-premium-features #{:metabase-ai-managed}
@@ -429,3 +436,102 @@
              (metabot.settings/configured-provider-credentials "anthropic"))))
     (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
       (is (nil? (metabot.settings/configured-provider-credentials "anthropic"))))))
+
+(deftest validate-metabot-provider-accepts-valid-direct-google-test
+  (testing "accepts google provider strings with a model name"
+    (mt/with-temporary-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
+      (is (= "google/google/gemini-3.5-flash" (metabot.settings/llm-metabot-provider))))))
+
+(deftest metabot-configured-with-google-credentials-test
+  (testing "returns true when google has an OAuth access token and project ID set — the location is optional"
+    (mt/with-temporary-setting-values [llm-metabot-provider          "google/google/gemini-3.5-flash"
+                                       llm-google-oauth-access-token "ya29.test-token"
+                                       llm-google-project-id         "my-project"
+                                       llm-google-location           nil]
+      (is (true? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest metabot-configured-with-no-google-credentials-test
+  (testing "returns false when google has no service account key or OAuth access token"
+    (mt/with-temporary-setting-values [llm-metabot-provider           "google/google/gemini-3.5-flash"
+                                       llm-google-oauth-access-token  nil
+                                       llm-google-service-account-key nil]
+      (is (false? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest metabot-configured-with-google-service-account-test
+  (testing "returns true when google has only a service account key — the project ID can come from the key JSON"
+    (mt/with-temporary-setting-values [llm-metabot-provider           "google/google/gemini-3.5-flash"
+                                       llm-google-oauth-access-token  nil
+                                       llm-google-service-account-key "{\"type\": \"service_account\"}"
+                                       llm-google-project-id          nil]
+      (is (true? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest metabot-configured-google-without-project-id-test
+  (testing "returns false when google has an OAuth access token but no project ID"
+    (mt/with-temporary-setting-values [llm-metabot-provider           "google/google/gemini-3.5-flash"
+                                       llm-google-oauth-access-token  "ya29.test-token"
+                                       llm-google-service-account-key nil
+                                       llm-google-project-id          nil]
+      (is (false? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest configured-provider-credentials-google-fully-configured-test
+  (testing "returns the oauth-access-token/project-id/location credentials map when google is fully configured"
+    (mt/with-temporary-setting-values [llm-google-oauth-access-token  "ya29.test-token"
+                                       llm-google-service-account-key nil
+                                       llm-google-project-id          "my-project"
+                                       llm-google-location            "us-central1"]
+      (is (= {:service-account-key nil
+              :oauth-access-token  "ya29.test-token"
+              :project-id          "my-project"
+              :location            "us-central1"}
+             (metabot.settings/configured-provider-credentials "google"))))))
+
+(deftest configured-provider-credentials-google-nil-location-test
+  (testing "the location is optional — a nil location still yields a configured credentials map"
+    (mt/with-temporary-setting-values [llm-google-oauth-access-token  "ya29.test-token"
+                                       llm-google-service-account-key nil
+                                       llm-google-project-id          "my-project"
+                                       llm-google-location            nil]
+      (is (= {:service-account-key nil
+              :oauth-access-token  "ya29.test-token"
+              :project-id          "my-project"
+              :location            nil}
+             (metabot.settings/configured-provider-credentials "google"))))))
+
+(deftest configured-provider-credentials-google-missing-project-id-test
+  (testing "returns nil when google has an OAuth access token but no project ID"
+    (mt/with-temporary-setting-values [llm-google-oauth-access-token  "ya29.test-token"
+                                       llm-google-service-account-key nil
+                                       llm-google-project-id          nil]
+      (is (nil? (metabot.settings/configured-provider-credentials "google"))))))
+
+(deftest configured-provider-credentials-google-service-account-only-test
+  (testing "a service account key alone counts as configured — no OAuth access token or project ID needed"
+    (mt/with-temporary-setting-values [llm-google-oauth-access-token  nil
+                                       llm-google-service-account-key "{\"type\": \"service_account\"}"
+                                       llm-google-project-id          nil
+                                       llm-google-location            nil]
+      (is (= {:service-account-key "{\"type\": \"service_account\"}"
+              :oauth-access-token  nil
+              :project-id          nil
+              :location            nil}
+             (metabot.settings/configured-provider-credentials "google"))))))
+
+(deftest configured-provider-credentials-google-missing-credential-test
+  (testing "returns nil when google has a project ID but no service account key or OAuth access token"
+    (mt/with-temporary-setting-values [llm-google-oauth-access-token  nil
+                                       llm-google-service-account-key nil
+                                       llm-google-project-id          "my-project"]
+      (is (nil? (metabot.settings/configured-provider-credentials "google"))))))
+
+(deftest provider-credentials-complete?-google-test
+  (testing "google credentials are complete with a non-blank OAuth access token and project ID; the location is optional"
+    (is (true? (metabot.settings/provider-credentials-complete?
+                "google"
+                {:oauth-access-token "ya29.test-token" :project-id "my-project"})))
+    (is (true? (metabot.settings/provider-credentials-complete?
+                "google"
+                {:oauth-access-token "ya29.test-token" :project-id "my-project" :location "us-central1"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "google" {:oauth-access-token "ya29.test-token"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "google" {:oauth-access-token "  " :project-id "my-project"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "google" {:project-id "my-project"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "google" nil)))))

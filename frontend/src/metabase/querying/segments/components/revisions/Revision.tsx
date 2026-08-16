@@ -10,15 +10,15 @@ import type {
   TableId,
   User,
 } from "metabase-types/api";
+
+import { RevisionDiff } from "./RevisionDiff";
 import {
   isCardOrDashboardRevisionDiff,
   isCardOrDashboardRevisionDiffKey,
   isDiffKey,
   isSegmentRevisionDiff,
   isSegmentRevisionDiffKey,
-} from "metabase-types/guards";
-
-import { RevisionDiff } from "./RevisionDiff";
+} from "./guards";
 
 interface Props {
   currentUser: User;

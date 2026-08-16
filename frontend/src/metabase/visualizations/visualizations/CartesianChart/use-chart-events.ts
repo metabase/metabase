@@ -36,8 +36,9 @@ import {
   getSeriesClickData,
   getSeriesHovered,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
-import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
+
+import { getVisualizerSeriesCardIndex } from "../../lib/series";
 
 import type { CartesianHoveredObject } from "./types";
 import { useBrush } from "./use-brush";
