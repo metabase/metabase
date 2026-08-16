@@ -38,7 +38,7 @@
                    (str (name k) \= v))))
 
 (defn- most-recent-tag []
-  (shell-output-when-nonzero "git" "describe" "--abbrev=0" "--tags"))
+  (shell-output-when-nonzero "git" "describe" "--abbrev=0" "--tags" "--match" "v[01].[0-9]*.[0-9]*"))
 
 (defn- tag-parts [tag]
   (when tag
