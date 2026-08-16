@@ -21,6 +21,13 @@ process.env.MB_JETTY_PORT = process.env.MB_JETTY_PORT || 4000;
 // Expose the `en-ZZ` pseudo-locale in the Cypress backend's language pickers and API validation.
 process.env.MB_ENABLE_TEST_LOCALES = "true";
 
+// The warehouses the E2E suite connects to are all on localhost, so the warehouse network policy has to be off.
+// It otherwise defaults to `external-only` whenever `is-hosted?` is true, which any spec calling
+// `setTokenFeatures("all")` (or activating a cloud token) makes true -- and those specs would then be unable to
+// add or sync a test database. Set here rather than in the `:e2e` deps.edn alias because CI runs the uberjar and
+// never reads that alias. A spec that wants the policy on can set it through the settings API.
+process.env.MB_WAREHOUSE_ALLOWED_NETWORKS = "allow-all";
+
 if (!process.env.CI) {
   // Use a temporary copy of the sample db so it won't use and lock the db used for local development
   process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = path.resolve(
