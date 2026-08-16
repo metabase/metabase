@@ -1,7 +1,9 @@
+import { act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route, useNavigate } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 
 import ScrollToTop from "./ScrollToTop";
 
@@ -24,10 +26,11 @@ function RouteContent() {
 }
 
 function setup(initialRoute = "/first") {
-  return renderWithProviders(<Route path="*" element={<RouteContent />} />, {
-    withRouter: true,
-    initialRoute,
-  });
+  const { history, ...rest } = renderWithProviders(
+    <Route path="*" element={<RouteContent />} />,
+    { withRouter: true, initialRoute },
+  );
+  return { ...rest, history: checkNotNull(history) };
 }
 
 const click = (name: string) =>
@@ -58,6 +61,19 @@ describe("ScrollToTop", () => {
   it("does not scroll when only the query string changes", async () => {
     setup();
     await click("same-path-query");
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("does not scroll when navigating back through browser history", async () => {
+    const { history } = setup();
+
+    await click("to-second");
+    scrollTo.mockClear();
+
+    act(() => {
+      history.goBack();
+    });
+
     expect(scrollTo).not.toHaveBeenCalled();
   });
 });
