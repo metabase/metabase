@@ -23,9 +23,6 @@ const {
 const {
   OPTIMIZATION_CONFIG,
 } = require("./frontend/build/embedding-sdk/rspack/shared");
-const {
-  CODEMIRROR_CACHE_GROUP,
-} = require("./frontend/build/shared/rspack/codemirror-chunk");
 const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
 const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
@@ -241,7 +238,6 @@ const config = {
       // The groups below are told apart by their `chunks` filter, not by size
       // or test, so the priorities are what keep a module out of the wrong one.
       cacheGroups: {
-        codemirror: CODEMIRROR_CACHE_GROUP,
         vendors: {
           test: /[\\/]node_modules[\\/]/,
           // Only the chunked entry's own (initial) chunks: giving async
