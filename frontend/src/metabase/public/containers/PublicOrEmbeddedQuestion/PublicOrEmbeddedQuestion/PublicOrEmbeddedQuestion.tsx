@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
 import { embedApi, publicApi } from "metabase/api";
+import { updateMetadata } from "metabase/api/utils/hydrate-metadata-store";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { applyParameters } from "metabase/common/utils/card";
 import { fetchDataOrError } from "metabase/dashboard/utils";
@@ -14,7 +15,6 @@ import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import { updateMetadata } from "metabase/redux/metadata";
 import { useLocation, useParams } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";

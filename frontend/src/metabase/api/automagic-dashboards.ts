@@ -1,4 +1,3 @@
-import { updateMetadata } from "metabase/redux/metadata";
 import { QueryMetadataSchema } from "metabase/schema";
 import type {
   Dashboard,
@@ -14,6 +13,7 @@ import {
   provideDashboardQueryMetadataTags,
   provideDatabaseCandidateListTags,
 } from "./tags";
+import { updateMetadata } from "./utils/hydrate-metadata-store";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
 // `subPath` is embedded raw into the request URL (its slashes are real path

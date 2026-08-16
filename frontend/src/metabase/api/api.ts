@@ -12,8 +12,8 @@ import {
 } from "react-redux";
 
 import { api } from "metabase/api/client";
-import { metabaseReduxContext } from "metabase/redux";
 
+import { metabaseReduxContext } from "./context";
 import { TAG_TYPES } from "./tags";
 
 // Extra cache-key that callers can mix into a query arg to get a
@@ -97,11 +97,18 @@ export const baseQuery: BaseQueryFn<BaseQueryArgs, unknown, unknown> = async (
   }
 };
 
+/**
+ * Dispatch on the Metabase store through api's own react-redux context. Use
+ * this inside the api module instead of redux's `useDispatch` (api sits below
+ * redux); it covers dispatching api's own actions, e.g. `Api.util` ones.
+ */
+export const useApiDispatch = createDispatchHook(metabaseReduxContext);
+
 const createApi = buildCreateApi(
   coreModule(),
   reactHooksModule({
     hooks: {
-      useDispatch: createDispatchHook(metabaseReduxContext),
+      useDispatch: useApiDispatch,
       useSelector: createSelectorHook(metabaseReduxContext),
       useStore: createStoreHook(metabaseReduxContext),
     },

@@ -1,4 +1,5 @@
 import { cardApi, dashboardApi, datasetApi } from "metabase/api";
+import { updateMetadata } from "metabase/api/utils/hydrate-metadata-store";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
@@ -14,8 +15,6 @@ import type {
   Parameter,
   RowValue,
 } from "metabase-types/api";
-
-import { updateMetadata } from "./metadata";
 
 export const addRemappings =
   (fieldId: FieldId, remappings: FieldValue[]) =>

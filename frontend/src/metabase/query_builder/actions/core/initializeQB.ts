@@ -1,4 +1,5 @@
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
+import { updateMetadata } from "metabase/api/utils/hydrate-metadata-store";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
@@ -12,7 +13,6 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { updateMetadata } from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import type {
   Dispatch,

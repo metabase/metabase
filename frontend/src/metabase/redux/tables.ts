@@ -1,6 +1,6 @@
 import { fieldApi, tableApi } from "metabase/api";
+import { updateMetadata } from "metabase/api/utils/hydrate-metadata-store";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { TableSchema } from "metabase/schema";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useLatest, usePrevious } from "react-use";
 
+import { updateMetadata } from "metabase/api/utils/hydrate-metadata-store";
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { useDispatch, useSelector } from "metabase/redux";
-import { updateMetadata } from "metabase/redux/metadata";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
