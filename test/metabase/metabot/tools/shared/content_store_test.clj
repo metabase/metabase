@@ -15,13 +15,18 @@
   3. **Only the audit trail varies**: the `-by-entity-id` methods use the audited
      [[api/read-check]], the `-by-id` methods an unaudited [[mi/can-read?]] +
      [[api/check-403]] unless `audited-by-id?` is set, and binding
-     [[resolve.mp/*audit-refusals?*]] to false suppresses auditing on all six."
+     [[resolve.mp/*audit-refusals?*]] to false suppresses auditing on all six.
+
+  4. **`repair` binds that suppression on**: the `source-card` refusals its mini-resolve passes
+     catch and discard stay out of the audit trail."
   (:require
    [clojure.test :refer :all]
+   [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as resolve]
@@ -205,6 +210,39 @@
               (is false "expected throw")
               (catch clojure.lang.ExceptionInfo e
                 (is (= 403 (:status-code (ex-data e))))))))))))
+
+;;; ============================================================
+;;; Suppression at the repair call site
+;;; ============================================================
+
+(def ^:private source-card-entity-id
+  "A syntactically valid entity_id, so the resolver reaches the store instead of short-circuiting."
+  "GRLHTBIcE5nGFVJoxGr5D")
+
+(deftest repair-does-not-audit-the-refusals-it-swallows-test
+  (testing "repair resolves a source-card ref through the store, and 403s there leave no audit trail"
+    (let [lookups (atom 0)
+          row     (stub-row {:id 1 :database_id 1 :entity_id source-card-entity-id})
+          store   (reify resolve.mp/ContentStore
+                    (card-by-entity-id    [_ _eid] (swap! lookups inc) row)
+                    (measure-by-entity-id [_ _eid] nil)
+                    (segment-by-entity-id [_ _eid] nil)
+                    (card-by-id           [_ _id]  nil)
+                    (measure-by-id        [_ _id]  nil)
+                    (segment-by-id        [_ _id]  nil))
+          mp      (lib.tu/mock-metadata-provider {:database {:id 1 :name "Sample"}})
+          query   {"lib/type" "mbql/query"
+                   "database" "Sample"
+                   "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                "source-card" source-card-entity-id}]}]
+      (mt/with-dynamic-fn-redefs [api/read-check (fn [& _]
+                                                   (is false "api/read-check ran on a refusal repair discards"))]
+        (binding [api/*current-user-id* 1
+                  *stub-can-read?*      false]
+          (let [repaired (repr.repair/repair mp query (shared.content-store/read-checked store))]
+            (is (pos? @lookups) "precondition: repair looked the source card up")
+            (is (= source-card-entity-id (get-in repaired ["stages" 0 "source-card"]))
+                "the refused lookup is skipped, not fatal")))))))
 
 ;;; ============================================================
 ;;; default-store integration shape
