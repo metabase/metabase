@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
-import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
+import { getLoginPageIllustration } from "metabase/whitelabel";
 
 import {
   LayoutBody,

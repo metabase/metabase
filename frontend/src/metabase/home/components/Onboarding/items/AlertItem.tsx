@@ -1,8 +1,8 @@
 import { jt, t } from "ttag";
 
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 
 import { ChecklistItem } from "../ChecklistItem";
 import { VideoTutorial } from "../VideoTutorial";

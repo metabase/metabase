@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import { Link } from "metabase/common/components/Link";
-import { useDocsUrl } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import type {
   ExportFormat,
@@ -27,6 +26,8 @@ import {
 import { canSavePng } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
+
+import { useDocsUrl } from "../../hooks";
 
 export type FormatPreference = {
   last_download_format: ExportFormat;

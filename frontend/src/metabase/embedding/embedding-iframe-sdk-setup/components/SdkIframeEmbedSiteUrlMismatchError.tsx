@@ -2,8 +2,8 @@ import { jt, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Card, Code, Flex, Icon, Stack, Text } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 
 interface SdkIframeEmbedSiteUrlMismatchErrorProps {
   siteUrl: string;

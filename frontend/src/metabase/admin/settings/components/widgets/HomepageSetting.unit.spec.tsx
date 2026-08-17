@@ -21,8 +21,8 @@ import {
 } from "__support__/ui";
 import { useGetCurrentUserQuery } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { PLUGIN_HOMEPAGE_SETTING } from "metabase/plugins";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { PLUGIN_HOMEPAGE_SETTING } from "metabase/whitelabel";
 import {
   createMockCollection,
   createMockCollectionItem,

@@ -7,8 +7,8 @@ import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import { useSelector } from "metabase/redux";
 import type { ChecklistItemValue } from "metabase/redux/store";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Accordion, Box, Button, Stack, Text, Title, rem } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 
 import { AiProviderModalProvider } from "./AiProviderModal";
 import S from "./Onboarding.module.css";

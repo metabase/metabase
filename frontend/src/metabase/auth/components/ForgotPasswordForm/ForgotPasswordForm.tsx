@@ -10,9 +10,9 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
+import { getApplicationName } from "metabase/whitelabel";
 
 import type { ForgotPasswordData } from "../../types";
 

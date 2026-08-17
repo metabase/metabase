@@ -17,7 +17,7 @@ import {
   StaticDashboard,
 } from "./components/public/dashboard";
 import { SdkDebugInfo } from "./components/public/SdkDebugInfo";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+import { getApplicationName } from "metabase/whitelabel";
 import { getSdkStore } from "./store/index";
 import {
   getAvailableFonts,

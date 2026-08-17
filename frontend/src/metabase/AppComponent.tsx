@@ -28,10 +28,10 @@ import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
 import { Outlet, useLocation } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useGetSettingsQuery } from "metabase/settings";
 import { StatusListing } from "metabase/status/components/StatusListing";
 import { initializeIframeResizer } from "metabase/utils/dom";
+import { getApplicationName } from "metabase/whitelabel";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";

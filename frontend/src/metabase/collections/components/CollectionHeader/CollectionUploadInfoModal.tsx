@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Modal, Stack, Text, Title } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 
 export const UploadInfoModal = ({
   isAdmin,

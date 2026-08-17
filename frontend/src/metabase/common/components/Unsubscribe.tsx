@@ -15,8 +15,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
 import { useSearchParams } from "metabase/router";
-import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
 import { Button, Center, Stack, Text } from "metabase/ui";
+import { getLoginPageIllustration } from "metabase/whitelabel";
 
 import {
   CheckmarkIcon,

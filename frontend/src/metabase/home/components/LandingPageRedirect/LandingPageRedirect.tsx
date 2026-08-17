@@ -1,5 +1,5 @@
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 import { Navigate } from "metabase/router";
+import { PLUGIN_LANDING_PAGE } from "metabase/whitelabel";
 
 import { HomePage } from "../HomePage";
 

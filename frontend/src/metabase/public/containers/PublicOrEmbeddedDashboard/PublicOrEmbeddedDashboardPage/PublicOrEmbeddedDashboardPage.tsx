@@ -12,10 +12,10 @@ import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useLocation, useParams } from "metabase/router";
-import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
+import { getCanWhitelabel } from "metabase/whitelabel";
 import type { EntityToken } from "metabase-types/api/entity";
 
 import { usePublicEndpoints } from "../../../hooks/use-public-endpoints";

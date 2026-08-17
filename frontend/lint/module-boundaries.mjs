@@ -232,6 +232,7 @@ const elements = [
     enforceSharedTiers: false,
   }),
   createElement({ type: "shared", name: "visualizer" }),
+  createElement({ type: "shared", name: "whitelabel", enforcePublicApi: true }),
 
   // feature
   // The theme editor previews the live embed through the app-tier EAJS

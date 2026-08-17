@@ -4,7 +4,7 @@ import {
   getDocsUrl,
   getLearnUrl,
 } from "metabase/selectors/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 
 type DocsUtmProps = Omit<UtmProps, "utm_medium"> & {
   utm_medium?: UtmProps["utm_medium"];

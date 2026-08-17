@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { FormRadioGroup } from "metabase/forms";
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
 import { Box, Radio, Stack, Text, Tooltip } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { REMOTE_SYNC_KEY, TYPE_KEY } from "../../constants";

@@ -1,7 +1,7 @@
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseGlobalPluginsConfig } from "embedding-sdk-package";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
+import { PLUGIN_SELECTORS } from "metabase/whitelabel";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 // Flag to ensure initialization happens only once

@@ -10,7 +10,7 @@ import type {
   ServerCodeSampleConfig,
 } from "metabase/embedding/types";
 import { useSelector } from "metabase/redux";
-import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { getCanWhitelabel } from "metabase/whitelabel";
 
 import { CodeSample } from "./CodeSample";
 import { getDefaultDisplayOptions } from "./config";

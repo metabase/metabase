@@ -1,5 +1,11 @@
-import { PLUGIN_SELECTORS } from "metabase/plugins";
+import { createSelector } from "@reduxjs/toolkit";
+import _ from "underscore";
+
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import type { State } from "metabase/redux/store";
+import { getSettings } from "metabase/settings";
+
+import { PLUGIN_SELECTORS } from "./plugin";
 
 export function getWhiteLabeledLoadingMessageFactory(state: State) {
   return PLUGIN_SELECTORS.getLoadingMessageFactory(state);
@@ -36,3 +42,20 @@ export function getNoDataIllustration(state: State) {
 export function getNoObjectIllustration(state: State) {
   return PLUGIN_SELECTORS.getNoObjectIllustration(state);
 }
+
+export const getFont = createSelector(
+  [getSettings, getEmbedOptions],
+  (settings, embedOptions) => {
+    if (embedOptions.font) {
+      return embedOptions.font;
+    } else if (!_.isEmpty(settings["application-font-files"])) {
+      return "Custom";
+    } else {
+      return settings["application-font"];
+    }
+  },
+);
+
+export const getFontFiles = createSelector([getSettings], (settings) => {
+  return settings["application-font-files"];
+});

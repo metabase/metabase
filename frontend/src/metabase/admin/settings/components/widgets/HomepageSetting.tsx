@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { trackCustomHomepageDashboardEnabled } from "metabase/common/analytics";
 import { DashboardSelector } from "metabase/common/components/DashboardSelector";
-import { PLUGIN_HOMEPAGE_SETTING } from "metabase/plugins";
 import { useAdminSetting } from "metabase/settings";
 import { Box, Radio, Stack, Text } from "metabase/ui";
+import { PLUGIN_HOMEPAGE_SETTING } from "metabase/whitelabel";
 import type { DashboardId } from "metabase-types/api";
 
 import { SettingHeader } from "../SettingHeader";

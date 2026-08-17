@@ -23,7 +23,9 @@ const SHARED_UTILS_LEVELS = [
   ["shared/redux"],
   // U3 — the plugin registry, and instance settings over the api and store.
   ["shared/plugins", "shared/settings"],
-  // U4 — app services over the store and registry.
+  // U4 — whitelabel: PLUGIN_SELECTORS and its OSS defaults, over the registry and settings.
+  ["shared/whitelabel"],
+  // U5 — app services over the store and registry.
   [
     "shared/selectors",
     "shared/content-translation",
@@ -32,7 +34,7 @@ const SHARED_UTILS_LEVELS = [
     "shared/archive",
     "shared/hooks",
   ],
-  // U5 — composition over the levels below.
+  // U6 — composition over the levels below.
   // The store factory composes reducers, plugin middlewares, and the router.
   [
     "shared/hoc",

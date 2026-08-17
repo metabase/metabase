@@ -3,13 +3,13 @@ import { t } from "ttag";
 
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
 import { useSelector } from "metabase/redux";
-import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import {
   useGetVersionInfoQuery,
   useSetting,
   useUpdateSettingMutation,
 } from "metabase/settings";
 import { isWithinIframe } from "metabase/utils/iframe";
+import { getIsWhiteLabeling } from "metabase/whitelabel";
 
 import Sparkles from "./sparkles.svg?component";
 import { getLatestEligibleReleaseNotes } from "./utils";

@@ -25,9 +25,9 @@ import {
 import { useSelector } from "metabase/redux";
 import { Route, redirect } from "metabase/router";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Box, Text } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 

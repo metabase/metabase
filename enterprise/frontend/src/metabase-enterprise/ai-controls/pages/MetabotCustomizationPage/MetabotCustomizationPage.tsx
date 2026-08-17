@@ -5,8 +5,8 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { TextInput } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 import { useAdminSettingWithDebouncedInput } from "metabase-enterprise/ai-controls/hooks";
 
 import { MetabotIconField } from "./MetabotIconField";

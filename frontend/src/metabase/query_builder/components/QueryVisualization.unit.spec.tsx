@@ -1,6 +1,6 @@
 import { act, renderWithProviders, screen } from "__support__/ui";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
+import { PLUGIN_SELECTORS } from "metabase/whitelabel";
 
 type SetupOpts = {
   customMessage?: (isSlow?: boolean) => string;

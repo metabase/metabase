@@ -20,7 +20,6 @@ import {
   getIsNewInstance,
 } from "metabase/selectors/onboarding";
 import { getUser } from "metabase/selectors/user";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   ActionIcon,
   Avatar,
@@ -34,6 +33,7 @@ import {
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
+import { getApplicationName } from "metabase/whitelabel";
 import type { IconName } from "metabase-types/api";
 
 import { AboutModal } from "../AboutModal/AboutModal";

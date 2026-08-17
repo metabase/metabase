@@ -19,9 +19,9 @@ import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metab
 import { channelTargetIsValid, dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
 import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   type Channel,

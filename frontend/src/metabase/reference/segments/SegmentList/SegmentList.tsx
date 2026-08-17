@@ -12,7 +12,7 @@ import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
 import { getShallowSegments } from "metabase/selectors/metadata";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 
 import ReferenceHeader from "../../components/ReferenceHeader";
 import { getError, getLoading } from "../../selectors";

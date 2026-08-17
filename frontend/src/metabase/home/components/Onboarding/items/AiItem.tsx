@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 
 import { useAiProviderModal } from "../AiProviderModal";
 import type { ChecklistImageStyles } from "../ChecklistItem";

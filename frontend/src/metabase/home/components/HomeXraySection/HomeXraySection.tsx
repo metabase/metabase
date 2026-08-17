@@ -9,7 +9,6 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Combobox,
   DefaultSelectItem,
@@ -19,6 +18,7 @@ import {
 import * as Urls from "metabase/urls";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
+import { getApplicationName } from "metabase/whitelabel";
 import type { Database, DatabaseXray } from "metabase-types/api";
 
 import { HomeCaption } from "../HomeCaption";

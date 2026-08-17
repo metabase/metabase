@@ -5,8 +5,8 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import type { AuthProvider } from "metabase/plugins/types";
 import { useSelector } from "metabase/redux";
 import { useParams, useSearchParams } from "metabase/router";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Divider } from "metabase/ui";
+import { getApplicationName } from "metabase/whitelabel";
 
 import { getAuthProviders } from "../../selectors";
 import { AuthLayout } from "../AuthLayout";

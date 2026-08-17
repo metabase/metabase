@@ -13,7 +13,6 @@ import { useSelector } from "metabase/redux";
 import { queryToSearch } from "metabase/router";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { getSettings, useSetting } from "metabase/settings";
 import { Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -21,6 +20,7 @@ import { modelToUrl } from "metabase/urls";
 import type { SearchQuery } from "metabase/utils/browser";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { getName } from "metabase/utils/name";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 import {
   type RecentCollectionItem,
   type RecentItem,

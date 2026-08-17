@@ -6,8 +6,8 @@ import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Button } from "metabase/ui";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 
 type Props = {
   onClose: () => void;

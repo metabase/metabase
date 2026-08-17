@@ -5,8 +5,8 @@ import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon } from "metabase/ui";
+import { getShowMetabaseLinks } from "metabase/whitelabel";
 
 import { CustomMapContent } from "../Maps.styled";
 

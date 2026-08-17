@@ -7,9 +7,9 @@ import { connect, useSelector } from "metabase/redux";
 import type { AppErrorDescriptor, State } from "metabase/redux/store";
 import { Outlet } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { PublicStatusListing } from "metabase/status/components/PublicStatusListing";
 import { isWithinIframe } from "metabase/utils/iframe";
+import { getApplicationName } from "metabase/whitelabel";
 
 interface StateProps {
   errorPage?: AppErrorDescriptor | null;

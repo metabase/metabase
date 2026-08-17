@@ -15,8 +15,7 @@ import { useMantineTheme } from "metabase/ui";
 import { getSitePath } from "metabase/utils/dom";
 import { getFontFamilyValue } from "metabase/utils/fonts";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
-
-import { getFont, getFontFiles } from "../../selectors";
+import { getFont, getFontFiles } from "metabase/whitelabel";
 
 export const GlobalStyles = (): JSX.Element => {
   const font = useSelector(getFont);
