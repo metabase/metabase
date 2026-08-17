@@ -144,7 +144,19 @@ async function fetchSourceModels(
   return new Map(models);
 }
 
-function assertOwnedCopy(card: MetabaseCard, collectionId: number) {
+function assertOwnedActionCopy(
+  action: MetabaseAction,
+  sourceActionId: number,
+  copiedModelId: number,
+) {
+  if (action.model_id !== copiedModelId) {
+    throw new Error(
+      `Action ${action.id} is the copy of action ${sourceActionId} but no longer hangs off copied model ${copiedModelId}, so it was left untouched. Move it back or delete it manually, then run sync-resources again.`,
+    );
+  }
+}
+
+function assertOwnedModelCopy(card: MetabaseCard, collectionId: number) {
   if (card.type !== "model") {
     throw new Error(
       `Card ${card.id} belongs to a synchronized model but is no longer a model, so it was left untouched. Change it back to a model in data app collection ${collectionId} or delete it manually, then run sync-resources again.`,
@@ -176,14 +188,8 @@ async function reconcileModelActions(
       ? await orNullOn404(client.getAction(mapping.copiedActionId))
       : null;
 
-    if (
-      mapping &&
-      copiedAction &&
-      copiedAction.model_id !== entry.copiedModelId
-    ) {
-      throw new Error(
-        `Action ${mapping.copiedActionId} is the copy of action ${source.id} but no longer hangs off copied model ${entry.copiedModelId}, so it was left untouched. Move it back or delete it manually, then run sync-resources again.`,
-      );
+    if (mapping && copiedAction) {
+      assertOwnedActionCopy(copiedAction, source.id, entry.copiedModelId);
     }
 
     if (mapping && !copiedAction) {
@@ -274,7 +280,7 @@ async function reconcileModel(
     : null;
 
   if (previous && copy) {
-    assertOwnedCopy(copy, collectionId);
+    assertOwnedModelCopy(copy, collectionId);
 
     if (getPayloadFingerprint(modelCopyInput(copy)) !== hash) {
       await client.updateModel(previous.copiedModelId, {
@@ -345,7 +351,7 @@ async function removeUnusedModels(
     const copy = await orNullOn404(client.getCard(entry.copiedModelId));
 
     if (copy) {
-      assertOwnedCopy(copy, collectionId);
+      assertOwnedModelCopy(copy, collectionId);
       // Deleting the copy cascades to the actions copied onto it.
       await client.deleteCard(copy.id);
       log(`deleted model: card ${copy.id}`);
