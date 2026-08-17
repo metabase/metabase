@@ -35,3 +35,5 @@ dayjs.extend(parseZone);
 dayjs.extend(duration);
 dayjs.extend(isBetween);
 dayjs.extend(preParsePostFormat);
+
+export default dayjs;
