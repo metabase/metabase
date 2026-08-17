@@ -488,6 +488,11 @@ export async function loadCustomVizPluginForDisplay(
     );
 
     if (!plugin) {
+      options.onMessage?.({
+        icon: "warning_triangle_filled",
+        iconColor: "feedback-warning",
+        message: t`Custom visualization "${display}" was requested but no matching installed plugin was found. Check the name and that the plugin is uploaded.`,
+      });
       return null;
     }
 

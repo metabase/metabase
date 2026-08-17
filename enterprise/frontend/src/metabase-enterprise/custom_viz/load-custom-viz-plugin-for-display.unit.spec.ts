@@ -51,7 +51,7 @@ describe("loadCustomVizPluginForDisplay", () => {
     expect(result).toBeNull();
   });
 
-  it("resolves null without a toast when no plugin backs the display", async () => {
+  it("resolves null and reports not-found when no plugin backs the display", async () => {
     fetchMock.get(LIST_ROUTE, []);
     const { dispatch } = setup();
     const onMessage = jest.fn();
@@ -61,7 +61,11 @@ describe("loadCustomVizPluginForDisplay", () => {
     });
 
     expect(result).toBeNull();
-    expect(onMessage).not.toHaveBeenCalled();
+    expect(onMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("no matching installed plugin"),
+      }),
+    );
   });
 
   it("resolves null and reports when the plugin bundle fails to load", async () => {
