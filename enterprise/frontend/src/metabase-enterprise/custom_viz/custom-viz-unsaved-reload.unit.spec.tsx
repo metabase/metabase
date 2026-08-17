@@ -25,6 +25,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
+import { unregisterCustomVizDisplay } from "./custom-viz-plugins";
 
 registerVisualizations();
 
@@ -115,6 +116,7 @@ describe("query builder > unsaved question with a custom viz restored from the U
 
   afterEach(() => {
     PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay = originalLoadForDisplay;
+    unregisterCustomVizDisplay(DISPLAY);
   });
 
   it("keeps the custom viz when its plugin loads during query completion", async () => {
