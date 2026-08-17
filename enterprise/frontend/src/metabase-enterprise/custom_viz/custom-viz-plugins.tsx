@@ -468,7 +468,10 @@ export async function loadCustomVizPlugin(
 export async function loadCustomVizPluginForDisplay(
   dispatch: DispatchFn,
   display: string,
-  options: {
+  {
+    sandboxMode,
+    onMessage,
+  }: {
     sandboxMode?: SandboxMode;
     onMessage?: (toast: ToastArgs) => void;
   } = {},
@@ -488,7 +491,7 @@ export async function loadCustomVizPluginForDisplay(
     );
 
     if (!plugin) {
-      options.onMessage?.({
+      onMessage?.({
         icon: "warning_triangle_filled",
         iconColor: "feedback-warning",
         message: t`Custom visualization "${display}" was requested but no matching installed plugin was found. Check the name and that the plugin is uploaded.`,
@@ -496,10 +499,7 @@ export async function loadCustomVizPluginForDisplay(
       return null;
     }
 
-    return await loadCustomVizPlugin(plugin, {
-      onMessage: options.onMessage,
-      sandboxMode: options.sandboxMode,
-    });
+    return await loadCustomVizPlugin(plugin, { onMessage, sandboxMode });
   } catch {
     return null;
   } finally {
