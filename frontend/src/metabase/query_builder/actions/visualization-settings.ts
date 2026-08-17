@@ -45,10 +45,7 @@ export const onUpdateVisualizationSettings =
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     await dispatch(
       updateQuestion(updatedQuestion, {
-        run: referencesNewColumn(
-          question.settings(),
-          updatedQuestion.settings(),
-        ),
+        run: referencesNewForeignColumn(question, updatedQuestion),
         shouldUpdateUrl: isEditable,
       }),
     );
@@ -66,30 +63,23 @@ export const onReplaceAllVisualizationSettings =
 
       await dispatch(
         updateQuestion(updatedQuestion, {
-          // rerun the query when it is changed alongside settings, or when a new
-          // dynamic goal reference appears
           run:
             hasWritePermissions &&
             (newQuestion != null ||
               (currentQuestion != null &&
-                referencesNewColumn(
-                  currentQuestion.settings(),
-                  updatedQuestion.settings(),
-                ))),
+                referencesNewForeignColumn(currentQuestion, updatedQuestion))),
           shouldUpdateUrl: hasWritePermissions,
         }),
       );
     }
   };
 
-// Dynamic goals referencing another entity's column are resolved by the backend
-// during query execution, and each entity comes back narrowed to the columns
-// that were asked for. So a bound retargeted to another column of the same
-// entity needs a re-run just as much as a brand new entity does.
-function referencesNewColumn(
-  previousSettings: VisualizationSettings,
-  nextSettings: VisualizationSettings,
+function referencesNewForeignColumn(
+  previousQuestion: Question,
+  nextQuestion: Question,
 ): boolean {
+  const previousSettings = previousQuestion.settings();
+  const nextSettings = nextQuestion.settings();
   const previousKeys = getReferencedColumnKeys(previousSettings);
 
   return Array.from(getReferencedColumnKeys(nextSettings)).some(
