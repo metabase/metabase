@@ -45,11 +45,7 @@ import {
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import {
-  QuestionHashRedirect,
-  loadMetabotQueryBuilder,
-  loadQueryBuilder,
-} from "metabase/query_builder";
+import { QuestionHashRedirect } from "metabase/query_builder";
 import type { State } from "metabase/redux/store";
 import { getReferenceRoutes } from "metabase/reference/routes";
 import {
@@ -107,10 +103,12 @@ export function LegacyBrowseRedirect() {
  * every later navigation to the query builder is synchronous again.
  */
 const queryBuilder = () =>
-  loadQueryBuilder().then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
+  import("metabase/query_builder").then(({ QueryBuilder }) => ({
+    Component: QueryBuilder,
+  }));
 
 const metabotQueryBuilder = () =>
-  loadMetabotQueryBuilder().then(({ MetabotQueryBuilder }) => ({
+  import("metabase/query_builder").then(({ MetabotQueryBuilder }) => ({
     Component: MetabotQueryBuilder,
   }));
 

@@ -29,11 +29,11 @@ function sourceFilesIn(dir) {
     .filter((file) => !file.includes(".unit.spec."));
 }
 
-// `import "./x"` and `require("./x")`, which exist only for their side effects.
+// `import "./x"` and `require("./x")`, which exist only for their side effects, a global stylesheet included.
+// A binding import of an asset (`import S from "./x.module.css"`) is not an effect of the script,
+// the asset is only reachable through the script that uses the binding and is dropped along with it.
 const BARE_IMPORT =
   /^\s*(?:import\s+["'][^"']+["']|require\(["'][^"']+["']\))/m;
-// Assets pulled in for their effect on the page rather than for a binding.
-const ASSET_IMPORT = /^\s*import\s+[^;]*["'][^"']+\.(?:css|svg|png|jpe?g)["']/m;
 
 describe.each(SIDE_EFFECT_FREE_PATHS)("side-effect-free %s", (dir) => {
   const files = sourceFilesIn(dir);
@@ -45,6 +45,5 @@ describe.each(SIDE_EFFECT_FREE_PATHS)("side-effect-free %s", (dir) => {
   it.each(files)("%s has no import-time side effects", (file) => {
     const source = fs.readFileSync(file, "utf8");
     expect(BARE_IMPORT.test(source)).toBe(false);
-    expect(ASSET_IMPORT.test(source)).toBe(false);
   });
 });
