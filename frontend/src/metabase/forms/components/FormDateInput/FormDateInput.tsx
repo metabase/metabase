@@ -3,8 +3,8 @@ import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { dayjs } from "metabase/dayjs";
 import { DateInput, type DateInputProps, type DateValue } from "metabase/ui";
-import { dayjs } from "metabase/utils/dayjs";
 export type FormDateInputProps = {
   value?: DateValue | undefined;
   className?: string;

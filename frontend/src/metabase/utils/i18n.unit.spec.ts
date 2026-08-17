@@ -1,4 +1,5 @@
-import { dayjs } from "./dayjs";
+import { dayjs } from "metabase/dayjs";
+
 import { type LocaleDataWithLanguage, setLocalization } from "./i18n";
 
 function setup(language: string) {

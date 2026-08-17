@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
+import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
 import { getUserId } from "metabase/selectors/user";
 import { Box, Flex, Stack, Text, Timeline } from "metabase/ui";
-import { dayjs } from "metabase/utils/dayjs";
 import type { FieldDiff, Revision, TableId } from "metabase-types/api";
 
 import { RevisionDiff } from "./RevisionDiff";

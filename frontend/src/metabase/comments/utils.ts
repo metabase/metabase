@@ -1,7 +1,7 @@
 import type { SkipToken } from "@reduxjs/toolkit/query";
 
 import { skipToken } from "metabase/api";
-import { dayjs } from "metabase/utils/dayjs";
+import { dayjs } from "metabase/dayjs";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type {
   Comment,

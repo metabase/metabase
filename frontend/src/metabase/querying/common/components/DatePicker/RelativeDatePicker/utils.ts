@@ -1,3 +1,4 @@
+import { dayjs } from "metabase/dayjs";
 import { DATE_PICKER_TRUNCATION_UNITS } from "metabase/querying/common/constants";
 import type {
   DatePickerTruncationUnit,
@@ -6,7 +7,6 @@ import type {
   RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/common/types";
-import { dayjs } from "metabase/utils/dayjs";
 import * as Lib from "metabase-lib";
 
 import { DEFAULT_VALUE, TABS } from "./constants";

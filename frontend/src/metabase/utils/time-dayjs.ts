@@ -1,10 +1,8 @@
-import type { Dayjs } from "dayjs";
 import { t } from "ttag";
 
+import { type Dayjs, dayjs } from "metabase/dayjs";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DatetimeUnit } from "metabase-types/api/query";
-
-import { dayjs } from "./dayjs";
 
 const DAYLIGHT_SAVINGS_CHANGE_TOLERANCE: Record<string, number> = {
   minute: 0,

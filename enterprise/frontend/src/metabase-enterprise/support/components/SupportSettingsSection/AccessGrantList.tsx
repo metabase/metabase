@@ -1,13 +1,12 @@
 import cx from "classnames";
-import type { Dayjs } from "dayjs";
 import { c, t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { type Dayjs, dayjs } from "metabase/dayjs";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Badge, Group, Icon } from "metabase/ui";
-import { dayjs } from "metabase/utils/dayjs";
 import { useRevokeSupportAccessGrantMutation } from "metabase-enterprise/api";
 import type { SupportAccessGrant } from "metabase-types/api";
 

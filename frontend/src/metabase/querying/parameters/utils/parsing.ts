@@ -1,6 +1,6 @@
+import { dayjs } from "metabase/dayjs";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils/dates";
-import { dayjs } from "metabase/utils/dayjs";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";

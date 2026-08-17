@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { dayjs } from "metabase/utils/dayjs";
+import { dayjs } from "metabase/dayjs";
 import type { Log } from "metabase-types/api";
 
 export function getAllProcessUUIDs(logs: Log[]) {

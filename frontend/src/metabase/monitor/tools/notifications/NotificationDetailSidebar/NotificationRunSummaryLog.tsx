@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
+import { dayjs } from "metabase/dayjs";
 import { Anchor, Badge, Flex, Loader, Text, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { dayjs } from "metabase/utils/dayjs";
 
 import { formatRelativeDate } from "../NotificationsAdminPage/utils";
 

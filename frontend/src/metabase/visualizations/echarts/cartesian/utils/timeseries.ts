@@ -1,7 +1,6 @@
-import type { Dayjs } from "dayjs";
 import _ from "underscore";
 
-import { dayjs } from "metabase/utils/dayjs";
+import { type Dayjs, dayjs } from "metabase/dayjs";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
 import type {

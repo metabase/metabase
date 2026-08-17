@@ -12,6 +12,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import { dayjs } from "metabase/dayjs";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
@@ -32,7 +33,6 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { dayjs } from "metabase/utils/dayjs";
 import { capitalize } from "metabase/utils/formatting";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";

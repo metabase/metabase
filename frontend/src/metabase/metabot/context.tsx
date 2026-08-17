@@ -11,6 +11,7 @@ import {
 } from "react";
 import _ from "underscore";
 
+import { dayjs } from "metabase/dayjs";
 import { useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import {
@@ -18,7 +19,6 @@ import {
   canUserCreateQueries,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import { dayjs } from "metabase/utils/dayjs";
 import type {
   MetabotChatContext,
   MetabotSuggestedTransform,

@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
+import { dayjs } from "metabase/dayjs";
 import {
   ActionIcon,
   Box,
@@ -15,7 +16,6 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import { dayjs } from "metabase/utils/dayjs";
 import type { TransformRunStatus } from "metabase-types/api";
 
 import S from "./RunInfo.module.css";

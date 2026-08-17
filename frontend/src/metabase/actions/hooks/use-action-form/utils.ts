@@ -1,6 +1,6 @@
 import type { FieldSettings as LocalFieldSettings } from "metabase/actions/types";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
-import { dayjs } from "metabase/utils/dayjs";
+import { dayjs } from "metabase/dayjs";
 import { isEmpty } from "metabase/utils/validate";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {

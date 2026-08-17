@@ -1,5 +1,5 @@
 import type { Plan } from "metabase/common/utils/plan";
-import { dayjs } from "metabase/utils/dayjs";
+import { dayjs } from "metabase/dayjs";
 import type {
   CloudMigration,
   CloudMigrationState,

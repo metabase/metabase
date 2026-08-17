@@ -1,10 +1,9 @@
+import { dayjs } from "metabase/dayjs";
 import {
   parseTime,
   parseTimestamp,
   timezoneToUTCOffset,
 } from "metabase/utils/time-dayjs";
-
-import { dayjs } from "./dayjs";
 
 describe("time-dayjs", () => {
   describe("parseTimestamp", () => {

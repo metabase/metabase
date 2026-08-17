@@ -1,9 +1,13 @@
 import cx from "classnames";
-import type { Dayjs, OpUnitType, QUnitType } from "dayjs";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { dayjs } from "metabase/utils/dayjs";
+import {
+  type Dayjs,
+  type OpUnitType,
+  type QUnitType,
+  dayjs,
+} from "metabase/dayjs";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,

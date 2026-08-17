@@ -1,4 +1,4 @@
-import { dayjs } from "./dayjs";
+import { dayjs } from "./index";
 
 describe("parse zone", () => {
   it("holds the original offset instead of converting to local", () => {

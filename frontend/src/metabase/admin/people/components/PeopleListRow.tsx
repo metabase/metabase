@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
+import { dayjs } from "metabase/dayjs";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
@@ -16,7 +17,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import { dayjs } from "metabase/utils/dayjs";
 import { getFullName } from "metabase/utils/user";
 import type {
   GroupId,

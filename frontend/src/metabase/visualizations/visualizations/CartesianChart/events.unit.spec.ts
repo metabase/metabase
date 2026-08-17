@@ -3,7 +3,7 @@ import {
   createMockCartesianChartModel,
   createMockSeriesModel,
 } from "__support__/echarts";
-import { dayjs } from "metabase/utils/dayjs";
+import { dayjs } from "metabase/dayjs";
 import {
   INDEX_KEY,
   X_AXIS_DATA_KEY,

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { dayjs } from "metabase/dayjs";
 import {
   SingleDatePicker,
   type SingleDatePickerValue,
@@ -11,7 +12,6 @@ import {
   serializeDateParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import { Button } from "metabase/ui";
-import { dayjs } from "metabase/utils/dayjs";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateSingleWidgetProps = {

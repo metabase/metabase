@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import { dayjs } from "metabase/utils/dayjs";
+import { dayjs } from "metabase/dayjs";
 
 type RelativeTimeStrings = Record<string, string>;
 

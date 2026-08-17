@@ -1,6 +1,6 @@
+import { dayjs } from "metabase/dayjs";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import { useSetting, useUpdateSettingMutation } from "metabase/settings";
-import { dayjs } from "metabase/utils/dayjs";
 import type { TokenStatus } from "metabase-types/api";
 
 const DAYS_BEFORE_REPEAT_BANNER = 14;

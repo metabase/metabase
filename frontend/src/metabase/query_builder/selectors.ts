@@ -8,6 +8,7 @@ import _ from "underscore";
 import { timelineApi } from "metabase/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
+import { dayjs } from "metabase/dayjs";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import {
   isQuestionDirty,
@@ -16,7 +17,6 @@ import {
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
-import { dayjs } from "metabase/utils/dayjs";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";

@@ -2,7 +2,7 @@ import type { DatesProviderSettings } from "@mantine/dates";
 import { DatesProvider as MantineDatesProvider } from "@mantine/dates";
 import type { ReactNode } from "react";
 
-import { dayjs } from "metabase/utils/dayjs";
+import { dayjs } from "metabase/dayjs";
 
 interface DatesProviderProps {
   children?: ReactNode;

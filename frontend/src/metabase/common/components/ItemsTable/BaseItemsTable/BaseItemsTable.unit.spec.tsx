@@ -6,8 +6,8 @@ import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { DEFAULT_VISIBLE_COLUMNS_LIST } from "metabase/common/collections/columns";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import type { ItemWithLastEditInfo } from "metabase/common/components/LastEditInfoLabel/LastEditInfoLabel";
+import { dayjs } from "metabase/dayjs";
 import { Route } from "metabase/router";
-import { dayjs } from "metabase/utils/dayjs";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,

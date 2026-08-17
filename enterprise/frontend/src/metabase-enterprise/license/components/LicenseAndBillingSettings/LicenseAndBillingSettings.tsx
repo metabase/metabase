@@ -11,12 +11,12 @@ import { ExplorePlansIllustration } from "metabase/admin/settings/components/Set
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
 import { Box, Divider, Flex, Stack } from "metabase/ui";
-import { dayjs } from "metabase/utils/dayjs";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import type { TokenStatus } from "metabase-types/api";

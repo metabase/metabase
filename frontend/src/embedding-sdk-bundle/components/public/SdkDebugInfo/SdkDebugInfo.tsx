@@ -3,8 +3,8 @@ import cx from "classnames";
 import type { HTMLAttributes } from "react";
 
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import { dayjs } from "metabase/dayjs";
 import type { BuildInfo } from "metabase/embedding-sdk/types/build-info";
-import { dayjs } from "metabase/utils/dayjs";
 
 import S from "./SdkDebugInfo.module.css";
 import { sdkDebugInfoSchema } from "./SdkDebugInfo.schema";

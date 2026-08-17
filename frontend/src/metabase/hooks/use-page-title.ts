@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
-import { dayjs } from "metabase/utils/dayjs";
+import { dayjs } from "metabase/dayjs";
 
 type TitleEntry = {
   id: string;

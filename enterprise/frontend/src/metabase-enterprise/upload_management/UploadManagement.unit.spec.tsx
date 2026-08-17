@@ -6,7 +6,7 @@ import {
   setupUploadManagementEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { dayjs } from "metabase/utils/dayjs";
+import { dayjs } from "metabase/dayjs";
 import { createMockTable } from "metabase-types/api/mocks";
 
 import { UploadManagementTable } from "./UploadManagementTable";

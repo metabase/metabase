@@ -1,5 +1,5 @@
 import { createMockSeriesModel } from "__support__/echarts";
-import { dayjs } from "metabase/utils/dayjs";
+import { dayjs } from "metabase/dayjs";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { checkNumber } from "metabase/utils/types";
 import {
