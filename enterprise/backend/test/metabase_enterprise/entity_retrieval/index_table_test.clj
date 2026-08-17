@@ -1,11 +1,15 @@
 (ns metabase-enterprise.entity-retrieval.index-table-test
   (:require
    [clojure.test :refer :all]
+   [environ.core :as env]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]
-   [next.jdbc :as jdbc]))
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as jdbc.rs]))
 
 (deftest legacy-meta-table-without-ownership-test
   (testing "a grant-only role neither attempts ALTER nor repeatedly warns"
@@ -60,8 +64,9 @@
 (deftest legacy-tables-are-moved-not-rebuilt-test
   (let [statements (atom [])
         exists     (atom #{"library_entity_index" "library_entity_index_meta"})]
-    (with-redefs-fn {#'index-table/table-exists? (fn [_ table] (contains? @exists table))
-                     #'jdbc/execute!             (fn [_ sql] (swap! statements conj (first sql)) nil)}
+    (with-redefs-fn {#'index-table/table-exists?        (fn [_ table] (contains? @exists table))
+                     #'jdbc/execute!                    (fn [_ sql] (swap! statements conj (first sql)) nil)
+                     #'semantic.db.datasource/db-url    "jdbc:postgresql://stub"}
       (fn []
         (testing "an index built before the schema existed is moved, keeping its rows"
           (#'index-table/adopt-legacy-tables! ::tx)
@@ -82,7 +87,37 @@
                            "library_retrieval.library_entity_index_meta"})
           (#'index-table/adopt-legacy-tables! ::tx)
           (is (empty? @statements)
-              "SET SCHEMA onto an occupied name errors, aborting the whole ensure-tables! transaction"))))))
+              "SET SCHEMA onto an occupied name errors, aborting the whole ensure-tables! transaction"))
+        (testing "an app db is never adopted from: nothing there can be an old index of ours"
+          (reset! statements [])
+          (reset! exists #{"library_entity_index" "library_entity_index_meta"})
+          (with-redefs [semantic.db.datasource/db-url nil]
+            (#'index-table/adopt-legacy-tables! ::tx))
+          (is (empty? @statements)
+              "an application table on the search path answers to the bare name, and must not be moved"))))))
+
+(deftest ^:sequential legacy-tables-are-adopted-in-a-dedicated-store-test
+  (testing "a real SET SCHEMA carries the rows an upgrading dedicated store already embedded"
+    (when (string? (not-empty (:mb-pgvector-db-url env/env)))
+      ;; its own database: adoption only runs under the real table names, which a shared store may hold
+      (semantic.tu/with-test-db! {:dbname "library_retrieval_adoption_test" :mode :blank :cleanup :both}
+        (let [pgvector (semantic.db.datasource/ensure-initialized-data-source!)]
+          (jdbc/execute! pgvector ["CREATE EXTENSION IF NOT EXISTS vector"])
+          ;; the bare names the index carried before it had a schema of its own
+          (jdbc/execute! pgvector ["CREATE TABLE library_entity_index
+                                    (doc_id text primary key, entity_type text, entity_local_id bigint,
+                                     doc_type text, doc_text text, doc_embedding vector(4))"])
+          (jdbc/execute! pgvector ["INSERT INTO library_entity_index
+                                    VALUES ('legacy-doc', 'table', 1, 'name', 'legacy', '[0,0,0,0]')"])
+          (index-table/ensure-tables! pgvector semantic.tu/mock-embedding-model)
+          (is (= ["legacy-doc"]
+                 (map :doc_id (jdbc/execute! pgvector
+                                             [(format "SELECT doc_id FROM %s" (index-table/vectors-table-sql))]
+                                             {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+              "moved, not recreated empty -- otherwise the whole library re-embeds on upgrade")
+          (is (empty? (jdbc/execute! pgvector [(str "SELECT 1 FROM pg_tables"
+                                                    " WHERE schemaname = 'public' AND tablename = 'library_entity_index'")]))
+              "and not left behind in the default schema, where a semantic-search wipe would find it"))))))
 
 (deftest reconcile-watermark-precedes-appdb-read-test
   (let [events (atom [])]
