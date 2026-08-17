@@ -12,14 +12,5 @@ export default defineConfig({
     clean: true,
     postProcess: ["prettier"],
   },
-  parser: {
-    filters: {
-      schemas: {
-        // hey-api still emits these when referenced — hence the .d.ts output above.
-        // eslint-disable-next-line metabase/no-literal-metabase-strings -- this is not user facing text
-        exclude: ["/^MetabaseLegacyMbqlSchema/"],
-      },
-    },
-  },
   plugins: ["@hey-api/typescript"],
 });

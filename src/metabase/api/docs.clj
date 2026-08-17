@@ -16,14 +16,11 @@
 (set! *warn-on-reflection* true)
 
 (def openapi-file-path
-  "Path to the generated OpenAPI specification. Under .tmp/ so it is gitignored and stays out of jars."
+  "Path to the generated OpenAPI specification."
   ".tmp/openapi/openapi.json")
 
 (defn- sort-keys
-  "Sort maps and sets alphabetically so that adding a key does not churn its neighbours.
-
-  Apply just before encoding. This is Clojure's ordering, which puts namespaced keywords after bare
-  ones — tools sorting serialized strings disagree."
+  "Sort maps and sets alphabetically to reduce diff noise on openapi.json"
   [data]
   (walk/postwalk
    (fn [x]
@@ -34,8 +31,6 @@
    data))
 
 (def ^:private non-public-path-prefixes
-  "Route prefixes mounted on runtime configuration rather than on source, so including them would make
-  the document depend on how it was generated."
   ["/api/testing" "/api/dev"])
 
 (defn- public-path?
@@ -80,9 +75,8 @@
 (defn open-api-object
   "The OpenAPI document describing the public API of `root-handler`.
 
-  Normalizes [[metabase.api.open-api/root-open-api-object]] so the output is a function of the source
-  alone: environment-dependent routes are dropped and unreachable schemas pruned. Callers add
-  `:info`/`:servers`."
+  Normalizes [[metabase.api.open-api/root-open-api-object]]: environment-dependent routes are dropped and unreachable schemas pruned.
+  Callers add `:info`/`:servers`."
   [root-handler]
   (let [spec    (open-api/root-open-api-object root-handler)
         paths   (into {} (filter (comp public-path? key)) (:paths spec))

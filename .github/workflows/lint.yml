@@ -97,6 +97,7 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+
       - name: Generate and split OpenAPI spec
         if: needs.files-changed.outputs.openapi_spec == 'true'
         run: bun run openapi:update
@@ -109,12 +110,10 @@ jobs:
         run: bun run openapi:lint
 
       # openapi:update above regenerates from source first, so any difference means the
-      # commit did not include a regenerated spec. `git status` rather than `git diff`,
-      # so that added and removed schema files count too.
+      # commit did not include a regenerated spec.
       #
       # Warns rather than fails, on purpose. This is the first stage of rolling the check
-      # out: it makes drift visible in the job summary without turning anyone's PR red,
-      # so we can measure how often it fires before making it blocking.
+      # out: it makes drift visible in the job summary without turning anyone's PR red.
       - name: Check the committed spec is up to date
         if: needs.files-changed.outputs.openapi_spec == 'true'
         run: |

@@ -2,18 +2,17 @@
 /**
  * Ensures generated API types (frontend/src/metabase-types/openapi/) exist,
  * as fresh as cheaply possible.
+ * Runs in 2 modes:
+ *   1. --tolerant (for postinstall) skips everything when types are already up to date
+ *   2. strict mode: exits non-zero if types are not up to date
  *
  * Fallback chain:
  *   1. Running backend (GET /api/docs/openapi.json) — the only source reflecting
  *        uncommitted schema changes
- *   2. Existing types on disk — kept, so a backend-generated set is never silently
- *        reverted to the committed state, unless the committed spec is newer (you
+ *   2. Existing types on disk —  unless the committed spec is newer (you
  *        just pulled someone else's API change)
- *   3. Committed spec under frontend/build/openapi/spec — bundled, no JVM
- *   4. Nothing at all -> tolerant exit 0 / strict exit 1
- *
- * --tolerant (postinstall) skips everything when types are already up to date, and
- * never exits non-zero — a failure there would fail `bun install` itself.
+ *   3. Committed spec under frontend/build/openapi/spec
+ *   4. Nothing found -> --tolerant exits with 0 / strict exits with 1
  */
 import { spawnSync } from "node:child_process";
 import {
@@ -43,7 +42,7 @@ function runScript(name: string): number {
   return result.status ?? 1;
 }
 
-function newestMtime(dir: string): number {
+function newestModificationTime(dir: string): number {
   let newest = 0;
   const visit = (current: string) => {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
@@ -60,13 +59,12 @@ function newestMtime(dir: string): number {
 }
 
 // Pulling someone else's API change rewrites files in the committed spec, which leaves
-// them newer than the types generated before the pull. Only their mtimes are touched,
-// so a set generated from your own backend afterwards still wins.
+// them newer than the types generated before the pull.
 function committedSpecIsNewerThanTypes(): boolean {
   if (!existsSync(SPLIT_SPEC_PATH) || !existsSync(TYPES_PATH)) {
     return false;
   }
-  return newestMtime(SPLIT_SPEC_DIR) > statSync(TYPES_PATH).mtimeMs;
+  return newestModificationTime(SPLIT_SPEC_DIR) > statSync(TYPES_PATH).mtimeMs;
 }
 
 async function fetchSpecFromBackend(): Promise<boolean> {
@@ -112,7 +110,8 @@ function generateFromCommittedSpec(): never {
 }
 
 const typesExist = existsSync(TYPES_PATH);
-const typesAreBehindCommittedSpec = typesExist && committedSpecIsNewerThanTypes();
+const typesAreBehindCommittedSpec =
+  typesExist && committedSpecIsNewerThanTypes();
 
 if (tolerant && typesExist && !typesAreBehindCommittedSpec) {
   process.exit(0);

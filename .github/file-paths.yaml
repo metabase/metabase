@@ -235,12 +235,10 @@ openapi:
   - "src/metabase/*/api/*.clj"
   - "enterprise/backend/src/metabase_enterprise/**/api.clj"
   - "enterprise/backend/src/metabase_enterprise/**/api/*.clj"
-  - "resources/openapi/**"
   - "package.json"
 
 # Anything that can change the generated OpenAPI document — broader than `openapi` above,
-# since a schema reached from an endpoint may live far from any api.clj. resources/** is
-# absent on purpose: the only spec inputs there are presentation, not schema.
+# since a schema reached from an endpoint may live far from any api.clj.
 openapi_spec:
   - ".github/workflows/lint.yml"
   - "src/**"

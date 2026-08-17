@@ -1,3 +1,8 @@
+/*
+ * Helper to add trailing newlines to OpenAPI spec files.
+ * Otherwise they fail our lint validation, and 'redocly' doesn't provide
+ * a config for that.
+ */
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
