@@ -17,6 +17,7 @@ import {
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
+import { visualizations } from "metabase/visualizations";
 import { getSensibleDisplays } from "metabase/visualizations/lib/sensibility";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -215,11 +216,24 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
       // the visualizations registry, so register it before deciding whether
       // to reset the display (metabase#76065).
       const display = question.display();
-      if (PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(display)) {
+      if (
+        PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(display) &&
+        !visualizations.has(display)
+      ) {
+        const runController = getState().qb.cancelQueryController;
         await PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay(
           dispatch,
           display,
         );
+
+        // Drop this completion if the run was superseded or cancelled
+        if (getState().qb.cancelQueryController !== runController) {
+          return;
+        }
+        if (runController?.signal.aborted) {
+          dispatch({ type: CANCEL_QUERY });
+          return;
+        }
       }
 
       const series = [{ card: question.card(), data, error }];

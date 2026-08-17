@@ -3,8 +3,14 @@ import type { CustomVisualization } from "custom-viz";
 import { screen, waitFor } from "__support__/ui";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import { cancelQuery } from "metabase/query_builder/actions";
 import { setup } from "metabase/query_builder/containers/test-utils";
-import { getCard } from "metabase/query_builder/selectors";
+import {
+  getCard,
+  getFirstQueryResult,
+  getIsRunning,
+} from "metabase/query_builder/selectors";
+import type { Dispatch } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualization } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -155,5 +161,22 @@ describe("query builder > unsaved question with a custom viz restored from the U
       MISSING_DISPLAY,
     );
     expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
+  });
+
+  it("discards the completed run when the query is cancelled while the plugin loads", async () => {
+    const loadForDisplay = jest.fn(async (dispatch: Dispatch) => {
+      dispatch(cancelQuery());
+      registerDemoViz();
+      return DISPLAY;
+    });
+    PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay = loadForDisplay;
+
+    const { store } = await setupFromUrlHash(
+      createUnsavedCustomVizCard(DISPLAY),
+    );
+
+    await waitFor(() => expect(loadForDisplay).toHaveBeenCalled());
+    expect(getFirstQueryResult(store.getState())).toBeFalsy();
+    expect(getIsRunning(store.getState())).toBe(false);
   });
 });
