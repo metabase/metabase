@@ -91,21 +91,24 @@
     :id          (swap! application-db-counter inc)
     :lock        (ReentrantReadWriteLock.)}))
 
+(defonce ^:private application-db-component
+  (doto (system/mutable-component-handle ::application-db)
+    (mc/alter-root (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))))
+
 (defn application-db-handle
   "Return a mutable component handle to the application db"
   []
-  (system/mutable-component-handle ::application-db))
+  application-db-component)
 
-#_{:clj-kondo/ignore [:metabase/unused-private-var]}
-(defonce ^:private init*
-  ; Initialize the current Metabase application database.
-  (do (mc/alter-root (application-db-handle) (application-db mdb.env/db-type mdb.env/data-source :create-pool? true))
-      ::done))
+(defn current-application-db
+  "The application DB currently visible to this thread."
+  ^ApplicationDB []
+  @(application-db-handle))
 
 (defn db-type
   "Keyword type name of the application DB. Matches corresponding db-type name e.g. `:h2`, `:mysql`, or `:postgres`."
   []
-  (.db-type ^ApplicationDB @(application-db-handle)))
+  (.db-type (current-application-db)))
 
 (defn quoting-style
   "HoneySQL quoting style to use for application DBs of the given type. Note for H2 application DBs we automatically
@@ -121,7 +124,7 @@
   "Get a data source for the application DB, derived from environment variables. Usually this should be a pooled data
   source (i.e. a c3p0 pool) -- but in test situations it might not be."
   ^javax.sql.DataSource []
-  (.data-source ^ApplicationDB @(application-db-handle)))
+  (.data-source (current-application-db)))
 
 ;; I didn't call this `id` so there's no confusing this with a data warehouse [[metabase.warehouses.models.database]] instance --
 ;; it's a number that I don't want getting mistaken for an `Database` `id`. Also the fact that it's an Integer is not
@@ -134,11 +137,11 @@
   memoization with [[clojure.core.memoize]] or other special cases. See [[metabase.driver.util/database->driver*]] for
   an example of using this for TTL memoization."
   []
-  (.id ^ApplicationDB @(application-db-handle)))
+  (.id (current-application-db)))
 
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
-  (t2.conn/do-with-connection @(application-db-handle) f))
+  (t2.conn/do-with-connection (current-application-db) f))
 
 (def ^:private ^:dynamic *transaction-depth* 0)
 
@@ -320,8 +323,8 @@
 (defn do-with-unshared-connection
   "Impl for [[with-unshared-connection]]."
   [f]
-  ;; through *application-db* (not the raw data source) so its connection read-lock gate applies
-  (with-open [conn (.getConnection *application-db*)]
+  ;; through the ApplicationDB (not the raw data source) so its connection read-lock gate applies
+  (with-open [conn (.getConnection (current-application-db))]
     (f (t2.conn/unshared-connection! conn))))
 
 (defmacro with-unshared-connection

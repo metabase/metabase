@@ -63,16 +63,15 @@
 (defmacro with-db
   "Execute `body` with the current app DB bound to an H2 `data-source`."
   [data-source & body]
-  `(let [handle# (mdb.connection/application-db-handle)]
-     (mc/binding handle#
-       (mdb.connection/application-db :h2 ~data-source)
-       (fn []
-         (with-open [conn# (.getConnection ^javax.sql.DataSource @handle#)]
-           (binding [t2.conn/*current-connectable* conn#]
-             ;; TODO mt/with-empty-h2-app-db! also rebinds some perms-group/* - do we want to do that too?
-             ;;   redefs not great for parallelism
-             (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
-               ~@body)))))))
+  `(mc/binding (mdb.connection/application-db-handle)
+     (mdb.connection/application-db :h2 ~data-source)
+     (fn []
+       (with-open [conn# (.getConnection (mdb.connection/current-application-db))]
+         (binding [t2.conn/*current-connectable* conn#]
+           ;; TODO mt/with-empty-h2-app-db! also rebinds some perms-group/* - do we want to do that too?
+           ;;   redefs not great for parallelism
+           (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
+             ~@body))))))
 
 (defn- do-with-in-memory-h2-db [f]
   (schema-migrations-test.impl/do-with-temp-empty-app-db*

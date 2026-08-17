@@ -18,7 +18,7 @@
 (defn- cache-results
   "Get the stored value from the query_cache"
   []
-  (let [conn (.getConnection ^DataSource (:data-source mdb.connection/*application-db*))]
+  (let [conn (.getConnection ^DataSource (:data-source (mdb.connection/current-application-db)))]
     (-> (jdbc/query {:connection conn} "select results from query_cache limit 1")
         first
         :results

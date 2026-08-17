@@ -1797,12 +1797,17 @@
 ;;; 50 tests
 ;;;
 
+(defonce ^:private root-redef-lock (Object.))
+
 (defn- with-redef
+  "Install `value` as `handle`'s root for the duration of `thunk`, then restore the root it replaced.
+   Serialized, because two overlapping save/restore pairs would leave the second thread's value installed
+   as the \"original\" root once both have finished."
   [handle value thunk]
-  (let [before (mc/root handle)]
-    (mc/alter-root handle value)
-    (try (thunk)
-         (finally (mc/alter-root handle before)))))
+  (locking root-redef-lock
+    (let [before (mc/alter-root handle value)]
+      (try (thunk)
+           (finally (mc/alter-root handle before))))))
 
 (deftest ^:mb/old-migrations-test delete-send-pulse-job-on-migrate-down-test
   (impl/test-migrations ["v50.2024-04-25T01:04:06"] [migrate!]
@@ -1829,20 +1834,19 @@
             (migrate!)
             ;; promote the currently-bound app DB to the var's root so quartz triggers running on different threads
             ;; see the same app DB as this test, then restore the prior root on exit
-            (let [handle (mdb.connection/application-db-handle)]
-              (with-redef handle @handle
-                (fn []
-                  ;; simulate starting MB after migrate up, which will trigger this function
-                  (task/init! ::task.send-pulses/SendPulses)
-                  ;; wait a bit for the InitSendPulseTriggers to run
-                  (u/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
-                           :done? #(= 1 %)})
-                  (testing "sanity check that we have a send pulse trigger and 2 jobs after restart"
-                    (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pc [(:id pc)])}
-                           (pulse-channel-test/send-pulse-triggers pulse-id)))
-                    (is (= #{"metabase.task.send-pulses.send-pulse.job"
-                             "metabase.task.send-pulses.init-send-pulse-triggers.job"}
-                           (scheduler-job-keys)))))))))))))
+            (with-redef (mdb.connection/application-db-handle) (mdb.connection/current-application-db)
+              (fn []
+                ;; simulate starting MB after migrate up, which will trigger this function
+                (task/init! ::task.send-pulses/SendPulses)
+                ;; wait a bit for the InitSendPulseTriggers to run
+                (u/poll {:thunk #(pulse-channel-test/send-pulse-triggers pulse-id)
+                         :done? #(= 1 %)})
+                (testing "sanity check that we have a send pulse trigger and 2 jobs after restart"
+                  (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pc [(:id pc)])}
+                         (pulse-channel-test/send-pulse-triggers pulse-id)))
+                  (is (= #{"metabase.task.send-pulses.send-pulse.job"
+                           "metabase.task.send-pulses.init-send-pulse-triggers.job"}
+                         (scheduler-job-keys))))))))))))
 
 (def ^:private area-bar-combo-cards-test-data
   {"stack display takes priority"

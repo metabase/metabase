@@ -2862,7 +2862,7 @@
         (testing (str id " is recorded as MARK_RAN")
           (is (= "MARK_RAN"
                  (:exectype (liquibase/changelog-by-id
-                             @(mdb.connection/application-db-handle)
+                             (mdb.connection/current-application-db)
                              id)))))))))
 
 ;;;
