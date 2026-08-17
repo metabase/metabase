@@ -199,14 +199,6 @@ const loadStartUIControls = createThunkAction(
 
 export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
   return async (dispatch: Dispatch, getState: GetState) => {
-    // A `custom:*` display counts as sensible only once its plugin is in the
-    // visualizations registry, so register it before deciding whether to
-    // reset the display (metabase#76065).
-    const display = question.display();
-    if (PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(display)) {
-      await PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay(dispatch, display);
-    }
-
     const [{ data, error }] = queryResults;
     const prevCard = getCard(getState());
     const { data: prevData, error: prevError } =
@@ -219,6 +211,17 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
       (!originalQuestion || question.isDirtyComparedTo(originalQuestion));
 
     if (isDirty) {
+      // A `custom:*` display counts as sensible only once its plugin is in
+      // the visualizations registry, so register it before deciding whether
+      // to reset the display (metabase#76065).
+      const display = question.display();
+      if (PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(display)) {
+        await PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay(
+          dispatch,
+          display,
+        );
+      }
+
       const series = [{ card: question.card(), data, error }];
       const previousSeries =
         prevCard && prevData
