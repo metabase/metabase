@@ -198,11 +198,14 @@
           parts      (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)]
       (is (=? [{:type :start}
                {:type :text :text string?}
-               {:type  :usage
-                :usage {:promptTokens        pos-int?
-                        :completionTokens    pos-int?
-                        :cacheCreationTokens nat-int?
-                        :cacheReadTokens     nat-int?}}]
+               {:type              :usage
+                ;; a truncated response must not report as a clean completion
+                :finish-reason     "length"
+                :raw-finish-reason "max_output_tokens"
+                :usage             {:promptTokens        pos-int?
+                                    :completionTokens    pos-int?
+                                    :cacheCreationTokens nat-int?
+                                    :cacheReadTokens     nat-int?}}]
               parts))
       (testing "no error chunk is produced for an incomplete (partial-but-valid) response"
         (is (empty? (filter #(= :error (:type %)) parts)))))))
