@@ -34,6 +34,7 @@
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetListOption
+    BigQuery$DatasetOption
     BigQuery$JobOption
     BigQuery$QueryResultsOption
     BigQuery$TableDataListOption
@@ -41,6 +42,7 @@
     BigQueryException
     BigQueryOptions
     Dataset
+    DatasetId
     Field
     Field$Mode
     FieldValue
