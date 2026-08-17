@@ -247,7 +247,7 @@
   commons-logging/commons-logging                    {:mvn/version "1.3.5"}
 
   ;; Guava — hive-standalone-metastore-common pulls 22.0 transitively.
-  com.google.guava/guava                             {:mvn/version "33.5.0-jre"}
+  com.google.guava/guava                             {:mvn/version "33.6.0-jre"}
 
   ;; Netty — pinned explicitly at safe versions for security scanning.
   ;; Driver JARs are scanned individually so these must be declared directly.
