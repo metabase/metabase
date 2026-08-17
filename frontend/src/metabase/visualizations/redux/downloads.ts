@@ -39,7 +39,7 @@ import type {
 } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
-import { trackDownloadResults, trackExportDashboardToPDF } from "./analytics";
+import { trackDownloadResults, trackExportDashboardToPDF } from "../analytics";
 
 export interface DownloadQueryResultsOpts {
   type: string;
