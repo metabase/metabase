@@ -1,11 +1,12 @@
-// Admission rule: code belongs here when its subject is instance branding —
-// the OSS defaults behind the EE whitelabel plugin seam.
-// Deriving from a whitelabel setting is not enough.
-
-// The module's public interface.
-// Names absent here are module-private on purpose — add them only when a real consumer needs them.
-
-export { PLUGIN_SELECTORS, type IllustrationValue } from "./plugin";
+export {
+  PLUGIN_HOMEPAGE_SETTING,
+  PLUGIN_LANDING_PAGE,
+  PLUGIN_LOGO_ICON_COMPONENTS,
+  PLUGIN_SELECTORS,
+  PLUGIN_WHITELABEL,
+  type IllustrationValue,
+  reinitialize,
+} from "./plugin";
 export {
   getApplicationName,
   getCanWhitelabel,

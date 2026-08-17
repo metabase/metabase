@@ -50,10 +50,7 @@ export {
 } from "./oss/content-verification";
 export {
   PLUGIN_APP_INIT_FUNCTIONS,
-  PLUGIN_LANDING_PAGE,
-  PLUGIN_HOMEPAGE_SETTING,
   PLUGIN_REDUX_MIDDLEWARES,
-  PLUGIN_LOGO_ICON_COMPONENTS,
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_FORM_WIDGETS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
@@ -168,7 +165,6 @@ export {
 } from "./oss/dependencies";
 export { PLUGIN_MONITOR, PLUGIN_MONITOR_TOOLS } from "./oss/monitor";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
-export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
 export {
   PLUGIN_WRITABLE_CONNECTION,
   type WritableConnectionInfoSectionProps,
@@ -225,25 +221,17 @@ import { reinitialize as reinitializeSupport } from "./oss/support";
 import { reinitialize as reinitializeTenants } from "./oss/tenants";
 import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
-import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
 import { reinitialize as reinitializeWritableConnection } from "./oss/writable-connection";
 
-// Modules above the registry own their plugin slots (whitelabel owns PLUGIN_SELECTORS).
-// They register their reset here because the registry cannot import upward to reach their defaults.
-const registeredReinitializers: (() => void)[] = [];
-
-export function onReinitialize(reinitializer: () => void) {
-  registeredReinitializers.push(reinitializer);
-}
-
 /**
- * Mostly for test purposes, reinitialize all plugins.
+ * Reinitialize the plugin slots declared in this module.
  * You don't reinitialize plugins individually because some plugins depend on others,
  * so reinitializing them all ensures that dependencies are correctly set up.
+ *
+ * @internal Do not call directly. Use reinitializePlugins from __support__/plugins instead,
+ * which also resets the slots that other modules declare.
  */
 export function reinitialize() {
-  registeredReinitializers.forEach((reinitializer) => reinitializer());
-
   reinitializeNotificationsSdk();
 
   reinitializeAiControls();
@@ -283,6 +271,5 @@ export function reinitialize() {
   reinitializeDependencies();
   reinitializeTransforms();
   reinitializeUploadManagement();
-  reinitializeWhitelabel();
   reinitializeWritableConnection();
 }

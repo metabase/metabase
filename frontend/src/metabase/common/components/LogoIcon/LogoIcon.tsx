@@ -1,7 +1,7 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_LOGO_ICON_COMPONENTS } from "metabase/plugins";
+import { PLUGIN_LOGO_ICON_COMPONENTS } from "metabase/whitelabel";
 
 interface LogoIconProps {
   width?: number;

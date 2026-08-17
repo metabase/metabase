@@ -1,6 +1,6 @@
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 import { Route } from "metabase/router";
+import { PLUGIN_LANDING_PAGE } from "metabase/whitelabel";
 
 import { LandingPageRedirect } from "./LandingPageRedirect";
 

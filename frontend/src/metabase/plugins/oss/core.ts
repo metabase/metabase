@@ -30,22 +30,6 @@ const getDefaultAppInitFunctions = (): (() => void)[] => [];
 
 export const PLUGIN_APP_INIT_FUNCTIONS = getDefaultAppInitFunctions();
 
-const getDefaultLandingPage = () => ({
-  getLandingPage: () => "/",
-});
-
-export const PLUGIN_LANDING_PAGE: {
-  getLandingPage: () => string | null | undefined;
-} = getDefaultLandingPage();
-
-const getDefaultHomepageSetting = () => ({
-  CustomUrlOption: null,
-});
-
-export const PLUGIN_HOMEPAGE_SETTING: {
-  CustomUrlOption: { label: string; Control: ComponentType } | null;
-} = getDefaultHomepageSetting();
-
 // dispatch is typed as thunk-capable so EE middlewares can dispatch async thunks
 const getDefaultReduxMiddlewares = (): Middleware<
   Record<string, never>,
@@ -54,10 +38,6 @@ const getDefaultReduxMiddlewares = (): Middleware<
 >[] => [];
 
 export const PLUGIN_REDUX_MIDDLEWARES = getDefaultReduxMiddlewares();
-
-const getDefaultLogoIconComponents = (): ComponentType[] => [];
-
-export const PLUGIN_LOGO_ICON_COMPONENTS = getDefaultLogoIconComponents();
 
 const getDefaultAdminAllowedPathGetters = (): ((
   user: any,
@@ -128,14 +108,8 @@ export function reinitialize() {
   PLUGIN_APP_INIT_FUNCTIONS.length = 0;
   PLUGIN_APP_INIT_FUNCTIONS.push(...getDefaultAppInitFunctions());
 
-  Object.assign(PLUGIN_LANDING_PAGE, getDefaultLandingPage());
-  Object.assign(PLUGIN_HOMEPAGE_SETTING, getDefaultHomepageSetting());
-
   PLUGIN_REDUX_MIDDLEWARES.length = 0;
   PLUGIN_REDUX_MIDDLEWARES.push(...getDefaultReduxMiddlewares());
-
-  PLUGIN_LOGO_ICON_COMPONENTS.length = 0;
-  PLUGIN_LOGO_ICON_COMPONENTS.push(...getDefaultLogoIconComponents());
 
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.length = 0;
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(

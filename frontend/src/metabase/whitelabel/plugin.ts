@@ -1,7 +1,8 @@
+import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { onReinitialize } from "metabase/plugins";
+import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { State } from "metabase/redux/store";
 
 export type IllustrationValue = {
@@ -43,10 +44,43 @@ const getDefaultSelectors = () => ({
   },
 });
 
-// The EE whitelabel plugin reassigns these slots under the whitelabel token.
-// The wrappers in selectors.ts read them at call time so the reassignment is seen.
 export const PLUGIN_SELECTORS = getDefaultSelectors();
 
-onReinitialize(() => {
-  Object.assign(PLUGIN_SELECTORS, getDefaultSelectors());
+const getDefaultPluginWhitelabel = () => ({
+  WhiteLabelBrandingSettingsPage: PluginPlaceholder,
+  WhiteLabelConcealSettingsPage: PluginPlaceholder,
 });
+
+export const PLUGIN_WHITELABEL = getDefaultPluginWhitelabel();
+
+const getDefaultLandingPage = () => ({
+  getLandingPage: () => "/",
+});
+
+export const PLUGIN_LANDING_PAGE: {
+  getLandingPage: () => string | null | undefined;
+} = getDefaultLandingPage();
+
+const getDefaultHomepageSetting = () => ({
+  CustomUrlOption: null,
+});
+
+export const PLUGIN_HOMEPAGE_SETTING: {
+  CustomUrlOption: { label: string; Control: ComponentType } | null;
+} = getDefaultHomepageSetting();
+
+const getDefaultLogoIconComponents = (): ComponentType[] => [];
+
+export const PLUGIN_LOGO_ICON_COMPONENTS = getDefaultLogoIconComponents();
+
+/**
+ * @internal Do not call directly. Use reinitializePlugins from __support__/plugins instead.
+ */
+export function reinitialize() {
+  Object.assign(PLUGIN_SELECTORS, getDefaultSelectors());
+  Object.assign(PLUGIN_WHITELABEL, getDefaultPluginWhitelabel());
+  Object.assign(PLUGIN_LANDING_PAGE, getDefaultLandingPage());
+  Object.assign(PLUGIN_HOMEPAGE_SETTING, getDefaultHomepageSetting());
+  PLUGIN_LOGO_ICON_COMPONENTS.length = 0;
+  PLUGIN_LOGO_ICON_COMPONENTS.push(...getDefaultLogoIconComponents());
+}
