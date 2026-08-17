@@ -131,20 +131,9 @@
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
     
-    ;; set UNIVERSE_DOMAIN
+    ;;
     (when universe-domain
       (.setUniverseDomain bq-bldr universe-domain))
-    
-    ;; `ImpersonatedCredentials` doesn't carry a project id (it derives identity
-    ;; from the impersonation target SA, not from a key file), so the Google SDK
-    ;; would throw "A project ID is required for this service but could not be
-    ;; determined from the builder or the environment" when building the client.
-    ;; Fall back to the base SA's project id, which is what every non-impersonated
-    ;; call site is implicitly relying on through `getOptions.getProjectId`.
-    (when impersonating?
-      (when-let [pid (or (:project-id details)
-                         (.getProjectId base-creds))]
-        (.setProjectId bq-bldr ^String pid)))
     (when-let [host (not-empty (:host details))]
       (.setHost bq-bldr host))
     (.. bq-bldr build getService)))
