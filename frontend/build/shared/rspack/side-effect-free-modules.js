@@ -53,17 +53,13 @@ const SIDE_EFFECT_PATHS = [
     REPO_ROOT,
     "frontend/src/metabase/querying/expressions/pratt/syntax.ts",
   ),
-  // Both replace `.Dropdown` on Mantine's own component object at import time.
-  // Mantine's Combobox, Menu, ColorInput and HoverCard render `Popover.Dropdown`
+  // Installs our wrapped dropdown on Mantine's own Popover object. Mantine's
+  // Combobox, Menu, ColorInput and HoverCard render `Popover.Dropdown`
   // internally, so a bundle that never imports our `Popover` still depends on
-  // the replacement having run.
+  // the replacement having run. ThemeProvider bare-imports it.
   path.join(
     REPO_ROOT,
-    "frontend/src/metabase/ui/components/overlays/Popover/index.tsx",
-  ),
-  path.join(
-    REPO_ROOT,
-    "frontend/src/metabase/ui/components/overlays/HoverCard/index.tsx",
+    "frontend/src/metabase/ui/components/overlays/Popover/register-popover-dropdown.ts",
   ),
 ];
 
