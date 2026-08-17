@@ -5,6 +5,7 @@ import {
 } from "metabase/schema";
 import type {
   Collection,
+  CollectionItemModel,
   CollectionPermissionsGraph,
   CreateCollectionRequest,
   DeleteCollectionRequest,
@@ -47,6 +48,13 @@ const collectionSchemaForRequest = (
   request?.namespace === "snippets"
     ? SnippetCollectionSchema
     : CollectionSchema;
+
+const getCollectionItemTagModels = (
+  models: ListCollectionItemsRequest["models"],
+): CollectionItemModel[] | undefined =>
+  models?.filter(
+    (model): model is CollectionItemModel => model !== "no_models",
+  );
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -99,7 +107,10 @@ export const collectionApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (response, error, { models, id }) => [
-        ...provideCollectionItemListTags(response?.data ?? [], models),
+        ...provideCollectionItemListTags(
+          response?.data ?? [],
+          getCollectionItemTagModels(models),
+        ),
         { type: "collection", id: `${id}-items` },
       ],
       onQueryStarted: hydrateMetadataStore<ListCollectionItemsResponse>(

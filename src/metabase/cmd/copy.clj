@@ -140,6 +140,14 @@
     :model/MetabotUsedTable
     :model/MetabotPrompt
     :model/OsiAiContext
+    ;; 62+
+    :model/Exploration
+    :model/ExplorationThread
+    :model/ExplorationBlock
+    :model/ExplorationPage
+    :model/ExplorationThreadTimeline
+    :model/ExplorationQuery
+    :model/ExplorationBookmark
     ;; 63+
     :model/McpFeedback]
    (when config/ee-available?
@@ -225,6 +233,10 @@
     :model/Field
     ;; unique_field_helper is a computed/generated column
     (map #(dissoc % :unique_field_helper))
+
+    :model/DataPermissions
+    ;; unique_perms_helper is a computed/generated column
+    (map #(dissoc % :unique_perms_helper))
 
     ;; else
     identity))

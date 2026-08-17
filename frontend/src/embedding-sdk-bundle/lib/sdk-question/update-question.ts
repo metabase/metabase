@@ -82,7 +82,7 @@ export const updateQuestionSdk =
     const computedPivotQuestion = computeQuestionPivotTable({
       question: nextQuestion,
       currentQuestion: previousQuestion,
-      rawSeries,
+      rawSeries: rawSeries ?? undefined,
     });
 
     nextQuestion = computedPivotQuestion.question;

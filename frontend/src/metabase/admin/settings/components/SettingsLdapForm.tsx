@@ -10,7 +10,6 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
-import { useUpdateLdapMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
@@ -28,6 +27,8 @@ import {
 } from "metabase/settings";
 import { Box, Divider, Flex, Group, Radio, Stack } from "metabase/ui";
 import type { EnterpriseSettings, Settings } from "metabase-types/api";
+
+import { useUpdateLdapMutation } from "../api/ldap";
 
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",

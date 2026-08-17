@@ -43,6 +43,8 @@ export const initialState: DocumentsState = {
   isHistorySidebarOpen: false,
 };
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - possibly infinite type error
 const documentsSlice = createSlice({
   name: "documents",
   initialState,

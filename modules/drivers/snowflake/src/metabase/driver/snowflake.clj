@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys not-empty mapv])
+  (:refer-clojure :exclude [some select-keys not-empty mapv])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -37,7 +37,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv not-empty select-keys]]
+   [metabase.util.performance :refer [mapv not-empty select-keys some]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -49,6 +49,19 @@
 (set! *warn-on-reflection* true)
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/host-carrying-parameters :snowflake
+  [_driver]
+  ["proxyHost" "host"])
+
+(defmethod driver/connection-hosts :snowflake
+  [_driver {:keys [account host use-hostname]}]
+  (driver/hosts-from-details
+   {:host (if (and use-hostname (string? host) (not (str/blank? host)))
+            host
+            (when (string? account)
+              (str account ".snowflakecomputing.com")))}
+   [:host]))
 
 (doseq [[feature supported?] {:connection-impersonation               true
                               :connection-impersonation-requires-role true
@@ -86,14 +99,20 @@
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ messages]
-  (let [message (first messages)]
-    (log/spy :error (type message))
-    (condp re-matches message
-      #"(?s).*Object does not exist.*$"
+  (let [message      (first messages)
+        any-message? (fn [re] (boolean (some (partial re-find re) (filter string? messages))))]
+    (cond
+      (any-message? #"(?s)privateKeyPwd.*is null")
+      (tru "This private key is encrypted. Enter the passphrase to connect.")
+
+      (any-message? #"(?s)Error finalising cipher|unable to read encrypted data")
+      (tru "The passphrase for this private key is incorrect.")
+
+      (and (string? message) (re-matches #"(?s).*Object does not exist.*$" message))
       :database-name-incorrect
 
-      ; default - the Snowflake errors have a \n in them
-      message)))
+      ;; default - the Snowflake errors have a \n in them
+      :else message)))
 
 (defmethod driver/db-start-of-week :snowflake
   [_]
@@ -111,7 +130,7 @@
   []
   (inc (driver.common/start-of-week->int)))
 
-(defn- handle-conn-uri [details user account private-key-file]
+(defn- handle-conn-uri [details user account private-key-file private-key-passphrase]
   (let [existing-conn-uri (or (:connection-uri details)
                               (when-let [sub (:subname details)]
                                 (format "jdbc:snowflake:%s" sub))
@@ -120,7 +139,10 @@
                                                           (cond-> {:user (codec/url-encode user)
                                                                    :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))}
                                                             (:db details)
-                                                            (assoc :db (codec/url-encode (:db details)))))
+                                                            (assoc :db (codec/url-encode (:db details)))
+
+                                                            (not (str/blank? private-key-passphrase))
+                                                            (assoc :private_key_pwd (codec/form-encode private-key-passphrase))))
         new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
     (-> details
         (assoc :connection-uri new-conn-uri)
@@ -132,15 +154,20 @@
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
   Snowflake driver expects a java.security.PrivateKey instance."
-  [{:keys [user password account]
+  [{:keys [user password account private-key-passphrase]
     :as   details}]
   (if password
     details
     (if-let [private-key-file (driver-api/secret-value-as-file! :snowflake details "private-key")]
       (-> details
           (driver-api/clean-secret-properties-from-details :snowflake)
-          (handle-conn-uri user account private-key-file)
-          (assoc :private_key_file private-key-file))
+          (handle-conn-uri user account private-key-file private-key-passphrase)
+          (assoc :private_key_file private-key-file)
+          ;; We need to put the `:private_key_pwd` property in both the `:connection-uri` and the connection spec.
+          ;; It uses the raw value here in the connection spec, but needs to use `codec/form-encode` for the `:connection-uri`.
+          (cond-> (not (str/blank? private-key-passphrase))
+            (assoc :private_key_pwd private-key-passphrase))
+          (dissoc :private-key-passphrase))
       (driver-api/clean-secret-properties-from-details details :snowflake))))
 
 (defn- quote-name
@@ -194,7 +221,8 @@
                              (-> details
                                  ;; Setting private-key-value to nil will delete the secret
                                  (assoc :use-password true :private-key-value nil)
-                                 (dissoc :private-key-id :private-key-path :private-key-options)
+                                 (dissoc :private-key-id :private-key-path :private-key-options
+                                         :private-key-passphrase)
                                  ;; Add meta for testing
                                  (with-meta {:auth :password})))
           private-key-path-details (when private-key-path

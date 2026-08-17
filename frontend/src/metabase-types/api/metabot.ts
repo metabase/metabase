@@ -9,6 +9,7 @@ import type {
   DraftTransform,
   PaginationRequest,
   PaginationResponse,
+  ResearchPlanContext,
   RowValue,
   SuggestedTransform,
   Transform,
@@ -52,6 +53,7 @@ export type MetabotChatContext = {
   default_database_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
+  research_plan?: ResearchPlanContext;
 };
 
 export type MetabotTool = {
@@ -194,7 +196,9 @@ export type MetabotProvider =
   | "anthropic"
   | "azure"
   | "bedrock"
+  | "google"
   | "mistral"
+  | "moonshot"
   | "openai"
   | "openrouter"
   | "zai";
@@ -211,10 +215,15 @@ export interface AzureCredentials {
   "base-url"?: string | null;
 }
 
-/** One permissive map mirroring the backend's request schema: Bedrock sends AWS key
- * material, Azure sends an API key and base URL. */
+export interface GoogleCredentials {
+  "service-account-key"?: string | null;
+  "oauth-access-token"?: string | null;
+  "project-id"?: string | null;
+  location?: string | null;
+}
+
 export interface MetabotCredentials
-  extends BedrockCredentials, AzureCredentials {}
+  extends BedrockCredentials, AzureCredentials, GoogleCredentials {}
 
 export interface MetabotSettingsResponse {
   value: string | null;

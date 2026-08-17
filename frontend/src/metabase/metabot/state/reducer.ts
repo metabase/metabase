@@ -20,6 +20,7 @@ import {
   addChainTool,
   appendAgentTurnAborted,
   appendAgentTurnErrored,
+  appendAgentTurnIncomplete,
   appendChainReasoning,
   closeChain,
   convoReducer,
@@ -461,6 +462,14 @@ export const metabot = createSlice({
           if (action.payload?.state) {
             convo.state = { ...action.payload.state };
           }
+
+          const finishReason = action.payload?.processedResponse.finishReason;
+          const isResumableFinishReason =
+            finishReason && finishReason !== "stop" && finishReason !== "error";
+          if (isResumableFinishReason) {
+            appendAgentTurnIncomplete(convo, finishReason);
+          }
+
           convo.activeToolCalls = [];
           closeChain(convo);
           convo.isProcessing = false;

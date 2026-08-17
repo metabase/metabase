@@ -1,7 +1,7 @@
 import { type HTMLAttributes, forwardRef } from "react";
 
 import MetabaseSettings from "metabase/utils/settings";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { ColumnSettings, DatetimeUnit } from "metabase-types/api";
 
 type DateTimeProps = HTMLAttributes<HTMLSpanElement> & {

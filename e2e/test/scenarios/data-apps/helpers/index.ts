@@ -1,4 +1,7 @@
-import type { LocalFieldReference } from "@metabase/embedding-sdk-react/data-app";
+import type {
+  LocalFieldReference,
+  QuestionColumnReference,
+} from "@metabase/embedding-sdk-react/data-app";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { DataAppTestEnv } from "e2e/support/helpers";
@@ -22,6 +25,19 @@ export const dataAppNumericField = (
   type: "column",
   fieldId,
   tableId: ORDERS_ID,
+  name,
+  jsType: "number",
+});
+
+/**
+ * The same dimension as it is addressed on a saved-question source: a card stage
+ * exposes the question's result columns, which are matched by name and carry no
+ * table-scoped identity.
+ */
+export const dataAppNumericResultColumn = (
+  name: string,
+): QuestionColumnReference => ({
+  type: "column",
   name,
   jsType: "number",
 });

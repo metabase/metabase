@@ -75,6 +75,7 @@
                                                   ["file"
                                                    [:map
                                                     [:filename :string]
+                                                    [:size     :int]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (api/check-superuser)
   (let [file (get-in multipart-params ["file" :tempfile])]

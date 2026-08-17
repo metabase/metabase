@@ -2,6 +2,8 @@ import { t } from "ttag";
 
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
+import { getDimensionIcon } from "metabase/common/utils/columns";
+import { createSeriesCard } from "metabase/common/utils/series";
 import type {
   DimensionPillBarItem,
   ExpressionDimensionItem,
@@ -18,7 +20,6 @@ import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
-  Card,
   CardId,
   Dataset,
   DatasetColumn,
@@ -56,7 +57,6 @@ import {
   getEntryBreakout,
 } from "./definition-entries";
 import { DISPLAY_TYPE_REGISTRY } from "./dimension-breakout-config";
-import { getDimensionIcon } from "./dimension-breakouts";
 import { type MetricSlot, slotsForEntity } from "./metric-slots";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 
@@ -488,21 +488,6 @@ export function splitByBreakout({
     })
     .filter((s) => s != null);
   return { series: breakoutSeries, activeBreakoutColorMap };
-}
-
-function createSeriesCard(
-  id: number,
-  name: string | null,
-  display: string,
-  vizSettings: VisualizationSettings,
-): Card {
-  // Unjustified type cast. FIXME
-  return {
-    id,
-    name,
-    display,
-    visualization_settings: vizSettings,
-  } as Card;
 }
 
 function computeAvailableOptions(
