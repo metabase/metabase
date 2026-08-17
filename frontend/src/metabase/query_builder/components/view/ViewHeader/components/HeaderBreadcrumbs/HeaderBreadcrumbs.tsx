@@ -20,9 +20,9 @@ const HeaderBreadcrumb = ({
   ...props
 }: ComponentProps<typeof Breadcrumb>) => (
   <Breadcrumb
-    {...props}
     className={cx(HeaderBreadcrumbsS.HeaderBreadcrumb, className)}
     iconClassName={cx(HeaderBreadcrumbsS.HeaderBreadcrumbIcon, iconClassName)}
+    {...props}
   />
 );
 
@@ -59,12 +59,12 @@ export function HeadBreadcrumbs({
       align="center"
       wrap="wrap"
       data-testid="head-crumbs-container"
-      {...rest}
       className={cx(
         HeaderBreadcrumbsS.Container,
         { [HeaderBreadcrumbsS.headVariant]: variant === "head" },
         className,
       )}
+      {...rest}
     >
       {parts.map((part, index) => {
         const isLast = index === parts.length - 1;
