@@ -32,15 +32,22 @@
           (update :offset (fn [query-offset]
                             [:inline (or offset query-offset 0)]))))))
 
+(defn- cte-body
+  "The CTE body resolved from `ctes` by `alias`, inlined as a derived table. The body keeps whatever metadata it
+  carried at its `:with` definition: a body marked `^:allow-subquery` there stays marked once inlined; an unmarked one
+  stays unmarked and the app-DB guard refuses it. Trust is decided at the CTE definition, not asserted here on inline."
+  [ctes alias]
+  (get ctes alias))
+
 (defn- inject-cte-body-into-from
   [from ctes]
   (vec
    (for [source from]
      (if (vector? source)
        (let [[source alias] source]
-         [(ctes source source) alias])
+         [(if (ctes source) (cte-body ctes source) source) alias])
        (if (ctes source)
-         [(ctes source) source]
+         [(cte-body ctes source) source]
          source)))))
 
 (defn- inject-cte-body-into-join
@@ -51,11 +58,11 @@
                  (if (vector? source)
                    (let [[source alias] source]
                      [(if (ctes source)
-                        [(ctes source) alias]
+                        [(cte-body ctes source) alias]
                         [source alias])
                       condition])
                    [(if (ctes source)
-                      [(ctes source) source]
+                      [(cte-body ctes source) source]
                       source)
                     condition])))
        vec))
@@ -70,11 +77,15 @@
      (walk/postwalk
       (fn [form]
         (if (map? form)
-          (-> form
-              (m/update-existing :from inject-cte-body-into-from ctes)
-              ;; TODO -- make this work with all types of joins
-              (m/update-existing :left-join inject-cte-body-into-join ctes)
-              (m/update-existing :join inject-cte-body-into-join ctes))
+          ;; `->` rebuilds the map, which drops metadata; carry the original `^:allow-subquery` marks forward so a
+          ;; marked subquery stays marked for the app-DB guard after the CTE inlining
+          (with-meta
+           (-> form
+               (m/update-existing :from inject-cte-body-into-from ctes)
+               ;; TODO -- make this work with all types of joins
+               (m/update-existing :left-join inject-cte-body-into-join ctes)
+               (m/update-existing :join inject-cte-body-into-join ctes))
+           (meta form))
           form))
       (dissoc query :with)))))
 

@@ -23,6 +23,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.app-db.format :as app-db.format]
+   [metabase.app-db.honeysql-guard :as honeysql-guard]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -104,6 +105,10 @@
 
 (defmethod compile clojure.lang.IPersistentMap
   [honey-sql]
+  ;; this compiles outside the Toucan2 pipeline, so the `compile :before` fence does not see it; run the same guard
+  ;; here before handing raw SQL to the database. Kept outside the try/catch below so its refusal surfaces as-is
+  ;; rather than being rewrapped as a generic compile error
+  (honeysql-guard/check-syntax! honey-sql)
   (let [sql-args (try
                    (sql/format honey-sql {:quoted true, :dialect :metabase.app-db.setup/application-db, :quoted-snake false})
                    (catch Throwable e
