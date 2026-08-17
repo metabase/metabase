@@ -835,6 +835,7 @@
            events
            lib-be
            models
+           parameters
            public-sharing
            queries
            query-permissions
