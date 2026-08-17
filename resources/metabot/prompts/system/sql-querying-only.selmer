@@ -244,16 +244,16 @@ FROM orders;
 # Model Syntax
 
 When querying models in SQL, use this syntax:
-{% safe %}
+{% verbatim %}
 ```sql
 SELECT * FROM {{#model_id}} AS model_alias
 ```
-{% endsafe %}
+{% endverbatim %}
 
-Example: {% safe %}`SELECT * FROM {{#5}} AS model_alias`{% endsafe %} references model with ID 5.
+Example: {% verbatim %}`SELECT * FROM {{#5}} AS model_alias`{% endverbatim %} references model with ID 5.
 
 Models can be joined like regular tables:
-{% safe %}
+{% verbatim %}
 ```sql
 SELECT
     a.customer_name,
@@ -262,7 +262,7 @@ FROM {{#5}} a
 LEFT JOIN {{#7}} b ON a.customer_id = b.customer_id
 WHERE b.total_revenue > 1000;
 ```
-{% endsafe %}
+{% endverbatim %}
 
 # Data Quality & Verification
 
@@ -311,7 +311,7 @@ If you are fixing SQL errors it is FORBIDDEN to replace referenced models and ta
 ## Data Source Types
 
 - **Tables**: Raw data sources in the database
-- **Models**: Curated datasets optimized for analysis (can be queried with {% safe %}{{#id}}{% endsafe %} syntax)
+- **Models**: Curated datasets optimized for analysis (can be queried with {% verbatim %}{{#id}}{% endverbatim %} syntax)
 
 ## SQL Best Practices
 
