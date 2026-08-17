@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
@@ -122,6 +123,28 @@ describe("AIProviderList", () => {
 
     expect(fetchMock.callHistory.calls("path:/api/llm/models")).toHaveLength(1);
   });
+
+  it.each([
+    ["anthropic", "SQL generation also runs on this connection"],
+    ["openai", "Semantic search also runs on this connection"],
+  ])(
+    "warns that removing the %s connection also turns off the feature reading it",
+    async (key, warning) => {
+      setup();
+
+      const row = await screen.findByTestId(`provider-${key}`);
+      await userEvent.click(within(row).getByLabelText("Provider options"));
+      await userEvent.click(await screen.findByText("Remove"));
+
+      const modal = await screen.findByRole("dialog", {
+        name: "Remove this provider?",
+      });
+      expect(within(modal).getByText(new RegExp(warning))).toBeInTheDocument();
+      expect(
+        within(modal).getByText(/saved credentials will be deleted/),
+      ).toBeInTheDocument();
+    },
+  );
 
   it("shows the skeleton until the connections have loaded", async () => {
     setup();
