@@ -6,13 +6,15 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { api } from "metabase/api/client";
 import type { IconData } from "metabase/common/utils/icon";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import {
+  type LoadCustomVizPluginForDisplayResult,
+  PLUGIN_CUSTOM_VIZ,
+} from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   CustomVizPluginId,
@@ -25,6 +27,7 @@ import { CustomVizSettingWidget } from "../../metabase-enterprise/custom_viz/com
 import type { LoadCustomVizPluginOptions } from "../../metabase-enterprise/custom_viz/custom-viz-plugins";
 import {
   loadCustomVizPlugin as eeLoadCustomVizPlugin,
+  loadCustomVizPluginForDisplay as eeLoadCustomVizPluginForDisplay,
   useAutoLoadCustomVizPlugin as eeUseAutoLoadCustomVizPlugin,
   useCustomVizPlugins as eeUseCustomVizPlugins,
   unregisterCustomVizDisplay,
@@ -157,30 +160,14 @@ export function initializeSdkCustomVizPlugin() {
     loadCustomVizPluginForDisplay: async (
       dispatch: DispatchFn,
       display: string,
-    ): Promise<string | null> => {
+    ): Promise<LoadCustomVizPluginForDisplayResult> => {
       if (!isCustomVizAllowed(display, getAllowlist())) {
-        return null;
+        return { status: "unavailable" };
       }
-      const identifier = display.slice("custom:".length);
-      const action = dispatch(
-        customVizPluginApi.endpoints.listCustomVizPlugins.initiate(undefined),
-      );
-      try {
-        const plugins = await action.unwrap();
-        const plugin = plugins.find((p) => p.identifier === identifier);
-        if (!plugin) {
-          warnUnknownCustomViz(display);
-          return null;
-        }
-        return await eeLoadCustomVizPlugin(plugin, {
-          sandboxMode: getSdkSandboxMode(),
-          onMessage: logUnavailableCustomVizMessage,
-        });
-      } catch {
-        return null;
-      } finally {
-        action.unsubscribe();
-      }
+      return eeLoadCustomVizPluginForDisplay(dispatch, display, {
+        sandboxMode: getSdkSandboxMode(),
+        onMessage: logUnavailableCustomVizMessage,
+      });
     },
 
     useAutoLoadCustomVizPlugin: (display: string | undefined) => {
