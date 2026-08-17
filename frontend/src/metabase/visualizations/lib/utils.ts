@@ -519,7 +519,10 @@ function findSankeyColumnPair(
   };
 }
 
-export function findSensibleSankeyColumns(data: DatasetData | null) {
+export function findSensibleSankeyColumns(
+  data: DatasetData | null,
+  jsonQuery?: JsonQuery,
+) {
   if (!data?.cols || !data?.rows) {
     return null;
   }
@@ -553,7 +556,12 @@ export function findSensibleSankeyColumns(data: DatasetData | null) {
           uniqueValues.size > 0 &&
           uniqueValues.size <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY
         ) {
-          const cardinality = getColumnCardinality(rows, index, col.name);
+          const cardinality = getColumnCardinality(
+            rows,
+            index,
+            col.name,
+            jsonQuery,
+          );
           if (
             cardinality > 0 &&
             cardinality <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY

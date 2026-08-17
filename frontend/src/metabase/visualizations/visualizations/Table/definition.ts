@@ -176,8 +176,13 @@ export const TABLE_DEFINITION = {
 
         return getDefaultPivotColumn(series) != null;
       },
-      isValid: ([{ data }]: Series, settings: ComputedVisualizationSettings) =>
-        !(settings["table.pivot"] && data.cols.length !== 3),
+      isValid: (
+        [{ data }]: Series,
+        settings: ComputedVisualizationSettings,
+      ) => {
+        const isInvalid = settings["table.pivot"] && data?.cols.length !== 3; // must have exactly 3 columns to pivot
+        return !isInvalid;
+      },
       persistDefault: true,
     },
 
