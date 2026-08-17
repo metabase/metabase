@@ -1,7 +1,6 @@
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { Flex } from "metabase/ui";
-
-import { PAGE_SIZE } from "../constants";
+import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 
 type DiagnosticsPaginationProps = {
   page: number;

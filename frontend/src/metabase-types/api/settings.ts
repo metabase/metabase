@@ -324,6 +324,7 @@ export const tokenFeatures = [
   "audit_app",
   "cache_granular_controls",
   "cloud_custom_smtp",
+  "content_diagnostics",
   "content_translation",
   "content_verification",
   "custom-viz",

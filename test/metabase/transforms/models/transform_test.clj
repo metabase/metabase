@@ -7,10 +7,14 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.stale-test :as stale-test]
+   [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
    [metabase.transforms-base.query :as transforms-base.query]
    [metabase.transforms.query-test-util :as query-test-util]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest source-database-id-set-test
   (testing "inserting a transform correctly sets the source-database-id column"
@@ -216,3 +220,76 @@
                                     :type     "query"
                                     :query    {:source-table (mt/id :people)}}}})
       (is (nil? (stored-deps id))))))
+
+(defn- insert-run! [transform-id status months-ago]
+  (t2/insert! :model/TransformRun
+              {:transform_id transform-id
+               :status       status
+               :run_method   :cron
+               :start_time   (stale-test/datetime-months-ago months-ago)
+               :end_time     (stale-test/datetime-months-ago months-ago)}))
+
+(deftest find-stale-query-test
+  (testing "a transform is stale when never run past a created_at grace period, or its most recent run predates the cutoff"
+    (let [cutoff-months   6
+          old-months      (+ cutoff-months 2) ; predates the cutoff
+          recent-months   1                   ; within the cutoff
+          ;; fires once a year, ~2 months from now — so its previous fire was ~10 months ago,
+          ;; before the old runs: nothing has fired since them
+          schedule-anchor (-> (java.time.LocalDate/now) (.plusMonths 2) (.withDayOfMonth 15))
+          yearly-cron     (format "0 0 0 15 %d ?" (.getMonthValue schedule-anchor))
+          daily-cron      "0 0 0 * * ?"]
+      (mt/with-temp [:model/Transform {never-new-id :id}       {:name "never-new"}
+                     :model/Transform {never-old-id :id}       {:name "never-old"
+                                                                :created_at (stale-test/datetime-months-ago old-months)}
+                     :model/Transform {old-id :id}             {:name "old-run"}
+                     :model/Transform {fresh-id :id}           {:name "fresh-run"}
+                     :model/Transform {recent-failed-id :id}   {:name "recent-failed"}
+                     :model/Transform {old-failed-id :id}      {:name "old-failed"}
+                     :model/Transform {old-then-recent-id :id} {:name "old-then-recent"}
+                     :model/Transform {on-schedule-id :id}     {:name "on-schedule"}
+                     :model/Transform {missed-schedule-id :id} {:name "missed-schedule"}
+                     :model/Transform {never-scheduled-id :id} {:name "never-run-scheduled"
+                                                                :created_at (stale-test/datetime-months-ago old-months)}
+                     :model/TransformTag {slow-tag-id :id}     {}
+                     :model/TransformTag {fast-tag-id :id}     {}
+                     :model/TransformJob {slow-job-id :id}     {:name "yearly job" :schedule yearly-cron}
+                     :model/TransformJob {fast-job-id :id}     {:name "daily job" :schedule daily-cron}
+                     :model/TransformJobTransformTag _ {:job_id slow-job-id :tag_id slow-tag-id :position 0}
+                     :model/TransformJobTransformTag _ {:job_id fast-job-id :tag_id fast-tag-id :position 0}
+                     :model/TransformTransformTag _ {:transform_id on-schedule-id :tag_id slow-tag-id :position 0}
+                     :model/TransformTransformTag _ {:transform_id missed-schedule-id :tag_id fast-tag-id :position 0}
+                     :model/TransformTransformTag _ {:transform_id never-scheduled-id :tag_id slow-tag-id :position 0}]
+        (insert-run! old-id :succeeded old-months)
+        (insert-run! fresh-id :succeeded recent-months)
+        ;; status is irrelevant — only the most recent run's start_time matters
+        (insert-run! recent-failed-id :failed recent-months)
+        (insert-run! old-failed-id :failed old-months)
+        ;; two runs: the most recent (recent-months) governs, not the earlier one (old-months)
+        (insert-run! old-then-recent-id :succeeded old-months)
+        (insert-run! old-then-recent-id :succeeded recent-months)
+        ;; both scheduled transforms last ran old-months ago; the yearly schedule hasn't fired since
+        ;; (previous fire ~10 months ago), the daily schedule has fired thousands of times since
+        (insert-run! on-schedule-id :succeeded old-months)
+        (insert-run! missed-schedule-id :succeeded old-months)
+        (let [stale-ids (set (map :id (t2/query (staleness/find-stale-query
+                                                 :model/Transform
+                                                 {:collection-ids #{}
+                                                  :cutoff-date    (stale-test/date-months-ago cutoff-months)}))))]
+          (testing "a never-run transform is stale only once its created_at passes the cutoff"
+            (is (contains? stale-ids never-old-id))
+            (is (not (contains? stale-ids never-new-id))))
+          (testing "a transform whose most recent run started before the cutoff is stale, regardless of status"
+            (is (contains? stale-ids old-id))
+            (is (contains? stale-ids old-failed-id)))
+          (testing "a transform with a recent run is not stale, regardless of status"
+            (is (not (contains? stale-ids fresh-id)))
+            (is (not (contains? stale-ids recent-failed-id))))
+          (testing "the most recent run governs: an old run followed by a recent one is not stale"
+            (is (not (contains? stale-ids old-then-recent-id))))
+          (testing "an old run is not stale while a slower-than-threshold schedule has not fired since it"
+            (is (not (contains? stale-ids on-schedule-id))))
+          (testing "an old run is stale when its schedule has fired since it (missed fires)"
+            (is (contains? stale-ids missed-schedule-id)))
+          (testing "the schedule exception does not shield never-run transforms"
+            (is (contains? stale-ids never-scheduled-id))))))))

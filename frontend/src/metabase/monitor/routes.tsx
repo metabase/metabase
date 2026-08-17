@@ -58,6 +58,20 @@ const dependencyDiagnosticsUpsellPage = () =>
     }),
   );
 
+const contentDiagnosticsSectionLayout = () =>
+  import("metabase/monitor/content-diagnostics/ContentDiagnosticsSectionLayout").then(
+    ({ ContentDiagnosticsSectionLayout }) => ({
+      Component: ContentDiagnosticsSectionLayout,
+    }),
+  );
+
+const contentDiagnosticsUpsellPage = () =>
+  import("metabase/monitor/content-diagnostics/ContentDiagnosticsUpsellPage").then(
+    ({ ContentDiagnosticsUpsellPage }) => ({
+      Component: ContentDiagnosticsUpsellPage,
+    }),
+  );
+
 const jobInfoApp = () =>
   import("metabase/monitor/tools/components/JobInfoApp").then(
     ({ JobInfoApp }) => ({ Component: JobInfoApp }),
@@ -90,6 +104,19 @@ export function getMonitorRoutes() {
             <Route path="dependency-diagnostics">
               <Route index lazy={dependencyDiagnosticsUpsellPage} />
               <Route path="*" lazy={dependencyDiagnosticsUpsellPage} />
+            </Route>
+          )}
+          {PLUGIN_MONITOR.isContentDiagnosticsEnabled ? (
+            <Route
+              path="content-diagnostics"
+              lazy={contentDiagnosticsSectionLayout}
+            >
+              {PLUGIN_MONITOR.getContentDiagnosticsRoutes()}
+            </Route>
+          ) : (
+            <Route path="content-diagnostics">
+              <Route index lazy={contentDiagnosticsUpsellPage} />
+              <Route path="*" lazy={contentDiagnosticsUpsellPage} />
             </Route>
           )}
         </Route>

@@ -13,6 +13,7 @@ export * from "./cloud-proxy";
 export * from "./collection";
 export * from "./comment";
 export * from "./constants";
+export * from "./content-diagnostics";
 export * from "./custom-viz-plugin";
 export * from "./dashboard";
 export * from "./data-studio";

@@ -1615,7 +1615,8 @@
   {:select [:report_card.id
             [(h2x/literal "Card") :model]
             [:report_card.name :name]
-            :last_used_at]
+            :last_used_at
+            :report_card.collection_id]
    :from :report_card
    :left-join [:moderation_review [:and
                                    [:= :moderation_review.moderated_item_id :report_card.id]
@@ -1640,7 +1641,4 @@
              [:= :report_card.enable_embedding false])
            (when (setting/get :enable-public-sharing)
              [:= :report_card.public_uuid nil])
-           [:or
-            (when (contains? (:collection-ids args) nil)
-              [:is :report_card.collection_id nil])
-            [:in :report_card.collection_id (-> args :collection-ids)]]]})
+           (staleness/collection-filter :report_card.collection_id args)]})

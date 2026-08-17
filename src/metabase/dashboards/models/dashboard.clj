@@ -551,7 +551,8 @@
   {:select [:report_dashboard.id
             [(h2x/literal "Dashboard") :model]
             [:report_dashboard.name :name]
-            [:last_viewed_at :last_used_at]]
+            [:last_viewed_at :last_used_at]
+            :report_dashboard.collection_id]
    :from :report_dashboard
    :left-join [:pulse [:and
                        [:= :pulse.archived false]
@@ -573,7 +574,4 @@
              [:= :report_dashboard.enable_embedding false])
            (when (setting/get :enable-public-sharing)
              [:= :report_dashboard.public_uuid nil])
-           [:or
-            (when (contains? (:collection-ids args) nil)
-              [:is :report_dashboard.collection_id nil])
-            [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})
+           (staleness/collection-filter :report_dashboard.collection_id args)]})
