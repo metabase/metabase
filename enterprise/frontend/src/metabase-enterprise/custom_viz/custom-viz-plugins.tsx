@@ -42,9 +42,6 @@ import type { SandboxMode } from "./sandbox";
 import { usePluginMount } from "./use-plugin-mount";
 import { reportUnavailableCustomVizPlugin } from "./utils/unavailable-toast";
 
-// Track which plugins have already been loaded to avoid re-execution.
-// Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
-// bundle (or a dev server reload) produced new bytes.
 const loadedPlugins = new Map<
   CustomVizPluginId,
   { identifier: VisualizationDisplay; hash: string | null }
@@ -59,6 +56,11 @@ const failedPluginHashes = new Map<
 // dev reloads.
 const loadStartedSeqByPluginId = new Map<CustomVizPluginId, number>();
 const loadAppliedSeqByPluginId = new Map<CustomVizPluginId, number>();
+
+const inFlightPluginLoads = new Map<
+  CustomVizPluginId,
+  { hash: string | null; promise: Promise<VisualizationDisplay | null> }
+>();
 
 /**
  * Remove a previously-loaded custom-viz display from the global
@@ -308,17 +310,42 @@ export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
   options: LoadCustomVizPluginOptions = {},
 ): Promise<VisualizationDisplay | null> {
-  const { cacheBustSuffix, onMessage, sandboxMode = "hosted" } = options;
-  const existing = loadedPlugins.get(plugin.id);
   const currentHash = plugin.bundle_hash ?? null;
-  if (
-    existing &&
-    existing.hash === currentHash &&
-    !plugin.dev_bundle_url &&
-    !cacheBustSuffix
-  ) {
+  const isFreshLoadForced = Boolean(
+    plugin.dev_bundle_url || options.cacheBustSuffix,
+  );
+
+  if (isFreshLoadForced) {
+    return fetchAndRegisterCustomVizPlugin(plugin, options);
+  }
+
+  const existing = loadedPlugins.get(plugin.id);
+  if (existing && existing.hash === currentHash) {
     return existing.identifier;
   }
+
+  const inFlight = inFlightPluginLoads.get(plugin.id);
+  if (inFlight && inFlight.hash === currentHash) {
+    return inFlight.promise;
+  }
+
+  const promise = fetchAndRegisterCustomVizPlugin(plugin, options);
+  inFlightPluginLoads.set(plugin.id, { hash: currentHash, promise });
+  try {
+    return await promise;
+  } finally {
+    if (inFlightPluginLoads.get(plugin.id)?.promise === promise) {
+      inFlightPluginLoads.delete(plugin.id);
+    }
+  }
+}
+
+async function fetchAndRegisterCustomVizPlugin(
+  plugin: CustomVizPluginRuntime,
+  options: LoadCustomVizPluginOptions,
+): Promise<VisualizationDisplay | null> {
+  const { cacheBustSuffix, onMessage, sandboxMode = "hosted" } = options;
+  const currentHash = plugin.bundle_hash ?? null;
 
   ensureVizApi();
 

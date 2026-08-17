@@ -89,4 +89,25 @@ describe("loadCustomVizPluginForDisplay", () => {
       );
     });
   });
+
+  it("shares a single in-flight load between concurrent callers", async () => {
+    const plugin = createMockCustomVizPluginRuntime({
+      id: 902,
+      identifier: "dedup-demo-viz",
+      bundle_url: "/api/ee/custom-viz-plugin/902/bundle",
+    });
+    const bundleRoute = "path:/api/ee/custom-viz-plugin/902/bundle";
+    fetchMock.get(LIST_ROUTE, [plugin]);
+    fetchMock.get(bundleRoute, 500);
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const { dispatch } = setup();
+
+    const results = await Promise.all([
+      loadCustomVizPluginForDisplay(dispatch, "custom:dedup-demo-viz"),
+      loadCustomVizPluginForDisplay(dispatch, "custom:dedup-demo-viz"),
+    ]);
+
+    expect(results).toEqual([null, null]);
+    expect(fetchMock.callHistory.calls(bundleRoute)).toHaveLength(1);
+  });
 });
