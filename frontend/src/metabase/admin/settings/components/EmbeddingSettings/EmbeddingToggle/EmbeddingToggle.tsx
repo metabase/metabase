@@ -12,10 +12,7 @@ import { Switch, type SwitchProps, Text } from "metabase/ui";
 import { EmbeddingLegaleseModal } from "../EmbeddingLegaleseModal";
 
 export type EmbeddingSettingKey =
-  | "enable-embedding-static"
-  | "enable-embedding-sdk"
   | "enable-embedding-interactive"
-  | "enable-embedding-simple"
   | "enable-embedding-modular";
 
 export type EmbeddingToggleProps = {
@@ -48,14 +45,10 @@ export function EmbeddingToggle({
   const isEnabled =
     Boolean(value) && Object.values(dependentSettingsValues).every(Boolean);
 
-  const isEmbeddingToggle =
-    settingKey === "enable-embedding-sdk" ||
-    settingKey === "enable-embedding-simple";
+  const isEmbeddingToggle = settingKey === "enable-embedding-modular";
 
   const handleChange = (checked: boolean) => {
-    const shouldShowEmbedTerms =
-      (settingKey === "enable-embedding-sdk" && showSdkEmbedTerms) ||
-      (settingKey === "enable-embedding-simple" && showSimpleEmbedTerms);
+    const shouldShowEmbedTerms = showSdkEmbedTerms || showSimpleEmbedTerms;
 
     if (shouldShowEmbedTerms && isEmbeddingToggle && checked) {
       openLegaleseModal();
@@ -87,7 +80,6 @@ export function EmbeddingToggle({
 
       {isEmbeddingToggle && (
         <EmbeddingLegaleseModal
-          setting={settingKey}
           opened={isLegaleseModalOpen}
           onClose={closeLegaleseModal}
         />

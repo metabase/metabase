@@ -16,7 +16,7 @@ export function EnableEmbeddingPrompt({
 
   const handleEnable = async () => {
     await updateSettings({
-      "enable-embedding-simple": true,
+      "enable-embedding-modular": true,
       ...(!isTermsAccepted && { "show-simple-embed-terms": false }),
     });
   };

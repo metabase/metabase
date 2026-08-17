@@ -19,7 +19,7 @@ const { H } = cy;
 
     describe("when embedding is disabled", () => {
       beforeEach(() => {
-        H.updateSetting("enable-embedding-static", false);
+        H.updateSetting("enable-embedding-modular", false);
       });
 
       describe("when user is admin", () => {
@@ -68,7 +68,7 @@ const { H } = cy;
       describe("when public sharing is enabled", () => {
         beforeEach(() => {
           H.updateSetting("enable-public-sharing", true);
-          H.updateSetting("enable-embedding-static", true);
+          H.updateSetting("enable-embedding-modular", true);
         });
 
         describe("when user is admin", () => {
@@ -137,7 +137,7 @@ const { H } = cy;
       describe("when public sharing is disabled", () => {
         beforeEach(() => {
           H.updateSetting("enable-public-sharing", false);
-          H.updateSetting("enable-embedding-static", true);
+          H.updateSetting("enable-embedding-modular", true);
         });
 
         describe("when user is admin", () => {
@@ -209,7 +209,7 @@ describe("Embed JS modal display", () => {
 
         it("should open Embed JS modal with the `enable guest embedding` card", () => {
           H.activateToken("pro-self-hosted");
-          H.updateSetting("enable-embedding-static", false);
+          H.updateSetting("enable-embedding-modular", false);
           H.visitDashboard("@dashboardId");
 
           H.openSharingMenu("Embed");

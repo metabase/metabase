@@ -14,7 +14,7 @@ interface Props {
 }
 
 /**
- * Rendered under the Guest radio when guest embeds (`enable-embedding-static`)
+ * Rendered under the Guest radio when guest embeds (`enable-embedding-modular`)
  * aren't enabled yet or the AGPL usage conditions haven't been accepted. Lets
  * the admin enable the feature and accept the terms in a single click from
  * inside the wizard.
@@ -36,7 +36,7 @@ export const EnableGuestEmbedsSection = ({
   const handleEnable = async () => {
     try {
       await updateSettings({
-        "enable-embedding-static": true,
+        "enable-embedding-modular": true,
         ...(!termsAccepted && { "show-static-embed-terms": false }),
       });
     } catch (error) {

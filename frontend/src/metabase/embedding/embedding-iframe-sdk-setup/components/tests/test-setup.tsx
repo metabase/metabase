@@ -63,9 +63,10 @@ export const setup = (options?: {
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
     "show-simple-embed-terms": options?.showSimpleEmbedTerms ?? false,
-    "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
     "show-static-embed-terms": options?.showStaticEmbedTerms ?? false,
-    "enable-embedding-static": options?.guestEmbeddingEnabled ?? false,
+    "enable-embedding-modular":
+      (options?.simpleEmbeddingEnabled ?? false) ||
+      (options?.guestEmbeddingEnabled ?? false),
     "jwt-enabled": options?.jwtReady ?? false,
     "jwt-configured": options?.jwtReady ?? false,
     "jwt-enabled-and-configured": options?.jwtReady ?? false,
