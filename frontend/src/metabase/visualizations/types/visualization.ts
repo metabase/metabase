@@ -46,7 +46,6 @@ import type { VisualizationDisplay } from "metabase-types/api/visualization";
 
 import type { ChartSettingGoalInputProps } from "../components/settings/ChartSettingGoalInput";
 import type { ChartSettingMaxCategoriesProps } from "../components/settings/ChartSettingMaxCategories";
-import type { ChartSettingSegmentedControlProps } from "../components/settings/ChartSettingSegmentedControl";
 import type { ChartSettingSegmentsEditorProps } from "../components/settings/ChartSettingSegmentsEditor";
 import type { ChartSettingSeriesOrderProps } from "../components/settings/ChartSettingSeriesOrder";
 import type { ChartSettingTableColumnsProps } from "../components/settings/ChartSettingTableColumns";
@@ -57,6 +56,7 @@ import type { TreemapGroupsPickerProps } from "../visualizations/TreemapChart/Tr
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HighlightedObject, HoveredObject } from "./hover";
+import type { ChartSettingSegmentedControlProps } from "./widget-props";
 
 export interface Padding {
   top: number;
@@ -263,6 +263,12 @@ export type VisualizationPassThroughProps = {
   isPreviewing?: boolean;
   totalNumGridCols?: number;
   onTogglePreviewing?: () => void;
+
+  /**
+   * Maps a click object to the one click actions should be computed for,
+   * supplied for visualizer cards whose rendered columns are remapped from the underlying questions.
+   */
+  transformClickObject?: (clicked: ClickObject) => ClickObject;
 
   showAllLegendItems?: boolean;
 

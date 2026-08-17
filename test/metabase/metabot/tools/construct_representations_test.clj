@@ -19,7 +19,7 @@
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.serialization.resolve.mp :as resolve.mp]))
 
 (set! *warn-on-reflection* true)
 
@@ -872,15 +872,25 @@
                 :result-metadata [{:name "ID"    :base-type :type/Integer}
                                   {:name "TOTAL" :base-type :type/Float}]}]}))
 
-(defn- lookup-card-stub [model eid]
-  (when (and (or (= model 'Card) (= model :model/Card))
-             (= eid card-entity-id))
-    {:id 500 :database_id 1 :entity_id eid}))
+(defn- stub-content-store
+  "Stands in for the app-DB store over a mock metadata provider, serving `row` by entity id and
+  by numeric id. It answers from `row` rather than delegating to
+  [[metabase.models.serialization/lookup-by-id]], so code that bypassed the store could not
+  satisfy these tests by reaching the serdes resolver directly."
+  [row]
+  (reify resolve.mp/ContentStore
+    (card-by-entity-id    [_ eid] (when (= eid (:entity_id row)) row))
+    (measure-by-entity-id [_ _] nil)
+    (segment-by-entity-id [_ _] nil)
+    (card-by-id           [_ id] (when (= id (:id row)) row))
+    (measure-by-id        [_ _] nil)
+    (segment-by-id        [_ _] nil)))
 
 (defn- with-card-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-card)
                 construct/resolve-database-id-from-first-stage (fn [_] 1)
-                serdes/lookup-by-id                             lookup-card-stub
+                construct/permission-aware-content-store        (stub-content-store
+                                                                 {:id 500 :database_id 1 :entity_id card-entity-id})
                 api/read-check                                  allow-read-check
                 api/query-check                                 allow-read-check]
     (f)))
@@ -1084,15 +1094,11 @@
                                             :aggregation  [[:sum {}
                                                             [:field {:base-type :type/Float} 101]]]}]}}]}))
 
-(defn- lookup-metric-stub [model eid]
-  (when (and (or (= model 'Card) (= model :model/Card))
-             (= eid metric-entity-id))
-    {:id 900 :database_id 1 :entity_id eid}))
-
 (defn- with-metric-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-metric)
                 construct/resolve-database-id-from-first-stage (fn [_] 1)
-                serdes/lookup-by-id                             lookup-metric-stub
+                construct/permission-aware-content-store        (stub-content-store
+                                                                 {:id 900 :database_id 1 :entity_id metric-entity-id})
                 api/read-check                                  allow-read-check
                 api/query-check                                 allow-read-check]
     (f)))
@@ -1197,9 +1203,8 @@
 (defn- with-joined-metric-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-metric)
                 construct/resolve-database-id-from-first-stage (fn [_] 1)
-                serdes/lookup-by-id (fn [model eid]
-                                      (when (and (#{'Card :model/Card} model) (= eid metric-eid))
-                                        {:id 700 :database_id 1 :entity_id eid}))
+                construct/permission-aware-content-store (stub-content-store
+                                                          {:id 700 :database_id 1 :entity_id metric-eid})
                 api/read-check  allow-read-check
                 api/query-check allow-read-check
                 ;; `metric-details` gates its base table and every surfaced column on app-db

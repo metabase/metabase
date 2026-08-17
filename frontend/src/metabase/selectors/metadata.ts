@@ -2,7 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 
 import type { State } from "metabase/redux/store";
-import { FieldSchema } from "metabase/schema";
+import { type FieldEntity, FieldSchema } from "metabase/schema";
 import { getSettings } from "metabase/settings";
 import Question from "metabase-lib/v1/Question";
 import Database from "metabase-lib/v1/metadata/Database";
@@ -349,7 +349,11 @@ function hydrateTableFields(entityTable: Table, metadata: Metadata): Field[] {
   }
 
   return apiTable.original_fields.map((apiField) => {
-    const { entities, result } = normalize(apiField, FieldSchema);
+    // normalizing a single field always stores it under `result`
+    const { entities, result } = normalize<
+      FieldEntity,
+      Pick<State["entities"], "fields">
+    >(apiField, FieldSchema);
     const normalizedField = entities.fields?.[result];
     return createField(normalizedField, metadata);
   });

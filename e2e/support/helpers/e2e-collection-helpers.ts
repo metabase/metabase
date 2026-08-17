@@ -68,10 +68,13 @@ export const openPinnedItemMenu = (name: string) => {
   // Hover first so the button settles, then realClick: the real pointer
   // movement re-applies :hover to the current node, so the click cannot race
   // the visibility toggle.
-  getPinnedSection().findByText(name).closest("a").realHover();
   getPinnedSection()
     .findByText(name)
-    .closest("a")
+    .closest('[data-testid="pinned-item-card"]')
+    .realHover();
+  getPinnedSection()
+    .findByText(name)
+    .closest('[data-testid="pinned-item-card"]')
     .findByLabelText("Actions")
     .realClick();
 };

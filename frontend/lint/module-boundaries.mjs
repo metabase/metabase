@@ -183,11 +183,7 @@ const elements = [
   createElement({ type: "shared", name: "hooks", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "content-translation" }),
   createElement({ type: "shared", name: "metabot", enforceSharedTiers: false }),
-  createElement({
-    type: "shared",
-    name: "metadata",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "feature", name: "models" }),
   createElement({ type: "feature", name: "monitor" }),
   createElement({ type: "shared", name: "nav", enforceSharedTiers: false }),
@@ -208,7 +204,7 @@ const elements = [
   createElement({
     type: "shared",
     name: "schema",
-    pattern: "frontend/src/metabase/schema.js",
+    pattern: "frontend/src/metabase/schema.ts",
     mode: "full",
     enforceSharedTiers: false,
   }),
@@ -223,11 +219,7 @@ const elements = [
     enforceSharedTiers: false,
   }),
   createElement({ type: "shared", name: "timelines" }),
-  createElement({
-    type: "shared",
-    name: "transforms",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "transforms" }),
   createElement({
     type: "shared",
     name: "types",
@@ -242,14 +234,16 @@ const elements = [
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
-  // The theme editor preview renders the live embed via the app-tier EAJS
-  // runtime; the edge is whitelisted via the allow rules below.
+  // The theme editor previews the live embed through the app-tier EAJS
+  // runtime, so the whole editor is an app-tier module. It still lives under
+  // the admin folder, and the admin routes mount it via the whitelisted allow
+  // rule below; the pattern must come before feature/admin (first match wins).
+  // TODO(embedding-modules): move the folder out of admin and mount the route
+  // from the app tier, then drop the whitelist entry.
   createElement({
-    type: "feature",
-    name: "admin-theme-preview",
-    pattern:
-      "frontend/src/metabase/admin/embedding/components/ThemeEditor/ResourcePreview.tsx",
-    mode: "full",
+    type: "app",
+    name: "theme-editor",
+    pattern: "frontend/src/metabase/admin/embedding/components/ThemeEditor/**",
   }),
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
@@ -319,9 +313,9 @@ const elements = [
 
   // app
   ...[
-    "frontend/src/metabase/app.js",
+    "frontend/src/metabase/app.tsx",
     "frontend/src/metabase/app-embed-sdk.tsx",
-    "frontend/src/metabase/app-main.js",
+    "frontend/src/metabase/app-main.ts",
     "frontend/src/metabase/app-embed.ts",
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/app-static-viz.ts",
@@ -341,11 +335,8 @@ const elements = [
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
-    // NewItemMenu's spec mounts app-tier NewModals to assert menu clicks open modals,
-    // so the test is app-tier too.
-    "frontend/src/metabase/common/components/NewItemMenu/NewItemMenu.unit.spec.tsx",
     // Entry point for the static-viz bundle (server-side chart rendering in
-    // GraalJS) - like app.js, it composes OSS + EE code for a build artifact.
+    // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
     "frontend/src/metabase/static-viz/index.tsx",
     // Storybook config is a composition root: preview wires app-tier decorators.
@@ -454,15 +445,11 @@ const baseRules = [
     allow: ["app/embedding-sdk-bundle"],
     importKind: "type",
   },
-  // Admin theme preview drives the live embed through the EAJS runtime.
-  // Remove once the preview is lifted out of admin.
-  {
-    from: ["feature/admin-theme-preview"],
-    allow: ["feature/admin", "app/embedding-iframe-sdk"],
-  },
+  // The admin routes lazy-mount the app-tier theme editor. Remove once the
+  // route is registered from the app tier instead.
   {
     from: ["feature/admin"],
-    allow: ["feature/admin-theme-preview"],
+    allow: ["app/theme-editor"],
   },
 ];
 

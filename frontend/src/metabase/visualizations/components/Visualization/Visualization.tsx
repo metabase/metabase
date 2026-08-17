@@ -63,7 +63,6 @@ import {
   isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
-import { formatVisualizerClickObject } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -459,17 +458,14 @@ class Visualization extends PureComponent<
     getExtraDataForClick: (
       clicked: ClickObject | null,
     ) => Record<string, unknown> = () => ({}),
+    transformClickObject?: (clicked: ClickObject) => ClickObject,
   ) {
     if (!clickedObject) {
       return [];
     }
 
-    const clicked = isVisualizerDashboardCard(dashcard)
-      ? formatVisualizerClickObject(
-          clickedObject,
-          visualizerRawSeries,
-          dashcard.visualization_settings.visualization.columnValuesMapping,
-        )
+    const clicked = transformClickObject
+      ? transformClickObject(clickedObject)
       : clickedObject;
 
     const card = Visualization.findCardById(
@@ -532,6 +528,7 @@ class Visualization extends PureComponent<
       visualizerRawSeries,
       isRawTable,
       getExtraDataForClick,
+      transformClickObject,
     } = this.props;
 
     const { computedSettings } = this.state;
@@ -546,6 +543,7 @@ class Visualization extends PureComponent<
       visualizerRawSeries,
       isRawTable,
       getExtraDataForClick,
+      transformClickObject,
     );
   }
 
