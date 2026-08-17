@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 
 import {
@@ -9,15 +10,14 @@ import {
   canCopyItem,
   canonicalCollectionId,
 } from "metabase/common/collections/utils";
-import { useDispatch } from "metabase/redux";
-import { addUndo } from "metabase/redux/undo";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 export const useBulkDuplicate = (
   selected: CollectionItem[],
   collection: Collection,
 ) => {
-  const dispatch = useDispatch();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [copyDashboard] = useCopyDashboardMutation();
   const [copyDocument] = useCopyDocumentMutation();
 
@@ -30,37 +30,39 @@ export const useBulkDuplicate = (
       await Promise.all(
         itemsToCopy.map((item) => {
           const name = `${item.name} - ${t`Duplicate`}`;
-          if (item.model === "dashboard") {
-            return copyDashboard({
-              id: item.id,
-              name,
-              collection_id: collectionId,
-              is_deep_copy: false,
-            }).unwrap();
-          }
-          return copyDocument({
-            id: item.id,
-            name,
-            collection_id: collectionId,
-          }).unwrap();
+          return match(item)
+            .with({ model: "dashboard" }, ({ id }) =>
+              copyDashboard({
+                id,
+                name,
+                collection_id: collectionId,
+                is_deep_copy: false,
+              }).unwrap(),
+            )
+            .with({ model: "document" }, ({ id }) =>
+              copyDocument({ id, name, collection_id: collectionId }).unwrap(),
+            )
+            .exhaustive();
         }),
       );
-      dispatch(
-        addUndo({
-          message: ngettext(
-            msgid`${itemsToCopy.length} item has been duplicated.`,
-            `${itemsToCopy.length} items have been duplicated.`,
-            itemsToCopy.length,
-          ),
-          canDismiss: true,
-        }),
+      sendSuccessToast(
+        ngettext(
+          msgid`${itemsToCopy.length} item has been duplicated.`,
+          `${itemsToCopy.length} items have been duplicated.`,
+          itemsToCopy.length,
+        ),
       );
     } catch {
-      dispatch(
-        addUndo({ message: t`There was an error duplicating these items.` }),
-      );
+      sendErrorToast(t`There was an error duplicating these items.`);
     }
-  }, [selected, collection.id, copyDashboard, copyDocument, dispatch]);
+  }, [
+    selected,
+    collection.id,
+    copyDashboard,
+    copyDocument,
+    sendSuccessToast,
+    sendErrorToast,
+  ]);
 
   return { canDuplicate, duplicateSelected };
 };

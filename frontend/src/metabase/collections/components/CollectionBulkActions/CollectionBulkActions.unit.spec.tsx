@@ -291,6 +291,29 @@ describe("CollectionBulkActions", () => {
       });
     });
 
+    it("shows an error message when pinning fails", async () => {
+      fetchMock.put("path:/api/card/3", 500);
+      setup({ selected: [tableQuestion] });
+
+      await openOverflowMenu();
+      await userEvent.click(getMenuItem("Pin all"));
+
+      expect(
+        await screen.findByText("There was an error pinning these items."),
+      ).toBeInTheDocument();
+    });
+
+    it("shows an error message when unpinning fails", async () => {
+      fetchMock.put("path:/api/card/2", 500);
+      setup({ selected: [pinnedQuestion] });
+
+      await userEvent.click(screen.getByRole("button", { name: "Unpin all" }));
+
+      expect(
+        await screen.findByText("There was an error unpinning these items."),
+      ).toBeInTheDocument();
+    });
+
     it("disables Pin all but not Unpin all when an unpinnable item is among the unpinned", async () => {
       setup({ selected: [pinnedDashboard, childCollection] });
       await openOverflowMenu();
@@ -347,6 +370,31 @@ describe("CollectionBulkActions", () => {
       await openOverflowMenu();
 
       expect(getMenuItem("Bookmark")).toHaveAttribute("data-disabled", "true");
+    });
+
+    it("disables Bookmark when every selected item is already bookmarked", async () => {
+      setup({
+        selected: [pinnedDashboard, tableQuestion],
+        bookmarks: [
+          createMockBookmark({ type: "dashboard", item_id: 1 }),
+          createMockBookmark({ type: "card", item_id: 3 }),
+        ],
+      });
+      await openOverflowMenu();
+
+      expect(getMenuItem("Bookmark")).toHaveAttribute("data-disabled", "true");
+    });
+
+    it("shows an error message when bookmarking fails", async () => {
+      fetchMock.post("path:/api/bookmark/card/3", 500);
+      setup({ selected: [tableQuestion] });
+
+      await openOverflowMenu();
+      await userEvent.click(getMenuItem("Bookmark"));
+
+      expect(
+        await screen.findByText("There was an error bookmarking these items."),
+      ).toBeInTheDocument();
     });
   });
 

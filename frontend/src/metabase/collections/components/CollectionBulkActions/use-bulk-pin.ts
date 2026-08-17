@@ -1,13 +1,16 @@
 import { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import { isItemPinned } from "metabase/common/collections/utils";
 import { canPinItem, isPinnable, useSetPinned } from "metabase/common/hooks";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 export const useBulkPin = (
   selected: CollectionItem[],
   collection: Collection,
 ) => {
+  const { sendErrorToast } = useMetadataToasts();
   const setPinned = useSetPinned();
 
   const pinnedItems = useMemo(() => selected.filter(isItemPinned), [selected]);
@@ -26,21 +29,29 @@ export const useBulkPin = (
     [pinnedItems, collection],
   );
 
-  const pinSelected = useCallback(
-    () =>
-      Promise.all(
-        unpinnedItems.filter(isPinnable).map((item) => setPinned(item, true)),
-      ),
-    [unpinnedItems, setPinned],
-  );
+  const pinSelected = useCallback(async () => {
+    try {
+      await Promise.all(
+        unpinnedItems
+          .filter(isPinnable)
+          .map((item) => setPinned(item, true).unwrap()),
+      );
+    } catch {
+      sendErrorToast(t`There was an error pinning these items.`);
+    }
+  }, [unpinnedItems, setPinned, sendErrorToast]);
 
-  const unpinSelected = useCallback(
-    () =>
-      Promise.all(
-        pinnedItems.filter(isPinnable).map((item) => setPinned(item, false)),
-      ),
-    [pinnedItems, setPinned],
-  );
+  const unpinSelected = useCallback(async () => {
+    try {
+      await Promise.all(
+        pinnedItems
+          .filter(isPinnable)
+          .map((item) => setPinned(item, false).unwrap()),
+      );
+    } catch {
+      sendErrorToast(t`There was an error unpinning these items.`);
+    }
+  }, [pinnedItems, setPinned, sendErrorToast]);
 
   return {
     hasPinned: pinnedItems.length > 0,

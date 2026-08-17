@@ -288,7 +288,9 @@ export function canArchiveItem(item: CollectionItem, collection?: Collection) {
   );
 }
 
-export function canCopyItem(item: CollectionItem) {
+export type CopyableItem = CollectionItem & { model: "dashboard" | "document" };
+
+export function canCopyItem(item: CollectionItem): item is CopyableItem {
   return (
     (item.model === "dashboard" || item.model === "document") && !item.archived
   );
