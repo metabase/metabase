@@ -1,7 +1,6 @@
 (ns metabase.metabot.self.claude
   (:require
    [clojure.string :as str]
-   [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
@@ -279,16 +278,11 @@
 (defn- tool->claude
   "Convert a tool definition map to Claude API format.
   Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params                     (schema/filter-schema-by-features params)
-        doc                        (if (str/starts-with? (or doc "") "Inputs: ")
-                                     ;; strip that stuff we're appending in mu/defn
-                                     (second (str/split doc #"\n\n  " 2))
-                                     doc)]
-    {:name         (or tool-name "unknown")
-     :description  doc
-     :input_schema (mjs/transform params {:additionalProperties false})}))
+  [tool]
+  (let [{:keys [name description parameters]} (schema/tool-function tool)]
+    {:name         (or name "unknown")
+     :description  description
+     :input_schema parameters}))
 
 (defn- add-tools-cache-breakpoint
   "Attach an ephemeral cache_control marker to the last tool in `tools`.

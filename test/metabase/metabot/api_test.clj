@@ -892,6 +892,21 @@
         (is (= "sk-new" (llm.settings/llm-openai-api-key))
             "rotating the key for an env-set provider does not require a provider write and so is allowed")))))
 
+(deftest settings-put-env-shadowed-provider-no-op-write-not-persisted-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider "openai/gpt-5.1"
+                                mb-llm-openai-api-key   nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-old"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                             {:models [{:id "gpt-5.1" :display_name "GPT-5.1"}]})]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (t2/delete! :model/Setting :key "llm-metabot-provider")
+          (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                {:provider "openai"
+                                 :model    "gpt-5.1"
+                                 :api-key  "sk-new"})
+          (testing "a provider/model write that echoes the env var is allowed but persists nothing"
+            (is (nil? (t2/select-one :model/Setting :key "llm-metabot-provider")))))))))
+
 (deftest settings-permissions-test
   (mt/user-http-request :rasta :get 403 "metabot/settings" :provider "anthropic")
   (mt/user-http-request :rasta :put 403 "metabot/settings"
@@ -2167,6 +2182,29 @@
         (testing "the clear also resets the region to its default"
           (is (= "us-east-1" (llm.settings/llm-bedrock-region))))))))
 
+(deftest settings-put-bedrock-disconnect-allowed-when-region-env-set-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil
+                                mb-llm-bedrock-region            "us-west-2"]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm.settings/llm-bedrock-secret-access-key "test-secret"
+                                       llm.settings/llm-bedrock-session-token     "test-token"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider _opts]
+                                                             (is false (str "unexpected list-models call: " provider)))]
+        (testing "an env-supplied region does not block disconnect"
+          (is (=? {:value "bedrock/anthropic.claude-opus-4-8"}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "bedrock"
+                                         :credentials nil})))
+          (is (nil? (llm.settings/llm-bedrock-access-key-id)))
+          (is (nil? (llm.settings/llm-bedrock-secret-access-key)))
+          (is (nil? (llm.settings/llm-bedrock-session-token))))
+        (testing "and the env var keeps supplying the region"
+          (is (= "us-west-2" (llm.settings/llm-bedrock-region))))))))
+
 (deftest settings-put-bedrock-absent-credentials-leaves-saved-credentials-test
   (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
                                 mb-llm-bedrock-access-key-id     nil
@@ -2335,12 +2373,30 @@
                                 mb-llm-azure-api-base-url "https://env.services.ai.azure.com/openai"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
                                                            (is false "should reject before verifying credentials"))]
-      (testing "the base URL env var is guarded the same way"
+      (testing "the base URL env var is guarded the same way when the request would change it"
         (is (re-find #"MB_LLM_AZURE_API_BASE_URL"
                      (:message (mt/user-http-request :crowberto :put 400 "metabot/settings"
                                                      {:provider    "azure"
                                                       :model       "openai/gpt-4.1-mini"
-                                                      :credentials {:api-key "new-key"}}))))))))
+                                                      :credentials {:api-key  "new-key"
+                                                                    :base-url "https://other.services.ai.azure.com/openai"}}))))))))
+
+(deftest settings-put-allows-azure-key-rotation-when-base-url-env-set-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider   nil
+                                mb-llm-azure-api-key      nil
+                                mb-llm-azure-api-base-url "https://env.services.ai.azure.com/openai"]
+    (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key        "old-key"
+                                       metabot.settings/llm-metabot-provider "azure/openai/gpt-4.1-mini"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                             (is (= {:api-key  "new-key"
+                                                                     :base-url "https://env.services.ai.azure.com/openai"}
+                                                                    credentials))
+                                                             {:models []})]
+        (testing "an env-set base URL is layered into the credentials unchanged, so it does not block a key rotation"
+          (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                {:provider    "azure"
+                                 :credentials {:api-key "new-key"}})
+          (is (= "new-key" (llm.settings/llm-azure-api-key))))))))
 
 (deftest settings-get-azure-returns-empty-models-test
   (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key        "azure-key"
@@ -2356,3 +2412,468 @@
         (is (= {:value  "azure/anthropic/claude-sonnet-4-5"
                 :models []}
                (mt/user-http-request :crowberto :get 200 "metabot/settings" :provider "azure")))))))
+
+;;; ------------------------------------------------ Google settings ------------------------------------------------
+
+(deftest settings-put-saves-google-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  nil
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          nil
+                                mb-llm-google-location            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          nil
+                                       llm.settings/llm-google-location            nil
+                                       metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
+                                                             (is (= "google" provider))
+                                                             (is (= {:oauth-access-token "ya29.secret-token"
+                                                                     :project-id         "my-project"
+                                                                     :location           "us-central1"}
+                                                                    credentials)
+                                                                 "validation runs against the resolved request credentials")
+                                                             (is (nil? (llm.settings/llm-google-oauth-access-token))
+                                                                 "validation should happen before saving the credentials")
+                                                             {:models []})]
+        (testing "connecting google saves the credentials and the composed provider/model value"
+          (is (=? {:value  "google/google/gemini-3.5-flash"
+                   :models []}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "google"
+                                         :model       "google/gemini-3.5-flash"
+                                         :credentials {:oauth-access-token "ya29.secret-token"
+                                                       :project-id         "my-project"
+                                                       :location           "us-central1"}}))))
+        (is (= "ya29.secret-token" (llm.settings/llm-google-oauth-access-token)))
+        (is (= "my-project" (llm.settings/llm-google-project-id)))
+        (is (= "us-central1" (llm.settings/llm-google-location)))))))
+
+(deftest settings-put-connect-google-defaults-model-test
+  (testing "connecting google with only credentials switches to the default google model"
+    (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                  mb-llm-google-oauth-access-token  nil
+                                  mb-llm-google-service-account-key nil
+                                  mb-llm-google-project-id          nil
+                                  mb-llm-google-location            nil]
+      (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                         llm.settings/llm-google-service-account-key nil
+                                         llm.settings/llm-google-project-id          nil
+                                         llm.settings/llm-google-location            nil
+                                         metabot.settings/llm-metabot-provider       "anthropic/claude-haiku-4-5"]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [model]}]
+                                                               (is (= "google" provider))
+                                                               (is (= "google/gemini-3.5-flash" model)
+                                                                   "the connect probe validates the defaulted model")
+                                                               {:models []})]
+          (is (=? {:value  "google/google/gemini-3.5-flash"
+                   :models []}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "google"
+                                         :credentials {:oauth-access-token "ya29.secret-token"
+                                                       :project-id         "my-project"}})))
+          (is (= "google/google/gemini-3.5-flash"
+                 (metabot.settings/llm-metabot-provider)))
+          (is (= "ya29.secret-token" (llm.settings/llm-google-oauth-access-token))))))))
+
+(deftest settings-put-google-model-passes-through-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  nil
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          nil
+                                mb-llm-google-location            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          nil
+                                       llm.settings/llm-google-location            nil
+                                       metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model]}]
+                                                             (is (= "google/gemini-3.5-flash" model)
+                                                                 "validation runs against the model as sent — no qualification happens here")
+                                                             {:models []})]
+        (testing "a publisher-qualified Gemini model ID is validated and persisted as sent"
+          (is (=? {:value "google/google/gemini-3.5-flash"}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "google"
+                                         :model       "google/gemini-3.5-flash"
+                                         :credentials {:oauth-access-token "ya29.secret-token"
+                                                       :project-id         "my-project"}}))))))))
+
+(deftest settings-put-google-bare-model-rejected-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  nil
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          nil
+                                mb-llm-google-location            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          nil
+                                       llm.settings/llm-google-location            nil
+                                       metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
+      (testing "a bare Gemini model ID fails connect validation before any HTTP call, and nothing is persisted"
+        (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+          (is (=? {:message "Invalid Google model \"gemini-3.5-flash\" — expected a publisher-qualified ID like \"google/gemini-3.5-flash\""}
+                  (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                        {:provider    "google"
+                                         :model       "gemini-3.5-flash"
+                                         :credentials {:oauth-access-token "ya29.secret-token"
+                                                       :project-id         "my-project"}}))))
+        (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))
+        (is (nil? (llm.settings/llm-google-oauth-access-token)))))))
+
+(deftest settings-put-google-rotation-validates-against-saved-model-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-google-oauth-access-token nil
+                                mb-llm-google-project-id         nil
+                                mb-llm-google-location           nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.old-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            nil
+                                       metabot.settings/llm-metabot-provider       "google/google/gemini-3.6-flash"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model]}]
+                                                             (is (= "google/gemini-3.6-flash" model)
+                                                                 "a credential-only rotation validates against the saved model")
+                                                             {:models []})]
+        (is (=? {:value "google/google/gemini-3.6-flash"}
+                (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                      {:provider    "google"
+                                       :credentials {:oauth-access-token "ya29.new-token"}})))
+        (is (= "ya29.new-token" (llm.settings/llm-google-oauth-access-token)))))))
+
+(deftest settings-put-saves-google-service-account-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider             nil
+                                mb-llm-google-oauth-access-token    nil
+                                mb-llm-google-service-account-key   nil
+                                mb-llm-google-project-id            nil
+                                mb-llm-google-location              nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          nil
+                                       llm.settings/llm-google-location            nil
+                                       metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
+                                                             (is (= "google" provider))
+                                                             (is (= {:service-account-key "{\"type\": \"service_account\"}"}
+                                                                    credentials)
+                                                                 "a service account key alone is a complete credential — the project ID comes from the key JSON")
+                                                             {:models []})]
+        (testing "connecting google with only a service account key saves it and the composed provider/model value"
+          (is (=? {:value  "google/google/gemini-3.5-flash"
+                   :models []}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "google"
+                                         :model       "google/gemini-3.5-flash"
+                                         :credentials {:service-account-key "{\"type\": \"service_account\"}"}}))))
+        (is (= "{\"type\": \"service_account\"}" (llm.settings/llm-google-service-account-key)))
+        (is (nil? (llm.settings/llm-google-oauth-access-token)))
+        (is (nil? (llm.settings/llm-google-project-id)))))))
+
+(deftest settings-put-google-rejects-missing-project-id-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  nil
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          nil
+                                mb-llm-google-location            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          nil
+                                       llm.settings/llm-google-location            nil
+                                       metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
+      (testing "an OAuth access token without a project ID fails before validation and nothing is saved"
+        (is (=? {:message      "Google credentials are incomplete."
+                 :missing-keys ["service-account-key" "project-id"]}
+                (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                      {:provider    "google"
+                                       :model       "google/gemini-3.5-flash"
+                                       :credentials {:oauth-access-token "ya29.secret-token"}})))
+        (is (nil? (llm.settings/llm-google-oauth-access-token)))
+        (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-google-rejects-missing-credential-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  nil
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          nil
+                                mb-llm-google-location            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          nil
+                                       llm.settings/llm-google-location            nil
+                                       metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
+      (testing "credentials without a service account key or OAuth access token fail before validation and nothing is saved"
+        (is (=? {:message      "Google credentials are incomplete."
+                 :missing-keys ["service-account-key" "oauth-access-token"]}
+                (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                      {:provider    "google"
+                                       :model       "google/gemini-3.5-flash"
+                                       :credentials {:project-id "my-project"}})))
+        (is (nil? (llm.settings/llm-google-project-id)))
+        (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-google-connect-allowed-when-location-env-set-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  nil
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          nil
+                                mb-llm-google-location            "us-central1"]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          nil
+                                       metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts] {:models []})]
+        (testing "an env-supplied location does not block a connect that never touches it"
+          (is (=? {:value "google/google/gemini-3.5-flash"}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "google"
+                                         :model       "google/gemini-3.5-flash"
+                                         :credentials {:oauth-access-token "ya29.secret-token"
+                                                       :project-id         "my-project"}})))
+          (is (= "ya29.secret-token" (llm.settings/llm-google-oauth-access-token)))
+          (is (= "my-project" (llm.settings/llm-google-project-id))))))))
+
+(deftest settings-put-google-rotation-allowed-when-location-env-set-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  nil
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          nil
+                                mb-llm-google-location            "us-central1"]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.old-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       metabot.settings/llm-metabot-provider       "google/google/gemini-3.5-flash"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts] {:models []})]
+        (testing "the env-set location layered into a connected provider's credentials does not block a rotation"
+          (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                {:provider    "google"
+                                 :credentials {:oauth-access-token "ya29.new-token"}})
+          (is (= "ya29.new-token" (llm.settings/llm-google-oauth-access-token))))))))
+
+(deftest settings-put-google-disconnect-allowed-when-location-env-set-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  nil
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          nil
+                                mb-llm-google-location            "us-central1"]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.secret-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       metabot.settings/llm-metabot-provider       "google/google/gemini-3.5-flash"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider _opts]
+                                                             (is false (str "unexpected list-models call: " provider)))]
+        (testing "an env-supplied location does not block disconnect"
+          (is (=? {:value "google/google/gemini-3.5-flash"}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "google"
+                                         :credentials nil})))
+          (is (nil? (llm.settings/llm-google-oauth-access-token)))
+          (is (nil? (llm.settings/llm-google-project-id))))
+        (testing "and the env var keeps supplying the location"
+          (is (= "us-central1" (llm.settings/llm-google-location))))))))
+
+(deftest settings-put-google-disconnect-clears-env-shadowed-credential-row-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  "ya29.env-token"
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          "env-project"
+                                mb-llm-google-location            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-location            nil
+                                       metabot.settings/llm-metabot-provider       "google/google/gemini-3.5-flash"]
+      (mt/with-temporary-raw-setting-values [llm-google-oauth-access-token "ya29.stale-db-token"]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider _opts]
+                                                               (is false (str "unexpected list-models call: " provider)))]
+          (testing "disconnect deletes the app-DB row hiding behind the env var"
+            (is (=? {:value "google/google/gemini-3.5-flash"}
+                    (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                          {:provider    "google"
+                                           :credentials nil})))
+            (is (nil? (t2/select-one :model/Setting :key "llm-google-oauth-access-token"))
+                "a skipped clear would let the stale credential resurface once the env var is removed"))
+          (testing "the env var keeps supplying the value on read"
+            (is (= "ya29.env-token" (llm.settings/llm-google-oauth-access-token)))))))))
+
+(deftest settings-put-google-rejects-changing-env-shadowed-location-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  nil
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          nil
+                                mb-llm-google-location            "us-central1"]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          nil
+                                       metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                             (is false "should reject before verifying credentials"))]
+        (testing "a request that would change the env-set location is still rejected"
+          (is (re-find #"MB_LLM_GOOGLE_LOCATION"
+                       (:message (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                                       {:provider    "google"
+                                                        :model       "google/gemini-3.5-flash"
+                                                        :credentials {:oauth-access-token "ya29.secret-token"
+                                                                      :project-id         "my-project"
+                                                                      :location           "europe-west4"}})))))))))
+
+(deftest settings-put-google-invalid-service-account-key-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  nil
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          nil
+                                mb-llm-google-location            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          nil
+                                       llm.settings/llm-google-location            nil
+                                       metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
+      (testing "a service account key the auth library rejects fails connect with its own message, not a generic 500"
+        (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+          (is (=? {:message #"(?s)Invalid Google service account key: .+"}
+                  (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                        {:provider    "google"
+                                         :model       "google/gemini-3.5-flash"
+                                         :credentials {:service-account-key "{\"type\": \"service_account\"}"}}))))
+        (is (nil? (llm.settings/llm-google-service-account-key)))
+        (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-google-user-credential-key-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  nil
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          nil
+                                mb-llm-google-location            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          nil
+                                       llm.settings/llm-google-location            nil
+                                       metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
+      (testing "a gcloud user credential uploaded as the key file fails connect with its own message, not a generic 500"
+        (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+          (is (=? {:message "This Google credential JSON is not a service account key."}
+                  (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                        {:provider    "google"
+                                         :model       "google/gemini-3.5-flash"
+                                         :credentials {:service-account-key (json/encode {:type          "authorized_user"
+                                                                                          :client_id     "test-client-id"
+                                                                                          :client_secret "test-client-secret"
+                                                                                          :refresh_token "1//test-refresh-token"})}}))))
+        (is (nil? (llm.settings/llm-google-service-account-key)))
+        (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-google-invalid-location-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider           nil
+                                mb-llm-google-oauth-access-token  nil
+                                mb-llm-google-service-account-key nil
+                                mb-llm-google-project-id          nil
+                                mb-llm-google-location            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  nil
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          nil
+                                       llm.settings/llm-google-location            nil
+                                       metabot.settings/llm-metabot-provider       "anthropic/claude-sonnet-4-6"]
+      (testing "a location that cannot be a host fails connect with the location message, not a generic 500"
+        (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+          (is (=? {:message (str "\"us central1\" is not a valid Google Cloud location. Use a location ID like"
+                                 " \"us-central1\", or leave it blank to use the global location.")}
+                  (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                        {:provider    "google"
+                                         :model       "google/gemini-3.5-flash"
+                                         :credentials {:oauth-access-token "ya29.secret-token"
+                                                       :project-id         "my-project"
+                                                       :location           "us central1"}}))))
+        (is (nil? (llm.settings/llm-google-location)))
+        (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-google-token-rotation-keeps-project-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-google-oauth-access-token nil
+                                mb-llm-google-project-id         nil
+                                mb-llm-google-location           nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.old-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            "us-central1"
+                                       metabot.settings/llm-metabot-provider       "google/google/gemini-3.5-flash"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                             (is (= {:service-account-key nil
+                                                                     :oauth-access-token  "ya29.new-token"
+                                                                     :project-id          "my-project"
+                                                                     :location            "us-central1"}
+                                                                    credentials)
+                                                                 "the new token is layered over the saved project and location")
+                                                             {:models []})]
+        (is (=? {:value "google/google/gemini-3.5-flash"}
+                (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                      {:provider    "google"
+                                       :credentials {:oauth-access-token "ya29.new-token"}})))
+        (is (= "ya29.new-token" (llm.settings/llm-google-oauth-access-token)))
+        (is (= "my-project" (llm.settings/llm-google-project-id)))
+        (is (= "us-central1" (llm.settings/llm-google-location)))))))
+
+(deftest settings-put-google-clears-location-only-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-google-oauth-access-token nil
+                                mb-llm-google-project-id         nil
+                                mb-llm-google-location           nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.secret-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            "us-central1"
+                                       metabot.settings/llm-metabot-provider       "google/google/gemini-3.5-flash"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                             (is (= {:service-account-key nil
+                                                                     :oauth-access-token  "ya29.secret-token"
+                                                                     :project-id          "my-project"
+                                                                     :location            nil}
+                                                                    credentials)
+                                                                 "an explicit nil location field clears it (back to the global location)")
+                                                             {:models []})]
+        (is (=? {:value "google/google/gemini-3.5-flash"}
+                (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                      {:provider    "google"
+                                       :credentials {:location nil}})))
+        (is (= "ya29.secret-token" (llm.settings/llm-google-oauth-access-token)))
+        (is (= "my-project" (llm.settings/llm-google-project-id)))
+        (is (nil? (llm.settings/llm-google-location)))))))
+
+(deftest settings-put-google-rejects-clearing-project-id-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-google-oauth-access-token nil
+                                mb-llm-google-project-id         nil
+                                mb-llm-google-location           nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.secret-token"
+                                       llm.settings/llm-google-service-account-key nil
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            "us-central1"
+                                       metabot.settings/llm-metabot-provider       "google/google/gemini-3.5-flash"]
+      (testing "an explicit nil project ID leaves incomplete credentials and is rejected; nothing changes"
+        (is (=? {:message      "Google credentials are incomplete."
+                 :missing-keys ["service-account-key" "project-id"]}
+                (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                      {:provider    "google"
+                                       :credentials {:project-id nil}})))
+        (is (= "ya29.secret-token" (llm.settings/llm-google-oauth-access-token)))
+        (is (= "my-project" (llm.settings/llm-google-project-id)))
+        (is (= "us-central1" (llm.settings/llm-google-location)))))))
+
+(deftest settings-put-nil-google-credentials-clears-saved-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-google-oauth-access-token nil
+                                mb-llm-google-project-id         nil
+                                mb-llm-google-location           nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.secret-token"
+                                       llm.settings/llm-google-service-account-key "{\"type\": \"service_account\"}"
+                                       llm.settings/llm-google-project-id          "my-project"
+                                       llm.settings/llm-google-location            "us-central1"
+                                       metabot.settings/llm-metabot-provider       "google/google/gemini-3.5-flash"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider _opts]
+                                                             (is false (str "unexpected list-models call: " provider)))]
+        (testing "an explicit nil credentials clears all saved settings without validating against them"
+          (is (=? {:value  "google/google/gemini-3.5-flash"
+                   :models []}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "google"
+                                         :credentials nil})))
+          (is (nil? (llm.settings/llm-google-oauth-access-token)))
+          (is (nil? (llm.settings/llm-google-service-account-key)))
+          (is (nil? (llm.settings/llm-google-project-id)))
+          (is (nil? (llm.settings/llm-google-location))))))))
