@@ -178,7 +178,69 @@ describe("model reconciliation", () => {
     expect(called(fake, "POST", "/api/card")).toBe(false);
   });
 
+  /** Seeds an app whose single action is already copied and recorded. */
+  function syncedApp() {
+    const appRoot = makeApp();
+    declareActions(appRoot, [{ id: 51, copiedId: 91 }]);
+    seedLockfile(appRoot, [[51, 91]]);
+    const fake = start(appRoot, {
+      cards: [sourceModel(), copiedModel()],
+      actions: [sourceAction(51, "Create"), copiedAction(91, 51, "Create")],
+    });
+    return { appRoot, fake };
+  }
+
+  it("leaves both copies alone when nothing changed", async () => {
+    const { appRoot, fake } = syncedApp();
+
+    await sync(appRoot);
+
+    expect(called(fake, "PUT", `/api/card/${COPIED_MODEL_ID}`)).toBe(false);
+    expect(called(fake, "PUT", "/api/action/91")).toBe(false);
+  });
+
+  // The lockfile records the source payload, so only fingerprinting the copy
+  // itself can notice that someone edited it in Metabase.
+  it("restores a copied model edited directly in Metabase", async () => {
+    const { appRoot, fake } = syncedApp();
+    fake.cards.set(COPIED_MODEL_ID, copiedModel({ name: "Edited by hand" }));
+
+    await sync(appRoot);
+
+    expect(called(fake, "PUT", `/api/card/${COPIED_MODEL_ID}`)).toBe(true);
+    expect(fake.cards.get(COPIED_MODEL_ID)?.name).toBe("Orders");
+  });
+
+  it("restores a copied action edited directly in Metabase", async () => {
+    const { appRoot, fake } = syncedApp();
+    fake.actions.set(91, {
+      ...copiedAction(91, 51, "Create"),
+      name: "Edited by hand",
+    });
+
+    await sync(appRoot);
+
+    expect(called(fake, "PUT", "/api/action/91")).toBe(true);
+    expect(fake.actions.get(91)?.name).toBe("Create");
+  });
+
   describe("refusals", () => {
+    it("refuses to update a copied action repointed at another model", async () => {
+      const { appRoot, fake } = syncedApp();
+      fake.actions.set(91, {
+        ...copiedAction(91, 51, "Create"),
+        model_id: 999,
+      });
+
+      // Replacing it would abandon an action nothing tracks, still addressed by
+      // any deployed bundle.
+      await expect(sync(appRoot)).rejects.toThrow(
+        "no longer hangs off copied model",
+      );
+      expect(called(fake, "POST", "/api/action")).toBe(false);
+      expect(fake.actions.has(91)).toBe(true);
+    });
+
     it("rejects an action whose parent card is not a model", async () => {
       const appRoot = makeApp();
       declareActions(appRoot, [{ id: 51 }]);

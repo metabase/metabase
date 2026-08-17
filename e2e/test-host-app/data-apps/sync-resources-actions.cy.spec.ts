@@ -207,6 +207,38 @@ describe(
       });
     });
 
+    it("restores a copied model edited directly in Metabase", () => {
+      syncOneAction().then(({ copiedModel }) => {
+        cy.request("PUT", `/api/card/${copiedModel.id}`, {
+          name: "Edited by hand",
+        });
+
+        sync();
+
+        copiedModels().then((models) => {
+          expect(models).to.have.length(1);
+          expect(models[0].id).to.eq(copiedModel.id);
+          expect(models[0].name).to.eq(MODEL_NAME);
+        });
+      });
+    });
+
+    it("restores a copied action edited directly in Metabase", () => {
+      syncOneAction().then(({ copiedModel, copiedAction }) => {
+        cy.request("PUT", `/api/action/${copiedAction.id}`, {
+          name: "Edited by hand",
+        });
+
+        sync();
+
+        actionsOnModel(copiedModel.id).then((actions) => {
+          expect(actions).to.have.length(1);
+          expect(actions[0].id).to.eq(copiedAction.id);
+          expect(actions[0].name).to.eq(copiedAction.name);
+        });
+      });
+    });
+
     describe("recovery", () => {
       it("reuses the existing copies when copiedActionId is missing from the source", () => {
         syncOneAction().then(({ action, copiedModel, copiedAction }) => {
@@ -326,6 +358,23 @@ describe(
 
           syncExpectingRefusal(`Could not read action ${action.id}`);
           copiedModels().should("have.length", 0);
+        });
+      });
+
+      it("refuses to update a copied action that now belongs to another model", () => {
+        syncOneAction().then(({ modelId, copiedAction }) => {
+          // Still declared, but repointed at a model the app does not own:
+          // replacing it would abandon an action nothing tracks.
+          cy.request("PUT", `/api/action/${copiedAction.id}`, {
+            model_id: modelId,
+          });
+
+          syncExpectingRefusal(
+            `Action ${copiedAction.id} is the copy of action`,
+          );
+          cy.request(`/api/action/${copiedAction.id}`)
+            .its("body.model_id")
+            .should("eq", modelId);
         });
       });
 

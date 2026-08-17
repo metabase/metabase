@@ -173,12 +173,22 @@ async function reconcileModelActions(
       ? await orNullOn404(client.getAction(mapping.copiedActionId))
       : null;
 
-    if (mapping && copiedAction?.model_id !== entry.copiedModelId) {
+    if (
+      mapping &&
+      copiedAction &&
+      copiedAction.model_id !== entry.copiedModelId
+    ) {
+      throw new Error(
+        `Action ${mapping.copiedActionId} is the copy of action ${source.id} but no longer hangs off copied model ${entry.copiedModelId}, so it was left untouched. Move it back or delete it manually, then run sync-resources again.`,
+      );
+    }
+
+    if (mapping && !copiedAction) {
       entry.actions.splice(entry.actions.indexOf(mapping), 1);
       mapping = undefined;
     }
 
-    if (!mapping) {
+    if (!mapping || !copiedAction) {
       const created = await client.createAction({
         ...fields,
         model_id: entry.copiedModelId,
@@ -201,7 +211,9 @@ async function reconcileModelActions(
       continue;
     }
 
-    if (mapping.hash !== hash) {
+    // Fingerprint the copy rather than trusting the lockfile: that also catches
+    // a copy edited directly in Metabase, which the source hash cannot see.
+    if (getPayloadFingerprint(actionCopyFields(copiedAction)) !== hash) {
       await client.updateAction(mapping.copiedActionId, fields);
 
       mapping.hash = hash;
@@ -261,7 +273,7 @@ async function reconcileModel(
   if (previous && copy) {
     assertOwnedCopy(copy, collectionId);
 
-    if (previous.hash !== hash) {
+    if (getPayloadFingerprint(modelCopyInput(copy)) !== hash) {
       await client.updateModel(previous.copiedModelId, {
         ...modelCopyInput(sourceModel),
         collectionId,

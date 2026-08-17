@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -23,6 +24,7 @@ const SDK_PACKAGE_DIR = path.join(
 );
 
 const scratchDir = path.join(DATA_APP_FIXTURES_DIR, ".build");
+fs.mkdirSync(scratchDir, { recursive: true });
 const entry = path.join(scratchDir, "sync-resources.mjs");
 
 // The synchronization sources are TypeScript and reach the SDK package by its
