@@ -872,6 +872,97 @@ jobs:
           upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
           logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
+  # EXPERIMENT -- not a required check, and not intended to merge as-is.
+  #
+  # Measures whether the multi-JVM-per-runner strategy that pays off on the remote
+  # warehouses (BigQuery, Snowflake, ...) also pays off on a driver whose database runs as a
+  # service container ON the runner. The prediction is no: a local-container driver has far
+  # less idle time to reclaim (Postgres averages 0.44 s/test against BigQuery's 0.97-1.66),
+  # and the JVMs contend with the database for the same 4 vCPU / 16 GB rather than waiting
+  # on a network. Postgres is the most favourable case to test it on, since its container is
+  # light next to Oracle/Vertica/SparkSQL.
+  #
+  # ONE runner either way, running the WHOLE suite either way. The only variable is how many
+  # JVMs that runner splits it across:
+  #
+  #   1 JVM  -- the whole suite in one process (today's configuration)
+  #   2 JVMs -- the same suite as 2 partitions, side by side on the one runner
+  #
+  # So the numbers are directly comparable: same machine, same work, same container. If two
+  # JVMs can use the idle capacity, the 2-JVM job finishes near half the time of the 1-JVM
+  # job; if they just contend, it finishes near the same time or worse.
+  #
+  # One difference is unavoidable and inherent to the strategy rather than a flaw in the
+  # comparison: a lone JVM keeps the `:ci` alias's -Xmx12g, while two have to fit in the
+  # runner together at 4g each. You cannot give two JVMs 12g on a 16G box, so this is part
+  # of what is being tested, not a confound to remove.
+  #
+  # Uses its own junit-name so the results stay out of the real Postgres suite's
+  # ci-conductor history.
+  be-tests-postgres-jvm-experiment:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.postgres-should-run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        arm:
+          - id: 1-jvm
+            name: 1 JVM
+            jvms-per-runner: 1
+          - id: 2-jvms
+            name: 2 JVMs
+            jvms-per-runner: 2
+    name: "PG JVM experiment: ${{ matrix.arm.name }}"
+    env:
+      CI: 'true'
+      DRIVERS: postgres
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5432
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: mb_test
+      MB_POSTGRESQL_TEST_USER: mb_test
+    services:
+      postgres:
+        image: postgres:14-alpine
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+    steps:
+      - uses: actions/checkout@v6
+      # `-Dmb.db.in.memory=true` only gives a process its own app DB when the app-db type is
+      # H2 (`metabase.app-db.env/broken-out-details`). This job points Metabase at the
+      # Postgres container, so concurrent JVMs would otherwise share one `mb_test` and race
+      # each other's migrations and `with-temp` cleanup. run-backend-test-jvms.sh gives each
+      # JVM `mb_test_p<partition>`; they have to exist first. The 1-JVM arm keeps `mb_test`.
+      - name: Create per-JVM application databases
+        if: ${{ matrix.arm.jvms-per-runner != 1 }}
+        run: |
+          for i in $(seq 0 $(( ${{ matrix.arm.jvms-per-runner }} - 1 ))); do
+            psql -h localhost -U mb_test -d mb_test -c "CREATE DATABASE mb_test_p$i"
+          done
+      - name: Test Postgres driver
+        id: test-driver
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: 'be-tests-postgres-jvm-experiment'
+          artifact-suffix: ${{ matrix.arm.id }}
+          test-args: >-
+            :only-tags [:mb/driver-tests]
+            :exclude-tags '[:mb/transforms-python-test :mb/old-migrations-test]'
+          # One runner, so this runner IS the whole suite; the arm only varies how many JVMs
+          # it splits into.
+          runner-index: 0
+          runner-count: 1
+          jvms-per-runner: ${{ matrix.arm.jvms-per-runner }}
+          heap-per-jvm: '4g'
+          quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+
   be-tests-presto-jdbc-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.presto-jdbc-should-run == 'true' }}
