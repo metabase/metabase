@@ -1,4 +1,3 @@
-import relativeTime from "dayjs/plugin/relativeTime";
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
@@ -11,8 +10,6 @@ import type { FieldDiff, Revision, TableId } from "metabase-types/api";
 import { RevisionDiff } from "./RevisionDiff";
 import S from "./RevisionHistory.module.css";
 import type { DefinitionType, RevisionActionDescriptor } from "./types";
-
-dayjs.extend(relativeTime);
 
 type RevisionItemProps = {
   revision: Revision;

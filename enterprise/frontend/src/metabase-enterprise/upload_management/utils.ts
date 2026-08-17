@@ -1,9 +1,4 @@
-import relativeTime from "dayjs/plugin/relativeTime";
-import updateLocale from "dayjs/plugin/updateLocale";
-
 import dayjs from "metabase/utils/dayjs";
-dayjs.extend(updateLocale);
-dayjs.extend(relativeTime);
 
 export function getDateDisplay(date: string) {
   const dateObj = dayjs(date);
