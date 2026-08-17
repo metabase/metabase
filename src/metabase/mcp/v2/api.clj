@@ -1,5 +1,5 @@
 (ns metabase.mcp.v2.api
-  "The MCP tool surface — the only one Metabase serves — mounted on every path in
+  "The MCP tool surface mounted on every path in
    [[metabase.mcp.paths/endpoint-paths]]. [[metabase.mcp.transport]] supplies the JSON-RPC framing,
    origin checks, cookie/bearer auth, session handling, and throttling; `tools/list` and
    `tools/call` are driven by the [[metabase.mcp.v2.registry]]. Gated by
@@ -36,10 +36,9 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------ Placeholder tool ----------------------------------------------
+;;; ------------------------------------------------ Health check --------------------------------------------------
 
-;; Exercises the whole surface (tools/list, tools/call, scope filtering, kill switches) until
-;; real tools land in tasks 05+.
+;; Lets a client or operator confirm the surface is reachable and its token is accepted without touching any content.
 (registry/deftool ping-v2
   "Health-check tool for the MCP surface. Returns a fixed acknowledgement."
   {:name        "ping_v2"
@@ -120,8 +119,8 @@
   mcp.validation/+mcp-enabled)
 
 (def ^:private server-instructions
-  "The `initialize` result's `instructions` — the only channel that reaches the model before any
-   tool call, so it points at the `learn` skills once, in three lines."
+  "The `initialize` result's `instructions` — the only channel that reaches the model before any tool call, so it points
+  at the `learn` skills once, in three lines."
   (str "This server ships task-shaped docs as skills. learn() lists the topics; learn(topic) returns one.\n"
        "Before your first complex write — native template_tags, dashboard parameter wiring, an MBQL query, "
        "visualization settings — read the matching skill unless it is already in context.\n"
@@ -130,10 +129,9 @@
 (def default-ask-scopes
   "What an uninstructed client is asked to request for this surface: read only.
 
-   The surface still *accepts* the write scopes, and its resource metadata still advertises them,
-   so a client that wants to write can request them and the user can consent. This only decides
-   what a client asks for when nothing tells it otherwise — which for the major MCP clients is
-   every scope the resource advertises, writes included."
+  The surface still *accepts* the write scopes, and its resource metadata still advertises them, so a client that
+  wants to write can request them and the user can consent. This only decides what a client asks for when nothing
+  tells it otherwise — which for the major MCP clients is every scope the resource advertises, writes included."
   [metabot.scope/agent-content-read
    metabot.scope/agent-query-run])
 
