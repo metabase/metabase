@@ -7,6 +7,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
@@ -431,7 +432,8 @@
   "Respond to activities in Slack"
   [_route-params
    _query-params
-   body :- [:multi {:dispatch :type}
+   body :- [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+                    :dispatch         :type}
             ["url_verification" slackbot.events/SlackUrlVerificationEvent]
             ["event_callback"   slackbot.events/SlackEventCallbackEvent]
             [::mc/default       [:map [:type :string]]]]

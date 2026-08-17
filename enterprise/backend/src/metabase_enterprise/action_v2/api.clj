@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -35,6 +36,27 @@
 (mr/def ::api-action-id-or-expression
   "All the various ways of referring to an action with the v2 APIs."
   [:or ::api-action-id ::api-action-expression])
+
+(mr/def ::action-value
+  "A single value for an action parameter or an input-row cell: a scalar, or a sequence of them like any other
+  parameter value (`POST /api/action/:id/execute` holds its parameters to the same schema -- a query action binds
+  them to native template tags, which take multiple values)."
+  [:ref ::lib.schema.parameter/parameter.value])
+
+(def ^:private strict-action-value-map
+  [:map-of :keyword [:ref ::action-value]])
+
+(mr/def ::action-value-map
+  "A map from parameter name / column name to a value. Keys are keywords: the request decoder keywordizes map keys and
+  the handler reads them via `(keyword ...)`, so the FE never sends anything else.
+
+  Same shape as [[metabase.actions.schema/execute-parameter-values]]. Decoding sees a permissive
+  `[:map-of :keyword :any]` and the values are validated against, rather than decoded through,
+  [[strict-action-value-map]]."
+  [:and
+   [:map-of :keyword :any]
+   [:fn {:error/message "value must be a scalar, or a sequence of scalars"}
+    #(mr/validate strict-action-value-map %)]])
 
 (mr/def ::action-expression
   "The internal representation used by our APIs, after we've parsed the relevant ids and fetched their configuration."
@@ -155,8 +177,8 @@
    :- [:map
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
-       [:params {:optional true} ms/Map]
-       [:input {:optional true} ms/Map]]]
+       [:params {:optional true} ::action-value-map]
+       [:input {:optional true} ::action-value-map]]]
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
@@ -194,8 +216,8 @@
    :- [:map
        [:action ::api-action-id-or-expression]
        [:scope ::types/scope.raw]
-       [:inputs [:sequential {:min 1} ms/Map]]
-       [:params {:optional true} [:map-of :keyword :any]]]]
+       [:inputs [:sequential {:min 1} ::action-value-map]]
+       [:params {:optional true} ::action-value-map]]]
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
@@ -216,7 +238,11 @@
   [{}
    {}
    ;; TODO support for bulk actions
-   {:keys [action scope input]}]
+   {:keys [action scope input]}
+   :- [:map
+       [:action ::api-action-id-or-expression]
+       [:scope ::types/scope.raw]
+       [:input {:optional true} ::action-value-map]]]
   :- :metabase-enterprise.action-v2.execute-form/action-description
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
