@@ -1010,20 +1010,20 @@ jobs:
     timeout-minutes: 70
     strategy:
       fail-fast: false
+      # HOW MANY RUNNERS — the only knob. One entry per runner, read back below as
+      # `strategy.job-total`, so the count cannot drift out of sync (a count above the real
+      # number of runners would silently drop whole partitions and still report green).
+      # The matrix therefore holds nothing but runners; the upload and Python suites, which
+      # are tagged separately and are not part of this partitioned suite, are their own jobs.
+      #
+      # Each runner runs `jvms-per-runner` concurrent test JVMs — see
+      # `.github/scripts/run-backend-test-jvms.sh`. Snowflake is the same shape as BigQuery:
+      # the warehouse is remote, so the runner sits idle waiting on it (0.89 s/test over
+      # 3448 tests, 56% of them single-threaded because hawk runs namespaces one at a time),
+      # and its test datasets are content-hash named, so concurrent processes share them
+      # rather than each loading their own.
       matrix:
-        job:
-          - name: Driver Tests
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
-              :fail-fast? true
-          - name: Upload Tests
-            test-args: >-
-              :only-tags [:mb/upload-tests]
-          - name: Transforms Python Tests
-            test-args: >-
-              :only-tags [:mb/transforms-python-test]
-            needs-python-runner: true
+        runner-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: snowflake
@@ -1043,11 +1043,95 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
-    name: Snowflake ${{ matrix.job.name }}
+    name: Snowflake Driver Tests ${{ matrix.runner-index }}
+    steps:
+    - uses: actions/checkout@v6
+    - name: Test Snowflake driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-snowflake-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+          :fail-fast? true
+        runner-index: ${{ matrix.runner-index }}
+        runner-count: ${{ strategy.job-total }}
+        jvms-per-runner: '2'
+        heap-per-jvm: '4g'
+        artifact-suffix: runner-${{ matrix.runner-index }}
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+
+  # Split out of the driver-test job above so that job's matrix is purely one-entry-per-runner
+  # and `strategy.job-total` is the runner count. Left as a single JVM: at 81 tests spread over
+  # few namespaces there is not enough to partition, and hawk requires every partition to be
+  # non-empty. Keeps the same `junit-name` — that is the ci-conductor suite label, and changing
+  # it would orphan the suite's quarantine history.
+  be-tests-snowflake-upload-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    env:
+      CI: 'true'
+      DRIVERS: snowflake
+      MB_SNOWFLAKE_TEST_USER: METABASE CI
+      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2 }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2 }}
+
+      # RSA Role testing:
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
+    name: Snowflake Upload Tests
+    steps:
+    - uses: actions/checkout@v6
+    - name: Test Snowflake driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-snowflake-ee'
+        test-args: >-
+          :only-tags [:mb/upload-tests]
+        artifact-suffix: upload
+        quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
+
+  be-tests-snowflake-transforms-python-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      DRIVERS: snowflake
+      MB_SNOWFLAKE_TEST_USER: METABASE CI
+      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2 }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2 }}
+
+      # RSA Role testing:
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
+    name: Snowflake Transforms Python Tests
     steps:
     - uses: actions/checkout@v6
     - name: Setup python-runner
-      if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
       with:
         metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -1056,15 +1140,16 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-snowflake-ee'
-        test-args: ${{ matrix.job.test-args }}
-        artifact-suffix: ${{ matrix.job.name }}
+        test-args: >-
+          :only-tags [:mb/transforms-python-test]
+        artifact-suffix: transforms-python
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
     - name: Cleanup python-runner
-      if: ${{ always() && matrix.job.needs-python-runner == true }}
+      if: ${{ always() }}
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        logs-artifact-suffix: transforms-python
 
   be-tests-sparksql-ee:
     needs: determine-driver-skips
@@ -1273,6 +1358,8 @@ jobs:
       - be-tests-h2
       - be-tests-athena-ee
       - be-tests-snowflake-ee
+      - be-tests-snowflake-upload-ee
+      - be-tests-snowflake-transforms-python-ee
       - be-tests-bigquery-cloud-sdk-ee
       - be-tests-bigquery-transforms-python-ee
       - be-tests-databricks-ee
