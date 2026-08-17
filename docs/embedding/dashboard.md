@@ -17,8 +17,6 @@ There are three ways you can embed a dashboard:
 - [Interactive dashboard](#embed-an-interactive-dashboard): people can drill through the charts on the dashboard and explore the data behind them.
 - [Editable dashboard](#embed-an-editable-dashboard): people also can add cards, rearrange the layout, and save the changes.
 
-> The React SDK doesn't support more than one dashboard component on the same page yet.
-
 ## Embed a view-only dashboard
 
 A view-only (a.k.a. "static") dashboard displays results without letting people explore the data. Nobody can drill through the charts or change the questions behind them. You can, however, add editable filters that people can change to update the results, as well as locked filters you can use to filter results based on who is logged in to your app.
@@ -106,6 +104,8 @@ For the full list of attributes, see [web component attributes](./dashboard-refe
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
 To embed a view-only dashboard with the [SDK](./sdk/introduction.md), use the `StaticDashboard` component. Wrap the component in the `MetabaseProvider` component with your auth config.
+
+> The React SDK doesn't support more than one dashboard component on the same page yet. That applies to `StaticDashboard`, `InteractiveDashboard`, and `EditableDashboard` alike, so a page can hold one of them, not two.
 
 ```typescript
 {% include_file "{{ dirname }}/sdk/snippets/dashboards/static-dashboard.tsx" %}
@@ -310,16 +310,33 @@ To send people somewhere instead---another dashboard, a question, or an external
 
 Say you want to show each customer only their own numbers. How you filter the results depends on how you authenticate the embed.
 
-- [Guest](#lock-a-filter-on-a-guest-embed)
-- [SSO](#use-permissions-on-an-sso-embed)
-
 ### Lock a filter on a guest embed
 
-See [Modular embedding parameters](./parameters.md).
+Embeds with **Guest** authentication can [lock a filter](./guest-embedding.md#locked-parameters). Your app sets the filter's value in the signed token on your server, so the value comes from your app rather than from whoever's clicking around the page. They can't see the value, and they can't change it. An embed on a customer's account page returns that account's rows, whether or not Metabase has any idea who's looking at it.
+
+Unlike a question, which needs a SQL variable to lock onto, any dashboard filter can be locked, including filters wired up to query builder questions. Set the filter to **Locked** in the dashboard's embed settings, then pass its value in the token:
+
+```javascript
+const payload = {
+  resource: { dashboard: 10 },
+  params: {
+    category: ["Gadget"], // Locked. Set by your app, not by whoever's viewing.
+  },
+  exp: Math.round(Date.now() / 1000) + 10 * 60,
+};
+
+const token = jwt.sign(payload, METABASE_SECRET_KEY);
+```
+
+A locked filter also narrows the options in every editable filter on the same dashboard, the way [linked filters](../dashboards/filters.md#linking-filters) do. And if the locked filter feeds a SQL question anywhere on the dashboard, the token can carry only one value for it. See [Locked parameters](./guest-embedding.md#locked-parameters).
 
 ### Use permissions on an SSO embed
 
 Embeds with **SSO** don't need to lock filters. Since Metabase knows who's viewing, you can apply [data permissions](../permissions/embedding.md) and let Metabase filter the rows, instead of locking filters by hand.
+
+### Set filter values from your app
+
+To set a starting value that people can still change, or to keep your app in sync as they change it, see [Modular embedding parameters](./parameters.md).
 
 ## Let people set up dashboard subscriptions
 
@@ -396,8 +413,8 @@ You can toggle parts of an embedded dashboard's UI and set how tall it renders.
 
 ### Web component dashboard appearance
 
-- **Title**: show or hide the dashboard title with `with-title`.
-- **Downloads**: show or hide the button that downloads the dashboard as a PDF, plus the download buttons on each card's results, with `with-downloads`.
+- **Title**: show or hide the dashboard title with `with-title`. Defaults to `true`.
+- **Downloads**: show or hide the button that downloads the dashboard as a PDF, plus the download buttons on each card's results, with `with-downloads`. Defaults to `false`, so set it to `true` if you want people to be able to download results. Changing it requires a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
 
 To set the height, style the `<metabase-dashboard>` element with CSS. The element renders as a block, and the embed fills it:
 
@@ -415,9 +432,9 @@ The embed won't render shorter than 600 pixels, no matter which height you set.
 
 ### React SDK dashboard appearance
 
-- **Title**: show or hide the dashboard title with `withTitle`.
+- **Title**: show or hide the dashboard title with `withTitle`. Defaults to `true`.
 - **Card titles**: show or hide the title on each card with `withCardTitle`.
-- **Downloads**: show or hide the button that downloads the dashboard as a PDF, plus the download buttons on each card's results, with `withDownloads`.
+- **Downloads**: show or hide the button that downloads the dashboard as a PDF, plus the download buttons on each card's results, with `withDownloads`. Defaults to `false`, so set it to `true` if you want people to be able to download results.
 
 Dashboard components fill the height of their container (`min-height: 100%`). Override that with the `style` or `className` props:
 
