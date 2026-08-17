@@ -191,11 +191,25 @@
   this test will fail on that column; add it here."
   #{"ENTITY_ID" "PASSWORD" "PASSWORD_SALT" "RESET_TOKEN" "CREDENTIALS"})
 
+(def ^:private unstable-id-tables
+  "Tables whose auto-generated `id` two migration runs can disagree on.
+
+  Each is seeded by a single `INSERT ... SELECT` over a join carrying no `ORDER BY`, so which row draws which
+  sequence value is settled by the plan the server picks. A snapshot is dumped from one server version and loaded
+  into another, so the ids it carries are not the ids that server's own replay would have assigned -- Postgres 14
+  and 18 disagree about `metabot_permissions`. `transform_job_transform_tag` is seeded the same way and every server
+  tried so far happens to agree on it, which is luck rather than a guarantee.
+
+  Only the id is dropped. Nothing references either of these, and the rows themselves are still compared, so a
+  seeded row going missing, appearing twice, or changing its `group_id`/`job_id`/`tag_id` still fails."
+  #{"METABOT_PERMISSIONS" "TRANSFORM_JOB_TRANSFORM_TAG"})
+
 (defn- unstable-columns
-  "Columns of `table` whose values two separate migration runs cannot be expected to share: wall-clock times, and the
-  generated values listed in [[generated-columns]]."
+  "Columns of `table` whose values two separate migration runs cannot be expected to share: wall-clock times, the
+  generated values listed in [[generated-columns]], and the `id` of an [[unstable-id-tables]] table."
   [^java.sql.Connection conn db-type table]
-  (into generated-columns
+  (into (cond-> generated-columns
+          (unstable-id-tables (u/upper-case-en table)) (conj "ID"))
         (keep (fn [[col-name {:keys [type_name]}]]
                 (when (re-find #"(?i)^(TIMESTAMP|DATETIME|DATE|TIME)" (str type_name))
                   col-name)))
