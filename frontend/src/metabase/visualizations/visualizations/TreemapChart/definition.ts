@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { formatValue } from "metabase/value-formatting";
 import { getTreemapChartColumns } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";

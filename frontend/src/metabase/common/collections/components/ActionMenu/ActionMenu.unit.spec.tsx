@@ -8,7 +8,6 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Collection, CollectionItem, Database } from "metabase-types/api";
 import {
   createMockCollection,
@@ -23,6 +22,9 @@ interface SetupOpts {
   collection?: Collection;
   databases?: Database[];
   isXrayEnabled?: boolean;
+  withBookmarks?: boolean;
+  isSelected?: boolean;
+  onToggleSelected?: jest.Mock;
 }
 
 const setup = ({
@@ -30,6 +32,9 @@ const setup = ({
   collection = createMockCollection({ can_write: true }),
   databases = [],
   isXrayEnabled = false,
+  withBookmarks = false,
+  isSelected,
+  onToggleSelected,
 }: SetupOpts) => {
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
@@ -40,25 +45,98 @@ const setup = ({
     }),
   });
 
-  const metadata = getMetadata(storeInitialState);
   const onCopy = jest.fn();
   const onMove = jest.fn();
+  const createBookmark = withBookmarks ? jest.fn() : undefined;
+  const deleteBookmark = withBookmarks ? jest.fn() : undefined;
 
   renderWithProviders(
     <ActionMenu
       item={item}
       collection={collection}
-      databases={metadata.databasesList()}
+      databases={databases}
       onCopy={onCopy}
       onMove={onMove}
+      createBookmark={createBookmark}
+      deleteBookmark={deleteBookmark}
+      isSelected={isSelected}
+      onToggleSelected={onToggleSelected}
     />,
     { storeInitialState },
   );
 
-  return { onCopy, onMove };
+  return { onCopy, onMove, createBookmark, deleteBookmark };
 };
 
 describe("ActionMenu", () => {
+  describe("bookmarks", () => {
+    it("should bookmark an item with its id and model", async () => {
+      const item = createMockCollectionItem({
+        id: 1,
+        name: "Dashboard",
+        model: "dashboard",
+        can_write: true,
+      });
+
+      const { createBookmark } = setup({ item, withBookmarks: true });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Bookmark"));
+
+      expect(createBookmark).toHaveBeenCalledWith({ id: 1, type: "dashboard" });
+    });
+  });
+
+  describe("selection", () => {
+    const item = createMockCollectionItem({
+      id: 1,
+      name: "Dashboard",
+      model: "dashboard",
+      can_write: true,
+    });
+
+    it("should select an item in a writable collection", async () => {
+      const onToggleSelected = jest.fn();
+      setup({ item, onToggleSelected });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Select"));
+
+      expect(onToggleSelected).toHaveBeenCalledTimes(1);
+      expect(onToggleSelected).toHaveBeenCalledWith();
+    });
+
+    it("should show Deselect for a selected item", async () => {
+      setup({ item, isSelected: true, onToggleSelected: jest.fn() });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Deselect")).toBeInTheDocument();
+    });
+
+    it("should not show selection in a read-only collection", async () => {
+      setup({
+        item,
+        collection: createMockCollection({ can_write: false }),
+        onToggleSelected: jest.fn(),
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(screen.queryByText("Select")).not.toBeInTheDocument();
+      expect(screen.queryByText("Deselect")).not.toBeInTheDocument();
+    });
+
+    it("should not show selection without a toggle callback", async () => {
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(screen.queryByText("Select")).not.toBeInTheDocument();
+      expect(screen.queryByText("Deselect")).not.toBeInTheDocument();
+    });
+  });
+
   describe("moving and archiving", () => {
     it("should duplicate an item", async () => {
       const item = createMockCollectionItem({
@@ -112,9 +190,11 @@ describe("ActionMenu", () => {
         personal_owner_id: 1,
       });
 
-      setup({ item });
+      setup({ item, withBookmarks: true });
 
-      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Bookmark")).toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
@@ -126,11 +206,25 @@ describe("ActionMenu", () => {
         can_write: false,
       });
 
-      setup({ item });
+      setup({ item, withBookmarks: true });
 
-      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Bookmark")).toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
+    });
+
+    it("should not render the menu at all when no actions are available", () => {
+      const item = createMockCollectionItem({
+        name: "My Read Only collection",
+        model: "collection",
+        can_write: false,
+      });
+
+      setup({ item, withBookmarks: false });
+
+      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
     });
   });
 

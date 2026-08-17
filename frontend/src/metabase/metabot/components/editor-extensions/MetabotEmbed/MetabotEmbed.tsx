@@ -11,7 +11,6 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { useLazyMetabotGenerateContentQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
@@ -22,6 +21,8 @@ import { wrapCardEmbed } from "metabase/rich_text_editing/tiptap/extensions/shar
 import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { MetabotGenerateContentRequest } from "metabase-types/api";
+
+import { useLazyMetabotGenerateContentQuery } from "../../../api";
 
 import S from "./MetabotEmbed.module.css";
 

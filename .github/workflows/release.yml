@@ -381,7 +381,8 @@ jobs:
       dot-x-tag: ${{ startsWith(matrix.tag, 'v') }}
 
   trigger-cloud-issues:
-    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
+    # Only create issues in the cloud ops repository if this release happens in https://github.com/metabase/metabase.
+    if: ${{ github.repository == 'metabase/metabase' && (needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major') }}
     needs: [push-tags, check-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
@@ -456,7 +457,8 @@ jobs:
             });
 
   draft-release-notes:
-    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
+    # Only create release notes if this release happens in https://github.com/metabase/metabase.
+    if: ${{ github.repository == 'metabase/metabase' && (needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major') }}
     needs: [add-extra-tags, check-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15

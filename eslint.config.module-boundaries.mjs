@@ -78,6 +78,7 @@ export default defineConfig([
     settings: {
       "boundaries/elements": boundaryElements,
       "boundaries/ignore": ["**/e2e/**", "test/**"],
+      "boundaries/dependency-nodes": ["import", "dynamic-import"],
       "import-x/resolver": {
         node: true,
         webpack: {

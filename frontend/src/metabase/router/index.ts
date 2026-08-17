@@ -3,6 +3,7 @@ export {
   NavLink,
   type NavLinkProps,
   type NavLinkRenderProps,
+  matchPath,
   Navigate,
   Outlet,
   Route,
@@ -14,6 +15,7 @@ export {
 } from "react-router";
 export * from "./use-navigate";
 export * from "./prefetch";
+export * from "./use-prefetch-on-visible";
 export * from "./redirect";
 export * from "./to-route-objects";
 export * from "./location-change";
@@ -30,6 +32,7 @@ export {
 export { queryToSearch, toFacadeLocation } from "./location";
 export { createLocationMirror, type LocationMirror } from "./location-mirror";
 export {
+  getIsNavigationPending,
   navigate,
   notifyLocationListeners,
   subscribeLocation,
