@@ -30,6 +30,7 @@ describe("executeAction", () => {
     activeStore?.dispatch(Api.util.resetApiState());
     activeStore = undefined;
     fetchMock.removeRoutes().clearHistory();
+    EMBEDDING_SDK_CONFIG.isDataApp = false;
     EMBEDDING_SDK_CONFIG.isDataAppDev = false;
   });
 
@@ -71,6 +72,21 @@ describe("executeAction", () => {
       await expect(
         executeAction(setup())({ actionId: { action: { id: AUTHORED_ID } } }),
       ).rejects.toThrow("has not been synchronized");
+    });
+
+    it("refuses a raw id inside a data app", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+
+      await expect(
+        executeAction(setup())({ actionId: AUTHORED_ID }),
+      ).rejects.toThrow("passed to `useAction` as a raw id");
+    });
+
+    it("runs a raw id in the dev preview", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+      EMBEDDING_SDK_CONFIG.isDataAppDev = true;
+
+      await expectExecuted(AUTHORED_ID, AUTHORED_ID);
     });
   });
 

@@ -143,6 +143,9 @@ const _invalidMetricSourceQuery = {
   source: TEST_SCHEMA.metrics.revenue,
 } satisfies MetabaseQueryOptions;
 
+// @ts-expect-error `unit` buckets a date, so only a date dimension offers it
+breakout(TEST_SCHEMA.tables.orders.fields.status, { unit: "month" });
+
 function InvalidTypeFixtures() {
   // @ts-expect-error pass the `defineAction` export, not the schema entry
   useAction(TEST_SCHEMA.models.orders.actions.create);

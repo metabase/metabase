@@ -1,4 +1,4 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   createDataAppApiKey,
   dataAppHostAppRoot,
@@ -204,6 +204,61 @@ describe(
             });
           },
         );
+      });
+    });
+
+    it("leaves the copies untouched when nothing changed", () => {
+      syncOneAction().then(({ copiedModel, copiedAction }) => {
+        sync();
+
+        copiedModels().then(([model]) => {
+          expect(model.id).to.eq(copiedModel.id);
+          expect(model.updated_at, "the model copy was not rewritten").to.eq(
+            copiedModel.updated_at,
+          );
+
+          actionsOnModel(model.id).then(([action]) => {
+            expect(action.id).to.eq(copiedAction.id);
+            expect(
+              action.updated_at,
+              "the action copy was not rewritten",
+            ).to.eq(copiedAction.updated_at);
+          });
+        });
+      });
+    });
+
+    // A query action carries its own database, which need not be its model's.
+    it("grants view-data on a query action's own database as well as its model's", () => {
+      H.setActionsEnabledForDB(SAMPLE_DB_ID);
+
+      cy.get<number>("@modelId").then((modelId) => {
+        cy.request("POST", "/api/action", {
+          name: "Report",
+          type: "query",
+          model_id: modelId,
+          database_id: SAMPLE_DB_ID,
+          dataset_query: {
+            type: "native",
+            database: SAMPLE_DB_ID,
+            native: { query: "SELECT 1" },
+          },
+          parameters: [],
+        }).then(({ body: action }) => {
+          declareDataAppActions(APP_ROOT(), [action.id]);
+          sync();
+
+          cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
+            cy.request("/api/permissions/graph").then(({ body: graph }) => {
+              const granted = graph.groups[app.permission_group_id];
+
+              expect(granted[WRITABLE_DB_ID]["view-data"]).to.eq(
+                "unrestricted",
+              );
+              expect(granted[SAMPLE_DB_ID]["view-data"]).to.eq("unrestricted");
+            });
+          });
+        });
       });
     });
 
