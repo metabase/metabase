@@ -230,7 +230,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderFiltersPanel()
       .findByText(/Created At: Month is May 1/)
       .should("exist");
-    H.assertQueryBuilderRowCount(9);
+    H.assertQueryBuilderRowCount(10);
     H.queryBuilderMain().within(() => {
       cy.findByText("Count").should("exist"); // y-axis
       cy.findByText("Created At: Month").should("exist"); // x-axis
