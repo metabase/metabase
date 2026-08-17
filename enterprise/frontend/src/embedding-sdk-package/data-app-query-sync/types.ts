@@ -39,7 +39,6 @@ export interface DiscoveredQuery {
 export interface DiscoveredAction {
   exportName: string;
   filePath: string;
-  definition: Record<string, unknown>;
   copiedActionId?: number;
   sourceActionId: number;
 }

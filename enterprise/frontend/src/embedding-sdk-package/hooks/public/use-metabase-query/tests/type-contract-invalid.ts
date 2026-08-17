@@ -6,6 +6,7 @@ import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { MetabaseQueryOptions, UseMetabaseQueryObjectResult } from "..";
 import { breakout, count, filter, sum, useMetabaseQuery } from "..";
+import { useAction } from "../../use-action";
 import { defineAction, defineQuery } from "../../../../data-app";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
@@ -35,6 +36,14 @@ defineAction(actionWithInvalidActionSourceId);
 
 // @ts-expect-error action definitions must reference a generated action
 defineAction({ action: TEST_SCHEMA.tables.orders });
+
+const CreateOrder = defineAction({
+  action: TEST_SCHEMA.models.orders.actions.create,
+});
+
+const UpdateOrder = defineAction({
+  action: TEST_SCHEMA.models.orders.actions.update,
+});
 
 // --------
 // Compile-time contracts that must **fail** type-checking.
@@ -135,6 +144,21 @@ const _invalidMetricSourceQuery = {
 } satisfies MetabaseQueryOptions;
 
 function InvalidTypeFixtures() {
+  // @ts-expect-error pass the `defineAction` export, not the schema entry
+  useAction(TEST_SCHEMA.models.orders.actions.create);
+
+  // @ts-expect-error the definition's parameter slugs are the only keys
+  useAction(CreateOrder).execute({ stauts: "shipped" });
+
+  // @ts-expect-error a parameter value is typed by its `jsType`
+  useAction(CreateOrder).execute({ status: 1 });
+
+  // @ts-expect-error required parameters cannot be omitted
+  useAction(UpdateOrder).execute({});
+
+  // @ts-expect-error `result` is discriminated by the action's kind
+  void useAction(CreateOrder).result?.["rows-updated"];
+
   const scalarAggregationResult = useMetabaseQuery({
     source: TEST_SCHEMA.tables.orders,
     aggregations: [sum(TEST_SCHEMA.tables.orders.fields.amount)],

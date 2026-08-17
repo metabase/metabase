@@ -42,7 +42,7 @@ function pickDefined(source: Record<string, unknown>) {
   );
 }
 
-/** Also the fingerprint input, so drift is measured over exactly what is copied. */
+/** Also the fingerprint input, so drift is measured over exactly what gets copied. */
 function modelCopyInput(source: MetabaseCard) {
   return {
     name: source.name,

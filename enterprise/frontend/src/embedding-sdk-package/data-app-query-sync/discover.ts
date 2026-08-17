@@ -201,7 +201,6 @@ export async function discoverActions(
     return {
       exportName,
       filePath,
-      definition: value,
       copiedActionId: positiveId(
         value[ACTION_DEFINITIONS.idKey],
         location,

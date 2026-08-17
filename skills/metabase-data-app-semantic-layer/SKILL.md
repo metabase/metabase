@@ -162,13 +162,10 @@ One model is copied once no matter how many of its actions the app declares — 
 Pass the definition itself to `useAction` and let the SDK resolve the ID. A production build runs the copy `copiedActionId` points at — running that copy is what grants an app's viewers permission to run the action at all, through the collection its model lives in — while the dev preview runs the authored action, so the app works before its first synchronization:
 
 ```ts
-const { execute, isExecuting, error } = useAction<
-  ActionParametersFromDataAppSchema<typeof CreateOrder.action>,
-  ActionKindFromDataAppSchema<typeof CreateOrder.action>
->(CreateOrder);
+const { execute, isExecuting, error } = useAction(CreateOrder);
 ```
 
-Never pass `schema.models.<model>.actions.<action>.id` or `CreateOrder.copiedActionId` yourself: both defeat the swap, and the authored ID also bypasses the permission boundary. Keep deriving the `TParameters` and `TKind` generics from `CreateOrder.action`, which still points at the generated schema entry.
+The definition also types `execute`'s parameters and `result`, so no generics are written. Never pass `schema.models.<model>.actions.<action>.id` or `CreateOrder.copiedActionId` yourself: both defeat the swap and drop that typing, and the authored ID also bypasses the permission boundary. Passing the schema entry itself is a type error.
 
 If synchronization fails, surface the exact error and stop. Synchronization copies actions; it never creates them, so an action the app needs must exist in Metabase first and be picked up by a regenerated schema. If it reports that actions are not enabled for the database, stop and tell the user to enable them; do not create Cards or actions by hand to work around it.
 
