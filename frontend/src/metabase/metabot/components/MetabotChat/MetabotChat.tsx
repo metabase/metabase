@@ -18,6 +18,7 @@ import type { MetabotChatConfig } from "../Metabot";
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
+import { MetabotContextUsageRing } from "./MetabotContextUsageRing";
 import { useScrollManager } from "./hooks";
 
 const defaultConfig: MetabotChatConfig = {
@@ -223,7 +224,6 @@ export const MetabotChat = ({
                   onChange={metabot.setPrompt}
                   onSubmit={() => metabot.submitInput(metabot.prompt)}
                   onStop={metabot.cancelRequest}
-                  contextWindowPercentUsage={metabot.contextWindowPercentUsage}
                   suggestionConfig={{
                     suggestionModels: config.suggestionModels,
                   }}
@@ -231,14 +231,18 @@ export const MetabotChat = ({
               </Paper>
             )}
           </Box>
-          <Text
-            className={Styles.disclaimer}
-            fz="sm"
-            c="text-secondary"
-            ta="center"
-          >
-            {t`${metabotName} isn't perfect. Double-check results.`}
-          </Text>
+          <Box className={Styles.footerRow}>
+            <Text fz="sm" c="text-secondary" ta="center">
+              {t`${metabotName} isn't perfect. Double-check results.`}
+            </Text>
+            {metabot.contextWindowPercentUsage > 50 &&
+              !metabot.isContextWindowFull && (
+                <MetabotContextUsageRing
+                  className={Styles.contextUsage}
+                  percentUsage={metabot.contextWindowPercentUsage}
+                />
+              )}
+          </Box>
         </Box>
       )}
       <AIProviderConfigurationModal

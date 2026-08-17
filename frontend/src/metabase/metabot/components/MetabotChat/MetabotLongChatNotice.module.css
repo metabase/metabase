@@ -5,3 +5,8 @@
   background-color: var(--mb-color-background_surface-brand-subtle);
   height: 3rem;
 }
+
+.term {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.15em;
+}

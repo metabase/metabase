@@ -1,11 +1,6 @@
-/* height and bottom margin mirror the send button it swaps places with */
 .indicator {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  height: 2rem;
-  align-self: flex-end;
-  margin-bottom: calc(0.5rem - 1px);
   flex-shrink: 0;
   cursor: default;
 }

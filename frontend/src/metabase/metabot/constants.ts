@@ -2,7 +2,6 @@ import { msgid, ngettext, t } from "ttag";
 
 import { isEmbedding } from "metabase/embedding/config";
 
-export const CONTEXT_WINDOW_INDICATOR_PERCENT = 50;
 export const CONTEXT_WINDOW_WARNING_PERCENT = 90;
 export const CONTEXT_WINDOW_FULL_PERCENT = 95;
 

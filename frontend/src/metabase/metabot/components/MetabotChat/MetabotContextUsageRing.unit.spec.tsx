@@ -15,9 +15,12 @@ describe("MetabotContextUsageRing", () => {
     });
   });
 
-  it("rounds the displayed percentage", () => {
+  it("rounds the percentage it announces", () => {
     renderWithProviders(<MetabotContextUsageRing percentUsage={90.4} />);
 
-    expect(screen.getByText("90%")).toBeInTheDocument();
+    expect(screen.getByTestId("metabot-context-usage-ring")).toHaveAttribute(
+      "aria-label",
+      "90% of the context window used",
+    );
   });
 });
