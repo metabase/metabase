@@ -10,6 +10,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { Api } from "metabase/api";
 import { Route } from "metabase/router";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
@@ -24,10 +25,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { CollectionItemsTable } from "./CollectionItemsTable";
-
-const { trackSimpleEvent } = jest.requireMock<{
-  trackSimpleEvent: jest.Mock;
-}>("metabase/analytics");
 
 const collection = createMockCollection({ id: 1, can_write: false });
 const collectionItems = [
@@ -158,10 +155,11 @@ function CollectionNavigationTest({
 
 describe("CollectionItemsTable", () => {
   beforeEach(() => {
-    trackSimpleEvent.mockClear();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     jest.useRealTimers();
   });
 
@@ -332,6 +330,7 @@ describe("CollectionItemsTable", () => {
   });
 
   it("tracks each search engagement once", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
     const user = setupUserWithFakeTimers();
     setup();
     const searchInput = await screen.findByPlaceholderText(
@@ -585,6 +584,7 @@ describe("CollectionItemsTable", () => {
   });
 
   it("tracks each type-filter engagement once", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
     setup();
 
     await userEvent.click(

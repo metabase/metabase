@@ -1,3 +1,4 @@
+import * as Analytics from "metabase/analytics";
 import type { CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
@@ -5,11 +6,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { handleItemDrop } from "./handle-item-drop";
-
-const { trackSchemaEvent, trackSimpleEvent } = jest.requireMock<{
-  trackSchemaEvent: jest.Mock;
-  trackSimpleEvent: jest.Mock;
-}>("metabase/analytics");
 
 const question = createMockCollectionItem({
   id: 1,
@@ -22,7 +18,10 @@ const dashboard = createMockCollectionItem({
   collection_position: null,
 });
 
-function getTrackedEvents(eventName: string) {
+function getTrackedEvents(
+  trackSimpleEvent: jest.SpiedFunction<typeof Analytics.trackSimpleEvent>,
+  eventName: string,
+) {
   return trackSimpleEvent.mock.calls
     .map(([event]) => event)
     .filter(({ event }) => event === eventName);
@@ -38,11 +37,15 @@ function setup(items: CollectionItem[] = [question]) {
 
 describe("handleItemDrop", () => {
   beforeEach(() => {
-    trackSchemaEvent.mockClear();
-    trackSimpleEvent.mockClear();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("tracks each item moved to a collection with drag and drop", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
     const props = setup([question, dashboard]);
     const collection = createMockCollection({ id: 10 });
 
@@ -52,7 +55,10 @@ describe("handleItemDrop", () => {
     });
 
     expect(props.setCollection).toHaveBeenCalledTimes(2);
-    const moveEvents = getTrackedEvents("collection_item_moved");
+    const moveEvents = getTrackedEvents(
+      trackSimpleEvent,
+      "collection_item_moved",
+    );
     expect(moveEvents).toHaveLength(2);
     expect(moveEvents).toEqual(
       expect.arrayContaining([
@@ -75,6 +81,7 @@ describe("handleItemDrop", () => {
   });
 
   it("tracks failed collection moves and preserves the rejection", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
     const props = setup();
     const error = new Error("Move failed");
     props.setCollection.mockRejectedValue(error);
@@ -95,6 +102,8 @@ describe("handleItemDrop", () => {
   });
 
   it("reuses moved-to-trash analytics for a trash drop", async () => {
+    const trackSchemaEvent = jest.spyOn(Analytics, "trackSchemaEvent");
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
     const props = setup();
 
     await handleItemDrop({
@@ -104,7 +113,9 @@ describe("handleItemDrop", () => {
       },
     });
 
-    expect(getTrackedEvents("collection_item_moved")).toHaveLength(0);
+    expect(
+      getTrackedEvents(trackSimpleEvent, "collection_item_moved"),
+    ).toHaveLength(0);
     expect(trackSchemaEvent).toHaveBeenCalledWith("simple_event", {
       event: "moved-to-trash",
       event_detail: "question",
@@ -116,6 +127,7 @@ describe("handleItemDrop", () => {
   });
 
   it("tracks pinning and unpinning but not pinned-item reordering", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
     const pinProps = setup();
     await handleItemDrop({
       ...pinProps,

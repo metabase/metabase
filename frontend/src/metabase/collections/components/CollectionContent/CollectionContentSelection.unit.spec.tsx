@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { Route } from "metabase/router";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
@@ -26,10 +27,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { CollectionContent } from "./CollectionContent";
-
-const { trackSimpleEvent } = jest.requireMock<{
-  trackSimpleEvent: jest.Mock;
-}>("metabase/analytics");
 
 const defaultCollection = createMockCollection({
   id: 1,
@@ -128,10 +125,15 @@ function getPinnedLink(itemName: string) {
 
 describe("CollectionContent selection", () => {
   beforeEach(() => {
-    trackSimpleEvent.mockClear();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("tracks entering selection mode once per selection session", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
     await setup();
 
     await userEvent.click(getRowSelectionButton(tableQuestion.name));

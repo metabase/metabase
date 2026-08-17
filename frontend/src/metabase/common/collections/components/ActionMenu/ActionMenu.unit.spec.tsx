@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import {
   createMockSettingsState,
   createMockState,
@@ -16,10 +17,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { ActionMenu } from "./ActionMenu";
-
-const { trackSimpleEvent } = jest.requireMock<{
-  trackSimpleEvent: jest.Mock;
-}>("metabase/analytics");
 
 interface SetupOpts {
   item: CollectionItem;
@@ -74,7 +71,11 @@ const setup = ({
 
 describe("ActionMenu", () => {
   beforeEach(() => {
-    trackSimpleEvent.mockClear();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe("bookmarks", () => {
@@ -97,6 +98,7 @@ describe("ActionMenu", () => {
 
   describe("pinning", () => {
     it("tracks a successful pin", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
       const item = createMockCollectionItem({
         id: 1,
         name: "Dashboard",
@@ -121,6 +123,7 @@ describe("ActionMenu", () => {
     });
 
     it("tracks a successful unpin and normalizes questions", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
       const item = createMockCollectionItem({
         id: 2,
         name: "Question",
@@ -145,6 +148,7 @@ describe("ActionMenu", () => {
     });
 
     it("tracks a failed pin", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
       const item = createMockCollectionItem({
         id: 3,
         name: "Dashboard",

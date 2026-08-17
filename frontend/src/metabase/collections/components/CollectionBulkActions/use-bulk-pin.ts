@@ -33,16 +33,14 @@ export const useBulkPin = (
   const pinSelected = useCallback(async () => {
     try {
       await Promise.all(
-        unpinnedItems
-          .filter(isPinnable)
-          .map((item) =>
-            setCollectionItemPinnedAndTrack({
-              item,
-              pinned: true,
-              triggeredFrom: "bulk_action_bar",
-              setPinned: () => setPinned(item, true).unwrap(),
-            }),
-          ),
+        unpinnedItems.filter(isPinnable).map((item) =>
+          setCollectionItemPinnedAndTrack({
+            item,
+            pinned: true,
+            triggeredFrom: "bulk_action_bar",
+            setPinned: () => setPinned(item, true).unwrap(),
+          }),
+        ),
       );
     } catch {
       sendErrorToast(t`There was an error pinning these items.`);
@@ -52,16 +50,14 @@ export const useBulkPin = (
   const unpinSelected = useCallback(async () => {
     try {
       await Promise.all(
-        pinnedItems
-          .filter(isPinnable)
-          .map((item) =>
-            setCollectionItemPinnedAndTrack({
-              item,
-              pinned: false,
-              triggeredFrom: "bulk_action_bar",
-              setPinned: () => setPinned(item, false).unwrap(),
-            }),
-          ),
+        pinnedItems.filter(isPinnable).map((item) =>
+          setCollectionItemPinnedAndTrack({
+            item,
+            pinned: false,
+            triggeredFrom: "bulk_action_bar",
+            setPinned: () => setPinned(item, false).unwrap(),
+          }),
+        ),
       );
     } catch {
       sendErrorToast(t`There was an error unpinning these items.`);

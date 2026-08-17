@@ -145,17 +145,13 @@ export const CollectionBulkActions = memo(
     const doMove = async (destination: Destination) => {
       if (selectedItems) {
         await Promise.all(
-          selectedItems.filter(isMovable).map((item) => {
-            const move = () => setCollection(item, destination);
-            if (destination.model === "collection") {
-              return moveCollectionItemAndTrack({
-                item,
-                move,
-                triggeredFrom: "move_modal",
-              });
-            }
-            return move();
-          }),
+          selectedItems.filter(isMovable).map((item) =>
+            moveCollectionItemAndTrack({
+              item,
+              move: () => setCollection(item, destination),
+              triggeredFrom: "move_modal",
+            }),
+          ),
         ).finally(clearSelected);
       }
       handleCloseModal();

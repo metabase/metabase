@@ -19,6 +19,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import {
@@ -31,10 +32,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { CollectionBulkActions } from "./CollectionBulkActions";
-
-const { trackSimpleEvent } = jest.requireMock<{
-  trackSimpleEvent: jest.Mock;
-}>("metabase/analytics");
 
 const writableCollection = createMockCollection({
   id: 1,
@@ -179,7 +176,10 @@ function getMenuItem(name: string) {
   return screen.getByRole("menuitem", { name });
 }
 
-function getTrackedEvents(eventName: string) {
+function getTrackedEvents(
+  trackSimpleEvent: jest.SpiedFunction<typeof Analytics.trackSimpleEvent>,
+  eventName: string,
+) {
   return trackSimpleEvent.mock.calls
     .map(([event]) => event)
     .filter(({ event }) => event === eventName);
@@ -222,7 +222,11 @@ function setupMovePickerEndpoints() {
 
 describe("CollectionBulkActions", () => {
   beforeEach(() => {
-    trackSimpleEvent.mockClear();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   describe("selection composition", () => {
@@ -295,6 +299,7 @@ describe("CollectionBulkActions", () => {
 
   describe("pinning", () => {
     it("pins only the unpinned items with Pin all", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
       fetchMock.put("path:/api/card/3", {});
       fetchMock.put("path:/api/dashboard/4", {});
       const { clearSelected } = setup({
@@ -317,7 +322,10 @@ describe("CollectionBulkActions", () => {
       await waitFor(() => {
         expect(clearSelected).toHaveBeenCalled();
       });
-      const pinEvents = getTrackedEvents("collection_item_pinned");
+      const pinEvents = getTrackedEvents(
+        trackSimpleEvent,
+        "collection_item_pinned",
+      );
       expect(pinEvents).toHaveLength(2);
       expect(pinEvents).toEqual(
         expect.arrayContaining([
@@ -340,6 +348,7 @@ describe("CollectionBulkActions", () => {
     });
 
     it("unpins only the pinned items with Unpin all", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
       fetchMock.put("path:/api/dashboard/1", {});
       fetchMock.put("path:/api/card/2", {});
       const { clearSelected } = setup({
@@ -362,7 +371,10 @@ describe("CollectionBulkActions", () => {
       await waitFor(() => {
         expect(clearSelected).toHaveBeenCalled();
       });
-      const unpinEvents = getTrackedEvents("collection_item_unpinned");
+      const unpinEvents = getTrackedEvents(
+        trackSimpleEvent,
+        "collection_item_unpinned",
+      );
       expect(unpinEvents).toHaveLength(2);
       expect(unpinEvents).toEqual(
         expect.arrayContaining([
@@ -385,6 +397,7 @@ describe("CollectionBulkActions", () => {
     });
 
     it("tracks each result when a bulk pin partially fails", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
       fetchMock.put("path:/api/card/3", {});
       fetchMock.put("path:/api/dashboard/4", {
         status: 500,
@@ -400,7 +413,10 @@ describe("CollectionBulkActions", () => {
       await waitFor(() => {
         expect(clearSelected).toHaveBeenCalled();
       });
-      const pinEvents = getTrackedEvents("collection_item_pinned");
+      const pinEvents = getTrackedEvents(
+        trackSimpleEvent,
+        "collection_item_pinned",
+      );
       expect(pinEvents).toHaveLength(2);
       expect(pinEvents).toEqual(
         expect.arrayContaining([
@@ -694,6 +710,7 @@ describe("CollectionBulkActions", () => {
     });
 
     it("tracks items moved to another collection from the move modal", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
       setupMovePickerEndpoints();
       setupCardEndpoints(
         createMockCard({

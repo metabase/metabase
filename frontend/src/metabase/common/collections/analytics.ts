@@ -93,17 +93,14 @@ export const setCollectionItemPinnedAndTrack = async ({
   triggeredFrom: CollectionItemPinTriggeredFrom;
   setPinned: () => PromiseLike<unknown>;
 }) => {
+  const trackEvent = (result: CollectionItemActionResult) =>
+    trackCollectionItemPinResult({ item, pinned, triggeredFrom, result });
   let mutationResult: unknown;
 
   try {
     mutationResult = await setPinned();
   } catch (error) {
-    trackCollectionItemPinResult({
-      item,
-      pinned,
-      triggeredFrom,
-      result: "failure",
-    });
+    trackEvent("failure");
     throw error;
   }
 
@@ -111,12 +108,7 @@ export const setCollectionItemPinnedAndTrack = async ({
     typeof mutationResult === "object" &&
     mutationResult !== null &&
     "error" in mutationResult;
-  trackCollectionItemPinResult({
-    item,
-    pinned,
-    triggeredFrom,
-    result: failed ? "failure" : "success",
-  });
+  trackEvent(failed ? "failure" : "success");
 };
 
 export const moveCollectionItemAndTrack = async ({
@@ -128,26 +120,23 @@ export const moveCollectionItemAndTrack = async ({
   move: () => Promise<unknown>;
   triggeredFrom: CollectionItemMoveTriggeredFrom;
 }) => {
-  try {
-    await move();
-  } catch (error) {
+  const trackEvent = (result: CollectionItemActionResult) =>
     trackSimpleEvent({
       event: "collection_item_moved",
       event_detail: getEntityForAnalytics(item.model),
       target_id: item.id,
       triggered_from: triggeredFrom,
-      result: "failure",
+      result,
     });
+
+  try {
+    await move();
+  } catch (error) {
+    trackEvent("failure");
     throw error;
   }
 
-  trackSimpleEvent({
-    event: "collection_item_moved",
-    event_detail: getEntityForAnalytics(item.model),
-    target_id: item.id,
-    triggered_from: triggeredFrom,
-    result: "success",
-  });
+  trackEvent("success");
 };
 
 export const trackCollectionItemBookmarked = (
