@@ -395,21 +395,22 @@
 (deftest delete-managed-connection-requires-superuser-test
   (testing (str "removing the managed connection cancels the Store subscription behind it, so settings access via "
                 "advanced permissions is not enough — everything else that can cancel add-ons is superuser-only")
-    (mt/with-premium-features #{:advanced-permissions :metabase-ai-managed}
-      (mt/with-temporary-setting-values [llm-providers      [(connection "metabase" "metabase")
-                                                             (connection "anthropic" "anthropic"
-                                                                         {:api-key "sk-ant-stored"})]
-                                         llm-proxy-base-url "https://proxy.example.com"]
-        (mt/with-user-in-groups [group {:name "Settings managers"}
-                                 user  [group]]
-          (perms/grant-application-permissions! group :setting)
-          (testing "settings access is enough to remove an ordinary connection"
-            (is (nil? (mt/user-http-request user :delete 204 "llm/providers/anthropic"))))
-          (testing "but not the managed one"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request user :delete 403 "llm/providers/metabase"))))
-          (testing "which is still there"
-            (is (some? (llm.provider/connection "metabase")))))))))
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:advanced-permissions :metabase-ai-managed}
+       (mt/with-temporary-setting-values [llm-providers      [(connection "metabase" "metabase")
+                                                              (connection "anthropic" "anthropic"
+                                                                          {:api-key "sk-ant-stored"})]
+                                          llm-proxy-base-url "https://proxy.example.com"]
+         (mt/with-user-in-groups [group {:name "Settings managers"}
+                                  user  [group]]
+           (perms/grant-application-permissions! group :setting)
+           (testing "settings access is enough to remove an ordinary connection"
+             (is (nil? (mt/user-http-request user :delete 204 "llm/providers/anthropic"))))
+           (testing "but not the managed one"
+             (is (= "You don't have permissions to do that."
+                    (mt/user-http-request user :delete 403 "llm/providers/metabase"))))
+           (testing "which is still there"
+             (is (some? (llm.provider/connection "metabase"))))))))))
 
 (deftest create-managed-connection-skips-credential-verification-test
   (mt/with-premium-features #{:metabase-ai-managed}
