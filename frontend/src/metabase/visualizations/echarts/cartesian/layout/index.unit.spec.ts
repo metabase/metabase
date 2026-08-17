@@ -1,10 +1,10 @@
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/static-viz/lib/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 import {
   createMockColumn,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
+import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
 import { CHART_STYLE } from "../constants/style";
 import type { XAxisModel, YAxisModel } from "../model/types";
 

@@ -1,6 +1,6 @@
 import Color from "color";
 
-import type { MantineThemeOther } from "metabase/ui";
+import { DEFAULT_METABASE_COMPONENT_THEME, type MantineThemeOther } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getSizeInPx } from "metabase/visualizations/shared/utils/size-in-px";
 import type { VisualizationTheme } from "metabase/visualizations/types";
@@ -69,3 +69,8 @@ export function getVisualizationTheme({
     },
   };
 }
+
+export const DEFAULT_VISUALIZATION_THEME = getVisualizationTheme({
+  theme: DEFAULT_METABASE_COMPONENT_THEME,
+  isStaticViz: true,
+});

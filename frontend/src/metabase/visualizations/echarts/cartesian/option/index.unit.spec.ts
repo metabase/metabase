@@ -1,6 +1,5 @@
 import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/static-viz/lib/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
 import {
@@ -10,6 +9,7 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
+import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
 import { getChartLayout } from "../layout";
 import { getCartesianChartModel } from "../model";
 

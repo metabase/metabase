@@ -4,13 +4,13 @@ import {
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
 import { colors } from "metabase/ui/colors";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
-import { DEFAULT_VISUALIZATION_THEME } from "../../lib/theme";
 import { StaticVisualization } from "../StaticVisualization";
 
 const COLS = [
