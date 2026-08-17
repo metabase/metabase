@@ -1,4 +1,4 @@
-import { useLocation } from "metabase/router";
+import { useMaybeLocation } from "metabase/router";
 
 interface UseDocumentCommentUrlOptions {
   childTargetId?: string | null;
@@ -8,7 +8,9 @@ interface UseDocumentCommentUrlOptions {
 export function useDocumentCommentUrl({
   childTargetId,
 }: UseDocumentCommentUrlOptions) {
-  const { pathname, search } = useLocation();
+  const location = useMaybeLocation();
+  const pathname = location?.pathname;
+  const search = location?.search ?? "";
   if (!pathname) {
     return "";
   }
