@@ -34,8 +34,6 @@ type ThresholdDaysFilterOption = {
   label: string;
 };
 
-// Nothing below `content-diagnostics-stale-threshold-days` (default 90): the scan never records a
-// fresher finding, so a lower option would silently behave like "Any length of time".
 export function getThresholdDaysFilterOptions(): ThresholdDaysFilterOption[] {
   return [
     { value: 90, label: t`90 days or more` },

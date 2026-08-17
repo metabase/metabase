@@ -22,8 +22,6 @@ type DurationFilterOption = {
   label: string;
 };
 
-// Nothing below `content-diagnostics-slow-card-threshold-seconds` (default 15s): the scan never
-// records a faster finding, so a lower option would silently behave like "Any duration".
 export function getDurationFilterOptions(): DurationFilterOption[] {
   return [
     { value: 15000, label: t`15 seconds or more` },
