@@ -30,18 +30,18 @@ export const MetabotLongChatNotice = ({
       gap="sm"
       data-testid="metabot-long-chat-notice"
     >
-      <Text fz="sm" c="text-secondary" fw="bold" lh="1rem" flex={1}>
+      <Text lh="1rem" flex={1}>
         {variant === "full"
-          ? t`Your chat is too long`
-          : t`Your chat is too long and may stop abruptly`}
+          ? t`Message limit reached`
+          : t`This chat is nearing the message limit`}
       </Text>
       <Button
         variant="subtle"
         size="compact-sm"
         onClick={onNewChat}
-        fz="sm"
+        fw="bold"
         data-testid="metabot-long-chat-new-chat"
-      >{t`Start a new chat`}</Button>
+      >{t`New chat`}</Button>
       {variant === "warning" && (
         <ActionIcon
           size="sm"

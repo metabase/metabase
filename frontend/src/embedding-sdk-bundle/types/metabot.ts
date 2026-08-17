@@ -88,6 +88,19 @@ export type UseMetabotResult = {
    * completes — including success, error, or cancellation.
    */
   isProcessing: boolean;
+  /** How much of the model's context window the conversation occupies, 0-100. */
+  contextWindowPercentUsage: number;
+  /**
+   * Whether the conversation has filled its context window. Once `true`, it
+   * cannot accept new messages and needs to be replaced with a new one.
+   */
+  isContextWindowFull: boolean;
+  /**
+   * Whether a message can be submitted right now — `false` while a response is
+   * in flight and once the context window is full. Does not consider whether
+   * the prompt itself is empty.
+   */
+  canSubmitPrompt: boolean;
 
   /**
    * A pre-wired component bound to the latest chart the agent produced.

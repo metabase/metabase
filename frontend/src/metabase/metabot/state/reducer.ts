@@ -17,7 +17,11 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
-import { CONTEXT_WINDOW_FULL_RATIO, type MetabotProfileId } from "../constants";
+import {
+  CONTEXT_WINDOW_FULL_PERCENT,
+  type MetabotProfileId,
+} from "../constants";
+import { getContextWindowPercentUsage } from "../utils/context-usage";
 
 import { sendAgentRequest } from "./actions";
 import {
@@ -539,10 +543,8 @@ export const metabot = createSlice({
           if (isResumableFinishReason) {
             const contextWindowFull =
               finishReason === "length" &&
-              convo.lastTokenUsage != null &&
-              convo.lastTokenUsage.contextTokens >=
-                convo.lastTokenUsage.contextWindowTokens *
-                  CONTEXT_WINDOW_FULL_RATIO;
+              getContextWindowPercentUsage(convo.lastTokenUsage) >=
+                CONTEXT_WINDOW_FULL_PERCENT;
             appendAgentTurnIncomplete(convo, finishReason, contextWindowFull);
           }
 

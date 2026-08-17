@@ -199,39 +199,38 @@ export const MetabotChat = ({
       </Box>
 
       {isConfigured && (
-        <Box className={Styles.textInputContainer}>
-          {metabot.longChatNotice && onNewConversation && (
-            <MetabotLongChatNotice
-              className={Styles.longChatNotice}
-              variant={metabot.longChatNotice}
-              onNewChat={onNewConversation}
-            />
-          )}
-          <Paper
-            className={cx(
-              Styles.inputContainer,
-              metabot.isDoingScience && Styles.inputContainerLoading,
+        <Box className={Styles.footerContainer}>
+          <Box className={Styles.textInputContainer}>
+            {metabot.longChatNotice && onNewConversation && (
+              <MetabotLongChatNotice
+                variant={metabot.longChatNotice}
+                onNewChat={onNewConversation}
+              />
             )}
-          >
-            <MetabotChatEditor
-              ref={metabot.promptInputRef}
-              value={metabot.prompt}
-              autoFocus
-              disabled={metabot.isContextWindowFull}
-              isResponding={metabot.isDoingScience}
-              placeholder={
-                metabot.isContextWindowFull
-                  ? t`Start a new chat to continue`
-                  : t`How can I help? Type @ to mention items.`
-              }
-              onChange={metabot.setPrompt}
-              onSubmit={() => metabot.submitInput(metabot.prompt)}
-              onStop={metabot.cancelRequest}
-              suggestionConfig={{
-                suggestionModels: config.suggestionModels,
-              }}
-            />
-          </Paper>
+            {!metabot.isContextWindowFull && (
+              <Paper
+                className={cx(
+                  Styles.inputContainer,
+                  metabot.isDoingScience && Styles.inputContainerLoading,
+                )}
+              >
+                <MetabotChatEditor
+                  ref={metabot.promptInputRef}
+                  value={metabot.prompt}
+                  autoFocus
+                  isResponding={metabot.isDoingScience}
+                  placeholder={t`How can I help? Type @ to mention items.`}
+                  onChange={metabot.setPrompt}
+                  onSubmit={() => metabot.submitInput(metabot.prompt)}
+                  onStop={metabot.cancelRequest}
+                  contextWindowPercentUsage={metabot.contextWindowPercentUsage}
+                  suggestionConfig={{
+                    suggestionModels: config.suggestionModels,
+                  }}
+                />
+              </Paper>
+            )}
+          </Box>
           <Text
             className={Styles.disclaimer}
             fz="sm"

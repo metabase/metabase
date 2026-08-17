@@ -18,9 +18,12 @@ import S from "./MetabotQuestion.module.css";
 export function MetabotChatInput() {
   const metabot = useMetabotAgent();
 
-  const placeholder = metabot.isDoingScience
+  const availablePlaceholder = metabot.isDoingScience
     ? t`Doing science...`
     : t`Ask AI a question...`;
+  const placeholder = metabot.isContextWindowFull
+    ? t`Start a new chat to continue`
+    : availablePlaceholder;
 
   return (
     <Flex
@@ -57,6 +60,14 @@ export function MetabotChatInput() {
         classNames={{ input: S.chatInput }}
         onKeyDown={(e) => {
           if (e.nativeEvent.isComposing) {
+            return;
+          }
+
+          if (metabot.isContextWindowFull) {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.stopPropagation();
+            }
             return;
           }
 

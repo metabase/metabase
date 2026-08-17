@@ -189,13 +189,13 @@ const FintechDemo = () => {
   }, [metabot.messages, metabot.isProcessing]);
 
   const handleSubmit = () => {
-    if (inputValue.trim() && !metabot.isProcessing) {
+    if (inputValue.trim() && metabot.canSubmitPrompt) {
       metabot.submitMessage(inputValue.trim());
       setInputValue("");
     }
   };
 
-  const canSend = inputValue.trim().length > 0 && !metabot.isProcessing;
+  const canSend = inputValue.trim().length > 0 && metabot.canSubmitPrompt;
 
   return (
     <div

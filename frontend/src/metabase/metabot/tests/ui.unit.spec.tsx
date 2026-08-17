@@ -359,6 +359,66 @@ describe("metabot > ui", () => {
     expect(screen.getByText("answer")).toBeInTheDocument();
   });
 
+  const contextUsageResponse = (contextTokens: number): SSEEvent[] => [
+    { type: "text-start", id: "t1" },
+    { type: "text-delta", id: "t1", delta: "answer" },
+    { type: "text-end", id: "t1" },
+    {
+      type: "finish",
+      finishReason: "stop",
+      messageMetadata: {
+        usage: {
+          inputTokens: contextTokens,
+          outputTokens: 50,
+          totalTokens: contextTokens + 50,
+        },
+        contextTokens,
+        contextWindowTokens: 11000,
+      },
+    },
+  ];
+
+  it("should show the context usage ring in the empty input once usage passes the threshold", async () => {
+    setup();
+    mockAgentEndpoint({ events: contextUsageResponse(6600) });
+
+    await enterChatMessage("hello there");
+    expect(await screen.findByText("answer")).toBeInTheDocument();
+
+    const ring = await screen.findByTestId("metabot-context-usage-ring");
+    expect(within(ring).getByText("60%")).toBeInTheDocument();
+  });
+
+  it("should hide the context usage ring while the user is typing a prompt", async () => {
+    setup();
+    mockAgentEndpoint({ events: contextUsageResponse(6600) });
+
+    await enterChatMessage("hello there");
+    expect(
+      await screen.findByTestId("metabot-context-usage-ring"),
+    ).toBeInTheDocument();
+
+    await userEvent.type(await input(), "another question");
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("metabot-context-usage-ring"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("should not show the context usage ring below the threshold", async () => {
+    setup();
+    mockAgentEndpoint({ events: contextUsageResponse(5500) });
+
+    await enterChatMessage("hello there");
+    expect(await screen.findByText("answer")).toBeInTheDocument();
+
+    expect(
+      screen.queryByTestId("metabot-context-usage-ring"),
+    ).not.toBeInTheDocument();
+  });
+
   it("should disable the input w/ a placeholder and no dismiss option once the context window is full", async () => {
     setup();
     mockAgentEndpoint({

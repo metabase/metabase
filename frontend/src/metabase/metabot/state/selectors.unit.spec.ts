@@ -5,8 +5,8 @@ import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 
 import {
-  CONTEXT_WINDOW_FULL_RATIO,
-  CONTEXT_WINDOW_WARNING_RATIO,
+  CONTEXT_WINDOW_FULL_PERCENT,
+  CONTEXT_WINDOW_WARNING_PERCENT,
 } from "../constants";
 
 import { getMetabotInitialState } from "./reducer-utils";
@@ -15,6 +15,7 @@ import {
   type MetabotChatMessage,
   type MetabotConverstationState,
   getLastAgentMessageExternalId,
+  getMetabotContextWindowPercentUsage,
   getMetabotLongChatNotice,
   getUserPromptForMessageId,
 } from "./index";
@@ -116,23 +117,23 @@ describe("metabot selectors", () => {
       lastTokenUsage: { contextTokens, contextWindowTokens: CONTEXT_WINDOW },
     });
 
-    it("warns when context tokens reach the warning ratio of the window", () => {
+    it("warns when context tokens reach the warning percent of the window", () => {
       const state = setup(
         [shortMessage],
-        usage(CONTEXT_WINDOW * CONTEXT_WINDOW_WARNING_RATIO),
+        usage((CONTEXT_WINDOW * CONTEXT_WINDOW_WARNING_PERCENT) / 100),
       );
       expect(getMetabotLongChatNotice(state, "omnibot")).toBe("warning");
     });
 
-    it("reports full when context tokens reach the full ratio of the window", () => {
+    it("reports full when context tokens reach the full percent of the window", () => {
       const state = setup(
         [shortMessage],
-        usage(CONTEXT_WINDOW * CONTEXT_WINDOW_FULL_RATIO),
+        usage((CONTEXT_WINDOW * CONTEXT_WINDOW_FULL_PERCENT) / 100),
       );
       expect(getMetabotLongChatNotice(state, "omnibot")).toBe("full");
     });
 
-    it("shows nothing below the warning ratio or when no usage has been observed", () => {
+    it("shows nothing below the warning percent or when no usage has been observed", () => {
       expect(
         getMetabotLongChatNotice(
           setup([shortMessage], usage(10000)),
@@ -142,6 +143,24 @@ describe("metabot selectors", () => {
       expect(
         getMetabotLongChatNotice(setup([shortMessage]), "omnibot"),
       ).toBeUndefined();
+    });
+
+    describe("getMetabotContextWindowPercentUsage", () => {
+      it("reports the last observed usage as a share of the window, 0-100", () => {
+        const state = setup([shortMessage], usage(CONTEXT_WINDOW / 4));
+        expect(getMetabotContextWindowPercentUsage(state, "omnibot")).toBe(25);
+      });
+
+      it("reports 0 when no usage has been observed", () => {
+        expect(
+          getMetabotContextWindowPercentUsage(setup([shortMessage]), "omnibot"),
+        ).toBe(0);
+      });
+
+      it("caps at 100 when the window is overrun", () => {
+        const state = setup([shortMessage], usage(CONTEXT_WINDOW * 2));
+        expect(getMetabotContextWindowPercentUsage(state, "omnibot")).toBe(100);
+      });
     });
   });
 });

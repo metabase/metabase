@@ -15,6 +15,9 @@ const makeMetabotResult = (
   messages: [],
   errorMessages: [],
   isProcessing: false,
+  contextWindowPercentUsage: 0,
+  isContextWindowFull: false,
+  canSubmitPrompt: true,
   CurrentChart: null,
   ...overrides,
 });

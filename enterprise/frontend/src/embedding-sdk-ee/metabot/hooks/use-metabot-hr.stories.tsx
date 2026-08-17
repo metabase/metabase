@@ -233,13 +233,13 @@ const HrDemo = () => {
   }, [metabot.messages, metabot.isProcessing]);
 
   const handleSubmit = () => {
-    if (inputValue.trim() && !metabot.isProcessing) {
+    if (inputValue.trim() && metabot.canSubmitPrompt) {
       metabot.submitMessage(inputValue.trim());
       setInputValue("");
     }
   };
 
-  const canSend = inputValue.trim().length > 0 && !metabot.isProcessing;
+  const canSend = inputValue.trim().length > 0 && metabot.canSubmitPrompt;
 
   return (
     <div
@@ -409,7 +409,7 @@ const HrDemo = () => {
                   <button
                     key={prompt}
                     onClick={() => {
-                      if (!metabot.isProcessing) {
+                      if (metabot.canSubmitPrompt) {
                         metabot.submitMessage(prompt);
                       }
                     }}

@@ -28,7 +28,7 @@
 
 .inputContainer {
   position: relative;
-  padding: 0 0.75rem 0 0.3rem;
+  padding: 0 0.75rem 0 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -40,13 +40,6 @@
   &:focus-within {
     border-color: var(--mb-color-core-brand);
   }
-}
-
-.longChatNotice {
-  border-radius: 0.5rem 0.5rem 0 0;
-  border-bottom: 0;
-  padding-bottom: 0.5rem;
-  margin-bottom: -0.5rem;
 }
 
 .inputContainerLoading {
@@ -177,11 +170,20 @@
   }
 }
 
-.textInputContainer {
+.footerContainer {
+  display: flex;
+  flex-direction: column;
   padding: 0 1rem;
   width: 100%;
   max-width: 48rem;
   margin-inline: auto;
+}
+
+.textInputContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
 }
 
 .disclaimer {

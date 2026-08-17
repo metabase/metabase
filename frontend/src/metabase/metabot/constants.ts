@@ -2,8 +2,9 @@ import { msgid, ngettext, t } from "ttag";
 
 import { isEmbedding } from "metabase/embedding/config";
 
-export const CONTEXT_WINDOW_WARNING_RATIO = 0.9;
-export const CONTEXT_WINDOW_FULL_RATIO = 0.95;
+export const CONTEXT_WINDOW_INDICATOR_PERCENT = 50;
+export const CONTEXT_WINDOW_WARNING_PERCENT = 90;
+export const CONTEXT_WINDOW_FULL_PERCENT = 95;
 
 // NOTE: this is not ideal, but will get fixed w/ BOT-189 allowing us to use fixed entity_ids
 export const FIXED_METABOT_IDS = {

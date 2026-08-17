@@ -317,7 +317,7 @@
 
   Returns nil if no usage was observed. The cache counts are a subset of
   :inputTokens (`:cachedInputTokens` mirrors cache-read), 0 without provider caching."
-  [usage-by-model]
+  [usage-by-model last-call-by-model context-window-tokens]
   (when (seq usage-by-model)
     (let [by-model (update-vals
                     usage-by-model
@@ -342,6 +342,15 @@
                :usageByModel by-model}
         context-window-tokens (assoc :contextWindowTokens context-window-tokens)
         promptTokens          (assoc :contextTokens (+ promptTokens (or completionTokens 0)))))))
+
+(defn- completion-finish-reason
+  [finish-reason error? loop-finish-reason]
+  (cond
+    (= finish-reason "length")               "length"
+    error?                                   "error"
+    (= finish-reason "content-filter")     "content-filter"
+    (= loop-finish-reason :max-iterations) "tool-calls"
+    :else                                  "stop"))
 
 (defn- tool-output->wire-output
   "The `tool-output-available` event's `:output` value: the LLM-facing output
@@ -433,20 +442,15 @@
          ([] (rf))
          ([result]
           (let [metadata (merge (->message-metadata @usage-by-model @last-call-by-model context-window-tokens)
-                                (when @finish-error-code {:errorCode @finish-error-code}))]
+                                (when @finish-error-code {:errorCode @finish-error-code}))
+                finish   (cond-> {:type         "finish"
+                                  :finishReason (completion-finish-reason @finish-reason @error? @loop-finish-reason)}
+                           (seq metadata) (assoc :messageMetadata metadata))]
             (-> result
                 close-text-block
                 close-reasoning-block
                 (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
-                (rf (format-sse-event
-                     (cond-> {:type         "finish"
-                              :finishReason (cond
-                                              (= @finish-reason "length")              "length"
-                                              @error?                                  "error"
-                                              (= @finish-reason "content-filter")      "content-filter"
-                                              (= @loop-finish-reason :max-iterations)  "tool-calls"
-                                              :else                                    "stop")}
-                       (seq metadata) (assoc :messageMetadata metadata))))
+                (rf (format-sse-event finish))
                 (rf done-sse-line)
                 (rf))))
          ([result part]
