@@ -135,6 +135,16 @@
                   :indexes      (indexes conn db-type table)
                   :foreign-keys (foreign-keys conn db-type table)}])))
 
+(def ^:private view-column-ignored-metadata
+  "Metadata a view column carries that a restored dump cannot reproduce.
+
+  MySQL fixes an expression column's nullability when the view is created, reading the base tables as they are at
+  that moment, and never revisits it: `concat('database_', id)` recorded NOT NULL by the changeset that created
+  `v_databases` stays NOT NULL after a later changeset rebuilds `metabase_database`. A snapshot recreates every view
+  as it loads, against the finished schema, so it lands on what MySQL would say about that view today -- which is the
+  same answer re-running the original `CREATE` would give. Views have no defaults, so `column_def` goes with it."
+  #{:nullable :is_nullable :column_def})
+
 (defn- view-fingerprint
   "Each view and the columns it exposes.
 
@@ -146,7 +156,9 @@
     (into (sorted-map)
           (map (fn [view]
                  [(u/upper-case-en (:table_name view))
-                  (columns conn db-type (:table_name view))]))
+                  (into (sorted-map)
+                        (map (fn [[col row]] [col (apply dissoc row view-column-ignored-metadata)]))
+                        (columns conn db-type (:table_name view)))]))
           (jdbc/result-set-seq rs))))
 
 (defn- database-attributes
@@ -249,10 +261,15 @@
   freshly generated hashes and tokens [[generated-columns]] drops on the row comparison -- here they are masked in the
   SQL text instead, since that is what is being compared.
 
-  A migration that starts seeding some other random value will fail this comparison on that value; add it here."
+  A migration that starts seeding some other random value will fail this comparison on that value; add it here.
+
+  The hash and UUID patterns match the value itself, with no surrounding quotes: `auth_identity.credentials` is a
+  JSON column holding both, so in the dump they arrive quoted as JSON rather than as SQL string literals. Each shape
+  is specific enough to stand on its own. A timestamp is not -- plain dates turn up in seeded text -- so that one
+  still has to be a SQL literal to be masked."
   [[#"'\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[+-]\d{2}(?::?\d{2})?)?'" "'<timestamp>'"]
-   [#"'\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}'"                                         "'<password-hash>'"]
-   [#"'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'"               "'<uuid>'"]])
+   [#"\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}"                                           "<password-hash>"]
+   [#"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"                 "<uuid>"]])
 
 (defn- unstable-values-masked [statement]
   (as-> statement stmt
@@ -338,14 +355,16 @@
             (do
               (snapshot/load-snapshot! conn driver)
               (let [ids      (snapshot/changeset-ids conn)
-                    expected (inc (.indexOf ^java.util.List ids (snapshot/through-changeset-id)))
+                    boundary (.indexOf ^java.util.List ids (snapshot/through-changeset-id))
+                    ;; compared as sets of ids rather than by count: Liquibase keys a changeset on id, author *and*
+                    ;; filename, so the same id legitimately appears in two changelog files, and DATABASECHANGELOG
+                    ;; then holds fewer distinct ids than there are changesets up to the boundary
+                    expected (set (take (inc boundary) ids))
                     loaded   (set (keys (changelog-fingerprint conn)))]
-                (is (pos? expected)
+                (is (nat-int? boundary)
                     "the snapshot's boundary changeset should still exist in the changelog")
-                (is (= expected (count loaded))
-                    "the snapshot should record exactly the changesets up to and including its boundary")
-                (is (= (set (take expected ids)) loaded)
-                    "the snapshot should record the *first* N changesets, with no gaps")))))))))
+                (is (= expected loaded)
+                    "the snapshot should record exactly the changesets up to and including its boundary, no gaps")))))))))
 
 (deftest snapshot-matches-full-migration-test
   (testing "loading the snapshot and migrating the rest produces the same DB as migrating everything from scratch"

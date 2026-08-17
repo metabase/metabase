@@ -43,7 +43,7 @@
 
 (def snapshot-version
   "Snapshot directory tests boot from."
-  "v57")
+  "v63")
 
 (def ^:private snapshot-flavors
   "Dialects a snapshot is dumped for.
@@ -133,6 +133,10 @@
   ["DROP TABLE IF EXISTS DATABASECHANGELOG"
    "DROP TABLE IF EXISTS DATABASECHANGELOGLOCK"])
 
+(def ^:private mysql-family
+  "Flavors reached through the MySQL driver, and the only ones [[session-guards]] relaxes anything for."
+  #{:mysql :mariadb :mariadb-legacy-timestamp})
+
 (defn- session-guards
   "`[before after]` statements to run around a snapshot load.
 
@@ -147,7 +151,7 @@
   afterwards so the rest of the session is unaffected. pg_dump and H2 emit an order that loads cleanly and need
   nothing beyond clearing the changelog tables."
   [flavor]
-  (if (#{:mysql :mariadb :mariadb-legacy-timestamp} flavor)
+  (if (mysql-family flavor)
     [(into ["SET FOREIGN_KEY_CHECKS = 0"
             "SET @mb_snapshot_sql_mode = @@SESSION.sql_mode"
             "SET SESSION sql_mode = ''"]
@@ -155,6 +159,23 @@
      ["SET FOREIGN_KEY_CHECKS = 1"
       "SET SESSION sql_mode = IFNULL(@mb_snapshot_sql_mode, @@SESSION.sql_mode)"]]
     [drop-changelog-tables []]))
+
+(defn- creates-view? [sql]
+  (boolean (re-find #"(?is)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\b" sql)))
+
+(defn- load-order
+  "`[guarded unguarded]`: the snapshot's statements split into those that run under [[session-guards]] and those that
+  run once the guards are back off.
+
+  MySQL fixes a view's column nullability when the view is created, and the `sql_mode` in force is part of what it
+  reads: with strict mode off `concat(...)` is recorded NOT NULL, where the very same statement under the session's
+  own mode records it nullable. Migrations run under that mode, so the relaxation has to be off again before the
+  dump recreates the views; nothing else in a dump is sensitive to it. Relative order is preserved, and a view can
+  only read tables and views defined before it, so deferring them cannot break a load."
+  [flavor stmts]
+  (if (mysql-family flavor)
+    [(remove creates-view? stmts) (filter creates-view? stmts)]
+    [stmts []]))
 
 (defn load-snapshot!
   "Load the checked-in snapshot into the empty DB behind `conn`, picking the dialect from [[flavor]]."
@@ -166,35 +187,41 @@
                               (throw (ex-info "No app DB snapshot for this dialect"
                                               {:version version, :db-type db-type, :flavor flavor})))
          stmts            (statements (slurp resource))
-         [before after]   (session-guards flavor)]
+         [before after]   (session-guards flavor)
+         [guarded views]  (load-order flavor stmts)]
      (log/debugf "Loading %s app db snapshot %s (%d statements)..." flavor version (count stmts))
      (with-open [stmt (.createStatement conn)]
-       (doseq [sql before]
-         (.execute stmt sql))
-       ;; The whole load goes in one transaction. A snapshot is thousands of statements, and left in autocommit each
-       ;; one is a transaction of its own: on Postgres that made loading the snapshot cost more than replaying the
-       ;; changelog it stands in for. Statements the MySQL family commits implicitly are unaffected either way.
-       (let [autocommit? (.getAutoCommit conn)]
-         (when autocommit?
-           (.setAutoCommit conn false))
-         (try
-           (doseq [sql stmts]
+       (letfn [(execute! [sqls]
+                 (doseq [sql sqls]
+                   (try
+                     (.execute stmt sql)
+                     (catch Throwable e
+                       (throw (ex-info "Error loading app DB snapshot statement"
+                                       {:version version, :flavor flavor, :statement sql}
+                                       e))))))]
+         (doseq [sql before]
+           (.execute stmt sql))
+         ;; The whole load goes in one transaction. A snapshot is thousands of statements, and left in autocommit each
+         ;; one is a transaction of its own: on Postgres that made loading the snapshot cost more than replaying the
+         ;; changelog it stands in for. Statements the MySQL family commits implicitly are unaffected either way.
+         (let [autocommit? (.getAutoCommit conn)]
+           (when autocommit?
+             (.setAutoCommit conn false))
+           (try
              (try
-               (.execute stmt sql)
-               (catch Throwable e
-                 (throw (ex-info "Error loading app DB snapshot statement"
-                                 {:version version, :flavor flavor, :statement sql}
-                                 e)))))
-           (.commit conn)
-           (catch Throwable e
-             ;; without this, restoring autocommit below would commit however much of the load got through
-             (try (.rollback conn) (catch Throwable _))
-             (throw e))
-           (finally
-             (doseq [sql after]
-               (.execute stmt sql))
-             (when autocommit?
-               (.setAutoCommit conn true))))))
+               (execute! guarded)
+               (finally
+                 (doseq [sql after]
+                   (.execute stmt sql))))
+             (execute! views)
+             (.commit conn)
+             (catch Throwable e
+               ;; without this, restoring autocommit below would commit however much of the load got through
+               (try (.rollback conn) (catch Throwable _))
+               (throw e))
+             (finally
+               (when autocommit?
+                 (.setAutoCommit conn true)))))))
      ;; Postgres runs DDL inside the transaction, and anything that has already opened Liquibase against this
      ;; connection has left autocommit off. Liquibase rolls back before taking its changelog lock, which would undo
      ;; the entire load, so make it durable here.
