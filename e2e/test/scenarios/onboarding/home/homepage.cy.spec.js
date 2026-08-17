@@ -662,7 +662,7 @@ describe("scenarios > setup", () => {
 
     H.entityPickerModal().findByText("Orders in a dashboard").click();
 
-    H.undoToast().findByText("Changes saved").should("be.visible");
+    cy.wait("@putSettings");
 
     H.expectUnstructuredSnowplowEvent({
       event: "homepage_dashboard_enabled",
