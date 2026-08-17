@@ -44,8 +44,7 @@ const getDefaultPluginCustomViz = () => ({
       cacheBustSuffix?: string;
       onMessage?: (toast: ToastArgs) => void;
     },
-    // Unjustified type cast. FIXME
-  ) => null as string | null,
+  ): Promise<VisualizationDisplay | null> => null,
   /**
    * Load (and register) the plugin backing a `custom:*` display, if it is
    * installed and enabled. Resolves to the registered display identifier, or

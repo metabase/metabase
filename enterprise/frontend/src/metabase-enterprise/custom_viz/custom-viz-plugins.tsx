@@ -47,7 +47,7 @@ import { reportUnavailableCustomVizPlugin } from "./utils/unavailable-toast";
 // bundle (or a dev server reload) produced new bytes.
 const loadedPlugins = new Map<
   CustomVizPluginId,
-  { identifier: string; hash: string | null }
+  { identifier: VisualizationDisplay; hash: string | null }
 >();
 
 const failedPluginHashes = new Map<
@@ -307,7 +307,7 @@ class BundleFetchError extends Error {
 export async function loadCustomVizPlugin(
   plugin: CustomVizPluginRuntime,
   options: LoadCustomVizPluginOptions = {},
-): Promise<string | null> {
+): Promise<VisualizationDisplay | null> {
   const { cacheBustSuffix, onMessage, sandboxMode = "hosted" } = options;
   const existing = loadedPlugins.get(plugin.id);
   const currentHash = plugin.bundle_hash ?? null;
@@ -472,7 +472,7 @@ export async function loadCustomVizPluginForDisplay(
     sandboxMode?: SandboxMode;
     onMessage?: (toast: ToastArgs) => void;
   } = {},
-): Promise<string | null> {
+): Promise<VisualizationDisplay | null> {
   if (!isCustomVizDisplay(display)) {
     return null;
   }

@@ -157,7 +157,7 @@ export function initializeSdkCustomVizPlugin() {
     loadCustomVizPluginForDisplay: async (
       dispatch: DispatchFn,
       display: string,
-    ): Promise<string | null> => {
+    ): Promise<VisualizationDisplay | null> => {
       if (!isCustomVizAllowed(display, getAllowlist())) {
         return null;
       }
