@@ -4,7 +4,11 @@ import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import {
+  fetchSegmentFields,
+  fetchSegmentTable,
+  fetchSegments,
+} from "metabase/redux/metadata";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import * as actions from "metabase/reference/reference";
 import SegmentFieldList from "metabase/reference/segments/SegmentFieldList";
@@ -23,7 +27,9 @@ import {
 import SegmentSidebar from "./SegmentSidebar";
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  fetchSegmentFields,
+  fetchSegmentTable,
+  fetchSegments,
   ...actions,
 };
 

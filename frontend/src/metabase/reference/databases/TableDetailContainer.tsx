@@ -4,7 +4,7 @@ import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
 import TableDetail from "metabase/reference/databases/TableDetail";
 import * as actions from "metabase/reference/reference";
@@ -22,7 +22,7 @@ import {
 import TableSidebar from "./TableSidebar";
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  fetchDatabaseMetadata,
   ...actions,
 };
 

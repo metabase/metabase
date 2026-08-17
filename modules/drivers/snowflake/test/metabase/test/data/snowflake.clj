@@ -46,11 +46,15 @@
 ;; all of them when the job completes; see after-run below.
 (defonce dataset-prefix (str (rand-int 9999999)))
 
+(defn- already-qualified? [database-name]
+  (and (string? database-name)
+       (or (str/starts-with? database-name "isolate_")
+           (str/starts-with? database-name "sha_"))))
+
 (defn qualified-db-name
   "Isolate db name so we don't stomp on any other jobs running at the same time."
   [{:keys [database-name] :as db-def}]
-  (cond (or (str/starts-with? database-name "isolate_")
-            (str/starts-with? database-name "sha_")) database-name
+  (cond (already-qualified? database-name) database-name
         ;; isolate if we are in a CI job
         (System/getenv "GITHUB_REF_NAME") (str "isolate_" dataset-prefix database-name)
         :else (str "sha_" (tx/hash-dataset db-def) "_" database-name)))
@@ -81,7 +85,7 @@
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defmethod sql.tx/qualified-name-components :snowflake
   ([driver db-name]
-   (if (some-> db-name (str/starts-with? "sha_"))
+   (if (already-qualified? db-name)
      [db-name]
      [(qualified-db-name (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db* (tx/default-dataset driver))))]))
   ([driver db-name table-name]

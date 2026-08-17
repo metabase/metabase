@@ -37,10 +37,8 @@
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
 
-  Required:
-    :model            - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
-
   Optional:
+    :model            - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
     :system           - System prompt string
     :input            - Sequence of AISDK parts and user messages
     :tools            - Sequence of tool definition maps
@@ -177,10 +175,12 @@
                                       :text (->> (map :delta chunks)
                                                  (str/join ""))}
                                pm (assoc :provider-metadata pm)))
-    :tool-input-start      {:type      :tool-input
-                            :id        (:toolCallId chunk)
-                            :function  (:toolName chunk)
-                            :arguments (parse-tool-arguments chunks)}
+    :tool-input-start      (let [pm (:providerMetadata chunk)]
+                             (cond-> {:type      :tool-input
+                                      :id        (:toolCallId chunk)
+                                      :function  (:toolName chunk)
+                                      :arguments (parse-tool-arguments chunks)}
+                               pm (assoc :provider-metadata pm)))
     :tool-output-available {:type        :tool-output
                             :id          (:toolCallId chunk)
                             :function    (:toolName chunk)
