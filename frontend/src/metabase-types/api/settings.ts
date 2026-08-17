@@ -455,6 +455,7 @@ interface InstanceSettings {
   "enable-embedding-static": boolean;
   "enable-embedding-sdk": boolean;
   "enable-embedding-simple": boolean;
+  "enable-embedding-modular": boolean;
   "enable-embedding-interactive": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
