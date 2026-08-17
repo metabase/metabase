@@ -1,7 +1,6 @@
 (ns metabase.metabot.self.openai
   (:require
    [clojure.string :as str]
-   [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
@@ -16,6 +15,12 @@
 (def ^:private translated-chunk-type?
   "Output item types we translate into AI SDK chunks."
   #{:text :function_call :reasoning})
+
+(def ^:private stop-reasons
+  "Responses API `incomplete_details.reason` → AI SDK v5 `FinishReason`. Only an incomplete response carries a reason,
+  so there is nothing here for a normal or tool-call finish."
+  {"max_output_tokens" "length"
+   "content_filter"    "content-filter"})
 
 (defn- openai-usage->aisdk-usage
   "Convert an OpenAI Responses API `usage` block into the AISDK `:usage` shape.
@@ -164,11 +169,14 @@
              ;; An incomplete response (e.g. truncated at max_output_tokens or stopped by a content filter)
              ;; still has valid partial output, so we record its usage rather than treating it as an error.
              (contains? #{"response.completed" "response.incomplete"} t)
-             (rf {:type  :usage
-                  :usage (openai-usage->aisdk-usage (:usage response))
-                  ;; non-standard extension, not in AISDK5
-                  :id    (:id response)
-                  :model @model-name})
+             (rf (let [raw (get-in response [:incomplete_details :reason])]
+                   (cond-> {:type  :usage
+                            :usage (openai-usage->aisdk-usage (:usage response))
+                            ;; non-standard extension, not in AISDK5
+                            :id    (:id response)
+                            :model @model-name}
+                     raw (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons raw)
+                                :raw-finish-reason raw))))
              ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
              ;; `response.error`, not in a top-level `error` event, so surface it explicitly.
              (= t "response.failed")            (rf {:type      :error
@@ -223,17 +231,8 @@
 (defn- tool->openai
   "Convert a tool definition map to OpenAI Responses API format.
   Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params                     (schema/filter-schema-by-features params)
-        doc                        (if (str/starts-with? (or doc "") "Inputs: ")
-                                     ;; strip that stuff we're appending in mu/defn
-                                     (second (str/split doc #"\n\n  " 2))
-                                     doc)]
-    {:type        "function"
-     :name        tool-name
-     :description doc
-     :parameters  (mjs/transform params {:additionalProperties false})}))
+  [tool]
+  (assoc (schema/tool-function tool) :type "function"))
 
 (defn- ai-proxy-unsupported-ex []
   (ex-info (tru "AI proxy is not supported for OpenAI")
@@ -372,11 +371,15 @@
                                     :as      :stream
                                     :headers {"Content-Type" "application/json"}
                                     :body    (json/encode req)})]
+        ;; The SSE body is consumed lazily, after this `try` has exited — wrap
+        ;; the reducible so mid-stream IO/timeout failures get the same
+        ;; provider-friendly translation as request-time errors.
         (-> (core/sse-reducible (:body response))
             (debug/capture-stream {:provider "openai"
                                    :model    model
                                    :url      "/v1/responses"
-                                   :request  req})))
+                                   :request  req})
+            (core/reducible-with-api-errors "openai" openai-error-msg)))
       (catch Exception e
         (core/rethrow-api-error! "openai" openai-error-msg e)))))
 

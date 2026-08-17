@@ -1,4 +1,5 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { lazyLoaders } from "__support__/lazy-routes";
 import { renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -188,6 +189,20 @@ describe("monitor routes", () => {
   afterEach(() => {
     reinitialize();
     mockDeniedGuards.clear();
+  });
+
+  // Route factories name their page in an `import()`, so nothing type-checks the
+  // path or the export. Resolving every lazy loader is the cheap guard against a
+  // typo that would otherwise surface as a blank page. Runs against default (OSS)
+  // plugin state, so both diagnostics sections are on their upsell branch.
+  it("resolves every lazy page", async () => {
+    const loaders = lazyLoaders(getMonitorRoutes());
+
+    expect(loaders).toHaveLength(8);
+
+    for (const load of loaders) {
+      expect((await load()).Component).toBeDefined();
+    }
   });
 
   describe("getMonitorRoutes", () => {

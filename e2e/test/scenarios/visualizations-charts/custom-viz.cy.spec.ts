@@ -689,6 +689,39 @@ describe("admin > custom visualizations", () => {
           .should("be.visible");
       });
 
+      it("shows a single combined toast when multiple plugin bundles fail to load (metabase#GDGT-3076)", () => {
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_2);
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_3_SECURITY);
+        H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ_4_SECURITY_COMPONENT);
+
+        cy.intercept("GET", "/api/ee/custom-viz-plugin/*/bundle*", {
+          statusCode: 500,
+          body: "boom",
+        }).as("failedBundle");
+
+        H.visitQuestion("@questionId");
+        cy.findByTestId("viz-type-button").click();
+        cy.wait([
+          "@failedBundle",
+          "@failedBundle",
+          "@failedBundle",
+          "@failedBundle",
+        ]);
+
+        H.undoToastList()
+          .should("have.length", 1)
+          .findByText(
+            '4 visualizations are currently unavailable: "demo-viz", "demo-viz-2", "demo-viz-security", "demo-viz-security-component".',
+          )
+          .should("be.visible")
+          // The message must wrap instead of truncating, i.e. be taller than one line
+          .invoke("outerHeight")
+          .should("be.gt", 30);
+
+        // The message must not collapse to min-content
+        H.undoToastList().invoke("outerWidth").should("be.within", 300, 700);
+      });
+
       it("falls back to the default viz when the bundle endpoint fails, then recovers on revisit", () => {
         const bundleMatcher = {
           method: "GET",
@@ -782,6 +815,49 @@ describe("admin > custom visualizations", () => {
       H.tableInteractive().findByText("37.65").should("be.visible");
     });
 
+    it("switches away from a custom viz that cannot render the drilled data, and restores it when navigating back and forth (metabase#GDGT-2218)", () => {
+      H.createQuestion(
+        {
+          name: "Custom Viz Drill Question",
+          query: {
+            "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
+            aggregation: [["count"]],
+          },
+          display: H.CUSTOM_VIZ_DISPLAY,
+        },
+        { visitQuestion: true },
+      );
+
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
+      cy.findByTestId("demo-viz-click-target").click();
+      cy.findByTestId("click-actions-view")
+        .findByText(/^Break out by/)
+        .click();
+      H.popover().findByText("Time").click();
+      H.popover().findByText("Created At").click();
+
+      H.echartsContainer().should("be.visible");
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("not.exist");
+
+      cy.go("back");
+
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("be.visible");
+
+      cy.go("forward");
+
+      H.echartsContainer().should("be.visible");
+      H.main()
+        .findByText("Custom viz rendered successfully")
+        .should("not.exist");
+    });
+
     it("calls onHover and renders a tooltip", () => {
       H.visitQuestion("@questionId");
       switchToDemoViz();
@@ -805,7 +881,7 @@ describe("admin > custom visualizations", () => {
 
       H.getPinnedSection().within(() => {
         cy.findByText("Custom Viz Question Test").should("be.visible");
-        cy.findByText("Custom viz rendered successfully").should("be.visible");
+        cy.findByText("A question").should("be.visible");
       });
     });
 
@@ -1239,9 +1315,9 @@ describe("admin > custom visualizations", () => {
       H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_FIXTURE_TGZ);
 
-      // Main question: pinned with preview hidden so the pinned card shows
-      // the plugin icon instead of the rendered viz. Also bookmarked, queried
-      // (for recents), and embedded in a document below.
+      // Main question: pinned, so the static pinned card shows the plugin
+      // icon. Also bookmarked, queried (for recents), and embedded in a
+      // document below.
       H.createQuestion(
         {
           name: ICON_QUESTION_NAME,
@@ -1257,7 +1333,6 @@ describe("admin > custom visualizations", () => {
       cy.get<CardId>("@questionId").then((cardId) => {
         cy.request("PUT", `/api/card/${cardId}`, {
           collection_position: 1,
-          collection_preview: false,
         });
         cy.request("POST", `/api/card/${cardId}/query`);
         cy.request("POST", `/api/bookmark/card/${cardId}`);
@@ -1323,7 +1398,7 @@ describe("admin > custom visualizations", () => {
         .find(PLUGIN_ICON_SELECTOR)
         .should("exist");
 
-      cy.log("Pinned section (collection_preview: false → icon, not viz)");
+      cy.log("Pinned section shows the plugin icon on the static card");
       H.getPinnedSection().find(PLUGIN_ICON_SELECTOR).should("exist");
 
       cy.log("Navigate → question editor by clicking the pinned card title");

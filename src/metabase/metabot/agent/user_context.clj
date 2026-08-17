@@ -250,22 +250,8 @@
                                                te/lines)))))
 
 (defn- transform-query-source-text
-  "Format a transform's `:query` source for the LLM.
-
-  When the source carries a query map with a `:database` key, we normalise it and export to
-  the same canonical portable representations form the `construct_notebook_query` tool
-  consumes (rendered as a JSON code block). Both structured (`mbql.stage/mbql`) and native
-  (`mbql.stage/native`) stages go through this path - the latter is intentional: the repr
-  export preserves portable `card-id` / `snippet-id` references inside `template-tags`, and
-  stays in lockstep with the freshly-built-query payloads `construct_notebook_query` returns
-  to the LLM.
-
-  Pre-resolved string sources (`:query` is itself a string, or carries `:query-content` -
-  the SQL-tool's already-rendered shape) pass through unchanged: there's no map to
-  normalise.
-
-  Falls back to a `pprint`'d query map only as a last resort, when repr export is
-  unavailable (e.g. a partially-broken `dataset_query`)."
+  "Format a transform's `:query` source for the LLM; the rendering and fallback contract
+  lives in [[llm-shape/export-query-for-llm]]."
   [source]
   (llm-shape/export-query-for-llm (:query source)))
 
@@ -400,7 +386,11 @@
   - :first_day_of_week - Calendar week start (default 'Sunday')
   - :current_user_info - Formatted current user info and glossary
   - :viewing_context - Formatted viewing context
-  - :recent_views - Formatted recent views"
+  - :recent_views - Formatted recent views
+
+  This is the user-message injection context only. Per-profile, feature-specific system-prompt
+  content is contributed separately, via a profile's `:system-prompt-context` hook (see
+  `metabase.metabot.agent.messages/build-system-message`)."
   [context]
   {:current_time (format-current-time context)
    :first_day_of_week (get context :first_day_of_week "Sunday")

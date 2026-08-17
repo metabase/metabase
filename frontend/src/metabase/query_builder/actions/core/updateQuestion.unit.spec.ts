@@ -1,6 +1,7 @@
 import { createMockEntitiesState } from "__support__/store";
 import * as questionActions from "metabase/questions/actions";
 import * as sharedQB from "metabase/redux/query-builder";
+import { UPDATE_QUESTION } from "metabase/redux/query-builder";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import {
   createMockQueryBuilderState,
@@ -56,7 +57,7 @@ import * as ui from "../ui";
 import * as url from "../url";
 
 import * as native from "./native";
-import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
+import { updateQuestion } from "./updateQuestion";
 
 registerVisualizations();
 

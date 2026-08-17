@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { formatDurationLong } from "metabase/utils/formatting/time";
+import { formatDurationLong } from "metabase/utils/formatting";
 import type { ContentDiagnosticsSlowFinding } from "metabase-types/api";
 
 import { DiagnosticsSidebar } from "../DiagnosticsSidebar";

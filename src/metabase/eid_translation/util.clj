@@ -29,6 +29,7 @@
    :dataset           :model/Card
    :dimension         :model/Dimension
    :document          :model/Document
+   :exploration       :model/Exploration
    :measure           :model/Measure
    :metric            :model/Card
    :permissions-group :model/PermissionsGroup

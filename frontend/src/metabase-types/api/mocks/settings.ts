@@ -375,7 +375,7 @@ export const createMockSettings = (
   "search-engine": "appdb",
   "search-typeahead-enabled": true,
   "setup-token": null,
-  "session-cookies": null,
+  "session-cookies": false,
   "session-cookie-samesite": "lax",
   "session-timeout": null,
   "slack-bug-report-channel": null,

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { Ellipsified, type TreeTableColumnDef } from "metabase/ui";
-import { formatDurationLong } from "metabase/utils/formatting/time";
+import { formatDurationLong } from "metabase/utils/formatting";
 import type { ContentDiagnosticsSlowFinding } from "metabase-types/api";
 
 import { getCommonColumns } from "../common-columns";

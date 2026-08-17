@@ -3,12 +3,11 @@ import { useCallback, useMemo } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useSearchQuery } from "metabase/api";
+import { skipToken, useListDatabasesQuery, useSearchQuery } from "metabase/api";
 import type { UseInitialCollectionIdProps } from "metabase/common/collections/hooks";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
-import { useDatabaseListQuery } from "metabase/common/hooks";
 import { getHasDatabaseWithActionsEnabled } from "metabase/databases/utils/predicates";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
@@ -42,6 +41,7 @@ import {
 export const BASIC_ACTION_ORDER = [
   "create-new-question",
   "create-new-native-query",
+  "create-new-research",
   "create-new-dashboard",
   "create-new-document",
   "create-new-collection",
@@ -81,9 +81,10 @@ export const useCommandPaletteBasicActions = ({
   const navigate = useNavigate();
   const collectionId = useInitialCollectionId(props) ?? undefined;
 
-  const { data: databases = [] } = useDatabaseListQuery({
-    enabled: isLoggedIn,
-  });
+  const { data: databasesResponse } = useListDatabasesQuery(
+    isLoggedIn ? undefined : skipToken,
+  );
+  const databases = databasesResponse?.data ?? [];
   const { data: searchResults } = useSearchQuery(
     isLoggedIn
       ? { models: ["dataset"], limit: 1, context: "basic-actions" }
@@ -153,6 +154,19 @@ export const useCommandPaletteBasicActions = ({
               cardType: "question",
             }),
           );
+        },
+      });
+    }
+
+    if (hasDataAccess) {
+      actions.push({
+        id: "create-new-research",
+        name: t`New research`,
+        section: "basic",
+        icon: "telescope",
+        perform: () => {
+          dispatch(closeModal());
+          navigate(Urls.newExploration());
         },
       });
     }

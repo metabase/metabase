@@ -19,6 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -36,13 +37,27 @@
    [:result_metadata {:optional true} [:maybe [:sequential ms/Map]]]
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
 
+(defn- cards-to-create-schema
+  "Request schema for the `cards` map: placeholder id -> new card.
+
+  The strict `[:map-of key-schema CardCreateSchema]` can't be the request schema directly. Request decoding strips
+  `:map-of` entries that don't match their schema, so an unusable card would be quietly dropped and the document
+  saved without it. Decoding therefore sees a permissive `[:map-of :int :any]` — enough to turn the JSON string keys
+  into ints — and the `:fn` re-checks the strict shape afterwards, so a bad card is a 400."
+  [key-schema]
+  (let [strict [:map-of key-schema CardCreateSchema]]
+    [:and
+     [:map-of :int :any]
+     [:fn {:error/message "value must map a card placeholder id to a card"}
+      #(mr/validate strict %)]]))
+
 (def ^:private DocumentCreateOptions
   [:map
    [:name m.document/DocumentName]
    [:document :any]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]])
+   [:cards {:optional true} [:maybe (cards-to-create-schema [:int {:max -1}])]]])
 
 (def ^:private DocumentUpdateOptions
   [:map
@@ -50,7 +65,7 @@
    [:document {:optional true} :any]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
+   [:cards {:optional true} [:maybe (cards-to-create-schema :int)]]
    [:archived {:optional true} [:maybe :boolean]]])
 
 (defn- create-card!

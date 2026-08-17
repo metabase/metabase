@@ -97,7 +97,7 @@
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
-   query :- [:map
+   query :- [:map {:closed false}
              [:database {:optional true} [:maybe :int]]]]
   (run-streaming-query
    (-> query
@@ -139,11 +139,13 @@
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
    :- [:map
        [:query                  [:map
-                                 {:decode/api (fn [x]
+                                 {:closed     false
+                                  :decode/api (fn [x]
                                                 (cond-> x
                                                   (string? x) json/decode+kw))}]]
        [:visualization_settings {:default {}} [:map
-                                               {:decode/api (fn [x]
+                                               {:closed     false
+                                                :decode/api (fn [x]
                                                               (cond-> x
                                                                 (string? x) (json/decode viz-setting-key-fn)))}]]
        [:format_rows            {:default false} ms/BooleanValue]
@@ -184,7 +186,7 @@
   visibility_type :sensitive in the response."
   [_route-params
    _query-params
-   query :- [:map
+   query :- [:map {:closed false}
              [:database ms/PositiveInt]
              [:settings {:optional true} [:maybe [:map
                                                   [:include_sensitive_fields {:optional true} :boolean]]]]]]
@@ -201,7 +203,7 @@
   "Fetch a native version of an MBQL query."
   [_route-params
    _query-params
-   {:keys [database pretty] :as query} :- [:map
+   {:keys [database pretty] :as query} :- [:map {:closed false}
                                            [:database ms/PositiveInt]
                                            [:pretty   {:default true} [:maybe :boolean]]]]
   (model-persistence/with-persisted-substituion-disabled
@@ -217,7 +219,7 @@
   "Generate a pivoted dataset for an ad-hoc query"
   [_route-params
    _query-params
-   {:keys [database] :as query} :- [:map
+   {:keys [database] :as query} :- [:map {:closed false}
                                     [:database ms/PositiveInt]]]
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*

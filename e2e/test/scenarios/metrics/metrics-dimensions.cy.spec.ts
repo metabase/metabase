@@ -132,9 +132,10 @@ describe("scenarios > metrics > dimensions", () => {
       2,
     );
 
+    cy.log("seeding leaves the metric without a default dimension");
+    dimensionList().findByText("Default").should("not.exist");
+
     cy.log("make it the default dimension");
-    dimensionRow("Created At").findByText("Default").should("be.visible");
-    dimensionList().findAllByText("Default").should("have.length", 1);
     settingsPanel().findByRole("button", { name: "Set as default" }).click();
     cy.wait("@setDefaultDimension");
     H.expectUnstructuredSnowplowEvent({
@@ -148,6 +149,24 @@ describe("scenarios > metrics > dimensions", () => {
       .should("be.visible");
     dimensionRow("Created At").findByText("Default").should("not.exist");
     settingsPanel().findByText("Default dimension").should("be.visible");
+    dimensionList().findAllByText("Default").should("have.length", 1);
+
+    cy.log("removing the default leaves the metric without one (UXW-4988)");
+    settingsPanel().findByRole("button", { name: "Remove default" }).click();
+    cy.wait("@setDefaultDimension").then(({ request }) => {
+      expect(request.body).to.deep.equal({ dimension_id: null });
+    });
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_dimension_remove_default",
+      target_id: metricId,
+      result: "success",
+    });
+    dimensionList().findByText("Default").should("not.exist");
+    settingsPanel().findByText("Default dimension").should("not.exist");
+
+    cy.log("make it the default again");
+    settingsPanel().findByRole("button", { name: "Set as default" }).click();
+    cy.wait("@setDefaultDimension");
     dimensionList().findAllByText("Default").should("have.length", 1);
 
     cy.log("the edits are persisted");
@@ -237,17 +256,13 @@ describe("scenarios > metrics > dimensions", () => {
   });
 
   it("uses a time dimension's configured bucket on the About page", () => {
-    cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
+    cy.intercept("POST", "/api/metric/dataset", (request) => {
+      if (request.body.definition?.projections?.length > 0) {
+        request.alias = "metricDataset";
+      }
+    });
     cy.visit(`/metric/${metricId}/dimensions`);
     cy.wait("@listDimensions");
-
-    cy.log("make another dimension the default so Created At can be selected");
-    dimensionRow("Quantity").findByText("Quantity").click();
-    cy.wait("@getMetric");
-    settingsPanel().findByRole("button", { name: "Set as default" }).click();
-    cy.wait("@setDefaultDimension");
-    cy.wait("@listDimensions");
-    cy.wait("@getMetric");
 
     cy.log("configure Created At to use weekly buckets");
     dimensionRow("Created At").findByText("Created At").click();

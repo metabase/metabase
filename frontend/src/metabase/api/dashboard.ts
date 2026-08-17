@@ -40,9 +40,7 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
-import { userApi } from "./user";
 import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
-import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -169,7 +167,10 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
-        Omit<ListCollectionItemsRequest, "id"> & { id: DashboardId }
+        Omit<
+          ListCollectionItemsRequest,
+          "id" | "q" | "include_available_models"
+        > & { id: DashboardId }
       >({
         query: ({ id, ...body }) => ({
           method: "GET",
@@ -220,26 +221,10 @@ export const dashboardApi = Api.injectEndpoints({
             tag("parameter-values"),
             listTag("revision"),
             listTag("subscription"),
+            // Archiving the dashboard the user has as their homepage clears the homepage server-side.
+            // getCurrentUser provides this tag, so invalidating it refetches the user.
+            idTag("user-homepage-dashboard", id),
           ]),
-        onQueryStarted: (_, { dispatch, queryFulfilled }) =>
-          // Archiving the dashboard the current user has set as their custom
-          // homepage clears the homepage. Drop it from the cached current user
-          // too so the app doesn't redirect to an archived dashboard.
-          handleQueryFulfilled(queryFulfilled, (dashboard) => {
-            if (dashboard.archived) {
-              dispatch(
-                userApi.util.updateQueryData(
-                  "getCurrentUser",
-                  undefined,
-                  (draft) => {
-                    if (draft?.custom_homepage?.dashboard_id === dashboard.id) {
-                      draft.custom_homepage = null;
-                    }
-                  },
-                ),
-              );
-            }
-          }),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
         query: (id) => ({

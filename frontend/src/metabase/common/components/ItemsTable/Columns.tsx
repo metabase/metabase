@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import { c, t } from "ttag";
 
 import type { ActionMenuProps } from "metabase/common/collections/components/ActionMenu";
-import ActionMenu from "metabase/common/collections/components/ActionMenu";
+import { ActionMenu } from "metabase/common/collections/components/ActionMenu";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import { Markdown } from "metabase/common/components/Markdown";
@@ -13,6 +13,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Checkbox, Ellipsified, type IconProps, Tooltip } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isTouchDevice } from "metabase/utils/browser";
+import { isPlainKey } from "metabase/utils/keyboard";
 import { getUserName } from "metabase/utils/user";
 import type {
   CollectionItem,
@@ -84,6 +85,16 @@ export const Columns = {
             checked={!!selectedItems?.length}
             indeterminate={!!selectedItems?.length && !!hasUnselected}
             onChange={hasUnselected ? onSelectAll : onSelectNone}
+            onKeyDown={(event) => {
+              if (
+                // Blurs the checkbox when these keys are pressed so that shortcuts can work
+                isPlainKey(event, "Escape") ||
+                isPlainKey(event, "Delete") ||
+                isPlainKey(event, "Backspace")
+              ) {
+                event.currentTarget.blur();
+              }
+            }}
             aria-label={t`Select all items`}
           />
         </BulkSelectWrapper>
@@ -336,29 +347,11 @@ export const Columns = {
   ActionMenu: {
     Header: () => <th></th>,
     Col: () => <col style={{ width: "100px" }} />,
-    Cell: ({
-      item,
-      collection,
-      databases,
-      bookmarks,
-      onCopy,
-      onMove,
-      createBookmark,
-      deleteBookmark,
-    }: ActionMenuProps) => {
+    Cell: (props: ActionMenuProps) => {
       return (
         <ItemCell>
-          <RowActionsContainer>
-            <ActionMenu
-              item={item}
-              collection={collection}
-              databases={databases}
-              bookmarks={bookmarks}
-              onCopy={onCopy}
-              onMove={onMove}
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-            />
+          <RowActionsContainer data-ignore-row-selection>
+            <ActionMenu {...props} />
           </RowActionsContainer>
         </ItemCell>
       );
