@@ -7,16 +7,15 @@
      must keep working without an authenticated user. The wrapper short-circuits the
      permission check and returns the inner store's row unchanged.
 
-  2. **Read-checked when a user is bound (`-by-entity-id` methods)**: the model named an
-     entity_id outright, so these route through the audited [[api/read-check]], audit trail
-     included.
+  2. **Every method is checked when a user is bound**: a row the user cannot read never
+     reaches the caller, whichever direction it was looked up by. Unknown / `nil` returns pass
+     through cleanly either way, so the per-model resolver can emit its `:unknown-…` agent
+     error.
 
-  3. **Quietly 403'd when a user is bound (`-by-id` methods)**: a card surfaced during export
-     is routine filtering, not an access attempt, so these route through an unaudited
-     [[mi/can-read?]] + [[api/check-403]] instead. The `audited-by-id?` variant used for
-     client-supplied queries keeps `read-check` on these methods. Either way, unknown /
-     `nil` returns pass through cleanly so the per-model resolver can emit its
-     `:unknown-…` agent error."
+  3. **Only the audit trail varies**: the `-by-entity-id` methods use the audited
+     [[api/read-check]], the `-by-id` methods an unaudited [[mi/can-read?]] +
+     [[api/check-403]] unless `audited-by-id?` is set, and binding
+     [[resolve.mp/*audit-refusals?*]] to false suppresses auditing on all six."
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
@@ -56,6 +55,15 @@
   [row]
   (with-meta row {`t2.protocols/model         (fn [_] ::stub-model)
                   `t2.protocols/dispatch-value (fn [_] ::stub-model)}))
+
+(def ^:private all-lookups
+  "Every `ContentStore` method, paired with an argument of the right shape."
+  [[resolve.mp/card-by-entity-id    "x"]
+   [resolve.mp/measure-by-entity-id "x"]
+   [resolve.mp/segment-by-entity-id "x"]
+   [resolve.mp/card-by-id           1]
+   [resolve.mp/measure-by-id        1]
+   [resolve.mp/segment-by-id        1]])
 
 ;;; ============================================================
 ;;; Pass-through: no user bound
@@ -146,6 +154,29 @@
           (is (= row (resolve.mp/measure-by-id gated 1)))
           (is (= row (resolve.mp/segment-by-id gated 1)))
           (is (= 3 (count @calls))))))))
+
+(deftest suppressing-the-audit-trail-still-checks-every-method-test
+  (testing (str "with `*audit-refusals?*` bound off, every method — including the audited "
+                "`-by-entity-id` ones and an `audited-by-id?` store — still admits a readable "
+                "row and still 403s an unreadable one, without going through `api/read-check`")
+    (let [row (stub-row {:opaque :marker})]
+      (doseq [audited-by-id? [false true]]
+        (let [store (record-store {:card row :measure-eid row :segment-eid row
+                                   :card-id row :measure-id row :segment-id row})
+              gated (shared.content-store/read-checked store audited-by-id?)]
+          (mt/with-dynamic-fn-redefs [api/read-check (fn [& _]
+                                                       (is false "api/read-check ran with auditing suppressed"))]
+            (binding [api/*current-user-id*            1
+                      resolve.mp/*audit-refusals?*     false]
+              (doseq [[lookup arg] all-lookups]
+                (binding [*stub-can-read?* true]
+                  (is (= row (lookup gated arg))))
+                (binding [*stub-can-read?* false]
+                  (try
+                    (lookup gated arg)
+                    (is false "expected throw")
+                    (catch clojure.lang.ExceptionInfo e
+                      (is (= 403 (:status-code (ex-data e)))))))))))))))
 
 (deftest propagates-read-check-403-test
   (testing "if read-check throws (403), the entity-id (import-direction) branch propagates the exception unchanged"
