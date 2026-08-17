@@ -2,7 +2,7 @@ import { match } from "ts-pattern";
 
 import type { SdkIframeEmbedSetupSettings } from "../types";
 
-export type BehaviorDocsParams = { page: string; anchor?: string } | null;
+export type BehaviorDocsParams = { page: string } | null;
 
 export const getBehaviorDocsUrlParams = (
   settings: SdkIframeEmbedSetupSettings,

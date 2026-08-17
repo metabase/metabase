@@ -31,21 +31,15 @@ View-only isn't tied to one kind of embed:
 - **[Guest embeds](./introduction.md#guest-embedding)**: always view-only. Nobody logs in to a guest embed, so Metabase has no account to check permissions against.
 - **[SSO embeds](./introduction.md#sso-embeds)**: interactive by default. To make one view-only, turn off drill-through with `drills="false"` (web component), or use `StaticDashboard` instead of `InteractiveDashboard` (SDK).
 
-For view-only items, you'll almost always want to go with guest authentication (so you don't have to pay per user viewing the item). If, however, you also want people to be able to self-serve data (in addition to displaying view-only items), go with SSO. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds).
+For view-only items, you'll almost always want to go with guest authentication (so you don't have to pay for each person viewing the item). If, however, you also want people to be able to self-serve data (in addition to displaying view-only items), go with SSO. Check out [SSO or guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds).
 
 ### Web component view-only dashboard
 
-You need to use the in-app wizard to set up a view-only dashboard using web components. These steps walk through a guest embed.
+You can use the in-app wizard to set up a view-only dashboard using web components. These steps walk through a guest embed.
 
 ![In-app embedding wizard](./images/in-app-embedding-wizard.png)
 
-Three things need to happen:
-
-- You publish the dashboard embed in Metabase.
-- You paste the dashboard code into your app (frontend and back)
-- Your server signs a JWT.
-
-The wizard writes most of the code for you.
+Three things need to happen: you publish the dashboard embed in Metabase, you paste the dashboard code into your app (both frontend and backend), and your server signs a JWT. The wizard writes most of the code for you, so the list below is longer than the work.
 
 1. Visit the dashboard in your Metabase.
 2. Click the **Share** icon in the upper right.
@@ -195,7 +189,7 @@ Whoever's editing needs [curate access](../permissions/collections.md#curate-acc
 
 People in a [tenant](./tenants.md) can only be granted **View** access to the shared collections you publish to every tenant, so they can never edit those dashboards. They can, however, edit dashboards in their own tenant collection.
 
-If the dashboard renders but the edit pencil doesn't appear, the person viewing it lacks write access to that dashboard---check the `can_write` field on `GET /api/dashboard/:id` as that user.
+If the dashboard renders but the edit pencil doesn't appear, the person viewing it lacks write access to that dashboard---check the `can_write` field on `GET /api/dashboard/:id` as that person.
 
 ### Web component editable dashboard
 
