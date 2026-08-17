@@ -26,7 +26,8 @@ jobs:
   # Generate matrix for scheduled/PR runs
   generate-matrix:
     if: github.event_name != 'workflow_dispatch' && github.repository == 'metabase/metabase'
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
