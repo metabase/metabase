@@ -109,6 +109,16 @@
       (testing "Afterwards the queue is empty"
         (is (nil? (#'queue/take-batch! q take-batch-wait-ms 5 0)))))))
 
+(deftest ^:synchronized same-deadline-take-batch-is-fifo-test
+  (testing "messages that mature together come off in the order they were put on"
+    ;; Consumers that queue a removal after an update rely on this: comparing only on the remaining delay
+    ;; leaves same-millisecond messages in whatever order the heap happens to hold them.
+    (let [q (queue/delay-queue)
+          n 50]
+      (dotimes [i n]
+        (queue/put-with-delay! q 0 i))
+      (is (= (range n) (#'queue/take-batch! q 100 n 10))))))
+
 (deftest non-delayed-take-batch-test
   (testing "take-batch works with any blocking queue"
     (let [q (LinkedBlockingQueue.)
