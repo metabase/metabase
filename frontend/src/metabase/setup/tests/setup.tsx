@@ -204,9 +204,11 @@ export const skipTokenStep = async (name = "Skip") =>
   await userEvent.click(screen.getByRole("button", { name }));
 
 export const startAiConfigStep = async () =>
-  await userEvent.click(screen.getByRole("button", { name: "Set up AI" }));
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Set up AI" }),
+  );
 
 export const skipAiConfigStep = async () =>
   await userEvent.click(
-    screen.getByRole("button", { name: "I'll set this up later" }),
+    await screen.findByRole("button", { name: "I'll set this up later" }),
   );
