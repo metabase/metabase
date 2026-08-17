@@ -8,7 +8,6 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Collection, CollectionItem, Database } from "metabase-types/api";
 import {
   createMockCollection,
@@ -46,7 +45,6 @@ const setup = ({
     }),
   });
 
-  const metadata = getMetadata(storeInitialState);
   const onCopy = jest.fn();
   const onMove = jest.fn();
   const createBookmark = withBookmarks ? jest.fn() : undefined;
@@ -56,7 +54,7 @@ const setup = ({
     <ActionMenu
       item={item}
       collection={collection}
-      databases={metadata.databasesList()}
+      databases={databases}
       onCopy={onCopy}
       onMove={onMove}
       createBookmark={createBookmark}

@@ -32,13 +32,13 @@ import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionId,
   CollectionItem,
   CollectionItemModel,
+  Database,
   ListCollectionItemsRequest,
   ListCollectionItemsSortColumn,
   SortingOptions,
