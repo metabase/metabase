@@ -2,7 +2,10 @@ import type { CustomVisualization } from "custom-viz";
 
 import { screen, waitFor } from "__support__/ui";
 import { serializeCardForUrl } from "metabase/common/utils/card";
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import {
+  type LoadCustomVizPluginForDisplayResult,
+  PLUGIN_CUSTOM_VIZ,
+} from "metabase/plugins";
 import { cancelQuery } from "metabase/query_builder/actions";
 import { setup } from "metabase/query_builder/containers/test-utils";
 import {
@@ -126,10 +129,12 @@ describe("query builder > unsaved question with a custom viz restored from the U
   });
 
   it("keeps the custom viz when its plugin loads during query completion", async () => {
-    const loadForDisplay = jest.fn(async () => {
-      registerDemoViz();
-      return DISPLAY;
-    });
+    const loadForDisplay = jest.fn(
+      async (): Promise<LoadCustomVizPluginForDisplayResult> => {
+        registerDemoViz();
+        return { status: "loaded", display: DISPLAY };
+      },
+    );
     PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay = loadForDisplay;
 
     const { store } = await setupFromUrlHash(
@@ -144,7 +149,11 @@ describe("query builder > unsaved question with a custom viz restored from the U
   });
 
   it("falls back to the default display when the plugin is unavailable", async () => {
-    const loadForDisplay = jest.fn(async () => null);
+    const loadForDisplay = jest.fn(
+      async (): Promise<LoadCustomVizPluginForDisplayResult> => ({
+        status: "unavailable",
+      }),
+    );
     PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay = loadForDisplay;
 
     const { store } = await setupFromUrlHash(
@@ -163,12 +172,36 @@ describe("query builder > unsaved question with a custom viz restored from the U
     expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
   });
 
-  it("discards the completed run when the query is cancelled while the plugin loads", async () => {
-    const loadForDisplay = jest.fn(async (dispatch: Dispatch) => {
-      dispatch(cancelQuery());
-      registerDemoViz();
-      return DISPLAY;
+  it("keeps the custom viz when plugin availability can't be determined", async () => {
+    const loadForDisplay = jest.fn(
+      async (): Promise<LoadCustomVizPluginForDisplayResult> => ({
+        status: "error",
+      }),
+    );
+    PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay = loadForDisplay;
+
+    const { store } = await setupFromUrlHash(
+      createUnsavedCustomVizCard(DISPLAY),
+    );
+
+    await waitFor(() => {
+      expect(getFirstQueryResult(store.getState())).toBeTruthy();
     });
+    const card = checkNotNull(getCard(store.getState()));
+    expect(card.display).toBe(DISPLAY);
+    expect(card.displayIsLocked).toBe(true);
+  });
+
+  it("discards the completed run when the query is cancelled while the plugin loads", async () => {
+    const loadForDisplay = jest.fn(
+      async (
+        dispatch: Dispatch,
+      ): Promise<LoadCustomVizPluginForDisplayResult> => {
+        dispatch(cancelQuery());
+        registerDemoViz();
+        return { status: "loaded", display: DISPLAY };
+      },
+    );
     PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay = loadForDisplay;
 
     const { store } = await setupFromUrlHash(

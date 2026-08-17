@@ -12,6 +12,11 @@ import type {
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
 
+export type LoadCustomVizPluginForDisplayResult =
+  | { status: "loaded"; display: VisualizationDisplay }
+  | { status: "unavailable" }
+  | { status: "error" };
+
 // prevents infinite render loop
 const noopCustomVizIcon = (
   _display: VisualizationDisplay,
@@ -47,13 +52,14 @@ const getDefaultPluginCustomViz = () => ({
   ): Promise<VisualizationDisplay | null> => null,
   /**
    * Load (and register) the plugin backing a `custom:*` display, if it is
-   * installed and enabled. Resolves to the registered display identifier, or
-   * null when the plugin is unavailable. No-op in OSS.
+   * installed and enabled. No-op in OSS.
    */
   loadCustomVizPluginForDisplay: async (
     _dispatch: Dispatch,
     _display: string,
-  ): Promise<VisualizationDisplay | null> => null,
+  ): Promise<LoadCustomVizPluginForDisplayResult> => ({
+    status: "unavailable",
+  }),
   getPluginAssetUrl: (
     _pluginId: CustomVizPluginId,
     _assetPath: string | null,

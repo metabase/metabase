@@ -32,26 +32,33 @@ describe("loadCustomVizPluginForDisplay", () => {
     jest.restoreAllMocks();
   });
 
-  it("resolves null for a non-custom display without hitting the plugin list", async () => {
+  it("resolves unavailable for a non-custom display without hitting the plugin list", async () => {
     fetchMock.get(LIST_ROUTE, [PLUGIN]);
     const { dispatch, listCalls } = setup();
 
     const result = await loadCustomVizPluginForDisplay(dispatch, "table");
 
-    expect(result).toBeNull();
+    expect(result).toEqual({ status: "unavailable" });
     expect(listCalls()).toHaveLength(0);
   });
 
-  it("resolves null when the plugin list request fails", async () => {
+  it("resolves error and logs when the plugin list request fails", async () => {
     fetchMock.get(LIST_ROUTE, 500);
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     const { dispatch } = setup();
 
     const result = await loadCustomVizPluginForDisplay(dispatch, DISPLAY);
 
-    expect(result).toBeNull();
+    expect(result).toEqual({ status: "error" });
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to look up the plugin"),
+      expect.anything(),
+    );
   });
 
-  it("resolves null and reports not-found when no plugin backs the display", async () => {
+  it("resolves unavailable and reports not-found when no plugin backs the display", async () => {
     fetchMock.get(LIST_ROUTE, []);
     const { dispatch } = setup();
     const onMessage = jest.fn();
@@ -60,7 +67,7 @@ describe("loadCustomVizPluginForDisplay", () => {
       onMessage,
     });
 
-    expect(result).toBeNull();
+    expect(result).toEqual({ status: "unavailable" });
     expect(onMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         message: expect.stringContaining("no matching installed plugin"),
@@ -68,7 +75,7 @@ describe("loadCustomVizPluginForDisplay", () => {
     );
   });
 
-  it("resolves null and reports when the plugin bundle fails to load", async () => {
+  it("resolves unavailable and reports when the plugin bundle fails to load", async () => {
     fetchMock.get(LIST_ROUTE, [PLUGIN]);
     fetchMock.get(BUNDLE_ROUTE, 500);
     jest.spyOn(console, "error").mockImplementation(() => undefined);
@@ -79,7 +86,7 @@ describe("loadCustomVizPluginForDisplay", () => {
       onMessage,
     });
 
-    expect(result).toBeNull();
+    expect(result).toEqual({ status: "unavailable" });
     expect(bundleCalls()).toHaveLength(1);
     await waitFor(() => {
       expect(onMessage).toHaveBeenCalledWith(
@@ -107,7 +114,10 @@ describe("loadCustomVizPluginForDisplay", () => {
       loadCustomVizPluginForDisplay(dispatch, "custom:dedup-demo-viz"),
     ]);
 
-    expect(results).toEqual([null, null]);
+    expect(results).toEqual([
+      { status: "unavailable" },
+      { status: "unavailable" },
+    ]);
     expect(fetchMock.callHistory.calls(bundleRoute)).toHaveLength(1);
   });
 });

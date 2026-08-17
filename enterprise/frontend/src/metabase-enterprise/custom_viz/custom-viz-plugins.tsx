@@ -14,7 +14,10 @@ import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import {
+  type LoadCustomVizPluginForDisplayResult,
+  PLUGIN_CUSTOM_VIZ,
+} from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
 import { getSubpathSafeUrl } from "metabase/urls";
 import { measureText } from "metabase/utils/measure-text";
@@ -488,9 +491,7 @@ async function fetchAndRegisterCustomVizPlugin(
 
 /**
  * Imperatively load (and register) the plugin backing a `custom:*` display,
- * if it is installed and enabled. Resolves to the registered display
- * identifier, or null when the display is not a custom viz or its plugin is
- * unavailable. Never rejects.
+ * if it is installed and enabled. Never rejects.
  */
 export async function loadCustomVizPluginForDisplay(
   dispatch: DispatchFn,
@@ -502,9 +503,9 @@ export async function loadCustomVizPluginForDisplay(
     sandboxMode?: SandboxMode;
     onMessage?: (toast: ToastArgs) => void;
   } = {},
-): Promise<VisualizationDisplay | null> {
+): Promise<LoadCustomVizPluginForDisplayResult> {
   if (!isCustomVizDisplay(display)) {
-    return null;
+    return { status: "unavailable" };
   }
 
   const action = dispatch(
@@ -523,12 +524,22 @@ export async function loadCustomVizPluginForDisplay(
         iconColor: "feedback-warning",
         message: t`Custom visualization "${display}" was requested but no matching installed plugin was found. Check the name and that the plugin is uploaded.`,
       });
-      return null;
+      return { status: "unavailable" };
     }
 
-    return await loadCustomVizPlugin(plugin, { onMessage, sandboxMode });
-  } catch {
-    return null;
+    const loadedDisplay = await loadCustomVizPlugin(plugin, {
+      onMessage,
+      sandboxMode,
+    });
+    return loadedDisplay
+      ? { status: "loaded", display: loadedDisplay }
+      : { status: "unavailable" };
+  } catch (error) {
+    console.error(
+      t`Failed to look up the plugin for custom visualization "${display}":`,
+      error,
+    );
+    return { status: "error" };
   } finally {
     action.unsubscribe();
   }

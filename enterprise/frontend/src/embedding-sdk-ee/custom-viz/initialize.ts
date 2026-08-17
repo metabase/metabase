@@ -6,7 +6,10 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { api } from "metabase/api/client";
 import type { IconData } from "metabase/common/utils/icon";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import {
+  type LoadCustomVizPluginForDisplayResult,
+  PLUGIN_CUSTOM_VIZ,
+} from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
 import {
   getCustomPluginIdentifier,
@@ -157,9 +160,9 @@ export function initializeSdkCustomVizPlugin() {
     loadCustomVizPluginForDisplay: async (
       dispatch: DispatchFn,
       display: string,
-    ): Promise<VisualizationDisplay | null> => {
+    ): Promise<LoadCustomVizPluginForDisplayResult> => {
       if (!isCustomVizAllowed(display, getAllowlist())) {
-        return null;
+        return { status: "unavailable" };
       }
       return eeLoadCustomVizPluginForDisplay(dispatch, display, {
         sandboxMode: getSdkSandboxMode(),
