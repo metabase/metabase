@@ -16,7 +16,6 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
@@ -226,12 +225,17 @@
 
 (defn- verify-credentials!
   "Confirm `config` can actually reach `conn`'s provider before anything is persisted, by listing its models.
-  Throws a 400 carrying the provider's own message when the credentials are rejected."
+  Throws a 400 carrying the provider's own message when the credentials are rejected.
+
+  The listing that verified the credentials is seeded into [[models-cache]] under the connection as it will be
+  stored, so the model refetch the client fires right after saving is answered from it instead of round-tripping
+  to the provider a second time."
   [conn config model]
   (when-not (llm.provider/managed-type? (:type conn))
-    (let [{:keys [error]} (list-connection-models* conn config model)]
+    (let [{:keys [error] :as listed} (list-connection-models* conn config model)]
       (when error
-        (throw (ex-info error {:status-code 400 :api-error true}))))))
+        (throw (ex-info error {:status-code 400 :api-error true})))
+      (swap! models-cache cache/miss (models-cache-key (assoc conn :config config)) listed))))
 
 (defn- connection-model-ref
   "The `connection-key/model` reference that points Metabot at `conn`: the model the connection's own config names
@@ -346,12 +350,6 @@
     (api/check-400 (not (and (llm.provider/singleton-type? type)
                              (some #(= type (:type %)) (llm.provider/connections))))
                    (tru "The {0} provider is already connected." (pr-str type)))
-    ;; the `metabase/` model-ref prefix means "route through the AI proxy", so a connection of any other type
-    ;; holding that key would smuggle its requests into managed billing and usage accounting
-    (api/check-400 (or (llm.provider/managed-type? type)
-                       (not= llm.provider/managed-connection-key (some-> key u/lower-case-en str/trim)))
-                   (tru "The {0} connection key is reserved for the Metabase AI service."
-                        (pr-str llm.provider/managed-connection-key)))
     (api/check-400 (not (and (llm.provider/managed-type? type)
                              (llm.provider/connection llm.provider/managed-connection-key)))
                    (tru "Another connection holds the {0} key. Remove it before connecting the Metabase AI service."
@@ -359,6 +357,13 @@
     (let [conn-key (if (llm.provider/managed-type? type)
                      llm.provider/managed-connection-key
                      (llm.provider/unique-key (or (not-empty key) type)))
+          ;; the `metabase/` model-ref prefix means "route through the AI proxy", so a connection of any other
+          ;; type holding that key would smuggle its requests into managed billing and usage accounting. Checked
+          ;; against the key that will actually be stored, so a value that merely slugs to it cannot slip past.
+          _        (api/check-400 (or (llm.provider/managed-type? type)
+                                      (not= llm.provider/managed-connection-key conn-key))
+                                  (tru "The {0} connection key is reserved for the Metabase AI service."
+                                       (pr-str llm.provider/managed-connection-key)))
           config   (without-blank-values config)
           conn     {:key    conn-key
                     :type   type
@@ -404,7 +409,7 @@
     (llm.provider/validate-config! (:type merged) effective)
     (verify-credentials! merged effective model)
     (llm.provider/set-connections! (assoc stored idx merged))
-    (follow-edited-connection-model! merged model)
+    (follow-edited-connection-model! (assoc merged :config effective) model)
     (connection-response (assoc (merge live merged) :config effective))))
 
 (api.macros/defendpoint :delete "/providers/:key" :- :nil

@@ -329,6 +329,12 @@
                                      {:type   "anthropic"
                                       :key    "metabase"
                                       :config {:api-key "sk-ant-valid"}})))
+        (testing "including a key that merely slugs to it"
+          (is (= "The \"metabase\" connection key is reserved for the Metabase AI service."
+                 (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                       {:type   "anthropic"
+                                        :key    "Metabase!"
+                                        :config {:api-key "sk-ant-valid"}}))))
         (is (= [] (llm.provider/connections))))))
   (testing "a rogue connection already holding the key blocks the managed provider instead of colliding with it"
     (mt/with-premium-features #{:metabase-ai-managed}
