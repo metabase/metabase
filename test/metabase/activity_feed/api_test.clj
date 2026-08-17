@@ -419,7 +419,7 @@
 (deftest post-recents-metric-selection-test
   (testing "POST /api/activity/recents accepts model=metric without HTTP 500 (#79571)"
     (mt/with-model-cleanup [:model/RecentViews]
-      (mt/with-temp [:model/Card metric-card {:type :metric
+      (mt/with-temp [:model/Card metric-card {:type "metric"
                                               :creator_id (mt/user->id :crowberto)}]
         (mt/user-http-request :crowberto :post 204 "activity/recents"
                               {:model "metric" :model_id (:id metric-card) :context "selection"})

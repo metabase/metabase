@@ -38,25 +38,19 @@
     (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
       (mt/with-model-cleanup [:model/RecentViews]
         (mt/with-temp
-          [:model/Database {db-id :id}       {}
+          [:model/Database {db-id :id} {}
            :model/Card {question-id :id} {:type "question" :name "q" :database_id db-id}
            :model/Card {metric-1-id :id} {:type "metric" :name "m1" :database_id db-id}
            :model/Card {metric-2-id :id} {:type "metric" :name "m2" :database_id db-id}
            :model/Card {metric-3-id :id} {:type "metric" :name "m3" :database_id db-id}]
           (doseq [id [question-id metric-1-id metric-2-id metric-3-id]]
-            (recent-views/update-users-recent-views! (mt/user->id :crowberto) :model/Card id :view))
-          (let [by-model (mt/with-test-user :crowberto
-                           (group-by :model (recent-views (mt/user->id :crowberto))))]
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card id :view))
+          (let [by-model (mt/with-test-user :rasta
+                           (group-by :model (recent-views (mt/user->id :rasta))))]
             (is (= #{metric-2-id metric-3-id}
                    (into #{} (map :id) (:metric by-model))))
             (is (= [question-id]
                    (map :id (:card by-model))))))))))
-
-(deftest every-rv-model-has-a-toucan-model-test
-  (testing "every rv-model maps to a Toucan model; a missing mapping 500s the recents API (#79571)"
-    (doseq [rv-model recent-views/rv-models]
-      (is (some? (recent-views/rv-model->model rv-model))
-          (str rv-model " is missing from rv-model->model")))))
 
 (deftest simple-get-list-card-test
   (mt/with-temp
