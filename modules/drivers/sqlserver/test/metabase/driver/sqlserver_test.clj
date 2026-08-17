@@ -50,8 +50,8 @@
                 "report tz offset (#78612).")
     (driver/with-driver :sqlserver
       (qp.test-util/with-report-timezone-id! "Pacific/Auckland"
-        (let [today    [:relative-datetime {:lib/uuid (str (random-uuid))} 0 :day]
-              tomorrow [:relative-datetime {:lib/uuid (str (random-uuid))} 1 :day]]
+        (let [today    [:relative-datetime 0 :day]
+              tomorrow [:relative-datetime 1 :day]]
           (testing "datetimeoffset LHS: RHS is wrapped in AT TIME ZONE '<report-tz-windows-name>'"
             (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
                                                               :effective-type :type/DateTimeWithZoneOffset}]
@@ -76,14 +76,14 @@
                    (sql.qp/format-honeysql
                     :sqlserver
                     (sql.qp/->honeysql :sqlserver
-                                       [:relative-datetime {:lib/uuid (str (random-uuid))} 0 :day]))))))))))
+                                       [:relative-datetime 0 :day]))))))))))
 
 (deftest absolute-datetime-against-datetimeoffset-uses-report-timezone-test
   (testing (str "`:absolute-datetime` filter values compared against a `datetimeoffset` column suffer the same "
                 "class of bug as `:relative-datetime` (#78612): a naive `datetime2` RHS is silently treated as "
                 "offset +00:00 during the comparison. Attach the report timezone to the naive literal.")
     (driver/with-driver :sqlserver
-      (let [today [:absolute-datetime {:lib/uuid (str (random-uuid))} (t/local-date 2026 8 2) :day]]
+      (let [today [:absolute-datetime (t/local-date 2026 8 2) :day]]
         (qp.test-util/with-report-timezone-id! "Pacific/Auckland"
           (testing "datetimeoffset LHS: RHS is wrapped in AT TIME ZONE '<report-tz-windows-name>'"
             (binding [sql.qp/*parent-honeysql-col-type-info* {:database-type  "datetimeoffset"
