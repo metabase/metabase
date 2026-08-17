@@ -73,6 +73,7 @@ export function EmbeddingHubLayout() {
           <FixedSizeIcon name="embed" size={14} c="brand" />
         </Flex>
       }
+      title={t`Embedding hub`}
       testId="embedding-hub-nav"
       isLoading={isLoadingNavbarKey}
       isNavbarOpened={isNavbarOpened}
