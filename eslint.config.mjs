@@ -46,6 +46,29 @@ const unchainedTtagContextRestriction = {
     "Unchained ttag c() — its strings are dropped from the translation template. Chain it inline: c('context').t`...`",
 };
 
+// The app registers its dayjs plugins in metabase/utils/dayjs, so every value import goes through it.
+// Type imports have no runtime effect and can stay on "dayjs".
+const DAYJS_RESTRICTED_IMPORT_MESSAGE =
+  "Import dayjs from metabase/utils/dayjs so the app's plugins are always registered.";
+const dayjsRestrictedPaths = [
+  {
+    name: "dayjs",
+    allowTypeImports: true,
+    message: DAYJS_RESTRICTED_IMPORT_MESSAGE,
+  },
+];
+const dayjsRestrictedPatterns = [
+  {
+    group: ["dayjs/plugin/*"],
+    allowTypeImports: true,
+    message: DAYJS_RESTRICTED_IMPORT_MESSAGE,
+  },
+];
+const dayjsSetupFiles = [
+  "frontend/src/metabase/utils/dayjs.ts",
+  "frontend/src/metabase/utils/dayjs-parse-zone-plugin.ts",
+];
+
 const baseMetabaseRestrictedConfig = {
   patterns: [
     { group: ["metabase-enterprise"] },
@@ -1043,6 +1066,7 @@ const configs = [
   },
   {
     files: ["frontend/**/*.{ts,tsx}"],
+    ignores: dayjsSetupFiles,
     rules: {
       "@typescript-eslint/no-restricted-imports": [
         "error",
@@ -1053,7 +1077,29 @@ const configs = [
               allowTypeImports: true,
               message: "Please use only type-only imports from 'custom-viz'.",
             },
+            ...dayjsRestrictedPaths,
           ],
+          patterns: dayjsRestrictedPatterns,
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      "frontend/**/*.{js,jsx}",
+      "enterprise/frontend/**/*.{js,jsx,ts,tsx}",
+      "e2e/**/*.{js,jsx,ts,tsx}",
+    ],
+    ignores: ["e2e/test-component/**"],
+    plugins: {
+      "@typescript-eslint": tseslint.plugin,
+    },
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: dayjsRestrictedPaths,
+          patterns: dayjsRestrictedPatterns,
         },
       ],
     },
