@@ -245,6 +245,33 @@
         (lib/aggregate (lib/count))
         qp/process-query mt/rows ffirst)))
 
+(defn- warehouse-row-count
+  "Row count read straight off the warehouse, bypassing Metabase sync."
+  [schema table]
+  (let [sql (format "SELECT count(*) AS c FROM %s" (sql.u/quote-name driver/*driver* :table schema table))]
+    (-> (qp/process-query {:database (mt/id) :type :native :native {:query sql}})
+        mt/rows ffirst long)))
+
+(deftest transform-target-name-special-characters-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms-basic}
+      (testing "a target name containing special characters is created and its rows round-trip"
+        (transforms.tu/with-transform-cleanup! [target {:type     :table
+                                                        :schema   (t2/select-one-fn :schema :model/Table (mt/id :venues))
+                                                        :name     "qcq_a\\`b"
+                                                        :database (mt/id)}]
+          (let [expected (venues-row-count)
+                details  {:db-id          (mt/id)
+                          :database       (mt/db)
+                          :transform-type :table
+                          :conn-spec      (driver/connection-spec driver/*driver* (mt/db))
+                          :query          (transforms-base.u/compile-source
+                                           {:source {:type "query" :query (venues-source-query)} :target target} nil)
+                          :output-schema  (:schema target)
+                          :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}]
+            (driver/run-transform! driver/*driver* details {})
+            (is (= expected (warehouse-row-count (:schema target) (:name target))))))))))
+
 (deftest run-transform!-ctas-rows-affected-reflects-rows-written-test
   ;; Characterizes the CTAS row count per driver. BigQuery, Snowflake, and Redshift are excluded; they
   ;; declare `:transforms/accurate-rows-affected false`, so the transforms layer skips emitting
