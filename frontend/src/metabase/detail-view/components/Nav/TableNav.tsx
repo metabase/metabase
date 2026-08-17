@@ -26,7 +26,6 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
   return (
     <Group align="center" gap="sm" miw={0} wrap="nowrap" {...props}>
       <Breadcrumb
-        color="text-secondary"
         icon="database"
         to={Urls.browseDatabase(table.db)}
         showTooltip
@@ -39,7 +38,6 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
           <Separator />
 
           <Breadcrumb
-            color="text-secondary"
             to={Urls.browseSchemaBySlug(
               Urls.databaseSlug(table.db),
               table.schema,
@@ -54,7 +52,6 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
       <Separator />
 
       <Breadcrumb
-        color="text-secondary"
         to={
           isConcreteTableId(table.id)
             ? Urls.table({ id: table.id, name: table.display_name })
@@ -69,9 +66,7 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
         <>
           <Separator />
 
-          <Breadcrumb color="text-secondary" showTooltip>
-            {rowName}
-          </Breadcrumb>
+          <Breadcrumb showTooltip>{rowName}</Breadcrumb>
         </>
       )}
     </Group>
