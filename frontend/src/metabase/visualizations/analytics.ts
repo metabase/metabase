@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 
 import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
+import type { ExportFormat } from "metabase/common/types/export";
 import type { DashboardId } from "metabase-types/api";
 
 import type { ResourceAccessedVia, ResourceType } from "./redux/downloads";
@@ -34,7 +35,7 @@ export const trackDownloadResults = ({
 }: {
   resourceType: ResourceType;
   accessedVia: ResourceAccessedVia;
-  exportType: string;
+  exportType: ExportFormat;
 }) => {
   // Map document-card to dashcard for analytics tracking since the schema
   // doesn't have a separate document-card type
@@ -45,8 +46,7 @@ export const trackDownloadResults = ({
     event: "download_results_clicked",
     resource_type: analyticsResourceType,
     accessed_via: accessedVia,
-    // Unjustified type cast. FIXME
-    export_type: exportType as any,
+    export_type: exportType,
   });
 };
 

@@ -9,7 +9,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { datasetApi } from "metabase/api/dataset";
-import { exportFormatPng } from "metabase/common/types/export";
+import {
+  type ExportFormat,
+  exportFormatPng,
+} from "metabase/common/types/export";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DownloadsState, State } from "metabase/redux/store";
@@ -42,7 +45,7 @@ import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 import { trackDownloadResults, trackExportDashboardToPDF } from "../analytics";
 
 export interface DownloadQueryResultsOpts {
-  type: string;
+  type: ExportFormat;
   question: Question;
   result: Dataset;
   enableFormatting?: boolean;

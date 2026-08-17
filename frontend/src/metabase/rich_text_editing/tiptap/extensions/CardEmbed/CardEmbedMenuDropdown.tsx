@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
+import type { ExportFormat } from "metabase/common/types/export";
 import { canDownloadResults } from "metabase/common/utils/dataset";
 import { Icon, Menu } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -19,7 +20,7 @@ export interface CardEmbedMenuContext {
 
 export interface CardEmbedMenuActions {
   handleDownload: (opts: {
-    type: string;
+    type: ExportFormat;
     enableFormatting: boolean;
     enablePivot: boolean;
   }) => Promise<void>;

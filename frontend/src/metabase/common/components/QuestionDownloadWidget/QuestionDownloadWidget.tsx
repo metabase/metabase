@@ -37,7 +37,7 @@ type QuestionDownloadWidgetProps = {
   question: Question;
   result: Dataset;
   onDownload: (opts: {
-    type: string;
+    type: ExportFormat;
     enableFormatting: boolean;
     enablePivot: boolean;
   }) => Promise<void>;
