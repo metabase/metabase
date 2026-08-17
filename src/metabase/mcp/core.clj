@@ -53,17 +53,16 @@
       false)))
 
 (defn all-scopes
-  "All supported OAuth scopes: those declared on agent-api endpoints via defendpoint metadata,
-   plus the v2 tool-registry and v2 UI-resource scopes.
-
-   The v2 resource registry contributes on its own rather than through its tools: a resource whose
-   scope no tool happens to carry still has to be requestable, or it could never be read."
+  "All supported OAuth scopes."
   []
-  (-> (into (sorted-set)
-            (comp (keep #(get-in % [:form :metadata :scope]))
+  (-> (sorted-set)
+      ;; agent-api scopes from defendpoint metadata
+      (into (comp (keep #(get-in % [:form :metadata :scope]))
                   (filter string?))
             (vals (api.macros/ns-routes 'metabase.agent-api.api)))
+      ;; mcp v2 scopes registered in tools
       (into (v2.registry/registered-scopes))
+      ;; mcp v2 scopes registered in ui resources
       (into (v2.resources/resource-scopes))))
 
 (defn v2-scopes

@@ -1321,12 +1321,17 @@
   "Valid 21-char NanoID so `import-mbql` picks up the `[:metric …]` branch."
   "Metric123_456DefGhI78")
 
+;; The db id must not exist as a `metabase_database` row. `mp-metric` composes two mocks, and a
+;; `ComposedMetadataProvider` extends `CachedMetadataProvider` — so `resolve.mp/table-candidates`
+;; treats it as app-DB-backed once the app DB is up and resolves portable FKs against the app DB
+;; instead of this provider. With db id 1 that found the real Sample Database's ORDERS, which has
+;; no CAMPAIGN_ID, and the failure appeared only when another namespace had booted the app DB.
 (def ^:private mp-metric-base
   "ORDERS(10) and CAMPAIGNS(30) with NO foreign key between them."
   (lib.tu/mock-metadata-provider
-   {:database {:id 1 :name "Sample"}
-    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id 1}
-               {:id 30 :name "CAMPAIGNS" :schema "PUBLIC" :db-id 1}]
+   {:database {:id 987654321 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id 987654321}
+               {:id 30 :name "CAMPAIGNS" :schema "PUBLIC" :db-id 987654321}]
     :fields   [{:id 100 :name "ID"          :table-id 10 :base-type :type/Integer}
                {:id 101 :name "TOTAL"       :table-id 10 :base-type :type/Float}
                {:id 102 :name "CAMPAIGN_ID" :table-id 10 :base-type :type/Integer} ;; NO :fk-target-field-id
@@ -1345,14 +1350,14 @@
 (def ^:private mp-metric
   (lib.tu/mock-metadata-provider
    mp-metric-base
-   {:cards [{:id 700 :name "Order Count by Campaign" :type :metric :database-id 1 :table-id 10
+   {:cards [{:id 700 :name "Order Count by Campaign" :type :metric :database-id 987654321 :table-id 10
              :entity-id metric-eid :dataset-query metric-definition}]}))
 
 (defn- with-joined-metric-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-metric)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                construct/resolve-database-id-from-first-stage (fn [_] 987654321)
                 construct/permission-aware-content-store (stub-content-store
-                                                          {:id 700 :database_id 1 :entity_id metric-eid})
+                                                          {:id 700 :database_id 987654321 :entity_id metric-eid})
                 api/read-check  allow-read-check
                 api/query-check allow-read-check
                 ;; `metric-details` gates its base table and every surfaced column on app-db

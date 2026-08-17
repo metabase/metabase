@@ -143,7 +143,7 @@
   "The extensions `tool` requires that `supported-extensions` doesn't provide, or nil when the
    client can render it. A tool with no `:required-extensions` is always renderable."
   [tool supported-extensions]
-  (seq (set/difference (:required-extensions tool #{}) supported-extensions)))
+  (set/difference (:required-extensions tool #{}) supported-extensions))
 
 (defn missing-extensions-error
   "Teaching message for a tool call the client can't render."

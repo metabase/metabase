@@ -109,7 +109,7 @@ Use this for any request to show, display, visualize, plot, chart, or present re
    :annotations         {:readOnlyHint true :idempotentHint true}
    :required-extensions #{:mcp-app-ui}
    :_meta               {:ui {:resourceUri v2.resources/visualize-query-uri}}
-   :outputSchema        visualize-query-output-schema
+   :output-schema       visualize-query-output-schema
    :args                visualize-query-args-schema}
   [{:keys [display] :as args} {:keys [session-id]}]
   (let [handle (handle-for-visualization! args session-id)]
@@ -135,7 +135,7 @@ Use this for any request to show, display, visualize, plot, chart, or present re
    :annotations         {:readOnlyHint true :idempotentHint true}
    :required-extensions #{:mcp-app-ui}
    :_meta               {:ui {:resourceUri v2.resources/render-drill-through-uri}}
-   :outputSchema        render-drill-through-output-schema
+   :output-schema       render-drill-through-output-schema
    :args                render-drill-through-args-schema}
   [{:keys [query_handle]} {:keys [session-id]}]
   (resolve-visualizable-handle! session-id query_handle)

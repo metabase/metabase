@@ -1,16 +1,13 @@
 (ns metabase.mcp.v2.registry
-  "The v2 MCP tool registry. Tools are in-code registry entries declared with [[deftool]] —
-   not defendpoints — so the v2 surface builds its own manifest and dispatch:
+  "The v2 MCP tool registry. Tools are in-code registry entries declared with [[deftool]].
+  The v2 surface builds its own manifest and dispatch:
 
    - `tools/list` ([[list-tools]]) filters by token scopes, the `mcp-v2-disabled-tools` CSV,
      and EE feature availability (EE-only capability is hidden on OSS, never failed at call
      time);
    - `tools/call` ([[call-tool]]) re-checks all three, validates arguments against the tool's
      Malli schema with teaching errors, dispatches to the handler under the already-bound
-     current user, and logs every outcome through the shared usage path.
-
-   Every tool carries a `:scope` (task 02's table is authoritative); registration fails loudly
-   without one."
+     current user, and logs every outcome through the shared usage path."
   (:require
    [clojure.string :as str]
    [malli.error :as me]
@@ -33,13 +30,14 @@
 (defonce ^:private tools*
   (atom {}))
 
+;; Regenerating the manifest is slow. This atom stores a cache.
 (defonce ^:private manifest-cache
   (atom nil))
 
 (defn register-tool!
-  "Register a v2 tool definition. Called by [[deftool]]; throws at load time when the
-   definition is missing its `:scope` (every tool is scope-gated from the first commit),
-   `:name`, `:description`, `:args` schema, or `:handler`."
+  "Register a v2 tool definition.
+
+  Does basic validation of arguments and throws when invalid."
   [{tool-name :name :keys [scope description args handler] :as tool}]
   (when (str/blank? tool-name)
     (throw (ex-info "v2 MCP tool registered without a :name" {:tool tool})))
@@ -56,12 +54,12 @@
   ;; Fail at load time (not first list) on a schema strict clients can't consume.
   (tools-manifest/assert-optional-fields-nullable! args tool-name)
   (swap! tools* assoc tool-name tool)
+  ;; flush cache to allow for repl/test redefinition.
   (reset! manifest-cache nil)
   tool-name)
 
 (defmacro deftool
-  "Define and register a v2 MCP tool. `description` is both the handler's docstring and the
-   tool description published by tools/list.
+  "Define and register a v2 MCP tool.
 
     (deftool ping-v2
       \"Health-check tool for the v2 MCP surface.\"
@@ -72,23 +70,29 @@
       [arguments context]
       …)
 
-   Defines `handler-sym` as the handler fn (2-arity: null-stripped, schema-validated
-   `arguments`, and a `context` map of `:session-id`, `:token-scopes`, `:client-info`,
-   `:request-context`) and registers the tool. Optional keys: `:required-scopes` (scopes the
-   handler hard-requires on some call paths — e.g. a per-type create scope — which the caller must
-   therefore already hold; default-granted via [[registered-scopes]]), `:extra-scopes` (scopes the
-   handler gates individual *optional* modes on — not required to call the tool, and opt-in:
-   advertised via [[registered-opt-in-scopes]] so a token can request them, but kept out of the
-   default DCR grant), `:feature` (a premium-features keyword; the tool is hidden when the
-   instance lacks it), `:annotations` (merged over the always-present MCP annotation defaults).
+   `description` is both the handler's docstring and the tool description published by tools/list.
 
-   `:required-scopes` vs `:extra-scopes` is the difference between \"you cannot do this without
-   it\" and \"ask for it and you unlock more\" — a mandatory scope left out of the default grant
-   advertises a capability no default-grant client can reach.
+   Defines `handler-sym` via `defn` with two arguments:
+   - `arguments` - will be schema validated
+   - `context` - a map of
+     - `:session-id`
+     - `:token-scopes`
+     - `:client-info`
+     - `:request-context`
 
-   Handlers return MCP content (see [[metabase.mcp.v2.common/success-content]]) or throw a
-   teaching error."
+   `opts` is a map of:
+   - `:name` - the mcp public-facing name of the tool
+   - `:scope` - the required scope for the tool
+   - `:annotations` - _optional_ - overrides for the default annotations
+   - `:args` - malli schema for the arguments, published as `inputSchema`
+   - `:output-schema` - _optional_ - malli schema for the structured output, published as `outputSchema`
+   - `:extra-scopes` - _optional_ - scopes not required for normal usage but that unlock extra behavior
+   - `:feature` - _optional_ - feature flag that is required or this tool is not advertised
+
+   Handlers return MCP content (see [[metabase.mcp.v2.common/success-content]]) or throw a teaching error."
   [handler-sym description opts argv & body]
+  (assert (and (vector? argv)
+               (= 2 (count argv))))
   `(do
      (defn ~handler-sym ~description ~argv ~@body)
      ;; Register the var (not the fn value) so re-evaluating the handler in the REPL — or
@@ -96,29 +100,22 @@
      (register-tool! (assoc ~opts :description ~description :handler (var ~handler-sym)))))
 
 (defn registered-scopes
-  "The default-grant scope strings the v2 surface relies on: every registered tool's `:scope` and
-   `:required-scopes`. Folded into [[metabase.mcp.core/all-scopes]] so net-new leaf scopes flow
-   into the DCR default grant (and thus `scopes_supported`) as their tools land. `:extra-scopes`
-   are *not* here — they are opt-in, see [[registered-opt-in-scopes]]. A net-new leaf must also be
-   declared with `defscope` (and, for in-app metabot users, covered by a `perm-type->scopes`
-   bucket) in [[metabase.metabot.scope]] alongside the tool that carries it."
+  "The scopes from registered tools.
+
+  All scopes must also be registered via `defscope`."
   []
   (into #{}
-        (comp (mapcat (fn [tool] (cons (:scope tool) (:required-scopes tool))))
-              (filter some?))
+        (map :scope)
         (vals @tools*)))
 
 (defn registered-opt-in-scopes
-  "The opt-in scope strings: every registered tool's `:extra-scopes`. A handler gates an optional
-   mode on these (e.g. listing snippets), so they are advertised in `scopes_supported` for a token
-   to request — but kept out of the default DCR grant, or the gate would be dead: every
-   dynamically-registered client would already hold them. A scope the handler *hard-requires*
-   belongs in `:required-scopes` instead — see [[registered-scopes]]. Advertised via
-   [[metabase.mcp.core/opt-in-scopes]]; the same `defscope`/`perm-type->scopes` rule applies."
+  "Every registered tool's `:extra-scopes`.
+
+  A handler gates optional behavior using these, so they are advertised in `scopes_supported` for a token to
+  request. But they should be kept out of the default DCR grant."
   []
   (into #{}
-        (comp (mapcat :extra-scopes)
-              (filter some?))
+        (mapcat :extra-scopes)
         (vals @tools*)))
 
 ;;; ------------------------------------------------ Manifest ------------------------------------------------------
@@ -132,7 +129,7 @@
    :openWorldHint   false})
 
 (defn- tool->manifest-entry
-  [{:keys [args annotations outputSchema] :as tool}]
+  [{:keys [args annotations output-schema] :as tool}]
   (cond-> (assoc tool
                  :inputSchema (-> args
                                   tools-manifest/malli->json-schema
@@ -140,7 +137,7 @@
                  :annotations (merge default-annotations annotations))
     ;; No strict transform on outputs — that rewrite exists to satisfy OpenAI's strict-tool rules
     ;; for arguments the model produces, and outputs aren't constrained by them.
-    outputSchema (assoc :outputSchema (tools-manifest/malli->json-schema outputSchema))))
+    output-schema (assoc :outputSchema (tools-manifest/malli->json-schema output-schema))))
 
 (defn- generate-manifest
   []
@@ -149,8 +146,7 @@
        (mapv tool->manifest-entry)))
 
 (defn- manifest
-  "Manifest entries for all registered tools. Cached; [[register-tool!]] invalidates the cache,
-   so a tool namespace loaded (or re-evaluated) at any point shows up in the next tools/list."
+  "Cached manifest entries for all registered tools."
   []
   (or @manifest-cache
       (reset! manifest-cache (generate-manifest))))
@@ -158,18 +154,6 @@
 (defn- disabled-tool-names
   []
   (set (mcp.settings/mcp-v2-disabled-tools)))
-
-(defn- feature-available?
-  [{:keys [feature]}]
-  (or (nil? feature)
-      (premium-features/has-feature? feature)))
-
-(defn- visible?
-  [token-scopes disabled supported tool]
-  (and (not (contains? disabled (:name tool)))
-       (feature-available? tool)
-       (not (mcp.ui-resource/missing-required-extensions tool supported))
-       (mcp.scope/matches? token-scopes (:scope tool))))
 
 (defn list-tools
   "Return the tool definitions for the v2 MCP `tools/list` response, filtered by `token-scopes`,
@@ -185,8 +169,17 @@
    (let [disabled  (disabled-tool-names)
          supported (mcp.ui-resource/supported-extensions options)]
      (into []
-           (comp (filter #(visible? token-scopes disabled supported %))
-                 (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations :_meta])))
+           (comp
+            ;; no disabled tools
+            (filter #(not (contains? disabled (:name %))))
+            ;; no tools requiring features this instance doesn't have
+            (filter #(or (nil? (:feature %))
+                         (premium-features/has-feature? (:feature %))))
+            ;; has all required extensions
+            (filter #(empty? (mcp.ui-resource/missing-required-extensions % supported)))
+            ;; required scope is available
+            (filter #(mcp.scope/matches? token-scopes (:scope %)))
+            (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations :_meta])))
            (manifest)))))
 
 (defn tools-hash
@@ -226,15 +219,16 @@
         missing (mcp.ui-resource/missing-required-extensions
                  tool (mcp.ui-resource/supported-extensions options))]
     (cond
-      (not (map? (or arguments {})))
-      (common/error-content "Invalid arguments: expected a JSON object." common/error-code-invalid-params)
-
       ;; Disabled and feature-missing tools are absent from tools/list, so calling one is
       ;; indistinguishable from calling a tool that never existed.
       (or (nil? tool)
           (contains? (disabled-tool-names) tool-name)
-          (not (feature-available? tool)))
+          (not (or (nil? (:feature tool))
+                   (premium-features/has-feature? (:feature tool)))))
       (common/error-content (str "Unknown tool: " tool-name) common/error-code-method-not-found)
+
+      (not (map? (or arguments {})))
+      (common/error-content "Invalid arguments: expected a JSON object." common/error-code-invalid-params)
 
       (not (mcp.scope/matches? token-scopes (:scope tool)))
       (common/error-content (str "Insufficient scope to call tool: " tool-name)
@@ -242,7 +236,7 @@
 
       ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
       ;; scope/disabled cases it stays listed for capable clients, so name what's missing.
-      missing
+      (seq missing)
       (common/error-content (mcp.ui-resource/missing-extensions-error tool-name missing)
                             common/error-code-invalid-params)
 
@@ -286,18 +280,19 @@
                        :user-agent    (get-in options [:request-context :user-agent])
                        :ip-address    (get-in options [:request-context :ip-address])}))]
        (try
-         (let [result (dispatch-tool-call token-scopes session-id tool-name arguments options)
-               error? (boolean (:isError result))]
-           (record! (if error? "error" "success")
-                    (when error? (or (::common/error-code result) common/error-code-internal))
-                    (when error? (some-> result :content first :text)))
+         (let [result (dispatch-tool-call token-scopes session-id tool-name arguments options)]
+           (if (:isError result)
+             (record! "error"
+                      (or (::common/error-code result) common/error-code-internal)
+                      (some-> result :content first :text))
+             (record! "success" nil nil))
            ;; `::common/error-code` is an internal classification marker — never expose it to the client.
            (let [result (dissoc result ::common/error-code)]
              (ait/record! {:ai/tool-output result})
              result))
          (catch Throwable e
-           ;; A handler that throws something the dispatch try doesn't convert would otherwise
-           ;; skip instrumentation and under-report errors. Record the failure, then rethrow so
-           ;; the transport layer still surfaces it to the client.
+           ;; A handler that throws something the dispatch try doesn't convert would otherwise skip instrumentation
+           ;; and under-report errors. Record the failure, then rethrow so the transport layer still surfaces it to
+           ;; the client.
            (record! "error" common/error-code-internal (ex-message e))
            (throw e)))))))

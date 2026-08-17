@@ -1,11 +1,12 @@
 (ns metabase.mcp.v2.resources
-  "The v2 MCP resource registry — the `ui://` iframe shells behind the MCP Apps tools
-   (`visualize_query`, `render_drill_through`).
+  "The v2 MCP UI resource registry.
 
-   Every resource carries a required `:scope` and is matched with [[metabase.mcp.scope/matches?]],
-   the same all-or-nothing gate v2 tools use. There are deliberately no public resources, so
-   there is no looser gate to accidentally ship one through. Documentation/skill resources land
-   with the skills work and will need their own registration path here.
+  Contains the `ui://` iframe shells behind the MCP Apps tools (`visualize_query`, `render_drill_through`).
+
+  Every resource carries a required `:scope` and is matched with [[metabase.mcp.scope/matches?]], the same
+  all-or-nothing gate v2 tools use. There are deliberately no public resources, so there is no looser gate to
+  accidentally ship one through. Documentation/skill resources land with the skills work and will need their own
+  registration path here.
 
    Rendering and the `_meta.ui` sandbox block come from [[metabase.mcp.ui-resource]]."
   (:require
@@ -18,8 +19,7 @@
 
 (def ^:private ui-mime-type "text/html;profile=mcp-app")
 
-;; Keyed by URI, which is unique per resource. Overwrites on re-registration so REPL reload is
-;; idempotent.
+;; Keyed by URI, which is unique per resource. Overwrites on re-registration so REPL reload is idempotent.
 (defonce ^:private resources*
   (atom (sorted-map)))
 
@@ -43,8 +43,7 @@
   (get-in @resources* [uri :scope]))
 
 (defn resource-scopes
-  "The distinct scope strings across all registered v2 resources. Folded into the OAuth grant by
-   [[metabase.mcp.core/all-scopes]], alongside [[metabase.mcp.v2.registry/registered-scopes]]."
+  "The distinct scope strings across all registered v2 resources."
   []
   (into (sorted-set) (keep :scope) (vals @resources*)))
 
