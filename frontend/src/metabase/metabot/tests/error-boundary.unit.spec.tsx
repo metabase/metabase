@@ -18,8 +18,11 @@ import { getMetabotInitialState } from "../state/reducer-utils";
 
 let mockShouldThrow = false;
 
-jest.mock("../components/MetabotChat", () => {
-  const metabotChatModule = jest.requireActual("../components/MetabotChat");
+// The lazy loader imports the module, not the barrel, so mock the module.
+jest.mock("../components/MetabotChat/MetabotChat", () => {
+  const metabotChatModule = jest.requireActual(
+    "../components/MetabotChat/MetabotChat",
+  );
   return {
     ...metabotChatModule,
     MetabotChat: (props: any) => {

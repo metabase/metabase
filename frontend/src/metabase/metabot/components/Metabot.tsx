@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
@@ -29,8 +29,8 @@ import { metabotApi } from "../api";
 import { isHistoryEnabledProfile } from "../constants";
 import type { MetabotAgentId } from "../state";
 
-import { MetabotChat } from "./MetabotChat";
 import { MetabotConversationHistory } from "./MetabotChat/MetabotConversationHistory";
+import { LazyMetabotChat, prefetchMetabotChat } from "./MetabotChat/lazy";
 
 const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
   return (
@@ -143,6 +143,15 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
     });
   }, [visible, setVisible, isFullPageMetabot]);
 
+  useEffect(function prefetchChatPanelWhenIdle() {
+    if (typeof requestIdleCallback !== "function") {
+      prefetchMetabotChat();
+      return;
+    }
+    const handle = requestIdleCallback(prefetchMetabotChat);
+    return () => cancelIdleCallback(handle);
+  }, []);
+
   useEffect(
     function closeViaPropChange() {
       if (hide) {
@@ -160,17 +169,20 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
 
   return (
     <ErrorBoundary key={errorBoundaryKey} errorComponent={ErrorFallback}>
-      <Sidebar
-        isOpen={visible}
-        side="right"
-        width="30rem"
-        aria-hidden={!visible}
-      >
-        <MetabotChat
-          config={config}
-          headerActions={<MetabotSidebarActions agentId={agentId} />}
-        />
-      </Sidebar>
+      {/* The fallback covers the sidebar too, so an empty panel never opens */}
+      <Suspense fallback={null}>
+        <Sidebar
+          isOpen={visible}
+          side="right"
+          width="30rem"
+          aria-hidden={!visible}
+        >
+          <LazyMetabotChat
+            config={config}
+            headerActions={<MetabotSidebarActions agentId={agentId} />}
+          />
+        </Sidebar>
+      </Suspense>
     </ErrorBoundary>
   );
 };
