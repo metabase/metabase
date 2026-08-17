@@ -311,6 +311,86 @@ export function createDataAppApiKey() {
     .then(({ body }) => body.unmasked_key);
 }
 
+/**
+ * A second app beside the host app, for cases that need two of them. It reuses
+ * the host app's `node_modules`, so `defineQuery` still resolves through the
+ * published SDK, and its directory name becomes the app's slug.
+ */
+export function createSecondDataApp(slug: string) {
+  const appRoot = `${Cypress.config("projectRoot")}/e2e/tmp/${slug}`;
+
+  cy.exec(`rm -rf "${appRoot}"`);
+  cy.exec(`mkdir -p "${appRoot}"`);
+  cy.exec(
+    `ln -s "${dataAppHostAppRoot()}/node_modules" "${appRoot}/node_modules"`,
+  );
+
+  return appRoot;
+}
+
+/**
+ * Runs the host app's own production build. The SDK's `metabase-resource-sync-check`
+ * plugin runs on `buildStart`, so this is what refuses to bundle a stale app.
+ */
+export function buildDataAppHostApp() {
+  return cy.exec(`cd "${dataAppHostAppRoot()}" && npm run build`, {
+    failOnNonZeroExit: false,
+    timeout: 180_000,
+  });
+}
+
+/** The app's own permission group — the one its viewers are given. */
+export function dataAppPermissionGroupId(slug: string) {
+  return cy.request<DataApp>(`/api/apps/${slug}`).then(({ body }) => {
+    const groupId = body.permission_group_id;
+
+    if (typeof groupId !== "number") {
+      throw new Error(`Data app ${slug} has no permission group.`);
+    }
+
+    return cy.wrap(groupId, { log: false });
+  });
+}
+
+/** Puts a user in the app's own permission group, as granting app access does. */
+export function addUserToDataAppGroup(groupId: number, email: string) {
+  return cy
+    .request<{ data: Array<{ id: number; email: string }> }>("/api/user")
+    .then(({ body }) => {
+      const user = body.data.find((candidate) => candidate.email === email);
+      expect(user, `user ${email}`).to.exist;
+
+      cy.request("POST", "/api/permissions/membership", {
+        group_id: groupId,
+        user_id: user?.id,
+      });
+    });
+}
+
+/** The group's view-data level per database, as the permissions graph reports it. */
+export function dataAppDatabasePermissions(groupId: number) {
+  return dataAppDatabaseGraph(groupId).then((graph) =>
+    Object.fromEntries(
+      Object.entries(graph).map(([databaseId, permissions]) => [
+        databaseId,
+        permissions["view-data"],
+      ]),
+    ),
+  );
+}
+
+/** The group's whole per-database entry, `create-queries` included. */
+export function dataAppDatabaseGraph(groupId: number) {
+  return cy
+    .request<{
+      groups: Record<
+        string,
+        Record<string, { "view-data"?: string; "create-queries"?: string }>
+      >;
+    }>("GET", "/api/permissions/graph")
+    .then(({ body }) => body.groups[String(groupId)] ?? {});
+}
+
 const DATA_APP_DEV_HOST_APP_DIR =
   "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app";
 
