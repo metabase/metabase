@@ -14,6 +14,9 @@ import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
 import { SettingsJWTForm } from "./SettingsJWTForm";
 
+const GENERATED_TOKEN =
+  "590ab155f412d477b8ab9c8b0e7b2e3ab4d4523e83770a724a2088edbde7f19a";
+
 const GROUPS = [
   createMockGroup(),
   createMockGroup({ id: 2, name: "Administrators" }),
@@ -70,7 +73,7 @@ const setup = async ({
   );
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
-  setupGenerateRandomTokenEndpoint("1234abcd");
+  setupGenerateRandomTokenEndpoint(GENERATED_TOKEN);
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
 
@@ -88,8 +91,7 @@ const expandUserAttributeSection = async () => {
 describe("SettingsJWTForm", () => {
   const ATTRS = {
     "jwt-identity-provider-uri": "http://example.com",
-    "jwt-shared-secret":
-      "590ab155f412d477b8ab9c8b0e7b2e3ab4d4523e83770a724a2088edbde7f19a",
+    "jwt-shared-secret": GENERATED_TOKEN,
     "jwt-attribute-email": "john@example.com",
     "jwt-attribute-firstname": "John",
     "jwt-attribute-lastname": "Doe",
@@ -108,12 +110,12 @@ describe("SettingsJWTForm", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: /Set up key/ }),
     );
-    await userEvent.clear(await screen.findByLabelText(/New secret key/));
-    await userEvent.type(
-      await screen.findByLabelText(/New secret key/),
-      ATTRS["jwt-shared-secret"],
+    expect(await screen.findByLabelText(/New secret key/)).toHaveValue(
+      GENERATED_TOKEN,
     );
-    await userEvent.click(await screen.findByRole("button", { name: /Done/ }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Create/ }),
+    );
     await expandUserAttributeSection();
     await userEvent.type(
       await screen.findByRole("textbox", { name: /Email attribute/ }),

@@ -49,6 +49,12 @@ const setup = ({
   return { onSubmit };
 };
 
+const regenerateKey = async () => {
+  await userEvent.click(screen.getByRole("button", { name: "Regenerate key" }));
+  await userEvent.click(screen.getByRole("button", { name: "Delete key" }));
+  await screen.findByRole("dialog", { name: "Store your new key" });
+};
+
 describe("FormSecretKey", () => {
   afterEach(() => {
     fetchMock.hardReset();
@@ -66,17 +72,7 @@ describe("FormSecretKey", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("opens the setup modal when 'Set up key' is clicked", async () => {
-      setup({ initialValues: { secret: undefined } });
-
-      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
-
-      expect(
-        await screen.findByRole("dialog", { name: "Set up secret key" }),
-      ).toBeInTheDocument();
-    });
-
-    it("auto-generates a token when the modal opens", async () => {
+    it("generates a key and shows it read-only when 'Set up key' is clicked", async () => {
       setup({ initialValues: { secret: undefined } });
 
       expect(fetchMock.callHistory.calls("generate-random-token")).toHaveLength(
@@ -85,46 +81,54 @@ describe("FormSecretKey", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
 
+      const modal = await screen.findByRole("dialog", {
+        name: "Create a secret key",
+      });
       expect(fetchMock.callHistory.calls("generate-random-token")).toHaveLength(
         1,
       );
 
-      // The modal's text input should contain the generated token
-      await waitFor(() => {
-        const modalInput = within(screen.getByRole("dialog")).getByRole(
-          "textbox",
-          { name: "New secret key" },
-        );
-        expect(modalInput).toHaveValue(GENERATED_TOKEN);
+      const keyInput = within(modal).getByRole("textbox", {
+        name: "New secret key",
       });
+      await waitFor(() => expect(keyInput).toHaveValue(GENERATED_TOKEN));
+      expect(keyInput).toHaveAttribute("readonly");
     });
 
-    it("closes the modal and updates the form value after clicking 'Done'", async () => {
+    it("offers an icon-only copy button", async () => {
       setup({ initialValues: { secret: undefined } });
 
       await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
-      await screen.findByRole("dialog", { name: "Set up secret key" });
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+      const modal = await screen.findByRole("dialog", {
+        name: "Create a secret key",
       });
 
-      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+      const copyButton = await within(modal).findByRole("button", {
+        name: "Copy",
+      });
+      expect(copyButton).toHaveTextContent("");
+    });
+
+    it("updates the form value after clicking 'Create'", async () => {
+      setup({ initialValues: { secret: undefined } });
+
+      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
+      await screen.findByRole("dialog", { name: "Create a secret key" });
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
+      });
+      await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
       await waitFor(() => {
         expect(
-          screen.queryByRole("dialog", { name: "Set up secret key" }),
+          screen.queryByRole("dialog", { name: "Create a secret key" }),
         ).not.toBeInTheDocument();
       });
 
-      // The input shows the obfuscated generated value
-      await waitFor(() => {
-        expect(screen.getByLabelText("Signing Key")).toHaveValue(
-          OBFUSCATED_GENERATED,
-        );
-      });
-
-      // Button switches to "Regenerate key"
+      expect(screen.getByLabelText("Signing Key")).toHaveValue(
+        OBFUSCATED_GENERATED,
+      );
       expect(
         screen.getByRole("button", { name: "Regenerate key" }),
       ).toBeInTheDocument();
@@ -133,20 +137,19 @@ describe("FormSecretKey", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("closes the modal without updating the value after clicking 'Cancel'", async () => {
+    it("does not update the value after clicking 'Cancel'", async () => {
       setup({ initialValues: { secret: undefined } });
 
       await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
-      await screen.findByRole("dialog", { name: "Set up secret key" });
+      await screen.findByRole("dialog", { name: "Create a secret key" });
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       await waitFor(() => {
         expect(
-          screen.queryByRole("dialog", { name: "Set up secret key" }),
+          screen.queryByRole("dialog", { name: "Create a secret key" }),
         ).not.toBeInTheDocument();
       });
 
-      // Still shows "Set up key" — value was not changed
       expect(
         screen.getByRole("button", { name: "Set up key" }),
       ).toBeInTheDocument();
@@ -173,7 +176,7 @@ describe("FormSecretKey", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("opens the setup modal when 'Regenerate key' is clicked", async () => {
+    it("asks for confirmation before generating a new key", async () => {
       setup({ initialValues: { secret: EXISTING_VALUE } });
 
       await userEvent.click(
@@ -183,22 +186,65 @@ describe("FormSecretKey", () => {
       );
 
       expect(
-        await screen.findByRole("dialog", { name: "Set up secret key" }),
+        await screen.findByRole("dialog", {
+          name: "Delete key and generate a new one?",
+        }),
       ).toBeInTheDocument();
+      expect(
+        screen.getByText(/This will cause existing tokens to stop working/),
+      ).toBeInTheDocument();
+      expect(fetchMock.callHistory.calls("generate-random-token")).toHaveLength(
+        0,
+      );
     });
 
-    it("shows a warning about existing tokens being invalidated when regenerating", async () => {
+    it("keeps the current key when the confirmation is dismissed", async () => {
       setup({ initialValues: { secret: EXISTING_VALUE } });
 
       await userEvent.click(
         screen.getByRole("button", { name: "Regenerate key" }),
       );
+      await userEvent.click(
+        screen.getByRole("button", { name: "No, don't delete" }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole("dialog", {
+            name: "Delete key and generate a new one?",
+          }),
+        ).not.toBeInTheDocument();
+      });
+      expect(screen.getByLabelText("Signing Key")).toHaveValue(
+        OBFUSCATED_EXISTING,
+      );
+    });
+
+    it("replaces the key after confirming and clicking 'Done'", async () => {
+      setup({ initialValues: { secret: EXISTING_VALUE } });
+
+      await regenerateKey();
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+      });
+      await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Signing Key")).toHaveValue(
+          OBFUSCATED_GENERATED,
+        );
+      });
+    });
+
+    it("does not offer to cancel out of storing the new key", async () => {
+      setup({ initialValues: { secret: EXISTING_VALUE } });
+
+      await regenerateKey();
 
       expect(
-        await screen.findByText(
-          /This will cause existing tokens to stop working/,
-        ),
-      ).toBeInTheDocument();
+        screen.queryByRole("button", { name: "Cancel" }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -208,24 +254,6 @@ describe("FormSecretKey", () => {
       expect(
         within(screen.getByTestId("inputWrapper")).queryByRole("button"),
       ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("token length validation", () => {
-    it("disables 'Done' button when the token is too short", async () => {
-      setup({ initialValues: { secret: undefined } });
-
-      await userEvent.click(screen.getByRole("button", { name: "Set up key" }));
-      const input = screen.getByRole("textbox", { name: "New secret key" });
-
-      await userEvent.clear(input);
-      await userEvent.type(input, "1234");
-      // Token is too short, so 'Done' button should be disabled
-      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
-
-      await userEvent.clear(input);
-      await userEvent.type(input, "12345678");
-      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
     });
   });
 });
