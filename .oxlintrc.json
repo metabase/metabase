@@ -763,6 +763,7 @@
               {
                 "group": [
                   "metabase/*",
+                  "!metabase/dayjs",
                   "!metabase/env",
                   "!metabase/utils",
                   "!metabase/querying",
@@ -1423,6 +1424,15 @@
     },
     {
       "files": [
+        "frontend/src/embedding-sdk-bundle/test/**/*",
+        "frontend/src/embedding-sdk-shared/test/storybook-themes.ts"
+      ],
+      "rules": {
+        "metabase/no-color-literals": "off"
+      }
+    },
+    {
+      "files": [
         "**/*.unit.spec.ts",
         "**/*.unit.spec.tsx",
         "**/*.unit.spec.js",
@@ -1798,7 +1808,14 @@
           "error",
           {
             "modules": [
-              "metabase/analytics"
+              "metabase/analytics",
+              "metabase/current-user",
+              "metabase/dayjs",
+              "metabase/metadata-store",
+              "metabase/query_builder",
+              "metabase/settings",
+              "metabase/value-formatting",
+              "metabase/viz-core"
             ]
           }
         ]

@@ -192,6 +192,7 @@ function cellTextNeedsClicked(columnSettings?: ColumnSettings): boolean {
 // "-1.5e-11") paste as numbers, never as formulas, so they keep pasting
 // unquoted. The trigger set follows OWASP's CSV-injection list, including the
 // full-width forms some locales produce.
+// eslint-disable-next-line no-control-regex -- \t\r\n\0 are deliberate CSV-injection triggers (see above)
 const FORMULA_TRIGGER_PATTERN = /^[=+\-@\t\r\n\0＝＋－＠]/;
 const NUMERIC_LITERAL_PATTERN =
   /^[+-]?[\p{Sc}\d.,\s]*\d(?:\s*[eE][+-]?\d+)?\s*%?$/u;

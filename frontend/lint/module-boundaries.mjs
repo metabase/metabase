@@ -462,6 +462,14 @@ const baseRules = [
     from: ["basic/viz-core"],
     allow: ["basic/mlv1", "basic/value-formatting", "basic/ui"],
   },
+  // Type-only import of a dayjs unit type from shared/types. oxlint surfaces
+  // `import type` to the boundaries plugin where ESLint elides it, so allow it
+  // explicitly; type imports carry no runtime dependency.
+  {
+    from: ["basic/viz-core"],
+    allow: ["shared/types"],
+    importKind: "type",
+  },
   {
     // mlv1 describes custom-viz column shapes, so it needs the custom-viz types.
     // Previously invisible: the webpack resolver could not resolve the `custom-viz`

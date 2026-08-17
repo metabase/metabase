@@ -41,8 +41,8 @@ import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import {
   type OnCreateOptions,
   useCreateQuestion,
+  useSaveQuestion,
 } from "metabase/query_builder";
-import { useSaveQuestion } from "metabase/query_builder";
 import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
