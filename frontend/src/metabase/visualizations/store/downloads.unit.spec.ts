@@ -1,159 +1,159 @@
-import { setupBasename } from "__support__/basename";
-import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import Question from "metabase-lib/v1/Question";
-import type { EntityToken } from "metabase-types/api/entity";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import type { NormalizedQueryParameter } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDataset,
+  createMockNativeDatasetQuery,
+} from "metabase-types/api/mocks";
 
 import {
   getChartFileName,
-  getDatasetDownloadUrl,
-  getDatasetParams,
+  getDownloadDatasetArgs,
   readDownloadBlob,
 } from "./downloads";
 
-describe("getDatasetResponse", () => {
-  describe("normal deployment", () => {
-    const origin = location.origin; // http://localhost
-
-    it("should handle absolute URLs", () => {
-      const url = `${origin}/embed/question/123.xlsx`;
-
-      expect(getDatasetDownloadUrl(url)).toBe(
-        `${origin}/embed/question/123.xlsx`,
-      );
-    });
-
-    it("should handle relative URLs", () => {
-      const url = "/embed/question/123.xlsx";
-
-      expect(getDatasetDownloadUrl(url)).toBe(`/embed/question/123.xlsx`);
-    });
-  });
-
-  describe("subpath deployment", () => {
-    /**
-     * We will assert that the result is a relative path without subpath.
-     * Because this URL will be pass to `frontend/src/metabase/api/client`
-     * which already takes care of the subpath (the basename)
-     */
-    const origin = "http://localhost";
-    const subpath = "/mb";
-
-    setupBasename(`${origin}${subpath}`);
-
-    it("should handle absolute URLs", () => {
-      const url = `${origin}${subpath}/embed/question/123.xlsx`;
-
-      expect(getDatasetDownloadUrl(url)).toBe(`/embed/question/123.xlsx`);
-    });
-
-    it("should handle relative URLs", () => {
-      const url = "/embed/question/123.xlsx";
-
-      expect(getDatasetDownloadUrl(url)).toBe(`/embed/question/123.xlsx`);
-    });
-  });
-});
-
-describe("getDatasetParams - embed question (token-based)", () => {
-  // Unjustified type cast. FIXME
-  const TOKEN = "fake.jwt.token" as EntityToken;
+describe("getDownloadDatasetArgs", () => {
   const question = new Question(createMockCard({ id: 1 }), undefined);
-  const result = createMockDataset();
-
-  const setLocationSearch = (search: string) => {
-    window.history.replaceState({}, "", `/${search}`);
-  };
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-    setLocationSearch("");
+  const parameters: NormalizedQueryParameter[] = [
+    { id: "p1", type: "category", value: "Brazil" },
+  ];
+  const result = createMockDataset({
+    json_query: createMockNativeDatasetQuery({ parameters }),
   });
+  const baseOpts = { type: "csv", question, result } as const;
 
-  it("uses caller-provided params for guest embeds (EMB-1549)", async () => {
-    await mockIsEmbeddingSdk(true);
-    setLocationSearch("?stale_param=stale");
-
-    const downloadParams = getDatasetParams({
-      type: "csv",
-      question,
-      result,
-      token: TOKEN,
-      params: { country: "Brazil", quarter: "Q1" },
-    });
-
-    const url = new URLSearchParams(downloadParams.params);
-    expect(JSON.parse(url.get("parameters") ?? "")).toEqual({
-      country: "Brazil",
-      quarter: "Q1",
+  it("targets the card endpoint for a saved question", () => {
+    expect(getDownloadDatasetArgs(baseOpts)).toEqual({
+      format: "csv",
+      format_rows: false,
+      pivot_results: false,
+      resourceType: "question",
+      accessedVia: "internal",
+      cardId: 1,
+      parameters,
     });
   });
 
-  it("falls back to window.location.search for static embed iframes", async () => {
-    await mockIsEmbeddingSdk(false);
-    setLocationSearch("?country=Brazil&quarter=Q1");
+  it("forwards the formatting and pivot options", () => {
+    expect(
+      getDownloadDatasetArgs({
+        ...baseOpts,
+        type: "xlsx",
+        enableFormatting: true,
+        enablePivot: true,
+      }),
+    ).toMatchObject({ format: "xlsx", format_rows: true, pivot_results: true });
+  });
 
-    const downloadParams = getDatasetParams({
-      type: "csv",
-      question,
-      result,
-      token: TOKEN,
-      params: {},
-    });
-
-    const url = new URLSearchParams(downloadParams.params);
-    expect(JSON.parse(url.get("parameters") ?? "")).toEqual({
-      country: "Brazil",
-      quarter: "Q1",
+  it("targets the public question endpoint with a uuid", () => {
+    expect(
+      getDownloadDatasetArgs({ ...baseOpts, uuid: "public-uuid" }),
+    ).toMatchObject({
+      resourceType: "question",
+      accessedVia: "public-link",
+      uuid: "public-uuid",
+      parameters,
     });
   });
 
-  it("sends an empty parameters object for guest embeds when no filter is set", async () => {
-    await mockIsEmbeddingSdk(true);
-
-    const downloadParams = getDatasetParams({
-      type: "csv",
-      question,
-      result,
-      token: TOKEN,
-      params: {},
+  it("targets the embed question endpoint with a token and the caller's params", () => {
+    expect(
+      getDownloadDatasetArgs({
+        ...baseOpts,
+        token: "fake.jwt.token",
+        params: { country: "Brazil" },
+      }),
+    ).toMatchObject({
+      resourceType: "question",
+      accessedVia: "static-embed",
+      token: "fake.jwt.token",
+      parameterValues: { country: "Brazil" },
     });
-
-    const url = new URLSearchParams(downloadParams.params);
-    expect(JSON.parse(url.get("parameters") ?? "")).toEqual({});
-  });
-});
-
-describe("getDatasetParams - public question (uuid-based)", () => {
-  const PUBLIC_UUID = "11111111-2222-3333-4444-555555555555";
-  const question = new Question(createMockCard({ id: 1 }), undefined);
-  const result = createMockDataset();
-
-  it("forwards format_rows and pivot_results to the public question endpoint (#75545)", () => {
-    const downloadParams = getDatasetParams({
-      type: "xlsx",
-      question,
-      result,
-      uuid: PUBLIC_UUID,
-      enableFormatting: true,
-      enablePivot: true,
-    });
-
-    const url = new URLSearchParams(downloadParams.params);
-    expect(url.get("format_rows")).toBe("true");
-    expect(url.get("pivot_results")).toBe("true");
   });
 
-  it("requests the UTF-8 BOM so exports open correctly in Excel", () => {
-    const downloadParams = getDatasetParams({
-      type: "csv",
-      question,
-      result,
-      uuid: PUBLIC_UUID,
+  it("targets the dashcard endpoint when a dashboard and dashcard are given", () => {
+    expect(
+      getDownloadDatasetArgs({ ...baseOpts, dashboardId: 2, dashcardId: 3 }),
+    ).toMatchObject({
+      resourceType: "dashcard",
+      accessedVia: "internal",
+      dashboardId: 2,
+      dashcardId: 3,
+      cardId: 1,
     });
+  });
 
-    const url = new URLSearchParams(downloadParams.params);
-    expect(url.get("csv_include_bom")).toBe("true");
+  it("targets the public dashcard endpoint for a public dashboard", () => {
+    expect(
+      getDownloadDatasetArgs({
+        ...baseOpts,
+        dashboardId: "dashboard-uuid",
+        dashcardId: 3,
+        uuid: "dashboard-uuid",
+      }),
+    ).toMatchObject({
+      resourceType: "dashcard",
+      accessedVia: "public-link",
+      dashboardId: "dashboard-uuid",
+      dashcardId: 3,
+    });
+  });
+
+  it("targets the embed dashcard endpoint for a static embedded dashboard", () => {
+    expect(
+      getDownloadDatasetArgs({
+        ...baseOpts,
+        dashboardId: 2,
+        dashcardId: 3,
+        token: "fake.jwt.token",
+        params: { country: "Brazil" },
+      }),
+    ).toMatchObject({
+      resourceType: "dashcard",
+      accessedVia: "static-embed",
+      token: "fake.jwt.token",
+      dashcardId: 3,
+      parameterValues: { country: "Brazil" },
+    });
+  });
+
+  it("targets the document card endpoints by document id or uuid", () => {
+    expect(
+      getDownloadDatasetArgs({ ...baseOpts, documentId: 4 }),
+    ).toMatchObject({
+      resourceType: "document-card",
+      accessedVia: "internal",
+      documentId: 4,
+    });
+    expect(
+      getDownloadDatasetArgs({ ...baseOpts, documentUuid: "document-uuid" }),
+    ).toMatchObject({
+      resourceType: "document-card",
+      accessedVia: "public-link",
+      documentUuid: "document-uuid",
+    });
+  });
+
+  it("targets the ad-hoc dataset endpoint for an unsaved question", () => {
+    const adHocQuestion = new Question(
+      createMockCard({ id: undefined }),
+      undefined,
+    );
+
+    expect(
+      getDownloadDatasetArgs({
+        ...baseOpts,
+        question: adHocQuestion,
+        visualizationSettings: { "table.pivot": true },
+      }),
+    ).toEqual({
+      format: "csv",
+      format_rows: false,
+      pivot_results: false,
+      resourceType: "ad-hoc-question",
+      query: result.json_query,
+      visualizationSettings: { "table.pivot": true },
+    });
   });
 });
 
