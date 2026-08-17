@@ -184,7 +184,11 @@
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status      :error
                  :last_evaluated_at some?}
-                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
+                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
+
+;; Out-of-range: current instance version is not covered by [0.0.1, 0.0.2).
+(deftest evaluate-advisory!-out-of-range-test
+  (with-redefs [config/mb-version-info {:tag "v1.55.0"}]
     ;; An advisory whose query names a table this version doesn't have yet. Reported as
     ;; :error before, which the notification task treats the same as :active — so instances
     ;; the version check had already cleared got notified anyway. See GDGT-2972.
@@ -204,7 +208,6 @@
         (is (=? {:match_status      :not_affected
                  :last_evaluated_at some?}
                 (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
-    ;; Out-of-range: current instance version is not covered by [0.0.1, 0.0.2).
     ;; The matching_query in these tests would throw if executed — that's how we
     ;; verify the short-circuit actually avoids running the query.
     (let [past #t "2020-01-01T00:00:00Z"]
@@ -257,10 +260,13 @@
         (matching/evaluate-advisory! advisory)
         (is (=? {:match_status      :resolved
                  :last_evaluated_at some?}
-                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
-    ;; vLOCAL_DEV / vUNKNOWN both parse to nil. An unparseable instance version
-    ;; must never produce :active — we cannot claim an instance is affected when
-    ;; we can't even compare its version to the affected ranges.
+                (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))))
+
+;; vLOCAL_DEV / vUNKNOWN both parse to nil. An unparseable instance version
+;; must never produce :active — we cannot claim an instance is affected when
+;; we can't even compare its version to the affected ranges.
+(deftest evaluate-advisory!-unparseable-version-test
+  (with-redefs [config/mb-version-info {:tag "v1.55.0"}]
     (doseq [tag ["vLOCAL_DEV" "vUNKNOWN"]]
       (testing (str "unparseable instance version " (pr-str tag) " never yields :active")
         (is (nil? (matching/parse-version tag)))
