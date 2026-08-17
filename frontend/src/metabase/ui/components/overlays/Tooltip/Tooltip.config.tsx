@@ -11,7 +11,11 @@ import TooltipStyles from "./Tooltip.module.css";
 export const tooltipOverrides: MantineThemeOverride["components"] = {
   Tooltip: Tooltip.extend({
     defaultProps: {
-      arrowSize: 10,
+      // 'arrowSize' sets the width and height of the "arrow-square",
+      // which is a square rotated 45 degrees. To make it 9px wide per Figma,
+      // we need to divide by the square root of 2.
+      arrowSize: 9 / Math.SQRT2,
+      radius: "md",
       withArrow: true,
       withinPortal: true,
       // Mantine puts Tooltip, Popover and Menu on the same "popover" tier, so a
