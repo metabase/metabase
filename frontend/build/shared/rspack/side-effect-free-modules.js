@@ -17,8 +17,8 @@ const REPO_ROOT = path.resolve(__dirname, "../../../..");
  *
  * Adding a directory here is a promise the bundler cannot verify. A violation
  * fails silently, in production only, by dropping code that was meant to run, so
- * `frontend/lint/tests/side-effect-free-modules.unit.spec.js` guards the
- * mechanically detectable half of the contract.
+ * the `metabase/no-module-side-effects` lint rule is applied to every directory
+ * listed here (see eslint.config.mjs) and reports the import-time work it can see.
  *
  * Only applies to production builds, where `optimization.sideEffects` is on.
  */
@@ -28,9 +28,22 @@ const SIDE_EFFECT_FREE_PATHS = [
   path.join(REPO_ROOT, "frontend/src/metabase/router") + path.sep,
 ];
 
+/**
+ * Files inside a side-effect-free directory that do have an import-time effect,
+ * so keep rspack's default (assume side effects) for them. An entry, and its
+ * whole import graph, is kept in every bundle that reaches it, so the list
+ * should stay short and every entry should be a fix candidate.
+ */
+const SIDE_EFFECT_FILES = [];
+
 const SIDE_EFFECT_FREE_RULE = {
   include: SIDE_EFFECT_FREE_PATHS,
+  exclude: SIDE_EFFECT_FILES,
   sideEffects: false,
 };
 
-module.exports = { SIDE_EFFECT_FREE_PATHS, SIDE_EFFECT_FREE_RULE };
+module.exports = {
+  SIDE_EFFECT_FREE_PATHS,
+  SIDE_EFFECT_FILES,
+  SIDE_EFFECT_FREE_RULE,
+};

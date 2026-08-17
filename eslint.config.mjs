@@ -23,6 +23,10 @@ import i18nextPlugin from "eslint-plugin-i18next";
 import ttagPlugin from "eslint-plugin-ttag";
 
 import boundaries from "eslint-plugin-boundaries";
+import {
+  SIDE_EFFECT_FILES,
+  SIDE_EFFECT_FREE_PATHS,
+} from "./frontend/build/shared/rspack/side-effect-free-modules.js";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
 import {
   elements as boundaryElements,
@@ -1148,6 +1152,49 @@ const configs = [
     rules: {
       // Disable new v9 rule - fixing this is out of scope for eslint upgrade
       "storybook/no-renderer-packages": "off",
+    },
+  },
+
+  // ============================================
+  // SIDE-EFFECT-FREE MODULES
+  // ============================================
+  {
+    // Rspack drops any file in these directories whose exports go unused, so an
+    // import-time effect there is silently lost in production. Declaring a
+    // directory in SIDE_EFFECT_FREE_PATHS enrols it here.
+    files: SIDE_EFFECT_FREE_PATHS.map(
+      (dir) => `${path.relative(__dirname, dir)}/**/*.{ts,tsx,js,jsx}`,
+    ),
+    ignores: [
+      ...SIDE_EFFECT_FILES.map((file) => path.relative(__dirname, file)),
+      "**/*.unit.spec.*",
+      "**/*.stories.*",
+      "**/tests/**",
+      "**/__support__/**",
+      "**/*.d.ts",
+    ],
+    rules: {
+      "metabase/no-module-side-effects": [
+        "error",
+        {
+          sideEffectFiles: SIDE_EFFECT_FILES,
+          // Alias roots that resolve inside the repo (the tsconfig `paths` roots),
+          // so a module-scope call into them counts as our own code
+          internalModules: [
+            "metabase",
+            "metabase-lib",
+            "metabase-types",
+            "metabase-enterprise",
+            "embedding-sdk-bundle",
+            "embedding-sdk-shared",
+            "embedding-sdk-package",
+            "embedding",
+            "custom-viz",
+            "cljs",
+            "__support__",
+          ],
+        },
+      ],
     },
   },
 ];

@@ -15,6 +15,7 @@ module.exports = {
     "no-external-references-for-sdk-package-code": require("./rules/no-external-references-for-sdk-package-code"),
     "no-literal-metabase-strings": require("./rules/no-literal-metabase-strings"),
     "no-locale-with-intl-functions": require("./rules/no-locale-with-intl-functions"),
+    "no-module-side-effects": require("./rules/no-module-side-effects"),
     "no-oss-reinitialize-import": require("./rules/no-oss-reinitialize-import"),
     "no-unconditional-metabase-links-render": require("./rules/no-unconditional-metabase-links-render"),
     "no-unordered-test-helpers": require("./rules/no-unordered-test-helpers"),
