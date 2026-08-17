@@ -96,9 +96,9 @@
 
 (defn- store-meter-name-conflict?
   [exception]
-  (boolean
-   (some #(and (string? %) (str/includes? % store-meter-name-conflict-message))
-         (tree-seq coll? seq (ex-data exception)))))
+  (let [upsert-error (:upsert-add-ons (ex-data exception))]
+    (boolean (and (string? upsert-error)
+                  (str/includes? upsert-error store-meter-name-conflict-message)))))
 
 (defn- handle-store-api-error
   "Handle exceptions from Store API calls and return appropriate error response."
