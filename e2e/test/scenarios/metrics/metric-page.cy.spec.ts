@@ -208,6 +208,7 @@ describe("scenarios > metrics > metric page", () => {
 
       H.addNotificationHandlerChannel("Bar Hook");
 
+      H.selectScheduleTime();
       cy.findByRole("button", { name: "Done" }).click();
 
       cy.wait("@createAlert").then(({ response }) => {

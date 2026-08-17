@@ -1,7 +1,13 @@
 import { c, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
+import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
+import type {
+  ScheduleBuilderValue,
+  ScheduleValue,
+} from "metabase/common/components/Schedule/types";
+import { isScheduleCronValue } from "metabase/common/components/Schedule/types";
+import { getScheduleDefaultsWithoutHour } from "metabase/common/components/Schedule/utils";
 import type { NotificationListItem } from "metabase/notifications/types";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { getEmailDomain, isEmail } from "metabase/utils/email";
@@ -28,7 +34,6 @@ import type {
   NotificationHandlerSlack,
   NotificationRecipient,
   NotificationRecipientRawValue,
-  ScheduleSettings,
   UpdateAlertNotificationRequest,
   User,
   UserId,
@@ -37,13 +42,9 @@ import type {
 
 import type { NotificationTriggerOption } from "./modals/CreateOrEditQuestionAlertModal/types";
 
-export const DEFAULT_ALERT_CRON_SCHEDULE = "0 0 8 * * ? *";
-export const DEFAULT_ALERT_SCHEDULE: ScheduleSettings = {
+export const DEFAULT_ALERT_SCHEDULE: ScheduleBuilderValue = {
   schedule_type: "daily",
-  schedule_day: null,
-  schedule_frame: null,
-  schedule_hour: 8,
-  schedule_minute: 0,
+  ...getScheduleDefaultsWithoutHour("daily"),
 };
 
 const getDefaultChannelConfig = ({
@@ -135,14 +136,8 @@ export const getDefaultQuestionAlertRequest = ({
       currentUserId,
       userCanAccessSettings,
     }),
-    subscriptions: [
-      {
-        type: "notification-subscription/cron",
-        event_name: null,
-        cron_schedule: DEFAULT_ALERT_CRON_SCHEDULE,
-        ui_display_type: "cron/builder",
-      },
-    ],
+    // A new alert has no subscription until the user picks a time
+    subscriptions: [],
   };
 };
 
@@ -267,6 +262,7 @@ export function alertIsValid(
 
   return (
     channelSpec?.channels &&
+    notification.subscriptions.length > 0 &&
     handlers.length > 0 &&
     handlers.every((handlers) => channelIsValid(handlers)) &&
     handlers.every((c) => {
@@ -369,29 +365,40 @@ export const getNotificationHandlersGroupedByTypes = (
 export const formatNotificationSchedule = (
   subscription: NotificationCronSubscription,
 ): string | null => {
-  const schedule = cronToScheduleSettings(
-    subscription.cron_schedule,
-    subscription.ui_display_type === "cron/raw",
-  );
+  const value: ScheduleValue | null =
+    subscription.ui_display_type === "cron/raw"
+      ? { schedule_type: "cron", cron: subscription.cron_schedule }
+      : cronToBuilderValue(subscription.cron_schedule);
 
   return (
-    (schedule &&
-      formatNotificationCheckSchedule(schedule, subscription.cron_schedule)) ||
+    (value &&
+      formatNotificationCheckSchedule(value, subscription.cron_schedule)) ||
     null
   );
 };
 
 export const formatNotificationCheckSchedule = (
-  {
+  value: ScheduleValue,
+  cronSchedule: string,
+) => {
+  const options = MetabaseSettings.formattingOptions();
+
+  if (isScheduleCronValue(value)) {
+    const explanation = getScheduleExplanation(cronSchedule);
+    return explanation
+      ? c(
+          "{0} is a human-readable schedule description, e.g. 'every day at 8:00 AM'",
+        ).t`Check ${explanation}`
+      : null;
+  }
+
+  const {
     schedule_type,
     schedule_minute,
     schedule_hour,
     schedule_day,
     schedule_frame,
-  }: ScheduleSettings,
-  cronSchedule: string,
-) => {
-  const options = MetabaseSettings.formattingOptions();
+  } = value;
 
   switch (schedule_type) {
     case "every_n_minutes":
@@ -430,12 +437,6 @@ export const formatNotificationCheckSchedule = (
       }
       break;
     }
-    case "cron":
-      try {
-        return t`Check ${getScheduleExplanation(cronSchedule)}`;
-      } catch {
-        return null;
-      }
   }
 
   return null;
@@ -444,7 +445,7 @@ export const formatNotificationCheckSchedule = (
 export const formatNotificationScheduleDescription = ({
   schedule_type,
   schedule_hour,
-}: ScheduleSettings) => {
+}: ScheduleBuilderValue) => {
   switch (schedule_type) {
     case "daily":
     case "weekly":

@@ -405,15 +405,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         !didTrackFirstNonTableChartGeneratedRef.current &&
         isNonTable
       ) {
-        if (card) {
-          setDidFirstNonTableChartRender(card);
+        if (card?.display) {
+          setDidFirstNonTableChartRender(card.display);
         }
         didTrackFirstNonTableChartGeneratedRef.current = true;
       }
     },
     [
       isAdmin,
-      card,
+      card?.display,
       didFirstNonTableChartGenerated,
       setDidFirstNonTableChartRender,
     ],

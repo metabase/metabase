@@ -221,6 +221,102 @@
   :export?    false
   :setter     (partial set-trimmed-string! :llm-moonshot-api-key))
 
+;;; ------------------------------------ Google Gemini Enterprise Agent Platform --------------------------------
+;;; The Gemini Enterprise Agent Platform (formerly Vertex AI). Every request applies to one Google Cloud project. The
+;;; project ID is necessary. The location is optional and defaults to `global`.
+
+(defsetting llm-google-service-account-key
+  (deferred-tru "A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-trimmed-string! :llm-google-service-account-key))
+
+(defsetting llm-google-oauth-access-token
+  (deferred-tru "A short-lived OAuth2 access token for the Gemini Enterprise Agent Platform (e.g. from `gcloud auth print-access-token`). Useful for testing.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :setter      (partial set-trimmed-string! :llm-google-oauth-access-token))
+
+(def ^:private google-project-id-pattern
+  "Matches a Google Cloud project ID: 6 to 30 characters of lowercase letters, digits and hyphens, starting with a
+  letter and not ending with a hyphen.
+  https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects"
+  #"[a-z][a-z0-9-]{4,28}[a-z0-9]")
+
+(defn valid-google-project-id?
+  "True if `project-id` looks like a valid google project id."
+  [project-id]
+  (boolean (and (string? project-id)
+                (re-matches google-project-id-pattern project-id))))
+
+(def ^:private google-location-pattern
+  "Matches a Google Cloud location ID, e.g. `us-central1`: hyphen-separated segments of lowercase letters and digits,
+  the first of which starts with a letter."
+  #"[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
+
+(def ^:private google-location-max-length
+  "The longest location that still leaves a legal DNS label in `{location}-aiplatform.googleapis.com`.
+  A label holds 63 characters and the `-aiplatform` suffix takes 11 of them."
+  52)
+
+(defn valid-google-location?
+  "True if `location` can be spliced into a Gemini Enterprise Agent Platform request host.
+  A location becomes a DNS label of that host, so a value that is not one cannot be sent.
+  https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations"
+  [location]
+  (boolean (and (<= (count location) google-location-max-length)
+                (re-matches google-location-pattern location))))
+
+(defn- set-google-project-id!
+  [new-value]
+  (let [project-id (trimmed-string new-value)]
+    (when (and project-id (not (valid-google-project-id? project-id)))
+      (throw (ex-info (tru (str "{0} is not a valid Google Cloud project ID. Use the project ID — 6 to 30 lowercase "
+                                "letters, digits and hyphens — rather than the project name or number.")
+                           (pr-str project-id))
+                      {:status-code 400})))
+    (setting/set-value-of-type! :string :llm-google-project-id project-id)))
+
+(defsetting llm-google-project-id
+  (deferred-tru "The Google Cloud project ID for the Gemini Enterprise Agent Platform.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :export?     false
+  :setter      set-google-project-id!)
+
+(defn- set-google-location!
+  [new-value]
+  (let [location (trimmed-string new-value)]
+    (when (and location (not (valid-google-location? location)))
+      (throw (ex-info (tru (str "{0} is not a valid Google Cloud location. Use a location ID like \"us-central1\", "
+                                "or leave it blank to use the global location.")
+                           (pr-str location))
+                      {:status-code 400})))
+    (setting/set-value-of-type! :string :llm-google-location location)))
+
+(defsetting llm-google-location
+  (deferred-tru "The Google Cloud location for the Gemini Enterprise Agent Platform (e.g. us-central1). Defaults to global.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :export?     false
+  :setter      set-google-location!)
+
+(def google-global-api-base-url
+  "Google's global Gemini Enterprise Agent Platform host, and the default for [[llm-google-api-base-url]].
+  It serves only the `global` location. A regional location uses `https://{location}-aiplatform.googleapis.com`, and
+  the `us` and `eu` multi-region locations use `https://aiplatform.{location}.rep.googleapis.com`."
+  "https://aiplatform.googleapis.com")
+
+(defsetting llm-google-api-base-url
+  (deferred-tru "The Gemini Enterprise Agent Platform API base URL. Leave unset to derive it from the location.")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     google-global-api-base-url
+  :export?     false
+  :setter      (partial set-normalized-base-url! :llm-google-api-base-url))
+
 ;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
 
 (defsetting llm-bedrock-access-key-id
@@ -258,16 +354,6 @@
   :default     "us-east-1"
   :export?     false
   :setter      set-bedrock-region!)
-
-(defsetting llm-bedrock-configured?
-  "Whether the required AWS Bedrock credentials are configured."
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :export?    false
-  :getter     #(boolean (and (trimmed-string (llm-bedrock-access-key-id))
-                             (trimmed-string (llm-bedrock-secret-access-key))))
-  :doc        false)
 
 ;;; ----------------------------------------------- Microsoft Azure ---------------------------------------------
 
