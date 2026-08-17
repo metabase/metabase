@@ -101,6 +101,14 @@ runs:
       # vector reaches clojure -X as a single argument.
       run: |
         BASE="clojure -X:dev:ci:${{ inputs.edition }}:${{ inputs.edition }}-dev:drivers:drivers-dev:test"
+        # `:profile-tests` overrides `:test`'s exec-fn, so it has to come last. See dev.profile-tests.
+        # The `profiled` output is what the collection steps below key off, so that the decision is
+        # recorded by the step that acts on it rather than re-derived from the environment.
+        if [ "$PROFILE_TESTS" = "true" ]; then
+          echo "Profiling this run; a flamegraph will be attached to the job."
+          echo "profiled=true" >> "$GITHUB_OUTPUT"
+          BASE="$BASE:profile-tests"
+        fi
         if [ "${{ inputs.granular-rerun }}" = "true" ] && [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
           echo "Granular rerun of previously-failed tests: $(cat target/failed-tests)"
           $BASE :only "$(cat target/failed-tests)"
@@ -112,6 +120,35 @@ runs:
       # Keep this step continue-on-error because the quarantine gate below controls whether it
       # ultimately fails.
       continue-on-error: true
+
+    # Unlike the JUnit report below, this uploads on a green run too — a suite that passes slowly is
+    # exactly what profiling is for. Only the rendered flamegraph is kept: the raw collapsed stacks it
+    # was built from run to hundreds of MB on a long suite, and are reproducible locally.
+    - name: Summarize test wall times
+      if: ${{ !cancelled() && steps.run-test.outputs.profiled == 'true' }}
+      continue-on-error: true
+      shell: bash
+      run: |
+        {
+          echo "### Slowest test namespaces (seconds)"
+          echo '```'
+          grep -h '<testsuite' target/junit/*.xml 2>/dev/null \
+            | sed -E 's|.*<testsuite name="([^"]*)" time="([^"]*)".*|\2 \1|' \
+            | sort -rn | head -25
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload profile
+      if: ${{ !cancelled() && steps.run-test.outputs.profiled == 'true' }}
+      continue-on-error: true
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ format('profile-{0}{1}', inputs.junit-name, inputs.artifact-suffix && format('-{0}', inputs.artifact-suffix) || '') }}
+        path: |
+          target/clj-async-profiler/results/*flamegraph.html
+          target/junit/**/*.xml
+        retention-days: 14
+        if-no-files-found: warn
 
     - name: Report failed tests to ci-conductor
       if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}

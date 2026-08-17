@@ -14,12 +14,14 @@
   `:profile-event`    - async-profiler event (default `:wall`). `:wall` samples blocked threads too, which is
                         what you want for tests dominated by network round-trips; `:cpu` would miss them
                         entirely. `:cpu` additionally needs `kernel.perf_event_paranoid <= 1`.
-  `:profile-interval` - sampling interval in nanoseconds (default 10ms). The 1ms default is too fine for a
-                        suite that runs for tens of minutes.
+  `:profile-interval` - sampling interval in nanoseconds (default 20ms). async-profiler's own 1ms default
+                        is far too fine for a suite that runs for tens of minutes: raw stacks accumulate
+                        at roughly 7 MB per minute of profiling at 10ms, and every halving of the
+                        interval doubles that.
 
   Returns nothing; exits the JVM with the test result."
   [{:keys [profile-event profile-interval]
-    :or   {profile-event :wall, profile-interval 10000000}
+    :or   {profile-event :wall, profile-interval 20000000}
     :as   options}]
   (prof/start {:event profile-event, :interval profile-interval, :threads true})
   (let [summary (try
