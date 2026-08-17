@@ -1,0 +1,58 @@
+// The module's public interface.
+// Names absent here are module-private on purpose — add them only when a real consumer needs them.
+//
+// Only re-exports live here, so a bundle that imports one name links to that
+// file alone and the query builder page stays in its own chunk.
+
+export { queryBuilderReducer } from "./store/reducer";
+export type { QueryBuilderStoreState } from "./store/state";
+export { navigateBackToDashboard } from "./store/actions";
+export {
+  getCard,
+  getIsSavedQuestionChanged,
+  getOriginalQuestion,
+  getQuestion,
+} from "./store/question-selectors";
+
+export { loadCard } from "./actions/core/card";
+export { type QueryParams, resolveCards } from "./actions/core/initializeQB";
+export { getParameterValuesForQuestion } from "./actions/core/parameterUtils";
+export { computeQuestionPivotTable } from "./actions/core/pivot-table";
+export { zoomInRow } from "./actions/zoom";
+
+export {
+  type AggregationItem,
+  getAggregationItems,
+} from "./utils/get-aggregation-items";
+export { getAdHocQuestionWithVizSettings } from "./utils/viz-settings";
+
+export type { UpdateQueryHookProps } from "./hooks/types";
+export { useBreakoutQueryHandlers } from "./hooks/use-breakout-query-handlers";
+
+export { QueryBuilder } from "./containers/QueryBuilder";
+export {
+  type OnCreateOptions,
+  useCreateQuestion,
+} from "./containers/use-create-question";
+export { useSaveQuestion } from "./containers/use-save-question";
+
+export { ChartTypeSettings } from "./components/chart-type-selector/ChartTypeSettings/ChartTypeSettings";
+export { useQuestionVisualizationState } from "./components/chart-type-selector/use-question-visualization-state";
+export { MetabotQueryBuilder } from "./components/MetabotQueryBuilder/MetabotQueryBuilder";
+export { PublicOrEmbeddedQuestionDownloadPopover } from "./components/QuestionDownloadPopover/QuestionDownloadPopover";
+export { QuestionHashRedirect } from "./components/QuestionHashRedirect";
+export { getBreakoutListItem } from "./components/view/sidebars/SummarizeSidebar/BreakoutColumnList/util";
+export type { ListItem as BreakoutListItem } from "./components/view/sidebars/SummarizeSidebar/BreakoutColumnList/types";
+export {
+  getAdHocQuestionDescription,
+  shouldRenderAdhocDescription,
+} from "./components/view/ViewHeader/components/AdHocQuestionDescription/AdHocQuestionDescription";
+export {
+  describeQueryStage,
+  getInfoStageIndex,
+} from "./components/view/ViewHeader/components/AdHocQuestionDescription/utils";
+export { HeadBreadcrumbs } from "./components/view/ViewHeader/components/HeaderBreadcrumbs/HeaderBreadcrumbs";
+export { QueryBuilderBackButton } from "./components/view/ViewHeader/components/QueryBuilderBackButton/QueryBuilderBackButton";
+export type { DataSourcePart } from "./components/view/ViewHeader/components/QuestionDataSource/utils";
+export { QuestionFiltersHeader } from "./components/view/ViewHeader/components/QuestionFiltersHeader/QuestionFiltersHeader";
+export { ViewHeading } from "./components/view/ViewSection";

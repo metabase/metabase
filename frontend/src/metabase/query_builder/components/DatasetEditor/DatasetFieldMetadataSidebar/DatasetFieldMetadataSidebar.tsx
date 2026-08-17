@@ -21,8 +21,6 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import type { FieldWithMaybeIndex } from "metabase/query_builder/model-indexes/actions";
-import { canIndexField } from "metabase/query_builder/model-indexes/utils";
 import { Box, Radio, Stack, Tabs } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import {
@@ -43,6 +41,8 @@ import type {
 } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 
+import type { FieldWithMaybeIndex } from "../../../model-indexes/actions";
+import { canIndexField } from "../../../model-indexes/utils";
 import { EDITOR_TAB_INDEXES } from "../constants";
 
 import { DatasetFieldMetadataCurrencyPicker } from "./DatasetFieldMetadataCurrencyPicker";

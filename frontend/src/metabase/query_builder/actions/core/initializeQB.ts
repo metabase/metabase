@@ -6,15 +6,11 @@ import {
   parseHash,
 } from "metabase/common/utils/card";
 import { canUserCreateQueries, getUser } from "metabase/current-user";
-import {
-  getIsEditingInDashboard,
-  getNotebookNativePreviewSidebarWidth,
-} from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
 import { updateMetadata } from "metabase/redux/metadata";
-import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
+import { INITIALIZE_QB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
   GetState,
@@ -37,6 +33,11 @@ import type { Card, SegmentId, UnsavedCard } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
 
+import { resetQB } from "../../store/actions";
+import {
+  getIsEditingInDashboard,
+  getNotebookNativePreviewSidebarWidth,
+} from "../../store/selectors";
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { cancelQuery, runQuestionQuery } from "../querying";
 import { updateUrl } from "../url";

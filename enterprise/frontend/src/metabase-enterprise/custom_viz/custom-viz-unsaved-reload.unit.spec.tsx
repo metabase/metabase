@@ -12,7 +12,7 @@ import {
   getCard,
   getFirstQueryResult,
   getIsRunning,
-} from "metabase/query_builder/selectors";
+} from "metabase/query_builder/store/selectors";
 import type { Dispatch } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualization } from "metabase/visualizations";

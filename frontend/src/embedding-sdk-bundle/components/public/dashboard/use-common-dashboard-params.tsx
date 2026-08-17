@@ -4,11 +4,11 @@ import { usePrevious, useUnmount } from "react-use";
 import { useSdkDispatch, useSdkStore } from "embedding-sdk-bundle/store";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
+import { navigateBackToDashboard } from "metabase/query_builder";
 import {
   NAVIGATE_TO_NEW_CARD,
   reset as dashboardReset,
 } from "metabase/redux/dashboard";
-import { navigateBackToDashboard } from "metabase/redux/query-builder";
 import type { StoreDashboard } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
