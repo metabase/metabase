@@ -311,29 +311,21 @@ jobs:
     timeout-minutes: 50
     strategy:
       fail-fast: false
+      # HOW MANY RUNNERS — the only knob. One entry per runner, read back below as
+      # `strategy.job-total`, so the count cannot drift out of sync (a count above the real
+      # number of runners would silently drop whole partitions and still report green).
+      # Keep the matrix purely one-entry-per-runner for that reason.
+      #
+      # Each runner runs `jvms-per-runner` concurrent test JVMs, and
+      # `.github/scripts/run-backend-test-jvms.sh` derives `:partition/total` and this
+      # runner's partition indexes -- replacing the hand-written `:partition/*` flags that
+      # used to live in test-args. Databricks is the same shape as BigQuery: the warehouse
+      # is remote, so the runner waits on it rather than working (0.30-0.65 s/test, 42-71%
+      # of each partition single-threaded because hawk runs namespaces one at a time), and
+      # its test schemas are named deterministically with creation skipped when they
+      # already exist, so concurrent processes share them.
       matrix:
-        job:
-          - name: Driver Tests Part 1
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 0
-          - name: Driver Tests Part 2
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 1
-          - name: Driver Tests Part 3
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 2
+        runner-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -344,7 +336,7 @@ jobs:
       MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
-    name: Databricks
+    name: Databricks Driver Tests ${{ matrix.runner-index }}
     steps:
     - uses: actions/checkout@v6
     - name: Test Databricks driver
@@ -352,8 +344,15 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
-        artifact-suffix: ${{ matrix.job.name }}
-        test-args: ${{ matrix.job.test-args }}
+        artifact-suffix: runner-${{ matrix.runner-index }}
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
+          :fail-fast? true
+        runner-index: ${{ matrix.runner-index }}
+        runner-count: ${{ strategy.job-total }}
+        jvms-per-runner: '2'
+        heap-per-jvm: '4g'
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-databricks-multi-catalog-ee:
@@ -363,29 +362,21 @@ jobs:
     timeout-minutes: 50
     strategy:
       fail-fast: false
+      # HOW MANY RUNNERS — the only knob. One entry per runner, read back below as
+      # `strategy.job-total`, so the count cannot drift out of sync (a count above the real
+      # number of runners would silently drop whole partitions and still report green).
+      # Keep the matrix purely one-entry-per-runner for that reason.
+      #
+      # Each runner runs `jvms-per-runner` concurrent test JVMs, and
+      # `.github/scripts/run-backend-test-jvms.sh` derives `:partition/total` and this
+      # runner's partition indexes -- replacing the hand-written `:partition/*` flags that
+      # used to live in test-args. Databricks is the same shape as BigQuery: the warehouse
+      # is remote, so the runner waits on it rather than working (0.30-0.65 s/test, 42-71%
+      # of each partition single-threaded because hawk runs namespaces one at a time), and
+      # its test schemas are named deterministically with creation skipped when they
+      # already exist, so concurrent processes share them.
       matrix:
-        job:
-          - name: Driver Tests Part 1
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 0
-          - name: Driver Tests Part 2
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 1
-          - name: Driver Tests Part 3
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 2
+        runner-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -397,7 +388,7 @@ jobs:
       MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
-    name: Databricks (Multi-Catalog)
+    name: Databricks (Multi-Catalog) Driver Tests ${{ matrix.runner-index }}
     steps:
     - uses: actions/checkout@v6
     - name: Test Databricks driver with multi-catalog
@@ -405,8 +396,15 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-multi-catalog-ee'
-        artifact-suffix: ${{ matrix.job.name }}
-        test-args: ${{ matrix.job.test-args }}
+        artifact-suffix: runner-${{ matrix.runner-index }}
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
+          :fail-fast? true
+        runner-index: ${{ matrix.runner-index }}
+        runner-count: ${{ strategy.job-total }}
+        jvms-per-runner: '2'
+        heap-per-jvm: '4g'
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-h2:
