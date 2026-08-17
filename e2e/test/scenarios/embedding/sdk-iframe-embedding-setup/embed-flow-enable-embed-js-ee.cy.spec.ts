@@ -16,7 +16,7 @@ const DATA_BY_EMBEDDING_TYPE = {
     cardTestId: "guest-embeds-setting-card",
     cardText:
       "To continue, enable guest embeds and agree to the usage conditions.",
-    embeddingSettingName: "enable-embedding-static",
+    embeddingSettingName: "enable-embedding-modular",
     showTermsSettingName: "show-static-embed-terms",
     tooltipText:
       /You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature/,
@@ -28,7 +28,7 @@ const DATA_BY_EMBEDDING_TYPE = {
     cardTestId: "sdk-setting-card",
     cardText:
       "To continue, enable modular embedding and agree to the usage conditions.",
-    embeddingSettingName: "enable-embedding-simple",
+    embeddingSettingName: "enable-embedding-modular",
     showTermsSettingName: "show-simple-embed-terms",
     tooltipText: /Sharing Metabase accounts is a security risk/,
   },
@@ -170,7 +170,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (EE)"
   });
 
   it("shows guest embed status bar when guest embedding is toggled from disabled to enabled state", () => {
-    H.updateSetting("enable-embedding-static", false);
+    H.updateSetting("enable-embedding-modular", false);
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 

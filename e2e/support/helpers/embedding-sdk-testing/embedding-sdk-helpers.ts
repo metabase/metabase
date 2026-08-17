@@ -78,7 +78,7 @@ export function signInAsAdminAndEnableEmbeddingSdk() {
   activateToken("bleeding-edge");
   enableJwtAuth();
   cy.request("PUT", "/api/setting", {
-    "enable-embedding-sdk": true,
+    "enable-embedding-modular": true,
 
     // Needed so CORS headers (e.g. Access-Control-Expose-Headers) are sent in responses,
     // and we can assert them in tests.

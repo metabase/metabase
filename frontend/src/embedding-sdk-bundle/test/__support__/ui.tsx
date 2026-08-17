@@ -55,7 +55,7 @@ export function renderWithSDKProviders(
   // Without this, SDK components will not render due to missing token features and settings.
   if (!storeInitialState.settings && seededSettings) {
     seededSettings.values["token-features"].embedding_sdk = true;
-    seededSettings.values["enable-embedding-sdk"] = true;
+    seededSettings.values["enable-embedding-modular"] = true;
   }
 
   if (seededSettings?.values) {

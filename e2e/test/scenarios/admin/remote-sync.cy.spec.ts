@@ -776,7 +776,7 @@ describe("Remote Sync", () => {
       H.copySyncedCollectionFixture();
       H.commitToRepo();
       // Enable static embedding instance-wide so the Embed option is offered.
-      H.updateSetting("enable-embedding-static", true);
+      H.updateSetting("enable-embedding-modular", true);
       H.configureGitAndPullChanges("read-only");
 
       cy.visit("/");

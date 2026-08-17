@@ -17,7 +17,7 @@ import {
 import { GuestEmbedsSettings } from "./GuestEmbedsSettings";
 
 const setup = async ({ enabled }: { enabled: boolean }) => {
-  const settings = createMockSettings({ "enable-embedding-static": enabled });
+  const settings = createMockSettings({ "enable-embedding-modular": enabled });
 
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
