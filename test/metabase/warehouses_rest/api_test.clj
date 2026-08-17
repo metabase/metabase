@@ -47,7 +47,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
-   (java.util.concurrent CountDownLatch)
+   (java.util.concurrent CountDownLatch Executors)
    (org.quartz JobDetail TriggerKey)))
 
 (set! *warn-on-reflection* true)
@@ -1541,9 +1541,15 @@
 (deftest sync-schema-executes-when-executor-busy-test
   (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"
     (let [sync-called?  (promise)
-          blocker-latch (CountDownLatch. 1)]
+          blocker-latch (CountDownLatch. 1)
+          ;; Run on a pool of our own: the shared one is process-wide and holds fire-and-forget tasks left
+          ;; behind by earlier tests, each with the default two-hour timeout. One of those still running
+          ;; ahead of the blocker delays everything below it past the deref timeout, which is what happens
+          ;; on driver CI, where those leftover tasks are real syncs over the network.
+          pool          (Executors/newSingleThreadExecutor)]
       (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details (:details (mt/db))}]
-        (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
+        (with-redefs [quick-task/executor             (delay pool)
+                      sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
                       analyze/analyze-db!             (constantly nil)]
           ;; Submit a blocking task with a 1-second timeout so it gets cancelled quickly.
           ;; This simulates a stuck sync (e.g., hanging JDBC connection) that exceeds
@@ -1557,7 +1563,8 @@
             (testing "sync executes after stuck task is evicted"
               (is (true? (deref sync-called? 10000 :sync-never-called))))
             (finally
-              (.countDown blocker-latch))))))))
+              (.countDown blocker-latch)
+              (.shutdownNow pool))))))))
 
 (deftest ^:parallel dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"
@@ -1584,22 +1591,28 @@
 (deftest can-rescan-fieldvalues-for-a-db
   (testing "Can we RESCAN all the FieldValues for a DB?"
     (mt/with-premium-features #{:audit-app}
-      (let [update-field-values-called? (promise)]
-        (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
-          (with-redefs [sync.field-values/update-field-values! (fn [synced-db]
-                                                                 (when (= (u/the-id synced-db) (u/the-id db))
-                                                                   (deliver update-field-values-called? :sync-called)))]
-            (snowplow-test/with-fake-snowplow-collector
-              (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
-              (is (= :sync-called
-                     (deref update-field-values-called? long-timeout :sync-never-called)))
-              (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
-              (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
-                                  :details :id)))
-              (testing "triggers snowplow event"
-                (is (=?
-                     {"event" "database_manual_scan", "target_id" (u/the-id db)}
-                     (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
+      (let [update-field-values-called? (promise)
+            ;; Isolated pool, for the same reasons as in `sync-schema-executes-when-executor-busy-test`.
+            pool                        (Executors/newSingleThreadExecutor)]
+        (try
+          (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
+            (with-redefs [quick-task/executor                   (delay pool)
+                          sync.field-values/update-field-values! (fn [synced-db]
+                                                                   (when (= (u/the-id synced-db) (u/the-id db))
+                                                                     (deliver update-field-values-called? :sync-called)))]
+              (snowplow-test/with-fake-snowplow-collector
+                (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
+                (is (= :sync-called
+                       (deref update-field-values-called? long-timeout :sync-never-called)))
+                (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
+                (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
+                                    :details :id)))
+                (testing "triggers snowplow event"
+                  (is (=?
+                       {"event" "database_manual_scan", "target_id" (u/the-id db)}
+                       (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))
+          (finally
+            (.shutdownNow pool)))))))
 
 (deftest ^:parallel nonadmins-cant-trigger-rescan-test
   (testing "Non-admins should not be allowed to trigger re-scan"
