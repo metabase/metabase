@@ -162,6 +162,16 @@ run_partition() {
   local idx="$1" jvm_dir="$2" rc line
   (
     cd "$jvm_dir" || exit 1
+    # An EXTERNAL application database is shared state the way `target/junit` is. The
+    # `-Dmb.db.in.memory=true` that gives every process its own H2 app DB only applies when
+    # the app-db type is H2 (see `metabase.app-db.env/broken-out-details`); a job setting
+    # `MB_DB_TYPE=postgres|mysql` points every JVM at one real database, where they would
+    # race each other's Liquibase migrations and delete each other's `with-temp` rows. Give
+    # each JVM its own, and let the caller create them (this script has no DB client).
+    if [ -n "${MB_DB_DBNAME:-}" ]; then
+      export MB_DB_DBNAME="${MB_DB_DBNAME}_p$idx"
+      echo "using application database $MB_DB_DBNAME"
+    fi
     # `-J` options land after the aliases' `:jvm-opts`, so these override the `-Xms12g
     # -Xmx12g` the `:ci` alias sets for a runner running a single JVM. Xms is left small
     # on purpose: N JVMs sharing one runner should grow into memory on demand rather than

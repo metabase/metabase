@@ -794,10 +794,19 @@ jobs:
               enable-ssl-tests: 'true'
               enable-aws-iam-tests: 'true'
         job:
+          # Same ONE runner as before, splitting the suite across 2 JVMs instead of 1.
+          # Measured on this exact suite: 29m8s -> 15m58s, with no extra runner. Postgres
+          # spends 56% of the suite single-threaded because hawk runs namespaces strictly
+          # one at a time (`:multithread? :vars`), and that idle capacity is there whether
+          # the wait is a network hop or a local socket -- which is why this pays off even
+          # though the database shares the runner. See
+          # `.github/scripts/run-backend-test-jvms.sh`.
           - name: Driver Tests
             test-args: >-
               :only-tags [:mb/driver-tests]
             exclude-tag: ':mb/transforms-python-test'
+            runner-index: 0
+            jvms-per-runner: 2
           - name: Transforms Python Tests
             test-args: >-
               :only-tags [:mb/transforms-python-test]
@@ -855,6 +864,19 @@ jobs:
         uses: ./.github/actions/setup-python-runner
         with:
           metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      # Unlike every other driver, this job's APPLICATION database is the Postgres container
+      # too (`MB_DB_TYPE`), and `-Dmb.db.in.memory=true` only gives a process its own app DB
+      # when that type is H2 (`metabase.app-db.env/broken-out-details`). Concurrent JVMs
+      # would otherwise share one `mb_test` and race each other's Liquibase migrations and
+      # `with-temp` cleanup -- silent corruption, not slowness. The test script gives each
+      # JVM `mb_test_p<partition>`; they have to exist first. Skipped for the single-JVM
+      # Python leg, which keeps plain `mb_test`.
+      - name: Create per-JVM application databases
+        if: ${{ matrix.job.jvms-per-runner }}
+        run: |
+          for i in $(seq 0 $(( ${{ matrix.job.jvms-per-runner }} - 1 ))); do
+            psql -h localhost -U mb_test -d mb_test -c "CREATE DATABASE mb_test_p$i"
+          done
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -864,6 +886,11 @@ jobs:
           test-args: >-
             ${{ matrix.job.test-args }}
             :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
+          # Empty for the Python leg, which stays on one unpartitioned JVM.
+          runner-index: ${{ matrix.job.runner-index }}
+          runner-count: 1
+          jvms-per-runner: ${{ matrix.job.jvms-per-runner }}
+          heap-per-jvm: '4g'
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
       - name: Cleanup python-runner
         if: always()
