@@ -10,6 +10,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { loadVisualizationComponents } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -41,6 +42,10 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["table"]));
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -253,7 +258,7 @@ describe("dashboard client-side sorting", () => {
     mockGetBoundingClientRect();
   });
 
-  it("sorts numeric, null, and text values in small datasets (#67756)", async () => {
+  it("sorts numeric, null, and text values in small datasets (#67756)", () => {
     const series = [
       createMockSingleSeries(
         { display: "table" },
@@ -285,7 +290,7 @@ describe("dashboard client-side sorting", () => {
       <Visualization rawSeries={series} isDashboard width={600} height={400} />,
     );
 
-    const idHeader = await screen.findByRole("columnheader", { name: "id" });
+    const idHeader = screen.getByRole("columnheader", { name: "id" });
     const idClickTarget = within(idHeader).getByTestId("cell-data");
 
     fireEvent.mouseDown(idClickTarget, { clientX: 0, clientY: 0 });

@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import { NumberColumn } from "__support__/visualizations";
+import { loadVisualizationComponents } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -17,6 +18,10 @@ import {
 
 registerVisualizations();
 
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["smartscalar"]));
+
 const createMockInsights = (insights: Partial<Insight>[]) => insights;
 
 const setup = (series: Series, width = 800) =>
@@ -24,7 +29,7 @@ const setup = (series: Series, width = 800) =>
 
 describe("SmartScalar", () => {
   describe("current metric display", () => {
-    it("should show metric value and date", async () => {
+    it("should show metric value and date", () => {
       const rows = [
         ["2019-10-01T00:00:00", 100],
         ["2019-11-01T00:00:00", 120],
@@ -33,7 +38,7 @@ describe("SmartScalar", () => {
 
       setup(series({ rows, insights }));
 
-      expect(await screen.findByText("120")).toBeInTheDocument();
+      expect(screen.getByText("120")).toBeInTheDocument();
       expect(screen.getByText("Nov 2019")).toBeInTheDocument();
     });
   });

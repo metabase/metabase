@@ -55,12 +55,6 @@ if (
 // producing inconsistent behavior in code relying on measuring text (e.g., column
 // autosize in table visualization). Awaiting all loads here makes measurements
 // deterministic across platforms.
-// Chart components are loaded on demand, so a story that renders through the
-// registry would otherwise be captured mid-Suspense, showing the skeleton.
-const visualizationsReady = async () => {
-  await loadVisualizationComponents();
-};
-
 const fontsReady = async () => {
   const loads: Promise<unknown>[] = [];
   document.fonts.forEach((face) => loads.push(face.load()));
@@ -214,7 +208,11 @@ initialize({
 const preview = {
   parameters,
   decorators,
-  loaders: [mswLoader, fontsReady, visualizationsReady],
+  // Chart components are loaded on demand, so a story that renders through the
+  // registry would otherwise be captured mid-Suspense, showing the skeleton.
+  // Wrapped because a loader is called with the story context, which would
+  // otherwise be taken for the list of displays to load.
+  loaders: [mswLoader, fontsReady, () => loadVisualizationComponents()],
   argTypes,
 };
 

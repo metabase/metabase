@@ -3,6 +3,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { loadVisualizationComponents } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { FieldVisibilityType } from "metabase-types/api";
@@ -13,6 +14,10 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["object"]));
 
 function setup({
   rows,
@@ -52,12 +57,12 @@ function setup({
 }
 
 describe("visualization - object", () => {
-  it("render fields with 'visibility_type' set as 'details-only'", async () => {
+  it("render fields with 'visibility_type' set as 'details-only'", () => {
     const rows = [["John", "John Smith Jr"]];
 
     setup({ rows, longNameVisibility: "details-only" });
 
-    expect(await screen.findByText("Long name")).toBeInTheDocument();
+    expect(screen.getByText("Long name")).toBeInTheDocument();
     expect(screen.getByText("John Smith Jr")).toBeInTheDocument();
   });
 });

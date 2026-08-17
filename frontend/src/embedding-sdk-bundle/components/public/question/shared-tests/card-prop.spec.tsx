@@ -151,7 +151,7 @@ export function addCardPropTests({
 
       expect(screen.getByTestId("query-visualization-root")).toBeVisible();
       // The `bar` visualization is honored (and locked), so a chart renders...
-      expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
+      expect(screen.getByTestId("chart-container")).toBeInTheDocument();
       expect(screen.queryByTestId("table-root")).not.toBeInTheDocument();
     });
   });

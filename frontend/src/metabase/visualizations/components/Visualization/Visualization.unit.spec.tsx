@@ -5,7 +5,10 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { createMockState } from "metabase/redux/store/mocks";
 import { color } from "metabase/ui/colors";
-import { registerVisualization } from "metabase/visualizations";
+import {
+  loadVisualizationComponents,
+  registerVisualization,
+} from "metabase/visualizations";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type {
@@ -28,6 +31,10 @@ import {
 } from "metabase-types/api/mocks";
 
 registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["bar", "scalar"]));
 
 // Unjustified type cast. FIXME
 const MOCK_DISPLAY = "mocked-visualization" as VisualizationDisplay;
@@ -82,8 +89,6 @@ const lazyMockedVisualization = new Promise<Visualization>((resolve) => {
       ),
     );
 });
-
-registerVisualization(LAZY_MOCK_DEFINITION, () => lazyMockedVisualization);
 
 describe("Visualization", () => {
   const renderViz = async (
@@ -192,6 +197,13 @@ describe("Visualization", () => {
 
   describe("with a component that loads on demand", () => {
     it("should render the chart once its chunk resolves", async () => {
+      // Registered here rather than at module scope so the shared setup hook,
+      // which loads every registered chunk, does not wait on this one.
+      registerVisualization(
+        LAZY_MOCK_DEFINITION,
+        () => lazyMockedVisualization,
+      );
+
       await renderViz([
         {
           card: createMockCard({ display: LAZY_MOCK_DISPLAY }),

@@ -748,9 +748,11 @@ class Visualization extends PureComponent<
     const { width, height } = this.getNormalizedSizes();
 
     const { genericError, visualization, isNativeView } = this.state;
-    const CardVisualization = getVisualizationComponent(
-      visualization?.identifier ?? null,
-    );
+    // Only resolved when there is a visualization: passing null would fall back
+    // to the default and build its lazy wrapper for a card that then errors.
+    const CardVisualization = visualization
+      ? getVisualizationComponent(visualization.identifier)
+      : undefined;
     const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below

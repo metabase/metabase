@@ -185,15 +185,31 @@ export function prefetchVisualizationComponent(
 }
 
 /**
- * Load every chart component and register it in place of its definition, so
+ * Load chart components and register them in place of their definitions, so
  * charts render in one pass. Awaiting the loaders is not enough on its own:
  * `lazy` suspends on its first render even when the module is already in
  * memory, which a visual regression test captures as the fallback.
+ *
+ * Defaults to every registered chart. Tests should name the displays they
+ * render, so a spec does not pay to load the other twenty.
  */
-export async function loadVisualizationComponents(): Promise<void> {
+export async function loadVisualizationComponents(
+  displays?: VisualizationDisplay[],
+): Promise<void> {
+  const wanted = displays
+    ? displays.map((display) => getVisualization(display)?.identifier)
+    : Array.from(componentLoaders.keys());
+
   await Promise.all(
-    Array.from(componentLoaders, async ([identifier, loadComponent]) => {
-      if (isVisualizationComponent(visualizations.get(identifier))) {
+    wanted.map(async (identifier) => {
+      if (
+        identifier == null ||
+        isVisualizationComponent(visualizations.get(identifier))
+      ) {
+        return;
+      }
+      const loadComponent = componentLoaders.get(identifier);
+      if (!loadComponent) {
         return;
       }
       try {
