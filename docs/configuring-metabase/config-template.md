@@ -107,7 +107,6 @@ config:
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
-    can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
     csp-img-allowed-hosts: ''
@@ -218,6 +217,11 @@ config:
     llm-bedrock-secret-access-key: null
     llm-bedrock-session-token: null
     llm-connection-timeout-ms: 10000
+    llm-google-api-base-url: https://aiplatform.googleapis.com
+    llm-google-location: null
+    llm-google-oauth-access-token: null
+    llm-google-project-id: null
+    llm-google-service-account-key: null
     llm-max-tokens: 4096
     llm-metabot-provider: anthropic/claude-sonnet-4-6
     llm-mistral-api-base-url: https://api.mistral.ai/v1
@@ -240,9 +244,19 @@ config:
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
+    metabot-advanced-permissions: false
+    metabot-chat-system-prompt: ''
     metabot-enabled: true
+    metabot-icon: metabot
+    metabot-limit-reset-rate: monthly
+    metabot-limit-unit: tokens
+    metabot-name: Metabot
+    metabot-nlq-system-prompt: ''
+    metabot-quota-reached-message: You have reached your AI usage limit for the current period. Please contact your administrator.
     metabot-recent-views-enabled: true
+    metabot-show-illustrations: true
     metabot-slack-signing-secret: null
+    metabot-sql-system-prompt: ''
     mfa-challenge-signing-key: null
     mfa-enforcement: 'off'
     native-query-autocomplete-match-style: substring

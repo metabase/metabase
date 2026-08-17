@@ -1004,7 +1004,7 @@ export class UnconnectedDataSelector extends Component<
     await this.nextStep({ selectedFieldId: fieldId ?? null });
   };
 
-  getTriggerElement = (triggerProps?: Partial<TriggerComponentProps>) => {
+  getTriggerElement = () => {
     const {
       className,
       style,
@@ -1035,7 +1035,6 @@ export class UnconnectedDataSelector extends Component<
             database={selectedDatabase}
             table={selectedTable}
             field={selectedField}
-            {...triggerProps}
           />
         )}
       </Trigger>

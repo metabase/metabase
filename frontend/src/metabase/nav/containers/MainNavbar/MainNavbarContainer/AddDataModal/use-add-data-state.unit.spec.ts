@@ -25,7 +25,6 @@ function setup({
     currentUser: createMockUser({ is_superuser: false }),
     entities: createMockEntitiesState({
       databases: [database],
-      collections: [],
     }),
     settings: mockSettings({
       // Deliberately out of sync: the hook must ignore this stale setting.

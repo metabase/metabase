@@ -1,26 +1,9 @@
 import _ from "underscore";
 
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import type {
-  CollectionId,
-  CollectionItem,
-  CollectionItemModel,
-} from "metabase-types/api";
+import type { CollectionId, CollectionItemModel } from "metabase-types/api";
 
 import type { OmniPickerCollectionItem, OmniPickerItem } from "./EntityPicker";
-
-/**
- * check if a card can be used as the starting point for a new query
- */
-export const canCollectionCardBeUsed = (
-  item: CollectionItem | OmniPickerItem,
-): boolean => {
-  if (item.model === "card") {
-    return "can_run_adhoc_query" in item ? !!item.can_run_adhoc_query : true;
-  }
-
-  return true;
-};
 
 /**
  * Returns true if the item is the collection itself or a descendant of it.
@@ -78,7 +61,6 @@ export const getCollectionItemsOptions = ({
 }) => {
   return {
     models: getValidCollectionItemModels(models),
-    include_can_run_adhoc_query: models.includes("table"),
     // After a downgrade from EE to OSS, isEnabled is false, and we want to show
     // the Library (if it exists) within Our Analytics.
     include_library: !PLUGIN_LIBRARY.isEnabled,

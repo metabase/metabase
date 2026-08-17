@@ -4,6 +4,8 @@
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as m.util]
    [metabase.util.malli.schema :as ms]))
@@ -21,12 +23,12 @@
 
   Parameters are named in kebab-case only, which is both what the FE sends (see
   `frontend/src/metabase/api/cloud-proxy.ts`) and what the Store client expects. Callers that spell them
-  snake_case (`new_plan_alias`) are normalized by the `:decode/api` hook before validation, so the decoded
-  body is forwarded as-is. The parameters span operations rather than being keyed by them because a body
+  snake_case (`new_plan_alias`) are normalized by [[lib.schema.common/normalize-map]] before validation, so the
+  decoded body is forwarded as-is. The parameters span operations rather than being keyed by them because a body
   schema cannot dispatch on the `:operation-id` route param, and each is therefore optional -- the operation
   itself rejects parameters that don't belong to it, or are missing. Adding an operation to the allowlists
   above means adding its parameters here."
-  [:map {:decode/api {:enter m.util/deep-kebab-keys}}
+  [:map {:decode/normalize lib.schema.common/normalize-map}
    [:plan-alias      {:optional true} ms/NonBlankString]
    [:new-plan-alias  {:optional true} ms/NonBlankString]
    [:force-end-trial {:optional true} :boolean]])
@@ -58,4 +60,4 @@
 
 (def routes
   "`/api/ee/cloud-proxy` routes."
-  (api.macros/ns-handler *ns*))
+  (api.macros/ns-handler *ns* +auth))

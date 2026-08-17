@@ -3,16 +3,14 @@ description: |
   Measures app + embedding SDK bundle sizes from the current and base-ref
   uberjars (reusing the builds that already ran) plus their bundle-stats
   artifacts, and flags gzipped size changes beyond the threshold for the main
-  app's initial bundle and the chunked SDK's reachable total. Skips when the
-  base-ref artifacts aren't available rather than rebuilding from source (which
-  would compare across pipelines).
+  app's initial bundle and the chunked SDK's reachable total. The base ref is
+  read back off the current uberjar so that both sides differ only by the PR.
+  Skips when the base-ref artifacts aren't available rather than rebuilding from
+  source (which would compare across pipelines).
 
 inputs:
   edition:
     description: 'Metabase edition (ee or oss)'
-    required: true
-  base-ref-commit:
-    description: 'Commit SHA of the base ref.'
     required: true
   threshold-percent:
     description: 'Percent threshold for bundle size change'
@@ -41,12 +39,35 @@ runs:
         commit: ${{ github.event.pull_request.head.sha || github.sha }}
         edition: ${{ inputs.edition }}
         extract-path: temp/current-uberjar
+    - name: Resolve the base ref the current uberjar was built against
+      id: base-ref
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -uo pipefail
+
+        # The uberjar job checks out refs/pull/<n>/merge (the PR head already
+        # merged into the base branch tip) but names its artifact after head.sha,
+        # so the comparable base ref is that merge's first parent. Reading it back
+        # off the jar describes the artifact actually being measured. Using
+        # pull_request.base.sha instead compares against a stale snapshot of the
+        # base branch, reporting everything that landed in between as this PR's
+        # own bundle delta.
+        unzip -o -j temp/current-uberjar/metabase.jar version.properties -d temp/current-version >/dev/null
+        built=$(sed -n 's/^hash=//p' temp/current-version/version.properties)
+        base=$(gh api "/repos/${GITHUB_REPOSITORY}/commits/${built}" \
+          --jq 'if (.parents | length) == 2 then .parents[0].sha else empty end' 2>/dev/null) || base=""
+
+        echo "sha=${base}" >> "$GITHUB_OUTPUT"
+        echo "The current uberjar was built from ${built}; its base ref is ${base:-unknown}"
     - name: Download base-ref uberjar
       id: base-jar
+      if: steps.base-ref.outputs.sha != ''
       continue-on-error: true
       uses: ./.github/actions/fetch-artifact
       with:
-        commit: ${{ inputs.base-ref-commit }}
+        commit: ${{ steps.base-ref.outputs.sha }}
         edition: ${{ inputs.edition }}
         extract-path: temp/base-uberjar
     - name: Measure and compare bundle sizes
@@ -56,7 +77,7 @@ runs:
         GH_TOKEN: ${{ github.token }}
         EDITION: ${{ inputs.edition }}
         HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        BASE_SHA: ${{ inputs.base-ref-commit }}
+        BASE_SHA: ${{ steps.base-ref.outputs.sha }}
         THRESHOLD: ${{ inputs.threshold-percent }}
         MEASURE_BUNDLES: app,embedding-sdk-legacy,embedding-sdk-chunked
         # The gated bundles, as "<bundle>/<kind>". Each one's step outputs are
@@ -79,6 +100,7 @@ runs:
         # The base ref needs an already-built uberjar. Rebuilding it from source
         # would compare across two build pipelines (the bug this check used to
         # have), so skip instead when it — or its stats — isn't available.
+        [ -n "${BASE_SHA}" ] || skip "no comparable base ref for the current uberjar"
         [ -f temp/base-uberjar/metabase.jar ] || skip "base-ref uberjar not found for ${BASE_SHA}"
 
         extract_js() { # $1=jar  $2=dest-root

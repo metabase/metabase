@@ -8,7 +8,6 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Collection, CollectionItem, Database } from "metabase-types/api";
 import {
   createMockCollection,
@@ -24,6 +23,8 @@ interface SetupOpts {
   databases?: Database[];
   isXrayEnabled?: boolean;
   withBookmarks?: boolean;
+  isSelected?: boolean;
+  onToggleSelected?: jest.Mock;
 }
 
 const setup = ({
@@ -32,6 +33,8 @@ const setup = ({
   databases = [],
   isXrayEnabled = false,
   withBookmarks = false,
+  isSelected,
+  onToggleSelected,
 }: SetupOpts) => {
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
@@ -42,7 +45,6 @@ const setup = ({
     }),
   });
 
-  const metadata = getMetadata(storeInitialState);
   const onCopy = jest.fn();
   const onMove = jest.fn();
   const createBookmark = withBookmarks ? jest.fn() : undefined;
@@ -52,11 +54,13 @@ const setup = ({
     <ActionMenu
       item={item}
       collection={collection}
-      databases={metadata.databasesList()}
+      databases={databases}
       onCopy={onCopy}
       onMove={onMove}
       createBookmark={createBookmark}
       deleteBookmark={deleteBookmark}
+      isSelected={isSelected}
+      onToggleSelected={onToggleSelected}
     />,
     { storeInitialState },
   );
@@ -80,6 +84,56 @@ describe("ActionMenu", () => {
       await userEvent.click(await screen.findByText("Bookmark"));
 
       expect(createBookmark).toHaveBeenCalledWith({ id: 1, type: "dashboard" });
+    });
+  });
+
+  describe("selection", () => {
+    const item = createMockCollectionItem({
+      id: 1,
+      name: "Dashboard",
+      model: "dashboard",
+      can_write: true,
+    });
+
+    it("should select an item in a writable collection", async () => {
+      const onToggleSelected = jest.fn();
+      setup({ item, onToggleSelected });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Select"));
+
+      expect(onToggleSelected).toHaveBeenCalledTimes(1);
+      expect(onToggleSelected).toHaveBeenCalledWith();
+    });
+
+    it("should show Deselect for a selected item", async () => {
+      setup({ item, isSelected: true, onToggleSelected: jest.fn() });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Deselect")).toBeInTheDocument();
+    });
+
+    it("should not show selection in a read-only collection", async () => {
+      setup({
+        item,
+        collection: createMockCollection({ can_write: false }),
+        onToggleSelected: jest.fn(),
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(screen.queryByText("Select")).not.toBeInTheDocument();
+      expect(screen.queryByText("Deselect")).not.toBeInTheDocument();
+    });
+
+    it("should not show selection without a toggle callback", async () => {
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(screen.queryByText("Select")).not.toBeInTheDocument();
+      expect(screen.queryByText("Deselect")).not.toBeInTheDocument();
     });
   });
 

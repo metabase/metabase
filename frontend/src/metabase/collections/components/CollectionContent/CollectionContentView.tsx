@@ -37,12 +37,12 @@ import {
 } from "metabase/redux/uploads";
 import { useNavigate } from "metabase/router";
 import { Box } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionId,
   CollectionItem,
+  Database,
 } from "metabase-types/api";
 
 import { ModelUploadModal } from "../ModelUploadModal";
@@ -291,6 +291,9 @@ export const CollectionContentView = ({
             collection={collection}
             onMove={handleMove}
             onCopy={handleCopy}
+            selected={selected}
+            getIsSelected={getIsSelected}
+            onToggleSelected={toggleItem}
           />
         </ErrorBoundary>
         <ErrorBoundary>

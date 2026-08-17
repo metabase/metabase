@@ -155,6 +155,7 @@ function MenuItemTooltip({
 function EntityItemMenu({
   item,
   isBookmarked,
+  isSelected,
   isXrayEnabled,
   onPin,
   onMove,
@@ -163,10 +164,12 @@ function EntityItemMenu({
   onRestore,
   onDeletePermanently,
   onToggleBookmark,
+  onToggleSelected,
   className,
 }: {
   item: CollectionItem;
   isBookmarked?: boolean;
+  isSelected?: boolean;
   isXrayEnabled?: boolean;
   onPin?: OnPin;
   onMove?: OnMove;
@@ -175,6 +178,7 @@ function EntityItemMenu({
   onRestore?: OnRestore;
   onDeletePermanently?: OnDeletePermanently;
   onToggleBookmark?: OnToggleBookmark;
+  onToggleSelected?: () => void;
   className?: string;
 }) {
   const isPinned = isItemPinned(item);
@@ -183,6 +187,14 @@ function EntityItemMenu({
 
   const actions = useMemo(() => {
     const result: EntityItemMenuAction[] = [];
+
+    if (onToggleSelected) {
+      result.push({
+        title: isSelected ? t`Deselect` : t`Select`,
+        icon: "check",
+        action: onToggleSelected,
+      });
+    }
 
     if (onPin) {
       result.push({
@@ -261,11 +273,13 @@ function EntityItemMenu({
     isPinned,
     isXrayShown,
     isBookmarked,
+    isSelected,
     onPin,
     onMove,
     onCopy,
     onArchive,
     onToggleBookmark,
+    onToggleSelected,
     onDeletePermanently,
     onRestore,
   ]);

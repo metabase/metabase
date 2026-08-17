@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution]
@@ -350,7 +351,7 @@
           (fn [stages]
             (mapv (fn [stage]
                     (if (lib.util/native-stage? stage)
-                      (let [[stmt-type allowed-stmts] (if (:impersonation/allow-write? query)
+                      (let [[stmt-type allowed-stmts] (if driver.settings/*impersonation-allow-write?*
                                                         ["write" (tru "insert, update, or delete")]
                                                         ["read" (tru "select")])
                             {:keys [is-single-stmt? allowed-stmt-type? sql error]}
