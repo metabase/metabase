@@ -324,21 +324,28 @@
 (def ^:private link-card-models
   (set (keys serdes/link-card-model->toucan-model)))
 
+(defn- ensure-integer-link-card-id
+  [id]
+  (when-not (integer? id)
+    (throw (ex-info "Link card entity id must be an integer"
+                    {:status-code 400, :id id})))
+  id)
+
 (defn link-card-info-query-for-model
   "Return a honeysql query that is used to fetch info for a linkcard."
   [model id-or-ids]
-  {:select (select-clause-for-link-card-model model)
-   :from   (t2/table-name (serdes/link-card-model->toucan-model model))
-   :where  (if (coll? id-or-ids)
-             [:in :id id-or-ids]
-             [:= :id id-or-ids])})
+  ^:allow-subquery {:select (select-clause-for-link-card-model model)
+                    :from   (t2/table-name (serdes/link-card-model->toucan-model model))
+                    :where  (if (coll? id-or-ids)
+                              [:in :id (mapv ensure-integer-link-card-id id-or-ids)]
+                              [:= :id (ensure-integer-link-card-id id-or-ids)])})
 
 (defn- link-card-info-query
   [link-card-model->ids]
   (if (= 1 (count link-card-model->ids))
     (apply link-card-info-query-for-model (first link-card-model->ids))
     {:select   [:*]
-     :from     [[{:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
+     :from     [[^:allow-subquery {:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
                  :alias_is_required_by_sql_but_not_needed_here]]}))
 
 (mi/define-batched-hydration-method dashcard-linkcard-info

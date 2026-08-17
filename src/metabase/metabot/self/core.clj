@@ -37,10 +37,8 @@
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
 
-  Required:
-    :model            - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
-
   Optional:
+    :model            - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
     :system           - System prompt string
     :input            - Sequence of AISDK parts and user messages
     :tools            - Sequence of tool definition maps
@@ -126,6 +124,17 @@
 
 ;;; AISDK5
 
+(def finish-reasons
+  "The AI SDK v5 `FinishReason` values a provider stop reason may be translated to."
+  #{"stop" "length" "content-filter" "tool-calls" "error" "other"})
+
+(defn stop-reason->finish-reason
+  "Translate a raw provider stop reason to an AI SDK v5 `FinishReason` through that provider's `stop-reasons` table.
+  Unmapped reasons → \"other\"; nil → nil."
+  [stop-reasons raw]
+  (when raw
+    (get stop-reasons raw "other")))
+
 (defn- parse-tool-arguments
   "Parse concatenated tool input deltas as JSON.
   Falls back to returning the raw string wrapped in a map when parsing fails,
@@ -166,10 +175,12 @@
                                       :text (->> (map :delta chunks)
                                                  (str/join ""))}
                                pm (assoc :provider-metadata pm)))
-    :tool-input-start      {:type      :tool-input
-                            :id        (:toolCallId chunk)
-                            :function  (:toolName chunk)
-                            :arguments (parse-tool-arguments chunks)}
+    :tool-input-start      (let [pm (:providerMetadata chunk)]
+                             (cond-> {:type      :tool-input
+                                      :id        (:toolCallId chunk)
+                                      :function  (:toolName chunk)
+                                      :arguments (parse-tool-arguments chunks)}
+                               pm (assoc :provider-metadata pm)))
     :tool-output-available {:type        :tool-output
                             :id          (:toolCallId chunk)
                             :function    (:toolName chunk)
@@ -368,6 +379,7 @@
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
+           finish-reason     (volatile! nil)
            started?          (volatile! false)
            usage-by-model    (volatile! {})
            ;; non-nil while a text block is open; holds the block id so we can
@@ -411,7 +423,11 @@
                 (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
                 (rf (format-sse-event
                      (cond-> {:type         "finish"
-                              :finishReason (if @error? "error" "stop")}
+                              :finishReason (cond
+                                              (= @finish-reason "length")         "length"
+                                              @error?                             "error"
+                                              (= @finish-reason "content-filter") "content-filter"
+                                              :else                               "stop")}
                        (seq metadata) (assoc :messageMetadata metadata))))
                 (rf done-sse-line)
                 (rf))))
@@ -501,6 +517,8 @@
               ;; cumulative per-model snapshot; last-wins, emitted on finish
               (do
                 (vswap! usage-by-model assoc (or (:model part) "unknown") (:usage part))
+                (when-let [fr (:finish-reason part)]
+                  (vreset! finish-reason fr))
                 result)
 
               ;; Unknown types: emit as data parts

@@ -1,6 +1,6 @@
-import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
+import type { ToastArgs } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { Dispatch } from "metabase/redux/store";
@@ -8,8 +8,14 @@ import type {
   CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
+  WidgetMount,
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards";
+
+export type LoadCustomVizPluginForDisplayResult =
+  | { status: "loaded"; display: VisualizationDisplay }
+  | { status: "unavailable" }
+  | { status: "error" };
 
 // prevents infinite render loop
 const noopCustomVizIcon = (
@@ -41,19 +47,19 @@ const getDefaultPluginCustomViz = () => ({
     _plugin: CustomVizPluginRuntime,
     _options?: {
       cacheBustSuffix?: string;
-      onInfo?: (message: string) => void;
+      onMessage?: (toast: ToastArgs) => void;
     },
-    // Unjustified type cast. FIXME
-  ) => null as string | null,
+  ): Promise<VisualizationDisplay | null> => null,
   /**
    * Load (and register) the plugin backing a `custom:*` display, if it is
-   * installed and enabled. Resolves to the registered display identifier, or
-   * null when the plugin is unavailable. No-op in OSS.
+   * installed and enabled. No-op in OSS.
    */
   loadCustomVizPluginForDisplay: async (
     _dispatch: Dispatch,
     _display: string,
-  ): Promise<VisualizationDisplay | null> => null,
+  ): Promise<LoadCustomVizPluginForDisplayResult> => ({
+    status: "unavailable",
+  }),
   getPluginAssetUrl: (
     _pluginId: CustomVizPluginId,
     _assetPath: string | null,

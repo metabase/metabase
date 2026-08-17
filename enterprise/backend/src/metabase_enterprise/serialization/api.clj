@@ -192,7 +192,7 @@
                            :data_model      (not (:no-data-model opts))
                            :settings        (not (:no-settings opts))
                            :field_values    (:include-field-values opts)
-                           :secrets         (:include-database-secrets opts)
+                           :secrets         false
                            :success         (boolean success)
                            :error_message   error-message}))
 
@@ -214,7 +214,6 @@
   [_route-params
    {:keys                     [collection dirname]
     include-field-values?     :field_values
-    include-database-secrets? :database_secrets
     all-collections?          :all_collections
     data-model?               :data_model
     settings?                 :settings
@@ -238,7 +237,6 @@
        [:settings          {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase settings"})]
        [:data_model        {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase data model"})]
        [:field_values      {:default false} (mu/with ms/BooleanValue {:description "Serialize cached field values"})]
-       [:database_secrets  {:default false} (mu/with ms/BooleanValue {:description "Serialize details how to connect to each db"})]
        [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
        [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]]
   (api/check-superuser)
@@ -249,7 +247,6 @@
                             :no-data-model            (not data-model?)
                             :no-settings              (not settings?)
                             :include-field-values     include-field-values?
-                            :include-database-secrets include-database-secrets?
                             :continue-on-error        continue-on-error?
                             :full-stacktrace          full-stacktrace?}
         export-dirname (or dirname

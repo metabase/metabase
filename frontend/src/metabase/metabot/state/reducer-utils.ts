@@ -14,6 +14,7 @@ import type {
   MetabotAgentId,
   MetabotAgentTurnDisplayError,
   MetabotAgentTurnError,
+  MetabotAgentTurnIncompleteMessage,
   MetabotConverstationState,
   MetabotDebugToolCallMessage,
   MetabotSearchResults,
@@ -359,6 +360,19 @@ export const appendAgentTurnAborted = (
     id: createMessageId(),
     role: "agent",
     type: "turn_aborted",
+    externalId: convo.pendingMessageExternalId,
+  });
+};
+
+export const appendAgentTurnIncomplete = (
+  convo: WritableDraft<MetabotConverstationState>,
+  finishReason: MetabotAgentTurnIncompleteMessage["finishReason"],
+) => {
+  convo.messages.push({
+    id: createMessageId(),
+    role: "agent",
+    type: "turn_incomplete",
+    finishReason,
     externalId: convo.pendingMessageExternalId,
   });
 };

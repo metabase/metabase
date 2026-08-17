@@ -610,12 +610,6 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/app.js"],
-    rules: {
-      "import/no-duplicates": "off",
-    },
-  },
-  {
     files: ["frontend/src/metabase/**/*.stories.tsx"],
     rules: {
       "import/no-default-export": "off",
@@ -813,7 +807,10 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/embedding-sdk-bundle/test/**/*"],
+    files: [
+      "frontend/src/embedding-sdk-bundle/test/**/*",
+      "frontend/src/embedding-sdk-shared/test/storybook-themes.ts",
+    ],
     rules: {
       "metabase/no-color-literals": "off",
     },

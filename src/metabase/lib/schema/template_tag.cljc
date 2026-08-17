@@ -44,7 +44,7 @@
    [:ref ::common]
    [:map
     ;; default value for this parameter
-    [:default {:optional true} any?]
+    [:default {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
     ;; whether or not a value for this parameter is required in order to run the query
     [:required {:optional true} :boolean]]])
 
@@ -56,7 +56,7 @@
 ;;    :display-name "Unit"}
 (mr/def ::temporal-unit
   [:merge
-   [:ref ::common]
+   [:ref ::value.common]
    [:map
     [:type [:= :temporal-unit]]
     ;; an optional alias to use in place of the normal field ref
@@ -144,7 +144,7 @@
   [:map
    [:field-id ::id/field]
    [:op       (into [:enum] allowed-source-filter-ops)]
-   [:value    :any]])
+   [:value    [:ref ::lib.schema.parameter/parameter.value]]])
 
 ;; Example:
 ;;

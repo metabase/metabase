@@ -669,6 +669,11 @@ function(bin) {
     (or (nil? value) (= value ""))
     value
 
+    (coll? value)
+    (throw (ex-info (tru "Invalid filter value: expected a scalar literal.")
+                    {:type driver-api/qp.error-type.invalid-query
+                     :value value}))
+
     (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
 
@@ -1163,6 +1168,9 @@ function(bin) {
                                       (lib/>= expr min-val)
                                       (lib/<= expr max-val))))
 
+(defn- escape-regex-literal [s]
+  (str/replace (str s) #"[.*+?^${}()|\[\]\\]" "\\\\$0"))
+
 (defn- str-match-pattern [query stage-number field options prefix value suffix]
   (if (driver-api/is-clause? ::not-regex value)
     (let [[_tag _opts pattern] value]
@@ -1172,7 +1180,7 @@ function(bin) {
               "Wrong prefix or suffix value.")
       {$regexMatch {"input" (->rvalue query stage-number field)
                     "regex" (if (= (first value) :value)
-                              (str prefix (->rvalue query stage-number value) suffix)
+                              (str prefix (escape-regex-literal (->rvalue query stage-number value)) suffix)
                               {$concat (into [] (remove nil?) [(when (some? prefix) {$literal prefix})
                                                                (->rvalue query stage-number value)
                                                                (when (some? suffix) {$literal suffix})])})

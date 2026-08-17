@@ -116,6 +116,7 @@
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
    query-params]
+  (check-and-unsign token)
   (api.embed.common/dashboard-param-values token
                                            param-key
                                            nil
@@ -130,6 +131,7 @@
   "Embedded version of chain filter search endpoint."
   [{:keys [token param-key prefix]} :- api.embed.common/SearchParams
    query-params]
+  (check-and-unsign token)
   (api.embed.common/dashboard-param-values token
                                            param-key
                                            prefix
@@ -146,6 +148,7 @@
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
    {:keys [value]}]
+  (check-and-unsign token)
   (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value) {:preview true}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -247,7 +250,11 @@
         lat-field  (json/decode+kw latField)
         lon-field  (json/decode+kw lonField)]
     (request/as-admin
-      (api.embed.common/process-tiles-query-for-card card parameters zoom x y lat-field lon-field))))
+      (api.embed.common/process-tiles-query-for-card
+       card
+       (api.embed.common/tile-parameters-for-card
+        card (embed/get-in-unsigned-token-or-throw unsigned-token [:params]) parameters)
+       zoom x y lat-field lon-field))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -277,4 +284,8 @@
         lat-field        (json/decode+kw latField)
         lon-field        (json/decode+kw lonField)]
     (request/as-admin
-      (api.embed.common/process-tiles-query-for-dashcard dashboard dashcard card parameters zoom x y lat-field lon-field))))
+      (api.embed.common/process-tiles-query-for-dashcard
+       dashboard dashcard card
+       (api.embed.common/tile-parameters-for-dashboard
+        dashboard (embed/get-in-unsigned-token-or-throw unsigned-token [:params]) parameters)
+       zoom x y lat-field lon-field))))
