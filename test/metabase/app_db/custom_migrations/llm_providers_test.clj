@@ -183,3 +183,16 @@
                (llm-setting-values ["llm-metabot-provider"]))))
       (testing "and the list is dropped, so upgrading again re-materializes the connection"
         (is (= {} (llm-setting-values ["llm-providers"])))))))
+
+(deftest rollback-llm-provider-settings-drops-a-blank-config-connection-test
+  (testing "v64.7qmx3p : a known-type connection with nothing in its config writes no settings on rollback"
+    (impl/test-migrations ["v64.7qmx3p"] [migrate!]
+      (migrate!)
+      (insert-llm-settings! {"llm-providers" (json/encode [{:key    "anthropic"
+                                                            :type   "anthropic"
+                                                            :name   "Anthropic"
+                                                            :config {}}])})
+      (migrate! :down 63)
+      (is (= {} (llm-setting-values ["llm-anthropic-api-key" "llm-anthropic-api-base-url"])))
+      (testing "and the list is dropped either way"
+        (is (= {} (llm-setting-values ["llm-providers"])))))))

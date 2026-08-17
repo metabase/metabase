@@ -165,10 +165,13 @@
   nothing to write them to."
   [{:keys [key type config]}]
   (when-let [provider (and (= key type) (first (filter #(= type (:type %)) provider-types)))]
-    (keep (fn [[config-key setting-key]]
-            (when-let [value (non-blank (get config config-key))]
-              [setting-key value]))
-          (:settings provider))))
+    ;; not-empty, not an empty seq: a known-type connection whose config is entirely blank writes nothing, and an
+    ;; empty seq is truthy — it would silently skip both the settings and the dropped-with-a-warning contract
+    (not-empty
+     (keep (fn [[config-key setting-key]]
+             (when-let [value (non-blank (get config config-key))]
+               [setting-key value]))
+           (:settings provider)))))
 
 (defn- downgraded-model-ref
   "A model reference code that predates the connection list can resolve: it addresses providers by type, so a
