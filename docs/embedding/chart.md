@@ -278,9 +278,11 @@ For both the SDK props (`initialSqlParameters`, `sqlParameters`, and `onSqlParam
 
 ### Hide a parameter
 
-To hide a parameter from the question's UI, use the [`hidden-parameters`](./question-reference.md#web-component-metabase-question-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both are meant for SSO embeds on a Pro or Enterprise plan. On a guest embed, hide a parameter by setting it to **Locked** or leaving it **Disabled** in the question's embed settings.
+To hide a parameter from the question's UI, use the [`hidden-parameters`](./question-reference.md#web-component-metabase-question-attributes) attribute (web component) or the `hiddenParameters` prop (SDK). Both are meant for SSO embeds on a Pro or Enterprise plan. 
 
-Hiding a parameter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-sql-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser. To control a value that people can't see or change, use a [locked parameter](./guest-embedding.md#locked-parameters) on a guest embed, or [data permissions](../permissions/embedding.md) on an SSO embed.
+Hiding a parameter declutters the UI; it doesn't restrict what people can query. Setting a value with `initial-sql-parameters` and then hiding the widget isn't a secure way to filter data, because your app sets that value in the browser.  Instead, set [data permissions](../permissions/embedding.md).
+
+If you're using a guest embed, however, you can control a parameter value (that people can't see or change) with a [locked parameter](./guest-embedding.md#locked-parameters).
 
 ## Let people set up alerts on a question
 
