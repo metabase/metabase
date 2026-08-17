@@ -3,19 +3,20 @@ import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { type Dayjs, type OpUnitType, dayjs } from "metabase/dayjs";
-import TimelinePanel from "metabase/query_builder/components/timelines/containers/TimelinePanel";
-import {
-  getTimeseriesDataInterval,
-  getUiControls,
-} from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
-import { onOpenTimelines } from "metabase/redux/query-builder";
 import { Box, Button, Icon } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { CartesianChartDateTimeAbsoluteUnit } from "metabase/visualizations/echarts/cartesian/model/types";
 import type Question from "metabase-lib/v1/Question";
 import type { DatetimeUnit, Timeline, TimelineEvent } from "metabase-types/api";
+
+import { onOpenTimelines } from "../../../../store/actions";
+import {
+  getTimeseriesDataInterval,
+  getUiControls,
+} from "../../../../store/selectors";
+import TimelinePanel from "../../../timelines/containers/TimelinePanel";
 
 export interface TimelineSidebarProps {
   question: Question;

@@ -32,7 +32,7 @@ import {
   getRawSeries,
   getVisibleTimelineEvents,
   getVisualizationSettings,
-} from "../selectors";
+} from "../store/selectors";
 
 const colTypeToMetabotColTypeMap: Record<string, MetabotColumnType> = {
   "type/*": "string",

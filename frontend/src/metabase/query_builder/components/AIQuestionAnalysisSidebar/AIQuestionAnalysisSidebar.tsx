@@ -2,8 +2,9 @@ import {
   AIAnalysisSidebar,
   type AIAnalysisSidebarProps,
 } from "metabase/metabot/components/AIAnalysisSidebar";
-import { getIsLoadingComplete } from "metabase/query_builder/selectors";
 import { useSelector } from "metabase/redux";
+
+import { getIsLoadingComplete } from "../../store/selectors";
 
 export type AIQuestionAnalysisSidebarProps = Omit<
   AIAnalysisSidebarProps,

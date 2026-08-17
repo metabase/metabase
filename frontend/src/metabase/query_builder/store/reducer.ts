@@ -1,4 +1,4 @@
-import { createReducer } from "@reduxjs/toolkit";
+import { type Reducer, combineReducers, createReducer } from "@reduxjs/toolkit";
 import { assoc, merge } from "icepick";
 import _ from "underscore";
 
@@ -11,63 +11,11 @@ import {
 } from "metabase/api";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import {
-  API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
-  CANCEL_QUERY,
-  CANCEL_QUESTION_CHANGES,
-  CLEAR_OBJECT_DETAIL_FK_REFERENCES,
-  CLEAR_QUERY_RESULT,
-  CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR,
-  CLOSE_CHART_SETTINGS,
-  CLOSE_CHART_TYPE,
-  CLOSE_QB,
-  CLOSE_QB_NEWB_MODAL,
-  CLOSE_QUESTION_INFO,
-  CLOSE_QUESTION_SETTINGS,
-  CLOSE_SIDEBARS,
-  CLOSE_TIMELINES,
-  DESELECT_TIMELINE_EVENTS,
   EDIT_SUMMARY,
-  HIDE_TIMELINE_EVENTS,
   INITIALIZE_QB,
-  LOAD_OBJECT_DETAIL_FK_REFERENCES,
-  ON_CLOSE_SUMMARY,
-  OPEN_AI_QUESTION_ANALYSIS_SIDEBAR,
-  OPEN_CHART_SETTINGS,
-  OPEN_CHART_TYPE,
-  OPEN_DATA_REFERENCE_AT_QUESTION,
-  OPEN_QUESTION_INFO,
-  OPEN_QUESTION_SETTINGS,
-  OPEN_TIMELINES,
-  QUERY_COMPLETED,
-  QUERY_ERRORED,
-  RELOAD_CARD,
   RESET_QB,
-  RESET_ROW_ZOOM,
-  RESET_UI_CONTROLS,
-  RUN_QUERY,
-  SELECT_TIMELINE_EVENTS,
-  SET_CARD_AND_RUN,
-  SET_CURRENT_STATE,
-  SET_DATA_REFERENCE_STACK,
-  SET_DOCUMENT_TITLE,
-  SET_DOCUMENT_TITLE_TIMEOUT_ID,
-  SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
-  SET_METADATA_DIFF,
-  SET_MODAL_SNIPPET,
-  SET_NATIVE_EDITOR_SELECTED_RANGE,
-  SET_PARAMETER_VALUE,
-  SET_SHOW_LOADING_COMPLETE_FAVICON,
-  SET_SNIPPET_COLLECTION_ID,
   SET_UI_CONTROLS,
-  SHOW_CHART_SETTINGS,
-  SHOW_TIMELINE_EVENTS,
-  SOFT_RELOAD_CARD,
-  TOGGLE_DATA_REFERENCE,
-  TOGGLE_SNIPPET_SIDEBAR,
-  TOGGLE_TEMPLATE_TAGS_EDITOR,
-  UPDATE_QUESTION,
-  ZOOM_IN_ROW,
 } from "metabase/redux/query-builder";
 import type {
   ForeignKeyReference,
@@ -75,6 +23,7 @@ import type {
   QueryBuilderLoadingControls,
   QueryBuilderParentEntityState,
   QueryBuilderQueryStatus,
+  QueryBuilderState,
   QueryBuilderUIControls,
   Range,
 } from "metabase/redux/store";
@@ -96,7 +45,62 @@ import {
   DEFAULT_QUERY_STATUS,
   DEFAULT_UI_CONTROLS,
   UI_CONTROLS_SIDEBAR_DEFAULTS,
-} from "./defaults";
+} from "../defaults";
+
+import {
+  API_CREATE_QUESTION,
+  CANCEL_QUERY,
+  CANCEL_QUESTION_CHANGES,
+  CLEAR_OBJECT_DETAIL_FK_REFERENCES,
+  CLEAR_QUERY_RESULT,
+  CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR,
+  CLOSE_CHART_SETTINGS,
+  CLOSE_CHART_TYPE,
+  CLOSE_QB,
+  CLOSE_QB_NEWB_MODAL,
+  CLOSE_QUESTION_INFO,
+  CLOSE_QUESTION_SETTINGS,
+  CLOSE_SIDEBARS,
+  CLOSE_TIMELINES,
+  DESELECT_TIMELINE_EVENTS,
+  HIDE_TIMELINE_EVENTS,
+  LOAD_OBJECT_DETAIL_FK_REFERENCES,
+  ON_CLOSE_SUMMARY,
+  OPEN_AI_QUESTION_ANALYSIS_SIDEBAR,
+  OPEN_CHART_SETTINGS,
+  OPEN_CHART_TYPE,
+  OPEN_DATA_REFERENCE_AT_QUESTION,
+  OPEN_QUESTION_INFO,
+  OPEN_QUESTION_SETTINGS,
+  OPEN_TIMELINES,
+  QUERY_COMPLETED,
+  QUERY_ERRORED,
+  RELOAD_CARD,
+  RESET_ROW_ZOOM,
+  RESET_UI_CONTROLS,
+  RUN_QUERY,
+  SELECT_TIMELINE_EVENTS,
+  SET_CARD_AND_RUN,
+  SET_CURRENT_STATE,
+  SET_DATA_REFERENCE_STACK,
+  SET_DOCUMENT_TITLE,
+  SET_DOCUMENT_TITLE_TIMEOUT_ID,
+  SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
+  SET_METADATA_DIFF,
+  SET_MODAL_SNIPPET,
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
+  SET_PARAMETER_VALUE,
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+  SET_SNIPPET_COLLECTION_ID,
+  SHOW_CHART_SETTINGS,
+  SHOW_TIMELINE_EVENTS,
+  SOFT_RELOAD_CARD,
+  TOGGLE_DATA_REFERENCE,
+  TOGGLE_SNIPPET_SIDEBAR,
+  TOGGLE_TEMPLATE_TAGS_EDITOR,
+  UPDATE_QUESTION,
+  ZOOM_IN_ROW,
+} from "./actions";
 
 function setUIControls(
   state: QueryBuilderUIControls,
@@ -126,7 +130,7 @@ function setUIControls(
   };
 }
 
-export const uiControls = createReducer<QueryBuilderUIControls>(
+const uiControls = createReducer<QueryBuilderUIControls>(
   DEFAULT_UI_CONTROLS,
   (builder) => {
     builder
@@ -346,7 +350,7 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
   },
 );
 
-export const loadingControls = createReducer<QueryBuilderLoadingControls>(
+const loadingControls = createReducer<QueryBuilderLoadingControls>(
   DEFAULT_LOADING_CONTROLS,
   (builder) => {
     builder
@@ -374,7 +378,7 @@ export const loadingControls = createReducer<QueryBuilderLoadingControls>(
   },
 );
 
-export const queryStatus = createReducer<QueryBuilderQueryStatus>(
+const queryStatus = createReducer<QueryBuilderQueryStatus>(
   DEFAULT_QUERY_STATUS,
   (builder) => {
     builder
@@ -384,7 +388,7 @@ export const queryStatus = createReducer<QueryBuilderQueryStatus>(
   },
 );
 
-export const zoomedRowObjectId = createReducer<number | string | null>(
+const zoomedRowObjectId = createReducer<number | string | null>(
   null,
   (builder) => {
     builder
@@ -405,7 +409,7 @@ export const zoomedRowObjectId = createReducer<number | string | null>(
 // NOTE: we use JSON serialization/deserialization to ensure a deep clone of the object which is required
 //       because we can't have any links between the active card being modified and the "originalCard" for testing dirtiness
 // ALSO: we consistently check for payload.id because an unsaved card has no "originalCard"
-export const originalCard = createReducer<Card | null>(null, (builder) => {
+const originalCard = createReducer<Card | null>(null, (builder) => {
   builder
     .addCase<string, { type: string; payload: { originalCard?: Card } }>(
       INITIALIZE_QB,
@@ -432,7 +436,7 @@ export const originalCard = createReducer<Card | null>(null, (builder) => {
 });
 
 // references to FK tables specifically used on the ObjectDetail page.
-export const tableForeignKeyReferences = createReducer<Record<
+const tableForeignKeyReferences = createReducer<Record<
   number,
   ForeignKeyReference
 > | null>(null, (builder) => {
@@ -444,7 +448,7 @@ export const tableForeignKeyReferences = createReducer<Record<
     .addCase(CLEAR_OBJECT_DETAIL_FK_REFERENCES, () => null);
 });
 
-export const lastRunCard = createReducer<Card | null>(null, (builder) => {
+const lastRunCard = createReducer<Card | null>(null, (builder) => {
   builder
     .addCase(RESET_QB, () => null)
     .addCase<string, { type: string; payload: { card: Card } }>(
@@ -455,7 +459,7 @@ export const lastRunCard = createReducer<Card | null>(null, (builder) => {
 });
 
 // The results of a query execution. optionally an error if the query fails to complete successfully.
-export const queryResults = createReducer<Dataset[] | null>(null, (builder) => {
+const queryResults = createReducer<Dataset[] | null>(null, (builder) => {
   builder
     .addCase(RESET_QB, () => null)
     .addCase<string, { type: string; payload: { queryResults: Dataset[] } }>(
@@ -470,7 +474,7 @@ export const queryResults = createReducer<Dataset[] | null>(null, (builder) => {
     .addCase(CLEAR_QUERY_RESULT, () => null);
 });
 
-export const metadataDiff = createReducer<Record<string, Partial<Field>>>(
+const metadataDiff = createReducer<Record<string, Partial<Field>>>(
   {},
   (builder) => {
     builder
@@ -492,7 +496,7 @@ export const metadataDiff = createReducer<Record<string, Partial<Field>>>(
 );
 
 // AbortController used for tracking a query execution in progress. when a query is started we capture this.
-export const cancelQueryController = createReducer<AbortController | null>(
+const cancelQueryController = createReducer<AbortController | null>(
   null,
   (builder) => {
     builder
@@ -506,7 +510,7 @@ export const cancelQueryController = createReducer<AbortController | null>(
   },
 );
 
-export const queryStartTime = createReducer<number | null>(null, (builder) => {
+const queryStartTime = createReducer<number | null>(null, (builder) => {
   builder
     .addCase(RUN_QUERY, () => performance.now())
     .addCase(CANCEL_QUERY, () => null)
@@ -514,24 +518,19 @@ export const queryStartTime = createReducer<number | null>(null, (builder) => {
     .addCase(QUERY_ERRORED, () => null);
 });
 
-export const parameterValues = createReducer<ParameterValuesMap>(
-  {},
-  (builder) => {
-    builder
-      .addCase<
-        string,
-        { type: string; payload: { parameterValues: ParameterValuesMap } }
-      >(INITIALIZE_QB, (_state, action) => action.payload.parameterValues)
-      .addCase<
-        string,
-        { type: string; payload: { id: string; value: unknown } }
-      >(SET_PARAMETER_VALUE, (state, action) =>
-        assoc(state, action.payload.id, action.payload.value),
-      );
-  },
-);
+const parameterValues = createReducer<ParameterValuesMap>({}, (builder) => {
+  builder
+    .addCase<
+      string,
+      { type: string; payload: { parameterValues: ParameterValuesMap } }
+    >(INITIALIZE_QB, (_state, action) => action.payload.parameterValues)
+    .addCase<string, { type: string; payload: { id: string; value: unknown } }>(
+      SET_PARAMETER_VALUE,
+      (state, action) => assoc(state, action.payload.id, action.payload.value),
+    );
+});
 
-export const currentState = createReducer<{
+const currentState = createReducer<{
   card: Card;
   cardId?: number;
   serializedCard: string;
@@ -545,7 +544,7 @@ export const currentState = createReducer<{
   >(SET_CURRENT_STATE, (_state, action) => action.payload);
 });
 
-export const parentEntity = createReducer<QueryBuilderParentEntityState>(
+const parentEntity = createReducer<QueryBuilderParentEntityState>(
   DEFAULT_PARENT_ENTITY_STATE,
   (builder) => {
     builder
@@ -585,45 +584,39 @@ export const parentEntity = createReducer<QueryBuilderParentEntityState>(
   },
 );
 
-export const visibleTimelineEventIds = createReducer<number[]>(
-  [],
-  (builder) => {
-    builder
-      .addCase(INITIALIZE_QB, () => [])
-      .addCase<string, { type: string; payload: TimelineEvent[] }>(
-        SHOW_TIMELINE_EVENTS,
-        (state, action) =>
-          _.uniq([...state, ...action.payload.map((event) => event.id)]),
-      )
-      .addCase<string, { type: string; payload: TimelineEvent[] }>(
-        HIDE_TIMELINE_EVENTS,
-        (state, action) => {
-          const eventIdsToHide = action.payload.map((event) => event.id);
-          return state.filter((eventId) => !eventIdsToHide.includes(eventId));
-        },
-      )
-      .addCase(RESET_QB, () => [])
-      .addMatcher(
-        timelineEventApi.endpoints.createTimelineEvent.matchFulfilled,
-        (state, action) => [...state, action.payload.id],
-      );
-  },
-);
+const visibleTimelineEventIds = createReducer<number[]>([], (builder) => {
+  builder
+    .addCase(INITIALIZE_QB, () => [])
+    .addCase<string, { type: string; payload: TimelineEvent[] }>(
+      SHOW_TIMELINE_EVENTS,
+      (state, action) =>
+        _.uniq([...state, ...action.payload.map((event) => event.id)]),
+    )
+    .addCase<string, { type: string; payload: TimelineEvent[] }>(
+      HIDE_TIMELINE_EVENTS,
+      (state, action) => {
+        const eventIdsToHide = action.payload.map((event) => event.id);
+        return state.filter((eventId) => !eventIdsToHide.includes(eventId));
+      },
+    )
+    .addCase(RESET_QB, () => [])
+    .addMatcher(
+      timelineEventApi.endpoints.createTimelineEvent.matchFulfilled,
+      (state, action) => [...state, action.payload.id],
+    );
+});
 
-export const selectedTimelineEventIds = createReducer<number[]>(
-  [],
-  (builder) => {
-    builder
-      .addCase(INITIALIZE_QB, () => [])
-      .addCase<string, { type: string; payload: TimelineEvent[] | undefined }>(
-        SELECT_TIMELINE_EVENTS,
-        (_state, action) => (action.payload ?? []).map((e) => e.id),
-      )
-      .addCase(DESELECT_TIMELINE_EVENTS, () => [])
-      .addCase(CLOSE_TIMELINES, () => [])
-      .addCase(RESET_QB, () => []);
-  },
-);
+const selectedTimelineEventIds = createReducer<number[]>([], (builder) => {
+  builder
+    .addCase(INITIALIZE_QB, () => [])
+    .addCase<string, { type: string; payload: TimelineEvent[] | undefined }>(
+      SELECT_TIMELINE_EVENTS,
+      (_state, action) => (action.payload ?? []).map((e) => e.id),
+    )
+    .addCase(DESELECT_TIMELINE_EVENTS, () => [])
+    .addCase(CLOSE_TIMELINES, () => [])
+    .addCase(RESET_QB, () => []);
+});
 
 type CardPayloadAction = {
   type: string;
@@ -660,7 +653,7 @@ const handleQueryCompleted = (
 // Query `matchFulfilled` matchers at the end push that past TypeScript's
 // "excessively deep" limit (TS2589) whenever the global API type graph grows.
 // Splitting into per-statement calls keeps each call's inference shallow.
-export const card = createReducer<Card | null>(null, (builder) => {
+const card = createReducer<Card | null>(null, (builder) => {
   builder.addCase(RESET_QB, () => null);
   builder.addCase(CLOSE_QB, () => null);
   builder.addCase<string, NestedCardPayloadAction>(
@@ -744,4 +737,24 @@ export const card = createReducer<Card | null>(null, (builder) => {
       };
     },
   );
+});
+
+export const queryBuilderReducer: Reducer<QueryBuilderState> = combineReducers({
+  uiControls,
+  loadingControls,
+  queryStatus,
+  zoomedRowObjectId,
+  originalCard,
+  tableForeignKeyReferences,
+  lastRunCard,
+  queryResults,
+  metadataDiff,
+  cancelQueryController,
+  queryStartTime,
+  parameterValues,
+  currentState,
+  parentEntity,
+  visibleTimelineEventIds,
+  selectedTimelineEventIds,
+  card,
 });
